@@ -1,0 +1,30 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+  - id: trailing-whitespace
+  - id: end-of-file-fixer
+  - id: check-yaml
+  - id: check-added-large-files
+- repo: https://github.com/pre-commit/mirrors-clang-format
+  rev: v20.1.0
+  hooks:
+  - id: clang-format
+    types_or: [c++, c, cuda]
+- repo: https://github.com/cpplint/cpplint
+  rev: 2.0.2
+  hooks:
+  - id: cpplint
+    args:
+    - --filter=-build/c++11
+    - --filter=-build/include_alpha,+build/include_order
+    - --filter=+build/include_what_you_use
+    - --filter=-build/header_guard
+    - --filter=+runtime/printf,+runtime/printf_format
+    - --filter=-runtime/references
+    - --linelength=80
+    - --includeorder=standardcfirst
+    # ignore rules temporarily for bug of cpplint
+    - --filter=-whitespace/indent_namespace
