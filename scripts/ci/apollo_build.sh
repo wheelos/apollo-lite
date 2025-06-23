@@ -30,6 +30,10 @@ CMDLINE_OPTIONS=
 SHORTHAND_TARGETS=
 DISABLED_TARGETS=
 
+declare -A MODULE_DEFINES=(
+  # [dreamview]="no_files=true"
+)
+
 function _determine_drivers_disabled() {
   if ! ${USE_ESD_CAN}; then
     warning "ESD CAN library supplied by ESD Electronics doesn't exist."
@@ -104,35 +108,33 @@ function determine_disabled_targets() {
 # components="$(echo -e "${@// /\\n}" | sort -u)"
 # if [ ${PIPESTATUS[0]} -ne 0 ]; then ... ; fi
 
-function determine_build_targets() {
-  local targets_all
+function determine_build_targets_and_defines() {
+  local targets_all=""
+  local defines_all=""
+
   if [[ "$#" -eq 0 ]]; then
     targets_all="//modules/... union //cyber/..."
-    echo "${targets_all}"
-    return
-  fi
-
-  for component in $@; do
-    local build_targets
-    if [ "${component}" = "cyber" ]; then
-      if [[ "${HOST_OS}" == "Linux" ]]; then
-        build_targets="//cyber/... union //modules/tools/visualizer/..."
+  else
+    for component in "$@"; do
+      if [[ "$component" == "cyber" ]]; then
+        if [[ "${HOST_OS}" == "Linux" ]]; then
+          targets_all+=" //cyber/... //modules/tools/visualizer/..."
+        else
+          targets_all+=" //cyber/..."
+        fi
+      elif [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
+        targets_all+=" //modules/${component}/..."
       else
-        build_targets="//cyber/..."
+        error "Directory ${APOLLO_ROOT_DIR}/modules/${component} not found. Exiting ..."
+        exit 1
       fi
-    elif [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
-      build_targets="//modules/${component}/..."
-    else
-      error "Directory <APOLLO_ROOT_DIR>/modules/${component} not found. Exiting ..."
-      exit 1
-    fi
-    if [ -z "${targets_all}" ]; then
-      targets_all="${build_targets}"
-    else
-      targets_all="${targets_all} union ${build_targets}"
-    fi
-  done
-  echo "${targets_all}"
+
+      if [[ -n "${MODULE_DEFINES[$component]}" ]]; then
+        defines_all+=" --define ${MODULE_DEFINES[$component]}"
+      fi
+    done
+  fi
+  echo "${targets_all} ${defines_all}"
 }
 
 function _chk_n_set_gpu_arg() {
@@ -231,7 +233,7 @@ function run_bazel_build() {
   CMDLINE_OPTIONS="$(echo ${CMDLINE_OPTIONS} | xargs)"
 
   local build_targets
-  build_targets="$(determine_build_targets ${SHORTHAND_TARGETS})"
+  build_targets="$(determine_build_targets_and_defines ${SHORTHAND_TARGETS})"
 
   local disabled_targets
   disabled_targets="$(determine_disabled_targets ${SHORTHAND_TARGETS})"

@@ -220,10 +220,9 @@ def main(build_file_path):
                  and f != "CMakeLists.txt"]
     not_proto_files = [f for f in files_all if not f.endswith(".proto")]
     if not_proto_files:
-        print("Except for BUILD/CMakeLists.txt, some files under {} are NOT proto files:".format(workdir))
+        print("Except for BUILD/CMakeLists.txt, some files under {} are NOT proto files and will be ignored:".format(workdir))
         for f in not_proto_files:
             print("  " + os.path.join(workdir, f))
-        return
 
     grpc_found = any(grpc_check(os.path.join(workdir, f)) for f in files_all)
 
@@ -233,7 +232,7 @@ def main(build_file_path):
     else:
         fout.write(TEMPLATE_HEADER.format("", ""))
 
-    for protofile in files_all:
+    for protofile in [f for f in files_all if f.endswith(".proto")]:
         (proto_deptext, py_proto_deptext) = generate_dependency_text(
             workdir, protofile)
         rules = generate_rule_for_protofile(workdir, protofile,

@@ -75,7 +75,7 @@ DOCKER_MEMORY="${DOCKER_MEMORY:-8g}"
 DOCKER_IMAGE_REPO=${DOCKER_IMAGE_REPO:="apolloauto/apollo"}
 DOCKER_IMAGE_TAG_X86_64=${DOCKER_IMAGE_TAG_X86_64:="dev-x86_64-18.04-20221124_1708"}
 DOCKER_IMAGE_TAG_X86_64_TESTING=${DOCKER_IMAGE_TAG_X86_64_TESTING:="dev-x86_64-18.04-testing-20210112_0008"}
-DOCKER_IMAGE_TAG_AARCH64=${DOCKER_IMAGE_TAG_AARCH64:="dev-aarch64-18.04-20201218_0030"}
+DOCKER_IMAGE_TAG_AARCH64=${DOCKER_IMAGE_TAG_AARCH64:="dev-aarch64-20.04-20231024_1054"}
 
 # --- Script Global Variables (Modified by arguments/logic) ---
 DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:=""} # Default empty, will be set by arguments or overrided by environment variables
@@ -328,7 +328,17 @@ function prepare_docker_volumes() {
     volumes+=" -v /dev:/dev"
 
     # bazel cache
-    volumes+=" -v ${BAZEL_CACHE_DIR}:${BAZEL_CACHE_DIR}"
+    if [[ -d "${BAZEL_CACHE_DIR}" ]]; then
+        info "✅ Cache directory exists: ${BAZEL_CACHE_DIR}"
+        # Directory exists – add mount volume option
+        volumes+=" -v ${BAZEL_CACHE_DIR}:${BAZEL_CACHE_DIR}"
+    else
+        # Directory does not exist – inform user to create it with sudo
+        warning "⚠️ Cache directory does NOT exist: ${BAZEL_CACHE_DIR}"
+        warning "Please create it with sudo:"
+        warning "  sudo mkdir -p \"${BAZEL_CACHE_DIR}\""
+        warning "Then re-run this script"
+    fi
 
     # Optional: Mount NVIDIA specific directories for AARCH64 Jetson
     # local tegra_dir="/usr/lib/aarch64-linux-gnu/tegra"
@@ -552,7 +562,7 @@ function main() {
     ok "To login into the container, please run:"
     ok "  bash docker/scripts/dev_into.sh"
 
-    info "--- Next Steps (Run INSIDE the Container) ---"
+    warning "--- Next Steps (Run INSIDE the Container) ---"
     info "This host script ONLY launched the container."
     info "ALL further environment setup (installing tools, downloading models, downloading map data) MUST be done *INSIDE* the container."
     info "After logging in, locate and run the necessary setup scripts within the /apollo directory or as provided by your Apollo distribution."

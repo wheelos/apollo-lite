@@ -56,6 +56,7 @@ cc_library(
         "//cyber/common:log",
         "//cyber/common:macros",
         "//cyber/proto:proto_desc_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

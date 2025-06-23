@@ -20,6 +20,8 @@ APOLLO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
 
 set -euo pipefail
 
+BAZEL_CACHE_DIR="/var/cache/bazel/repo_cache"
+
 # 1. Setup core dump format.
 CORE_DIR="${APOLLO_ROOT_DIR}/data/core"
 if [ ! -d "${CORE_DIR}" ]; then
@@ -30,6 +32,11 @@ kernel.core_pattern = ${CORE_DIR}/core_%e.%p
 EOF
 # Apply sysctl configuration to make it take effect immediately.
 sudo sysctl -p /etc/sysctl.d/99-core-dump.conf
+
+# Add bazel cache directory.
+if [ ! -d "${BAZEL_CACHE_DIR}" ]; then
+  sudo mkdir -p "${BAZEL_CACHE_DIR}"
+fi
 
 # 2. Setup ntpdate to run once per minute. Log at /var/log/syslog.
 if systemctl list-unit-files | grep -q "^systemd-timesyncd.service"; then

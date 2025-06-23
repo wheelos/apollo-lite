@@ -1,0 +1,11 @@
+--- a/BUILD.bazel	2025-06-23 17:18:37.668060014 +0800
++++ b/BUILD.bazel	2025-06-23 15:39:43.929901257 +0800
+@@ -4,7 +4,7 @@
+ 
+ load(":bazel/glog.bzl", "glog_library")
+ 
+-glog_library()
++glog_library(with_gflags=0)
+ 
+ # platform() to build with clang-cl on Bazel CI. This is enabled with
+ # the flags in .bazelci/presubmit.yml:
