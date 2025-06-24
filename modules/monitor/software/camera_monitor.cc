@@ -54,13 +54,6 @@ ReaderAndMessagePair CreateReaderAndLatestsMessage(const std::string& camera) {
   return {reader, message};
 }
 
-static const auto camera_topic_set = std::set<std::string>{
-    FLAGS_image_long_topic,         FLAGS_camera_image_long_topic,
-    FLAGS_camera_image_short_topic, FLAGS_camera_front_6mm_topic,
-    FLAGS_camera_front_6mm_2_topic, FLAGS_camera_front_12mm_topic,
-    // Add more cameras here if you want to monitor.
-};
-
 }  // namespace
 
 CameraMonitor::CameraMonitor()
@@ -80,6 +73,14 @@ void CameraMonitor::RunOnce(const double current_time) {
 }
 
 void CameraMonitor::UpdateStatus(ComponentStatus* status) {
+  // init here for avoiding gflags coredump issue
+  // TODO(All): Remove this after gflags issue is fixed.
+  static const std::set<std::string> camera_topic_set = std::set<std::string>{
+      FLAGS_image_long_topic,         FLAGS_camera_image_long_topic,
+      FLAGS_camera_image_short_topic, FLAGS_camera_front_6mm_topic,
+      FLAGS_camera_front_6mm_2_topic, FLAGS_camera_front_12mm_topic,
+      // Add more cameras here if you want to monitor.
+  };
   status->clear_status();
   std::string frame_id = "";
   for (const auto& topic : camera_topic_set) {
