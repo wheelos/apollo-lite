@@ -106,7 +106,7 @@ setup_core_dump() {
     if [ $? -ne 0 ]; then
       error "Failed to create core dump directory: ${CORE_DUMP_DIR}."
       return 1
-    fi # <-- Missing closing brace was here
+    fi
     info "Created core dump directory: ${CORE_DUMP_DIR}."
   fi
 
@@ -160,26 +160,47 @@ setup_bazel_cache_dir() {
 configure_ntp() {
   info "Configuring NTP synchronization with systemd-timesyncd..."
 
-  # Check if systemd-timesyncd is already enabled and active
-  if systemctl list-unit-files --all | grep -q "^systemd-timesyncd.service"; then
-    if sudo systemctl is-enabled --quiet systemd-timesyncd && sudo systemctl is-active --quiet systemd-timesyncd; then
-      info "systemd-timesyncd service is already enabled and active. Skipping."
-      return 0
-    fi
-  else
-    error "systemd-timesyncd service not found! Please install systemd-timesyncd if accurate time synchronization is critical."
-    return 1 # Consider this a failure if NTP cannot be set up
+  # Step 1: Check if systemd-timesyncd service unit file exists
+  local service_exists=false
+  if sudo systemctl status systemd-timesyncd.service &> /dev/null; then
+    service_exists=true
   fi
 
+  if ! "$service_exists"; then
+    error "systemd-timesyncd.service not found on this system."
+    error "Please ensure 'systemd-timesyncd' is installed if accurate time synchronization is critical."
+    return 1 # Exit if the service file itself doesn't exist
+  fi
+
+  # Step 2: If service exists, check if it's already in the desired state (enabled and active)
+  local is_enabled=false
+  if sudo systemctl is-enabled --quiet systemd-timesyncd.service; then
+    is_enabled=true
+  fi
+
+  local is_active=false
+  if sudo systemctl is-active --quiet systemd-timesyncd.service; then
+    is_active=true
+  fi
+
+  if "$is_enabled" && "$is_active"; then
+    info "systemd-timesyncd service is already enabled and active. Skipping configuration."
+    return 0 # Configuration is already complete, no action needed
+  else
+    info "systemd-timesyncd service found but not fully enabled or active. Attempting to enable and start."
+  fi
+
+  # Step 3: Enable and start the service if it's not already in the desired state
   info "Enabling and starting systemd-timesyncd time synchronization service..."
-  sudo systemctl enable systemd-timesyncd
+  sudo systemctl enable systemd-timesyncd.service
   if [ $? -ne 0 ]; then
-    error "Failed to enable systemd-timesyncd."
+    error "Failed to enable systemd-timesyncd. Please check systemd status and permissions."
     return 1
   fi
-  sudo systemctl start systemd-timesyncd
+
+  sudo systemctl start systemd-timesyncd.service
   if [ $? -ne 0 ]; then
-    error "Failed to start systemd-timesyncd."
+    error "Failed to start systemd-timesyncd. Please check systemd logs for details (e.g., journalctl -xeu systemd-timesyncd)."
     return 1
   fi
   success "systemd-timesyncd enabled and started."
