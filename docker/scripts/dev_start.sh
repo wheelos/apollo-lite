@@ -335,9 +335,11 @@ function prepare_docker_volumes() {
     else
         # Directory does not exist – inform user to create it with sudo
         warning "⚠️ Cache directory does NOT exist: ${BAZEL_CACHE_DIR}"
-        warning "Please create it with sudo:"
+        warning "Usually it is automatically created by docker."
+        warning "If not, please create it with sudo manually:"
         warning "  sudo mkdir -p \"${BAZEL_CACHE_DIR}\""
         warning "Then re-run this script"
+        volumes+=" -v ${BAZEL_CACHE_DIR}:${BAZEL_CACHE_DIR}"
     fi
 
     # Optional: Mount NVIDIA specific directories for AARCH64 Jetson

@@ -45,16 +45,13 @@ For a deeper dive, check out Apollo's [architecture overview](http://apollo.auto
 ## Quick Start
 
 ### 1. Setup Host Environment
-Run the following scripts in order to prepare your host machine:
+Run the following scripts in order to prepare your host machine, which will perform the following steps sequentially:
+1. Install Docker (checks if already installed, then proceeds)
+2. Install NVIDIA Container Toolkit (checks if already installed, depends on Docker)
+3. Perform host system configurations
 
 ```bash
-# Install Docker
-bash docker/setup_host/install_docker.sh
-
-# Install NVIDIA Container Toolkit
-bash docker/setup_host/install_nvidia_container_toolkit.sh
-
-# Setup host machine environment (includes time sync, udev rules, etc.)
+# setup host
 bash docker/setup_host/setup_host.sh
 ```
 

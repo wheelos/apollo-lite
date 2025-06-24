@@ -1,91 +1,167 @@
 #!/usr/bin/env bash
 
-###############################################################################
-# Copyright 2018 The Apollo Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-###############################################################################
+# ==============================================================================
+# Script Name: install_docker.sh
+# Description: Installs Docker Engine, CLI, Containerd, Buildx, and Compose
+#              plugins on a Ubuntu-based system.
+#              Includes checks for existing installation, pre-conditions, and
+#              robust error handling.
+# Author: WheelOS
+# Date: June 24, 2025
+# ==============================================================================
 
+set -euo pipefail
+
+# --- Global Variables ---
 ARCH="$(uname -m)"
+DOCKER_GPG_KEYRING="/etc/apt/keyrings/docker.gpg"
+DOCKER_REPO_LIST="/etc/apt/sources.list.d/docker.list"
+# Link for architectural support issues, as suggested in original script
+ISSUES_LINK="https://github.com/ApolloAuto/apollo/issues"
 
+# --- Colors for Output ---
 BOLD='\033[1m'
 RED='\033[0;31m'
 WHITE='\033[34m'
 NO_COLOR='\033[0m'
 
-function info() {
+# --- Logging Functions ---
+# Prints an informational message to stderr.
+info() {
   (echo >&2 -e "[${WHITE}${BOLD}INFO${NO_COLOR}] $*")
 }
 
-function error() {
+# Prints an error message to stderr.
+error() {
   (echo >&2 -e "[${RED}ERROR${NO_COLOR}] $*")
 }
 
-function install_prereq_packages() {
-  info "Updating apt package list..."
-  sudo apt-get -y update || { error "Failed to update apt package list. Please check network connection or source configuration."; exit 1; }
-  info "Installing prerequisite packages..."
+# --- Core Logic Functions ---
 
-  sudo apt-get -y install \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg \
-    software-properties-common || { error "Failed to install prerequisite packages."; exit 1; }
-
-  info "Prerequisite packages installed."
+# Checks if Docker is already installed by verifying the 'docker' command.
+# Returns 0 if Docker is installed, 1 otherwise.
+is_docker_already_installed() {
+  info "Checking if Docker is already installed..."
+  if command -v docker &> /dev/null; then
+    if sudo systemctl is-active --quiet docker; then
+      info "Docker is detected and running. Installation will be skipped."
+      return 0 # Docker installed and active
+    else
+      info "Docker command found, but service is not active. Attempting to start service."
+      sudo systemctl start docker && sudo systemctl enable docker &> /dev/null
+      if [ $? -eq 0 ]; then
+        info "Docker service started and enabled. Installation will be skipped."
+        return 0
+      else
+        error "Docker command found, but service could not be started. Please investigate. Proceeding with installation attempt."
+        return 1 # Docker detected, but not fully functional, so attempt reinstall
+      fi
+    fi
+  fi
+  info "Docker not detected. Proceeding with installation."
+  return 1 # Docker not installed
 }
 
-function setup_docker_repo_and_install() {
-  local issues_link="https://github.com/ApolloAuto/apollo/issues"
-  local arch_alias=
+# Checks pre-conditions necessary for Docker installation.
+# Returns 0 if all pre-conditions are met, 1 otherwise.
+check_docker_pre_conditions() {
+  info "Checking Docker installation pre-conditions..."
+
+  # 1. Check for supported OS (Ubuntu)
+  if ! command -v lsb_release &> /dev/null; then
+    error "lsb_release command not found. Cannot determine OS distribution. Please install 'lsb-release'."
+    return 1
+  fi
+  if [ "$(lsb_release -is)" != "Ubuntu" ]; then
+    error "Unsupported operating system: $(lsb_release -is). This script is designed for Ubuntu."
+    return 1
+  fi
+
+  # 2. Check for supported architecture
+  local arch_alias=""
   if [ "${ARCH}" == "x86_64" ]; then
     arch_alias="amd64"
   elif [ "${ARCH}" == "aarch64" ]; then
     arch_alias="arm64"
   else
-    error "Current architecture ${ARCH} is not supported." \
-          "You can create an Issue at ${issues_link}."
-    exit 1
+    error "Unsupported architecture: ${ARCH}. You can create an Issue at ${ISSUES_LINK}."
+    return 1
   fi
+  info "Detected supported architecture: ${ARCH} (alias: ${arch_alias})."
+
+  # 3. Check for root privileges (handled by main script calling with sudo, but good to double check)
+  if [ "$(id -u)" -ne 0 ]; then
+      error "This script must be run with root privileges (sudo)."
+      return 1
+  fi
+
+  info "All Docker pre-conditions met."
+  return 0
+}
+
+# Installs necessary prerequisite packages for Docker.
+install_prereq_packages() {
+  info "Updating apt package list..."
+  sudo apt-get -y update
+  if [ $? -ne 0 ]; then
+    error "Failed to update apt package list. Please check network connection or source configuration."
+    return 1
+  fi
+
+  info "Installing prerequisite packages (apt-transport-https, ca-certificates, curl, gnupg, software-properties-common)..."
+  sudo apt-get -y install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    software-properties-common
+  if [ $? -ne 0 ]; then
+    error "Failed to install prerequisite packages. Please check internet connectivity or package availability."
+    return 1
+  fi
+  info "Prerequisite packages installed."
+  return 0
+}
+
+# Sets up the Docker APT repository and installs Docker components.
+setup_docker_repo_and_install() {
+  local arch_alias=
+  if [ "${ARCH}" == "x86_64" ]; then
+    arch_alias="amd64"
+  elif [ "${ARCH}" == "aarch64" ]; then
+    arch_alias="arm64"
+  fi # Pre-condition check already validated supported architecture, so no 'else' needed here.
 
   info "Adding Docker official GPG key..."
   # Create apt keyrings directory if it doesn't exist
-  sudo install -m 0755 -d /etc/apt/keyrings || { error "Failed to create /etc/apt/keyrings directory."; exit 1; }
-  # Download and dearmor the GPG key into the keyrings directory, replacing old apt-key add method
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  sudo install -m 0755 -d /etc/apt/keyrings
   if [ $? -ne 0 ]; then
-    error "Failed to download or dearmor Docker GPG key. Please check network connection or GPG tool availability."
-    exit 1
+    error "Failed to create /etc/apt/keyrings directory."
+    return 1
   fi
-  info "Docker GPG key added to /etc/apt/keyrings/docker.gpg."
+
+  # Download and dearmor the GPG key into the keyrings directory
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o "${DOCKER_GPG_KEYRING}"
+  if [ $? -ne 0 ]; then
+    error "Failed to download or dearmor Docker GPG key to ${DOCKER_GPG_KEYRING}. Please check network connection or GPG tool availability."
+    return 1
+  fi
+  info "Docker GPG key added to ${DOCKER_GPG_KEYRING}."
 
   info "Setting up Docker stable repository..."
   # Add Docker repository to apt sources list using new signed-by syntax
-  echo \
-    "deb [arch=${arch_alias} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-    $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  echo "deb [arch=${arch_alias} signed-by=${DOCKER_GPG_KEYRING}] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee "${DOCKER_REPO_LIST}" > /dev/null
   if [ $? -ne 0 ]; then
-    error "Failed to set up Docker repository. Please check system info or repository URL."
-    exit 1
+    error "Failed to set up Docker repository in ${DOCKER_REPO_LIST}. Please check system info or repository URL."
+    return 1
   fi
-  info "Docker stable repository added to /etc/apt/sources.list.d/docker.list."
+  info "Docker stable repository added to ${DOCKER_REPO_LIST}."
 
   info "Updating apt package list with new repository..."
   sudo apt-get update
   if [ $? -ne 0 ]; then
     error "Failed to update apt package list after adding Docker repository. Please check repository configuration."
-    exit 1
+    return 1
   fi
   info "Apt cache updated."
 
@@ -98,35 +174,85 @@ function setup_docker_repo_and_install() {
     docker-compose-plugin
   if [ $? -ne 0 ]; then
     error "Failed to install Docker components. Please check dependencies or try again."
-    exit 1
+    return 1
   fi
   info "Docker Engine, CLI, Containerd, Buildx, and Compose plugins installed."
+  return 0
 }
 
-function post_install_settings() {
+# Applies post-installation settings for Docker.
+post_install_settings() {
   info "Applying post-installation settings..."
   # Add current user to 'docker' group to allow running docker commands without sudo
-  info "Adding current user '$USER' to 'docker' group. You may need to logout and login again for changes to take effect."
-  sudo usermod -aG docker $USER || { error "Failed to add user to 'docker' group."; }
+  info "Adding current user '$USER' to 'docker' group. You may need to logout and login again (or run 'newgrp docker') for changes to take effect."
+  sudo usermod -aG docker "$USER"
+  if [ $? -ne 0 ]; then
+    error "Failed to add user '$USER' to 'docker' group. Manual intervention may be required."
+    return 1
+  fi
 
   # Restart Docker service to apply changes
   info "Restarting Docker service..."
-  sudo systemctl restart docker || { error "Failed to restart Docker service. Please check systemctl status."; }
+  sudo systemctl restart docker
+  if [ $? -ne 0 ]; then
+    error "Failed to restart Docker service. Please check 'systemctl status docker.service'."
+    return 1
+  fi
   info "Docker service restarted."
   info "Post-installation settings applied."
+  return 0
 }
 
-function install_docker() {
+# --- Main Installation Function ---
+# This is the primary entry point for installing Docker.
+install_docker() {
   info "Starting Docker installation process..."
-  install_prereq_packages
-  setup_docker_repo_and_install
-  post_install_settings
-  info "Docker installation completed. Please logout and login again (or run 'newgrp docker') to use Docker without 'sudo'."
-  info "You can verify installation by running 'docker run hello-world'."
+
+  # 1. Check if Docker is already installed
+  if is_docker_already_installed; then
+    info "Docker is already functional. Exiting Docker installation script successfully."
+    return 0 # Exit with success as Docker is already set up
+  fi
+
+  # 2. Check pre-conditions before proceeding with installation
+  if ! check_docker_pre_conditions; then
+    error "Docker pre-conditions not met. Aborting Docker installation."
+    return 1 # Exit with error as pre-conditions failed
+  fi
+
+  # 3. Install prerequisite packages
+  if ! install_prereq_packages; then
+    error "Prerequisite package installation failed. Aborting Docker installation."
+    return 1
+  fi
+
+  # 4. Set up Docker repository and install components
+  if ! setup_docker_repo_and_install; then
+    error "Docker repository setup or component installation failed. Aborting Docker installation."
+    return 1
+  fi
+
+  # 5. Apply post-installation settings
+  if ! post_install_settings; then
+    error "Docker post-installation settings failed. Aborting Docker installation."
+    return 1
+  fi
+
+  info "Docker installation completed successfully!"
+  info "IMPORTANT: You need to logout and login again (or run 'newgrp docker') for user '$USER' to use Docker without 'sudo'."
+  info "You can verify the installation by running 'docker run hello-world' after re-logging."
+  return 0 # Final success
 }
 
-function uninstall_docker() {
+# --- Main Uninstallation Function ---
+# This function handles the uninstallation of Docker.
+uninstall_docker() {
   info "Starting Docker uninstallation process..."
+  info "Attempting to stop and disable Docker service..."
+  sudo systemctl stop docker &> /dev/null || true
+  sudo systemctl disable docker &> /dev/null || true
+  info "Docker service stopped."
+
   info "Removing Docker components..."
   # Try removing all known Docker packages. Use '|| true' to continue even if some packages are not installed.
   sudo apt-get -y remove docker docker-engine docker.io docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || true
@@ -136,26 +262,29 @@ function uninstall_docker() {
 
   info "Cleaning up Docker repository files..."
   # Remove GPG key file
-  if [ -f "/etc/apt/keyrings/docker.gpg" ]; then
-    sudo rm -f "/etc/apt/keyrings/docker.gpg"
-    info "Removed /etc/apt/keyrings/docker.gpg."
+  if [ -f "${DOCKER_GPG_KEYRING}" ]; then
+    sudo rm -f "${DOCKER_GPG_KEYRING}"
+    info "Removed ${DOCKER_GPG_KEYRING}."
   fi
 
   # Remove repository sources list file
-  if [ -f "/etc/apt/sources.list.d/docker.list" ]; then
-    sudo rm -f "/etc/apt/sources.list.d/docker.list"
-    info "Removed /etc/apt/sources.list.d/docker.list."
+  if [ -f "${DOCKER_REPO_LIST}" ]; then
+    sudo rm -f "${DOCKER_REPO_LIST}"
+    info "Removed ${DOCKER_REPO_LIST}."
   fi
 
   info "Updating apt cache after cleanup..."
-  sudo apt-get -y update || true
+  sudo apt-get -y update || true # Update apt cache, allow failure as it's cleanup
   info "Apt cache updated."
 
   info "Docker uninstallation completed."
+  return 0 # Always return 0 for uninstallation success
 }
 
-function main() {
-  case $1 in
+# --- Script Entry Point ---
+# Handles command-line arguments to either install or uninstall Docker.
+main() {
+  case "$1" in
     install)
       install_docker
       ;;
@@ -164,6 +293,7 @@ function main() {
       ;;
     *)
       info "Usage: $0 {install|uninstall}"
+      info "Defaulting to 'install' mode as no valid argument was provided."
       install_docker
       ;;
   esac
