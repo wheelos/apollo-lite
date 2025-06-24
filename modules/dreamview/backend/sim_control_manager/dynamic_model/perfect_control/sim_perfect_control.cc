@@ -16,6 +16,8 @@
 
 #include "modules/dreamview/backend/sim_control_manager/dynamic_model/perfect_control/sim_perfect_control.h"
 
+#include <memory>
+
 #include "cyber/common/file.h"
 #include "cyber/time/clock.h"
 #include "modules/common/adapters/adapter_gflags.h"
@@ -527,10 +529,17 @@ void SimPerfectControl::PublishLocalization(
   // pose as the final pose.
   need_calc_origin_ = true;  // Reset the origin calculation flag when
                              // switching back to absolute localization.
-  final_x = noisy_x;
-  final_y = noisy_y;
-  final_z = noisy_z;
-  final_theta = noisy_theta;
+  if (FLAGS_sim_perfect_control_enable_noise) {
+    final_x = noisy_x;
+    final_y = noisy_y;
+    final_z = noisy_z;
+    final_theta = noisy_theta;
+  } else {
+    final_x = ideal_x;
+    final_y = ideal_y;
+    final_z = ideal_z;
+    final_theta = ideal_theta;
+  }
 
   // 5. Apply Navigation Mode Correction
   if (FLAGS_use_navigation_mode) {
