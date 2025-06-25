@@ -162,7 +162,7 @@ configure_ntp() {
 
   # Step 1: Check if systemd-timesyncd service unit file exists
   local service_exists=false
-  if sudo systemctl status systemd-timesyncd.service &> /dev/null; then
+  if sudo systemctl list-unit-files systemd-timesyncd.service | grep -c systemd-timesyncd.service &> /dev/null; then
     service_exists=true
   fi
 
