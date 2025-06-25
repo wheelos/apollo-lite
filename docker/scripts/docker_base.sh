@@ -158,7 +158,7 @@ or type any other key to exit:"
 
     cp -f "${agreement_file}" "${agreement_record}"
     echo "${tip}" >> "${agreement_record}"
-    echo "${user_agreed}" >> "${agreement_record}"
+    echo "${answer}" >> "${agreement_record}"
 }
 
 export -f geo_specific_config
