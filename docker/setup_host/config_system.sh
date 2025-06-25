@@ -291,6 +291,36 @@ EOF
   return 0
 }
 
+# Adds the current user to the Docker group for permissions.
+add_user_to_docker_group() {
+  # Use SUDO_USER if available, otherwise fallback to whoami
+  user="${SUDO_USER:-$(whoami)}"
+  if [ -z "${user}" ]; then
+    error "Could not determine the user to add to the Docker group. Please run this script with sudo."
+    return 1
+  fi
+
+  if [[ "${user}" == "root" ]]; then
+    info "Running as root. Skipping Docker group addition for root user."
+    return 0
+  fi
+
+  info "Ensuring user '${user}' is in the Docker group..."
+
+  if id -nG "${user}" | grep -qw 'docker'; then
+    info "User '${user}' is already in the Docker group. Skipping."
+    return 0
+  fi
+
+  sudo usermod -aG docker "${user}"
+  if [ $? -ne 0 ]; then
+    error "Failed to add user '${user}' to the Docker group. Check permissions or user existence."
+    return 1
+  fi
+
+  success "User '${user}' added to the Docker group. Please log out and back in for changes to take effect."
+}
+
 # --- Main Host Setup Orchestration Function ---
 # This is the primary entry point for setting up the host machine.
 setup_host_machine() {
@@ -329,6 +359,12 @@ setup_host_machine() {
   # 6. Configure uvcvideo module
   if ! configure_uvcvideo_module; then
     error "Failed to configure uvcvideo module. Aborting host setup."
+    return 1
+  fi
+
+  # 7. Ensure docker permissions are set correctly
+  if ! add_user_to_docker_group; then
+    error "Failed to add user to Docker group. This may affect Docker permissions."
     return 1
   fi
 
