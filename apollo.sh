@@ -180,8 +180,17 @@ function main() {
         build_cpu)
             env ${APOLLO_ENV} bash "${build_sh}" --config=cpu "$@"
             ;;
+        build_dbg_cpu)
+            env ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=cpu "$@"
+            ;;
+        build_opt_cpu)
+            env ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=cpu "$@"
+            ;;
         build_gpu)
             env ${APOLLO_ENV} bash "${build_sh}" --config=gpu "$@"
+            ;;
+        build_dbg_gpu)
+            env ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=gpu "$@"
             ;;
         build_opt_gpu)
             env ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=gpu "$@"
