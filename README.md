@@ -76,8 +76,8 @@ Inside the container, install build dependencies:
 
 ```bash
 # update bazel & gcc
-bash docker/build/installers/install_bazel.sh
-bash docker/build/installers/install_gcc.sh
+sudo bash docker/build/installers/install_bazel.sh
+sudo bash docker/build/installers/install_gcc.sh
 ```
 
 > **Note:** Current container image does not have the latest Bazel and GCC. You need to manually install/upgrade them. Future container versions will include these by default.
@@ -85,15 +85,15 @@ bash docker/build/installers/install_gcc.sh
 Build the entire Apollo project with:
 
 ```bash
-./apollo_build.sh build
+./apollo.sh build
 ```
 
 To build a single module, use:
 
 ```bash
-./apollo_build.sh build <module_name>
+./apollo.sh build <module_name>
 # example:
-./apollo_build.sh build planning
+./apollo.sh build planning
 ```
 
 ---
