@@ -18,7 +18,8 @@ set -euo pipefail
 # Determine the absolute path to Apollo root directory.
 # Assumes this script is located at <APOLLO_ROOT_DIR>/docker/setup_host/config_system.sh
 APOLLO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
-CORE_DUMP_DIR="${APOLLO_ROOT_DIR}/data/core"
+# use relative path for multiple instances
+CORE_DUMP_DIR="data/core"
 CORE_DUMP_CONF_FILE="/etc/sysctl.d/99-core-dump.conf"
 BAZEL_CACHE_DIR="/var/cache/bazel/repo_cache"
 UVCVIDEO_CONF_FILE="/etc/modprobe.d/uvcvideo.conf"
@@ -101,8 +102,9 @@ setup_core_dump() {
     return 0
   fi
 
+  user="${SUDO_USER:-$(whoami)}"
   if [ ! -d "${CORE_DUMP_DIR}" ]; then
-    sudo mkdir -p "${CORE_DUMP_DIR}"
+    sudo -u "${user}" mkdir -p "${CORE_DUMP_DIR}"
     if [ $? -ne 0 ]; then
       error "Failed to create core dump directory: ${CORE_DUMP_DIR}."
       return 1
