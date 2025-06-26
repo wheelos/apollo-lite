@@ -29,6 +29,9 @@ USE_GPU=-1
 CMDLINE_OPTIONS=
 SHORTHAND_TARGETS=
 DISABLED_TARGETS=
+CUSTOM_JOBS=${CUSTOM_JOBS:-""}
+CUSTOM_RAMS=${CUSTOM_RAMS:-""}
+CUSTOM_CPUS=${CUSTOM_CPUS:-""}
 
 declare -A MODULE_DEFINES=(
   # [dreamview]="no_files=true"
@@ -179,6 +182,32 @@ function parse_cmdline_arguments() {
         known_options="${known_options} ${opt} ${optarg}"
         _chk_n_set_gpu_arg "${optarg}"
         ;;
+      --jobs|--jobs=*)
+        set -x
+        optarg="${opt#*=}"
+        if [[ "${optarg}" == "" || "${optarg}" == "${opt}" ]]; then
+          ((++pos))
+          optarg="${!pos}"
+        fi
+        CUSTOM_JOBS="${optarg}"
+        set +x
+        ;;
+      --cpus|--cpus=*)
+        optarg="${opt#*=}"
+        if [[ "${optarg}" == "" || "${optarg}" == "${opt}" ]]; then
+          ((++pos))
+          optarg="${!pos}"
+        fi
+        CUSTOM_CPUS="${optarg}"
+        ;;
+      --rams|--rams=*)
+        optarg="${opt#*=}"
+        if [[ "${optarg}" == "" || "${optarg}" == "${opt}" ]]; then
+          ((++pos))
+          optarg="${!pos}"
+        fi
+        CUSTOM_RAMS="${optarg}"
+        ;;
       -c)
         ((++pos))
         optarg="${!pos}"
@@ -249,13 +278,32 @@ function run_bazel_build() {
   info "${TAB}Build Targets: ${GREEN}${build_targets}${NO_COLOR}"
   info "${TAB}Disabled:      ${YELLOW}${disabled_targets}${NO_COLOR}"
 
+  # default set jobs number according to the total memory size, 2GB per job
+  local jobs_args="--jobs=$(awk '/MemTotal/ {printf "%.f", $2/1024/1024/2}' /proc/meminfo)"
+  if [[ -n "${CUSTOM_JOBS}" ]]; then
+    jobs_args="--jobs=${CUSTOM_JOBS}"
+  fi
+  # default set cpus number according to the total cpu cores
+  local cpus_args="--local_resources=cpu=$(nproc)"
+  if [[ -n "${CUSTOM_CPUS}" ]]; then
+    cpus_args="--local_resources=cpu=${CUSTOM_CPUS}"
+  fi
+  # default set memory size according to the total memory size, 70% of total memory
+  local rams_args="--local_resources=memory=HOST_RAM*.7"
+  if [[ -n "${CUSTOM_RAMS}" ]]; then
+    rams_args="--local_resources=memory=${CUSTOM_RAMS}"
+  fi
+
+  local copts_args=""
   if [[ "$(uname -m)" == "aarch64" ]]; then
-    local job_args="--copt=-march=native --host_copt=-march=native --jobs=8 --local_resources=memory=HOST_RAM*0.7 --copt=-fPIC --host_copt=-fPIC"
+    local copts_args="--copt=-march=native --host_copt=-march=native --copt=-fPIC --host_copt=-fPIC"
   else
     # x64
-    local job_args="--copt=-mavx2 --host_copt=-mavx2 --jobs=8 --local_resources=memory=HOST_RAM*0.7"
+    local copts_args="--copt=-mavx2 --host_copt=-mavx2"
   fi
-  bazel build ${CMDLINE_OPTIONS} ${job_args} -- ${formatted_targets}
+  build_args="${copts_args} ${jobs_args} ${cpus_args} ${rams_args}"
+  info "${TAB}Build Command: bazel build ${CMDLINE_OPTIONS} ${build_args} -- ${formatted_targets}"
+  bazel build ${CMDLINE_OPTIONS} ${build_args} -- ${formatted_targets}
 }
 
 function main() {
