@@ -7,9 +7,6 @@ startup --batch_cpu_scheduling
 startup --host_jvm_args="-XX:-UseParallelGC"
 startup --host_jvm_args="-Xmx2G"
 
-fetch --experimental_multi_threaded_digest=true
-query --experimental_multi_threaded_digest=true
-
 # +------------------------------------------------------------+
 # | Common Options                                             |
 # +------------------------------------------------------------+
