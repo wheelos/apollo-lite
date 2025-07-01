@@ -18,8 +18,9 @@ cc_binary(
     deps = [
         "//cyber",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
-        "//modules/drivers/gnss/stream:gnss_stream",
-        "@com_github_gflags_gflags//:gflags",
+        "//modules/drivers/hal/stream",
+        "//modules/drivers/gnss/parser:data_parser",
+        "//modules/drivers/gnss/proto:config_cc_proto"
     ],
 )
 

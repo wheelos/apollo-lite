@@ -25,8 +25,6 @@
 
 #include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
 
-#include "cyber/cyber.h"
-
 #include "modules/drivers/gnss/parser/parser.h"
 #include "modules/drivers/gnss/parser/rtcm_decode.h"
 
@@ -36,8 +34,15 @@ namespace gnss {
 
 class Rtcm3Parser : public Parser {
  public:
+  explicit Rtcm3Parser(const config::Config &config);
   explicit Rtcm3Parser(bool is_base_satation);
-  virtual MessageType GetMessage(MessagePtr *message_ptr);
+
+  virtual std::vector<ParsedMessage> ParseAllMessages() override;
+
+  bool ProcessHeader() override { return true; }
+  std::optional<std::vector<ParsedMessage>> ProcessPayload() {
+    return std::nullopt;
+  }
 
  private:
   void SetObservationTime();
@@ -46,25 +51,26 @@ class Rtcm3Parser : public Parser {
                         apollo::drivers::gnss::KepplerOrbit *keppler_orbit);
   void FillGlonassOrbit(const geph_t &eph,
                         apollo::drivers::gnss::GlonassOrbit *keppler_orbit);
-  bool ProcessObservation();
-  bool ProcessEphemerides();
+  bool ProcessObservation(
+      apollo::drivers::gnss::EpochObservation *observation_msg);
+  bool ProcessEphemerides(apollo::drivers::gnss::GnssEphemeris *ephemeris_msg);
   bool ProcessStationParameters();
+
+ private:
+  bool is_base_station_ = false;
   bool init_flag_;
 
-  std::vector<uint8_t> buffer_;
-
   rtcm_t rtcm_;
-  bool is_base_station_ = false;
-
-  apollo::drivers::gnss::GnssEphemeris ephemeris_;
-  apollo::drivers::gnss::EpochObservation observation_;
 
   struct Point3D {
     double x;
     double y;
     double z;
   };
-  std::map<int, Point3D> station_location_;
+  std::unordered_map<int, Point3D> station_location_;
+
+  apollo::drivers::gnss::GnssEphemeris ephemeris_;
+  apollo::drivers::gnss::EpochObservation observation_;
 };
 
 }  // namespace gnss

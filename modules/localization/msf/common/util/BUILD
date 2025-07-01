@@ -55,7 +55,6 @@ cc_library(
         "extract_ground_plane.h",
         "math_util.h",
         "rect2d.h",
-        "time_conversion.h",
         "voxel_grid_covariance_hdmap.h",
     ],
     deps = [

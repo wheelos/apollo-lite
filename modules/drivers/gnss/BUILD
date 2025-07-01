@@ -28,7 +28,7 @@ cc_library(
         "//modules/common_msgs/basic_msgs:vehicle_signal_cc_proto",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/common_msgs/sensor_msgs:ins_cc_proto",
-        "//modules/drivers/gnss/stream:gnss_stream",
+        "//modules/drivers/gnss/stream:raw_stream",
     ],
 )
 

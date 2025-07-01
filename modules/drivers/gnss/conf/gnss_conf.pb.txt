@@ -1,7 +1,7 @@
 data {
     format: NOVATEL_BINARY
     serial {
-        device: "/dev/novatel0"
+        device: "/dev/ttyACM0"
         baud_rate: 115200
     }
 }
@@ -22,7 +22,7 @@ data {
 rtk_to {
     format: NOVATEL_BINARY
     serial {
-        device: "/dev/novatel1"
+        device: "/dev/ttyACM1"
         baud_rate: 115200
     }
 }
@@ -30,7 +30,7 @@ rtk_to {
 command {
     format: NOVATEL_BINARY
     serial {
-        device: "/dev/novatel2"
+        device: "/dev/ttyACM2"
         baud_rate: 115200
     }
 }
@@ -41,7 +41,7 @@ proj4_text: "+proj=utm +zone=10 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no
 
 tf {
     frame_id: "world"
-    child_frame_id: "novatel"
+    child_frame_id: "imu"
     enable: true
 }
 

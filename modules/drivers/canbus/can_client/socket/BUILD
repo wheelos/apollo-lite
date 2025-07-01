@@ -10,6 +10,7 @@ cc_library(
     deps = [
         "//modules/common_msgs/basic_msgs:error_code_cc_proto",
         "//modules/drivers/canbus/can_client",
+        "@com_google_absl//absl/strings",
     ],
 )
 

@@ -14,6 +14,8 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include "modules/drivers/gnss/stream/raw_stream.h"
+
 #include <cmath>
 #include <ctime>
 #include <memory>
@@ -22,12 +24,12 @@
 
 #include "absl/strings/str_cat.h"
 
+#include "modules/drivers/gnss/proto/config.pb.h"
+
 #include "cyber/cyber.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/util/message_util.h"
-#include "modules/drivers/gnss/proto/config.pb.h"
-#include "modules/drivers/gnss/stream/raw_stream.h"
-#include "modules/drivers/gnss/stream/stream.h"
+#include "modules/drivers/hal/stream/stream_factory.h"
 
 namespace apollo {
 namespace drivers {
@@ -35,18 +37,18 @@ namespace gnss {
 
 using apollo::canbus::Chassis;
 
-void switch_stream_status(const apollo::drivers::gnss::Stream::Status &status,
+void switch_stream_status(const hal::Stream::Status &status,
                           StreamStatus_Type *report_status_type) {
   switch (status) {
-    case apollo::drivers::gnss::Stream::Status::CONNECTED:
+    case hal::Stream::Status::CONNECTED:
       *report_status_type = StreamStatus::CONNECTED;
       break;
 
-    case apollo::drivers::gnss::Stream::Status::DISCONNECTED:
+    case hal::Stream::Status::DISCONNECTED:
       *report_status_type = StreamStatus::DISCONNECTED;
       break;
 
-    case apollo::drivers::gnss::Stream::Status::ERROR:
+    case hal::Stream::Status::ERROR:
     default:
       *report_status_type = StreamStatus::DISCONNECTED;
       break;
@@ -68,7 +70,7 @@ std::string getLocalTimeFileStr(const std::string &gpsbin_folder) {
   return local_time_file_str;
 }
 
-Stream *create_stream(const config::Stream &sd) {
+std::shared_ptr<hal::Stream> create_stream(const config::Stream &sd) {
   switch (sd.type_case()) {
     case config::Stream::kSerial:
       if (!sd.serial().has_device()) {
@@ -80,8 +82,8 @@ Stream *create_stream(const config::Stream &sd) {
                << sd.serial().baud_rate();
         return nullptr;
       }
-      return Stream::create_serial(sd.serial().device().c_str(),
-                                   sd.serial().baud_rate());
+      return hal::StreamFactory::CreateSerial(sd.serial().device(),
+                                              sd.serial().baud_rate());
 
     case config::Stream::kTcp:
       if (!sd.tcp().has_address()) {
@@ -92,8 +94,8 @@ Stream *create_stream(const config::Stream &sd) {
         AERROR << "tcp def has no port field.";
         return nullptr;
       }
-      return Stream::create_tcp(sd.tcp().address().c_str(),
-                                static_cast<uint16_t>(sd.tcp().port()));
+      return hal::StreamFactory::CreateTcp(
+          sd.tcp().address(), static_cast<uint16_t>(sd.tcp().port()));
 
     case config::Stream::kUdp:
       if (!sd.udp().has_address()) {
@@ -104,8 +106,8 @@ Stream *create_stream(const config::Stream &sd) {
         AERROR << "tcp def has no port field.";
         return nullptr;
       }
-      return Stream::create_udp(sd.udp().address().c_str(),
-                                static_cast<uint16_t>(sd.udp().port()));
+      return hal::StreamFactory::CreateUdp(
+          sd.udp().address(), static_cast<uint16_t>(sd.udp().port()));
 
     case config::Stream::kNtrip:
       if (!sd.ntrip().has_address()) {
@@ -128,7 +130,7 @@ Stream *create_stream(const config::Stream &sd) {
         AERROR << "ntrip def has no passwd field.";
         return nullptr;
       }
-      return Stream::create_ntrip(
+      return hal::StreamFactory::CreateNtrip(
           sd.ntrip().address(), static_cast<uint16_t>(sd.ntrip().port()),
           sd.ntrip().mount_point(), sd.ntrip().user(), sd.ntrip().password(),
           sd.ntrip().timeout_s());
@@ -161,6 +163,7 @@ RawStream::~RawStream() {
 bool RawStream::Init() {
   CHECK_NOTNULL(data_parser_ptr_);
   CHECK_NOTNULL(rtcm_parser_ptr_);
+
   if (!data_parser_ptr_->Init()) {
     AERROR << "Init data parser failed.";
     return false;
@@ -178,39 +181,27 @@ bool RawStream::Init() {
   stream_writer_->Write(stream_status_);
 
   // Creates streams.
-  Stream *s = nullptr;
+  std::shared_ptr<hal::Stream> s;
   if (!config_.has_data()) {
     AINFO << "Error: Config file must provide the data stream.";
     return false;
   }
   s = create_stream(config_.data());
-  if (s == nullptr) {
+  if (!s) {
     AERROR << "Failed to create data stream.";
     return false;
   }
-  data_stream_.reset(s);
-
-  Status *status = new Status();
-  if (!status) {
-    AERROR << "Failed to create data stream status.";
-    return false;
-  }
-  data_stream_status_.reset(status);
+  data_stream_ = s;
+  data_stream_status_ = std::make_shared<Status>();
 
   if (config_.has_command()) {
     s = create_stream(config_.command());
-    if (s == nullptr) {
+    if (!s) {
       AERROR << "Failed to create command stream.";
       return false;
     }
-    command_stream_.reset(s);
-
-    status = new Status();
-    if (!status) {
-      AERROR << "Failed to create command stream status.";
-      return false;
-    }
-    command_stream_status_.reset(status);
+    command_stream_ = s;
+    command_stream_status_ = std::make_shared<Status>();
   } else {
     command_stream_ = data_stream_;
     command_stream_status_ = data_stream_status_;
@@ -218,37 +209,25 @@ bool RawStream::Init() {
 
   if (config_.has_rtk_from()) {
     s = create_stream(config_.rtk_from());
-    if (s == nullptr) {
+    if (!s) {
       AERROR << "Failed to create rtk_from stream.";
       return false;
     }
-    in_rtk_stream_.reset(s);
+    in_rtk_stream_ = s;
 
     if (config_.rtk_from().has_push_location()) {
       push_location_ = config_.rtk_from().push_location();
     }
-
-    status = new Status();
-    if (!status) {
-      AERROR << "Failed to create rtk_from stream status.";
-      return false;
-    }
-    in_rtk_stream_status_.reset(status);
+    in_rtk_stream_status_ = std::make_shared<Status>();
 
     if (config_.has_rtk_to()) {
       s = create_stream(config_.rtk_to());
-      if (s == nullptr) {
+      if (!s) {
         AERROR << "Failed to create rtk_to stream.";
         return false;
       }
-      out_rtk_stream_.reset(s);
-
-      status = new Status();
-      if (!status) {
-        AERROR << "Failed to create rtk_to stream status.";
-        return false;
-      }
-      out_rtk_stream_status_.reset(status);
+      out_rtk_stream_ = s;
+      out_rtk_stream_status_ = std::make_shared<Status>();
     } else {
       out_rtk_stream_ = data_stream_;
       out_rtk_stream_status_ = data_stream_status_;
@@ -328,32 +307,32 @@ void RawStream::OnWheelVelocityTimer() {
 
 bool RawStream::Connect() {
   if (data_stream_) {
-    if (data_stream_->get_status() != Stream::Status::CONNECTED) {
+    if (data_stream_->get_status() != hal::Stream::Status::CONNECTED) {
       if (!data_stream_->Connect()) {
         AERROR << "data stream connect failed.";
         return false;
       }
-      data_stream_status_->status = Stream::Status::CONNECTED;
+      data_stream_status_->status = hal::Stream::Status::CONNECTED;
       stream_status_.set_ins_stream_type(StreamStatus::CONNECTED);
     }
   }
 
   if (command_stream_) {
-    if (command_stream_->get_status() != Stream::Status::CONNECTED) {
+    if (command_stream_->get_status() != hal::Stream::Status::CONNECTED) {
       if (!command_stream_->Connect()) {
         AERROR << "command stream connect failed.";
         return false;
       }
-      command_stream_status_->status = Stream::Status::CONNECTED;
+      command_stream_status_->status = hal::Stream::Status::CONNECTED;
     }
   }
 
   if (in_rtk_stream_) {
-    if (in_rtk_stream_->get_status() != Stream::Status::CONNECTED) {
+    if (in_rtk_stream_->get_status() != hal::Stream::Status::CONNECTED) {
       if (!in_rtk_stream_->Connect()) {
         AERROR << "in rtk stream connect failed.";
       } else {
-        in_rtk_stream_status_->status = Stream::Status::CONNECTED;
+        in_rtk_stream_status_->status = hal::Stream::Status::CONNECTED;
         stream_status_.set_rtk_stream_in_type(StreamStatus::CONNECTED);
       }
     }
@@ -362,11 +341,11 @@ bool RawStream::Connect() {
   }
 
   if (out_rtk_stream_) {
-    if (out_rtk_stream_->get_status() != Stream::Status::CONNECTED) {
+    if (out_rtk_stream_->get_status() != hal::Stream::Status::CONNECTED) {
       if (!out_rtk_stream_->Connect()) {
         AERROR << "out rtk stream connect failed.";
       } else {
-        out_rtk_stream_status_->status = Stream::Status::CONNECTED;
+        out_rtk_stream_status_->status = hal::Stream::Status::CONNECTED;
         stream_status_.set_rtk_stream_out_type(StreamStatus::CONNECTED);
       }
     }
@@ -378,7 +357,7 @@ bool RawStream::Connect() {
 
 bool RawStream::Disconnect() {
   if (data_stream_) {
-    if (data_stream_->get_status() == Stream::Status::CONNECTED) {
+    if (data_stream_->get_status() == hal::Stream::Status::CONNECTED) {
       if (!data_stream_->Disconnect()) {
         AERROR << "data stream disconnect failed.";
         return false;
@@ -387,7 +366,7 @@ bool RawStream::Disconnect() {
   }
 
   if (command_stream_) {
-    if (command_stream_->get_status() == Stream::Status::CONNECTED) {
+    if (command_stream_->get_status() == hal::Stream::Status::CONNECTED) {
       if (!command_stream_->Disconnect()) {
         AERROR << "command stream disconnect failed.";
         return false;
@@ -395,7 +374,7 @@ bool RawStream::Disconnect() {
     }
   }
   if (in_rtk_stream_) {
-    if (in_rtk_stream_->get_status() == Stream::Status::CONNECTED) {
+    if (in_rtk_stream_->get_status() == hal::Stream::Status::CONNECTED) {
       if (!in_rtk_stream_->Disconnect()) {
         AERROR << "in rtk stream disconnect failed.";
         return false;
@@ -403,7 +382,7 @@ bool RawStream::Disconnect() {
     }
   }
   if (out_rtk_stream_) {
-    if (out_rtk_stream_->get_status() == Stream::Status::CONNECTED) {
+    if (out_rtk_stream_->get_status() == hal::Stream::Status::CONNECTED) {
       if (!out_rtk_stream_->Disconnect()) {
         AERROR << "out rtk stream disconnect failed.";
         return false;
@@ -490,7 +469,7 @@ void RawStream::DataSpin() {
       raw_writer_->Write(msg_pub);
       data_parser_ptr_->ParseRawData(msg_pub->data());
       if (push_location_) {
-        PushGpgga(length);
+        PushGGA();
       }
     }
     StreamStatusCheck();
@@ -529,23 +508,18 @@ void RawStream::PublishRtkData(const size_t length) {
   rtcm_parser_ptr_->ParseRtcmData(rtk_msg->data());
 }
 
-void RawStream::PushGpgga(const size_t length) {
-  if (!in_rtk_stream_) {
+void RawStream::PushGGA() {
+  CHECK_NOTNULL(data_parser_ptr_);
+  CHECK_NOTNULL(in_rtk_stream_);
+
+  auto message = data_parser_ptr_->TryGetMessage(Parser::MessageType::GPGGA);
+  if (!message.has_value()) {
+    AERROR << "GPGGA message is null.";
     return;
   }
 
-  char *gpgga = strstr(reinterpret_cast<char *>(buffer_), "$GPGGA");
-  if (gpgga) {
-    char *p = strchr(gpgga, '*');
-    if (p) {
-      p += 5;
-      if (size_t(p - reinterpret_cast<char *>(buffer_)) <= length) {
-        AINFO_EVERY(5) << "Push gpgga.";
-        in_rtk_stream_->write(reinterpret_cast<uint8_t *>(gpgga),
-                              reinterpret_cast<uint8_t *>(p) - buffer_);
-      }
-    }
-  }
+  AINFO_EVERY(10) << "Push gpgga.";
+  in_rtk_stream_->write(message.value().data(), message.value().size());
 }
 
 void RawStream::GpsbinCallback(const std::shared_ptr<RawData const> &raw_data) {

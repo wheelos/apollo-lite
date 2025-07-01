@@ -28,7 +28,7 @@
 
 #include "modules/drivers/gnss/parser/data_parser.h"
 #include "modules/drivers/gnss/proto/config.pb.h"
-#include "modules/drivers/gnss/stream/stream.h"
+#include "modules/drivers/hal/stream/stream.h"
 
 namespace apollo {
 namespace drivers {

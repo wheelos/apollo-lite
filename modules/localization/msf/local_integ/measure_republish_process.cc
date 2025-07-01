@@ -19,19 +19,19 @@
 #include <fstream>
 #include <iomanip>
 
+#include "yaml-cpp/yaml.h"
+
 #include "cyber/common/log.h"
 #include "modules/common/math/euler_angles_zxy.h"
-#include "modules/common/util/time_util.h"
+#include "modules/common/util/time_conversion.h"
 #include "modules/localization/msf/common/util/math_util.h"
-#include "modules/localization/msf/common/util/time_conversion.h"
-#include "yaml-cpp/yaml.h"
 
 namespace apollo {
 namespace localization {
 namespace msf {
 
 using common::Status;
-using common::util::TimeUtil;
+using common::util::GpsToUnixSeconds;
 
 MeasureRepublishProcess::MeasureRepublishProcess()
     : pre_bestgnsspose_(),
@@ -191,7 +191,7 @@ void MeasureRepublishProcess::GnssLocalProcess(
 
   MeasureData measure_data = gnss_local_msg;
   if (is_trans_gpstime_to_utctime_) {
-    measure_data.time = TimeUtil::Gps2Unix(measure_data.time);
+    measure_data.time = GpsToUnixSeconds(measure_data.time);
   }
 
   AINFO << "the gnss velocity: " << measure_data.gnss_vel.ve << " "
@@ -406,7 +406,7 @@ void MeasureRepublishProcess::TransferXYZFromBestgnsspose(
 
   measure->time = bestgnsspos_msg.measurement_time();
   if (is_trans_gpstime_to_utctime_) {
-    measure->time = TimeUtil::Gps2Unix(measure->time);
+    measure->time = GpsToUnixSeconds(measure->time);
   }
 
   measure->gnss_pos.longitude = bestgnsspos_msg.longitude() * DEG_TO_RAD;

@@ -19,11 +19,10 @@
 #include <memory>
 #include <string>
 
-#include "cyber/cyber.h"
-
-#include "modules/drivers/gnss/parser/parser.h"
-
 #include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
+
+#include "cyber/cyber.h"
+#include "modules/drivers/gnss/parser/parser.h"
 
 namespace apollo {
 namespace drivers {
@@ -31,7 +30,6 @@ namespace gnss {
 
 class RtcmParser {
  public:
-  using MessagePtr = ::google::protobuf::Message*;
   RtcmParser(const config::Config& config,
              const std::shared_ptr<apollo::cyber::Node>& node);
   ~RtcmParser() {}
@@ -39,9 +37,10 @@ class RtcmParser {
   void ParseRtcmData(const std::string& msg);
 
  private:
-  void DispatchMessage(Parser::MessageType type, MessagePtr message);
-  void PublishEphemeris(const MessagePtr& message);
-  void PublishObservation(const MessagePtr& message);
+  void DispatchMessage(Parser::MessageType type,
+                       const Parser::ProtoMessagePtr& msg_ptr);
+  void PublishEphemeris(const Parser::ProtoMessagePtr& msg_ptr);
+  void PublishObservation(const Parser::ProtoMessagePtr& msg_ptr);
 
   config::Config config_;
   std::shared_ptr<apollo::cyber::Node> node_ = nullptr;

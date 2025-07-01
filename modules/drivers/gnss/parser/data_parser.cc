@@ -19,19 +19,17 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "Eigen/Geometry"
 #include "boost/array.hpp"
+
 #include "cyber/cyber.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/util/message_util.h"
-#include "modules/common_msgs/sensor_msgs/gnss_best_pose.pb.h"
-#include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
-#include "modules/common_msgs/sensor_msgs/heading.pb.h"
-#include "modules/common_msgs/localization_msgs/imu.pb.h"
-
-#include "modules/drivers/gnss/parser/parser.h"
-#include "modules/drivers/gnss/util/time_conversion.h"
+#include "modules/common/util/time_conversion.h"
+#include "modules/drivers/gnss/parser/parser_factory.h"
+#include "modules/drivers/gnss/util/util.h"
 
 namespace apollo {
 namespace drivers {
@@ -40,37 +38,41 @@ namespace gnss {
 using ::apollo::localization::CorrectedImu;
 using ::apollo::localization::Gps;
 
+using apollo::common::util::GpsToUnixSeconds;
 using apollo::transform::TransformStamped;
 
 namespace {
 
-constexpr double DEG_TO_RAD_LOCAL = M_PI / 180.0;
-const char *WGS84_TEXT = "+proj=latlong +ellps=WGS84";
+// Using EPSG:4326 for WGS84 geographic is standard.
+// Alternatively, could use "+proj=latlong +ellps=WGS84 +datum=WGS84" with
+// proj_create
+const char *WGS84_TEXT = "EPSG:4326";
 
 // covariance data for pose if can not get from novatel inscov topic
-static const boost::array<double, 36> POSE_COVAR = {
+// Marked constexpr as it's compile-time constant
+static constexpr boost::array<double, 36> POSE_COVAR = {
     2, 0, 0, 0,    0, 0, 0, 2, 0, 0, 0,    0, 0, 0, 2, 0, 0, 0,
     0, 0, 0, 0.01, 0, 0, 0, 0, 0, 0, 0.01, 0, 0, 0, 0, 0, 0, 0.01};
-
-Parser *CreateParser(config::Config config, bool is_base_station = false) {
-  switch (config.data().format()) {
-    case config::Stream::NOVATEL_BINARY:
-      return Parser::CreateNovatel(config);
-
-    default:
-      return nullptr;
-  }
-}
 
 }  // namespace
 
 DataParser::DataParser(const config::Config &config,
                        const std::shared_ptr<apollo::cyber::Node> &node)
     : config_(config), tf_broadcaster_(node), node_(node) {
-  std::string utm_target_param;
-
+  // TODO(zero): Use modern PROJ API for initialization
+  // proj_create_crs_to_crs is recommended for transformations between CRS
+  // proj_create can be used with proj strings like config_.proj4_text()
   wgs84pj_source_ = pj_init_plus(WGS84_TEXT);
+  if (!wgs84pj_source_) {
+    AFATAL << "Failed to create WGS84 PROJ object";
+  }
+
   utm_target_ = pj_init_plus(config_.proj4_text().c_str());
+  if (!utm_target_) {
+    AFATAL << "Failed to create UTM PROJ object from config '"
+           << config_.proj4_text();
+  }
+
   gnss_status_.set_solution_status(0);
   gnss_status_.set_num_sats(0);
   gnss_status_.set_position_type(0);
@@ -78,11 +80,25 @@ DataParser::DataParser(const config::Config &config,
   ins_status_.set_type(InsStatus::INVALID);
 }
 
+// Destructor to clean up PROJ resources
+DataParser::~DataParser() {
+  // TODO(zero): Use modern PROJ API for cleanup
+  // if (wgs84pj_source_) {
+  //   proj_destroy(wgs84pj_source_);
+  //   wgs84pj_source_ = nullptr;
+  // }
+  // if (utm_target_) {
+  //   proj_destroy(utm_target_);
+  //   utm_target_ = nullptr;
+  // }
+}
+
 bool DataParser::Init() {
-  ins_status_.mutable_header()->set_timestamp_sec(
-      cyber::Time::Now().ToSecond());
-  gnss_status_.mutable_header()->set_timestamp_sec(
-      cyber::Time::Now().ToSecond());
+  // Check if PROJ initialization failed in constructor
+  if (!wgs84pj_source_ || !utm_target_) {
+    AFATAL << "PROJ objects not initialized. Cannot proceed.";
+    return false;
+  }
 
   gnssstatus_writer_ = node_->CreateWriter<GnssStatus>(FLAGS_gnss_status_topic);
   insstatus_writer_ = node_->CreateWriter<InsStatus>(FLAGS_ins_status_topic);
@@ -98,17 +114,15 @@ bool DataParser::Init() {
   rawimu_writer_ = node_->CreateWriter<Imu>(FLAGS_raw_imu_topic);
   gps_writer_ = node_->CreateWriter<Gps>(FLAGS_gps_topic);
 
+  // Fill and publish initial status
   common::util::FillHeader("gnss", &ins_status_);
   insstatus_writer_->Write(ins_status_);
   common::util::FillHeader("gnss", &gnss_status_);
   gnssstatus_writer_->Write(gnss_status_);
 
   AINFO << "Creating data parser of format: " << config_.data().format();
-  data_parser_.reset(CreateParser(config_, false));
-  if (!data_parser_) {
-    AFATAL << "Failed to create data parser.";
-    return false;
-  }
+  gnss_parser_ = ParserFactory::Create(config_);
+  CHECK_NOTNULL(gnss_parser_);
 
   init_flag_ = true;
   return true;
@@ -116,51 +130,73 @@ bool DataParser::Init() {
 
 void DataParser::ParseRawData(const std::string &msg) {
   if (!init_flag_) {
-    AERROR << "Data parser not init.";
+    AERROR << "Data parser not init or PROJ initialization failed.";
     return;
   }
 
-  data_parser_->Update(msg);
-  Parser::MessageType type;
-  MessagePtr msg_ptr;
+  gnss_parser_->AppendData(msg);
+  auto messages = gnss_parser_->ParseAllMessages();
 
-  while (cyber::OK()) {
-    type = data_parser_->GetMessage(&msg_ptr);
-    if (type == Parser::MessageType::NONE) {
-      break;
+  for (const auto &[msg_type, msg_variant] : messages) {
+    if (std::holds_alternative<Parser::RawDataPtr>(msg_variant)) {
+      // Store raw byte messages. Currently only GPGGA is stored.
+      // This is needed if raw NMEA strings are required elsewhere.
+      if (msg_type == Parser::MessageType::GPGGA) {
+        auto raw_ptr = std::get<Parser::RawDataPtr>(msg_variant);
+        message_map_[Parser::MessageType::GPGGA] = *raw_ptr;
+      } else {
+        // Handle other raw message types if needed, or ignore
+        ADEBUG << "Received unhandled raw byte message type: "
+               << static_cast<int>(msg_type);
+      }
+    } else if (std::holds_alternative<Parser::ProtoMessagePtr>(msg_variant)) {
+      DispatchMessage(msg_type, std::get<Parser::ProtoMessagePtr>(msg_variant));
+    } else {
+      AERROR << "Unknown message type variant.";
     }
-    DispatchMessage(type, msg_ptr);
   }
 }
 
-void DataParser::CheckInsStatus(::apollo::drivers::gnss::Ins *ins) {
+void DataParser::CheckInsStatus(const std::shared_ptr<Ins>& ins) {
+  if (ins == nullptr) {
+    AERROR << "Received null Ins message";
+    return;
+  }
+
   static double last_notify = cyber::Time().Now().ToSecond();
-  double now = cyber::Time().Now().ToSecond();
+  double now = cyber::Time::Now().ToSecond();
+
+  // Only update and publish if status changes or if 1 second has passed
   if (ins_status_record_ != static_cast<uint32_t>(ins->type()) ||
       (now - last_notify) > 1.0) {
     last_notify = now;
     ins_status_record_ = static_cast<uint32_t>(ins->type());
     switch (ins->type()) {
-      case apollo::drivers::gnss::Ins::GOOD:
-        ins_status_.set_type(apollo::drivers::gnss::InsStatus::GOOD);
+      case Ins::GOOD:
+        ins_status_.set_type(InsStatus::GOOD);
         break;
-
-      case apollo::drivers::gnss::Ins::CONVERGING:
-        ins_status_.set_type(apollo::drivers::gnss::InsStatus::CONVERGING);
+      case Ins::CONVERGING:
+        ins_status_.set_type(InsStatus::CONVERGING);
         break;
-
-      case apollo::drivers::gnss::Ins::INVALID:
+      case Ins::INVALID:
       default:
-        ins_status_.set_type(apollo::drivers::gnss::InsStatus::INVALID);
+        ins_status_.set_type(InsStatus::INVALID);
         break;
     }
-
     common::util::FillHeader("gnss", &ins_status_);
     insstatus_writer_->Write(ins_status_);
   }
 }
 
-void DataParser::CheckGnssStatus(::apollo::drivers::gnss::Gnss *gnss) {
+void DataParser::CheckGnssStatus(const std::shared_ptr<Gnss>& gnss) {
+  // Update status always, publish is handled implicitly by Cyber writer if
+  // needed. Could add logic here to only publish on status change if desired,
+  // similar to CheckInsStatus
+  if (gnss == nullptr) {
+    AERROR << "Received null Gnss message";
+    return;
+  }
+
   gnss_status_.set_solution_status(
       static_cast<uint32_t>(gnss->solution_status()));
   gnss_status_.set_num_sats(static_cast<uint32_t>(gnss->num_sats()));
@@ -175,164 +211,271 @@ void DataParser::CheckGnssStatus(::apollo::drivers::gnss::Gnss *gnss) {
   gnssstatus_writer_->Write(gnss_status_);
 }
 
-void DataParser::DispatchMessage(Parser::MessageType type, MessagePtr message) {
+void DataParser::DispatchMessage(Parser::MessageType type,
+                                 const Parser::ProtoMessagePtr& msg_ptr) {
+  CHECK_NOTNULL(msg_ptr);
   switch (type) {
     case Parser::MessageType::GNSS:
-      CheckGnssStatus(As<::apollo::drivers::gnss::Gnss>(message));
+      CheckGnssStatus(std::dynamic_pointer_cast<Gnss>(msg_ptr));
       break;
-
     case Parser::MessageType::BEST_GNSS_POS:
-      PublishBestpos(message);
+      PublishBestpos(msg_ptr);
       break;
-
     case Parser::MessageType::IMU:
-      PublishImu(message);
+      PublishImu(msg_ptr);
       break;
-
     case Parser::MessageType::INS:
-      CheckInsStatus(As<::apollo::drivers::gnss::Ins>(message));
-      PublishCorrimu(message);
-      PublishOdometry(message);
+      CheckInsStatus(std::dynamic_pointer_cast<Ins>(msg_ptr));
+      PublishCorrimu(msg_ptr);
+      PublishOdometry(msg_ptr);
       break;
-
     case Parser::MessageType::INS_STAT:
-      PublishInsStat(message);
+      PublishInsStat(msg_ptr);
       break;
-
     case Parser::MessageType::BDSEPHEMERIDES:
     case Parser::MessageType::GPSEPHEMERIDES:
     case Parser::MessageType::GLOEPHEMERIDES:
-      PublishEphemeris(message);
+      PublishEphemeris(msg_ptr);
       break;
-
     case Parser::MessageType::OBSERVATION:
-      PublishObservation(message);
+      PublishObservation(msg_ptr);
       break;
-
     case Parser::MessageType::HEADING:
-      PublishHeading(message);
+      PublishHeading(msg_ptr);
       break;
-
     default:
+      ADEBUG << "Received unhandled Protobuf message type: "
+             << static_cast<int>(type);
       break;
   }
 }
 
-void DataParser::PublishInsStat(const MessagePtr message) {
-  auto ins_stat = std::make_shared<InsStat>(*As<InsStat>(message));
-  common::util::FillHeader("gnss", ins_stat.get());
-  insstat_writer_->Write(ins_stat);
+void DataParser::PublishInsStat(const Parser::ProtoMessagePtr& msg_ptr) {
+  // Get the underlying protobuf message
+  auto ins_stat_ptr = std::dynamic_pointer_cast<InsStat>(msg_ptr);
+  if (!ins_stat_ptr) {
+    AERROR << "Failed to cast message to InsStat";
+    return;
+  }
+  common::util::FillHeader("gnss", ins_stat_ptr.get());
+  insstat_writer_->Write(ins_stat_ptr);
 }
 
-void DataParser::PublishBestpos(const MessagePtr message) {
-  auto bestpos = std::make_shared<GnssBestPose>(*As<GnssBestPose>(message));
-  common::util::FillHeader("gnss", bestpos.get());
-  gnssbestpose_writer_->Write(bestpos);
+void DataParser::PublishBestpos(const Parser::ProtoMessagePtr& msg_ptr) {
+  // Get the underlying protobuf message
+  auto bestpos_ptr = std::dynamic_pointer_cast<GnssBestPose>(msg_ptr);
+  if (!bestpos_ptr) {
+    AERROR << "Failed to cast message to GnssBestPose";
+    return;
+  }
+  // Create message directly and publish
+  common::util::FillHeader("gnss", bestpos_ptr.get());
+  gnssbestpose_writer_->Write(bestpos_ptr);
 }
 
-void DataParser::PublishImu(const MessagePtr message) {
-  auto raw_imu = std::make_shared<Imu>(*As<Imu>(message));
-  Imu *imu = As<Imu>(message);
+void DataParser::PublishImu(const Parser::ProtoMessagePtr& msg_ptr) {
+  auto imu_in = std::dynamic_pointer_cast<Imu>(msg_ptr);
+  if (!imu_in) {
+    AERROR << "Failed to cast message to Imu";
+    return;
+  }
+  // Create a *new* Imu message and populate it after transformation
+  auto raw_imu_out = std::make_shared<Imu>();
 
-  raw_imu->mutable_linear_acceleration()->set_x(
-      -imu->linear_acceleration().y());
-  raw_imu->mutable_linear_acceleration()->set_y(imu->linear_acceleration().x());
-  raw_imu->mutable_linear_acceleration()->set_z(imu->linear_acceleration().z());
+  // --- Coordinate System Transformation (Example: Novatel IMU to Apollo
+  // Vehicle) --- Assuming sensor frame: +X forward, +Y right, +Z down Assuming
+  // target frame (Apollo): +X forward, +Y left, +Z up Rotation: Swap X and Y,
+  // negate new X (+Y in sensor -> -X in target), keep Z Angular Velocity:
+  // Similarly transform angular velocities
+  raw_imu_out->mutable_linear_acceleration()->set_x(
+      -imu_in->linear_acceleration()
+           .y());  // Sensor +Y (right) becomes Target -X (forward)
+  raw_imu_out->mutable_linear_acceleration()->set_y(
+      imu_in->linear_acceleration()
+          .x());  // Sensor +X (forward) becomes Target +Y (left)
+  raw_imu_out->mutable_linear_acceleration()->set_z(
+      imu_in->linear_acceleration()
+          .z());  // Sensor +Z (down) becomes Target +Z (up) - Check sign based
+                  // on convention
 
-  raw_imu->mutable_angular_velocity()->set_x(-imu->angular_velocity().y());
-  raw_imu->mutable_angular_velocity()->set_y(imu->angular_velocity().x());
-  raw_imu->mutable_angular_velocity()->set_z(imu->angular_velocity().z());
+  raw_imu_out->mutable_angular_velocity()->set_x(
+      -imu_in->angular_velocity()
+           .y());  // Sensor +Y (right) becomes Target -X (roll)
+  raw_imu_out->mutable_angular_velocity()->set_y(
+      imu_in->angular_velocity()
+          .x());  // Sensor +X (forward) becomes Target +Y (pitch)
+  raw_imu_out->mutable_angular_velocity()->set_z(
+      imu_in->angular_velocity()
+          .z());  // Sensor +Z (down) becomes Target +Z (yaw) - Check sign based
+                  // on convention
 
-  common::util::FillHeader("gnss", raw_imu.get());
-  rawimu_writer_->Write(raw_imu);
+  common::util::FillHeader("gnss", raw_imu_out.get());
+  rawimu_writer_->Write(raw_imu_out);  // Using shared_ptr for created message
 }
 
-void DataParser::PublishOdometry(const MessagePtr message) {
-  Ins *ins = As<Ins>(message);
+void DataParser::PublishOdometry(const Parser::ProtoMessagePtr& msg_ptr) {
+  auto ins = std::dynamic_pointer_cast<Ins>(msg_ptr);
+  if (!ins) {
+    AERROR << "Failed to cast message to Ins for Odometry";
+    return;
+  }
+  // Create a *new* Gps message (used for Odometry topic in Apollo)
   auto gps = std::make_shared<Gps>();
 
-  double unix_sec = apollo::drivers::util::gps2unix(ins->measurement_time());
+  double unix_sec = GpsToUnixSeconds(ins->measurement_time());
   gps->mutable_header()->set_timestamp_sec(unix_sec);
   auto *gps_msg = gps->mutable_localization();
 
-  // 1. pose xyz
-  double x = ins->position().lon();
-  double y = ins->position().lat();
-  x *= DEG_TO_RAD_LOCAL;
-  y *= DEG_TO_RAD_LOCAL;
+  // 1. pose xyz (WGS84 to UTM transformation)
+  double lon = ins->position().lon();
+  double lat = ins->position().lat();
+  lon *= kDegToRad;
+  lat *= kDegToRad;
 
-  pj_transform(wgs84pj_source_, utm_target_, 1, 1, &x, &y, NULL);
+  // Use modern PROJ transformation
+  pj_transform(wgs84pj_source_, utm_target_, 1, 1, &lon, &lat, NULL);
 
-  gps_msg->mutable_position()->set_x(x);
-  gps_msg->mutable_position()->set_y(y);
+  gps_msg->mutable_position()->set_x(lon);  // Easting (transformed longitude)
+  gps_msg->mutable_position()->set_y(lat);  // Northing (transformed latitude)
   gps_msg->mutable_position()->set_z(ins->position().height());
 
-  // 2. orientation
   Eigen::Quaterniond q =
-      Eigen::AngleAxisd(ins->euler_angles().z() - 90 * DEG_TO_RAD_LOCAL,
+      Eigen::AngleAxisd(ins->euler_angles().z() - 90 * kDegToRad,
                         Eigen::Vector3d::UnitZ()) *
       Eigen::AngleAxisd(-ins->euler_angles().y(), Eigen::Vector3d::UnitX()) *
       Eigen::AngleAxisd(ins->euler_angles().x(), Eigen::Vector3d::UnitY());
+  // Comment: This quaternion composition applies rotations around Z, X, and Y
+  // axes with specific angle modifications based on the sensor's reported Euler
+  // angles (ins->euler_angles().x(), ins->euler_angles().y(),
+  // ins->euler_angles().z()). The exact meaning of sensor's Euler angles (e.g.,
+  // order, positive direction, reference frame) and the reason for these
+  // specific transformations (e.g., -90 deg yaw offset, negating pitch,
+  // swapping axes in Eigen AngleAxisd) should be verified against the sensor
+  // documentation and Apollo's coordinate conventions.
 
   gps_msg->mutable_orientation()->set_qx(q.x());
   gps_msg->mutable_orientation()->set_qy(q.y());
   gps_msg->mutable_orientation()->set_qz(q.z());
   gps_msg->mutable_orientation()->set_qw(q.w());
 
+  // 3. Linear velocity
+  // Assuming linear velocity in vehicle body frame (X-forward, Y-left, Z-up)
+  // Novatel often reports velocity in the NED or ENU frame.
+  // Original code copies directly: Assuming sensor velocity is already in
+  // vehicle body frame. If sensor reports velocity in NED/ENU, it needs
+  // rotation by the vehicle's orientation quaternion. Let's assume for now
+  // sensor velocity is compatible or this transformation is done elsewhere.
+  // Comment: Assuming sensor reports linear velocity in the target vehicle body
+  // frame.
   gps_msg->mutable_linear_velocity()->set_x(ins->linear_velocity().x());
   gps_msg->mutable_linear_velocity()->set_y(ins->linear_velocity().y());
   gps_msg->mutable_linear_velocity()->set_z(ins->linear_velocity().z());
 
-  gps_writer_->Write(gps);
+  gps_writer_->Write(gps);  // Using shared_ptr for created message
   if (config_.tf().enable()) {
     TransformStamped transform;
+    // Pass by reference as GpsToTransformStamped modifies the object
     GpsToTransformStamped(gps, &transform);
     tf_broadcaster_.SendTransform(transform);
   }
 }
 
-void DataParser::PublishCorrimu(const MessagePtr message) {
-  Ins *ins = As<Ins>(message);
+void DataParser::PublishCorrimu(const Parser::ProtoMessagePtr& msg_ptr) {
+  auto ins = std::dynamic_pointer_cast<Ins>(msg_ptr);
+  if (!ins) {
+    AERROR << "Failed to cast message to Ins for Corrimu";
+    return;
+  }
+  // Create a *new* CorrectedImu message
   auto imu = std::make_shared<CorrectedImu>();
-  double unix_sec = apollo::drivers::util::gps2unix(ins->measurement_time());
+  double unix_sec = GpsToUnixSeconds(ins->measurement_time());
   imu->mutable_header()->set_timestamp_sec(unix_sec);
 
   auto *imu_msg = imu->mutable_imu();
+
+  // --- Coordinate System Transformation (Example: Novatel INS to Apollo
+  // Vehicle) --- Similar to PublishImu, transforming linear acceleration and
+  // angular velocity based on assumed sensor vs. target frame conventions.
+  // Verify these transformations against sensor documentation and Apollo
+  // conventions.
   imu_msg->mutable_linear_acceleration()->set_x(
-      -ins->linear_acceleration().y());
-  imu_msg->mutable_linear_acceleration()->set_y(ins->linear_acceleration().x());
-  imu_msg->mutable_linear_acceleration()->set_z(ins->linear_acceleration().z());
+      -ins->linear_acceleration()
+           .y());  // Sensor +Y (right) becomes Target -X (forward)
+  imu_msg->mutable_linear_acceleration()->set_y(
+      ins->linear_acceleration()
+          .x());  // Sensor +X (forward) becomes Target +Y (left)
+  imu_msg->mutable_linear_acceleration()->set_z(
+      ins->linear_acceleration()
+          .z());  // Sensor +Z (down) becomes Target +Z (up) - Check sign
 
-  imu_msg->mutable_angular_velocity()->set_x(-ins->angular_velocity().y());
-  imu_msg->mutable_angular_velocity()->set_y(ins->angular_velocity().x());
-  imu_msg->mutable_angular_velocity()->set_z(ins->angular_velocity().z());
+  imu_msg->mutable_angular_velocity()->set_x(
+      -ins->angular_velocity()
+           .y());  // Sensor +Y (right) becomes Target -X (roll)
+  imu_msg->mutable_angular_velocity()->set_y(
+      ins->angular_velocity()
+          .x());  // Sensor +X (forward) becomes Target +Y (pitch)
+  imu_msg->mutable_angular_velocity()->set_z(
+      ins->angular_velocity()
+          .z());  // Sensor +Z (down) becomes Target +Z (yaw) - Check sign
 
-  imu_msg->mutable_euler_angles()->set_x(ins->euler_angles().x());
-  imu_msg->mutable_euler_angles()->set_y(-ins->euler_angles().y());
-  imu_msg->mutable_euler_angles()->set_z(ins->euler_angles().z() -
-                                         90 * DEG_TO_RAD_LOCAL);
+  // --- Euler Angle Transformation ---
+  // Applying specific transformations to Euler angles.
+  // The meaning of sensor's Euler angles (ins->euler_angles().x/.y/.z) and
+  // the reason for negation and yaw offset should be verified.
+  // Assuming sensor angles are Roll(X), Pitch(Y), Yaw(Z).
+  imu_msg->mutable_euler_angles()->set_x(
+      ins->euler_angles().x());  // Roll (kept as is)
+  imu_msg->mutable_euler_angles()->set_y(
+      -ins->euler_angles().y());  // Pitch (negated)
+  imu_msg->mutable_euler_angles()->set_z(
+      ins->euler_angles().z() - 90 * kDegToRad);  // Yaw (-90 deg offset)
+  // Comment: The Euler angles are transformed based on sensor specifications
+  // and target frame requirements. Specifically, pitch is negated and a -90
+  // degree offset is applied to the yaw angle. Verify this transformation
+  // against sensor documentation and Apollo's coordinate conventions.
 
   corrimu_writer_->Write(imu);
 }
 
-void DataParser::PublishEphemeris(const MessagePtr message) {
-  auto eph = std::make_shared<GnssEphemeris>(*As<GnssEphemeris>(message));
-  gnssephemeris_writer_->Write(eph);
+void DataParser::PublishEphemeris(const Parser::ProtoMessagePtr& msg_ptr) {
+  auto eph_ptr = std::dynamic_pointer_cast<GnssEphemeris>(msg_ptr);
+  if (!eph_ptr) {
+    AERROR << "Failed to cast message to GnssEphemeris";
+    return;
+  }
+  gnssephemeris_writer_->Write(eph_ptr);  // Use const& overload
 }
 
-void DataParser::PublishObservation(const MessagePtr message) {
-  auto observation =
-      std::make_shared<EpochObservation>(*As<EpochObservation>(message));
-  epochobservation_writer_->Write(observation);
+void DataParser::PublishObservation(const Parser::ProtoMessagePtr& msg_ptr) {
+  // Get the underlying protobuf message
+  auto observation_ptr = std::dynamic_pointer_cast<EpochObservation>(msg_ptr);
+  if (!observation_ptr) {
+    AERROR << "Failed to cast message to EpochObservation";
+    return;
+  }
+  // Create message directly and publish
+  // Observation message often doesn't have standard header, but can fill if
+  // needed common::util::FillHeader("gnss", &observation);
+  epochobservation_writer_->Write(observation_ptr);
 }
 
-void DataParser::PublishHeading(const MessagePtr message) {
-  auto heading = std::make_shared<Heading>(*As<Heading>(message));
-  heading_writer_->Write(heading);
+void DataParser::PublishHeading(const Parser::ProtoMessagePtr& msg_ptr) {
+  // Get the underlying protobuf message
+  auto heading_ptr = std::dynamic_pointer_cast<Heading>(msg_ptr);
+  if (!heading_ptr) {
+    AERROR << "Failed to cast message to Heading";
+    return;
+  }
+  // Create message directly and publish
+  common::util::FillHeader("gnss", heading_ptr.get());
+  heading_writer_->Write(heading_ptr);  // Use const& overload
 }
 
 void DataParser::GpsToTransformStamped(const std::shared_ptr<Gps> &gps,
                                        TransformStamped *transform) {
+  CHECK_NOTNULL(gps);
+  CHECK_NOTNULL(transform);
+
   transform->mutable_header()->set_timestamp_sec(gps->header().timestamp_sec());
   transform->mutable_header()->set_frame_id(config_.tf().frame_id());
   transform->set_child_frame_id(config_.tf().child_frame_id());

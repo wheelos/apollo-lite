@@ -14,38 +14,28 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/drivers/gnss/parser/rtcm3_parser.h"
+#include "modules/drivers/gnss/parser/rtcm3/rtcm3_parser.h"
 
 #include <utility>
+
+#include "cyber/common/log.h"
+#include "modules/drivers/gnss/util/util.h"
 
 namespace apollo {
 namespace drivers {
 namespace gnss {
 
-// Anonymous namespace that contains helper constants and functions.
-namespace {
+Rtcm3Parser::Rtcm3Parser(const config::Config &config)
+    : Rtcm3Parser(config.is_base_station()) {}
 
-template <typename T>
-constexpr bool is_zero(T value) {
-  return value == static_cast<T>(0);
-}
-
-}  // namespace
-
-Parser *Parser::CreateRtcmV3(bool is_base_station) {
-  return new Rtcm3Parser(is_base_station);
-}
-
-Rtcm3Parser::Rtcm3Parser(bool is_base_station) {
+Rtcm3Parser::Rtcm3Parser(bool is_base_station)
+    : Parser(), is_base_station_(is_base_station), init_flag_(false) {
   if (1 != init_rtcm(&rtcm_)) {
     init_flag_ = true;
-  } else {
-    init_flag_ = false;
   }
 
   ephemeris_.Clear();
   observation_.Clear();
-  is_base_station_ = is_base_station;
 }
 
 bool Rtcm3Parser::SetStationPosition() {
@@ -152,43 +142,114 @@ void Rtcm3Parser::SetObservationTime() {
   observation_.set_gnss_second_s(second);
 }
 
-Parser::MessageType Rtcm3Parser::GetMessage(MessagePtr *message_ptr) {
-  if (data_ == nullptr) {
-    return MessageType::NONE;
-  }
+std::vector<Parser::ParsedMessage> Rtcm3Parser::ParseAllMessages() {
+  std::vector<Parser::ParsedMessage> parsed_messages;
 
-  while (data_ < data_end_) {
-    const int status = input_rtcm3(&rtcm_, *data_++);  // parse data use rtklib
+  while (auto byte_opt = buffer_.Poll()) {
+    uint8_t byte = *byte_opt;
+    const int status = input_rtcm3(&rtcm_, byte);
 
     switch (status) {
-      case 1:  // observation data
-        if (ProcessObservation()) {
-          *message_ptr = &observation_;
-          return MessageType::OBSERVATION;
+      case 0:  // No message ready, need more data. Continue loop to feed next
+               // byte.
+        // AINFO_EVERY(500) << "input_rtcm3 status 0: Need more data.";
+        break;  // Continue while loop
+
+      case 1:  // Observation data ready (e.g., RTCM 1074-1078, 1084-1088, etc.)
+        AINFO << "input_rtcm3 status 1: Observation data ready. Msg type: "
+              << rtcm_.msgtype;
+        // Process the ready observation data from rtcm_ structure
+        if (ProcessObservation(&observation_)) {  // Use adapted helper
+          // Create ParsedMessage by copying from the internal member
+          auto msg_ptr =
+              std::make_unique<apollo::drivers::gnss::EpochObservation>();
+          msg_ptr->CopyFrom(observation_);
+          parsed_messages.emplace_back(MessageType::OBSERVATION,
+                                       std::move(msg_ptr));
         }
         break;
 
-      case 2:  // ephemeris
-        if (ProcessEphemerides()) {
-          *message_ptr = &ephemeris_;
-          return MessageType::EPHEMERIDES;
+      case 2:  // Ephemeris data ready (e.g., RTCM 1019, 1020, 1042, 1045, 1046,
+               // etc.)
+        AINFO << "input_rtcm3 status 2: Ephemeris data ready. Msg type: "
+              << rtcm_.msgtype;
+        if (ProcessEphemerides(&ephemeris_)) {
+          auto msg_ptr =
+              std::make_unique<apollo::drivers::gnss::GnssEphemeris>();
+          msg_ptr->CopyFrom(ephemeris_);
+          parsed_messages.emplace_back(MessageType::EPHEMERIDES,
+                                       std::move(msg_ptr));
+          // ephemeris_.Clear(); // Optional
         }
         break;
 
-      case 5:
+      case 3:  // Station Auxiliary Data (e.g. antenna type, etc.)
+        AINFO
+            << "input_rtcm3 status 3: Station Auxiliary data ready. Msg type: "
+            << rtcm_.msgtype;
+        // If needed, add a ProcessStationAuxiliary() helper and create a
+        // message here.
+        break;
+
+      case 4:  // Untyped product specific messages
+        AINFO << "input_rtcm3 status 4: Untyped product specific message. Msg "
+                 "type: "
+              << rtcm_.msgtype;
+        // If needed, add a handler for these messages.
+        break;
+
+      case 5:  // Station Position or Grid Info (e.g., RTCM 1005, 1006, 1007,
+               // 1008)
+        AINFO << "input_rtcm3 status 5: Station info ready. Msg type: "
+              << rtcm_.msgtype;
         ProcessStationParameters();
         break;
 
-      case 10:  // ssr messages
-      default:
+      case 10:  // SSR messages (State Space Representation)
+        AINFO_EVERY(100)
+            << "input_rtcm3 status 10: SSR message ready. Msg type: "
+            << rtcm_.msgtype;
+        // SSR messages are complex. If needed, add a HandleSSR() helper here.
+        break;
+
+      case -1:  // Input data error
+        AERROR_EVERY(100)
+            << "input_rtcm3 status -1: Input data error processing byte "
+            << std::hex << static_cast<int>(byte) << std::dec
+            << ". Buffer ReadableBytes: " << buffer_.ReadableBytes();
+        break;
+
+      case -2:  // RTCM message length error
+        AERROR_EVERY(100) << "input_rtcm3 status -2: RTCM message length error "
+                             "processing byte "
+                          << std::hex << static_cast<int>(byte) << std::dec
+                          << ". Buffer ReadableBytes: " << buffer_.ReadableBytes();
+        break;
+
+      case -3:  // RTCM message CRC error
+        AERROR_EVERY(100)
+            << "input_rtcm3 status -3: RTCM message CRC error processing byte "
+            << std::hex << static_cast<int>(byte) << std::dec
+            << ". Msg type: " << rtcm_.msgtype
+            << ". Buffer ReadableBytes: " << buffer_.ReadableBytes();
+        // input_rtcm3 likely discards the message. Continue loop.
+        break;
+
+      default:  // Other possible status codes? (Consult RTKLIB docs if needed)
+        AWARN_EVERY(100) << "input_rtcm3 returned unknown status: " << status
+                         << " processing byte " << std::hex
+                         << static_cast<int>(byte) << std::dec
+                         << ". Msg type: " << rtcm_.msgtype
+                         << ". Buffer ReadableBytes: " << buffer_.ReadableBytes();
         break;
     }
   }
 
-  return MessageType::NONE;
+  return parsed_messages;
 }
 
-bool Rtcm3Parser::ProcessObservation() {
+bool Rtcm3Parser::ProcessObservation(
+    apollo::drivers::gnss::EpochObservation *observation_msg) {
   if (rtcm_.obs.n == 0) {
     AWARN << "Obs is zero.";
   }
@@ -261,7 +322,8 @@ bool Rtcm3Parser::ProcessObservation() {
   return true;
 }
 
-bool Rtcm3Parser::ProcessEphemerides() {
+bool Rtcm3Parser::ProcessEphemerides(
+    apollo::drivers::gnss::GnssEphemeris *ephemeris_msg) {
   apollo::drivers::gnss::GnssType gnss_type;
 
   if (!gnss_sys(rtcm_.message_type, &gnss_type)) {

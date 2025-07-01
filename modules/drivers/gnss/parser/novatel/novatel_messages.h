@@ -524,6 +524,7 @@ struct ImuParameter {
 };
 
 using ::apollo::drivers::gnss::config::ImuType;
+
 inline ImuParameter GetImuParameter(ImuType type) {
   switch (type) {
     case ImuType::IMAR_FSAS:

@@ -18,200 +18,39 @@
 // messages must be
 // logged in order for this parser to work properly.
 //
+#include "modules/drivers/gnss/parser/novatel/novatel_parser.h"
+
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <memory>
-#include <vector>
 
-#include "cyber/cyber.h"
-
-#include "modules/drivers/gnss/parser/novatel_messages.h"
-#include "modules/drivers/gnss/parser/parser.h"
+#include "cyber/common/log.h"
+#include "cyber/time/time.h"
+#include "modules/common/util/time_conversion.h"
 #include "modules/drivers/gnss/parser/rtcm_decode.h"
-#include "modules/common_msgs/sensor_msgs/gnss.pb.h"
-#include "modules/common_msgs/sensor_msgs/gnss_best_pose.pb.h"
-#include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
-#include "modules/common_msgs/sensor_msgs/heading.pb.h"
-#include "modules/common_msgs/sensor_msgs/imu.pb.h"
-#include "modules/common_msgs/sensor_msgs/ins.pb.h"
-#include "modules/drivers/gnss/util/time_conversion.h"
+#include "modules/drivers/gnss/util/util.h"
 
 namespace apollo {
 namespace drivers {
 namespace gnss {
 
-// Anonymous namespace that contains helper constants and functions.
-namespace {
+using apollo::common::util::GpsToUnixSeconds;
 
-constexpr size_t BUFFER_SIZE = 256;
-
-constexpr int SECONDS_PER_WEEK = 60 * 60 * 24 * 7;
-
-constexpr double DEG_TO_RAD = M_PI / 180.0;
-
-constexpr float FLOAT_NAN = std::numeric_limits<float>::quiet_NaN();
-
-// The NovAtel's orientation covariance matrix is pitch, roll, and yaw. We use
-// the index array below
-// to convert it to the orientation covariance matrix with order roll, pitch,
-// and yaw.
-constexpr int INDEX[] = {4, 3, 5, 1, 0, 2, 7, 6, 8};
-static_assert(sizeof(INDEX) == 9 * sizeof(int), "Incorrect size of INDEX");
-
-template <typename T>
-constexpr bool is_zero(T value) {
-  return value == static_cast<T>(0);
-}
-
-// CRC algorithm from the NovAtel document.
-inline uint32_t crc32_word(uint32_t word) {
-  for (int j = 0; j < 8; ++j) {
-    if (word & 1) {
-      word = (word >> 1) ^ 0xEDB88320;
-    } else {
-      word >>= 1;
-    }
-  }
-  return word;
-}
-
-inline uint32_t crc32_block(const uint8_t* buffer, size_t length) {
-  uint32_t word = 0;
-  while (length--) {
-    uint32_t t1 = (word >> 8) & 0xFFFFFF;
-    uint32_t t2 = crc32_word((word ^ *buffer++) & 0xFF);
-    word = t1 ^ t2;
-  }
-  return word;
-}
-
-// Converts NovAtel's azimuth (north = 0, east = 90) to FLU yaw (east = 0, north
-// = pi/2).
-constexpr double azimuth_deg_to_yaw_rad(double azimuth) {
-  return (90.0 - azimuth) * DEG_TO_RAD;
-}
-
-// A helper that fills an Point3D object (which uses the FLU frame) using RFU
-// measurements.
-inline void rfu_to_flu(double r, double f, double u,
-                       ::apollo::common::Point3D* flu) {
-  flu->set_x(f);
-  flu->set_y(-r);
-  flu->set_z(u);
-}
-
-}  // namespace
-
-class NovatelParser : public Parser {
- public:
-  NovatelParser();
-  explicit NovatelParser(const config::Config& config);
-
-  virtual MessageType GetMessage(MessagePtr* message_ptr);
-
- private:
-  bool check_crc();
-
-  Parser::MessageType PrepareMessage(MessagePtr* message_ptr);
-
-  // The handle_xxx functions return whether a message is ready.
-  bool HandleBestPos(const novatel::BestPos* pos, uint16_t gps_week,
-                     uint32_t gps_millisecs);
-
-  bool HandleGnssBestpos(const novatel::BestPos* pos, uint16_t gps_week,
-                         uint32_t gps_millisecs);
-
-  bool HandleBestVel(const novatel::BestVel* vel, uint16_t gps_week,
-                     uint32_t gps_millisecs);
-
-  bool HandleCorrImuData(const novatel::CorrImuData* imu);
-
-  bool HandleInsCov(const novatel::InsCov* cov);
-
-  bool HandleInsPva(const novatel::InsPva* pva);
-
-  bool HandleInsPvax(const novatel::InsPvaX* pvax, uint16_t gps_week,
-                     uint32_t gps_millisecs);
-
-  bool HandleRawImuX(const novatel::RawImuX* imu);
-
-  bool HandleRawImu(const novatel::RawImu* imu);
-
-  bool HandleBdsEph(const novatel::BDS_Ephemeris* bds_emph);
-
-  bool HandleGpsEph(const novatel::GPS_Ephemeris* gps_emph);
-
-  bool HandleGloEph(const novatel::GLO_Ephemeris* glo_emph);
-
-  void SetObservationTime();
-
-  bool DecodeGnssObservation(const uint8_t* obs_data,
-                             const uint8_t* obs_data_end);
-
-  bool HandleHeading(const novatel::Heading* heading, uint16_t gps_week,
-                     uint32_t gps_millisecs);
-  double gyro_scale_ = 0.0;
-
-  double accel_scale_ = 0.0;
-
-  float imu_measurement_span_ = 1.0f / 200.0f;
-  float imu_measurement_hz_ = 200.0f;
-
-  int imu_frame_mapping_ = 5;
-
-  double imu_measurement_time_previous_ = -1.0;
-
-  std::vector<uint8_t> buffer_;
-
-  size_t header_length_ = 0;
-
-  size_t total_length_ = 0;
-
-  config::ImuType imu_type_ = config::ImuType::ADIS16488;
-
-  // -1 is an unused value.
-  novatel::SolutionStatus solution_status_ =
-      static_cast<novatel::SolutionStatus>(novatel::SolutionStatus::NONE);
-  novatel::SolutionType position_type_ =
-      static_cast<novatel::SolutionType>(novatel::SolutionType::NONE);
-  novatel::SolutionType velocity_type_ =
-      static_cast<novatel::SolutionType>(novatel::SolutionType::NONE);
-  novatel::InsStatus ins_status_ =
-      static_cast<novatel::InsStatus>(novatel::InsStatus::NONE);
-
-  raw_t raw_;  // used for observation data
-
-  ::apollo::drivers::gnss::Gnss gnss_;
-  ::apollo::drivers::gnss::GnssBestPose bestpos_;
-  ::apollo::drivers::gnss::Imu imu_;
-  ::apollo::drivers::gnss::Ins ins_;
-  ::apollo::drivers::gnss::InsStat ins_stat_;
-  ::apollo::drivers::gnss::GnssEphemeris gnss_ephemeris_;
-  ::apollo::drivers::gnss::EpochObservation gnss_observation_;
-  ::apollo::drivers::gnss::Heading heading_;
-};
-
-Parser* Parser::CreateNovatel(const config::Config& config) {
-  return new NovatelParser(config);
-}
-
-NovatelParser::NovatelParser() {
-  buffer_.reserve(BUFFER_SIZE);
-  ins_.mutable_position_covariance()->Resize(9, FLOAT_NAN);
-  ins_.mutable_euler_angles_covariance()->Resize(9, FLOAT_NAN);
-  ins_.mutable_linear_velocity_covariance()->Resize(9, FLOAT_NAN);
+NovatelParser::NovatelParser() : Parser() {
+  ins_.mutable_position_covariance()->Resize(9, kFloatNaN);
+  ins_.mutable_euler_angles_covariance()->Resize(9, kFloatNaN);
+  ins_.mutable_linear_velocity_covariance()->Resize(9, kFloatNaN);
 
   if (1 != init_raw(&raw_)) {
     AFATAL << "memory allocation error for observation data structure.";
   }
 }
 
-NovatelParser::NovatelParser(const config::Config& config) {
-  buffer_.reserve(BUFFER_SIZE);
-  ins_.mutable_position_covariance()->Resize(9, FLOAT_NAN);
-  ins_.mutable_euler_angles_covariance()->Resize(9, FLOAT_NAN);
-  ins_.mutable_linear_velocity_covariance()->Resize(9, FLOAT_NAN);
+NovatelParser::NovatelParser(const config::Config& config) : Parser() {
+  ins_.mutable_position_covariance()->Resize(9, kFloatNaN);
+  ins_.mutable_euler_angles_covariance()->Resize(9, kFloatNaN);
+  ins_.mutable_linear_velocity_covariance()->Resize(9, kFloatNaN);
 
   if (config.has_imu_type()) {
     imu_type_ = config.imu_type();
@@ -222,279 +61,378 @@ NovatelParser::NovatelParser(const config::Config& config) {
   }
 }
 
-Parser::MessageType NovatelParser::GetMessage(MessagePtr* message_ptr) {
-  if (data_ == nullptr) {
-    return MessageType::NONE;
+bool NovatelParser::ProcessHeader() {
+  // Get a view of all readable data in the buffer.
+  auto buffer_view = buffer_.Peek();
+
+  // If the view is smaller than the smallest possible header, we can't do
+  // anything.
+  if (buffer_view.length() < sizeof(novatel::ShortHeader)) {
+    return false;
   }
 
-  while (data_ < data_end_) {
-    if (buffer_.empty()) {  // Looking for SYNC0
-      if (*data_ == novatel::SYNC_0) {
-        buffer_.push_back(*data_);
+  // Start searching for the sync sequence from our last known position.
+  // This avoids re-scanning garbage data on every call.
+  for (size_t i = search_start_offset_; i <= buffer_view.length() - 3; ++i) {
+    // Check for the 3-byte Novatel sync sequence
+    if (static_cast<uint8_t>(buffer_view[i]) == novatel::SYNC_0 &&
+        static_cast<uint8_t>(buffer_view[i + 1]) == novatel::SYNC_1) {
+      size_t header_len = 0;
+      if (static_cast<uint8_t>(buffer_view[i + 2]) ==
+          novatel::SYNC_2_LONG_HEADER) {
+        header_len = sizeof(novatel::LongHeader);
+      } else if (static_cast<uint8_t>(buffer_view[i + 2]) ==
+                 novatel::SYNC_2_SHORT_HEADER) {
+        header_len = sizeof(novatel::ShortHeader);
       }
-      ++data_;
-    } else if (buffer_.size() == 1) {  // Looking for SYNC1
-      if (*data_ == novatel::SYNC_1) {
-        buffer_.push_back(*data_++);
-      } else {
-        buffer_.clear();
-      }
-    } else if (buffer_.size() == 2) {  // Looking for SYNC2
-      switch (*data_) {
-        case novatel::SYNC_2_LONG_HEADER:
-          buffer_.push_back(*data_++);
-          header_length_ = sizeof(novatel::LongHeader);
-          break;
-        case novatel::SYNC_2_SHORT_HEADER:
-          buffer_.push_back(*data_++);
-          header_length_ = sizeof(novatel::ShortHeader);
-          break;
-        default:
-          buffer_.clear();
-      }
-    } else if (header_length_ > 0) {  // Working on header.
-      if (buffer_.size() < header_length_) {
-        buffer_.push_back(*data_++);
-      } else {
-        if (header_length_ == sizeof(novatel::LongHeader)) {
-          total_length_ = header_length_ + novatel::CRC_LENGTH +
-                          reinterpret_cast<novatel::LongHeader*>(buffer_.data())
-                              ->message_length;
-        } else if (header_length_ == sizeof(novatel::ShortHeader)) {
-          total_length_ =
-              header_length_ + novatel::CRC_LENGTH +
-              reinterpret_cast<novatel::ShortHeader*>(buffer_.data())
+
+      if (header_len > 0) {
+        // We found a potential header start at offset `i`.
+        // First, consume all garbage data before this header.
+        buffer_.Drain(i);
+        search_start_offset_ =
+            0;  // Reset search offset as we've consumed the garbage.
+
+        // Now, check if we have enough data for the full header.
+        // We need a new view because we just drained some data.
+        auto current_view = buffer_.Peek();
+        if (current_view.length() < header_len) {
+          // Not enough data for the full header. Wait for more.
+          AINFO_EVERY(100) << "Found Novatel sync, but need " << header_len
+                           << " bytes for header, have "
+                           << current_view.length();
+          return false;
+        }
+
+        // We have enough data for the header. Let's get the message length.
+        uint16_t message_length;
+        if (header_len == sizeof(novatel::LongHeader)) {
+          message_length =
+              reinterpret_cast<const novatel::LongHeader*>(current_view.data())
                   ->message_length;
         } else {
-          AERROR << "Incorrect header_length_. Should never reach here.";
-          buffer_.clear();
+          message_length =
+              reinterpret_cast<const novatel::ShortHeader*>(current_view.data())
+                  ->message_length;
         }
-        header_length_ = 0;
-      }
-    } else if (total_length_ > 0) {
-      if (buffer_.size() < total_length_) {  // Working on body.
-        buffer_.push_back(*data_++);
-        continue;
-      }
-      MessageType type = PrepareMessage(message_ptr);
-      buffer_.clear();
-      total_length_ = 0;
-      if (type != MessageType::NONE) {
-        return type;
+
+        // Store the total expected length for the payload processing stage.
+        header_length_ = header_len;
+        total_length_ = header_len + message_length + novatel::CRC_LENGTH;
+
+        AINFO_EVERY(100) << "Novatel header located. Header len: "
+                         << header_length_
+                         << ", Payload len: " << message_length
+                         << ", Total message len: " << total_length_;
+
+        return true;  // Header is located and validated, ready for payload
+                      // processing.
       }
     }
   }
-  return MessageType::NONE;
+
+  // No sync sequence found yet. We can safely discard the scanned portion
+  // minus the last 2 bytes, as they could be part of a future sync sequence.
+  search_start_offset_ =
+      (buffer_view.length() > 2) ? buffer_view.length() - 2 : 0;
+
+  return false;
 }
 
-bool NovatelParser::check_crc() {
-  size_t l = buffer_.size() - novatel::CRC_LENGTH;
-  return crc32_block(buffer_.data(), l) ==
-         *reinterpret_cast<uint32_t*>(buffer_.data() + l);
-}
+std::optional<std::vector<Parser::ParsedMessage>>
+NovatelParser::ProcessPayload() {
+  // At this point, ProcessHeader guarantees that:
+  // 1. The buffer starts with a valid header sequence.
+  // 2. `header_length_` and `total_length_` are set correctly.
 
-Parser::MessageType NovatelParser::PrepareMessage(MessagePtr* message_ptr) {
-  if (!check_crc()) {
-    AERROR << "CRC check failed.";
-    return MessageType::NONE;
+  // Check if we have enough data for the *entire* message (Header + Payload +
+  // CRC).
+  if (buffer_.ReadableBytes() < total_length_) {
+    AINFO_EVERY(100) << "Buffer too small for full Novatel message (need "
+                     << total_length_ << ", have " << buffer_.ReadableBytes()
+                     << ").";
+    return std::nullopt;  // Not enough data, wait for more.
   }
 
-  uint8_t* message = nullptr;
+  // Get a zero-copy view of the entire message block.
+  auto message_view = buffer_.Peek().substr(0, total_length_);
+
+  // Perform CRC check directly on the view.
+  if (!CheckCRC(message_view)) {
+    AERROR << "Novatel message CRC check failed. Discarding header.";
+    // The header was bad. We need to discard it and start searching again
+    // right after it to avoid getting stuck on the same bad header.
+    buffer_.Drain(header_length_);
+    return std::vector<Parser::ParsedMessage>();  // Return empty to reset
+                                                  // state.
+  }
+
+  // CRC is OK. The entire message is valid.
+  // Get views for the header and payload parts.
+  auto header_view = message_view.substr(0, header_length_);
+  auto payload_view = message_view.substr(
+      header_length_, total_length_ - header_length_ - novatel::CRC_LENGTH);
+
+  // Parse the message using the views.
+  std::vector<Parser::ParsedMessage> parsed_messages =
+      PrepareMessage(payload_view, header_view);
+
+  // Consume the entire valid message from the buffer.
+  buffer_.Drain(total_length_);
+
+  // Reset state for the next message.
+  total_length_ = 0;
+  header_length_ = 0;
+
+  return parsed_messages;
+}
+
+// CheckCRC now takes a string_view of the full message.
+bool NovatelParser::CheckCRC(std::string_view message_view) {
+  if (message_view.length() < novatel::CRC_LENGTH) {
+    return false;
+  }
+  size_t data_len = message_view.length() - novatel::CRC_LENGTH;
+  const uint32_t expected_crc =
+      *reinterpret_cast<const uint32_t*>(message_view.data() + data_len);
+  const uint32_t actual_crc = crc32_block(
+      reinterpret_cast<const uint8_t*>(message_view.data()), data_len);
+
+  return actual_crc == expected_crc;
+}
+
+std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
+    std::string_view payload_view, std::string_view header_view) {
+  std::vector<Parser::ParsedMessage> messages;
+
   novatel::MessageId message_id;
-  uint16_t message_length;
   uint16_t gps_week;
   uint32_t gps_millisecs;
-  if (buffer_[2] == novatel::SYNC_2_LONG_HEADER) {
-    auto header = reinterpret_cast<const novatel::LongHeader*>(buffer_.data());
-    message = buffer_.data() + sizeof(novatel::LongHeader);
+
+  if (header_view.length() == sizeof(novatel::LongHeader)) {
+    const auto* header =
+        reinterpret_cast<const novatel::LongHeader*>(header_view.data());
+    message_id = header->message_id;
     gps_week = header->gps_week;
     gps_millisecs = header->gps_millisecs;
+  } else if (header_view.length() == sizeof(novatel::ShortHeader)) {
+    const auto* header =
+        reinterpret_cast<const novatel::ShortHeader*>(header_view.data());
     message_id = header->message_id;
-    message_length = header->message_length;
+    gps_week = header->gps_week;
+    gps_millisecs = header->gps_millisecs;
   } else {
-    auto header = reinterpret_cast<const novatel::ShortHeader*>(buffer_.data());
-    message = buffer_.data() + sizeof(novatel::ShortHeader);
-    gps_week = header->gps_week;
-    gps_millisecs = header->gps_millisecs;
-    message_id = header->message_id;
-    message_length = header->message_length;
+    AERROR << "PrepareMessage called with invalid header length: "
+           << header_view.length();
+    return messages;
   }
+
+  const uint8_t* payload_data =
+      reinterpret_cast<const uint8_t*>(payload_view.data());
+  size_t payload_size = payload_view.size();
+
   switch (message_id) {
     case novatel::BESTGNSSPOS:
-      if (message_length != sizeof(novatel::BestPos)) {
-        AERROR << "Incorrect message_length";
+      if (payload_size != sizeof(novatel::BestPos)) { /* log error */
         break;
       }
-      if (HandleGnssBestpos(reinterpret_cast<novatel::BestPos*>(message),
-                            gps_week, gps_millisecs)) {
-        *message_ptr = &bestpos_;
-        return MessageType::BEST_GNSS_POS;
+      if (HandleGnssBestpos(
+              reinterpret_cast<const novatel::BestPos*>(payload_data), gps_week,
+              gps_millisecs)) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::Gnss>();
+        msg_ptr->CopyFrom(bestpos_);
+        messages.emplace_back(MessageType::BEST_GNSS_POS, msg_ptr);
       }
       break;
 
     case novatel::BESTPOS:
     case novatel::PSRPOS:
-      if (message_length != sizeof(novatel::BestPos)) {
-        AERROR << "Incorrect message_length";
+      if (payload_size != sizeof(novatel::BestPos)) { /* log error */
         break;
       }
-      if (HandleBestPos(reinterpret_cast<novatel::BestPos*>(message), gps_week,
-                        gps_millisecs)) {
-        *message_ptr = &gnss_;
-        return MessageType::GNSS;
+      if (HandleBestPos(reinterpret_cast<const novatel::BestPos*>(payload_data),
+                        gps_week, gps_millisecs)) {
+        // Gnss message might be completed by BESTVEL, we return it here based
+        // on original logic, potentially incomplete or combined later if
+        // BESTVEL follows closely. A better design might wait for both, but
+        // adhering to original handler output implies returning now.
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::Gnss>();
+        msg_ptr->CopyFrom(gnss_);
+        messages.emplace_back(MessageType::GNSS, msg_ptr);
       }
       break;
 
     case novatel::BESTGNSSVEL:
     case novatel::BESTVEL:
     case novatel::PSRVEL:
-      if (message_length != sizeof(novatel::BestVel)) {
-        AERROR << "Incorrect message_length";
+      if (payload_size != sizeof(novatel::BestVel)) { /* log error */
         break;
       }
-      if (HandleBestVel(reinterpret_cast<novatel::BestVel*>(message), gps_week,
-                        gps_millisecs)) {
-        *message_ptr = &gnss_;
-        return MessageType::GNSS;
+      // HandleBestVel updates internal gnss_. It might rely on pos data already
+      // being there. Original logic returned true, and message_ptr = &gnss_.
+      // Here we call handler and then create GNSS message if handler succeeds.
+      if (HandleBestVel(reinterpret_cast<const novatel::BestVel*>(payload_data),
+                        gps_week, gps_millisecs)) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::Gnss>();
+        msg_ptr->CopyFrom(gnss_);
+        messages.emplace_back(MessageType::GNSS, msg_ptr);
       }
       break;
 
-    case novatel::CORRIMUDATA:
+    case novatel::CORRIMUDATA:  // ... and other IMU/INS correction messages
     case novatel::CORRIMUDATAS:
     case novatel::IMURATECORRIMUS:
-      if (message_length != sizeof(novatel::CorrImuData)) {
-        AERROR << "Incorrect message_length";
+      if (payload_size != sizeof(novatel::CorrImuData)) { /* log error */
         break;
       }
-
-      if (HandleCorrImuData(reinterpret_cast<novatel::CorrImuData*>(message))) {
-        *message_ptr = &ins_;
-        return MessageType::INS;
+      // HandleCorrImuData updates internal ins_.
+      if (HandleCorrImuData(
+              reinterpret_cast<const novatel::CorrImuData*>(payload_data))) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::Ins>();
+        msg_ptr->CopyFrom(ins_);
+        messages.emplace_back(MessageType::INS, msg_ptr);
       }
       break;
 
-    case novatel::INSCOV:
+    case novatel::INSCOV:  // ... and INS covariance messages
     case novatel::INSCOVS:
-      if (message_length != sizeof(novatel::InsCov)) {
-        AERROR << "Incorrect message_length";
+      if (payload_size != sizeof(novatel::InsCov)) { /* log error */
         break;
       }
-
-      if (HandleInsCov(reinterpret_cast<novatel::InsCov*>(message))) {
-        *message_ptr = &ins_;
-        return MessageType::INS;
-      }
+      // HandleInsCov updates internal ins_. It returns false in original code,
+      // indicating covariance message itself doesn't generate a new INS
+      // message.
+      HandleInsCov(reinterpret_cast<const novatel::InsCov*>(payload_data));
+      // No message added to 'messages' for INSCOV alone based on original
+      // logic.
       break;
 
-    case novatel::INSPVA:
+    case novatel::INSPVA:  // and other INS position/velocity/attitude messages
     case novatel::INSPVAS:
-      if (message_length != sizeof(novatel::InsPva)) {
-        AERROR << "Incorrect message_length";
+      if (payload_size != sizeof(novatel::InsPva)) { /* log error */
         break;
       }
-
-      if (HandleInsPva(reinterpret_cast<novatel::InsPva*>(message))) {
-        *message_ptr = &ins_;
-        return MessageType::INS;
+      // HandleInsPva updates internal ins_.
+      if (HandleInsPva(
+              reinterpret_cast<const novatel::InsPva*>(payload_data))) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::Ins>();
+        msg_ptr->CopyFrom(ins_);
+        messages.emplace_back(MessageType::INS, msg_ptr);
       }
       break;
 
-    case novatel::RAWIMUX:
+    case novatel::RAWIMUX:  // ... and other Raw IMU messages
     case novatel::RAWIMUSX:
-      if (message_length != sizeof(novatel::RawImuX)) {
-        AERROR << "Incorrect message_length";
+      if (payload_size != sizeof(novatel::RawImuX)) { /* log error */
         break;
       }
-
-      if (HandleRawImuX(reinterpret_cast<novatel::RawImuX*>(message))) {
-        *message_ptr = &imu_;
-        return MessageType::IMU;
+      // HandleRawImuX updates internal imu_.
+      if (HandleRawImuX(
+              reinterpret_cast<const novatel::RawImuX*>(payload_data))) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::Imu>();
+        msg_ptr->CopyFrom(imu_);
+        messages.emplace_back(MessageType::IMU, msg_ptr);
       }
       break;
 
     case novatel::RAWIMU:
     case novatel::RAWIMUS:
-      if (message_length != sizeof(novatel::RawImu)) {
-        AERROR << "Incorrect message_length";
+      if (payload_size != sizeof(novatel::RawImu)) { /* log error */
         break;
       }
-
-      if (HandleRawImu(reinterpret_cast<novatel::RawImu*>(message))) {
-        *message_ptr = &imu_;
-        return MessageType::IMU;
+      // HandleRawImu updates internal imu_.
+      if (HandleRawImu(
+              reinterpret_cast<const novatel::RawImu*>(payload_data))) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::Imu>();
+        msg_ptr->CopyFrom(imu_);
+        messages.emplace_back(MessageType::IMU, msg_ptr);
       }
       break;
 
-    case novatel::INSPVAX:
-      if (message_length != sizeof(novatel::InsPvaX)) {
-        AERROR << "Incorrect message_length";
+    case novatel::INSPVAX:  // INS PVA with extended status
+      if (payload_size != sizeof(novatel::InsPvaX)) { /* log error */
         break;
       }
-
-      if (HandleInsPvax(reinterpret_cast<novatel::InsPvaX*>(message), gps_week,
-                        gps_millisecs)) {
-        *message_ptr = &ins_stat_;
-        return MessageType::INS_STAT;
+      // HandleInsPvax updates internal ins_stat_.
+      if (HandleInsPvax(reinterpret_cast<const novatel::InsPvaX*>(payload_data),
+                        gps_week, gps_millisecs)) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::InsStat>();
+        msg_ptr->CopyFrom(ins_stat_);
+        messages.emplace_back(MessageType::INS_STAT, msg_ptr);
       }
       break;
 
-    case novatel::BDSEPHEMERIS:
-      if (message_length != sizeof(novatel::BDS_Ephemeris)) {
-        AERROR << "Incorrect BDSEPHEMERIS message_length";
+    case novatel::BDSEPHEMERIS:  // ... and other Ephemeris messages
+      if (payload_size != sizeof(novatel::BDS_Ephemeris)) { /* log error */
         break;
       }
-      if (HandleBdsEph(reinterpret_cast<novatel::BDS_Ephemeris*>(message))) {
-        *message_ptr = &gnss_ephemeris_;
-        return MessageType::BDSEPHEMERIDES;
+      // HandleBdsEph updates internal gnss_ephemeris_.
+      if (HandleBdsEph(
+              reinterpret_cast<const novatel::BDS_Ephemeris*>(payload_data))) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::GnssEphemeris>();
+        msg_ptr->CopyFrom(gnss_ephemeris_);
+        messages.emplace_back(MessageType::BDSEPHEMERIDES, msg_ptr);
       }
       break;
 
     case novatel::GPSEPHEMERIS:
-      if (message_length != sizeof(novatel::GPS_Ephemeris)) {
-        AERROR << "Incorrect GPSEPHEMERIS message_length";
+      if (payload_size != sizeof(novatel::GPS_Ephemeris)) { /* log error */
         break;
       }
-      if (HandleGpsEph(reinterpret_cast<novatel::GPS_Ephemeris*>(message))) {
-        *message_ptr = &gnss_ephemeris_;
-        return MessageType::GPSEPHEMERIDES;
+      // HandleGpsEph updates internal gnss_ephemeris_.
+      if (HandleGpsEph(
+              reinterpret_cast<const novatel::GPS_Ephemeris*>(payload_data))) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::GnssEphemeris>();
+        msg_ptr->CopyFrom(gnss_ephemeris_);
+        messages.emplace_back(MessageType::GPSEPHEMERIDES, msg_ptr);
       }
       break;
 
     case novatel::GLOEPHEMERIS:
-      if (message_length != sizeof(novatel::GLO_Ephemeris)) {
-        AERROR << "Incorrect GLOEPHEMERIS message length";
+      if (payload_size != sizeof(novatel::GLO_Ephemeris)) { /* log error */
         break;
       }
-      if (HandleGloEph(reinterpret_cast<novatel::GLO_Ephemeris*>(message))) {
-        *message_ptr = &gnss_ephemeris_;
-        return MessageType::GLOEPHEMERIDES;
+      // HandleGloEph updates internal gnss_ephemeris_.
+      if (HandleGloEph(
+              reinterpret_cast<const novatel::GLO_Ephemeris*>(payload_data))) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::GnssEphemeris>();
+        msg_ptr->CopyFrom(gnss_ephemeris_);
+        messages.emplace_back(MessageType::GLOEPHEMERIDES, msg_ptr);
       }
       break;
 
-    case novatel::RANGE:
-      if (DecodeGnssObservation(buffer_.data(),
-                                buffer_.data() + buffer_.size())) {
-        *message_ptr = &gnss_observation_;
-        return MessageType::OBSERVATION;
+    case novatel::RANGE:  // Raw Observation Data
+      // DecodeGnssObservation handles the raw data block using input_oem4
+      if (DecodeGnssObservation(payload_data, payload_data + payload_size)) {
+        auto msg_ptr =
+            std::make_shared<apollo::drivers::gnss::EpochObservation>();
+        msg_ptr->CopyFrom(gnss_observation_);
+        messages.emplace_back(MessageType::OBSERVATION, msg_ptr);
       }
       break;
 
-    case novatel::HEADING:
-      if (message_length != sizeof(novatel::Heading)) {
-        AERROR << "Incorrect message_length";
+    case novatel::HEADING:                            // Heading message
+      if (payload_size != sizeof(novatel::Heading)) { /* log error */
         break;
       }
-      if (HandleHeading(reinterpret_cast<novatel::Heading*>(message), gps_week,
-                        gps_millisecs)) {
-        *message_ptr = &heading_;
-        return MessageType::HEADING;
+      // HandleHeading updates internal heading_.
+      if (HandleHeading(reinterpret_cast<const novatel::Heading*>(payload_data),
+                        gps_week, gps_millisecs)) {
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::Heading>();
+        msg_ptr->CopyFrom(heading_);
+        messages.emplace_back(MessageType::HEADING, msg_ptr);
       }
       break;
 
     default:
+      AINFO_EVERY(100) << "Unknown Novatel message ID: "
+                       << static_cast<int>(message_id)
+                       << ". Payload size: " << payload_size;
+      // Unknown message type, do nothing, return empty vector
       break;
   }
-  return MessageType::NONE;
+
+  return messages;
 }
 
 bool NovatelParser::HandleGnssBestpos(const novatel::BestPos* pos,
@@ -524,9 +462,9 @@ bool NovatelParser::HandleGnssBestpos(const novatel::BestPos* pos,
   bestpos_.set_galileo_beidou_used_mask(pos->galileo_beidou_used_mask);
   bestpos_.set_gps_glonass_used_mask(pos->gps_glonass_used_mask);
 
-  double seconds = gps_week * SECONDS_PER_WEEK + gps_millisecs * 1e-3;
+  double seconds = gps_week * kSecondsPerWeek + gps_millisecs * 1e-3;
   bestpos_.set_measurement_time(seconds);
-  // AINFO << "Best gnss pose:\r\n" << bestpos_.DebugString();
+
   return true;
 }
 
@@ -588,9 +526,6 @@ bool NovatelParser::HandleBestPos(const novatel::BestPos* pos,
       case novatel::SolutionType::INS_PPP:
         gnss_.set_type(apollo::drivers::gnss::Gnss::PPP);
         break;
-      case novatel::SolutionType::PROPOGATED:
-        gnss_.set_type(apollo::drivers::gnss::Gnss::PROPAGATED);
-        break;
       default:
         gnss_.set_type(apollo::drivers::gnss::Gnss::INVALID);
     }
@@ -603,10 +538,10 @@ bool NovatelParser::HandleBestPos(const novatel::BestPos* pos,
                     << static_cast<int>(pos->datum_id);
   }
 
-  double seconds = gps_week * SECONDS_PER_WEEK + gps_millisecs * 1e-3;
+  double seconds = gps_week * kSecondsPerWeek + gps_millisecs * 1e-3;
   if (gnss_.measurement_time() != seconds) {
     gnss_.set_measurement_time(seconds);
-    return false;
+    return true;
   }
   return true;
 }
@@ -627,7 +562,7 @@ bool NovatelParser::HandleBestVel(const novatel::BestVel* vel,
   gnss_.mutable_linear_velocity()->set_y(vel->horizontal_speed * sin(yaw));
   gnss_.mutable_linear_velocity()->set_z(vel->vertical_speed);
 
-  double seconds = gps_week * SECONDS_PER_WEEK + gps_millisecs * 1e-3;
+  double seconds = gps_week * kSecondsPerWeek + gps_millisecs * 1e-3;
   if (gnss_.measurement_time() != seconds) {
     gnss_.set_measurement_time(seconds);
     return false;
@@ -645,7 +580,7 @@ bool NovatelParser::HandleCorrImuData(const novatel::CorrImuData* imu) {
              imu->z_angle_change * imu_measurement_hz_,
              ins_.mutable_angular_velocity());
 
-  double seconds = imu->gps_week * SECONDS_PER_WEEK + imu->gps_seconds;
+  double seconds = imu->gps_week * kSecondsPerWeek + imu->gps_seconds;
   if (ins_.measurement_time() != seconds) {
     ins_.set_measurement_time(seconds);
     return false;
@@ -660,7 +595,7 @@ bool NovatelParser::HandleInsCov(const novatel::InsCov* cov) {
     ins_.set_position_covariance(
         i, static_cast<float>(cov->position_covariance[i]));
     ins_.set_euler_angles_covariance(
-        INDEX[i], static_cast<float>((DEG_TO_RAD * DEG_TO_RAD) *
+        INDEX[i], static_cast<float>((kDegToRad * kDegToRad) *
                                      cov->attitude_covariance[i]));
     ins_.set_linear_velocity_covariance(
         i, static_cast<float>(cov->velocity_covariance[i]));
@@ -676,8 +611,8 @@ bool NovatelParser::HandleInsPva(const novatel::InsPva* pva) {
   ins_.mutable_position()->set_lon(pva->longitude);
   ins_.mutable_position()->set_lat(pva->latitude);
   ins_.mutable_position()->set_height(pva->height);
-  ins_.mutable_euler_angles()->set_x(pva->roll * DEG_TO_RAD);
-  ins_.mutable_euler_angles()->set_y(-pva->pitch * DEG_TO_RAD);
+  ins_.mutable_euler_angles()->set_x(pva->roll * kDegToRad);
+  ins_.mutable_euler_angles()->set_y(-pva->pitch * kDegToRad);
   ins_.mutable_euler_angles()->set_z(azimuth_deg_to_yaw_rad(pva->azimuth));
   ins_.mutable_linear_velocity()->set_x(pva->east_velocity);
   ins_.mutable_linear_velocity()->set_y(pva->north_velocity);
@@ -697,7 +632,7 @@ bool NovatelParser::HandleInsPva(const novatel::InsPva* pva) {
       ins_.set_type(apollo::drivers::gnss::Ins::INVALID);
   }
 
-  double seconds = pva->gps_week * SECONDS_PER_WEEK + pva->gps_seconds;
+  double seconds = pva->gps_week * kSecondsPerWeek + pva->gps_seconds;
   if (ins_.measurement_time() != seconds) {
     ins_.set_measurement_time(seconds);
     return false;
@@ -709,8 +644,8 @@ bool NovatelParser::HandleInsPva(const novatel::InsPva* pva) {
 
 bool NovatelParser::HandleInsPvax(const novatel::InsPvaX* pvax,
                                   uint16_t gps_week, uint32_t gps_millisecs) {
-  double seconds = gps_week * SECONDS_PER_WEEK + gps_millisecs * 1e-3;
-  double unix_sec = apollo::drivers::util::gps2unix(seconds);
+  double seconds = gps_week * kSecondsPerWeek + gps_millisecs * 1e-3;
+  double unix_sec = GpsToUnixSeconds(seconds);
   ins_stat_.mutable_header()->set_timestamp_sec(unix_sec);
   ins_stat_.set_ins_status(pvax->ins_status);
   ins_stat_.set_pos_type(pvax->pos_type);
@@ -742,7 +677,7 @@ bool NovatelParser::HandleRawImuX(const novatel::RawImuX* imu) {
     imu_.set_measurement_span(imu_measurement_span_);
   }
 
-  double time = imu->gps_week * SECONDS_PER_WEEK + imu->gps_seconds;
+  double time = imu->gps_week * kSecondsPerWeek + imu->gps_seconds;
   if (imu_measurement_time_previous_ > 0.0 &&
       fabs(time - imu_measurement_time_previous_ - imu_measurement_span_) >
           1e-4) {
@@ -802,7 +737,7 @@ bool NovatelParser::HandleRawImu(const novatel::RawImu* imu) {
     imu_.set_measurement_span(imu_measurement_span);
   }
 
-  double time = imu->gps_week * SECONDS_PER_WEEK + imu->gps_seconds;
+  double time = imu->gps_week * kSecondsPerWeek + imu->gps_seconds;
   if (imu_measurement_time_previous_ > 0.0 &&
       fabs(time - imu_measurement_time_previous_ - imu_measurement_span) >
           1e-4) {
@@ -976,7 +911,7 @@ bool NovatelParser::HandleHeading(const novatel::Heading* heading,
   heading_.set_extended_solution_status(heading->extended_solution_status);
   heading_.set_galileo_beidou_sig_mask(heading->galileo_beidou_sig_mask);
   heading_.set_gps_glonass_sig_mask(heading->gps_glonass_sig_mask);
-  double seconds = gps_week * SECONDS_PER_WEEK + gps_millisecs * 1e-3;
+  double seconds = gps_week * kSecondsPerWeek + gps_millisecs * 1e-3;
   heading_.set_measurement_time(seconds);
   return true;
 }
@@ -1030,7 +965,7 @@ bool NovatelParser::DecodeGnssObservation(const uint8_t* obs_data,
             }
 
             auto band_obs = sat_obs->add_band_obs();
-            if (raw_.obs.data[i].code[i] == CODE_L1C) {
+            if (raw_.obs.data[i].code[j] == CODE_L1C) {
               band_obs->set_pseudo_type(
                   apollo::drivers::gnss::PseudoType::CORSE_CODE);
             } else if (raw_.obs.data[i].code[i] == CODE_L1P) {

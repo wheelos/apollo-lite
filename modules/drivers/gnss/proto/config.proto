@@ -12,8 +12,24 @@ message Stream {
     NOVATEL_TEXT = 10;
     NOVATEL_BINARY = 11;
 
+    HUACE_TEXT = 12;
+    HUACE_CAN = 13;
+
+    ASENSING_TEXT = 14;
+    ASENSING_BINARY = 15;
+
     UBLOX_TEXT = 20;
     UBLOX_BINARY = 21;
+
+    BROADGNSS_TEXT = 30;
+    BROADGNSS_BINARY = 31;
+
+    ENBROAD_TEXT = 40;
+    ENBROAD_BINARY = 41;
+
+    FORSENSE_TEXT = 50;
+
+    CXZL_TEXT = 60;
   }
   optional Format format = 1;
 
@@ -118,4 +134,6 @@ message Config {
   // If given, the driver will send velocity info to novatel with command stream
   optional string wheel_parameters = 13;
   optional string gpsbin_folder = 14;
+  //
+  optional bool is_base_station = 15;
 }

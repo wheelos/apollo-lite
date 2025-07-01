@@ -13,11 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
+
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+
 namespace apollo {
-namespace localization {
-namespace msf {
+namespace common {
+namespace util {
 
 // array_size(a) returns the number of elements in a.
 template <class T, size_t N>
@@ -100,6 +104,6 @@ inline int64_t GpsToUnixNanoSeconds(int64_t gps_nanoseconds) {
          gps_nanoseconds % ONE_BILLION;
 }
 
-}  // namespace msf
-}  // namespace localization
+}  // namespace util
+}  // namespace common
 }  // namespace apollo

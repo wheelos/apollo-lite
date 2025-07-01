@@ -21,15 +21,14 @@
 #include <string>
 #include <thread>
 
-#include "cyber/cyber.h"
-
 #include "modules/common_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/drivers/gnss/proto/config.pb.h"
 #include "modules/drivers/gnss/proto/gnss_status.pb.h"
 
+#include "cyber/cyber.h"
 #include "modules/drivers/gnss/parser/data_parser.h"
 #include "modules/drivers/gnss/parser/rtcm_parser.h"
-#include "modules/drivers/gnss/stream/stream.h"
+#include "modules/drivers/hal/stream/stream.h"
 
 namespace apollo {
 namespace drivers {
@@ -43,8 +42,8 @@ class RawStream {
   bool Init();
 
   struct Status {
-    bool filter[Stream::NUM_STATUS] = {false};
-    Stream::Status status;
+    bool filter[hal::Stream::NUM_STATUS] = {false};
+    hal::Stream::Status status;
   };
 
   void Start();
@@ -58,7 +57,7 @@ class RawStream {
   bool Logout();
   void StreamStatusCheck();
   void PublishRtkData(size_t length);
-  void PushGpgga(size_t length);
+  void PushGGA();
   void GpsbinSpin();
   void GpsbinCallback(const std::shared_ptr<RawData const>& raw_data);
   void OnWheelVelocityTimer();
@@ -69,10 +68,10 @@ class RawStream {
   uint8_t buffer_[BUFFER_SIZE] = {0};
   uint8_t buffer_rtk_[BUFFER_SIZE] = {0};
 
-  std::shared_ptr<Stream> data_stream_;
-  std::shared_ptr<Stream> command_stream_;
-  std::shared_ptr<Stream> in_rtk_stream_;
-  std::shared_ptr<Stream> out_rtk_stream_;
+  std::shared_ptr<hal::Stream> data_stream_;
+  std::shared_ptr<hal::Stream> command_stream_;
+  std::shared_ptr<hal::Stream> in_rtk_stream_;
+  std::shared_ptr<hal::Stream> out_rtk_stream_;
 
   std::shared_ptr<Status> data_stream_status_;
   std::shared_ptr<Status> command_stream_status_;
@@ -92,7 +91,6 @@ class RawStream {
   std::unique_ptr<std::thread> rtk_thread_ptr_;
   std::unique_ptr<DataParser> data_parser_ptr_;
   std::unique_ptr<RtcmParser> rtcm_parser_ptr_;
-  std::unique_ptr<std::thread> gpsbin_thread_ptr_;
   std::unique_ptr<std::ofstream> gpsbin_stream_ = nullptr;
 
   std::shared_ptr<apollo::cyber::Node> node_ = nullptr;

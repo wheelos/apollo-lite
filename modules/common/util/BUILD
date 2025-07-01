@@ -42,7 +42,7 @@ cc_library(
         ":message_util",
         ":perf_util",
         ":string_util",
-        ":time_util",
+        ":time_conversion",
         "//cyber",
         "@com_github_nlohmann_json//:json",
         "@com_google_absl//absl/strings",
@@ -62,8 +62,7 @@ cc_library(
         "//modules/common_msgs/basic_msgs:geometry_cc_proto",
         "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
         "@com_github_gflags_gflags//:gflags",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_library(
@@ -71,8 +70,7 @@ cc_library(
     hdrs = ["future.h"],
     deps = [
         "@com_google_absl//absl/strings",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_library(
@@ -81,8 +79,7 @@ cc_library(
     deps = [
         "//modules/common/math",
         "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_test(
@@ -98,14 +95,12 @@ cc_test(
 
 cc_library(
     name = "lru_cache",
-    hdrs = ["lru_cache.h"],
-    alwayslink = True,
+    hdrs = ["lru_cache.h"]
 )
 
 cc_library(
     name = "color",
-    hdrs = ["color.h"],
-    alwayslink = True,
+    hdrs = ["color.h"]
 )
 
 cc_library(
@@ -116,8 +111,7 @@ cc_library(
         "//cyber",
         "@boost.filesystem",
         "@boost.range",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_library(
@@ -130,8 +124,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_library(
@@ -142,8 +135,7 @@ cc_library(
         "//cyber",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_test(
@@ -171,22 +163,8 @@ cc_test(
 )
 
 cc_library(
-    name = "time_util",
-    hdrs = ["time_util.h"],
-    deps = [
-        "//cyber",
-    ],
-    alwayslink = True,
-)
-
-cc_test(
-    name = "time_util_test",
-    size = "small",
-    srcs = ["time_util_test.cc"],
-    deps = [
-        ":time_util",
-        "@com_google_googletest//:gtest_main",
-    ],
+    name = "time_conversion",
+    hdrs = ["time_conversion.h"]
 )
 
 cc_library(
@@ -195,8 +173,7 @@ cc_library(
     deps = [
         "//cyber",
         "@com_google_protobuf//:protobuf",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_library(
@@ -204,8 +181,7 @@ cc_library(
     hdrs = ["factory.h"],
     deps = [
         "//cyber",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_test(
@@ -255,8 +231,7 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/common/math",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_test(
@@ -277,8 +252,7 @@ cc_library(
         "//cyber",
         "@com_github_nlohmann_json//:json",
         "@com_google_protobuf//:protobuf",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_test(
@@ -295,8 +269,7 @@ cc_test(
 cc_library(
     name = "eigen_defs",
     hdrs = ["eigen_defs.h"],
-    deps = ["@eigen"],
-    alwayslink = True,
+    deps = ["@eigen"]
 )
 
 cc_library(
@@ -306,8 +279,7 @@ cc_library(
     deps = [
         "//cyber",
         "@com_google_absl//absl/strings",
-    ],
-    alwayslink = True,
+    ]
 )
 
 cc_test(

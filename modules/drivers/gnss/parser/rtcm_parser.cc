@@ -21,8 +21,8 @@
 #include "cyber/cyber.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/drivers/gnss/parser/parser.h"
-#include "modules/drivers/gnss/parser/rtcm3_parser.h"
-#include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
+#include "modules/drivers/gnss/parser/rtcm3/rtcm3_parser.h"
+#include "modules/drivers/gnss/util/util.h"
 
 namespace apollo {
 namespace drivers {
@@ -53,45 +53,54 @@ bool RtcmParser::Init() {
 
 void RtcmParser::ParseRtcmData(const std::string& msg) {
   if (!init_flag_) {
+    AWARN << "RtcmParser not initialized.";
     return;
   }
 
-  rtcm_parser_->Update(msg);
-  Parser::MessageType type;
-  MessagePtr msg_ptr;
+  rtcm_parser_->AppendData(msg);
+  auto messages = rtcm_parser_->ParseAllMessages();
 
-  while (cyber::OK()) {
-    type = rtcm_parser_->GetMessage(&msg_ptr);
-    if (type == Parser::MessageType::NONE) {
-      break;
+  for (auto& [msg_type, msg_variant] : messages) {
+    if (std::holds_alternative<Parser::ProtoMessagePtr>(msg_variant)) {
+      DispatchMessage(msg_type, std::get<Parser::ProtoMessagePtr>(msg_variant));
+    } else {
+      AERROR << "Unknown message type variant.";
     }
-    DispatchMessage(type, msg_ptr);
   }
 }
 
-void RtcmParser::DispatchMessage(Parser::MessageType type, MessagePtr message) {
+void RtcmParser::DispatchMessage(Parser::MessageType type,
+                                 const Parser::ProtoMessagePtr& msg_ptr) {
   switch (type) {
     case Parser::MessageType::EPHEMERIDES:
-      PublishEphemeris(message);
+      PublishEphemeris(msg_ptr);
       break;
 
     case Parser::MessageType::OBSERVATION:
-      PublishObservation(message);
+      PublishObservation(msg_ptr);
       break;
 
     default:
+      AWARN << "Unhandled RTCM message type: " << static_cast<int>(type);
       break;
   }
 }
 
-void RtcmParser::PublishEphemeris(const MessagePtr& message) {
-  auto eph = std::make_shared<GnssEphemeris>(*As<GnssEphemeris>(message));
+void RtcmParser::PublishEphemeris(const Parser::ProtoMessagePtr& msg_ptr) {
+  auto eph = std::dynamic_pointer_cast<GnssEphemeris>(msg_ptr);
+  if (!eph) {
+    AERROR << "Failed to cast Message to GnssEphemeris";
+    return;
+  }
   gnssephemeris_writer_->Write(eph);
 }
 
-void RtcmParser::PublishObservation(const MessagePtr& message) {
-  auto observation =
-      std::make_shared<EpochObservation>(*As<EpochObservation>(message));
+void RtcmParser::PublishObservation(const Parser::ProtoMessagePtr& msg_ptr) {
+  auto observation = std::dynamic_pointer_cast<EpochObservation>(msg_ptr);
+  if (!observation) {
+    AERROR << "Failed to cast Message to EpochObservation";
+    return;
+  }
   epochobservation_writer_->Write(observation);
 }
 
