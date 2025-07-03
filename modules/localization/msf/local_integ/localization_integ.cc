@@ -26,7 +26,7 @@ namespace localization {
 namespace msf {
 
 using common::Status;
-using common::util::TimeUtil;
+using common::util::GpsToUnixSeconds;
 
 LocalizationInteg::LocalizationInteg()
     : localization_integ_impl_(new LocalizationIntegImpl()) {}
