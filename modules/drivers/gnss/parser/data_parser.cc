@@ -21,6 +21,8 @@
 #include <string>
 #include <utility>
 
+#include <proj.h>
+
 #include "Eigen/Geometry"
 #include "boost/array.hpp"
 
@@ -59,18 +61,18 @@ static constexpr boost::array<double, 36> POSE_COVAR = {
 DataParser::DataParser(const config::Config &config,
                        const std::shared_ptr<apollo::cyber::Node> &node)
     : config_(config), tf_broadcaster_(node), node_(node) {
-  // TODO(zero): Use modern PROJ API for initialization
-  // proj_create_crs_to_crs is recommended for transformations between CRS
-  // proj_create can be used with proj strings like config_.proj4_text()
-  wgs84pj_source_ = pj_init_plus(WGS84_TEXT);
-  if (!wgs84pj_source_) {
-    AFATAL << "Failed to create WGS84 PROJ object";
+  proj_context_ = proj_context_create();
+  if (!proj_context_) {
+    AFATAL << "Failed to create PROJ context";
   }
-
-  utm_target_ = pj_init_plus(config_.proj4_text().c_str());
-  if (!utm_target_) {
-    AFATAL << "Failed to create UTM PROJ object from config '"
-           << config_.proj4_text();
+  proj_transform_ = proj_create_crs_to_crs(
+      proj_context_, WGS84_TEXT, config_.proj4_text().c_str(), nullptr);
+  if (!proj_transform_) {
+    proj_context_destroy(proj_context_);
+    proj_context_ = nullptr;
+    AFATAL << "Failed to create PROJ transformation from "
+      << WGS84_TEXT << " to "
+      << config_.proj4_text();
   }
 
   gnss_status_.set_solution_status(0);
@@ -82,20 +84,19 @@ DataParser::DataParser(const config::Config &config,
 
 // Destructor to clean up PROJ resources
 DataParser::~DataParser() {
-  // TODO(zero): Use modern PROJ API for cleanup
-  // if (wgs84pj_source_) {
-  //   proj_destroy(wgs84pj_source_);
-  //   wgs84pj_source_ = nullptr;
-  // }
-  // if (utm_target_) {
-  //   proj_destroy(utm_target_);
-  //   utm_target_ = nullptr;
-  // }
+  if (proj_transform_) {
+    proj_destroy(proj_transform_);
+    proj_transform_ = nullptr;
+  }
+  if (proj_context_) {
+    proj_context_destroy(proj_context_);
+    proj_context_ = nullptr;
+  }
 }
 
 bool DataParser::Init() {
   // Check if PROJ initialization failed in constructor
-  if (!wgs84pj_source_ || !utm_target_) {
+  if (!proj_context_|| !proj_transform_) {
     AFATAL << "PROJ objects not initialized. Cannot proceed.";
     return false;
   }
@@ -332,11 +333,12 @@ void DataParser::PublishOdometry(const Parser::ProtoMessagePtr& msg_ptr) {
   lon *= kDegToRad;
   lat *= kDegToRad;
 
-  // Use modern PROJ transformation
-  pj_transform(wgs84pj_source_, utm_target_, 1, 1, &lon, &lat, NULL);
+  PJ_COORD src = proj_coord(lon, lat, 0.0, 0.0);
+  PJ_COORD dst = proj_trans(proj_transform_, PJ_FWD, src);
 
-  gps_msg->mutable_position()->set_x(lon);  // Easting (transformed longitude)
-  gps_msg->mutable_position()->set_y(lat);  // Northing (transformed latitude)
+
+  gps_msg->mutable_position()->set_x(dst.xy.x);  // Easting (transformed longitude)
+  gps_msg->mutable_position()->set_y(dst.xy.y);  // Northing (transformed latitude)
   gps_msg->mutable_position()->set_z(ins->position().height());
 
   Eigen::Quaterniond q =

@@ -22,8 +22,9 @@
 #include <unordered_map>
 #include <vector>
 
-#define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
-#include <proj_api.h>
+// #define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
+#include <proj.h>
+// #include <proj_api.h>
 
 #include "modules/common_msgs/localization_msgs/gps.pb.h"
 #include "modules/common_msgs/localization_msgs/imu.pb.h"
@@ -114,10 +115,8 @@ class DataParser {
   InsStatus ins_status_;
   uint32_t ins_status_record_ = static_cast<uint32_t>(0);
 
-  // TODO(zero): PROJ objects for coordinate transformation. Use PJ* for modern
-  // API.
-  projPJ wgs84pj_source_;
-  projPJ utm_target_;
+  PJ_CONTEXT* proj_context_;
+  PJ* proj_transform_;
 
   // Map to store raw messages (currently only GPGGA). See comments for
   // MessageMap type.
