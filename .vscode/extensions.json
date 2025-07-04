@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode", // Prettier formatting
+    "dbaeumer.vscode-eslint", // JavaScript / TypeScript lint
+    "ms-vscode.cpptools", // C/C++ support
+    "xaver.clang-format", // C++ formatting
+    "ms-python.python", // Python support
+    "ms-python.black-formatter", // Python Black formatting
+    "streetsidesoftware.code-spell-checker", // Spell checker
+    "eamodio.gitlens", // Git enhancement
+    "github.vscode-pull-request-github" // GitHub PR support
+  ],
+  "unwantedRecommendations": []
+}

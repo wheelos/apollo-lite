@@ -1,0 +1,21 @@
+[tool.black]
+line-length = 88
+target-version = ['py38']
+skip-string-normalization = false
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["cyber"]
