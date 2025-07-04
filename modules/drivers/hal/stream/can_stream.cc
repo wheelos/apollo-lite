@@ -191,7 +191,7 @@ bool CanStream::Disconnect() {
   if (fd_ < 0) {
     AINFO << "CanStream already disconnected for interface: "
           << interface_name_;
-    return false;
+    return true;
   }
 
   AINFO << "Disconnecting CAN stream for interface " << interface_name_
