@@ -4,20 +4,18 @@ on:
   pull_request:
     branches:
       - main
-      - master
-      - dev
+      - 8.0-dev
   push:
     branches:
       - main
-      - master
-      - dev
+      - 8.0-dev
 
 jobs:
   lint-format:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, 3.10, 3.11]
+        python-version: [3.10]
 
     steps:
       - name: Checkout code
@@ -27,13 +25,13 @@ jobs:
       - name: Install dependencies for C++
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format-12 cppcheck
+          sudo apt-get install -y clang-format cppcheck
 
       - name: Check C++ formatting with clang-format
         run: |
           git fetch origin main
           BASE_COMMIT=$(git merge-base origin/main HEAD)
-          git diff -U0 $BASE_COMMIT -- '*.[ch]pp' '*.[ch]' '*.cc' | clang-format-diff-12 -p1 --Werror
+          git diff -U0 $BASE_COMMIT -- '*.[ch]pp' '*.[ch]' '*.cc' | clang-format-diff -p1 --Werror
 
       - name: Run cppcheck static analysis
         run: |
