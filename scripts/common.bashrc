@@ -36,13 +36,13 @@ pathremove() {
 }
 
 pathprepend() {
-    pathremove $1 $2
+    pathremove "$1" "${2:-}"
     local PATHVARIABLE=${2:-PATH}
     export $PATHVARIABLE="$1${!PATHVARIABLE:+:${!PATHVARIABLE}}"
 }
 
 pathappend() {
-    pathremove $1 $2
+    pathremove "$1" "${2:-}"
     local PATHVARIABLE=${2:-PATH}
     export $PATHVARIABLE="${!PATHVARIABLE:+${!PATHVARIABLE}:}$1"
 }

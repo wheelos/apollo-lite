@@ -1,93 +1,71 @@
-name: Lint and Format Check
+name: Code Lint and Format Check
 
 on:
-  pull_request:
-    branches:
-      - main
-      - 8.0-dev
   push:
     branches:
-      - main
+      - main # Trigger on push to 'main'
+  pull_request:
+    branches:
+      - main # Trigger on PR to 'main'
       - 8.0-dev
+
+# Workflow permissions
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   lint-format:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.10]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # --- C++ ---
-      - name: Install dependencies for C++
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format cppcheck
-
-      - name: Check C++ formatting with clang-format
-        run: |
-          git fetch origin main
-          BASE_COMMIT=$(git merge-base origin/main HEAD)
-          git diff -U0 $BASE_COMMIT -- '*.[ch]pp' '*.[ch]' '*.cc' | clang-format-diff -p1 --Werror
-
-      - name: Run cppcheck static analysis
-        run: |
-          cppcheck --enable=all --inconclusive --error-exitcode=1 --std=c++17 --quiet modules
-
-      # --- JavaScript/TypeScript ---
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          node-version: '16'
+          fetch-depth: 0
 
-      - name: Cache Node.js dependencies
-        uses: actions/cache@v3
+      - name: Read Bazel version from .bazelversion
+        id: bazel-version
+        run: echo "version=$(cat .bazelversion)" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies for JS/TS
-        run: npm ci
-
-      - name: Run ESLint lint check
-        run: npx eslint --ext .js,.jsx,.ts,.tsx .
-
-      - name: Check Prettier formatting
-        run: npx prettier --check "**/*.{js,jsx,ts,tsx,json,md,yml,yaml}"
-
-      # --- Python ---
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Cache pip packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+          python-version: '3.10'
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install black flake8
+          pip install black==24.4.2 flake8==7.0.0 isort==5.13.2
 
-      - name: Check Python formatting with Black
-        run: black --check .
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          bazel-version: ${{ steps.bazel-version.outputs.version }}
 
-      - name: Run Python lint with flake8
-        run: flake8 .
-
-      - name: Print error on failure
-        if: ${{ always() }}
+      - name: Install C++ (Clang-Format), Shell (Shellcheck) and Buildifier
         run: |
-          if [[ '${{ job.status }}' == 'failure' ]]; then
-            echo "::error::[Job: lint-format] Lint or formatting check failed. Please fix the issues."
-          fi
+          sudo apt-get update
+          # Install clang-format version from .pre-commit-config.yaml
+          sudo apt-get install -y clang-format-18 shellcheck
+
+          # Install Buildifier using Go
+          # Todo(zero): different from ".pre-commit-config.yaml"
+          go install github.com/bazelbuild/buildtools/buildifier@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Run Lint and Format Checks (PR Diff Mode)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Running apollo_lint.sh in diff mode for PR..."
+          ${{ github.workspace }}/scripts/ci/apollo_ci.sh --all --diff origin/${{ github.base_ref }}
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+
+      - name: Run Lint and Format Checks (Push Full Mode)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "Running apollo_lint.sh in full mode for push to main branch..."
+          ${{ github.workspace }}/scripts/ci/apollo_ci.sh --all
