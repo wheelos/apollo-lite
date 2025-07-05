@@ -40,12 +40,10 @@ check_script_existence() {
 # This function assumes the sub-script will print specific error details to stderr/stdout
 # before exiting with a non-zero status.
 # Args:
-#   $1: exit_code of the step/sub-script that was just executed.
-#   $2: Name of the step/sub-script that was just executed.
+#   $1: Name of the step/sub-script that was just executed.
 check_status() {
-    local exit_code="$1"
-    local step_name="$2"
-    if [ "$exit_code" -ne 0 ]; then
+    local step_name="$1"
+    if [ $? -ne 0 ]; then
         echo "❌ ERROR: Step '$step_name' failed. Review the output above for details."
         echo "       Configuration process interrupted."
         exit 1
@@ -73,8 +71,7 @@ check_script_existence "${INSTALL_DOCKER_SCRIPT}" "Docker Installation Script"
 # Execute the sub-script. Sub-script is responsible for 'already installed' checks,
 # pre-conditions, and detailed error messages.
 sudo bash "${INSTALL_DOCKER_SCRIPT}" install
-exit_code=$?
-check_status $exit_code "Docker Installation" # Checks the exit status of install_docker.sh
+check_status "Docker Installation" # Checks the exit status of install_docker.sh
 
 echo "✅ Step 1/3: Docker installation/check complete."
 echo ""
@@ -90,8 +87,7 @@ check_script_existence "${INSTALL_NVIDIA_TOOLKIT_SCRIPT}" "NVIDIA Container Tool
 
 # Execute the sub-script. Sub-script is responsible for its own pre-conditions (e.g., Docker existence).
 sudo bash "${INSTALL_NVIDIA_TOOLKIT_SCRIPT}"
-exit_code=$?
-check_status $exit_code "NVIDIA Container Toolkit Installation"
+check_status "NVIDIA Container Toolkit Installation"
 
 echo "✅ Step 2/3: NVIDIA Container Toolkit installation/check complete."
 echo ""
@@ -105,8 +101,7 @@ check_script_existence "${SETUP_HOST_SCRIPT}" "Host Setup Script"
 
 # Execute the sub-script.
 sudo bash "${SETUP_HOST_SCRIPT}"
-exit_code=$?
-check_status $exit_code "Host Environment Setup"
+check_status "Host Environment Setup"
 
 echo "✅ Step 3/3: Host Environment Setup complete."
 echo ""
