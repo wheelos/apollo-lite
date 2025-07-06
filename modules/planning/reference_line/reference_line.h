@@ -221,6 +221,11 @@ class ReferenceLine {
     SpeedLimit() = default;
     SpeedLimit(double _start_s, double _end_s, double _speed_limit)
         : start_s(_start_s), end_s(_end_s), speed_limit(_speed_limit) {}
+
+    std::string DebugString() const {
+      return absl::StrCat("{start_s: ", start_s, ", end_s: ", end_s,
+                          ", speed_limit: ", speed_limit, "}");
+    }
   };
   /**
    * This speed limit overrides the lane speed limit
