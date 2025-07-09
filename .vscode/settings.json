@@ -5,9 +5,9 @@
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll": true,
-    "source.fixAll.eslint": true,
-    "source.organizeImports": true
+    "source.fixAll": "explicit",
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
   },
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
@@ -25,7 +25,7 @@
   "editor.bracketPairColorization.enabled": true,
   "editor.guides.bracketPairs": "active",
   "editor.renderWhitespace": "boundary",
-  "editor.cursorSmoothCaretAnimation": true,
+  "editor.cursorSmoothCaretAnimation": "on",
   "editor.smoothScrolling": true,
   "editor.fontSize": 14,
   // ——————————————————————
@@ -69,7 +69,11 @@
   // Markdown
   "[markdown]": {
     "editor.wordWrap": "on",
-    "editor.quickSuggestions": true
+    "editor.quickSuggestions": {
+      "comments": "on",
+      "strings": "on",
+      "other": "on"
+    }
   },
   // Python (Black uses 88)
   "[python]": {
