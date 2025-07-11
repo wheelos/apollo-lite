@@ -47,7 +47,7 @@ download_if_not_cached "$PKG_NAME" "$CHECKSUM" "$DOWNLOAD_LINK"
 
 tar xzf "${PKG_NAME}"
 pushd proj-${VERSION} >/dev/null
-mkdir build && cd build
+mkdir -p build && cd build
 cmake .. \
     -DBUILD_SHARED_LIBS=ON \
     -DBUILD_TESTING=OFF \

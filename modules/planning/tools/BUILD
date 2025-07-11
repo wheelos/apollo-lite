@@ -22,7 +22,6 @@ cc_binary(
     name = "inference_demo",
     srcs = ["inference_demo.cc"],
     deps = [
-        #"//third_party/libtorch",
         "@com_github_gflags_gflags//:gflags",
     ] + if_gpu(
         ["@libtorch_gpu"],

@@ -11,10 +11,10 @@ cc_library(
         "torch/csrc/api/include",
     ],
     linkopts = [
-        "-L/usr/local/libtorch_cpu/lib",
-        "-lc10",
-        "-ltorch",
+        "-L/usr/local/libtorch/lib",
         "-ltorch_cpu",
+        "-ltorch",
+        "-lc10",
     ],
     linkstatic = False,
     deps = [
