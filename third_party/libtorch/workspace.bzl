@@ -5,16 +5,20 @@
 def clean_dep(dep):
     return str(Label(dep))
 
+# The environment distinguishes between cpu version and gpu version,
+# rather than having two versions in one container
+
+
 def repo_cpu():
     native.new_local_repository(
         name = "libtorch_cpu",
         build_file = clean_dep("//third_party/libtorch:libtorch_cpu.BUILD"),
-        path = "/usr/local/libtorch_cpu/include",
+        path = "/usr/local/libtorch/include",
     )
 
 def repo_gpu():
     native.new_local_repository(
         name = "libtorch_gpu",
         build_file = clean_dep("//third_party/libtorch:libtorch_gpu.BUILD"),
-        path = "/usr/local/libtorch_gpu/include",
+        path = "/usr/local/libtorch/include",
     )

@@ -100,9 +100,9 @@ Build the entire Apollo project with:
 To build a single module, use:
 
 ```bash
-./apollo.sh build <module_name>
+./apollo.sh build_cpu <module_name>
 # example:
-./apollo.sh build planning
+./apollo.sh build_cpu planning
 ```
 
 ---

@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
+
+# TODO(daohu527): Pytorch depends on mkl, but it has been packaged in torch and can be removed later.
+
 set -e
 
 cd "$(dirname "${BASH_SOURCE[0]}")"

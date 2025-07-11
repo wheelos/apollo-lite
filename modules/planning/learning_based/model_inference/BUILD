@@ -27,7 +27,6 @@ cc_library(
         "//modules/common/util",
         "//modules/planning/common/util:math_util_lib",
         "//modules/planning/learning_based/img_feature_renderer:birdview_img_feature_renderer",
-        #"//third_party/libtorch",
         "@opencv//:core",
     ] + if_gpu(
         ["@libtorch_gpu"],

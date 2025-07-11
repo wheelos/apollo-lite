@@ -284,7 +284,8 @@ function run_bazel_build() {
     jobs_args="--jobs=${CUSTOM_JOBS}"
   fi
   # default set cpus number according to the total cpu cores
-  local cpus_args="--local_resources=cpu=$(nproc)"
+  local cpu_count=$(($(nproc) / 2))
+  local cpus_args="--local_resources=cpu=${cpu_count}"
   if [[ -n "${CUSTOM_CPUS}" ]]; then
     cpus_args="--local_resources=cpu=${CUSTOM_CPUS}"
   fi
