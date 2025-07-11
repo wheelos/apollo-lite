@@ -28,15 +28,10 @@
 # by the user *after* logging in.
 # =============================================================================
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
-# Treat unset variables as an error when substituting.
-set -u
-# Exit if any command in a pipeline fails.
-set -o pipefail
+set -euo pipefail
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-# Assuming docker_base.sh provides helper functions like info, warning, error,
+# docker_base.sh provides helper functions like info, warning, error,
 # ok, check_agreement, remove_container_if_exists, determine_gpu_use_host,
 # geo_specific_config, postrun_start_user, optarg_check_for_opt, setup_device,
 # APOLLO_ROOT_DIR, APOLLO_CONFIG_HOME etc.
@@ -44,12 +39,10 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source "${CURR_DIR}/docker_base.sh"
 
 # --- Constants: Directories and Container Naming ---
-# CACHE_ROOT_DIR is still relevant for general Apollo caching, not just volumes.
 CACHE_ROOT_DIR="${APOLLO_ROOT_DIR}/.cache"
 BAZEL_CACHE_DIR="/var/cache/bazel/repo_cache"
 
 DEV_CONTAINER_PREFIX='apollo_dev_'
-DEV_CONTAINER="${DEV_CONTAINER_PREFIX}${USER}"
 DEV_INSIDE="in-dev-docker" # Hostname inside the container
 
 # Ensure cache dir exists early
@@ -73,17 +66,28 @@ DOCKER_MEMORY="${DOCKER_MEMORY:-8g}"
 # Default development image versions based on architecture and distribution
 # can be overridden by environment variables.
 DOCKER_IMAGE_REPO=${DOCKER_IMAGE_REPO:="apolloauto/apollo"}
+WHL_DOCKER_IMAGE_REPO=${WHL_DOCKER_IMAGE_REPO:="wheelos"}
 DOCKER_IMAGE_TAG_X86_64=${DOCKER_IMAGE_TAG_X86_64:="dev-x86_64-18.04-20221124_1708"}
-DOCKER_IMAGE_TAG_X86_64_TESTING=${DOCKER_IMAGE_TAG_X86_64_TESTING:="dev-x86_64-18.04-testing-20210112_0008"}
+DOCKER_IMAGE_TAG_X86_64_TESTING=${DOCKER_IMAGE_TAG_X86_64_TESTING:="dev-x86_64-20.04-20250710_2109"}
 DOCKER_IMAGE_TAG_AARCH64=${DOCKER_IMAGE_TAG_AARCH64:="dev-aarch64-20.04-20231024_1054"}
 
 # --- Script Global Variables (Modified by arguments/logic) ---
-DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:=""} # Default empty, will be set by arguments or overrided by environment variables
+DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:=""} # Default empty
 GEOLOC=""            # Default: auto-detect ('us', 'cn', 'none')
 SHM_SIZE="2G"        # Default shared memory size
 USE_LOCAL_IMAGE=1    # Flag to use local image (0 or 1)
 CUSTOM_DIST="stable" # Apollo distribution (stable/testing)
 USER_AGREED="no"     # Flag for Apollo License Agreement ('yes' or 'no')
+FORCE_PULL="no"      # Flag to force pull the image
+
+DEV_CONTAINER_USER_OVERRIDE=""
+
+# Variables for custom user/group inside container
+# These are internal script variables, not exported directly
+USER_IN_CONTAINER="${USER}"
+UID_IN_CONTAINER="$(id -u)"
+GROUP_IN_CONTAINER="$(id -g -n)"
+GID_IN_CONTAINER="$(id -g)"
 
 # --- Helper Functions ---
 
@@ -94,13 +98,17 @@ Usage: $0 [options] ...
 OPTIONS:
     -h, --help                  Display this help and exit.
     -g, --geo <us|cn|none>      Pull docker image from geolocation specific registry mirror.
-    -l, --local                 Use local docker image if available, skip pulling from remote.
     -t, --tag <TAG>             Specify docker image with tag <TAG> to start.
     -d, --dist <stable|testing> Specify Apollo distribution (stable/testing). Default: ${CUSTOM_DIST}.
     -n, --name <envname>        Specify the name of the docker container, default is current user name.
     --shm-size <bytes>          Size of /dev/shm. Passed directly to "docker run". Default: ${SHM_SIZE}.
+    --user <username>           Specify the username to use inside the container (default: current host user).
+    --uid <id>                  Specify the UID to use inside the container (default: current host UID).
+    --group <groupname>         Specify the groupname to use inside the container (default: current host group).
+    --gid <id>                  Specify the GID to use inside the container (default: current host GID).
+    --force-pull                Always pull the latest docker image, even if a local one exists.
     -y                          Agree to Apollo License Agreement non-interactively.
-    stop                        Stop all running Apollo containers for the current user.
+    stop                        Stop and remove all running Apollo containers for the current user.
 EOF
 }
 
@@ -142,31 +150,27 @@ function parse_arguments() {
                 optarg_check_for_opt "${opt}" "${geo_arg}"
                 ;;
 
-            -l | --local)
-                USE_LOCAL_IMAGE=1
-                ;;
-
             --user)
-                export CUSTOM_USER="$1"
+                USER_IN_CONTAINER="$1"
                 shift
                 ;;
 
             --uid)
-                export CUSTOM_UID="$1"
+                UID_IN_CONTAINER="$1"
                 shift
                 ;;
 
             --group)
-                export CUSTOM_GROUP="$1"
+                GROUP_IN_CONTAINER="$1"
                 shift
                 ;;
             --gid)
-                export CUSTOM_GID="$1"
+                GID_IN_CONTAINER="$1"
                 shift
                 ;;
 
             -n | --name)
-                DEV_CONTAINER="${DEV_CONTAINER_PREFIX}${1}"
+                DEV_CONTAINER_USER_OVERRIDE="$1"
                 shift
                 ;;
 
@@ -176,13 +180,17 @@ function parse_arguments() {
                 optarg_check_for_opt "${opt}" "${shm_size_arg}"
                 ;;
 
+            --force-pull)
+                FORCE_PULL="yes"
+                ;;
+
             -y)
                 user_agreed_arg="yes"
                 ;;
 
             stop)
-                info "Stopping all Apollo containers created by ${USER}..."
-                # Assuming remove_container_if_exists can stop running containers
+                info "Stopping and removing Apollo container '${DEV_CONTAINER}'..."
+                # Use DEV_CONTAINER specifically for this user's named container
                 remove_container_if_exists "${DEV_CONTAINER}" -f # Stop and remove force
                 exit 0
                 ;;
@@ -201,14 +209,21 @@ function parse_arguments() {
     [[ -n "${custom_dist_arg}" ]] && CUSTOM_DIST="${custom_dist_arg}"
     [[ -n "${shm_size_arg}" ]] && SHM_SIZE="${shm_size_arg}"
     USER_AGREED="${user_agreed_arg}"
+
+    # If --force-pull is set, disable USE_LOCAL_IMAGE check
+    if [[ "${FORCE_PULL}" == "yes" ]]; then
+        USE_LOCAL_IMAGE=0
+        info "Force pulling enabled. Local image check skipped."
+    fi
 }
 
 image_contains_registry() {
-    image="${1}"
+    local image="${1}"
     if [[ "${image}" =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z0-9-]+|localhost|([0-9]{1,3}\.){3}[0-9]{1,3})(:[0-9]+)?/ ]]; then
         echo "1" # Image contains a registry
+    else
+        echo "0" # Image does not contain a registry
     fi
-    echo "0" # Image does not contain a registry
 }
 
 # Determine the final Docker image tag based on architecture, distribution, or user override
@@ -237,7 +252,13 @@ function determine_dev_image() {
                 ;;
         esac
     fi
-    DEV_IMAGE="${DOCKER_IMAGE_REPO}:${version}"
+
+    if [[ "${CUSTOM_DIST}" == "testing" ]]; then
+        DEV_IMAGE="${WHL_DOCKER_IMAGE_REPO}/${version}"
+    else
+        DEV_IMAGE="${DOCKER_IMAGE_REPO}:${version}"
+    fi
+
     info "Determined development image: ${DEV_IMAGE}"
 }
 
@@ -339,7 +360,6 @@ function prepare_docker_volumes() {
         warning "If not, please create it with sudo manually:"
         warning "  sudo mkdir -p \"${BAZEL_CACHE_DIR}\""
         warning "Then re-run this script"
-        volumes+=" -v ${BAZEL_CACHE_DIR}:${BAZEL_CACHE_DIR}"
     fi
 
     # Optional: Mount NVIDIA specific directories for AARCH64 Jetson
@@ -365,38 +385,64 @@ function prepare_docker_volumes() {
 }
 
 # Pull Docker image, check local cache first if requested.
-# Includes geo-specific registry logic.
+# Args:
+#   $1: base_image_name (e.g., apolloauto/apollo:cyber-x86_64-20.04-20250709_2232)
+#   $2: Name of the variable in the caller's scope to store the final image name actually used/pulled.
 function docker_pull() {
-    local img_tag="$1"
-    local full_img="${img_tag}"
+    local base_image_name="$1"
+    local __final_image_var_name="$2"
 
-    # Add geo-specific registry if configured by geo_specific_config
-    if [[ -n "${GEO_REGISTRY:-}" ]] && [[ "$(image_contains_registry "${img_tag}")" == "0" ]]; then
-        full_img="${GEO_REGISTRY}/${img_tag}"
-        info "Using geo-specific registry: ${GEO_REGISTRY}"
+    local pull_candidate_image_name=""
+    if [[ "${CUSTOM_DIST}" == "testing" && "${TARGET_ARCH}" == "x86_64" ]]; then
+        pull_candidate_image_name="registry.cn-hangzhou.aliyuncs.com/${base_image_name}"
+    elif [[ -v GEO_REGISTRY && -n "${GEO_REGISTRY}" ]]; then
+        pull_candidate_image_name="${GEO_REGISTRY}/${base_image_name}"
     else
-        info "Using default registry for image: ${img_tag}"
+        pull_candidate_image_name="${base_image_name}"
     fi
+
+    local image_actually_used_or_pulled=""
+
+    local full_image_to_check_local="${pull_candidate_image_name}"
+    local base_image_to_check_local="${base_image_name}"
 
     if [[ "${USE_LOCAL_IMAGE}" -gt 0 ]]; then
-        info "Local image mode enabled. Checking for local image '${full_img}'."
-        # Using docker image inspect is a robust way to check for image existence
-        if docker image inspect "${full_img}" >/dev/null 2>&1; then
-            info "Local image '${full_img}' found. Using it."
+        info "Local image mode enabled. Checking for local image '${full_image_to_check_local}' or '${base_image_to_check_local}'."
+
+        # 1. Check if a local mirror with the GEO_REGISTRY prefix exists
+        if docker image inspect "${full_image_to_check_local}" >/dev/null 2>&1; then
+            info "Local image '${full_image_to_check_local}' found. Using it."
+            image_actually_used_or_pulled="${full_image_to_check_local}"
+            eval "${__final_image_var_name}='${image_actually_used_or_pulled}'"
             return 0 # Success
-        else
-            warning "Local image '${full_img}' not found. Falling back to pulling from remote."
         fi
+
+        # 2. If the image with the prefix does not exist, check if the original image without the registry prefix exists
+        if [[ "${full_image_to_check_local}" != "${base_image_to_check_local}" ]]; then
+            if docker image inspect "${base_image_to_check_local}" >/dev/null 2>&1; then
+                warning "Local image '${base_image_to_check_local}' found (without registry prefix). Using it."
+                image_actually_used_or_pulled="${base_image_to_check_local}"
+                eval "${__final_image_var_name}='${image_actually_used_or_pulled}'"
+                return 0 # Success
+            fi
+        fi
+
+        warning "Neither local image '${full_image_to_check_local}' nor '${base_image_to_check_local}' found. Falling back to pulling from remote."
     fi
 
-    info "Starting pull of docker image '${full_img}' ..."
-    # Add retry logic for pulling if needed
-    if ! docker pull "${full_img}"; then
-        error "Failed to pull docker image: '${full_img}'"
-        return 1 # Failure
+    # If we reach here, it means no local image was found and we need to pull from remote
+    info "Starting pull of docker image '${pull_candidate_image_name}' ..."
+    if ! docker pull "${pull_candidate_image_name}"; then
+        error "Failed to pull docker image: '${pull_candidate_image_name}'"
+        # Regardless of success or failure, also try to assign to prevent later script crashes,
+        # but it's safer to exit on failure.
+        return 1
     fi
-    info "Docker image '${full_img}' pulled successfully."
-    return 0 # Success
+
+    info "Docker image '${pull_candidate_image_name}' pulled successfully."
+    image_actually_used_or_pulled="${pull_candidate_image_name}"
+    eval "${__final_image_var_name}='${image_actually_used_or_pulled}'"
+    return 0
 }
 
 # --- Main Script Execution ---
@@ -409,27 +455,35 @@ function main() {
     parse_arguments "$@" # Parses arguments and sets global variables
 
     if [[ "${USER_AGREED}" != "yes" ]]; then
-        # check_agreement is assumed to be provided by docker_base.sh
         check_agreement
     fi
 
-    determine_dev_image "${DOCKER_IMAGE_TAG}" # Sets DEV_IMAGE
+    if [[ -n "${DEV_CONTAINER_USER_OVERRIDE}" ]]; then
+        # User specified a name with -n / --name
+        DEV_CONTAINER="${DEV_CONTAINER_USER_OVERRIDE}"
+    else
+        # No specific name, use prefix + determined user (from --user or host's $USER)
+        DEV_CONTAINER="${DEV_CONTAINER_PREFIX}${USER_IN_CONTAINER}"
+    fi
+
+    determine_dev_image "${DOCKER_IMAGE_TAG}" # Sets DEV_IMAGE (e.g., apolloauto/apollo:tag)
 
     determine_timezone_cn # Sets GEOLOC if not already set and timezone is CN
-    # geo_specific_config is assumed to be provided by docker_base.sh
-    # It might set GEO_REGISTRY based on GEOLOC
-    geo_specific_config "${GEOLOC}"
+    geo_specific_config "${GEOLOC}" # Sets GEO_REGISTRY if applicable
 
     # --- Phase 2: Docker Image and Container Preparation ---
     # docker_pull function now handles the full image name with registry and local check
-    if ! docker_pull "${DEV_IMAGE}"; then # Pass DEV_IMAGE (tag only), docker_pull adds registry
+    local FULL_IMAGE_NAME=""
+    if ! docker_pull "${DEV_IMAGE}" "FULL_IMAGE_NAME"; then
         error "Failed prerequisite: Docker image pull failed. Exiting."
         exit 1
     fi
 
     info "Removing existing Apollo Development container '${DEV_CONTAINER}' (if any)..."
     # remove_container_if_exists is assumed to be provided by docker_base.sh
-    # Use -f to force stop and remove if running
+    # Note: remove_container_if_exists should internally check if the container
+    # belongs to the current user (e.g. by checking labels or name conventions),
+    # or ensure it only affects the specific named container.
     remove_container_if_exists "${DEV_CONTAINER}" -f
 
     info "Determining whether host GPU is available..."
@@ -454,20 +508,16 @@ function main() {
         --shm-size "${SHM_SIZE}"
         -w /apollo             # Set working directory inside container
         --hostname "${DEV_INSIDE}" # Set hostname inside container for easy identification
-        --label "owner=${USER}" # Label container for easy filtering/management
+        --label "owner=${USER}" # Label container for easy filtering/management (host user)
     )
 
     # Add GPU options based on detection
     local gpu_opts=()
     if [[ "${USE_GPU_HOST}" -eq 1 ]]; then
-        info "Adding GPU options for NVIDIA."
-        # Using environment variables for compatibility, modern approach uses --gpus all
-        # If docker/nvidia-container-toolkit version supports it, replace env vars with:
-        # run_opts+=(--gpus all)
+        info "Adding GPU options for NVIDIA using '--gpus all'."
+        # Prefer --gpus all for modern Docker versions (>=19.03)
         gpu_opts=(
-            -e NVIDIA_VISIBLE_DEVICES=all
-            -e NVIDIA_DRIVER_CAPABILITIES=compute,video,graphics,utility
-            # -e DOCKER_HOST_GPU=1 # Custom env var if container needs to know GPU is available
+            --gpus all
         )
     else
         warning "GPU not detected or available on host. Skipping GPU options."
@@ -475,26 +525,18 @@ function main() {
 
     local local_host="$(hostname)"
     local display="${DISPLAY:-:0}" # Default DISPLAY if not set
-    local user="${CUSTOM_USER-$USER}"
-    local uid="${CUSTOM_UID-$(id -u)}"
-    local group="${CUSTOM_GROUP-$(id -g -n)}"
-    local gid="${CUSTOM_GID-$(id -g)}"
 
     # Define environment variables to pass into the container
-    # NOTE: This version does NOT pass any environment variables related to
-    # specific models, tools, or maps to be installed/downloaded.
     local env_opts=(
         -e DISPLAY="${display}"
-        -e DOCKER_USER="${user}"
-        -e USER="${user}"                        # Pass host username
-        -e DOCKER_USER_ID="${uid}"               # Pass host user ID
-        -e DOCKER_GRP="${group}"                 # Pass host group name
-        -e DOCKER_GRP_ID="${gid}"                # Pass host group ID
-        -e DOCKER_IMG="${DEV_IMAGE}"             # Original image name (tag only)
-        -e PYTHON_VERSION="${PYTHON_VERSION:-3}" # Assume Python 3 by default
-        -e USE_GPU_HOST="${USE_GPU_HOST}"        # Pass GPU availability status
+        -e DOCKER_USER="${USER_IN_CONTAINER}"        # Pass desired username for container
+        -e USER="${USER_IN_CONTAINER}"               # Also set general USER env var
+        -e DOCKER_USER_ID="${UID_IN_CONTAINER}"      # Pass desired UID for container
+        -e DOCKER_GRP="${GROUP_IN_CONTAINER}"        # Pass desired groupname for container
+        -e DOCKER_GRP_ID="${GID_IN_CONTAINER}"       # Pass desired GID for container
+        -e DOCKER_IMG="${DEV_IMAGE}"                 # Original image name (tag only)
+        -e USE_GPU_HOST="${USE_GPU_HOST}"            # Pass GPU availability status
         -e CROSS_PLATFORM="${CROSS_PLATFORM_FLAG:-}" # Pass cross-platform build flag if applicable
-        # Any other environment variables needed for the base container environment
     )
 
     # Define host entries to add to the container's /etc/hosts
@@ -515,15 +557,9 @@ function main() {
     )
 
     # --- Phase 4: Run the Container ---
-    local full_image_name="${DEV_IMAGE}" # Start with base image tag
-    if [[ -n "${GEO_REGISTRY:-}" ]] && [[ "$(image_contains_registry "${full_image_name}")" == "0" ]]; then
-        full_image_name="${GEO_REGISTRY}/${full_image_name}"
-    fi
-
-    info "Starting Docker container \"${DEV_CONTAINER}\" from image: ${full_image_name} ..."
+    info "Starting Docker container \"${DEV_CONTAINER}\" from image: ${FULL_IMAGE_NAME} ..."
     info "Using SHM_SIZE=${SHM_SIZE}, CPUS=${DOCKER_CPUS}, MEMORY=${DOCKER_MEMORY}"
-    # Be cautious printing all volumes if paths are sensitive
-    # info "Mounted volumes: ${standard_volumes}"
+    info "Container user: ${USER_IN_CONTAINER} (UID: ${UID_IN_CONTAINER}), Group: ${GROUP_IN_CONTAINER} (GID: ${GID_IN_CONTAINER})"
 
     # Print the command being executed for debugging before running
     set -x
@@ -536,7 +572,7 @@ function main() {
         "${env_opts[@]}" \
         "${host_opts[@]}" \
         "${volume_opts[@]}" \
-        "${full_image_name}"
+        "${FULL_IMAGE_NAME}"
     # No explicit command here, relying on the image's default ENTRYPOINT/CMD (likely /bin/bash)
 
     local docker_run_exit_code=$?
@@ -549,15 +585,15 @@ function main() {
         exit 1
     fi
 
-    # postrun_start_user is assumed to be provided by docker_base.sh
     # This function might attach to the container and run initial commands,
     # such as switching to the correct user or running a *very basic* setup script.
     # It should NOT attempt to install/download models/maps/tools in this minimal version.
     postrun_start_user "${DEV_CONTAINER}" # Pass container name, no specific setup args now
 
-    # TODO(All): a better rootless solution for the bazel cache directory
-    # ensure read-write permissions of the global bazel cache dir
-    execute_in_container "${DEV_CONTAINER}" "chmod a+rwx ${BAZEL_CACHE_DIR}"
+    # Ensure read-write permissions of the global bazel cache dir
+    # This is crucial if Docker created the directory with root-only permissions
+    # TODO(zero): need check if needed!
+    # execute_in_container "${DEV_CONTAINER}" "chmod a+rwx ${BAZEL_CACHE_DIR}"
 
     # --- Phase 5: Completion ---
     ok "Congratulations! Apollo Dev Environment container '${DEV_CONTAINER}' is running."

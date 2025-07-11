@@ -88,7 +88,7 @@ function determine_gpu_use_host() {
 
 function remove_container_if_exists() {
     local container="$1"
-    if docker ps -a --format '{{.Names}}' | grep -q "${container}"; then
+    if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
         info "Removing existing Apollo container: ${container}"
         docker stop "${container}" >/dev/null
         docker rm -v -f "${container}" 2>/dev/null

@@ -24,33 +24,25 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # Notes on Protobuf Installer:
 # 1) protobuf for cpp didn't need to be pre-installed into system
-# 2) protobuf for python should be provided for cyber testcases
+# 2) protobuf for python should be provided for cyber
 
 VERSION="29.0"
 
-PKG_NAME="protobuf-${VERSION}.tar.gz"
-CHECKSUM="10a0d58f39a1a909e95e00e8ba0b5b1dc64d02997f741151953a2b3659f6e78c"
-DOWNLOAD_LINK="https://github.com/protocolbuffers/protobuf/archive/refs/tags/v${VERSION}.tar.gz"
+PROTOC_NAME="protoc"
+CHECKSUM="c0eb373db646ac4850d34b8dfa40dbfcc3e96530b873dc8209c9a3f17be6a6c5"
+DOWNLOAD_LINK="https://github.com/wheelos/wheel.os/releases/download/v1.0.0/${PROTOC_NAME}"
+
+download_if_not_cached "$PROTOC_NAME" "$CHECKSUM" "$DOWNLOAD_LINK"
+sudo cp protoc /usr/local/bin/ && chmod +x /usr/local/bin/protoc
+
+PKG_NAME="protobuf.tar.gz"
+CHECKSUM="04ab708746c9d8b43f582056b43a3d7ea46c9ae1b05353b35354d9e35063c716"
+DOWNLOAD_LINK="https://github.com/wheelos/wheel.os/releases/download/v1.0.0/${PKG_NAME}"
 
 download_if_not_cached "$PKG_NAME" "$CHECKSUM" "$DOWNLOAD_LINK"
-
-tar xzf ${PKG_NAME}
-
-pushd protobuf-${VERSION}
-
-# Install protoc compiler.
-bazel build :protoc :protobuf
-sudo cp bazel-bin/protoc /usr/local/bin
-
-# Add in "cyber/setup.bash" to set up the environment.
-# export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-
-bazel build //python/dist:source_wheel
-pip install bazel-bin/python/dist/protobuf-*.tar.gz
-
-popd
+pip3_install ${PKG_NAME}
 
 ok "Successfully installed protobuf, VERSION=${VERSION}"
 
 # Clean up.
-rm -fr ${PKG_NAME}  protobuf-${VERSION}
+rm -fr ${PROTOC_NAME} ${PKG_NAME}

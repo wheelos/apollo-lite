@@ -24,23 +24,11 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
 TARGET_ARCH="$(uname -m)"
 
-# apt-get -y update && \
-#     apt-get -y install \
-#     ncurses-dev \
-#     libuuid1 \
-#     uuid-dev
-
-info "Install protobuf ..."
-# bash ${CURR_DIR}/install_protobuf.sh
-
 info "Install fast-rtps ..."
 bash ${CURR_DIR}/install_fast-rtps.sh
 
-# absl
-# bash ${CURR_DIR}/install_abseil.sh
-
-# gflags and glog
-# bash ${CURR_DIR}/install_gflags_glog.sh
+# Python protobuf deps
+bash ${CURR_DIR}/install_protobuf_release.sh
 
 # Clean up cache to reduce layer size.
 apt-get clean && \

@@ -22,14 +22,18 @@ set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./installer_base.sh
 
-# Ref https://classic.yarnpkg.com/en/docs/install/#debian-stable
-# Don't use tee here. It complains
-# "Warning: apt-key output should not be parsed (stdout is not a terminal)"
-# otherwise.
+# Install Yarn using the recommended method for modern Debian/Ubuntu
+# Ref: https://yarnpkg.com/getting-started/install#debian-ubuntu-linux
 
-curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
+info "Installing yarn ..."
 
+# 1. Download and dearmor the GPG key, then save it to /usr/share/keyrings/
+curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /usr/share/keyrings/yarn-archive-keyring.gpg >/dev/null
+
+# 2. Add the Yarn repository to sources.list.d, referencing the new keyring file
+echo "deb [signed-by=/usr/share/keyrings/yarn-archive-keyring.gpg] https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list >/dev/null
+
+# 3. Update apt and install yarn
 apt_get_update_and_install yarn
 
 info "Successfully installed yarn"

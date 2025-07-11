@@ -380,7 +380,6 @@ function main() {
     esac
   done
 
-  set -x
   if [[ "${DIFF_MODE}" -eq 1 && -z "${BASE_COMMIT}" ]]; then
     if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
       local merge_base

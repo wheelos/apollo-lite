@@ -35,15 +35,6 @@ apt_get_update_and_install \
 
 pip3_install -r py3_requirements.txt
 
-# Since pypcd installed via `pip install` only works with python2.7,
-# we can only install it this way
-git clone https://github.com/DanielPollithy/pypcd
-
-pushd pypcd >/dev/null
-    make install
-popd >/dev/null
-rm -rf pypcd
-
 if [[ -n "${CLEAN_DEPS}" ]]; then
     apt_get_remove libhdf5-dev
     apt_get_update_and_install \

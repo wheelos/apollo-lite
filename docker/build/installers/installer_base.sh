@@ -94,31 +94,6 @@ function apollo_environ_setup() {
 
 apollo_environ_setup
 
-# We only accept predownloaded git tarballs with format
-# "pkgname.git.53549ad.tgz" or "pkgname_version.git.53549ad.tgz"
-function package_schema {
-    local __link=$1
-    local schema="http"
-
-    if [[ "${__link##*.}" == "git" ]] ; then
-        schema="git"
-        echo $schema
-        return
-    fi
-
-    IFS='.' # dot(.) is set as delimiter
-
-    local __pkgname=$2
-    read -ra __arr <<< "$__pkgname" # Array of tokens separated by IFS
-    if [[ ${#__arr[@]} -gt 3 ]] && [[ "${__arr[-3]}" == "git" ]] \
-        && [[ ${#__arr[-2]} -eq 7 ]] ; then
-        schema="git"
-    fi
-    IFS=' ' # reset to default value after usage
-
-    echo "$schema"
-}
-
 function create_so_symlink() {
     local mydir="$1"
     for mylib in $(find "${mydir}" -name "lib*.so.*" -type f); do
@@ -136,59 +111,83 @@ function create_so_symlink() {
 }
 
 function _local_http_cached() {
-    if /usr/bin/curl -sfI "${LOCAL_HTTP_ADDR}/$1"; then
-        return
-    fi
-    false
+  curl -sfI "${LOCAL_HTTP_ADDR}/$1" >/dev/null
 }
 
 function _checksum_check_pass() {
-    local pkg="$1"
-    local expected_cs="$2"
-    # sha256sum was provided by coreutils
-    local actual_cs=$(/usr/bin/sha256sum "${pkg}" | awk '{print $1}')
-    if [[ "${actual_cs}" == "${expected_cs}" ]]; then
-        true
-    else
-        warning "$(basename ${pkg}): checksum mismatch, ${expected_cs}" \
-                "exected, got: ${actual_cs}"
-        false
-    fi
+  local pkg="$1" expected="$2"
+  local actual
+  actual=$(sha256sum "$pkg" | awk '{print $1}')
+  if [[ "$actual" == "$expected" ]]; then
+    true
+  else
+    warning "$(basename "$pkg"): checksum mismatch — expected $expected, got $actual"
+    false
+  fi
 }
 
-function download_if_not_cached {
-    local pkg_name="$1"
-    local expected_cs="$2"
-    local url="$3"
+# We only accept predownloaded git tarballs with format
+# "pkgname.git.53549ad.tgz" or "pkgname_version.git.53549ad.tgz"
+function package_schema() {
+  local link=$1 name=$2
+  if [[ "${link##*.}" == "git" ]]; then
+    echo git; return
+  fi
+  IFS='.' read -ra parts <<< "$name"; IFS=' '
+  if [[ ${#parts[@]} -gt 3 && "${parts[-3]}" == "git" && ${#parts[-2]} -eq 7 ]]; then
+    echo git
+  else
+    echo http
+  fi
+}
 
-    echo -e "${pkg_name}\t${expected_cs}\t${url}" >> "${DOWNLOAD_LOG}"
+function download_if_not_cached() {
+  local pkg="$1" expected_cs="$2" url="$3"
+  echo -e "${pkg}\t${expected_cs}\t${url}" >> "${DOWNLOAD_LOG}"
 
-    if _local_http_cached "${pkg_name}" ; then
-        local local_addr="${LOCAL_HTTP_ADDR}/${pkg_name}"
-        info "Local http cache hit ${pkg_name}..."
-        wget "${local_addr}" -O "${pkg_name}"
-        if _checksum_check_pass "${pkg_name}" "${expected_cs}"; then
-            ok "Successfully downloaded ${pkg_name} from ${LOCAL_HTTP_ADDR}," \
-               "will use it."
-            return
-        else
-            warning "Found ${pkg_name} in local http cache, but checksum mismatch."
-            rm -f "${pkg_name}"
-        fi
-    fi # end http cache check
-
-    local my_schema
-    my_schema=$(package_schema "$url" "$pkg_name")
-
-    if [[ "$my_schema" == "http" ]]; then
-        info "Start to download $pkg_name from ${url} ..."
-        wget "$url" -O "$pkg_name"
-        ok "Successfully downloaded $pkg_name"
-    elif [[ "$my_schema" == "git" ]]; then
-        info "Clone into git repo $url..."
-        git clone  "${url}" --branch master --recurse-submodules --single-branch
-        ok "Successfully cloned git repo: $url"
+  # Get from local cache
+  if _local_http_cached "$pkg"; then
+    info "Local cache hit: $pkg"
+    wget -q --no-dns-cache -4 "${LOCAL_HTTP_ADDR}/$pkg" -O "$pkg"
+    if _checksum_check_pass "$pkg" "$expected_cs"; then
+      ok "Fetched $pkg from cache"
+      return
     else
-        error "Unknown schema for package \"$pkg_name\", url=\"$url\""
+      rm -f "$pkg"
     fi
+  fi
+
+  local schema
+  schema=$(package_schema "$url" "$pkg")
+
+  case "$schema" in
+    http)
+      info "Downloading $pkg from $url"
+      wget -q --tries=3 --timeout=30 --no-dns-cache -4 -N "$url" -O "$pkg"
+      if ! _checksum_check_pass "$pkg" "$expected_cs"; then
+        error "Checksum failed for $pkg"
+      fi
+      ;;
+    git)
+      info "Cloning git repo $url (shallow)"
+      git clone --depth 1 --branch master --single-branch --recurse-submodules "$url" "$pkg.git"
+      ok "Cloned $pkg"
+      ;;
+    *)
+      error "Unknown schema '$schema' for $pkg"
+      ;;
+  esac
+
+  # After downloading, save to local cache
+  case "$schema" in
+    http)
+      cp -f "$pkg" "${LOCAL_CACHE_DIR}/$pkg"
+      ;;
+    git)
+      tar czf "${pkg}.git.tgz" "$pkg.git"
+      cp -f "${pkg}.git.tgz" "${LOCAL_CACHE_DIR}/"
+      rm -rf "$pkg.git"
+      ;;
+  esac
+  ok "Cached $pkg into $LOCAL_CACHE_DIR"
 }

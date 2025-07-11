@@ -16,61 +16,120 @@
 # limitations under the License.
 ###############################################################################
 
-# Fail on first error.
-set -e
+# Exit on error, treat unset variables as errors, print commands as they execute.
+set -eux
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+# Change to script directory and source base installer functions.
+SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+cd "${SCRIPT_DIR}"
 . ./installer_base.sh
 
+# Directory containing rcfiles (e.g., sources.list variants).
+RCFILES_DIR="/opt/apollo/rcfiles"
+
+# ============================
+# Parse and validate arguments
+# ============================
+# Get geolocation parameter from first argument.
+MY_GEO="${1:-}"
+if [[ -z "${MY_GEO}" ]]; then
+  error "Error: Geolocation parameter (MY_GEO) is required."
+  exit 1
+fi
+
+info "Starting geo-adjustment for geolocation: ${MY_GEO^^}"
+
+# Detect system architecture (e.g., x86_64, aarch64).
 TARGET_ARCH="$(uname -m)"
-MY_GEO=$1; shift
+info "Detected system architecture: ${TARGET_ARCH}"
 
-info "My geolocation is ${MY_GEO}"
-
-###
-# Function to configure APT sources
-# Uses geo and architecture to select the appropriate sources.list file.
-# Prioritizes file-based configuration for consistency and clarity.
-###
+# ============================
+# APT source configuration
+# ============================
+# Select and install the appropriate APT sources.list file based on geolocation and architecture.
+# Priority:
+#   1. sources.list.<geo>.<arch>
+#   2. sources.list.default.<arch>
+#   3. sources.list.default
 configure_apt_sources() {
-    local geo=$1
-    local arch=$2
-    local sources_file="${RCFILES_DIR}/sources.list.${geo}.${arch}"
-    local default_sources_file="${RCFILES_DIR}/sources.list.default.${arch}" # Add a default sources file
+  local geo="$1"
+  local arch="$2"
+  local sources_list_file="/etc/apt/sources.list"
 
-    info "Attempting to configure APT sources for ${geo^^} (${arch})..."
+  local preferred_sources=(
+    "${RCFILES_DIR}/sources.list.${geo}.${arch}"
+    "${RCFILES_DIR}/sources.list.default.${arch}"
+    "${RCFILES_DIR}/sources.list.default"
+  )
 
-    if [[ -f "${sources_file}" ]]; then
-        cp -f "${sources_file}" /etc/apt/sources.list
-        info "Successfully configured APT sources for ${geo^^} (${arch}) from file: ${sources_file}"
-    else
-        error "No specific or default APT sources file found for ${geo^^} (${arch}). Please check ${RCFILES_DIR}."
+  info "Configuring APT sources for ${geo^^} (${arch})..."
+
+  local found_source_file=""
+  for file in "${preferred_sources[@]}"; do
+    if [[ -f "${file}" ]]; then
+      found_source_file="${file}"
+      break
     fi
+  done
+
+  if [[ -n "${found_source_file}" ]]; then
+    info "Using APT sources file: ${found_source_file}"
+    install -m 0644 "${found_source_file}" "${sources_list_file}" || \
+      error "Failed to copy APT sources file '${found_source_file}' to '${sources_list_file}'."
+  else
+    warn "No suitable APT sources file found for ${geo^^} (${arch})."
+    warn "APT sources remain as default; downloads may be slow."
+    # Uncomment below to enforce sources file requirement:
+    # error "Critical: No suitable APT sources file found. Exiting."
+    # exit 1
+  fi
 }
 
-###
-# Function to configure PyPI mirror
-# Sets the global index-url for pip and upgrades pip using the configured mirror.
-# Handles both 'cn' for Tsinghua and 'us' for the official PyPI.
-###
+# ============================
+# PyPI mirror configuration
+# ============================
+# Set pip global index-url to a mirror based on geolocation.
+# Upgrades pip using the selected mirror.
 configure_pypi_mirror() {
-    local geo=$1
-    local pypi_mirror
+  apt_get_update_and_install python3 python3-pip python3-dev
 
-    if [[ "${geo}" == "cn" ]]; then
-        pypi_mirror="https://pypi.tuna.tsinghua.edu.cn/simple"
-        info "Setting PyPI mirror to Tsinghua: ${pypi_mirror}"
-    else # us or any other geo defaults to official
-        pypi_mirror="https://pypi.org/simple"
-        info "Setting PyPI mirror to official PyPI: ${pypi_mirror}"
-    fi
+  local geo="${1,,}"
+  local pypi_mirror
 
-    # Set the global index-url for pip
-    python3 -m pip config set global.index-url "$pypi_mirror"
+  case "${geo}" in
+    cn)
+      pypi_mirror="https://pypi.tuna.tsinghua.edu.cn/simple"
+      info "Setting PyPI mirror to Tsinghua: ${pypi_mirror}"
+      ;;
+    us|"")
+      pypi_mirror="https://pypi.org/simple"
+      info "Setting PyPI mirror to official PyPI: ${pypi_mirror}"
+      ;;
+    *)
+      pypi_mirror="https://pypi.org/simple"
+      warn "Unsupported geolocation '${geo}' for PyPI mirror. Defaulting to official PyPI: ${pypi_mirror}"
+      ;;
+  esac
+
+  info "Upgrading pip using the configured mirror..."
+
+  if ! python3 -m pip config set global.index-url "${pypi_mirror}"; then
+    error "Failed to configure PyPI index-url."
+  fi
+
+  pip3_install -U setuptools || warning "Failed to upgrade setuptools."
+  pip3_install -U wheel || warning "Failed to upgrade wheel."
+
+  # Minimal cleanup
+  info "--- Performing minimal cleanup ---"
+  apt-get clean || warn "Failed to clean apt cache."
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* || warn "Failed to remove temporary files."
 }
 
-# Configure APT sources based on geolocation and architecture
+# ============================
+# Execute configuration steps
+# ============================
 configure_apt_sources "${MY_GEO}" "${TARGET_ARCH}"
-
-# Configure PyPI mirror based on geolocation
 configure_pypi_mirror "${MY_GEO}"
+
+info "Geolocation adjustment script finished."

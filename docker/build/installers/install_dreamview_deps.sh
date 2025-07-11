@@ -18,14 +18,12 @@
 # Fail on first error.
 set -e
 
-GEOLOC="${1:-us}"
+GEOLOC="${1:-cn}"
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
 apt_get_update_and_install \
-    # libtinyxml2-dev \
-    # libpng-dev \
     nasm
 
 # NodeJS

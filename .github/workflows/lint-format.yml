@@ -60,7 +60,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           echo "Running apollo_lint.sh in diff mode for PR..."
-          ${{ github.workspace }}/scripts/ci/apollo_ci.sh --all --diff origin/${{ github.base_ref }}
+          ${{ github.workspace }}/scripts/ci/apollo_lint.sh --all --diff origin/${{ github.base_ref }}
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
 
@@ -68,4 +68,4 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           echo "Running apollo_lint.sh in full mode for push to main branch..."
-          ${{ github.workspace }}/scripts/ci/apollo_ci.sh --all
+          ${{ github.workspace }}/scripts/ci/apollo_lint.sh --all
