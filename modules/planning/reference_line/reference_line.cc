@@ -789,10 +789,14 @@ std::string ReferenceLine::DebugString() const {
       std::min(reference_points_.size(),
                static_cast<size_t>(FLAGS_trajectory_point_num_for_debug));
   return absl::StrCat(
-      "point num:", reference_points_.size(),
+      "speed_limit num:", speed_limit_.size(),
+      absl::StrJoin(speed_limit_.begin(), speed_limit_.end(), "\n",
+                    apollo::common::util::DebugStringFormatter()),
+      "reference_points num:", reference_points_.size(),
       absl::StrJoin(reference_points_.begin(),
-                    reference_points_.begin() + limit, "",
-                    apollo::common::util::DebugStringFormatter()));
+                    reference_points_.begin() + limit, "\n",
+                    apollo::common::util::DebugStringFormatter()),
+      "priority: ", priority_);
 }
 
 double ReferenceLine::GetSpeedLimitFromS(const double s) const {

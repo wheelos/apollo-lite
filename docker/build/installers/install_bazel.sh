@@ -11,7 +11,7 @@ TARGET_ARCH=$(uname -m)
 
 # Get Bazel version from file
 CURR_DIR="$(pwd -P)"
-BAZEL_VERSION=$(<"${CURR_DIR}/../../../.bazelversion")
+BAZEL_VERSION="$(cat "${CURR_DIR}/../../../.bazelversion" 2>/dev/null || echo "7.6.1")"
 SYSROOT_BIN_DIR="${SYSROOT_DIR}/bin"
 
 install_bazel() {
@@ -44,7 +44,7 @@ echo "Installing Bazel ${BAZEL_VERSION}..."
 case "$TARGET_ARCH" in
   x86_64)
     BAZEL_PKG="bazel_${BAZEL_VERSION}-linux-x86_64.deb"
-    BAZEL_CHECKSUM="ac6249d1192aea9feaf49dfee2ab50c38cee2454b00cf29bbec985a11795c025"
+    BAZEL_CHECKSUM="25c883d24ceb2e63c6d89abfd634e7a940ad08e548e994f412f8b00598aefaed"
     install_bazel "${BAZEL_PKG}" "${BAZEL_CHECKSUM}"
     ;;
 

@@ -22,15 +22,6 @@ set -e
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
-# apt_get_update_and_install \
-#     git \
-#     vim \
-#     silversearcher-ag
-
-# More:
-# lrzsz
-
-
 # Note(storypku):
 # patchelf was required for release build. We choose to build patchelf
 # from source, as the apt-provided version 0.9-1 will create holes in

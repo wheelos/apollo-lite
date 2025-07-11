@@ -26,6 +26,7 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 bash ${CURR_DIR}/install_opencv.sh
 bash ${CURR_DIR}/install_adv_plat.sh "${MY_MODE}"
 bash ${CURR_DIR}/install_proj.sh
+bash ${CURR_DIR}/install_openh264.sh
 
 # Required by Python audio driver
 # apt_get_update_and_install \

@@ -32,7 +32,7 @@ install(
         #"cyber/proto/py_pb2.BUILD": "BUILD",
     },
     deps = [
-        "//cyber/python/cyber_py3:cyber_python_library",
+        # "//cyber/python/cyber_py3:cyber_python_library",
         #"//cyber/proto:pb_cyber",
         #"//cyber/proto:cyber_proto_hdrs",
         #"//cyber/proto:cyber_proto_so",

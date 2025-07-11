@@ -1,4 +1,6 @@
 load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
+load("@rules_python//python:packaging.bzl", "py_package", "py_wheel", "py_wheel_dist")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -58,7 +60,7 @@ install(
         "//modules/common_msgs/map_msgs:map_signal_cc_proto",
         "//modules/common_msgs/map_msgs:map_speed_bump_cc_proto",
         "//modules/common_msgs/map_msgs:map_speed_control_cc_proto",
-	    "//modules/common_msgs/drivers_msgs:can_card_parameter_cc_proto",
+	      "//modules/common_msgs/drivers_msgs:can_card_parameter_cc_proto",
         "//modules/common_msgs/map_msgs:map_stop_sign_cc_proto",
         "//modules/common_msgs/map_msgs:map_yield_sign_cc_proto",
         "//modules/common_msgs/map_msgs:map_cc_proto",
@@ -103,8 +105,7 @@ install(
         "//modules/common_msgs/v2x_msgs:v2x_traffic_light_cc_proto",
         "//modules/common_msgs/monitor_msgs:monitor_log_cc_proto",
         "//modules/common_msgs/config_msgs:vehicle_config_cc_proto",
-    ],
-    deps = [":pb_py"]
+    ]
 )
 
 install_src_files(
@@ -114,10 +115,33 @@ install_src_files(
     filter = "*",
 )
 
-install_files(
-    name = "pb_py",
-    dest = "common-msgs/python/modules/common_msgs",
-    files = [
+
+py_package(
+    name = "common_msgs_py_package",
+    packages = ["whl_msgs"],
+    deps = [
+        ":common_msgs_py_pb2",
+    ],
+)
+
+
+py_wheel(
+    name = "whl_msgs_wheel",
+    distribution = "whl_msgs",
+    version = "0.1.0",
+    python_tag = "py3",
+    deps = [":common_msgs_py_package"],
+)
+
+py_wheel_dist(
+    name = "whl_msgs_dist",
+    wheel = ":whl_msgs_wheel",
+    out = "dist",
+)
+
+py_library(
+    name = "common_msgs_py_pb2",
+    deps = [
         "//modules/common_msgs/audio_msgs:audio_common_py_pb2",
         "//modules/common_msgs/audio_msgs:audio_event_py_pb2",
         "//modules/common_msgs/audio_msgs:audio_py_pb2",

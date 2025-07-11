@@ -16,86 +16,132 @@
 # limitations under the License.
 ###############################################################################
 
-# Fail on first error.
-set -e
+set -eux
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+# Go to script directory and source base installer functions
+SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+cd "${SCRIPT_DIR}"
 . ./installer_base.sh
 
-ARCH="$(uname -m)"
+# Argument parsing
+INSTALL_MODE="dev"
+COMPUTE_MODE="cpu"
+ARCH_OVERRIDE="auto"
 
-MY_STAGE=""
-if [[ -f /etc/apollo.conf ]]; then
-    MY_STAGE="$(awk -F '=' '/^stage=/ {print $2}' /etc/apollo.conf 2>/dev/null)"
-    echo "Detected Apollo config, current stage: ${MY_STAGE}"
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --install-mode)
+      INSTALL_MODE="$2"
+      shift
+      ;;
+    --compute-mode)
+      COMPUTE_MODE="$2"
+      shift
+      ;;
+    --arch-mode)
+      ARCH_OVERRIDE="$2"
+      shift
+      ;;
+    *)
+      error "Unknown parameter passed: $1"
+      ;;
+  esac
+  shift
+done
+
+info "Starting minimal environment installation with:"
+info "  INSTALL_MODE: ${INSTALL_MODE}"
+info "  COMPUTE_MODE: ${COMPUTE_MODE}"
+info "  ARCH_OVERRIDE: ${ARCH_OVERRIDE}"
+
+# Architecture detection
+CURRENT_ARCH="$(uname -m)"
+TARGET_ARCH="${ARCH_OVERRIDE}"
+
+if [[ "${TARGET_ARCH}" == "auto" ]]; then
+  TARGET_ARCH="${CURRENT_ARCH}"
+  info "Auto-detected architecture: ${TARGET_ARCH}"
 fi
 
-# Disabled:
-#   apt-file
+if [[ "${TARGET_ARCH}" != "x86_64" && "${TARGET_ARCH}" != "aarch64" ]]; then
+  error "Unsupported architecture detected or specified: ${TARGET_ARCH}. Must be x86_64 or aarch64."
+fi
+
+# Base dependencies (all modes)
+info "--- Installing base system dependencies ---"
 apt_get_update_and_install \
-    apt-utils \
-    bc      \
-    curl    \
-    file    \
-    gawk    \
-    less    \
-    lsof    \
-    python3     \
-    python3-pip \
-    python3-distutils \
-    sed         \
-    software-properties-common \
-    sudo    \
-    unzip   \
-    vim     \
-    wget    \
-    zip     \
-    xz-utils
+  apt-utils\
+  bc \
+  curl \
+  file \
+  gawk \
+  less \
+  lsof \
+  sed \
+  software-properties-common \
+  sudo \
+  unzip \
+  vim \
+  wget \
+  zip \
+  xz-utils \
+  zlib1g-dev # bazel deps
 
-if [[ "${ARCH}" == "aarch64" ]]; then
-    apt-get -y install kmod
+# Architecture-specific dependencies
+if [[ "${TARGET_ARCH}" == "aarch64" ]]; then
+  info "--- Installing aarch64 specific dependencies ---"
+  apt_get_update_and_install kmod
 fi
 
-if [[ "${MY_STAGE}" != "runtime" ]]; then
-    apt_get_update_and_install \
-        build-essential \
-        autoconf    \
-        automake    \
-        gdb         \
-        libtool     \
-        patch       \
-        pkg-config      \
-        python3-dev     \
-        libexpat1-dev   \
-        linux-libc-dev
-    # Note(storypku):
-    # Set the last two packages to manually installed:
-    #   libexpat1-dev was required by python3-dev
-    #   linux-libc-dev was required by bazel/clang/cuda/...
+# Dev/build tools (dev mode only)
+if [[ "${INSTALL_MODE}" == "dev" ]]; then
+  info "--- Installing development/build tools (dev mode) ---"
+  apt_get_update_and_install \
+    build-essential \
+    autoconf \
+    automake \
+    gdb \
+    libtool \
+    patch \
+    pkg-config \
+    linux-libc-dev
+else
+  info "--- Skipping development/build tools (runtime mode) ---"
 fi
 
-##----------------##
-##    SUDO        ##
-##----------------##
-echo "--- Configure Sudo: Allow sudo group to execute commands without password ---"
-sed -i /etc/sudoers -re 's/^%sudo.*/%sudo ALL=(ALL:ALL) NOPASSWD: ALL/g'
+# Sudo configuration
+info "--- Configuring Sudo: Allow sudo group to execute commands without password ---"
+sudoers_file="/etc/sudoers"
+if ! grep -q "^%sudo ALL=(ALL:ALL) NOPASSWD: ALL$" "${sudoers_file}"; then
+  sed -i -e '/^%sudo.*/d' -e '$a\%sudo ALL=(ALL:ALL) NOPASSWD: ALL' "${sudoers_file}" || \
+    error "Failed to configure sudoers. Manual intervention may be required."
+  info "Sudoers configured for NOPASSWD for sudo group."
+else
+  info "Sudoers already configured for NOPASSWD for sudo group."
+fi
 
-##----------------##
-## default shell  ##
-##----------------##
-echo "--- Set default shell to Bash ---"
-# chsh changes the default shell for the current user
-chsh -s /bin/bash
-# Create a symlink from /bin/sh to /bin/bash to ensure scripts using #!/bin/sh run in Bash.
-# Only do this if your scripts depend on Bash features.
-ln -sf /bin/bash /bin/sh
+# link Python 3 to /usr/bin/python
+sudo ln -s /usr/bin/python3 /usr/bin/python
 
-pip3_install -U setuptools
-pip3_install -U wheel
+# Default shell configuration
+info "--- Setting default shell to Bash ---"
+chsh -s /bin/bash || warning "Failed to change default shell for current user to /bin/bash."
 
-# Kick down the ladder
-apt-get -y autoremove python3-pip
+if [[ -L /bin/sh && "$(readlink /bin/sh)" != "/bin/bash" ]]; then
+  warning "Symbolic link /bin/sh points to $(readlink /bin/sh). Recreating symlink to /bin/bash."
+  rm /bin/sh || error "Failed to remove existing /bin/sh symlink."
+  ln -sf /bin/bash /bin/sh || error "Failed to create /bin/sh symlink to /bin/bash."
+elif [[ ! -L /bin/sh ]]; then
+  info "/bin/sh is not a symlink. Creating symlink to /bin/bash."
+  ln -sf /bin/bash /bin/sh || error "Failed to create /bin/sh symlink to /bin/bash."
+else
+  info "/bin/sh already points to /bin/bash."
+fi
 
-# Clean up cache to reduce layer size.
-apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Cleanup
+info "--- Performing minimal cleanup ---"
+apt-get clean || warning "Failed to clean apt cache."
+rm -rf /var/lib/apt/lists/* || warning "Failed to remove apt lists."
+rm -rf /tmp/* /var/tmp/* || warning "Failed to remove temporary files."
+
+info "Minimal environment installation completed successfully."

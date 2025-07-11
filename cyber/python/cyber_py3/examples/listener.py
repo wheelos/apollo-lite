@@ -42,7 +42,7 @@ def test_listener_class():
     test_node.spin()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cyber.init()
     test_listener_class()
     cyber.shutdown()

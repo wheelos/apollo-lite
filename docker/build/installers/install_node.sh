@@ -36,7 +36,7 @@ tar xzf "${PKG_NAME}"
 info "Install Node for $geo ..."
 
 if [[ "${geo}" == "cn" ]]; then
-    export N_NODE_MIRROR=https://npm.taobao.org/mirrors/node
+    export N_NODE_MIRROR=https://npmmirror.com/mirrors/node
 fi
 
 pushd n-${VERSION}

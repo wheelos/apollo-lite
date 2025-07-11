@@ -45,19 +45,19 @@ except ImportError:
     from distutils.spawn import find_executable as which
 # pylint: enable=g-import-not-at-top
 
-_DEFAULT_CUDA_VERSION = '10'
-_DEFAULT_CUDNN_VERSION = '7'
-_DEFAULT_TENSORRT_VERSION = '7'
-_DEFAULT_CUDA_COMPUTE_CAPABILITIES = '3.7,5.2,6.0,6.1,7.0,7.2,7.5'
-_DEFAULT_PYTHON_LIB_PATH = '/usr/lib/python3/dist-packages'
+_DEFAULT_CUDA_VERSION = "10"
+_DEFAULT_CUDNN_VERSION = "7"
+_DEFAULT_TENSORRT_VERSION = "7"
+_DEFAULT_CUDA_COMPUTE_CAPABILITIES = "3.7,5.2,6.0,6.1,7.0,7.2,7.5"
+_DEFAULT_PYTHON_LIB_PATH = "/usr/lib/python3/dist-packages"
 
 _DEFAULT_PROMPT_ASK_ATTEMPTS = 3
 
-_APOLLO_ROOT_DIR = ''
-_APOLLO_BAZELRC = '.apollo.bazelrc'
+_APOLLO_ROOT_DIR = ""
+_APOLLO_BAZELRC = ".apollo.bazelrc"
 
 _APOLLO_CURRENT_BAZEL_VERSION = None
-_APOLLO_MIN_BAZEL_VERSION = '2.0.0'
+_APOLLO_MIN_BAZEL_VERSION = "2.0.0"
 _APOLLO_INSIDE_DOCKER = True
 _APOLLO_DOCKER_STAGE = "dev"
 
@@ -69,11 +69,11 @@ class UserInputError(Exception):
 
 
 def is_linux():
-    return platform.system() == 'Linux'
+    return platform.system() == "Linux"
 
 
 def inside_docker():
-    return os.path.isfile('/.dockerenv')
+    return os.path.isfile("/.dockerenv")
 
 
 def docker_stage():
@@ -95,8 +95,8 @@ def docker_stage():
 def default_root_dir():
     current_dir = os.path.dirname(__file__)
     if len(current_dir) == 0:
-        current_dir = '.'
-    return os.path.abspath(os.path.join(current_dir, '..'))
+        current_dir = "."
+    return os.path.abspath(os.path.join(current_dir, ".."))
 
 
 def get_input(question):
@@ -106,29 +106,29 @@ def get_input(question):
         except NameError:
             answer = input(question)  # pylint: disable=bad-builtin
     except EOFError:
-        answer = ''
+        answer = ""
     return answer
 
 
 def str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+    if v.lower() in ("yes", "true", "t", "y", "1"):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    elif v.lower() in ("no", "false", "f", "n", "0"):
         return False
     else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+        raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
 def write_to_bazelrc(line):
-    with open(_APOLLO_BAZELRC, 'a') as f:
-        f.write(line + '\n')
+    with open(_APOLLO_BAZELRC, "a") as f:
+        f.write(line + "\n")
 
 
 def write_blank_line_to_bazelrc():
-    with open(_APOLLO_BAZELRC, 'a') as f:
-        f.write('\n')
+    with open(_APOLLO_BAZELRC, "a") as f:
+        f.write("\n")
 
 
 def write_action_env_to_bazelrc(var_name, var):
@@ -138,8 +138,7 @@ def write_action_env_to_bazelrc(var_name, var):
 def write_build_var_to_bazelrc(bazel_config_name, option_name):
     # TODO(build): Migrate all users of configure.py to use --config Bazel
     # options and not to set build configs through environment variables.
-    write_to_bazelrc('build:%s --define %s=true' % (bazel_config_name,
-                                                    option_name))
+    write_to_bazelrc("build:%s --define %s=true" % (bazel_config_name, option_name))
 
 
 def run_shell(cmd, allow_non_zero=False, stderr=None):
@@ -158,23 +157,28 @@ def run_shell(cmd, allow_non_zero=False, stderr=None):
 def get_python_path(environ_cp, python_bin_path):
     """Get the python site package paths."""
     python_paths = []
-    if environ_cp.get('PYTHONPATH'):
-        python_paths = environ_cp.get('PYTHONPATH').split(':')
+    if environ_cp.get("PYTHONPATH"):
+        python_paths = environ_cp.get("PYTHONPATH").split(":")
     try:
-        stderr = open(os.devnull, 'wb')
+        stderr = open(os.devnull, "wb")
         library_paths = run_shell(
             [
-                python_bin_path, '-c',
-                'import site; print("\\n".join(site.getsitepackages()))'
+                python_bin_path,
+                "-c",
+                'import site; print("\\n".join(site.getsitepackages()))',
             ],
-            stderr=stderr).split('\n')
+            stderr=stderr,
+        ).split("\n")
     except subprocess.CalledProcessError:
         library_paths = [
-            run_shell([
-                python_bin_path, '-c',
-                'from distutils.sysconfig import get_python_lib;'
-                'print(get_python_lib())'
-            ])
+            run_shell(
+                [
+                    python_bin_path,
+                    "-c",
+                    "from distutils.sysconfig import get_python_lib;"
+                    "print(get_python_lib())",
+                ]
+            )
         ]
 
     all_paths = set(python_paths + library_paths)
@@ -182,34 +186,33 @@ def get_python_path(environ_cp, python_bin_path):
     paths = []
     for path in all_paths:
         if os.path.isdir(path) and not path.startswith(
-                os.path.join(_APOLLO_ROOT_DIR, "bazel-bin")):
+            os.path.join(_APOLLO_ROOT_DIR, "bazel-bin")
+        ):
             paths.append(path)
     return paths
 
 
 def get_python_major_version(python_bin_path):
     """Get the python major version."""
-    return run_shell(
-        [python_bin_path, '-c', 'import sys; print(sys.version[0])'])
+    return run_shell([python_bin_path, "-c", "import sys; print(sys.version[0])"])
 
 
 def setup_common_dirs(environ_cp):
     """Setup --distdir and --output_user_root directories"""
-    cache_dir = os.path.join(_APOLLO_ROOT_DIR, '.cache')
-    dist_dir = os.path.join(_APOLLO_ROOT_DIR, '.cache/distdir')
+    cache_dir = os.path.join(_APOLLO_ROOT_DIR, ".cache")
+    dist_dir = os.path.join(_APOLLO_ROOT_DIR, ".cache/distdir")
 
     # if cyber/setup.bash not sourced
-    if 'APOLLO_CACHE_DIR' in environ_cp:
-        cache_dir = environ_cp['APOLLO_CACHE_DIR']
+    if "APOLLO_CACHE_DIR" in environ_cp:
+        cache_dir = environ_cp["APOLLO_CACHE_DIR"]
 
-    if 'APOLLO_BAZEL_DIST_DIR' in environ_cp:
-        dist_dir = environ_cp['APOLLO_BAZEL_DIST_DIR']
+    if "APOLLO_BAZEL_DIST_DIR" in environ_cp:
+        dist_dir = environ_cp["APOLLO_BAZEL_DIST_DIR"]
 
     write_to_bazelrc('startup --output_user_root="{}/bazel"'.format(cache_dir))
     write_to_bazelrc('common --distdir="{}"'.format(dist_dir))
-    write_to_bazelrc('common --repository_cache="{}/repos"'.format(cache_dir))
     write_to_bazelrc('build --disk_cache="{}/build"'.format(cache_dir))
-    write_to_bazelrc('')
+    write_to_bazelrc("")
 
 
 def setup_python(environ_cp):
@@ -225,25 +228,24 @@ def setup_python_non_interactively(environ_cp):
     # Get PYTHON_BIN_PATH, default is the current running python.
     python_bin_path = sys.executable
     if not os.path.exists(python_bin_path):
-        print('Invalid python path: {} cannot be found.'.format(
-            python_bin_path))
+        print("Invalid python path: {} cannot be found.".format(python_bin_path))
         sys.exit(1)
-    if not os.path.isfile(python_bin_path) or not os.access(
-            python_bin_path, os.X_OK):
-        print('{} is not executable.'.format(python_bin_path))
+    if not os.path.isfile(python_bin_path) or not os.access(python_bin_path, os.X_OK):
+        print("{} is not executable.".format(python_bin_path))
         sys.exit(1)
     python_major_version = get_python_major_version(python_bin_path)
-    if python_major_version != '3':
-        print('Python 2 was Retired on April 2020. Use Python 3 instead.')
+    if python_major_version != "3":
+        print("Python 2 was Retired on April 2020. Use Python 3 instead.")
         sys.exit(1)
 
-    environ_cp['PYTHON_BIN_PATH'] = python_bin_path
+    environ_cp["PYTHON_BIN_PATH"] = python_bin_path
     # Get PYTHON_LIB_PATH
-    python_lib_path = environ_cp.get('PYTHON_LIB_PATH')
+    python_lib_path = environ_cp.get("PYTHON_LIB_PATH")
     if not python_lib_path:
         python_lib_paths = get_python_path(environ_cp, python_bin_path)
-        print('Found possible Python library paths:\n  %s' %
-              '\n  '.join(python_lib_paths))
+        print(
+            "Found possible Python library paths:\n  %s" % "\n  ".join(python_lib_paths)
+        )
         if _DEFAULT_PYTHON_LIB_PATH in python_lib_paths:
             default_python_lib_path = _DEFAULT_PYTHON_LIB_PATH
         else:
@@ -251,17 +253,16 @@ def setup_python_non_interactively(environ_cp):
         python_lib_path = default_python_lib_path
 
     # Set-up env variables used by python_configure.bzl
-    write_action_env_to_bazelrc('PYTHON_BIN_PATH', python_bin_path)
-    write_action_env_to_bazelrc('PYTHON_LIB_PATH', python_lib_path)
-    write_to_bazelrc('build --python_path=\"{}\"'.format(python_bin_path))
+    write_action_env_to_bazelrc("PYTHON_BIN_PATH", python_bin_path)
+    write_action_env_to_bazelrc("PYTHON_LIB_PATH", python_lib_path)
+    write_to_bazelrc('build --python_path="{}"'.format(python_bin_path))
 
     # If choosen python_lib_path is from a path specified in the PYTHONPATH
     # variable, need to tell bazel to include PYTHONPATH
-    if environ_cp.get('PYTHONPATH'):
-        python_paths = environ_cp.get('PYTHONPATH').split(':')
+    if environ_cp.get("PYTHONPATH"):
+        python_paths = environ_cp.get("PYTHONPATH").split(":")
         if python_lib_path in python_paths:
-            write_action_env_to_bazelrc('PYTHONPATH',
-                                        environ_cp.get('PYTHONPATH'))
+            write_action_env_to_bazelrc("PYTHONPATH", environ_cp.get("PYTHONPATH"))
 
 
 def setup_python_interactively(environ_cp):
@@ -269,70 +270,74 @@ def setup_python_interactively(environ_cp):
     # Get PYTHON_BIN_PATH, default is the current running python.
     default_python_bin_path = sys.executable
     ask_python_bin_path = (
-        'Please specify the location of python. [Default is '
-        '{}]: ').format(default_python_bin_path)
+        "Please specify the location of python. [Default is " "{}]: "
+    ).format(default_python_bin_path)
     while True:
         python_bin_path = get_from_env_or_user_or_default(
-            environ_cp, 'PYTHON_BIN_PATH', ask_python_bin_path,
-            default_python_bin_path)
+            environ_cp, "PYTHON_BIN_PATH", ask_python_bin_path, default_python_bin_path
+        )
         # Check if the path is valid
-        if os.path.isfile(python_bin_path) and os.access(
-                python_bin_path, os.X_OK):
+        if os.path.isfile(python_bin_path) and os.access(python_bin_path, os.X_OK):
             break
         elif not os.path.exists(python_bin_path):
-            print('Invalid python path: {} cannot be found.'.format(
-                python_bin_path))
+            print("Invalid python path: {} cannot be found.".format(python_bin_path))
         else:
-            print('{} is not executable.  Is it the python binary?'.format(
-                python_bin_path))
-        environ_cp['PYTHON_BIN_PATH'] = ''
+            print(
+                "{} is not executable.  Is it the python binary?".format(
+                    python_bin_path
+                )
+            )
+        environ_cp["PYTHON_BIN_PATH"] = ""
 
     python_major_version = get_python_major_version(python_bin_path)
-    if python_major_version != '3':
-        print('Python 2 was Retired on April 2020. Use Python 3 instead.')
+    if python_major_version != "3":
+        print("Python 2 was Retired on April 2020. Use Python 3 instead.")
         sys.exit(1)
 
     # Get PYTHON_LIB_PATH
-    python_lib_path = environ_cp.get('PYTHON_LIB_PATH')
+    python_lib_path = environ_cp.get("PYTHON_LIB_PATH")
     if not python_lib_path:
         python_lib_paths = get_python_path(environ_cp, python_bin_path)
-        print('Found possible Python library paths:\n  %s' %
-              '\n  '.join(python_lib_paths))
+        print(
+            "Found possible Python library paths:\n  %s" % "\n  ".join(python_lib_paths)
+        )
         default_python_lib_path = python_lib_paths[0]
         python_lib_path = get_input(
-            'Please input the desired Python library path to use.  '
-            'Default is [{}]\n'.format(python_lib_paths[0]))
+            "Please input the desired Python library path to use.  "
+            "Default is [{}]\n".format(python_lib_paths[0])
+        )
         if not python_lib_path:
             python_lib_path = default_python_lib_path
-        environ_cp['PYTHON_LIB_PATH'] = python_lib_path
+        environ_cp["PYTHON_LIB_PATH"] = python_lib_path
 
     # Set-up env variables used by python_configure.bzl
-    write_action_env_to_bazelrc('PYTHON_BIN_PATH', python_bin_path)
-    write_action_env_to_bazelrc('PYTHON_LIB_PATH', python_lib_path)
-    write_to_bazelrc('build --python_path=\"{}\"'.format(python_bin_path))
-    environ_cp['PYTHON_BIN_PATH'] = python_bin_path
+    write_action_env_to_bazelrc("PYTHON_BIN_PATH", python_bin_path)
+    write_action_env_to_bazelrc("PYTHON_LIB_PATH", python_lib_path)
+    write_to_bazelrc('build --python_path="{}"'.format(python_bin_path))
+    environ_cp["PYTHON_BIN_PATH"] = python_bin_path
 
     # If choosen python_lib_path is from a path specified in the PYTHONPATH
     # variable, need to tell bazel to include PYTHONPATH
-    if environ_cp.get('PYTHONPATH'):
-        python_paths = environ_cp.get('PYTHONPATH').split(':')
+    if environ_cp.get("PYTHONPATH"):
+        python_paths = environ_cp.get("PYTHONPATH").split(":")
         if python_lib_path in python_paths:
-            write_action_env_to_bazelrc('PYTHONPATH',
-                                        environ_cp.get('PYTHONPATH'))
+            write_action_env_to_bazelrc("PYTHONPATH", environ_cp.get("PYTHONPATH"))
 
 
 def reset_apollo_bazelrc():
     """Reset file that contains customized config settings."""
-    open(_APOLLO_BAZELRC, 'w').close()
+    open(_APOLLO_BAZELRC, "w").close()
 
 
-def get_var(environ_cp,
-            var_name,
-            query_item,
-            enabled_by_default,
-            question=None,
-            yes_reply=None,
-            no_reply=None):
+def get_var(
+    environ_cp,
+    var_name,
+    query_item,
+    enabled_by_default,
+    question=None,
+    yes_reply=None,
+    no_reply=None,
+):
     """Get boolean input from user.
 
     If var_name is not set in env, ask user to enable query_item or not. If the
@@ -358,46 +363,47 @@ def get_var(environ_cp,
         Raise the error to avoid infinitely looping.
     """
     if not question:
-        question = 'Do you wish to build your project with {} support?'.format(
-            query_item)
+        question = "Do you wish to build your project with {} support?".format(
+            query_item
+        )
     if not yes_reply:
-        yes_reply = '{} support will be enabled for your project.'.format(
-            query_item)
+        yes_reply = "{} support will be enabled for your project.".format(query_item)
     if not no_reply:
-        no_reply = 'No {}'.format(yes_reply)
+        no_reply = "No {}".format(yes_reply)
 
-    yes_reply += '\n'
-    no_reply += '\n'
+    yes_reply += "\n"
+    no_reply += "\n"
 
     if enabled_by_default:
-        question += ' [Y/n]: '
+        question += " [Y/n]: "
     else:
-        question += ' [y/N]: '
+        question += " [y/N]: "
 
     var = environ_cp.get(var_name)
     if var is not None:
         var_content = var.strip().lower()
-        true_strings = ('1', 't', 'true', 'y', 'yes')
-        false_strings = ('0', 'f', 'false', 'n', 'no')
+        true_strings = ("1", "t", "true", "y", "yes")
+        false_strings = ("0", "f", "false", "n", "no")
         if var_content in true_strings:
             var = True
         elif var_content in false_strings:
             var = False
         else:
             raise UserInputError(
-                'Environment variable %s must be set as a boolean indicator.\n'
-                'The following are accepted as TRUE : %s.\n'
-                'The following are accepted as FALSE: %s.\n'
-                'Current value is %s.' % (var_name, ', '.join(true_strings),
-                                          ', '.join(false_strings), var))
+                "Environment variable %s must be set as a boolean indicator.\n"
+                "The following are accepted as TRUE : %s.\n"
+                "The following are accepted as FALSE: %s.\n"
+                "Current value is %s."
+                % (var_name, ", ".join(true_strings), ", ".join(false_strings), var)
+            )
 
     while var is None:
         user_input_origin = get_input(question)
         user_input = user_input_origin.strip().lower()
-        if user_input == 'y':
+        if user_input == "y":
             print(yes_reply)
             var = True
-        elif user_input == 'n':
+        elif user_input == "n":
             print(no_reply)
             var = False
         elif not user_input:
@@ -408,7 +414,7 @@ def get_var(environ_cp,
                 print(no_reply)
                 var = False
         else:
-            print('Invalid selection: {}'.format(user_input_origin))
+            print("Invalid selection: {}".format(user_input_origin))
     return var
 
 
@@ -424,16 +430,16 @@ def convert_version_to_int(version):
     Returns:
       An integer if converted successfully, otherwise return None.
     """
-    version = version.split('-')[0]
-    version_segments = version.split('.')
+    version = version.split("-")[0]
+    version_segments = version.split(".")
     # Treat "0.24" as "0.24.0"
     if len(version_segments) == 2:
-        version_segments.append('0')
+        version_segments.append("0")
     for seg in version_segments:
         if not seg.isdigit():
             return None
 
-    version_str = ''.join(['%03d' % int(seg) for seg in version_segments])
+    version_str = "".join(["%03d" % int(seg) for seg in version_segments])
     return int(version_str)
 
 
@@ -446,36 +452,36 @@ def check_bazel_version(min_version):
     Returns:
         The bazel version detected.
     """
-    if which('bazel') is None:
-        print('Cannot find bazel. Please install bazel first.')
+    if which("bazel") is None:
+        print("Cannot find bazel. Please install bazel first.")
         sys.exit(0)
 
-    stderr = open(os.devnull, 'wb')
-    curr_version = run_shell(
-        ['bazel', '--version'], allow_non_zero=True, stderr=stderr)
-    if curr_version.startswith('bazel '):
-        curr_version = curr_version.split('bazel ')[1]
+    stderr = open(os.devnull, "wb")
+    curr_version = run_shell(["bazel", "--version"], allow_non_zero=True, stderr=stderr)
+    if curr_version.startswith("bazel "):
+        curr_version = curr_version.split("bazel ")[1]
 
     min_version_int = convert_version_to_int(min_version)
     curr_version_int = convert_version_to_int(curr_version)
 
     # Check if current bazel version can be detected properly.
     if not curr_version_int:
-        print('WARNING: current bazel installation is not a release version.')
-        print('Make sure you are running at least bazel %s' % min_version)
+        print("WARNING: current bazel installation is not a release version.")
+        print("Make sure you are running at least bazel %s" % min_version)
         return curr_version
 
-    print('You have bazel %s installed.' % curr_version)
+    print("You have bazel %s installed." % curr_version)
 
     if curr_version_int < min_version_int:
         print(
-            'Please upgrade your bazel installation to version %s or higher' % min_version)
+            "Please upgrade your bazel installation to version %s or higher"
+            % min_version
+        )
         sys.exit(1)
     return curr_version
 
 
-def get_from_env_or_user_or_default(environ_cp, var_name, ask_for_var,
-                                    var_default):
+def get_from_env_or_user_or_default(environ_cp, var_name, ask_for_var, var_default):
     """Get var_name either from env, or user or default.
 
     If var_name has been set as environment variable, use the preset value, else
@@ -493,21 +499,23 @@ def get_from_env_or_user_or_default(environ_cp, var_name, ask_for_var,
     var = environ_cp.get(var_name)
     if not var:
         var = get_input(ask_for_var)
-        print('\n')
+        print("\n")
     if not var:
         var = var_default
     return var
 
 
-def prompt_loop_or_load_from_env(environ_cp,
-                                 var_name,
-                                 var_default,
-                                 ask_for_var,
-                                 check_success,
-                                 error_msg,
-                                 suppress_default_error=False,
-                                 resolve_symlinks=False,
-                                 n_ask_attempts=_DEFAULT_PROMPT_ASK_ATTEMPTS):
+def prompt_loop_or_load_from_env(
+    environ_cp,
+    var_name,
+    var_default,
+    ask_for_var,
+    check_success,
+    error_msg,
+    suppress_default_error=False,
+    resolve_symlinks=False,
+    n_ask_attempts=_DEFAULT_PROMPT_ASK_ATTEMPTS,
+):
     """Loop over user prompts for an ENV param until receiving a valid response.
 
     For the env param var_name, read from the environment or verify user input
@@ -541,23 +549,23 @@ def prompt_loop_or_load_from_env(environ_cp,
         looping.
     """
     default = environ_cp.get(var_name) or var_default
-    full_query = '%s [Default is %s]: ' % (
+    full_query = "%s [Default is %s]: " % (
         ask_for_var,
         default,
     )
 
     for _ in range(n_ask_attempts):
-        val = get_from_env_or_user_or_default(environ_cp, var_name, full_query,
-                                              default)
+        val = get_from_env_or_user_or_default(environ_cp, var_name, full_query, default)
         if check_success(val):
             break
         if not suppress_default_error:
             print(error_msg % val)
-        environ_cp[var_name] = ''
+        environ_cp[var_name] = ""
     else:
         raise UserInputError(
-            'Invalid %s setting was provided %d times in a row. '
-            'Assuming to be a scripting mistake.' % (var_name, n_ask_attempts))
+            "Invalid %s setting was provided %d times in a row. "
+            "Assuming to be a scripting mistake." % (var_name, n_ask_attempts)
+        )
 
     if resolve_symlinks and os.path.islink(val):
         val = os.path.realpath(val)
@@ -567,8 +575,8 @@ def prompt_loop_or_load_from_env(environ_cp,
 
 def set_gcc_host_compiler_path(environ_cp):
     """Set GCC_HOST_COMPILER_PATH."""
-    default_gcc_host_compiler_path = which('gcc') or ''
-    cuda_bin_symlink = '%s/bin/gcc' % environ_cp.get('CUDA_TOOLKIT_PATH')
+    default_gcc_host_compiler_path = which("gcc") or ""
+    cuda_bin_symlink = "%s/bin/gcc" % environ_cp.get("CUDA_TOOLKIT_PATH")
 
     if os.path.islink(cuda_bin_symlink):
         # os.readlink is only available in linux
@@ -581,16 +589,15 @@ def set_gcc_host_compiler_path(environ_cp):
     else:
         gcc_host_compiler_path = prompt_loop_or_load_from_env(
             environ_cp,
-            var_name='GCC_HOST_COMPILER_PATH',
+            var_name="GCC_HOST_COMPILER_PATH",
             var_default=default_gcc_host_compiler_path,
-            ask_for_var='Please specify which gcc should be used by nvcc as the host compiler.',
+            ask_for_var="Please specify which gcc should be used by nvcc as the host compiler.",
             check_success=os.path.exists,
             resolve_symlinks=True,
-            error_msg='Invalid gcc path. %s cannot be found.',
+            error_msg="Invalid gcc path. %s cannot be found.",
         )
 
-    write_action_env_to_bazelrc('GCC_HOST_COMPILER_PATH',
-                                gcc_host_compiler_path)
+    write_action_env_to_bazelrc("GCC_HOST_COMPILER_PATH", gcc_host_compiler_path)
 
 
 def reformat_version_sequence(version_str, sequence_count):
@@ -609,61 +616,66 @@ def reformat_version_sequence(version_str, sequence_count):
     Returns:
         string, reformatted version string.
     """
-    v = version_str.split('.')
+    v = version_str.split(".")
     if len(v) < sequence_count:
-        v = v + (['0'] * (sequence_count - len(v)))
+        v = v + (["0"] * (sequence_count - len(v)))
 
-    return '.'.join(v[:sequence_count])
+    return ".".join(v[:sequence_count])
 
 
 def set_cuda_paths(environ_cp):
     """Set TF_CUDA_PATHS."""
     ask_cuda_paths = (
-        'Please specify the comma-separated list of base paths to look for CUDA '
-        'libraries and headers. [Leave empty to use the default]: ')
+        "Please specify the comma-separated list of base paths to look for CUDA "
+        "libraries and headers. [Leave empty to use the default]: "
+    )
     tf_cuda_paths = get_from_env_or_user_or_default(
-        environ_cp, 'TF_CUDA_PATHS', ask_cuda_paths, '')
+        environ_cp, "TF_CUDA_PATHS", ask_cuda_paths, ""
+    )
     if tf_cuda_paths:
-        environ_cp['TF_CUDA_PATHS'] = tf_cuda_paths
+        environ_cp["TF_CUDA_PATHS"] = tf_cuda_paths
 
 
 def set_cuda_version(environ_cp):
     """Set TF_CUDA_VERSION."""
     ask_cuda_version = (
-        'Please specify the CUDA SDK version you want to use. '
-        '[Leave empty to default to CUDA %s]: ') % _DEFAULT_CUDA_VERSION
+        "Please specify the CUDA SDK version you want to use. "
+        "[Leave empty to default to CUDA %s]: "
+    ) % _DEFAULT_CUDA_VERSION
     tf_cuda_version = get_from_env_or_user_or_default(
-        environ_cp, 'TF_CUDA_VERSION', ask_cuda_version, _DEFAULT_CUDA_VERSION)
-    environ_cp['TF_CUDA_VERSION'] = tf_cuda_version
+        environ_cp, "TF_CUDA_VERSION", ask_cuda_version, _DEFAULT_CUDA_VERSION
+    )
+    environ_cp["TF_CUDA_VERSION"] = tf_cuda_version
 
 
 def set_cudnn_version(environ_cp):
     """Set TF_CUDNN_VERSION."""
     ask_cudnn_version = (
-        'Please specify the cuDNN version you want to use. '
-        '[Leave empty to default to cuDNN %s]: ') % _DEFAULT_CUDNN_VERSION
+        "Please specify the cuDNN version you want to use. "
+        "[Leave empty to default to cuDNN %s]: "
+    ) % _DEFAULT_CUDNN_VERSION
     tf_cudnn_version = get_from_env_or_user_or_default(
-        environ_cp, 'TF_CUDNN_VERSION', ask_cudnn_version,
-        _DEFAULT_CUDNN_VERSION)
-    environ_cp['TF_CUDNN_VERSION'] = tf_cudnn_version
+        environ_cp, "TF_CUDNN_VERSION", ask_cudnn_version, _DEFAULT_CUDNN_VERSION
+    )
+    environ_cp["TF_CUDNN_VERSION"] = tf_cudnn_version
 
 
 def is_cuda_compatible(lib, cuda_ver, cudnn_ver):
     """Check compatibility between given library and cudnn/cudart libraries."""
-    ldd_bin = which('ldd') or '/usr/bin/ldd'
+    ldd_bin = which("ldd") or "/usr/bin/ldd"
     ldd_out = run_shell([ldd_bin, lib], True)
     ldd_out = ldd_out.split(os.linesep)
-    cudnn_pattern = re.compile('.*libcudnn.so\\.?(.*) =>.*$')
-    cuda_pattern = re.compile('.*libcudart.so\\.?(.*) =>.*$')
+    cudnn_pattern = re.compile(".*libcudnn.so\\.?(.*) =>.*$")
+    cuda_pattern = re.compile(".*libcudart.so\\.?(.*) =>.*$")
     cudnn = None
     cudart = None
     cudnn_ok = True  # assume no cudnn dependency by default
     cuda_ok = True  # assume no cuda dependency by default
     for line in ldd_out:
-        if 'libcudnn.so' in line:
+        if "libcudnn.so" in line:
             cudnn = cudnn_pattern.search(line)
             cudnn_ok = False
-        elif 'libcudart.so' in line:
+        elif "libcudart.so" in line:
             cudart = cuda_pattern.search(line)
             cuda_ok = False
     if cudnn and len(cudnn.group(1)):
@@ -671,38 +683,42 @@ def is_cuda_compatible(lib, cuda_ver, cudnn_ver):
     if cudart and len(cudart.group(1)):
         cudart = convert_version_to_int(cudart.group(1))
     if cudnn is not None:
-        cudnn_ok = (cudnn == cudnn_ver)
+        cudnn_ok = cudnn == cudnn_ver
     if cudart is not None:
-        cuda_ok = (cudart == cuda_ver)
+        cuda_ok = cudart == cuda_ver
     return cudnn_ok and cuda_ok
 
 
 def set_tensorrt_version(environ_cp):
     """Set TF_TENSORRT_VERSION."""
-    if not int(environ_cp.get('TF_NEED_TENSORRT', False)):
+    if not int(environ_cp.get("TF_NEED_TENSORRT", False)):
         return
 
     ask_tensorrt_version = (
-        'Please specify the TensorRT version you want to use. '
-        '[Leave empty to default to TensorRT %s]: '
+        "Please specify the TensorRT version you want to use. "
+        "[Leave empty to default to TensorRT %s]: "
     ) % _DEFAULT_TENSORRT_VERSION
     tf_tensorrt_version = get_from_env_or_user_or_default(
-        environ_cp, 'TF_TENSORRT_VERSION', ask_tensorrt_version,
-        _DEFAULT_TENSORRT_VERSION)
-    environ_cp['TF_TENSORRT_VERSION'] = tf_tensorrt_version
+        environ_cp,
+        "TF_TENSORRT_VERSION",
+        ask_tensorrt_version,
+        _DEFAULT_TENSORRT_VERSION,
+    )
+    environ_cp["TF_TENSORRT_VERSION"] = tf_tensorrt_version
 
 
 def set_nccl_version(environ_cp):
     """Set TF_NCCL_VERSION."""
-    if 'TF_NCCL_VERSION' in environ_cp:
+    if "TF_NCCL_VERSION" in environ_cp:
         return
 
     ask_nccl_version = (
-        'Please specify the locally installed NCCL version you want to use. '
+        "Please specify the locally installed NCCL version you want to use. "
     )
     tf_nccl_version = get_from_env_or_user_or_default(
-        environ_cp, 'TF_NCCL_VERSION', ask_nccl_version, '')
-    environ_cp['TF_NCCL_VERSION'] = tf_nccl_version
+        environ_cp, "TF_NCCL_VERSION", ask_nccl_version, ""
+    )
+    environ_cp["TF_NCCL_VERSION"] = tf_nccl_version
 
 
 def get_native_cuda_compute_capabilities(environ_cp):
@@ -715,18 +731,18 @@ def get_native_cuda_compute_capabilities(environ_cp):
       string of native cuda compute capabilities, separated by comma.
     """
     device_query_bin = os.path.join(
-        environ_cp.get('CUDA_TOOLKIT_PATH'), 'extras/demo_suite/deviceQuery')
-    if os.path.isfile(device_query_bin) and os.access(device_query_bin,
-                                                      os.X_OK):
+        environ_cp.get("CUDA_TOOLKIT_PATH"), "extras/demo_suite/deviceQuery"
+    )
+    if os.path.isfile(device_query_bin) and os.access(device_query_bin, os.X_OK):
         try:
-            output = run_shell(device_query_bin).split('\n')
-            pattern = re.compile('[0-9]*\\.[0-9]*')
-            output = [pattern.search(x) for x in output if 'Capability' in x]
-            output = ','.join(x.group() for x in output if x is not None)
+            output = run_shell(device_query_bin).split("\n")
+            pattern = re.compile("[0-9]*\\.[0-9]*")
+            output = [pattern.search(x) for x in output if "Capability" in x]
+            output = ",".join(x.group() for x in output if x is not None)
         except subprocess.CalledProcessError:
-            output = ''
+            output = ""
     else:
-        output = ''
+        output = ""
     return output
 
 
@@ -734,70 +750,77 @@ def set_cuda_compute_capabilities(environ_cp):
     """Set TF_CUDA_COMPUTE_CAPABILITIES."""
     if not _INTERACTIVE_MODE:
         native_cuda_compute_capabilities = get_native_cuda_compute_capabilities(
-            environ_cp)
+            environ_cp
+        )
         if native_cuda_compute_capabilities:
             tf_cuda_compute_capabilities = native_cuda_compute_capabilities
         else:
             tf_cuda_compute_capabilities = _DEFAULT_CUDA_COMPUTE_CAPABILITIES
         # Set TF_CUDA_COMPUTE_CAPABILITIES
-        environ_cp['TF_CUDA_COMPUTE_CAPABILITIES'] = tf_cuda_compute_capabilities
-        write_action_env_to_bazelrc('TF_CUDA_COMPUTE_CAPABILITIES',
-                                    tf_cuda_compute_capabilities)
+        environ_cp["TF_CUDA_COMPUTE_CAPABILITIES"] = tf_cuda_compute_capabilities
+        write_action_env_to_bazelrc(
+            "TF_CUDA_COMPUTE_CAPABILITIES", tf_cuda_compute_capabilities
+        )
         return
 
     while True:
         native_cuda_compute_capabilities = get_native_cuda_compute_capabilities(
-            environ_cp)
+            environ_cp
+        )
         if not native_cuda_compute_capabilities:
             default_cuda_compute_capabilities = _DEFAULT_CUDA_COMPUTE_CAPABILITIES
         else:
             default_cuda_compute_capabilities = native_cuda_compute_capabilities
 
         ask_cuda_compute_capabilities = (
-            'Please specify a list of comma-separated '
-            'CUDA compute capabilities you want to '
-            'build with.\nYou can find the compute '
-            'capability of your device at: '
-            'https://developer.nvidia.com/cuda-gpus.\nPlease'
-            ' note that each additional compute '
-            'capability significantly increases your '
-            'build time and binary size, and that '
-            'we only supports compute '
-            'capabilities >= 3.7 [Default is: %s]: ' %
-            default_cuda_compute_capabilities)
+            "Please specify a list of comma-separated "
+            "CUDA compute capabilities you want to "
+            "build with.\nYou can find the compute "
+            "capability of your device at: "
+            "https://developer.nvidia.com/cuda-gpus.\nPlease"
+            " note that each additional compute "
+            "capability significantly increases your "
+            "build time and binary size, and that "
+            "we only supports compute "
+            "capabilities >= 3.7 [Default is: %s]: " % default_cuda_compute_capabilities
+        )
         tf_cuda_compute_capabilities = get_from_env_or_user_or_default(
-            environ_cp, 'TF_CUDA_COMPUTE_CAPABILITIES',
-            ask_cuda_compute_capabilities, default_cuda_compute_capabilities)
+            environ_cp,
+            "TF_CUDA_COMPUTE_CAPABILITIES",
+            ask_cuda_compute_capabilities,
+            default_cuda_compute_capabilities,
+        )
         # Check whether all capabilities from the input is valid
         all_valid = True
         # Remove all whitespace characters before splitting the string
         # that users may insert by accident, as this will result in error
-        tf_cuda_compute_capabilities = ''.join(
-            tf_cuda_compute_capabilities.split())
-        for compute_capability in tf_cuda_compute_capabilities.split(','):
-            m = re.match('[0-9]+.[0-9]+', compute_capability)
+        tf_cuda_compute_capabilities = "".join(tf_cuda_compute_capabilities.split())
+        for compute_capability in tf_cuda_compute_capabilities.split(","):
+            m = re.match("[0-9]+.[0-9]+", compute_capability)
             if not m:
-                print('Invalid compute capability: %s' % compute_capability)
+                print("Invalid compute capability: %s" % compute_capability)
                 all_valid = False
             else:
                 ver = float(m.group(0))
                 if ver < 3.5:
                     print(
-                        'ERROR: We only supports CUDA compute capabilities 3.7 '
-                        'and higher. Please re-specify the list of compute '
-                        'capabilities excluding version %s.' % ver)
+                        "ERROR: We only supports CUDA compute capabilities 3.7 "
+                        "and higher. Please re-specify the list of compute "
+                        "capabilities excluding version %s." % ver
+                    )
                     all_valid = False
 
         if all_valid:
             break
 
         # Reset and Retry
-        environ_cp['TF_CUDA_COMPUTE_CAPABILITIES'] = ''
+        environ_cp["TF_CUDA_COMPUTE_CAPABILITIES"] = ""
 
     # Set TF_CUDA_COMPUTE_CAPABILITIES
-    environ_cp['TF_CUDA_COMPUTE_CAPABILITIES'] = tf_cuda_compute_capabilities
-    write_action_env_to_bazelrc('TF_CUDA_COMPUTE_CAPABILITIES',
-                                tf_cuda_compute_capabilities)
+    environ_cp["TF_CUDA_COMPUTE_CAPABILITIES"] = tf_cuda_compute_capabilities
+    write_action_env_to_bazelrc(
+        "TF_CUDA_COMPUTE_CAPABILITIES", tf_cuda_compute_capabilities
+    )
 
 
 def set_other_cuda_vars(environ_cp):
@@ -810,51 +833,51 @@ def set_other_cuda_vars(environ_cp):
 def validate_cuda_config(environ_cp):
     """Run find_cuda_config.py and return cuda_toolkit_path, or None."""
 
-    cuda_libraries = ['cuda', 'cudnn']
-    if int(environ_cp.get('TF_NEED_TENSORRT', False)):
-        cuda_libraries.append('tensorrt')
-    if environ_cp.get('TF_NCCL_VERSION', None):
-        cuda_libraries.append('nccl')
+    cuda_libraries = ["cuda", "cudnn"]
+    if int(environ_cp.get("TF_NEED_TENSORRT", False)):
+        cuda_libraries.append("tensorrt")
+    if environ_cp.get("TF_NCCL_VERSION", None):
+        cuda_libraries.append("nccl")
 
     find_cuda_script = os.path.join(
-        _APOLLO_ROOT_DIR,
-        'third_party/gpus/find_cuda_config.py')
+        _APOLLO_ROOT_DIR, "third_party/gpus/find_cuda_config.py"
+    )
     proc = subprocess.Popen(
-        [environ_cp['PYTHON_BIN_PATH'], find_cuda_script]
-        + cuda_libraries,
+        [environ_cp["PYTHON_BIN_PATH"], find_cuda_script] + cuda_libraries,
         stdout=subprocess.PIPE,
-        env=environ_cp)
+        env=environ_cp,
+    )
 
     if proc.wait():
         # Errors from find_cuda_config.py were sent to stderr.
-        print('Asking for detailed CUDA configuration...\n')
+        print("Asking for detailed CUDA configuration...\n")
         return False
 
     config = dict(
-        tuple(line.decode('ascii').rstrip().split(': '))
-        for line in proc.stdout)
+        tuple(line.decode("ascii").rstrip().split(": ")) for line in proc.stdout
+    )
 
-    print('Found CUDA %s in:' % config['cuda_version'])
-    print('    %s' % config['cuda_library_dir'])
-    print('    %s' % config['cuda_include_dir'])
+    print("Found CUDA %s in:" % config["cuda_version"])
+    print("    %s" % config["cuda_library_dir"])
+    print("    %s" % config["cuda_include_dir"])
 
-    print('Found cuDNN %s in:' % config['cudnn_version'])
-    print('    %s' % config['cudnn_library_dir'])
-    print('    %s' % config['cudnn_include_dir'])
+    print("Found cuDNN %s in:" % config["cudnn_version"])
+    print("    %s" % config["cudnn_library_dir"])
+    print("    %s" % config["cudnn_include_dir"])
 
-    if 'tensorrt_version' in config:
-        print('Found TensorRT %s in:' % config['tensorrt_version'])
-        print('    %s' % config['tensorrt_library_dir'])
-        print('    %s' % config['tensorrt_include_dir'])
+    if "tensorrt_version" in config:
+        print("Found TensorRT %s in:" % config["tensorrt_version"])
+        print("    %s" % config["tensorrt_library_dir"])
+        print("    %s" % config["tensorrt_include_dir"])
 
-    if config.get('nccl_version', None):
-        print('Found NCCL %s in:' % config['nccl_version'])
-        print('    %s' % config['nccl_library_dir'])
-        print('    %s' % config['nccl_include_dir'])
+    if config.get("nccl_version", None):
+        print("Found NCCL %s in:" % config["nccl_version"])
+        print("    %s" % config["nccl_library_dir"])
+        print("    %s" % config["nccl_include_dir"])
 
-    print('\n')
+    print("\n")
 
-    environ_cp['CUDA_TOOLKIT_PATH'] = config['cuda_toolkit_path']
+    environ_cp["CUDA_TOOLKIT_PATH"] = config["cuda_toolkit_path"]
     return True
 
 
@@ -864,18 +887,18 @@ def setup_cuda_family_config_interactively(environ_cp):
 
         if validate_cuda_config(environ_cp):
             cuda_env_names = [
-                'TF_CUDA_VERSION',
-                'TF_CUBLAS_VERSION',
-                'TF_CUDNN_VERSION',
-                'TF_TENSORRT_VERSION',
-                'TF_NCCL_VERSION',
-                'TF_CUDA_PATHS',
+                "TF_CUDA_VERSION",
+                "TF_CUBLAS_VERSION",
+                "TF_CUDNN_VERSION",
+                "TF_TENSORRT_VERSION",
+                "TF_NCCL_VERSION",
+                "TF_CUDA_PATHS",
                 # Items below are for backwards compatibility
-                'CUDA_TOOLKIT_PATH',
-                'CUDNN_INSTALL_PATH',
-                'NCCL_INSTALL_PATH',
-                'NCCL_HDR_PATH',
-                'TENSORRT_INSTALL_PATH'
+                "CUDA_TOOLKIT_PATH",
+                "CUDNN_INSTALL_PATH",
+                "NCCL_INSTALL_PATH",
+                "NCCL_HDR_PATH",
+                "TENSORRT_INSTALL_PATH",
             ]
             # Note: set_action_env_var above already writes to bazelrc.
             for name in cuda_env_names:
@@ -897,9 +920,10 @@ def setup_cuda_family_config_interactively(environ_cp):
 
     else:
         raise UserInputError(
-            'Invalid CUDA setting were provided %d '
-            'times in a row. Assuming to be a scripting mistake.' %
-            _DEFAULT_PROMPT_ASK_ATTEMPTS)
+            "Invalid CUDA setting were provided %d "
+            "times in a row. Assuming to be a scripting mistake."
+            % _DEFAULT_PROMPT_ASK_ATTEMPTS
+        )
 
 
 def setup_cuda_family_config_non_interactively(environ_cp):
@@ -908,18 +932,18 @@ def setup_cuda_family_config_non_interactively(environ_cp):
         sys.exit(1)
 
     cuda_env_names = [
-        'TF_CUDA_VERSION',
-        'TF_CUBLAS_VERSION',
-        'TF_CUDNN_VERSION',
-        'TF_TENSORRT_VERSION',
-        'TF_NCCL_VERSION',
-        'TF_CUDA_PATHS',
+        "TF_CUDA_VERSION",
+        "TF_CUBLAS_VERSION",
+        "TF_CUDNN_VERSION",
+        "TF_TENSORRT_VERSION",
+        "TF_NCCL_VERSION",
+        "TF_CUDA_PATHS",
         # Items below are for backwards compatibility
-        'CUDA_TOOLKIT_PATH',
-        'CUDNN_INSTALL_PATH',
-        'NCCL_INSTALL_PATH',
-        'NCCL_HDR_PATH',
-        'TENSORRT_INSTALL_PATH'
+        "CUDA_TOOLKIT_PATH",
+        "CUDNN_INSTALL_PATH",
+        "NCCL_INSTALL_PATH",
+        "NCCL_HDR_PATH",
+        "TENSORRT_INSTALL_PATH",
     ]
     for name in cuda_env_names:
         if name in environ_cp:
@@ -947,15 +971,15 @@ build:cuda --define=using_cuda_nvcc=true
 
 build:tensorrt --action_env TF_NEED_TENSORRT=1
 """
-    with open(_APOLLO_BAZELRC, 'a') as f:
+    with open(_APOLLO_BAZELRC, "a") as f:
         f.write(build_text)
 
-    write_build_var_to_bazelrc('teleop', 'WITH_TELEOP')
+    write_build_var_to_bazelrc("teleop", "WITH_TELEOP")
 
 
 def main():
     if not is_linux():
-        raise ValueError('Currently, only Linux is support.')
+        raise ValueError("Currently, only Linux is support.")
 
     global _APOLLO_ROOT_DIR
     global _APOLLO_BAZELRC
@@ -966,14 +990,20 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--output_file',
+        "--output_file",
         type=str,
-        default='.apollo.bazelrc',
-        help='Path of the bazelrc file to write to (relative to APOLLO_ROOT_DIR)')
+        default=".apollo.bazelrc",
+        help="Path of the bazelrc file to write to (relative to APOLLO_ROOT_DIR)",
+    )
 
-    parser.add_argument('--interactive', type=str2bool, nargs='?',
-                        const=True, default=True,
-                        help='Run this script interactively')
+    parser.add_argument(
+        "--interactive",
+        type=str2bool,
+        nargs="?",
+        const=True,
+        default=True,
+        help="Run this script interactively",
+    )
 
     args = parser.parse_args()
 
@@ -990,33 +1020,32 @@ def main():
     try:
         current_bazel_version = check_bazel_version(_APOLLO_MIN_BAZEL_VERSION)
     except subprocess.CalledProcessError as e:
-        print('Error checking bazel version: ',
-              e.output.decode('UTF-8').strip())
+        print("Error checking bazel version: ", e.output.decode("UTF-8").strip())
         raise e
 
-    _APOLLO_CURRENT_BAZEL_VERSION = convert_version_to_int(
-        current_bazel_version)
+    _APOLLO_CURRENT_BAZEL_VERSION = convert_version_to_int(current_bazel_version)
 
     reset_apollo_bazelrc()
     setup_common_dirs(environ_cp)
     setup_python(environ_cp)
 
-    environ_cp['TF_NEED_CUDA'] = '1'
+    environ_cp["TF_NEED_CUDA"] = "1"
     # build:gpu --config=using_cuda
-    write_to_bazelrc('build:gpu --config=cuda')
+    write_to_bazelrc("build:gpu --config=cuda")
 
     if _APOLLO_DOCKER_STAGE == "dev":
-        environ_cp['TF_NEED_TENSORRT'] = '1'
-        write_to_bazelrc('build:gpu --config=tensorrt')
+        environ_cp["TF_NEED_TENSORRT"] = "1"
+        write_to_bazelrc("build:gpu --config=tensorrt")
 
     write_blank_line_to_bazelrc()
 
     setup_cuda_family_config(environ_cp)
 
     set_cuda_compute_capabilities(environ_cp)
-    if not _APOLLO_INSIDE_DOCKER and 'LD_LIBRARY_PATH' in environ_cp:
-        write_action_env_to_bazelrc('LD_LIBRARY_PATH',
-                                    environ_cp.get('LD_LIBRARY_PATH'))
+    if not _APOLLO_INSIDE_DOCKER and "LD_LIBRARY_PATH" in environ_cp:
+        write_action_env_to_bazelrc(
+            "LD_LIBRARY_PATH", environ_cp.get("LD_LIBRARY_PATH")
+        )
 
     # Set up which gcc nvcc should use as the host compiler
     set_gcc_host_compiler_path(environ_cp)
@@ -1024,5 +1053,5 @@ def main():
     set_other_build_config()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

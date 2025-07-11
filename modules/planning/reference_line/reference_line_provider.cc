@@ -192,7 +192,7 @@ void ReferenceLineProvider::GenerateThread() {
     cyber::SleepFor(std::chrono::milliseconds(kSleepTime));
     const double start_time = Clock::NowInSeconds();
     if (!has_routing_) {
-      AERROR << "Routing is not ready.";
+      AWARN_EVERY(100) << "Routing is not ready.";
       continue;
     }
     std::list<ReferenceLine> reference_lines;
@@ -611,6 +611,13 @@ bool ReferenceLineProvider::CreateReferenceLine(
       }
     }
   }
+
+  // Debugging
+  ADEBUG << "Reference lines size: " << reference_lines->size();
+  for (auto &ref : *reference_lines) {
+    ADEBUG << ref.DebugString();
+  }
+
   return true;
 }
 

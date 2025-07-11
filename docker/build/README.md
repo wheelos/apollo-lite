@@ -1,152 +1,140 @@
-# Apollo Docker Image Build Process
+# Apollo Docker Image Build Guide
 
-## Introduction
+## Overview
 
-As you may already know, Apollo runs inside Docker container. There are
-basically two types of Apollo Docker images: CyberRT and Dev. CyberRT images
-were for developers who want to play with the CyberRT framework only, while Dev
-images were used to build and run the whole Apollo project.
+Apollo runs within Docker containers, with images tailored for development and
+deployment. We currently support `x86_64` and `aarch64` architectures.
 
-Currently, two CPU architectures are supported: `x86_64` and `aarch64`.
+**Image Types:**
 
-**Note**
+- **Cyber (Base/Cyber)**: Core CyberRT framework, ideal for CyberRT-focused
+  development.
+- **Dev**: Full Apollo project with development toolchain, for building and
+  running the entire Apollo stack.
+- **Runtime**: Optimized, minimal image for production deployment.
 
-> `dev.aarch64` image was still WIP as of today. It is expected to be ready in
-> the next few months.
+## Quick Start
 
-In the section below, I will describe briefly the steps to build these Docker
-images.
+Use the `./build_docker.sh` script to build images.
 
-## Build CyberRT Image
+### 1. Build CyberRT Image
 
-Type `./build_docker.sh -h` for help message:
+Builds the base development environment including CUDA/CuDNN/TensorRT and the
+CyberRT framework.
+
+```bash
+cd docker/build
+
+# Build x86_64 CyberRT image (default: download pre-built dependencies)
+./build_docker.sh -f cyber.x86_64.dockerfile
+
+# For users in mainland China (accelerated mirrors)
+./build_docker.sh -f cyber.x86_64.dockerfile -g cn
+
+# Build all dependencies from source (takes longer)
+./build_docker.sh -f dev.x86_64.cpu.dockerfile -m build
+```
+
+### 2. Build Apollo Dev Image
+
+Builds the full Apollo development image, based on a CyberRT image.
+
+```bash
+# Build x86_64 Dev image
+./build_docker.sh -f dev.x86_64.dockerfile
+
+# Build aarch64 Dev image (ensure qemu-user-static is configured for cross-arch builds)
+./build_docker.sh -f dev.aarch64.dockerfile -m download
+```
+
+### 3. Build Apollo Runtime Image
+
+Used for lightweight production deployments. Requires a prior Apollo Release
+Build.
+
+```bash
+# 1. Generate required APT packages from Apollo Release Build
+./apollo.sh release -c -r
+
+# 2. Navigate to the Docker build directory and copy package list
+cd docker/build
+cp /apollo/output/syspkgs.txt .
+
+# 3. Build the Runtime image (x86_64 only currently)
+# cp runtime.x86_64.dockerfile.sample runtime.x86_64.dockerfile # if file doesn't exist
+bash build_docker.sh -f runtime.x86_64.dockerfile
+```
+
+---
+
+## Script Arguments
+
+Run `./build_docker.sh --help` for full options:
 
 ```
 Usage:
     build_docker.sh -f <Dockerfile> [Options]
-Available options:
-    -c,--clean      Use "--no-cache=true" for docker build
-    -m,--mode       "build" for build everything from source if possible, "download" for using prebuilt ones
-    -g,--geo        Enable geo-specific mirrors to speed up build. Currently "cn" and "us" are supported.
-    -d,--dist       Whether to build stable("stable") or experimental("testing") Docker images
-    -t,--timestamp  Specify Cyber image timestamp to build Dev image from it. Format: yyyymmdd_hhmm (e.g 20210205_1520)
-    --dry           Dry run (for testing purpose)
-    -h,--help       Show this message and exit
-E.g.,
-    build_docker.sh -f cyber.x86_64.dockerfile -m build -g cn
-    build_docker.sh -f dev.aarch64.dockerfile -m download -d testing
+
+Options:
+    -f, --dockerfile   Path to the Dockerfile (e.g., 'cyber.x86_64.dockerfile').
+    -c, --clean        Disable Docker build cache (--no-cache=true).
+    -m, --mode         Installation mode: 'download' (default, use pre-built), 'build' (build from source).
+    -g, --geo          Enable geo-specific mirrors ('cn' or 'us', default 'us').
+    -t, --timestamp    Timestamp of the previous stage image (YYYYMMDD_HHMM).
+    --dry              Dry run (print commands without execution).
+    -h, --help         Show help message and exit.
 ```
 
-Here, the `-g/--geo` option is used to enable geo-location based settings (APT &
-PYPI mirrors, etc.). Two codes (`us` & `cn`) are supported now, and the default
-is `us`.
+---
 
-To build the latest CyberRT image, simply run:
+## Advanced Tips
 
-```
-./build_docker.sh -f cyber.<TARGET_ARCH>.dockerfile
-```
+### Cross-Architecture Builds
 
-Users of mainland China can specify `-g cn` to speed up build process:
+For cross-architecture builds (e.g., building `aarch64` on `x86_64`), ensure
+`qemu-user-static` is configured:
 
-```
-./build_docker.sh -f cyber.<TARGET_ARCH>.dockerfile -g cn
+```bash
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 ```
 
-## Build Apollo Dev Image
+**Recommendation:** Utilize `docker buildx` for a more robust and efficient
+multi-platform build experience.
 
-Run the following command to build Apollo Dev image:
+### Optimize Build Speed
 
-```
-build_docker.sh -f dev.<TARGET_ARCH>.dockerfile
-```
+- **Local HTTP Cache:** Setting up a local HTTP server to cache downloaded
+  packages can significantly speed up repeated builds without affecting final
+  image size.
 
-On success, output messages like the following will be shown at the bottom of
-your screen.
+  **Steps:**
 
-```
-Successfully built baca71e567e6
-Successfully tagged apolloauto/apollo:dev-x86_64-18.04-20200824_0339
-Built new image apolloauto/apollo:dev-x86_64-18.04-20200824_0339
-```
+  1.  **Download prerequisites:** Identify and download all necessary
+      prerequisite packages to a local directory (e.g., `$HOME/apollo_cache`).
+      URLs are typically listed in the build log (`/opt/apollo/build.log`). Pay
+      attention to checksums for integrity.
+  2.  **Start local HTTP server:** Navigate to your cache directory and start a
+      simple HTTP server on port **8388**:
+      ```bash
+      mkdir -p "$HOME/apollo_cache" && cd "$_"
+      nohup python3 -m http.server 8388 &
+      ```
+  3.  **Rerun build:** Execute `build_docker.sh` as usual. The Docker build
+      process will attempt to fetch packages from
+      `http://host.docker.internal:8388` (or directly from
+      `http://<your_host_ip>:8388` if `host.docker.internal` is not available),
+      greatly reducing download times.
 
-## Build Apollo Runtime Docker Image
+  - **Benefit:** Even if a cached package is missing or broken, the build
+    process will fall back to downloading from the original URL.
 
-Apollo Runtime Docker was used in combination with Release Build output for easy
-deployment. You can run the following commands to build Apollo Runtime Docker
-image on your own.
+- **Avoid `--no-cache` (`-c`):** Only use when strictly necessary, as it forces
+  re-downloading and re-building all layers, significantly increasing build
+  time.
 
-```
-# Generate required APT packages
-./apollo.sh release -c -r
+### Debugging Builds
 
-cd docker/build
-# Copy the generated package list for docker build
-cp /apollo/output/syspkgs.txt .
+Build logs are located at `/opt/apollo/build.log` inside the container,
+providing detailed information on downloads and installation steps.
 
-cp runtime.x86_64.dockerfile.sample runtime.x86_64.dockerfile
-bash build_docker.sh -f runtime.x86_64.dockerfile
-```
-
-> Note: Apollo Runtime Docker supports x86_64 only as Release Build was not
-> ready for Aarch64 yet.
-
-## Tips
-
-### Build Log
-
-The build log for CyberRT and Dev Docker images was located at
-`/opt/apollo/build.log`, which contains download links and checksums of
-dependent packages during Docker build.
-
-### Enable Local HTTP Cache to Speed Up Build
-
-You can enable local HTTP cache to speed up package downloading by performing
-the following steps on your **host** running Docker:
-
-1. Download all prerequisite packages to a directory (say, `$HOME/archive`) with
-   URLs listed in the build log. Pay attention to their checksum.
-2. Change to that archive directory and start your local HTTP cache server at
-   port **8388**.
-
-```
-cd $HOME/archive
-nohup python3 -m http.server 8388 &
-```
-
-> Note: Another advantage with the local HTTP cache mechanism is, it has little
-> influence on the final image size. Even if the cached package was missing or
-> broken, it can still be downloaded from the original URL.
-
-3. Rerun `build_docker.sh`.
-
-## Add New Installer
-
-The best practice of a new installer would be:
-
-1. Well tested.
-
-   Of course. Make it work, and don't break other installers, such as
-   incompatible versions of libraries.
-
-1. Standalone.
-
-   Have minimum assumption about the basement, which means, you can depend on
-   the base image and `installers/installer_base.sh`. Other than that, you
-   should install all the dependencies in your own installer.
-
-1. Thin.
-
-   It will generate a new layer in the final image, so please keep it as thin as
-   possible. For example, clean up all intermediate files:
-
-   ```bash
-   wget xxx.zip
-   # Unzip, make, make install
-   rm -fr xxx.zip xxx
-   ```
-
-1. Cross-architecture.
-
-   It would be awesome to work perfectly for different architectures such as
-   `x86_64` and `aarch64`.
+---

@@ -1,8 +1,7 @@
 [tool.black]
 line-length = 88
-target-version = ['py310']
-skip-string-normalization = false
-include = '\.pyi?
+target-version = ["py310"]
+include = '\.pyi?$'
 exclude = '''
 /(
     \.eggs
@@ -18,12 +17,8 @@ exclude = '''
 [tool.isort]
 profile = "black"
 line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+use_parentheses = true
+ensure_newline_before_comments = true
 known_first_party = ["cyber"]
-
-# Added Flake8 configuration
-[tool.flake8]
-max-line-length = 88
-extend-ignore = ["E203"] # E203 is often ignored to avoid conflicts with Black's formatting
-# exclude = [".git", "__pycache__", "build", "dist"]
-# max-complexity = 10
-# docstring-convention = "google" # if using pydocstyle and Google style
