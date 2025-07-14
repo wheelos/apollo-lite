@@ -27,15 +27,14 @@ for entry in "${mainboard_path}" \
 done
 pathprepend "${HOME}/.local/bin" PATH
 
-# pathprepend "${APOLLO_ROOT_DIR}" PYTHONPATH
-
 # Set up the Python environment
 # For cyber python
+pathprepend "${APOLLO_ROOT_DIR}" PYTHONPATH
+# For common_msgs
 pathprepend "${bazel_bin_path}" PYTHONPATH
 # For cyber c++ wrap so
 pathprepend "${bazel_bin_path}/cyber/python/internal" PYTHONPATH
-# For common_msgs
-pathprepend "${bazel_bin_path}/modules" PYTHONPATH
+
 
 # for protobuf python
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python

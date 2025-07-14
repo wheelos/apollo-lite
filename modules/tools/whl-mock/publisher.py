@@ -17,7 +17,8 @@ from cyber.python.cyber_py3 import cyber
 #
 # This affects the generated template and the message type that will be published.
 # Make sure it matches the actual message type you want to use.
-from common_msgs.control_msgs.control_cmd_pb2 import ControlCommand as MessageType
+
+from cyber.proto.unit_test_pb2 import ChatterBenchmark as MessageType
 
 # ========================================================
 
@@ -26,6 +27,16 @@ from common_msgs.control_msgs.control_cmd_pb2 import ControlCommand as MessageTy
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
+
+
+def fill_header(msg: Message):
+    """
+    Fill the header fields of the message with default values.
+    This is a placeholder function and should be customized based on your message type.
+    """
+    if hasattr(msg, "header"):
+        msg.header.timestamp_sec = time.time()
+        msg.header.sequence_num += 1
 
 
 class ProtoTemplateGenerator:
@@ -38,7 +49,7 @@ class ProtoTemplateGenerator:
             self._fill_template_recursive(msg_instance)
 
             template_str = text_format.MessageToString(
-                msg_instance, as_utf8=True, indent=2, as_one_line=False
+                msg_instance, as_utf8=True, indent=0, as_one_line=False
             )
 
             preamble = f"""# Protobuf Text Format Template for message: {self.message_type.DESCRIPTOR.full_name}
@@ -93,9 +104,8 @@ class ProtoTemplateGenerator:
                             self._get_placeholder_for_primitive(field.type)
                         )
             elif field.type == descriptor.FieldDescriptor.TYPE_MESSAGE:
-                nested_msg = field.message_type._concrete_class()
-                self._fill_template_recursive(nested_msg)
-                setattr(msg_instance, field.name, nested_msg)
+                nested_instance = getattr(msg_instance, field.name)
+                self._fill_template_recursive(nested_instance)
             elif field.type == descriptor.FieldDescriptor.TYPE_ENUM:
                 enum_desc = field.enum_type
                 first_enum_value = enum_desc.values[0].number if enum_desc.values else 0
@@ -112,6 +122,8 @@ class ProtoTemplateGenerator:
 
         if field_type == descriptor.FieldDescriptor.TYPE_STRING:
             return "PLACEHOLDER_STRING"
+        elif field_type == descriptor.FieldDescriptor.TYPE_BYTES:
+            return b""
         elif field_type in (
             descriptor.FieldDescriptor.TYPE_INT32,
             descriptor.FieldDescriptor.TYPE_INT64,
@@ -187,10 +199,12 @@ class ProtoMessagePublisher:
                     i, _, _ = select.select([sys.stdin], [], [], None)
                     if i:
                         input_line = sys.stdin.readline()
+                        fill_header(msg_to_publish)
                         writer.write(msg_to_publish)
                         logging.info(f"Topic '{topic_name}' message published.")
             else:
                 while not cyber.is_shutdown():
+                    fill_header(msg_to_publish)
                     writer.write(msg_to_publish)
                     if period > 0:
                         time.sleep(period)
