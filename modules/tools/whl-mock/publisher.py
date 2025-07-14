@@ -17,7 +17,8 @@ from cyber.python.cyber_py3 import cyber
 #
 # This affects the generated template and the message type that will be published.
 # Make sure it matches the actual message type you want to use.
-from common_msgs.control_msgs.control_cmd_pb2 import ControlCommand as MessageType
+
+from cyber.proto.unit_test_pb2 import ChatterBenchmark as MessageType
 
 # ========================================================
 
@@ -93,9 +94,8 @@ class ProtoTemplateGenerator:
                             self._get_placeholder_for_primitive(field.type)
                         )
             elif field.type == descriptor.FieldDescriptor.TYPE_MESSAGE:
-                nested_msg = field.message_type._concrete_class()
-                self._fill_template_recursive(nested_msg)
-                setattr(msg_instance, field.name, nested_msg)
+                nested_instance = getattr(msg_instance, field.name)
+                self._fill_template_recursive(nested_instance)
             elif field.type == descriptor.FieldDescriptor.TYPE_ENUM:
                 enum_desc = field.enum_type
                 first_enum_value = enum_desc.values[0].number if enum_desc.values else 0
@@ -112,6 +112,8 @@ class ProtoTemplateGenerator:
 
         if field_type == descriptor.FieldDescriptor.TYPE_STRING:
             return "PLACEHOLDER_STRING"
+        elif field_type == descriptor.FieldDescriptor.TYPE_BYTES:
+            return b""
         elif field_type in (
             descriptor.FieldDescriptor.TYPE_INT32,
             descriptor.FieldDescriptor.TYPE_INT64,
