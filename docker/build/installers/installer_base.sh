@@ -70,6 +70,27 @@ function source_date_epoch_setup() {
         || date -u "$DATE_FMT")
 }
 
+function ensure_ld_path() {
+    local lib_path="$1"
+    local target_file="${APOLLO_LD_FILE}"
+
+    if [ -z "$lib_path" ]; then
+        echo "Error: empty lib_path parameter"
+        return 1
+    fi
+
+    if [ ! -f "$target_file" ]; then
+        echo "$lib_path" >> "$target_file"
+        return 0
+    fi
+
+    if ! grep -Fxq "$lib_path" "$target_file"; then
+        echo "$lib_path" >> "$target_file"
+    else
+        echo "Path '$lib_path' is already present in $target_file"
+    fi
+}
+
 function apollo_environ_setup() {
     : "${SOURCE_DATE_EPOCH:=$(source_date_epoch_setup)}"
 
@@ -79,9 +100,10 @@ function apollo_environ_setup() {
     if [ ! -d "${SYSROOT_DIR}" ]; then
         mkdir -p ${SYSROOT_DIR}/{bin,include,lib,share}
     fi
-    if [ ! -f "${APOLLO_LD_FILE}" ]; then
-        echo "${SYSROOT_DIR}/lib" | tee -a "${APOLLO_LD_FILE}"
-    fi
+
+    # Add runtime library path
+    ensure_ld_path "${SYSROOT_DIR}/lib"
+
     if [ ! -f "${APOLLO_PROFILE}" ] && [ -f "/opt/apollo/rcfiles/apollo.sh.sample" ]; then
         cp -f /opt/apollo/rcfiles/apollo.sh.sample "${APOLLO_PROFILE}"
         echo "add_to_path ${SYSROOT_DIR}/bin" >> "${APOLLO_PROFILE}"

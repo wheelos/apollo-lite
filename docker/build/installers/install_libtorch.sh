@@ -119,6 +119,9 @@ function install_libtorch_cpp() {
   # Use mv instead of cp -r for better efficiency
   mv libtorch/* "${INSTALL_DIR}/"
 
+  # Add runtime library path
+  ensure_ld_path "${INSTALL_DIR}/lib"
+
   # Clean up downloaded files
   popd > /dev/null
   rm -rf "${DOWNLOAD_DIR}"

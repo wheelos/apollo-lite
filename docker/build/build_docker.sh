@@ -304,16 +304,16 @@ function parse_arguments() {
 }
 
 function print_usage() {
-    echo "Usage:"
-    echo "${TAB}$0 -f <Dockerfile> [options]"
-    echo "Options:"
-    echo "${TAB}-c,--clean        Disable Docker cache (--no-cache)"
-    echo "${TAB}-m,--mode         Apollo install mode (build | download). Default: ${INSTALL_MODE}"
-    echo "${TAB}-g,--geo          Geographical location (cn | us) for software sources. Default: ${TARGET_GEOLOC}"
-    echo "${TAB}-t,--timestamp    Specify a fixed timestamp for image tags (YYYYMMDD_HHMM). Default: current time"
-    echo "${TAB}-s,--no-squash    Do not squash Docker layers. Default: Squash layers"
-    echo "${TAB}--dry             Dry run only (print build commands without executing)"
-    echo "${TAB}-h,--help         Show this help message"
+  echo "Usage: $0 -f <Dockerfile> [options]"
+  echo "Options:"
+  echo "${TAB}-c,--clean        Disable Docker cache"
+  echo "${TAB}-m,--mode         Install mode (build|download), default: ${INSTALL_MODE}"
+  echo "${TAB}-g,--geo          Geo location (cn|us), default: ${TARGET_GEOLOC}"
+  echo "${TAB}-t,--timestamp    Image tag timestamp (YYYYMMDD_HHMM), default: now"
+  echo "${TAB}--dry             Dry run (show build commands only)"
+  echo "${TAB}-h,--help         Show this help"
+  echo
+  echo "Tip: To pre-download packages, use a local HTTP server (python3 -m http.server 8388)."
 }
 
 function main() {
