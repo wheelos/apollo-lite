@@ -9,5 +9,5 @@ def repo():
     native.new_local_repository(
         name = "osqp",
         build_file = clean_dep("//third_party/osqp:osqp.BUILD"),
-        path = "/opt/apollo/sysroot/include",
+        path = "/opt/apollo/sysroot",
     )
