@@ -32,12 +32,12 @@ export SYSROOT_DIR="/opt/apollo/sysroot"
 export APOLLO_PROFILE="/etc/profile.d/apollo.sh"
 export APOLLO_LD_FILE="/etc/ld.so.conf.d/apollo.conf"
 export DOWNLOAD_LOG="/opt/apollo/build.log"
-export LOCAL_HTTP_ADDR="http://172.17.0.1:8388"
+export LOCAL_HTTP_ADDR="${LOCAL_HTTP_ADDR:-http://172.17.0.1:8388}"
 
 if [[ "$(uname -m)" == "x86_64" ]]; then
-    export SUPPORTED_NVIDIA_SMS="5.2 6.0 6.1 7.0 7.5 8.0 8.6"
+    export SUPPORTED_NVIDIA_SMS="5.2 6.0 6.1 7.0 7.5 8.0 8.6 8.9"
 else # AArch64
-    export SUPPORTED_NVIDIA_SMS="5.3 6.2 7.2"
+    export SUPPORTED_NVIDIA_SMS="5.3 6.2 7.2 7.5"
 fi
 
 function py3_version() {
@@ -200,16 +200,20 @@ function download_if_not_cached() {
       ;;
   esac
 
+  # Node: you can enable the following lines to cache the downloaded package by
+  # running a scratch container, and then use is as the local cache
+  # server(LOCAL_HTTP_ADDR) to speed up future builds.
+  # TODO(All): a better way to cache packages
   # After downloading, save to local cache
-  case "$schema" in
-    http)
-      cp -f "$pkg" "${LOCAL_CACHE_DIR}/$pkg"
-      ;;
-    git)
-      tar czf "${pkg}.git.tgz" "$pkg.git"
-      cp -f "${pkg}.git.tgz" "${LOCAL_CACHE_DIR}/"
-      rm -rf "$pkg.git"
-      ;;
-  esac
-  ok "Cached $pkg into $LOCAL_CACHE_DIR"
+  # case "$schema" in
+  #   http)
+  #     cp -f "$pkg" "${LOCAL_CACHE_DIR}/$pkg"
+  #     ;;
+  #   git)
+  #     tar czf "${pkg}.git.tgz" "$pkg.git"
+  #     cp -f "${pkg}.git.tgz" "${LOCAL_CACHE_DIR}/"
+  #     rm -rf "$pkg.git"
+  #     ;;
+  # esac
+  # ok "Cached $pkg into $LOCAL_CACHE_DIR"
 }

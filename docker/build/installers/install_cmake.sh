@@ -44,7 +44,7 @@ case "${TARGET_ARCH}" in
         ;;
     "aarch64")
         CMAKE_SH_FILE="cmake-${CMAKE_VERSION}-Linux-aarch64.sh"
-        CMAKE_CHECKSUM="f383c2ef96e5de47c0a559557e9af0bdfcf99d3988c17103767c9ef1b3cd8c0a9"
+        CMAKE_CHECKSUM="f383c2ef96e5de47c0a55957e9af0bdfcf99d3988c17103767c9ef1b3cd8c0a9"
         ;;
     *)
         error "Unsupported architecture for CMake installation: ${TARGET_ARCH}. Please add its configuration."

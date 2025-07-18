@@ -54,9 +54,14 @@ info "Detected system architecture: ${TARGET_ARCH}"
 configure_apt_sources() {
   local geo="$1"
   local arch="$2"
+  local os_id="$(awk -F= '/^ID=/{print $2}' /etc/os-release | tr -d '"')"
+  local os_version="$(awk -F= '/^VERSION_ID=/{print $2}' /etc/os-release | tr -d '"')"
+  # Specific sources file for geo, arch, os_id, and os_version
   local sources_list_file="/etc/apt/sources.list"
 
   local preferred_sources=(
+    "${RCFILES_DIR}/sources.list.${geo}.${arch}.${os_id}.${os_version}"
+    "${RCFILES_DIR}/sources.list.${geo}.${arch}.${os_id}"
     "${RCFILES_DIR}/sources.list.${geo}.${arch}"
     "${RCFILES_DIR}/sources.list.default.${arch}"
     "${RCFILES_DIR}/sources.list.default"
@@ -74,7 +79,7 @@ configure_apt_sources() {
 
   if [[ -n "${found_source_file}" ]]; then
     info "Using APT sources file: ${found_source_file}"
-    install -m 0644 "${found_source_file}" "${sources_list_file}" || \
+    install -m 0644 "${found_source_file}" "${sources_list_file}" ||
       error "Failed to copy APT sources file '${found_source_file}' to '${sources_list_file}'."
   else
     warn "No suitable APT sources file found for ${geo^^} (${arch})."
@@ -101,7 +106,7 @@ configure_pypi_mirror() {
       pypi_mirror="https://pypi.tuna.tsinghua.edu.cn/simple"
       info "Setting PyPI mirror to Tsinghua: ${pypi_mirror}"
       ;;
-    us|"")
+    us | "")
       pypi_mirror="https://pypi.org/simple"
       info "Setting PyPI mirror to official PyPI: ${pypi_mirror}"
       ;;
