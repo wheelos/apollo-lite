@@ -1,8 +1,8 @@
-# Welcome to Apollo's GitHub page!
+# Welcome to Apollo-Lite's GitHub Page!
 
 [Apollo-Lite](https://github.com/wheelos/apollo-lite) is a high-performance,
-flexible architecture accelerating the development, testing, and deployment of
-Autonomous Vehicles.
+flexible architecture designed to accelerate the development, testing, and
+deployment of Autonomous Vehicles.
 
 ---
 
@@ -21,100 +21,115 @@ Autonomous Vehicles.
 - [Quick Start](#quick-start)
 - [Build & Compile](#build--compile)
 - [Copyright and License](#copyright-and-license)
-- [Connect with us](#connect-with-us)
+- [Connect with Us](#connect-with-us)
 
 ---
 
 ## Introduction
 
-Apollo is packed with powerful modules and features designed for autonomous
-driving development. Before you take it for a spin, please ensure your
-environment is properly calibrated and configured by following the prerequisites
-and installation instructions below. For a deeper dive, check out Apollo's
+Apollo-Lite provides powerful modules and features for autonomous driving
+development. Before getting started, please ensure your environment meets the
+prerequisites and follow the installation instructions below. For a deeper
+understanding, refer to the
 [architecture overview](http://apollo.auto/docs/architecture_overview.html) to
-understand its core technologies and platform design.
+learn more about the core technologies and platform design.
 
 ---
 
 ## Prerequisites
 
-- **Machine:** 8-core CPU, 8GB RAM minimum
-- **GPU:** NVIDIA Turing GPU strongly recommended for acceleration
+- **Machine:** Minimum 8-core CPU, 8GB RAM
+- **GPU:** NVIDIA Turing GPU recommended for acceleration
 - **Operating System:** Ubuntu 20.04 LTS
 
 ---
 
 ## Installation
 
-> Detailed installation steps and scripts are provided for ease of setup.
+> Detailed installation steps and scripts are provided for a smooth setup.
 
 ---
 
 ## Quick Start
 
-### 1. Setup Host Environment
+**Note:** For quick startup and verification, only the CPU-based image
+(simulation planning module) is provided. The full GPU-dependent tutorial will
+be released later. We recommend starting with the CPU image because the GPU
+image is large and has complex dependencies, which may not be suitable for
+beginners.
 
-Run the following scripts in order to prepare your host machine, which will
-perform the following steps sequentially:
-
-1. Install Docker (checks if already installed, then proceeds)
-2. Install NVIDIA Container Toolkit (checks if already installed, depends on
-   Docker)
-3. Perform host system configurations
+### 1. Install Deployment Tool
 
 ```bash
-# setup host
-bash docker/setup_host/setup_host.sh
+pip install whl-deploy
 ```
 
-### 2. Start Docker Container
+### 2. Setup Host Environment
 
-Download and start the Apollo container image (only needs to be done once):
+Run the following scripts to prepare your host machine. These steps will:
+
+1. Install Docker (checks if already installed)
+2. [skip] Install NVIDIA Container Toolkit (checks if already installed, depends
+   on Docker)
+3. [skip] Perform host system configurations
 
 ```bash
-# docker pull & start testing
+whl-deploy setup docker
+```
+
+### 3. Start Docker Container
+
+Download and start the Apollo container image (only required once):
+
+```bash
 bash docker/scripts/dev_start.sh -d testing
 ```
 
-Enter the running container environment in subsequent sessions with:
+To enter the running container environment in subsequent sessions:
 
 ```bash
-# docker into
 bash docker/scripts/dev_into.sh
 ```
 
-Setting Environment Variables
+Set environment variables:
 
 ```bash
 source cyber/setup.bash
 ```
 
-### 3. Build Apollo
+### 4. Build Apollo
 
-Build the entire Apollo project with:
+To build the entire Apollo project:
 
 ```bash
-./apollo.sh build
+./apollo.sh build_cpu
 ```
 
-To build a single module, use:
+To build a specific module:
 
 ```bash
 ./apollo.sh build_cpu <module_name>
-# example:
+# Example:
 ./apollo.sh build_cpu planning
+```
+
+**Note:** If the build process is killed due to out-of-memory (OOM), try
+reducing the number of build threads:
+
+```bash
+./apollo.sh build_cpu dreamview --cpus=2
 ```
 
 ---
 
 ## Copyright and License
 
-Apollo is licensed under the [Apache License 2.0](LICENSE). Please adhere to the
-licensing terms when using or contributing to this project.
+Apollo-Lite is licensed under the [Apache License 2.0](LICENSE). Please comply
+with the license terms when using or contributing to this project.
 
 ---
 
-## Connect with us
+## Connect with Us
 
 - ⭐ Star and Fork to support the project!
 - 💬 Join our [community discussion group](http://apollo.auto/community) to chat
@@ -123,5 +138,5 @@ licensing terms when using or contributing to this project.
 
 ---
 
-Thank you for being part of Apollo's journey towards autonomous driving
+Thank you for being part of Apollo-Lite's journey towards autonomous driving
 innovation!
