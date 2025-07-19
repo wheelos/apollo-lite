@@ -11,7 +11,7 @@ cc_library(
         "torch/csrc/api/include",
     ],
     linkopts = [
-        "-L/usr/local/libtorch_gpu/lib",
+        "-L/usr/local/libtorch/lib",
         "-lc10",
         "-lc10_cuda",
         "-ltorch",
