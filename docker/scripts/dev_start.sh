@@ -500,16 +500,22 @@ function main() {
     # --- Phase 3: Docker Run Command Construction ---
     # Define the arrays for docker run options
     local run_opts=(
-        -itd     # Interactive, TTY, Detached (run in background)
-        --privileged # Grant extended privileges (often needed for device access)
-        --name "${DEV_CONTAINER}"
-        --net host # Use host network
-        --pid=host # Use host process namespace (allows host process inspection/signals)
-        --shm-size "${SHM_SIZE}"
-        -w /apollo             # Set working directory inside container
-        --hostname "${DEV_INSIDE}" # Set hostname inside container for easy identification
-        --label "owner=${USER}" # Label container for easy filtering/management (host user)
+      -itd     # Interactive, TTY, Detached (run in background)
+      --name "${DEV_CONTAINER}"
+      --net host # Use host network
+      --shm-size "${SHM_SIZE}"
+      -w /apollo             # Set working directory inside container
+      --hostname "${DEV_INSIDE}" # Set hostname inside container for easy identification
+      --label "owner=${USER}" # Label container for easy filtering/management (host user)
     )
+
+    # Only run_opts added when not testing
+    if [[ "${CUSTOM_DIST}" != "testing" ]]; then
+      run_opts+=(
+        --privileged # Grant extended privileges (often needed for device access)
+        --pid=host # Use host process namespace (allows host process inspection/signals)
+      )
+    fi
 
     # Add GPU options based on detection
     local gpu_opts=()

@@ -31,3 +31,6 @@ scipy
 h5py
 pyyaml
 utm
+
+# lib for command line tools
+click
