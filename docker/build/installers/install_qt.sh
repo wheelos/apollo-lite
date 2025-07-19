@@ -32,7 +32,9 @@ apt_get_update_and_install \
     libdbus-1-3 \
     libfontconfig1 \
     libxkbcommon0   \
-    libxkbcommon-x11-0
+    libxkbcommon-x11-0 \
+    libxrender1 \
+    libxext6
 
 # Note(storypku)
 # 1) libicu6X: required by uic

@@ -1,0 +1,1 @@
+deb [trusted=yes signed-by=/etc/apt/trusted.gpg.d/jetson-ota-public.asc] https://repo.download.nvidia.com/jetson/common r35.4 main

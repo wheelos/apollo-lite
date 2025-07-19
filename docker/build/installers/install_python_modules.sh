@@ -33,6 +33,7 @@ apt_get_update_and_install \
 # libc6-dev
 [[ -f /usr/include/xlocale.h ]] || ln -s /usr/include/locale.h /usr/include/xlocale.h
 
+# TODO(All): consider using modern methods to setup python environment
 pip3_install -r py3_requirements.txt
 
 if [[ -n "${CLEAN_DEPS}" ]]; then
@@ -42,5 +43,4 @@ if [[ -n "${CLEAN_DEPS}" ]]; then
 fi
 
 # Clean up cache to reduce layer size.
-apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+apt-get clean && rm -rf /var/lib/apt/lists/*

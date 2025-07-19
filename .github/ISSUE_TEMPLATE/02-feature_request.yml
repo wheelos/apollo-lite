@@ -1,0 +1,34 @@
+name: '🌟 Feature Request'
+description: 'Suggest a new feature or improvement'
+title: '[Feature]: '
+labels: ['enhancement']
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        💡 Share your ideas on how to improve WheelOS — the more context and use cases, the better!
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: 'Use Case / Motivation'
+      description: 'Describe the real-world scenario or problem this addresses'
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 'Proposed Implementation'
+      description: 'Outline your idea—API, commands, behavior, etc.'
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 'Alternatives Considered'
+      description: 'Any existing workaround or past discussion'
+    validations:
+      required: false

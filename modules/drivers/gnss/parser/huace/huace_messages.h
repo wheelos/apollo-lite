@@ -173,6 +173,10 @@ struct GPCHCX : public GPCHCBase {
   // vehicle coordinate system Z-axis, unit (degrees), accurate to two decimal
   // places
   double direction_angle = 0.0f;
+  // Number of satellites used for main antenna
+  uint32_t nsu1;
+  // Number of satellites used for secondary antenna
+  uint32_t nsu2;
   // Device serial number (e.g., 6 chars + null terminator)
   std::string device_sn;
 };

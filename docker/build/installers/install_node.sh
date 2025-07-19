@@ -16,32 +16,36 @@
 # limitations under the License.
 ###############################################################################
 
-# Fail on first error.
-set -e
+set -euo pipefail
 
 geo="${1:-us}"
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./installer_base.sh
 
-VERSION="6.5.1"
-NODE_VERSION="12.18.1"
-PKG_NAME="n-${VERSION}.tar.gz"
-CHECKSUM="5833f15893b9951a9ed59487e87b6c181d96b83a525846255872c4f92f0d25dd"
-DOWNLOAD_LINK="https://github.com/tj/n/archive/v${VERSION}.tar.gz"
-download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
-
-tar xzf "${PKG_NAME}"
-
-info "Install Node for $geo ..."
-
-if [[ "${geo}" == "cn" ]]; then
-    export N_NODE_MIRROR=https://npmmirror.com/mirrors/node
+if [[ "$geo" == "cn" ]]; then
+  echo "📍 China region, switching mirror source to Taobao (npm mirror)"
+  yarn config set registry https://registry.npmmirror.com/
+  npm config set registry https://registry.npmmirror.com/
 fi
 
-pushd n-${VERSION}
-    make install
-    n ${NODE_VERSION}
-popd
+curl -fsSL https://deb.nodesource.com/setup_22.x -o setup_22.x
+echo "Verifying integrity of the downloaded script..."
+# Replace the following checksum with the actual SHA256 checksum provided by NodeSource
+echo "expected-checksum-value  setup_22.x" | sha256sum --check --status
+if [[ $? -ne 0 ]]; then
+  echo "❌ Checksum verification failed. Aborting installation."
+  exit 1
+fi
+sudo -E bash setup_22.x
+sudo apt-get install -y nodejs
 
-rm -fr "${PKG_NAME}" "n-${VERSION}"
+echo "✅ Node.js installation completed:"
+node -v
+npm -v
+echo "▼ Yarn registry"
+yarn config get registry
+
+# Clean up cache to reduce layer size.
+apt-get clean && \
+    rm -rf /var/lib/apt/lists/*

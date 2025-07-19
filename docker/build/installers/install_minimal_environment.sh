@@ -70,7 +70,7 @@ fi
 # Base dependencies (all modes)
 info "--- Installing base system dependencies ---"
 apt_get_update_and_install \
-  apt-utils\
+  apt-utils \
   bc \
   curl \
   file \
@@ -113,7 +113,7 @@ fi
 info "--- Configuring Sudo: Allow sudo group to execute commands without password ---"
 sudoers_file="/etc/sudoers"
 if ! grep -q "^%sudo ALL=(ALL:ALL) NOPASSWD: ALL$" "${sudoers_file}"; then
-  sed -i -e '/^%sudo.*/d' -e '$a\%sudo ALL=(ALL:ALL) NOPASSWD: ALL' "${sudoers_file}" || \
+  sed -i -e '/^%sudo.*/d' -e '$a\%sudo ALL=(ALL:ALL) NOPASSWD: ALL' "${sudoers_file}" ||
     error "Failed to configure sudoers. Manual intervention may be required."
   info "Sudoers configured for NOPASSWD for sudo group."
 else

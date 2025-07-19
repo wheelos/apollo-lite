@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/escaping.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
 
@@ -104,6 +105,7 @@ SolutionType ToSolutionType(SatelliteStatus sat_status) {
       return SolutionType::PSRDIFF;
 
     case SatelliteStatus::RTK_FLOAT_ORIENT:
+      return SolutionType::INS_RTKFLOAT;
     case SatelliteStatus::RTK_FLOAT_NO_ORIENT:
       // RTK float solution, with or without attitude
       // SolutionType has several FLOAT types, here FLOATCONV is generic,
@@ -115,6 +117,7 @@ SolutionType ToSolutionType(SatelliteStatus sat_status) {
       return SolutionType::NARROW_FLOAT;
 
     case SatelliteStatus::RTK_STABLE_ORIENT:
+      return SolutionType::INS_RTKFIXED;
     case SatelliteStatus::RTK_STABLE_NO_ORIENT:
       // RTK fixed solution, with or without attitude
       // SolutionType has several INT (Integer fixed) types, here NARROW_INT
@@ -262,24 +265,45 @@ static const std::vector<apollo::drivers::gnss::HuaceParser::FieldParser>
          }},
         {"latitude",
          [](const std::string& s, GPCHCX* out_ptr) {
-           return ParseStandardField(s, "latitude", 11, out_ptr->latitude,
-                                     [](const std::string& str, double* val) {
-                                       return absl::SimpleAtod(str, val);
-                                     });
+           return ParseStandardField(
+               s, "latitude", 11, out_ptr->latitude,
+               [](const std::string& str, double* val) {
+                 // the string may be empty when the
+                 // signal is weak
+                 if (str.empty()) {
+                   *val = std::numeric_limits<double>::quiet_NaN();
+                   return true;
+                 }
+                 return absl::SimpleAtod(str, val);
+               });
          }},
         {"longitude",
          [](const std::string& s, GPCHCX* out_ptr) {
-           return ParseStandardField(s, "longitude", 12, out_ptr->longitude,
-                                     [](const std::string& str, double* val) {
-                                       return absl::SimpleAtod(str, val);
-                                     });
+           return ParseStandardField(
+               s, "longitude", 12, out_ptr->longitude,
+               [](const std::string& str, double* val) {
+                 // the string may be empty when the
+                 // signal is weak
+                 if (str.empty()) {
+                   *val = std::numeric_limits<double>::quiet_NaN();
+                   return true;
+                 }
+                 return absl::SimpleAtod(str, val);
+               });
          }},
         {"altitude",
          [](const std::string& s, GPCHCX* out_ptr) {
-           return ParseStandardField(s, "altitude", 13, out_ptr->altitude,
-                                     [](const std::string& str, double* val) {
-                                       return absl::SimpleAtod(str, val);
-                                     });
+           return ParseStandardField(
+               s, "altitude", 13, out_ptr->altitude,
+               [](const std::string& str, double* val) {
+                 // the string may be empty when the
+                 // signal is weak
+                 if (str.empty()) {
+                   *val = std::numeric_limits<double>::quiet_NaN();
+                   return true;
+                 }
+                 return absl::SimpleAtod(str, val);
+               });
          }},
         {"velocity_east",
          [](const std::string& s, GPCHCX* out_ptr) {
@@ -327,17 +351,24 @@ static const std::vector<apollo::drivers::gnss::HuaceParser::FieldParser>
          }},
         // Status field - special handling for bitfield (assuming
         // status.raw_value is uint8_t)
-        // {"status",
-        //  [](const std::string& s, GPCHCX* out_ptr) {
-        //    // Direct call to ParseStandardField for uint8_t, which handles
-        //    // conversion and range check.
-        //    return ParseStandardField<uint8_t>(s, "status", 20,
-        //    out_ptr->status.raw_value,
-        //                              [](const std::string& str, uint8_t* val)
-        //                              {
-        //                                return absl::SimpleAtoi(str, val);
-        //                              });
-        //  }},
+        {"status",
+         [](const std::string& s, GPCHCX* out_ptr) {
+           // Direct call to ParseStandardField for uint8_t, which handles
+           // conversion and range check.
+           return ParseStandardField(
+               s, "status", 20, out_ptr->status.raw_value,
+               [](const std::string& str, uint8_t* val) {
+                 std::string result;
+                 if (!absl::HexStringToBytes(str, &result)) {
+                   AERROR << "Failed to decode hex string for field 'status'. "
+                             "Raw input: "
+                          << str;
+                   return false;
+                 }
+                 *val = static_cast<uint8_t>(result[0]);
+                 return true;
+               });
+         }},
         {"differential_age",
          [](const std::string& s, GPCHCX* out_ptr) {
            // THIS IS THE LINE THAT CAUSED THE ERROR
@@ -428,6 +459,9 @@ static const std::vector<apollo::drivers::gnss::HuaceParser::FieldParser>
          }},
         // Note: 'separator' is char, typically handled by skipping or specific
         // logic.
+        // set a null parser for "separator" field, as it is a special field but
+        // keep the parsers aligned with the fields
+        {"separator", nullptr},
         {"speed_heading",
          [](const std::string& s, GPCHCX* out_ptr) {
            return ParseStandardField(s, "speed_heading", 33,
@@ -499,12 +533,26 @@ static const std::vector<apollo::drivers::gnss::HuaceParser::FieldParser>
                                        return absl::SimpleAtod(str, val);
                                      });
          }},
+        {"nsu1",
+         [](const std::string& s, GPCHCX* out_ptr) {
+           return ParseStandardField(s, "nsu1", 42, out_ptr->nsu1,
+                                     [](const std::string& str, uint32_t* val) {
+                                       return absl::SimpleAtoi(str, val);
+                                     });
+         }},
+        {"nsu2",
+         [](const std::string& s, GPCHCX* out_ptr) {
+           return ParseStandardField(s, "nsu2", 43, out_ptr->nsu2,
+                                     [](const std::string& str, uint32_t* val) {
+                                       return absl::SimpleAtoi(str, val);
+                                     });
+         }},
         // device_sn is now std::string, use its specialization of
         // ParseStandardField
         {"device_sn",
          [](const std::string& s, GPCHCX* out_ptr) {
            return ParseStandardField(
-               s, "device_sn", 42, out_ptr->device_sn,
+               s, "device_sn", 44, out_ptr->device_sn,
                [](const std::string& src, std::string* dest) {
                  *dest = src;
                  return true;
@@ -586,8 +634,9 @@ HuaceParser::ProcessPayload() {
   auto terminator_pos_opt = buffer_.Find(huace::FRAME_TERMINATOR);
   if (!terminator_pos_opt) {
     // Terminator not found. Need more data.
-    AINFO_IF(!buffer_.IsEmpty())
-        << "Huace frame terminator not found. Need more data.";
+    if (!buffer_.IsEmpty()) {
+      ADEBUG << "Huace frame terminator not found. Need more data.";
+    }
     return std::nullopt;
   }
 
@@ -604,13 +653,15 @@ HuaceParser::ProcessPayload() {
   // Terminator is huace::FRAME_TERMINATOR.size() bytes.
   auto frame_view = buffer_.Peek().substr(0, total_frame_length);
 
+  ADEBUG << "frame_view: " << frame_view;
+
   // Minimum required length: Header + '*' + CRC + Terminator
   const size_t min_frame_size = current_header_size_ + 1 /* '*' */ +
                                 huace::NUMA_CRC_LENGTH +
                                 huace::FRAME_TERMINATOR.size();
 
   if (frame_view.length() < min_frame_size) {
-    AERROR << "Frame data too short. Consuming malformed frame.";
+    AWARN << "Frame data too short. Consuming malformed frame.";
     buffer_.Drain(total_frame_length);
     return std::vector<Parser::ParsedMessage>();
   }
@@ -621,25 +672,26 @@ HuaceParser::ProcessPayload() {
   // Position of the first CRC hex character
   size_t crc_chars_start_pos = terminator_pos - huace::NUMA_CRC_LENGTH;
 
-  // Payload data is from after the header up to the '*' delimiter
-  size_t payload_start_pos = current_header_size_;
+  // Payload data is from 0 to the '*' delimiter, parser follows will check the
+  // validation of header
+  size_t payload_start_pos = 0;
   // Payload ends just before '*'
   size_t payload_end_pos = checksum_delimiter_pos;
 
   // Check if '*' is actually at the expected position
   if (frame_view[checksum_delimiter_pos] != huace::NMEA_CHECKSUM_DELIMITER) {
-    AERROR << "Checksum delimiter not found at expected position. Consuming "
-              "frame.";
+    AWARN << "Checksum delimiter not found at expected position. Consuming "
+             "frame.";
     buffer_.Drain(total_frame_length);
     return std::vector<Parser::ParsedMessage>();
   }
 
   // Validate checksum.
-  bool checksum_ok =
-      IsChecksumValid(frame_view, payload_start_pos, crc_chars_start_pos);
+  // the checksum calculation includes the header but not the 1st character `$`
+  bool checksum_ok = IsChecksumValid(frame_view, 1, crc_chars_start_pos);
 
   if (!checksum_ok) {
-    AERROR << "Checksum validation failed. Consuming frame.";
+    AWARN << "Checksum validation failed. Consuming frame.";
     buffer_.Drain(total_frame_length);
     return std::vector<Parser::ParsedMessage>();
   }
@@ -649,6 +701,7 @@ HuaceParser::ProcessPayload() {
   auto payload_view =
       frame_view.substr(payload_start_pos, payload_end_pos - payload_start_pos);
 
+  // Parse the payload.
   std::vector<Parser::ParsedMessage> messages;
   switch (current_frame_type_) {
     case FrameType::GPCHC:
@@ -682,19 +735,31 @@ bool ParseFieldsToStruct(const std::vector<std::string>& items,
 
   // parse the header
   const std::string& header_str = items[0];
-  if (header_str != huace::GPCHCX::header) {
-    AERROR << "Invalid header: Expected '" << huace::GPCHCX::header
-           << "', Got '" << header_str << "'.";
+  // Check if the header matches expected values
+  if (header_str != huace::GPCHCX::header &&
+      header_str != huace::GPCHC::header) {
+    AERROR << "Invalid header: Expected '" << huace::GPCHCX::header << "' or '"
+           << huace::GPCHC::header << "', Got '" << header_str << "'.";
     return false;
   }
 
   // Iterate through parsers and parse each field
-  for (size_t i = 0; i < parsers.size(); ++i) {
-    // Check if we have enough items
+  // this function used both for GPCHC and GPCHCX, but field number of GPCHC is
+  // 24, less than parsers.size() + 1, so terminate early by items.size()
+  for (size_t i = 0; i < parsers.size() && i < items.size(); ++i) {
+    // Skip the header item (index 0) and parse the rest
     size_t current_item_index = i + 1;
     const std::string& field_string = items[current_item_index];
     const char* field_name = parsers[i].name;
 
+    if (parsers[i].parser == nullptr) {
+      // If parser is nullptr, we skip parsing and just log the field
+      ADEBUG << "Skipping field: " << field_name << " at item index "
+             << current_item_index << " (value: '" << field_string << "')";
+      continue;
+    }
+    // access parser via index directly for performance, the parsers structure
+    // must be aligned with the fields in the GPCHCX or GPCHC struct
     if (!parsers[i].parser(field_string, out)) {
       AERROR << "Parsing failed for field: " << field_name << " at item index "
              << current_item_index << " (string: '" << field_string << "')";
@@ -725,14 +790,14 @@ bool HuaceParser::IsChecksumValid(std::string_view frame_view,
   // Parse expected checksum (a helper is needed for this)
   auto expected_checksum_opt = ParseHexByte(crc_hex_view);
   if (!expected_checksum_opt) {
-    AERROR << "Failed to parse checksum hex characters: " << crc_hex_view;
+    AWARN << "Failed to parse checksum hex characters: " << crc_hex_view;
     return false;
   }
 
   if (calculated_checksum != *expected_checksum_opt) {
-    AERROR << "Checksum mismatch. Calculated: " << std::hex
-           << (int)calculated_checksum << ", Expected: " << std::hex
-           << (int)(*expected_checksum_opt);
+    AWARN << "Checksum mismatch. Calculated: " << std::hex
+          << (int)calculated_checksum << ", Expected: " << std::hex
+          << (int)(*expected_checksum_opt);
     return false;
   }
 
@@ -743,7 +808,7 @@ std::vector<Parser::ParsedMessage> HuaceParser::ParseGPCHCX(
     std::string_view payload_view) {
   std::vector<Parser::ParsedMessage> parsed_messages;
 
-  // 2. Use absl::StrSplit to split the payload string by comma
+  // 2. Use absl::StrSplit to split the frame string by comma
   std::vector<std::string> items = absl::StrSplit(payload_view, ',');
 
   // 3. Parse common and huace::GPCHCX specific fields
@@ -817,6 +882,7 @@ void HuaceParser::FillGnssBestpos(const huace::GPCHCX& gpchcx,
 
   // Fill satellite counts
   bestpos->set_num_sats_tracked(gpchcx.nsv1 + gpchcx.nsv2);
+  // TODO(All): add logic to fill other satellite counts if available
   // Fields like num_sats_in_solution, num_sats_l1, num_sats_multi might need
   // mapping from gpchcx or status code, check protocol spec.
   // bestpos->set_num_sats_in_solution(...);
@@ -828,11 +894,14 @@ void HuaceParser::FillImu(const huace::GPCHCX& gpchcx, Imu* imu) {
 
   Point3D* linear_acceleration = imu->mutable_linear_acceleration();
   // Ensure correct coordinate transform (RFU to FLU)
-  rfu_to_flu(gpchcx.acc_x, gpchcx.acc_y, gpchcx.acc_z, linear_acceleration);
+  rfu_to_flu(gpchcx.acc_x * kAccelerationGravity,
+             gpchcx.acc_y * kAccelerationGravity,
+             gpchcx.acc_z * kAccelerationGravity, linear_acceleration);
 
   Point3D* angular_velocity = imu->mutable_angular_velocity();
   // Ensure correct coordinate transform (RFU to FLU)
-  rfu_to_flu(gpchcx.gyro_x, gpchcx.gyro_y, gpchcx.gyro_z, angular_velocity);
+  rfu_to_flu(gpchcx.gyro_x * kDegToRad, gpchcx.gyro_y * kDegToRad,
+             gpchcx.gyro_z * kDegToRad, angular_velocity);
 }
 
 void HuaceParser::FillHeading(const huace::GPCHCX& gpchcx, Heading* heading) {
@@ -840,12 +909,15 @@ void HuaceParser::FillHeading(const huace::GPCHCX& gpchcx, Heading* heading) {
                                 gpchcx.seconds_in_gps_week);
   heading->set_solution_status(
       ToSolutionStatus(gpchcx.status.get_system_status()));
+  heading->set_position_type(
+      ToSolutionType(gpchcx.status.get_satellite_status()));
   heading->set_heading(gpchcx.heading);
   heading->set_pitch(gpchcx.pitch);
   // Fill standard deviations - might only be available in huace::GPCHCX
   heading->set_heading_std_dev(gpchcx.heading_std);
   heading->set_pitch_std_dev(gpchcx.pitch_std);
 
+  // TODO(All): Add logic to fill fields of satellite number if available
   // Fields like station_id, satellite counts might need mapping
   // heading->set_station_id("0"); // Default or map from gpchcx?
   // heading->set_satellite_number_multi(...);
@@ -910,11 +982,14 @@ void HuaceParser::FillIns(const huace::GPCHCX& gpchcx, Ins* ins) {
 
   // Assuming these are RFU gyro rates
   Point3D* angular_velocity = ins->mutable_angular_velocity();
-  rfu_to_flu(gpchcx.gyro_x, gpchcx.gyro_y, gpchcx.gyro_z, angular_velocity);
+  rfu_to_flu(gpchcx.gyro_x * kDegToRad, gpchcx.gyro_y * kDegToRad,
+             gpchcx.gyro_z * kDegToRad, angular_velocity);
 
   Point3D* linear_acceleration = ins->mutable_linear_acceleration();
   // Assuming these are RFU accelerations
-  rfu_to_flu(gpchcx.acc_x, gpchcx.acc_y, gpchcx.acc_z, linear_acceleration);
+  rfu_to_flu(gpchcx.acc_x * kAccelerationGravity,
+             gpchcx.acc_y * kAccelerationGravity,
+             gpchcx.acc_z * kAccelerationGravity, linear_acceleration);
 
   // Optional: Fill standard deviation fields if available in huace::GPCHCX
 }

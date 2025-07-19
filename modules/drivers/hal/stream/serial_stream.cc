@@ -338,7 +338,7 @@ bool SerialStream::Connect() {
 bool SerialStream::Disconnect() {
   if (!is_open_) {
     status_ = Stream::Status::DISCONNECTED;
-    return true; // Already disconnected
+    return true;  // Already disconnected
   }
 
   AINFO << "Disconnecting serial port " << device_name_ << " fd: " << fd_;
@@ -587,6 +587,11 @@ size_t SerialStream::write(const uint8_t* data, size_t length) {
             Disconnect();  // Clean up
             throw std::runtime_error("Serial write wait_writable failed: " +
                                      std::string(strerror(last_errno_)));
+          }
+          if (last_errno_ == ETIMEDOUT) {
+            AWARN << "serial write timedout, disconnect it, it will attempt to "
+                     "re-connect next time.";
+            Disconnect();
           }
           // If we are here, it was EAGAIN on write, and wait_writable timed out
           // or got EAGAIN/EWOULDBLOCK. Return partial write count. Caller

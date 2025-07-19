@@ -81,6 +81,7 @@ class RawStream {
   bool rtk_software_solution_ = false;
   bool push_location_ = false;
   bool is_healthy_ = true;
+  uint64_t last_gpgga_timestamp_ = 0;
   config::Config config_;
 
   const std::string raw_data_topic_;
@@ -92,6 +93,7 @@ class RawStream {
   std::unique_ptr<DataParser> data_parser_ptr_;
   std::unique_ptr<RtcmParser> rtcm_parser_ptr_;
   std::unique_ptr<std::ofstream> gpsbin_stream_ = nullptr;
+  std::unique_ptr<std::ofstream> rtcm_stream_ = nullptr;
 
   std::shared_ptr<apollo::cyber::Node> node_ = nullptr;
   std::shared_ptr<apollo::cyber::Writer<StreamStatus>> stream_writer_ = nullptr;
