@@ -15,4 +15,8 @@
 
 --use_cyber_time=true
 
+# Default port for the Dreamview server. The default is 8888, but this can be
+# modified for multi-host development scenarios if needed.
+--server_ports=8888
+
 --map_dir=/apollo/modules/map/data/demo

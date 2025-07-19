@@ -17,7 +17,23 @@
 ###############################################################################
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Todo(daohu527): The gflags parameter server_ports is passed in through
+# the command line, and then transparently passed to the dreamview startup
+# parameter. Since cyber_launch does not take parameters,
+# it is necessary to discuss whether to add parameter functions in cyber_launch.
+# Read server_ports from modules/common/data/global_flagfile.txt
 DREAMVIEW_URL="http://localhost:8888"
+
+GLOBAL_FLAGFILE="${DIR}/../modules/common/data/global_flagfile.txt"
+if [[ -f "$GLOBAL_FLAGFILE" ]]; then
+  SERVER_PORT=$(grep -E '^--server_ports=' "$GLOBAL_FLAGFILE" | head -n1 | cut -d'=' -f2 | cut -d',' -f1)
+  if [[ -n "$SERVER_PORT" ]]; then
+    DREAMVIEW_URL="http://localhost:${SERVER_PORT}"
+  fi
+fi
+
+echo "DREAMVIEW_URL is set to ${DREAMVIEW_URL}"
 
 cd "${DIR}/.."
 
