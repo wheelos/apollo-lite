@@ -136,4 +136,5 @@ message Config {
   optional string gpsbin_folder = 14;
   //
   optional bool is_base_station = 15;
+  optional string rtk_dump_folder = 16;
 }

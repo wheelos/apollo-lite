@@ -20,6 +20,7 @@
 #include <ctime>
 #include <memory>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "absl/strings/str_cat.h"
@@ -149,6 +150,9 @@ RawStream::RawStream(const config::Config &config,
 RawStream::~RawStream() {
   this->Logout();
   this->Disconnect();
+  if (rtcm_stream_ != nullptr) {
+    rtcm_stream_->close();
+  }
   if (gpsbin_stream_ != nullptr) {
     gpsbin_stream_->close();
   }
@@ -219,6 +223,13 @@ bool RawStream::Init() {
       push_location_ = config_.rtk_from().push_location();
     }
     in_rtk_stream_status_ = std::make_shared<Status>();
+
+    if (config_.has_rtk_dump_folder() && config_.rtk_dump_folder() != "") {
+      const std::string rtcm_dump_file =
+          getLocalTimeFileStr(config_.rtk_dump_folder());
+      rtcm_stream_.reset(new std::ofstream(
+          rtcm_dump_file, std::ios::app | std::ios::out | std::ios::binary));
+    }
 
     if (config_.has_rtk_to()) {
       s = create_stream(config_.rtk_to());
@@ -483,6 +494,10 @@ void RawStream::RtkSpin() {
   while (cyber::OK()) {
     size_t length = in_rtk_stream_->read(buffer_rtk_, BUFFER_SIZE);
     if (length > 0) {
+      if (rtcm_stream_ != nullptr) {
+        rtcm_stream_->write(reinterpret_cast<const char *>(buffer_rtk_),
+                            length);
+      }
       if (rtk_software_solution_) {
         PublishRtkData(length);
       } else {
@@ -497,6 +512,11 @@ void RawStream::RtkSpin() {
         }
       }
     }
+    // Note: rtk server send data at a low frequency, sleep a little to release
+    // cpu resources
+    // TODO(All): Make this configurable or use a timer or use blocking read or
+    // event driven read
+    cyber::Duration(0.05).Sleep();
   }
 }
 
@@ -512,14 +532,21 @@ void RawStream::PushGGA() {
   CHECK_NOTNULL(data_parser_ptr_);
   CHECK_NOTNULL(in_rtk_stream_);
 
-  auto message = data_parser_ptr_->TryGetMessage(Parser::MessageType::GPGGA);
-  if (!message.has_value()) {
+  auto pair = data_parser_ptr_->TryGetMessage(Parser::MessageType::GPGGA);
+  if (!pair.has_value()) {
     AERROR << "GPGGA message is null.";
     return;
   }
+  auto timestamp = pair.value().first;
+  if (last_gpgga_timestamp_ == timestamp) {
+    ADEBUG << "GPGGA message is the same as last one, skip pushing.";
+    return;
+  }
+  last_gpgga_timestamp_ = timestamp;
+  auto message = pair.value().second;
 
   AINFO_EVERY(10) << "Push gpgga.";
-  in_rtk_stream_->write(message.value().data(), message.value().size());
+  in_rtk_stream_->write(message.data(), message.size());
 }
 
 void RawStream::GpsbinCallback(const std::shared_ptr<RawData const> &raw_data) {

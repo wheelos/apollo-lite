@@ -16,6 +16,8 @@
 
 #include "modules/drivers/hal/stream/ntrip_stream.h"
 
+#include <chrono>
+
 #include "cyber/cyber.h"
 
 namespace apollo {
@@ -31,15 +33,18 @@ NtripStream::NtripStream(const std::string& address, uint16_t port,
       address_(address),
       port_(port),
       write_data_prefix_("GET /" + mountpoint +
-                         " HTTP/1.0\r\n"
+                         " HTTP/1.1\r\n"
                          "User-Agent: NTRIP gnss_driver/0.0\r\n"
                          "accept: */* \r\n\r\n"),
       login_data_("GET /" + mountpoint +
-                  " HTTP/1.0\r\n"
+                  " HTTP/1.1\r\n"
                   "User-Agent: NTRIP gnss_driver/0.0\r\n"
                   "accept: */* \r\n"
                   "Authorization: Basic " +
-                  common::util::EncodeBase64(user + ":" + passwd) + "\r\n\r\n"),
+                  common::util::EncodeBase64(user + ":" + passwd) +
+                  "\r\n"
+                  "Connection: keep-alive\r\n"
+                  "\r\n"),
       timeout_s_(timeout_s) {
   // Construct the initial GET request string (with or without authentication)
   std::string auth_header;
@@ -59,7 +64,15 @@ NtripStream::NtripStream(const std::string& address, uint16_t port,
   try {
     // The TcpStream constructor should throw on invalid address/port format or
     // other setup errors.
-    tcp_stream_ = std::make_unique<TcpStream>(address_, port_, 0, false);
+    // use timeout_s_ as connect timeout for non-blocking issue in TcpStream.
+    // TODO(All): fix issue in tcp_stream and re-enable non-blocking
+    // TODO(All): distinguish read/write timeout and connection timeout
+    tcp_stream_ = std::make_unique<TcpStream>(
+        address_, port_,
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::seconds(timeout_s_))
+            .count(),
+        false);
   } catch (const std::exception& e) {
     throw std::runtime_error("NtripStream failed to create TcpStream: " +
                              std::string(e.what()));
@@ -428,7 +441,11 @@ std::string NtripStream::read_http_header_locked(uint32_t timeout_s) {
 
 // Read data from the NTRIP stream.
 size_t NtripStream::read(uint8_t* buffer, size_t max_length) {
-  std::lock_guard<std::mutex> lock(internal_mutex_);  // Lock for thread safety
+  // tcp stream is duplex, so we can read and write concurrently. no need to
+  // share the mutex between read and write operation
+  // TODO(All): separator mutex and make thread safety for multiple read
+  // std::lock_guard<std::mutex> lock(internal_mutex_);  // Lock for thread
+  // safety
 
   // Check connection status and potentially reconnect
   if (!is_login_) {

@@ -18,17 +18,17 @@
 #pragma once
 
 #include <math.h>
-#include <limits>
-#include <sstream>
-#include <string>
-#include <vector>
 
 #include <cstdint>
 #include <functional>
+#include <limits>
+#include <sstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "google/protobuf/message.h"
+
 #include "modules/common_msgs/basic_msgs/geometry.pb.h"
 
 // Anonymous namespace that contains helper constants and functions.
@@ -36,6 +36,7 @@ namespace {
 
 constexpr int kSecondsPerWeek = 60 * 60 * 24 * 7;
 constexpr double kDegToRad = M_PI / 180.0;
+constexpr double kAccelerationGravity = 9.80665;
 constexpr float kFloatNaN = std::numeric_limits<float>::quiet_NaN();
 
 // The NovAtel's orientation covariance matrix is pitch, roll, and yaw. We use
@@ -105,7 +106,6 @@ constexpr char NMEA_FIELD_SEPARATOR = ',';     // Field separator
 constexpr char NMEA_CHECKSUM_SEPARATOR = '*';  // Checksum separator
 constexpr char NMEA_END_OF_LINE_CR = '\r';     // End of line: Carriage return
 constexpr char NMEA_END_OF_LINE_LF = '\n';     // End of line: Line feed
-
 
 // A helper function that returns a pointer to a protobuf message of type T.
 template <class T>

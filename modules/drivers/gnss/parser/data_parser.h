@@ -20,6 +20,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 // #define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
@@ -48,14 +49,16 @@ namespace gnss {
 class DataParser {
  public:
   // MessageMap is used to store raw byte messages like GPGGA
+  // uint64_t is used as a timestamp (in nanoseconds) for the message,
   // std::vector<uint8_t> is used to hold the raw data.
   // Note: TryGetMessage is marked thread unsafe. Access to this map
   // might need synchronization depending on usage context.
   using MessageMap =
-      std::unordered_map<Parser::MessageType, std::vector<uint8_t>>;
+      std::unordered_map<Parser::MessageType,
+                         std::pair<uint64_t, std::vector<uint8_t>>>;
 
-  DataParser(const config::Config &config,
-             const std::shared_ptr<apollo::cyber::Node> &node);
+  DataParser(const config::Config& config,
+             const std::shared_ptr<apollo::cyber::Node>& node);
 
   // Destructor to release PROJ resources
   ~DataParser();
@@ -64,13 +67,13 @@ class DataParser {
   bool Init();
 
   // Parses raw data string. Assumes msg contains data from the GNSS/IMU device.
-  void ParseRawData(const std::string &msg);
+  void ParseRawData(const std::string& msg);
 
   // Get the parsed raw message data for a specific type.
   // Currently only used for raw GPGGA data.
   // Thread unsafe - direct access to message_map_.
-  [[nodiscard]] std::optional<std::vector<uint8_t>> TryGetMessage(
-      const Parser::MessageType &type) const {
+  [[nodiscard]] std::optional<std::pair<uint64_t, std::vector<uint8_t>>>
+  TryGetMessage(const Parser::MessageType& type) const {
     if (auto it = message_map_.find(type); it != message_map_.end()) {
       return it->second;
     }
@@ -102,8 +105,8 @@ class DataParser {
 
   // Converts Gps message to TransformStamped for TF broadcasting.
   void GpsToTransformStamped(
-      const std::shared_ptr<apollo::localization::Gps> &gps,
-      apollo::transform::TransformStamped *transform);
+      const std::shared_ptr<apollo::localization::Gps>& gps,
+      apollo::transform::TransformStamped* transform);
 
   bool init_flag_ = false;
   config::Config config_;

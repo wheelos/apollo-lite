@@ -48,7 +48,7 @@ namespace {
 // Using EPSG:4326 for WGS84 geographic is standard.
 // Alternatively, could use "+proj=latlong +ellps=WGS84 +datum=WGS84" with
 // proj_create
-const char *WGS84_TEXT = "EPSG:4326";
+const char* WGS84_TEXT = "EPSG:4326";
 
 // covariance data for pose if can not get from novatel inscov topic
 // Marked constexpr as it's compile-time constant
@@ -58,8 +58,8 @@ static constexpr boost::array<double, 36> POSE_COVAR = {
 
 }  // namespace
 
-DataParser::DataParser(const config::Config &config,
-                       const std::shared_ptr<apollo::cyber::Node> &node)
+DataParser::DataParser(const config::Config& config,
+                       const std::shared_ptr<apollo::cyber::Node>& node)
     : config_(config), tf_broadcaster_(node), node_(node) {
   proj_context_ = proj_context_create();
   if (!proj_context_) {
@@ -67,12 +67,15 @@ DataParser::DataParser(const config::Config &config,
   }
   proj_transform_ = proj_create_crs_to_crs(
       proj_context_, WGS84_TEXT, config_.proj4_text().c_str(), nullptr);
+  PJ* normalized_transform =
+      proj_normalize_for_visualization(proj_context_, proj_transform_);
+  proj_destroy(proj_transform_);
+  proj_transform_ = normalized_transform;
   if (!proj_transform_) {
     proj_context_destroy(proj_context_);
     proj_context_ = nullptr;
-    AFATAL << "Failed to create PROJ transformation from "
-      << WGS84_TEXT << " to "
-      << config_.proj4_text();
+    AFATAL << "Failed to create PROJ transformation from " << WGS84_TEXT
+           << " to " << config_.proj4_text();
   }
 
   gnss_status_.set_solution_status(0);
@@ -96,7 +99,7 @@ DataParser::~DataParser() {
 
 bool DataParser::Init() {
   // Check if PROJ initialization failed in constructor
-  if (!proj_context_|| !proj_transform_) {
+  if (!proj_context_ || !proj_transform_) {
     AFATAL << "PROJ objects not initialized. Cannot proceed.";
     return false;
   }
@@ -129,7 +132,7 @@ bool DataParser::Init() {
   return true;
 }
 
-void DataParser::ParseRawData(const std::string &msg) {
+void DataParser::ParseRawData(const std::string& msg) {
   if (!init_flag_) {
     AERROR << "Data parser not init or PROJ initialization failed.";
     return;
@@ -138,13 +141,15 @@ void DataParser::ParseRawData(const std::string &msg) {
   gnss_parser_->AppendData(msg);
   auto messages = gnss_parser_->ParseAllMessages();
 
-  for (const auto &[msg_type, msg_variant] : messages) {
+  for (const auto& [msg_type, msg_variant] : messages) {
     if (std::holds_alternative<Parser::RawDataPtr>(msg_variant)) {
       // Store raw byte messages. Currently only GPGGA is stored.
       // This is needed if raw NMEA strings are required elsewhere.
       if (msg_type == Parser::MessageType::GPGGA) {
         auto raw_ptr = std::get<Parser::RawDataPtr>(msg_variant);
-        message_map_[Parser::MessageType::GPGGA] = *raw_ptr;
+        message_map_[Parser::MessageType::GPGGA].first =
+            cyber::Time::Now().ToNanosecond();
+        message_map_[Parser::MessageType::GPGGA].second = *raw_ptr;
       } else {
         // Handle other raw message types if needed, or ignore
         ADEBUG << "Received unhandled raw byte message type: "
@@ -325,20 +330,18 @@ void DataParser::PublishOdometry(const Parser::ProtoMessagePtr& msg_ptr) {
 
   double unix_sec = GpsToUnixSeconds(ins->measurement_time());
   gps->mutable_header()->set_timestamp_sec(unix_sec);
-  auto *gps_msg = gps->mutable_localization();
+  auto* gps_msg = gps->mutable_localization();
 
   // 1. pose xyz (WGS84 to UTM transformation)
   double lon = ins->position().lon();
   double lat = ins->position().lat();
-  lon *= kDegToRad;
-  lat *= kDegToRad;
 
   PJ_COORD src = proj_coord(lon, lat, 0.0, 0.0);
   PJ_COORD dst = proj_trans(proj_transform_, PJ_FWD, src);
-
-
-  gps_msg->mutable_position()->set_x(dst.xy.x);  // Easting (transformed longitude)
-  gps_msg->mutable_position()->set_y(dst.xy.y);  // Northing (transformed latitude)
+  // Easting (transformed longitude)
+  gps_msg->mutable_position()->set_x(dst.xy.x);
+  // Northing (transformed latitude)
+  gps_msg->mutable_position()->set_y(dst.xy.y);
   gps_msg->mutable_position()->set_z(ins->position().height());
 
   Eigen::Quaterniond q =
@@ -393,7 +396,7 @@ void DataParser::PublishCorrimu(const Parser::ProtoMessagePtr& msg_ptr) {
   double unix_sec = GpsToUnixSeconds(ins->measurement_time());
   imu->mutable_header()->set_timestamp_sec(unix_sec);
 
-  auto *imu_msg = imu->mutable_imu();
+  auto* imu_msg = imu->mutable_imu();
 
   // --- Coordinate System Transformation (Example: Novatel INS to Apollo
   // Vehicle) --- Similar to PublishImu, transforming linear acceleration and
@@ -473,8 +476,8 @@ void DataParser::PublishHeading(const Parser::ProtoMessagePtr& msg_ptr) {
   heading_writer_->Write(heading_ptr);  // Use const& overload
 }
 
-void DataParser::GpsToTransformStamped(const std::shared_ptr<Gps> &gps,
-                                       TransformStamped *transform) {
+void DataParser::GpsToTransformStamped(const std::shared_ptr<Gps>& gps,
+                                       TransformStamped* transform) {
   CHECK_NOTNULL(gps);
   CHECK_NOTNULL(transform);
 
