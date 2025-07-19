@@ -29,7 +29,15 @@ if [[ "$geo" == "cn" ]]; then
   npm config set registry https://registry.npmmirror.com/
 fi
 
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x -o setup_22.x
+echo "Verifying integrity of the downloaded script..."
+# Replace the following checksum with the actual SHA256 checksum provided by NodeSource
+echo "expected-checksum-value  setup_22.x" | sha256sum --check --status
+if [[ $? -ne 0 ]]; then
+  echo "❌ Checksum verification failed. Aborting installation."
+  exit 1
+fi
+sudo -E bash setup_22.x
 sudo apt-get install -y nodejs
 
 echo "✅ Node.js installation completed:"
