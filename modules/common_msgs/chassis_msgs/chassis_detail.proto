@@ -48,6 +48,7 @@ message ChassisDetail {
   optional Devkit devkit = 25;
   optional Neolix_edu neolix_edu = 26;
   optional Mk_mini mk_mini = 27;
+
   optional Yunle yunle = 50;
 
   // Reserve fields for other vehicles

@@ -106,7 +106,7 @@ class MessageManager {
   common::ErrorCode GetSensorData(SensorType *const sensor_data);
 
   /**
-   * @brief get current latency of meesage
+   * @brief get current latency of message
    *
    * @param message_id the id of the message
    */

@@ -2,90 +2,8 @@ syntax = "proto2";
 
 package apollo.canbus;
 
-message Vector__independent_sig_msg_0 {
-// Report Message
-  // 后雾灯状态 [] [0|0]
-  optional bool rearfog_sts = 1;
-  // 喇叭状态 [] [0|0]
-  optional bool horn_sts = 2;
-  // 远光灯状态 [] [0|0]
-  optional bool highbeam_sts = 3;
-  // 警示灯状态 [] [0|0]
-  optional bool hazard_light_sts = 4;
-  // [deg/s] [-3276.8|3276.7]
-  optional double sas_angle_speed_r = 5;
-  // [deg/s] [-3276.8|3276.7]
-  optional double sas_angle_speed_f = 6;
-  // [] [0|3]
-  optional int32 gw_horn_req = 7;
-  // [] [0|3]
-  optional int32 gw_rearfoglight_req = 8;
-  // [] [0|3]
-  optional int32 gw_highbeam_req = 9;
-  // [] [0|3]
-  optional int32 gw_hazard_light_req = 10;
-  // [] [0|3]
-  optional int32 gw_horn_req = 11;
-  // [] [0|3]
-  optional int32 gw_rearfoglight_req = 12;
-  // [] [0|3]
-  optional int32 gw_highbeam_req = 13;
-  // [] [0|3]
-  optional int32 gw_hazard_light_req = 14;
-  // [] [0|3]
-  optional int32 gw_horn_req = 15;
-  // [] [0|3]
-  optional int32 gw_rearfoglight_req = 16;
-  // [] [0|3]
-  optional int32 gw_highbeam_req = 17;
-  // [] [0|3]
-  optional int32 gw_hazard_light_req = 18;
-  // [] [0|1]
-  optional bool scu_gearntorque_en_jd = 19;
-  // [] [0|0]
-  optional bool scu_tq_or_speed = 20;
-  // [] [0|1]
-  optional bool scu_gearntorque_en = 21;
-  // [] [-400|400]
-  optional double scu_rmotor_spd_rpm = 22;
-  // [] [-400|400]
-  optional double scu_lmotor_spd_rpm = 23;
-  // [] [0|3]
-  optional int32 gw_lowbeam_req = 24;
-  // [] [0|3]
-  optional int32 gw_position_light_req = 25;
-  // [] [0|3]
-  optional int32 gw_right_turn_light_req = 26;
-  // [] [0|3]
-  optional int32 gw_left_turn_light_req = 27;
-  // [] [0|1]
-  optional bool scu_brk_en = 28;
-  // [] [0|3]
-  optional int32 scu_shiftlevel_req = 29;
-  // [] [0|3]
-  optional int32 scu_drive_mode_req = 30;
-  // [] [0|3]
-  optional int32 gw_lowbeam_req = 31;
-  // [] [0|3]
-  optional int32 gw_position_light_req = 32;
-  // [] [0|3]
-  optional int32 gw_right_turn_light_req = 33;
-  // [] [0|3]
-  optional int32 gw_left_turn_light_req = 34;
-  // [] [0|1]
-  optional bool scu_brk_en = 35;
-  // [km/h] [0|51]
-  optional double scu_target_speed = 36;
-  // [] [-120|120]
-  optional double scu_steering_wheel_angle = 37;
-  // [] [0|3]
-  optional int32 scu_shiftlevel_req = 38;
-  // [] [0|3]
-  optional int32 scu_drive_mode_req = 39;
-}
-
 message Bms_vol_cur_100 {
-// Report Message
+  // Report Message
   // [] [0|100]
   optional double total_voltage = 1;
   // [A] [-100|100]
@@ -93,13 +11,13 @@ message Bms_vol_cur_100 {
 }
 
 message Bms_soc_101 {
-// Report Message
+  // Report Message
   // [%] [0|0]
   optional int32 rsoc = 1;
 }
 
 message Scu_1_121 {
-// Control Message
+  // Control Message
   // 只针对个别车型使用，不适用所有车型 [] [0|1]
   optional bool angular_speed_flag = 1;
   // [] [0|255]
@@ -125,19 +43,21 @@ message Scu_1_121 {
 }
 
 message Scu_tq_123 {
-// Control Message
-  // Torque available calculated by inverterTorque available calculated by inverter [Nm] [0|0]
+  // Control Message
+  // Torque available calculated by inverterTorque available calculated by
+  // inverter [Nm] [0|0]
   optional double torque_cmd_rear_r = 1;
   // [Nm] [0|0]
   optional double torque_cmd_rear_l = 2;
-  // Torque available calculated by inverterTorque available calculated by inverter [Nm] [0|0]
+  // Torque available calculated by inverterTorque available calculated by
+  // inverter [Nm] [0|0]
   optional double torque_cmd_forward_r = 3;
   // [Nm] [0|0]
   optional double torque_cmd_forward_l = 4;
 }
 
 message Wheel_speed_feedback_rpm_168 {
-// Report Message
+  // Report Message
   // 右后轮-轮速 [rpm] [0|0]
   optional double rear_right_rpm = 1;
   // 左后轮-轮速 [rpm] [0|0]
@@ -149,7 +69,7 @@ message Wheel_speed_feedback_rpm_168 {
 }
 
 message Bms_rt_soc_17904001 {
-// Report Message
+  // Report Message
   // [A] [3000|9553.5]
   optional double bms_current_cur = 1;
   // [V] [0|6553.5]
@@ -161,7 +81,7 @@ message Bms_rt_soc_17904001 {
 }
 
 message Ccu_status_51 {
-// Report Message
+  // Report Message
   // 自动驾驶模式刹车信号 [] [0|0]
   optional bool scu_brake_singal = 1;
   // 紧急制动按钮信号 [] [0|0]
@@ -195,7 +115,7 @@ message Ccu_status_51 {
 }
 
 message Waring_level_77 {
-// Report Message
+  // Report Message
   // [] [0|0]
   optional int32 mcu_vol_warning = 1;
   // [] [0|0]
@@ -225,7 +145,7 @@ message Waring_level_77 {
 }
 
 message Target_speed_feedback_7f1 {
-// Report Message
+  // Report Message
   // 实际平均轮速 [rpm] [0|0]
   optional double target_speed_rpm = 1;
   // 目标速度 [km/h] [0|0]
@@ -237,7 +157,7 @@ message Target_speed_feedback_7f1 {
 }
 
 message Sas_angle_feedback_e1 {
-// Report Message
+  // Report Message
   // [] [-3276.8|3276.7]
   optional double sas_angle_r = 1;
   // [] [-3276.8|3276.7]
@@ -245,15 +165,24 @@ message Sas_angle_feedback_e1 {
 }
 
 message Yunle {
-  optional Vector__independent_sig_msg_0 vector__independent_sig_msg_0 = 1; // report message
-  optional Bms_vol_cur_100 bms_vol_cur_100 = 2; // report message
-  optional Bms_soc_101 bms_soc_101 = 3; // report message
-  optional Scu_1_121 scu_1_121 = 4; // control message
-  optional Scu_tq_123 scu_tq_123 = 5; // control message
-  optional Wheel_speed_feedback_rpm_168 wheel_speed_feedback_rpm_168 = 6; // report message
-  optional Bms_rt_soc_17904001 bms_rt_soc_17904001 = 7; // report message
-  optional Ccu_status_51 ccu_status_51 = 8; // report message
-  optional Waring_level_77 waring_level_77 = 9; // report message
-  optional Target_speed_feedback_7f1 target_speed_feedback_7f1 = 10; // report message
-  optional Sas_angle_feedback_e1 sas_angle_feedback_e1 = 11; // report message
+  // report message
+  optional Bms_vol_cur_100 bms_vol_cur_100 = 1;
+  // report message
+  optional Bms_soc_101 bms_soc_101 = 2;
+  // control message
+  optional Scu_1_121 scu_1_121 = 3;
+  // control message
+  optional Scu_tq_123 scu_tq_123 = 4;
+  // report message
+  optional Wheel_speed_feedback_rpm_168 wheel_speed_feedback_rpm_168 = 5;
+  // report message
+  optional Bms_rt_soc_17904001 bms_rt_soc_17904001 = 6;
+  // report message
+  optional Ccu_status_51 ccu_status_51 = 7;
+  // report message
+  optional Waring_level_77 waring_level_77 = 8;
+  // report message
+  optional Target_speed_feedback_7f1 target_speed_feedback_7f1 = 9;
+  // report message
+  optional Sas_angle_feedback_e1 sas_angle_feedback_e1 = 10;
 }

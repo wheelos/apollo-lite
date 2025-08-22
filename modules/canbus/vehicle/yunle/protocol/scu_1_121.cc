@@ -30,7 +30,7 @@ const int32_t Scu1121::ID = 0x121;
 Scu1121::Scu1121() { Reset(); }
 
 uint32_t Scu1121::GetPeriod() const {
-  static const uint32_t PERIOD = 0 * 1000;
+  static const uint32_t PERIOD = 10 * 1000;
   return PERIOD;
 }
 

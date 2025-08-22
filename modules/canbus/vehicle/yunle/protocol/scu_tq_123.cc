@@ -30,16 +30,20 @@ const int32_t Scutq123::ID = 0x123;
 Scutq123::Scutq123() { Reset(); }
 
 uint32_t Scutq123::GetPeriod() const {
-  static const uint32_t PERIOD = 0 * 1000;
+  static const uint32_t PERIOD = 10 * 1000;
   return PERIOD;
 }
 
 void Scutq123::Parse(const std::uint8_t* bytes, int32_t length,
-                         ChassisDetail* chassis) const {
-  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_rear_r(torque_cmd_rear_r(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_rear_l(torque_cmd_rear_l(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_forward_r(torque_cmd_forward_r(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_forward_l(torque_cmd_forward_l(bytes, length));
+                     ChassisDetail* chassis) const {
+  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_rear_r(
+      torque_cmd_rear_r(bytes, length));
+  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_rear_l(
+      torque_cmd_rear_l(bytes, length));
+  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_forward_r(
+      torque_cmd_forward_r(bytes, length));
+  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_forward_l(
+      torque_cmd_forward_l(bytes, length));
 }
 
 void Scutq123::UpdateData(uint8_t* data) {
@@ -57,15 +61,18 @@ void Scutq123::Reset() {
   torque_cmd_forward_l_ = 0.0;
 }
 
-Scutq123* Scutq123::set_torque_cmd_rear_r(
-    double torque_cmd_rear_r) {
+Scutq123* Scutq123::set_torque_cmd_rear_r(double torque_cmd_rear_r) {
   torque_cmd_rear_r_ = torque_cmd_rear_r;
   return this;
- }
+}
 
-// config detail: {'bit': 48, 'description': 'Torque available calculated by inverterTorque available calculated by inverter', 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Rear_R', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+// config detail: {'bit': 48, 'description': 'Torque available calculated by
+// inverterTorque available calculated by inverter', 'is_signed_var': True,
+// 'len': 16, 'name': 'Torque_cmd_Rear_R', 'offset': 0.0, 'order': 'intel',
+// 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type':
+// 'double'}
 void Scutq123::set_p_torque_cmd_rear_r(uint8_t* data,
-    double torque_cmd_rear_r) {
+                                       double torque_cmd_rear_r) {
   torque_cmd_rear_r = ProtocolData::BoundedValue(0.0, 0.0, torque_cmd_rear_r);
   int x = torque_cmd_rear_r / 0.100000;
   uint8_t t = 0;
@@ -80,16 +87,16 @@ void Scutq123::set_p_torque_cmd_rear_r(uint8_t* data,
   to_set1.set_value(t, 0, 8);
 }
 
-
-Scutq123* Scutq123::set_torque_cmd_rear_l(
-    double torque_cmd_rear_l) {
+Scutq123* Scutq123::set_torque_cmd_rear_l(double torque_cmd_rear_l) {
   torque_cmd_rear_l_ = torque_cmd_rear_l;
   return this;
- }
+}
 
-// config detail: {'bit': 32, 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Rear_L', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+// config detail: {'bit': 32, 'is_signed_var': True, 'len': 16, 'name':
+// 'Torque_cmd_Rear_L', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
 void Scutq123::set_p_torque_cmd_rear_l(uint8_t* data,
-    double torque_cmd_rear_l) {
+                                       double torque_cmd_rear_l) {
   torque_cmd_rear_l = ProtocolData::BoundedValue(0.0, 0.0, torque_cmd_rear_l);
   int x = torque_cmd_rear_l / 0.100000;
   uint8_t t = 0;
@@ -104,17 +111,20 @@ void Scutq123::set_p_torque_cmd_rear_l(uint8_t* data,
   to_set1.set_value(t, 0, 8);
 }
 
-
-Scutq123* Scutq123::set_torque_cmd_forward_r(
-    double torque_cmd_forward_r) {
+Scutq123* Scutq123::set_torque_cmd_forward_r(double torque_cmd_forward_r) {
   torque_cmd_forward_r_ = torque_cmd_forward_r;
   return this;
- }
+}
 
-// config detail: {'bit': 16, 'description': 'Torque available calculated by inverterTorque available calculated by inverter', 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Forward_R', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+// config detail: {'bit': 16, 'description': 'Torque available calculated by
+// inverterTorque available calculated by inverter', 'is_signed_var': True,
+// 'len': 16, 'name': 'Torque_cmd_Forward_R', 'offset': 0.0, 'order': 'intel',
+// 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type':
+// 'double'}
 void Scutq123::set_p_torque_cmd_forward_r(uint8_t* data,
-    double torque_cmd_forward_r) {
-  torque_cmd_forward_r = ProtocolData::BoundedValue(0.0, 0.0, torque_cmd_forward_r);
+                                          double torque_cmd_forward_r) {
+  torque_cmd_forward_r =
+      ProtocolData::BoundedValue(0.0, 0.0, torque_cmd_forward_r);
   int x = torque_cmd_forward_r / 0.100000;
   uint8_t t = 0;
 
@@ -128,17 +138,18 @@ void Scutq123::set_p_torque_cmd_forward_r(uint8_t* data,
   to_set1.set_value(t, 0, 8);
 }
 
-
-Scutq123* Scutq123::set_torque_cmd_forward_l(
-    double torque_cmd_forward_l) {
+Scutq123* Scutq123::set_torque_cmd_forward_l(double torque_cmd_forward_l) {
   torque_cmd_forward_l_ = torque_cmd_forward_l;
   return this;
- }
+}
 
-// config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Forward_L', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+// config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name':
+// 'Torque_cmd_Forward_L', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
 void Scutq123::set_p_torque_cmd_forward_l(uint8_t* data,
-    double torque_cmd_forward_l) {
-  torque_cmd_forward_l = ProtocolData::BoundedValue(0.0, 0.0, torque_cmd_forward_l);
+                                          double torque_cmd_forward_l) {
+  torque_cmd_forward_l =
+      ProtocolData::BoundedValue(0.0, 0.0, torque_cmd_forward_l);
   int x = torque_cmd_forward_l / 0.100000;
   uint8_t t = 0;
 
@@ -152,8 +163,8 @@ void Scutq123::set_p_torque_cmd_forward_l(uint8_t* data,
   to_set1.set_value(t, 0, 8);
 }
 
-
-double Scutq123::torque_cmd_rear_r(const std::uint8_t* bytes, int32_t length) const {
+double Scutq123::torque_cmd_rear_r(const std::uint8_t* bytes,
+                                   int32_t length) const {
   Byte t0(bytes + 7);
   int32_t x = t0.get_byte(0, 8);
 
@@ -169,7 +180,8 @@ double Scutq123::torque_cmd_rear_r(const std::uint8_t* bytes, int32_t length) co
   return ret;
 }
 
-double Scutq123::torque_cmd_rear_l(const std::uint8_t* bytes, int32_t length) const {
+double Scutq123::torque_cmd_rear_l(const std::uint8_t* bytes,
+                                   int32_t length) const {
   Byte t0(bytes + 5);
   int32_t x = t0.get_byte(0, 8);
 
@@ -185,7 +197,8 @@ double Scutq123::torque_cmd_rear_l(const std::uint8_t* bytes, int32_t length) co
   return ret;
 }
 
-double Scutq123::torque_cmd_forward_r(const std::uint8_t* bytes, int32_t length) const {
+double Scutq123::torque_cmd_forward_r(const std::uint8_t* bytes,
+                                      int32_t length) const {
   Byte t0(bytes + 3);
   int32_t x = t0.get_byte(0, 8);
 
@@ -201,7 +214,8 @@ double Scutq123::torque_cmd_forward_r(const std::uint8_t* bytes, int32_t length)
   return ret;
 }
 
-double Scutq123::torque_cmd_forward_l(const std::uint8_t* bytes, int32_t length) const {
+double Scutq123::torque_cmd_forward_l(const std::uint8_t* bytes,
+                                      int32_t length) const {
   Byte t0(bytes + 1);
   int32_t x = t0.get_byte(0, 8);
 

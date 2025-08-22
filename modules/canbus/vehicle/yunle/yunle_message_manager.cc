@@ -16,16 +16,14 @@
 
 #include "modules/canbus/vehicle/yunle/yunle_message_manager.h"
 
-#include "modules/canbus/vehicle/yunle/protocol/scu_1_121.h"
-#include "modules/canbus/vehicle/yunle/protocol/scu_tq_123.h"
-
 #include "modules/canbus/vehicle/yunle/protocol/bms_rt_soc_17904001.h"
 #include "modules/canbus/vehicle/yunle/protocol/bms_soc_101.h"
 #include "modules/canbus/vehicle/yunle/protocol/bms_vol_cur_100.h"
 #include "modules/canbus/vehicle/yunle/protocol/ccu_status_51.h"
 #include "modules/canbus/vehicle/yunle/protocol/sas_angle_feedback_e1.h"
+#include "modules/canbus/vehicle/yunle/protocol/scu_1_121.h"
+#include "modules/canbus/vehicle/yunle/protocol/scu_tq_123.h"
 #include "modules/canbus/vehicle/yunle/protocol/target_speed_feedback_7f1.h"
-#include "modules/canbus/vehicle/yunle/protocol/vector__independent_sig_msg_0.h"
 #include "modules/canbus/vehicle/yunle/protocol/waring_level_77.h"
 #include "modules/canbus/vehicle/yunle/protocol/wheel_speed_feedback_rpm_168.h"
 
@@ -45,7 +43,6 @@ YunleMessageManager::YunleMessageManager() {
   AddRecvProtocolData<Ccustatus51, true>();
   AddRecvProtocolData<Sasanglefeedbacke1, true>();
   AddRecvProtocolData<Targetspeedfeedback7f1, true>();
-  AddRecvProtocolData<Vectorindependentsigmsg0, true>();
   AddRecvProtocolData<Waringlevel77, true>();
   AddRecvProtocolData<Wheelspeedfeedbackrpm168, true>();
 }

@@ -127,8 +127,8 @@ ErrorCode VehicleController::Update(const ControlCommand &control_command) {
       driving_mode() == Chassis::AUTO_SPEED_ONLY) {
     Gear(control_command.gear_location());
     Throttle(control_command.throttle());
-    Speed(control_command.speed());
     Acceleration(control_command.acceleration());
+    Speed(control_command.speed());
     Brake(control_command.brake());
     SetEpbBreak(control_command);
     SetLimits();
