@@ -534,13 +534,10 @@ void YunleController::SetEpbBreak(const ControlCommand& command) {
 
 void YunleController::SetBeam(const ControlCommand& command) {
   // set position light always
-  // brake light and position light use the same device, if brake on, we should
-  // set the position light off
-  if (cmommand.parking_brake()) {
-    scu_1_121_->set_gw_position_light_req(0);
-  } else {
-    scu_1_121_->set_gw_position_light_req(1);
-  }
+  // brake light and position light use the same device setting `on` means brake
+  // light, so no need to set position light
+  // TODO(All): Maybe other type of vehicle have different settings
+  // scu_1_121_->set_gw_position_light_req(1);
 
   if (command.signal().high_beam()) {
     // None
