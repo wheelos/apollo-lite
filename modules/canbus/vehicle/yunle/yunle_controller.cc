@@ -442,7 +442,7 @@ void YunleController::Speed(double speed) {
   scu_1_121_->set_scu_target_speed(speed * 3.6);
 }
 
-// yunle default, +470 ~ -470, left:+, right:-
+// yunle default, -120 ~ +120, left:-, right:+
 // need to be compatible with control module, so reverse
 // steering with angle
 // angle:-99.99~0.00~99.99, unit:, left:+, right:-
@@ -454,20 +454,26 @@ void YunleController::Steer(double angle) {
   }
 
   int32_t real_angle = static_cast<int32_t>(angle / 100 * 120);
+  // limit the angle to [-120, 120]
+  if (real_angle > 120) {
+    real_angle = 120;
+  } else if (real_angle < -120) {
+    real_angle = -120;
+  }
   int32_t real_angle_f = real_angle;
   int32_t real_angle_r = real_angle;
   // here, we use the minimum steering radius mode, rear steering angle is
-  // negative of front
+  // negative of front, the vehicle already has this mode, so just set the same
   // TODO(All): if using another steering mode, such as Ackermann or crab
   // steering, you should change the implementation below in yunle vechicle:
   //  0~120 means turning right
   //  256~136 means turning left
   if (angle > 0) {
     real_angle_f = 256 - real_angle;
-    real_angle_r = 0 + real_angle;
+    real_angle_r = 256 - real_angle;
   } else if (angle < 0) {
     real_angle_f = 0 - real_angle;
-    real_angle_r = 256 + real_angle;
+    real_angle_r = 0 - real_angle;
   } else {
     real_angle_f = 0;
     real_angle_r = 0;
@@ -477,6 +483,7 @@ void YunleController::Steer(double angle) {
   scu_1_121_->set_scu_steering_wheel_angle_r(real_angle_r);
 }
 
+// yunle default, -120 ~ +120, left:-, right:+
 // steering with new angle speed
 // angle:-99.99~0.00~99.99, unit:, left:+, right:-
 // angle_spd:0.00~99.99, unit:deg/s
@@ -488,20 +495,26 @@ void YunleController::Steer(double angle, double angle_spd) {
   }
 
   int32_t real_angle = static_cast<int32_t>(angle / 100 * 120);
+  // limit the angle to [-120, 120]
+  if (real_angle > 120) {
+    real_angle = 120;
+  } else if (real_angle < -120) {
+    real_angle = -120;
+  }
   int32_t real_angle_f = real_angle;
   int32_t real_angle_r = real_angle;
   // here, we use the minimum steering radius mode, rear steering angle is
-  // negative of front
+  // negative of front, the vehicle already has this mode, so just set the same
   // TODO(All): if using another steering mode, such as Ackermann or crab
   // steering, you should change the implementation below in yunle vechicle:
   //  0~120 means turning right
   //  256~136 means turning left
   if (angle > 0) {
     real_angle_f = 256 - real_angle;
-    real_angle_r = 0 + real_angle;
+    real_angle_r = 256 - real_angle;
   } else if (angle < 0) {
     real_angle_f = 0 - real_angle;
-    real_angle_r = 256 + real_angle;
+    real_angle_r = 0 - real_angle;
   } else {
     real_angle_f = 0;
     real_angle_r = 0;
@@ -521,7 +534,13 @@ void YunleController::SetEpbBreak(const ControlCommand& command) {
 
 void YunleController::SetBeam(const ControlCommand& command) {
   // set position light always
-  scu_1_121_->set_gw_position_light_req(1);
+  // brake light and position light use the same device, if brake on, we should
+  // set the position light off
+  if (cmommand.parking_brake()) {
+    scu_1_121_->set_gw_position_light_req(0);
+  } else {
+    scu_1_121_->set_gw_position_light_req(1);
+  }
 
   if (command.signal().high_beam()) {
     // None
