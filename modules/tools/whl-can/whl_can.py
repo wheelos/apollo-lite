@@ -32,6 +32,7 @@ BRAKE_MIN, BRAKE_MAX = 0.0, 100.0
 SPEED_DELTA = 0.1
 STEERING_DELTA = 1
 BRAKE_DELTA = 1
+TURN_SIGNAL_THRESHOLD_DELTA = 1.0
 
 
 class KeyboardController:
@@ -63,6 +64,7 @@ class KeyboardController:
         self.control_cmd_msg = control_cmd_pb2.ControlCommand()
         self.speed = 0
         self.steering = 0.0
+        self.turn_signal_threshold = 0.0
         self.speed_delta = speed_delta
         self.steering_delta = steering_delta
         # check defination of in modules/common_msgs/chassis_msgs/chassis.proto
@@ -83,6 +85,7 @@ class KeyboardController:
             "  m: Change gear",
             "  b/B: Brake +/-",
             "  p: Toggle Electronic Parking Brake (EPB)",
+            "  o/O: Turn signal threshold +/-",
             "  Space: Emergency stop",
             "  q: Quit program",
         ]
@@ -98,6 +101,8 @@ class KeyboardController:
             ord("b"): self.brake_inc,
             ord("B"): self.brake_dec,
             ord("p"): self.toggle_epb,
+            ord("o"): self.turn_signal_threshold_inc,
+            ord("O"): self.turn_signal_threshold_dec,
             ord(" "): self.emergency_stop,  # space key
         }
 
@@ -110,17 +115,20 @@ class KeyboardController:
         """Starts keyboard listening, sets curses to non-blocking mode and starts the listening thread."""
         self.screen.nodelay(True)  # Set non-blocking input
         self.screen.keypad(True)
-        self.screen.addstr(0, 0, "Keyboard control started, press 'q' to exit.    ")
+        self.screen.addstr(0, 0,
+                           "Keyboard control started, press 'q' to exit.    ")
         for idx, line in enumerate(self.help_text_lines):
-            self.screen.addstr(8 + idx, 0, line)
-        self.thread = threading.Thread(target=self._listen_keyboard, daemon=True)
+            self.screen.addstr(10 + idx, 0, line)
+        self.thread = threading.Thread(target=self._listen_keyboard,
+                                       daemon=True)
         self.thread.start()
 
     def stop(self):
         """Stops keyboard listening."""
         with self.lock:
             self.running = False
-        self.screen.addstr(1, 0, "Keyboard control stopped.                    ")
+        self.screen.addstr(1, 0,
+                           "Keyboard control stopped.                    ")
 
     def _listen_keyboard(self):
         """Loop reads keyboard input and calls the corresponding control method based on the key pressed."""
@@ -146,8 +154,7 @@ class KeyboardController:
         """Fills the header of the control command message."""
         with self.lock:
             self.control_cmd_msg.header.timestamp_sec = (
-                datetime.datetime.now().timestamp()
-            )
+                datetime.datetime.now().timestamp())
             self.control_cmd_msg.header.module_name = "can_easy"
             self.control_cmd_msg.header.sequence_num += 1
 
@@ -168,48 +175,48 @@ class KeyboardController:
             else:
                 self.control_cmd_msg.parking_brake = False
             # TODO(All): set signal via keyboard input
-            if self.steering > 0:
-                self.control_cmd_msg.signal.turn_signal = 2
-            elif self.steering < 0:
-                self.control_cmd_msg.signal.turn_signal = 1
+            if self.turn_signal_threshold <= 0:
+                # disable turn signal overwrite, use the vehicle logic
+                self.control_cmd_msg.signal.ClearField("turn_signal")
             else:
-                self.control_cmd_msg.signal.turn_signal = 0
+                if self.steering > self.turn_signal_threshold:
+                    self.control_cmd_msg.signal.turn_signal = 1
+                elif self.steering < -self.turn_signal_threshold:
+                    self.control_cmd_msg.signal.turn_signal = 2
+                else:
+                    self.control_cmd_msg.signal.turn_signal = 0
 
     def move_forward(self):
         self.speed = min(self.speed + self.speed_delta, SPEED_MAX)
         self.screen.addstr(
-            2, 0, f"speed: {self.speed:.2f} [{SPEED_MIN}, {SPEED_MAX}]    "
-        )
+            2, 0, f"speed: {self.speed:.2f} [{SPEED_MIN}, {SPEED_MAX}]    ")
 
     def move_backward(self):
         self.speed = max(self.speed - self.speed_delta, SPEED_MIN)
         self.screen.addstr(
-            2, 0, f"speed: {self.speed:.2f} [{SPEED_MIN}, {SPEED_MAX}]    "
-        )
+            2, 0, f"speed: {self.speed:.2f} [{SPEED_MIN}, {SPEED_MAX}]    ")
 
     def turn_left(self):
         self.steering = min(self.steering + self.steering_delta, STEERING_MAX)
         self.screen.addstr(
-            3, 0, f"steer: {self.steering:.2f} [{STEERING_MIN}, {STEERING_MAX}]    "
-        )
+            3, 0,
+            f"steer: {self.steering:.2f} [{STEERING_MIN}, {STEERING_MAX}]    ")
 
     def turn_right(self):
         self.steering = max(self.steering - self.steering_delta, STEERING_MIN)
         self.screen.addstr(
-            3, 0, f"steer: {self.steering:.2f} [{STEERING_MIN}, {STEERING_MAX}]    "
-        )
+            3, 0,
+            f"steer: {self.steering:.2f} [{STEERING_MIN}, {STEERING_MAX}]    ")
 
     def brake_inc(self):
         self.brake = min(self.brake + self.brake_delta, BRAKE_MAX)
         self.screen.addstr(
-            5, 0, f"brake: {self.brake:.2f} [{BRAKE_MIN}, {BRAKE_MAX}]    "
-        )
+            5, 0, f"brake: {self.brake:.2f} [{BRAKE_MIN}, {BRAKE_MAX}]    ")
 
     def brake_dec(self):
         self.brake = max(self.brake - self.brake_delta, BRAKE_MIN)
         self.screen.addstr(
-            5, 0, f"brake: {self.brake:.2f} [{BRAKE_MIN}, {BRAKE_MAX}]    "
-        )
+            5, 0, f"brake: {self.brake:.2f} [{BRAKE_MIN}, {BRAKE_MAX}]    ")
 
     def loop_gear(self):
         self.gear_index = (self.gear_index + 1) % len(self.gear_list)
@@ -224,10 +231,27 @@ class KeyboardController:
             self.epb = 0
         self.screen.addstr(6, 0, f"epb:   {self.epb}")
 
+    def turn_signal_threshold_inc(self):
+        """Increase turn signal threshold"""
+        self.turn_signal_threshold = min(
+            self.turn_signal_threshold + TURN_SIGNAL_THRESHOLD_DELTA,
+            STEERING_MAX)
+        self.screen.addstr(
+            7, 0,
+            f"turn signal threshold: {self.turn_signal_threshold:.2f}    ")
+
+    def turn_signal_threshold_dec(self):
+        """Decrease turn signal threshold"""
+        self.turn_signal_threshold = max(
+            self.turn_signal_threshold - TURN_SIGNAL_THRESHOLD_DELTA, 0.0)
+        self.screen.addstr(
+            7, 0,
+            f"turn signal threshold: {self.turn_signal_threshold:.2f}    ")
+
     def emergency_stop(self):
         self.speed = 0
         self.brake = BRAKE_MAX
-        self.screen.addstr(7, 0, "Emergency Stop activated!       ")
+        self.screen.addstr(8, 0, "Emergency Stop activated!       ")
 
 
 def main(screen):
@@ -243,6 +267,7 @@ def main(screen):
     screen.addstr(4, 0, "gear:  P")
     screen.addstr(5, 0, "brake: 0.00    ")
     screen.addstr(6, 0, "epb:   0       ")
+    screen.addstr(7, 0, "turn signal threshold:   0")
 
     controller = KeyboardController(screen)
     controller.start()
