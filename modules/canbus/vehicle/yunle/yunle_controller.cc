@@ -597,7 +597,7 @@ bool YunleController::CheckChassisError() {
   //  level 1, warning notice
   //  level 2, deceleration
   //  level 3, emergency stop
-  // we consider level 0 and 1 as no error, and level 2 and 3 as eerror
+  // we consider level 0 and 1 as no error, and level 2 and 3 as error
   // TODO(All): configurable warning level or make more strict
 
   bool steer_warning = warnings.turn_disconnect_warning() > 1 ||
