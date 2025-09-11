@@ -559,17 +559,23 @@ void YunleController::SetHorn(const ControlCommand& command) {
 
 void YunleController::SetTurningSignal(const ControlCommand& command) {
   // Set Turn Signal
-  auto signal = command.signal().turn_signal();
-  if (signal == common::VehicleSignal::TURN_HAZARD_WARNING) {
-    scu_1_121_->set_gw_left_turn_light_req(1);
-    scu_1_121_->set_gw_right_turn_light_req(1);
-  } else if (signal == common::VehicleSignal::TURN_LEFT) {
-    scu_1_121_->set_gw_left_turn_light_req(1);
-    scu_1_121_->set_gw_right_turn_light_req(0);
-  } else if (signal == common::VehicleSignal::TURN_RIGHT) {
-    scu_1_121_->set_gw_left_turn_light_req(0);
-    scu_1_121_->set_gw_right_turn_light_req(1);
+  if (command.signal().has_turn_signal()) {
+    auto signal = command.signal().turn_signal();
+    if (signal == common::VehicleSignal::TURN_HAZARD_WARNING) {
+      scu_1_121_->set_gw_left_turn_light_req(1);
+      scu_1_121_->set_gw_right_turn_light_req(1);
+    } else if (signal == common::VehicleSignal::TURN_LEFT) {
+      scu_1_121_->set_gw_left_turn_light_req(1);
+      scu_1_121_->set_gw_right_turn_light_req(0);
+    } else if (signal == common::VehicleSignal::TURN_RIGHT) {
+      scu_1_121_->set_gw_left_turn_light_req(0);
+      scu_1_121_->set_gw_right_turn_light_req(1);
+    } else {
+      scu_1_121_->set_gw_left_turn_light_req(0);
+      scu_1_121_->set_gw_right_turn_light_req(0);
+    }
   } else {
+    // reset to 0 if no turn signal input
     scu_1_121_->set_gw_left_turn_light_req(0);
     scu_1_121_->set_gw_right_turn_light_req(0);
   }
