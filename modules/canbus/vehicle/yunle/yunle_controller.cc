@@ -212,11 +212,7 @@ Chassis YunleController::chassis() {
       chassis_.mutable_wheel_speed()->set_wheel_direction_rr(
           WheelSpeed::STANDSTILL);
     }
-    // // average vehicle speed
-    // double vehicle_speed = (fl_speed + fr_speed + rl_speed + rr_speed) / 4.0;
-    // chassis_.set_speed_mps(vehicle_speed);
   } else {
-    // chassis_.clear_speed_mps();
     chassis_.mutable_wheel_speed()->clear_wheel_spd_fl();
     chassis_.mutable_wheel_speed()->set_is_wheel_spd_fl_valid(false);
     chassis_.mutable_wheel_speed()->set_wheel_direction_fl(WheelSpeed::INVALID);
@@ -230,18 +226,6 @@ Chassis YunleController::chassis() {
     chassis_.mutable_wheel_speed()->set_is_wheel_spd_rr_valid(false);
     chassis_.mutable_wheel_speed()->set_wheel_direction_rr(WheelSpeed::INVALID);
   }
-
-  // // steer
-  // if (yunle.has_sas_angle_feedback_e1()) {
-  //   auto sas_angle_fb = yunle.sas_angle_feedback_e1();
-  //   auto angle_front = sas_angle_fb.sas_angle_f();
-  //   // convert to percentage
-  //   chassis_.set_steering_percentage(angle_front / 180 * M_PI /
-  //                                    vehicle_params_.max_steer_angle() *
-  //                                    100.0);
-  // } else {
-  //   chassis_.clear_steering_percentage();
-  // }
 
   if (yunle.has_ccu_status_51()) {
     auto ccu_status = yunle.ccu_status_51();
@@ -309,19 +293,6 @@ Chassis YunleController::chassis() {
     } else {
       chassis_.mutable_signal()->set_low_beam(false);
     }
-
-    // brake
-    // vehicle brake only support 0 or 1
-    // if one of the brake signal is on, set brake percentage to 100
-    // - scu_brake_singal: brake signal from SCU
-    // - emergency_brake: emergency brake button pressed
-    // - remote_brake: remote brake button pressed
-    // if (ccu_status.scu_brake_singal() || ccu_status.emergency_brake() ||
-    //     ccu_status.remote_brake()) {
-    //   chassis_.set_brake_percentage(100.0);
-    // } else {
-    //   chassis_.set_brake_percentage(0.0);
-    // }
   }
 
   return chassis_;
