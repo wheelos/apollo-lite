@@ -1,0 +1,20 @@
+module_config {
+    module_library : "/apollo/bazel-bin/modules/drivers/radar/yg_radar/libyg_radar_component.so"
+    timer_components {
+        class_name : "YgRadarComponent"
+        config {
+            name: "yg_radar_left"
+            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_left.pb.txt"
+            interval: 100
+        }
+    }
+    timer_components {
+        class_name : "YgRadarComponent"
+        config {
+            name: "yg_radar_right"
+            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_right.pb.txt"
+            interval: 100
+        }
+    }
+}
+

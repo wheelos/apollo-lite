@@ -1,0 +1,34 @@
+syntax = "proto2";
+
+package apollo.drivers.yg_radar;
+
+message Radar_object_info_540 {
+  // Report Message
+  // [m] [-102.4|102.3]
+  optional double object_distance_lon = 1;
+  // [m/s] [-102.4|102.3]
+  optional double object_speed = 2;
+  // [deg] [-102.4|102.3]
+  optional double object_angle = 3;
+  // [m] [-102.4|102.3]
+  optional double object_distance_lat = 4;
+  // [m/s^2] [-12.8|12.7]
+  optional double object_acceleration = 5;
+  // [] [-2048|2047]
+  optional int32 object_tracking_id = 6;
+}
+
+message Radar_object_list_560 {
+  // Report Message
+  // [] [0|32]
+  optional int32 object_number = 1;
+  // [m] [-3276.8|3276.7]
+  optional double guardrail_distance = 2;
+  // [km/h] [-3276.8|3276.7]
+  optional bool vehicle_speed = 3;
+}
+
+message Yg_radar {
+  optional Radar_object_info_540 radar_object_info_540 = 1;  // report message
+  optional Radar_object_list_560 radar_object_list_560 = 2;  // report message
+}
