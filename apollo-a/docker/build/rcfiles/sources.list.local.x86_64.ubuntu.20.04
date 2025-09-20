@@ -1,0 +1,8 @@
+# local repo, not available for public, just use for the dev team
+deb [trusted=yes signed-by=/opt/apollo/rcfiles/wheelos.cn.public.gpg] http://apt-cache.wheelos.cn/repos/ubuntu2004/x86_64/ ./
+# http for ca-certificates issue
+deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal main restricted universe multiverse
+deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-updates main restricted universe multiverse
+deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-backports main restricted universe multiverse
+
+deb http://security.ubuntu.com/ubuntu/ focal-security main restricted universe multiverse

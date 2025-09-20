@@ -1,0 +1,36 @@
+## Ref:
+## 1) https://www.python.org/dev/peps/pep-0508/#environment-markers
+
+# System utils
+supervisor
+psutil
+
+# Note(infra): Use protobuf installed from source
+# protobuf
+
+grpcio-tools; platform_machine == 'x86_64'
+
+# Web
+requests
+
+# Python tools
+pyproj
+shapely
+matplotlib
+
+# Driver
+# pyusb
+
+# Learning
+# opencv-python
+## Note(infra): install numpy before h5py
+numpy
+scipy
+
+# Data format
+h5py
+pyyaml
+utm
+
+# lib for command line tools
+click

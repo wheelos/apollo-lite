@@ -1,0 +1,123 @@
+# Apollo Bazel configuration file.
+# This file tries to group and simplify build options for Apollo
+# +------------------------------------------------------------+
+# | Startup Options                                            |
+# +------------------------------------------------------------+
+startup --batch_cpu_scheduling
+startup --host_jvm_args="-XX:-UseParallelGC"
+startup --host_jvm_args="-Xmx2G"
+
+# +------------------------------------------------------------+
+# | Common Options                                             |
+# +------------------------------------------------------------+
+# Force bazel output to use colors (good for jenkins) and print useful errors.
+common --color=yes
+common --enable_bzlmod
+
+# Prefer https://bcr.bazel.build/
+build --registry=https://bcr.bazel.build/
+build --registry=https://raw.githubusercontent.com/wheelos/bazel-central-registry/main/
+
+# Set up a shared cache to avoid repeated pulls from remote libraries
+build --repository_cache=/var/cache/bazel/repo_cache
+
+# +------------------------------------------------------------+
+# | Build Configurations                                       |
+# +------------------------------------------------------------+
+# Make Bazel print out all options from rc files.
+# build --announce_rc
+build --show_timestamps
+
+# Work around the sandbox issue.
+build --spawn_strategy=standalone
+
+# Enable colorful output of GCC
+build --cxxopt="-fdiagnostics-color=always"
+
+# Do not show warnings from external dependencies.
+# build --output_filter="^//"
+
+# [debug]Generate profile
+# use `bazel analyze-profile data/build_profile.gz > profile_summary.txt`
+# build --profile=data/build_profile.gz
+
+# Set compiler warning options, with flexibility for development
+build --per_file_copt=external/.*@-Wno-unused-but-set-variable
+build --per_file_copt=external/.*@-Wno-sign-compare
+build --per_file_copt=external/.*@-Wno-return-type
+
+build --copt="-Werror=sign-compare"
+build --copt="-Werror=return-type"
+build --copt="-Werror=unused-variable"
+build --copt="-Werror=unused-but-set-variable"
+build --copt="-Werror=switch"
+build --cxxopt="-Werror=reorder"
+
+# Default paths for SYSTEM LIBRARIES
+build --define=PREFIX=/usr
+build --define=LIBDIR=$(PREFIX)/lib
+build --define=INCLUDEDIR=$(PREFIX)/include
+build --define=use_fast_cpp_protos=true
+
+# Build configurations
+build:dbg -c dbg
+build:opt -c opt
+
+# CPU / GPU Configuration
+build:cpu --verbose_failures
+build:gpu --define USE_GPU=true
+build:gpu --cxxopt="-DUSE_GPU=1"
+
+# Build with profiling
+build:prof --linkopt=-lprofiler
+build:prof --cxxopt="-DENABLE_PERF=1"
+
+# Build Apollo with C++ 17 features
+build:c++17 --cxxopt=-std=c++1z
+build:c++1z --config=c++17
+build:c++20 --cxxopt=-std=c++2a
+
+# Enable C++17 by default
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
+
+# +------------------------------------------------------------+
+# | Test Configurations                                        |
+# +------------------------------------------------------------+
+test --flaky_test_attempts=3
+test --test_size_filters=small,medium
+test --test_output=errors
+
+# Default prints output only from failed tests
+test:unit_test --test_verbose_timeout_warnings
+test:unit_test --test_tag_filters=-cpplint
+
+# Use AVX2 instructions for tests
+test --copt=-mavx2
+
+coverage --javabase="@bazel_tools//tools/jdk:remote_jdk11"
+coverage --instrument_test_targets
+coverage --combined_report=lcov
+coverage --nocache_test_results
+coverage --cxxopt=--coverage
+coverage --cxxopt=-fprofile-arcs
+coverage --cxxopt=-ftest-coverage
+coverage --linkopt=-lgcov
+
+
+# +------------------------------------------------------------+
+# | CPP Lint Tests & Unit Tests                                |
+# +------------------------------------------------------------+
+# Enable cpp lint tests alongside regular tests
+test:cpplint --test_tag_filters=cpplint
+test:cpplint --build_tests_only
+test:cpplint --flaky_test_attempts=1
+
+# Coverage tests respecting test tagging
+coverage --test_tag_filters=-cpplint
+
+# +------------------------------------------------------------+
+# | Python Configurations                                      |
+# +------------------------------------------------------------+
+# Python support was configured by third_party/py.
+# Consider adding Python linting and testing configurations here

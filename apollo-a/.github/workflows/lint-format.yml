@@ -1,0 +1,71 @@
+name: Code Lint and Format Check
+
+on:
+  push:
+    branches:
+      - main # Trigger on push to 'main'
+  pull_request:
+    branches:
+      - main # Trigger on PR to 'main'
+      - 8.0-dev
+
+# Workflow permissions
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lint-format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read Bazel version from .bazelversion
+        id: bazel-version
+        run: echo "version=$(cat .bazelversion)" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black==24.4.2 flake8==7.0.0 isort==5.13.2
+
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          bazel-version: ${{ steps.bazel-version.outputs.version }}
+
+      - name: Install C++ (Clang-Format), Shell (Shellcheck) and Buildifier
+        run: |
+          sudo apt-get update
+          # Install clang-format version from .pre-commit-config.yaml
+          sudo apt-get install -y clang-format-18 shellcheck
+
+          # Install Buildifier using Go
+          # Todo(zero): different from ".pre-commit-config.yaml"
+          go install github.com/bazelbuild/buildtools/buildifier@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Run Lint and Format Checks (PR Diff Mode)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Running apollo_lint.sh in diff mode for PR..."
+          ${{ github.workspace }}/scripts/ci/apollo_lint.sh --all --diff origin/${{ github.base_ref }}
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+
+      - name: Run Lint and Format Checks (Push Full Mode)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "Running apollo_lint.sh in full mode for push to main branch..."
+          ${{ github.workspace }}/scripts/ci/apollo_lint.sh --all

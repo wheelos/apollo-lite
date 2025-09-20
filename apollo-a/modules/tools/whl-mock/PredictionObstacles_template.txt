@@ -1,0 +1,26 @@
+# Protobuf Text Format Template for message: apollo.prediction.PredictionObstacles
+#
+# Instructions:
+# 1. Fill in the values for each field.
+# 2. For repeated fields, add multiple entries by repeating the field name.
+# 3. For enum fields, use defined enum names.
+# 4. Remove comments (#) and placeholder values before publishing.
+# 5. Fields not specified will use their default Protobuf values.
+#
+header {
+  timestamp_sec: 0.0
+  module_name: "PLACEHOLDER_STRING"
+  sequence_num: 0
+  lidar_timestamp: 0
+  camera_timestamp: 0
+  radar_timestamp: 0
+  version: 0
+  status {
+    error_code: OK
+    msg: "PLACEHOLDER_STRING"
+  }
+  frame_id: "PLACEHOLDER_STRING"
+}
+perception_error_code: OK
+start_timestamp: 0.0
+end_timestamp: 0.0

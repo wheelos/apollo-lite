@@ -1,0 +1,4 @@
+[global]
+trusted-host = devpi.wheelos.cn
+index-url = http://devpi.wheelos.cn/root/pypi/+simple/
+

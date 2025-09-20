@@ -1,0 +1,224 @@
+syntax = "proto2";
+
+package apollo.canbus;
+
+message Wheel_fr_status_1b6 {
+// Report Message
+  enum Errorcode_frType {
+    ERRORCODE_FR_NOERROR = 0;
+    ERRORCODE_FR_OVERVOLTAGE = 1;
+    ERRORCODE_FR_UNDERVOLTAGE = 2;
+    ERRORCODE_FR_OVERCURRENT = 4;
+    ERRORCODE_FR_CONTROLLEROVERTEMP = 5;
+    ERRORCODE_FR_MOTOROVERTEMP = 6;
+    ERRORCODE_FR_MCUUNDERVOLTAGE = 9;
+    ERRORCODE_FR_ENCODERSPIERROR = 11;
+    ERRORCODE_FR_ENCODERAMPLITUDELOW = 12;
+    ERRORCODE_FR_ENCODERAMPLITUDEHIGH = 13;
+    ERRORCODE_FR_MEMORYSTORAGEERROR = 14;
+    ERRORCODE_FR_THREEPHASEIMBALANCE = 18;
+    ERRORCODE_FR_APPCONFIGSTORAGEERROR = 23;
+    ERRORCODE_FR_CONTROLCONFIGSTORAGEERROR = 24;
+    ERRORCODE_FR_ENCODERERROR = 28;
+    ERRORCODE_FR_COMMUNICATIONLOST = 30;
+  }
+  // [] [0|30]
+  optional Errorcode_frType errorcode_fr = 1;
+  // [] [0|65535]
+  optional int32 statusword_fr = 2;
+  // [Percentage] [0|1000]
+  optional double torque_fr = 3;
+  // [m/s] [0|25]
+  optional double speed_fr = 4;
+}
+
+message Wheel_fl_status_1b7 {
+// Report Message
+  enum Errorcode_flType {
+    ERRORCODE_FL_NOERROR = 0;
+    ERRORCODE_FL_OVERVOLTAGE = 1;
+    ERRORCODE_FL_UNDERVOLTAGE = 2;
+    ERRORCODE_FL_OVERCURRENT = 4;
+    ERRORCODE_FL_CONTROLLEROVERTEMP = 5;
+    ERRORCODE_FL_MOTOROVERTEMP = 6;
+    ERRORCODE_FL_MCUUNDERVOLTAGE = 9;
+    ERRORCODE_FL_ENCODERSPIERROR = 11;
+    ERRORCODE_FL_ENCODERAMPLITUDELOW = 12;
+    ERRORCODE_FL_ENCODERAMPLITUDEHIGH = 13;
+    ERRORCODE_FL_MEMORYSTORAGEERROR = 14;
+    ERRORCODE_FL_THREEPHASEIMBALANCE = 18;
+    ERRORCODE_FL_APPCONFIGSTORAGEERROR = 23;
+    ERRORCODE_FL_CONTROLCONFIGSTORAGEERROR = 24;
+    ERRORCODE_FL_ENCODERERROR = 28;
+    ERRORCODE_FL_COMMUNICATIONLOST = 30;
+  }
+  // [] [0|30]
+  optional Errorcode_flType errorcode_fl = 1;
+  // [] [0|65535]
+  optional int32 statusword_fl = 2;
+  // [Percentage] [0|1000]
+  optional double torque_fl = 3;
+  // [m/s] [0|25]
+  optional double speed_fl = 4;
+}
+
+message Wheel_rl_status_1b8 {
+// Report Message
+  enum Errorcode_rlType {
+    ERRORCODE_RL_NOERROR = 0;
+    ERRORCODE_RL_OVERVOLTAGE = 1;
+    ERRORCODE_RL_UNDERVOLTAGE = 2;
+    ERRORCODE_RL_OVERCURRENT = 4;
+    ERRORCODE_RL_CONTROLLEROVERTEMP = 5;
+    ERRORCODE_RL_MOTOROVERTEMP = 6;
+    ERRORCODE_RL_MCUUNDERVOLTAGE = 9;
+    ERRORCODE_RL_ENCODERSPIERROR = 11;
+    ERRORCODE_RL_ENCODERAMPLITUDELOW = 12;
+    ERRORCODE_RL_ENCODERAMPLITUDEHIGH = 13;
+    ERRORCODE_RL_MEMORYSTORAGEERROR = 14;
+    ERRORCODE_RL_THREEPHASEIMBALANCE = 18;
+    ERRORCODE_RL_APPCONFIGSTORAGEERROR = 23;
+    ERRORCODE_RL_CONTROLCONFIGSTORAGEERROR = 24;
+    ERRORCODE_RL_ENCODERERROR = 28;
+    ERRORCODE_RL_COMMUNICATIONLOST = 30;
+  }
+  // [] [0|30]
+  optional Errorcode_rlType errorcode_rl = 1;
+  // [] [0|65535]
+  optional int32 statusword_rl = 2;
+  // [Percentage] [0|1000]
+  optional double torque_rl = 3;
+  // [m/s] [0|25]
+  optional double speed_rl = 4;
+}
+
+message Wheel_rr_status_1b9 {
+// Report Message
+  enum Errorcode_rrType {
+    ERRORCODE_RR_NOERROR = 0;
+    ERRORCODE_RR_OVERVOLTAGE = 1;
+    ERRORCODE_RR_UNDERVOLTAGE = 2;
+    ERRORCODE_RR_OVERCURRENT = 4;
+    ERRORCODE_RR_CONTROLLEROVERTEMP = 5;
+    ERRORCODE_RR_MOTOROVERTEMP = 6;
+    ERRORCODE_RR_MCUUNDERVOLTAGE = 9;
+    ERRORCODE_RR_ENCODERSPIERROR = 11;
+    ERRORCODE_RR_ENCODERAMPLITUDELOW = 12;
+    ERRORCODE_RR_ENCODERAMPLITUDEHIGH = 13;
+    ERRORCODE_RR_MEMORYSTORAGEERROR = 14;
+    ERRORCODE_RR_THREEPHASEIMBALANCE = 18;
+    ERRORCODE_RR_APPCONFIGSTORAGEERROR = 23;
+    ERRORCODE_RR_CONTROLCONFIGSTORAGEERROR = 24;
+    ERRORCODE_RR_ENCODERERROR = 28;
+    ERRORCODE_RR_COMMUNICATIONLOST = 30;
+  }
+  // [] [0|30]
+  optional Errorcode_rrType errorcode_rr = 1;
+  // [] [0|65535]
+  optional int32 statusword_rr = 2;
+  // [Percentage] [0|1000]
+  optional double torque_rr = 3;
+  // [m/s] [0|25]
+  optional double speed_rr = 4;
+}
+
+message Wheel_fr_control_2b6 {
+// Report Message
+  enum Runningstate_frType {
+    RUNNINGSTATE_FR_STOPPED = 0;
+    RUNNINGSTATE_FR_RUNNING = 2;
+  }
+  enum Directionstate_frType {
+    DIRECTIONSTATE_FR_REVERSE = 0;
+    DIRECTIONSTATE_FR_FORWARD = 1;
+  }
+  // [RPM] [0|1000]
+  optional int32 speed_fr_ctrl = 1;
+  // [] [0|2]
+  optional Runningstate_frType runningstate_fr = 2;
+  // [] [0|1]
+  optional Directionstate_frType directionstate_fr = 3;
+}
+
+message Wheel_fl_control_2b7 {
+// Report Message
+  enum Runningstate_flType {
+    RUNNINGSTATE_FL_STOPPED = 0;
+    RUNNINGSTATE_FL_RUNNING = 2;
+  }
+  enum Directionstate_flType {
+    DIRECTIONSTATE_FL_REVERSE = 0;
+    DIRECTIONSTATE_FL_FORWARD = 1;
+  }
+  // [RPM] [0|1000]
+  optional int32 speed_fl_ctrl = 1;
+  // [] [0|2]
+  optional Runningstate_flType runningstate_fl = 2;
+  // [] [0|1]
+  optional Directionstate_flType directionstate_fl = 3;
+}
+
+message Wheel_rl_control_2b8 {
+// Report Message
+  enum Runningstate_rlType {
+    RUNNINGSTATE_RL_STOPPED = 0;
+    RUNNINGSTATE_RL_RUNNING = 2;
+  }
+  enum Directionstate_rlType {
+    DIRECTIONSTATE_RL_REVERSE = 0;
+    DIRECTIONSTATE_RL_FORWARD = 1;
+  }
+  // [RPM] [0|1000]
+  optional int32 speed_rl_ctrl = 1;
+  // [] [0|2]
+  optional Runningstate_rlType runningstate_rl = 2;
+  // [] [0|1]
+  optional Directionstate_rlType directionstate_rl = 3;
+}
+
+message Wheel_rr_control_2b9 {
+// Report Message
+  enum Runningstate_rrType {
+    RUNNINGSTATE_RR_STOPPED = 0;
+    RUNNINGSTATE_RR_RUNNING = 2;
+  }
+  enum Directionstate_rrType {
+    DIRECTIONSTATE_RR_REVERSE = 0;
+    DIRECTIONSTATE_RR_FORWARD = 1;
+  }
+  // [RPM] [0|1000]
+  optional int32 speed_rr_ctrl = 1;
+  // [] [0|2]
+  optional Runningstate_rrType runningstate_rr = 2;
+  // [] [0|1]
+  optional Directionstate_rrType directionstate_rr = 3;
+}
+
+message Light_control_7ff {
+// Report Message
+  enum Light_typeType {
+    LIGHT_TYPE_BRAKELIGHT = 2;
+    LIGHT_TYPE_RIGHTTURNLIGHT = 7;
+    LIGHT_TYPE_LEFTTURNLIGHT = 8;
+  }
+  enum Light_switchType {
+    LIGHT_SWITCH_OFF = 0;
+    LIGHT_SWITCH_ON = 1;
+  }
+  // [] [0|8]
+  optional Light_typeType light_type = 1;
+  // [] [0|8]
+  optional Light_switchType light_switch = 2;
+}
+
+message Apple {
+  optional Wheel_fr_status_1b6 wheel_fr_status_1b6 = 1; // report message
+  optional Wheel_fl_status_1b7 wheel_fl_status_1b7 = 2; // report message
+  optional Wheel_rl_status_1b8 wheel_rl_status_1b8 = 3; // report message
+  optional Wheel_rr_status_1b9 wheel_rr_status_1b9 = 4; // report message
+  optional Wheel_fr_control_2b6 wheel_fr_control_2b6 = 5; // report message
+  optional Wheel_fl_control_2b7 wheel_fl_control_2b7 = 6; // report message
+  optional Wheel_rl_control_2b8 wheel_rl_control_2b8 = 7; // report message
+  optional Wheel_rr_control_2b9 wheel_rr_control_2b9 = 8; // report message
+  optional Light_control_7ff light_control_7ff = 9; // report message
+}

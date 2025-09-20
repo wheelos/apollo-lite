@@ -1,0 +1,30 @@
+Log file created at: 2025/07/18 20:50:34
+Running on machine: in-dev-docker
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I20250718 20:50:49.462165 129060940277504 reference_line_provider.cc:227] Flags use_navigation_mode: 0
+I20250718 20:50:49.462177 129060940277504 reference_line_provider.cc:238] Flags enable_reference_line_provider_thread: 1
+W20250718 20:50:49.462179 129060940277504 reference_line_provider.cc:258] Reference line is NOT ready.
+E20250718 20:50:49.462181 129060940277504 reference_line_provider.cc:260] Failed to use reference line latest history
+I20250718 20:50:49.576150 129060202080000 reference_line_provider.cc:227] Flags use_navigation_mode: 0
+I20250718 20:50:49.576156 129060202080000 reference_line_provider.cc:238] Flags enable_reference_line_provider_thread: 1
+I20250718 20:50:49.682428 129060176901888 reference_line_provider.cc:621] [DEBUG] Reference line is not reversed
+I20250718 20:50:49.682440 129060176901888 reference_line_provider.cc:1041] [DEBUG]
+index 0, last_index 344, ref_points size 345, sl.s() 0, cur_heading 2.92363, last_heading 1.25512
+I20250718 20:50:49.682448 129060176901888 reference_line_provider.cc:1052] [DEBUG] new_forward_distance: 85.5757, sl.s(): 0
+I20250718 20:50:49.682457 129060176901888 reference_line_provider.cc:630] [DEBUG] Reference lines size: 1
+W20250718 20:50:49.682465 129060202080000 reference_line_provider.cc:258] Reference line is NOT ready.
+E20250718 20:50:49.682479 129060202080000 reference_line_provider.cc:260] Failed to use reference line latest history
+I20250718 20:50:49.682460 129060176901888 reference_line_provider.cc:632] [DEBUG] speed_limit num:0reference_points num:345
+{x: 586392.220817, y: 4140673.253548, theta: 2.923631, kappa: 0.000001, dkappa: 0.000003}
+{x: 586391.973125, y: 4140673.308407, theta: 2.923631, kappa: 0.000002, dkappa: 0.000005}
+{x: 586391.725432, y: 4140673.363266, theta: 2.923632, kappa: 0.000003, dkappa: 0.000007}
+{x: 586391.477738, y: 4140673.418125, theta: 2.923633, kappa: 0.000005, dkappa: 0.000006}
+{x: 586391.230043, y: 4140673.472984, theta: 2.923634, kappa: 0.000007, dkappa: 0.000006}
+{x: 586390.982345, y: 4140673.527843, theta: 2.923636, kappa: 0.000008, dkappa: 0.000006}
+{x: 586390.734644, y: 4140673.582702, theta: 2.923638, kappa: 0.000010, dkappa: 0.000006}
+{x: 586390.486940, y: 4140673.637561, theta: 2.923641, kappa: 0.000011, dkappa: 0.000005}
+{x: 586390.239233, y: 4140673.692421, theta: 2.923644, kappa: 0.000012, dkappa: 0.000005}
+{x: 586389.991520, y: 4140673.747280, theta: 2.923647, kappa: 0.000014, dkappa: 0.000005}
+{x: 586389.743803, y: 4140673.802140, theta: 2.923651, kappa: 0.000015, dkappa: 0.000004}
+{x: 586389.496080, y: 4140673.857000, theta: 2.923655, kappa: 0.000016, dkappa: 0.000004}
+{x: 586389.248352, y: 4140673.911861, theta: 2.923659, kappa: 0.000017, dkappa: 0.000003}
