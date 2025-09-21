@@ -271,9 +271,12 @@ bool RawStream::Init() {
     return false;
   }
 
-  const std::string gpsbin_file = getLocalTimeFileStr(config_.gpsbin_folder());
-  gpsbin_stream_.reset(new std::ofstream(
-      gpsbin_file, std::ios::app | std::ios::out | std::ios::binary));
+  if (config_.has_gpsbin_folder()) {
+    const std::string gpsbin_file =
+        getLocalTimeFileStr(config_.gpsbin_folder());
+    gpsbin_stream_.reset(new std::ofstream(
+        gpsbin_file, std::ios::app | std::ios::out | std::ios::binary));
+  }
   stream_writer_ = node_->CreateWriter<StreamStatus>(FLAGS_stream_status_topic);
   raw_writer_ = node_->CreateWriter<RawData>(FLAGS_gnss_raw_data_topic);
   rtcm_writer_ = node_->CreateWriter<RawData>(FLAGS_rtcm_data_topic);
@@ -484,6 +487,8 @@ void RawStream::DataSpin() {
       }
     }
     StreamStatusCheck();
+    // sleep a little to avoid overrun of the slow serial interface.
+    cyber::Duration(0.001).Sleep();
   }
 }
 
