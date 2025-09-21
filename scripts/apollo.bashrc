@@ -27,6 +27,9 @@ fi
 
 export APOLLO_CONFIG_HOME="${APOLLO_CONFIG_HOME:=$HOME/.apollo}"
 
+# TODO(daohu527): Resource path, more resources will be added later
+export WHEELOS_RESOURCE_URL="http://10.0.39.103:8000/confs/"
+
 export APOLLO_ROOT_DIR="${APOLLO_ROOT_DIR}"
 export APOLLO_IN_DOCKER="${APOLLO_IN_DOCKER}"
 export APOLLO_CACHE_DIR="${APOLLO_ROOT_DIR}/.cache"
