@@ -22,15 +22,15 @@
 
 #include <memory>
 
-#include "cyber/common/macros.h"
-#include "cyber/component/timer_component.h"
-#include "cyber/cyber.h"
-
 #include "modules/common_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
 #include "modules/common_msgs/guardian_msgs/guardian.pb.h"
-#include "modules/guardian/proto/guardian_conf.pb.h"
 #include "modules/common_msgs/monitor_msgs/system_status.pb.h"
+#include "modules/guardian/proto/guardian_conf.pb.h"
+
+#include "cyber/common/macros.h"
+#include "cyber/component/timer_component.h"
+#include "cyber/cyber.h"
 
 /**
  * @namespace apollo::guardian
@@ -54,6 +54,7 @@ class GuardianComponent : public apollo::cyber::TimerComponent {
   apollo::control::ControlCommand control_cmd_;
   apollo::guardian::GuardianCommand guardian_cmd_;
 
+  bool has_received_system_status_ = false;
   double last_status_received_s_{};
 
   std::shared_ptr<apollo::cyber::Reader<apollo::canbus::Chassis>>

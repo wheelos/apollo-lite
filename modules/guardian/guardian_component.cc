@@ -56,6 +56,12 @@ bool GuardianComponent::Init() {
         std::lock_guard<std::mutex> lock(mutex_);
         last_status_received_s_ = Time::Now().ToSecond();
         system_status_.CopyFrom(*status);
+        // When receiving a message for the first time, set the flag to true
+        if (!has_received_system_status_) {
+          has_received_system_status_ = true;
+          AINFO << "First SystemStatus message received. Guardian timeout "
+                   "check is now active.";
+        }
       });
 
   guardian_writer_ = node_->CreateWriter<GuardianCommand>(FLAGS_guardian_topic);
@@ -69,9 +75,11 @@ bool GuardianComponent::Proc() {
   bool safety_mode_triggered = false;
   if (guardian_conf_.guardian_enable()) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (Time::Now().ToSecond() - last_status_received_s_ >
-        kSecondsTillTimeout) {
-      safety_mode_triggered = true;
+    if (has_received_system_status_) {
+      if (Time::Now().ToSecond() - last_status_received_s_ >
+          kSecondsTillTimeout) {
+        safety_mode_triggered = true;
+      }
     }
     safety_mode_triggered =
         safety_mode_triggered || system_status_.has_safety_mode_trigger_time();
@@ -100,6 +108,8 @@ void GuardianComponent::TriggerSafetyMode() {
         << system_status_.safety_mode_trigger_time();
   std::lock_guard<std::mutex> lock(mutex_);
   bool sensor_malfunction = false, obstacle_detected = false;
+  // TODO(daohu527): Currently, ultrasonic waves are required to work, and
+  // continuous frame judgment is not added. This logic needs to be refactored.
   if (!chassis_.surround().sonar_enabled() ||
       chassis_.surround().sonar_fault()) {
     AINFO << "Ultrasonic sensor not enabled for faulted, will do emergency "
