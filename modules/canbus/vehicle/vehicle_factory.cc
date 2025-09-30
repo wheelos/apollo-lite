@@ -18,6 +18,7 @@
 
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
 
+#include "modules/canbus/vehicle/bxk/bxk_vehicle_factory.h"
 #include "modules/canbus/vehicle/ch/ch_vehicle_factory.h"
 #include "modules/canbus/vehicle/devkit/devkit_vehicle_factory.h"
 #include "modules/canbus/vehicle/ge3/ge3_vehicle_factory.h"
@@ -68,6 +69,9 @@ void VehicleFactory::RegisterVehicleFactory() {
   });
   Register(apollo::common::YUNLE, []() -> AbstractVehicleFactory * {
     return new YunleVehicleFactory();
+  });
+  Register(apollo::common::BXK, []() -> AbstractVehicleFactory * {
+    return new BxkVehicleFactory();
   });
 }
 

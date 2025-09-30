@@ -119,6 +119,7 @@ proto_library(
     name = "chassis_detail_proto",
     srcs = ["chassis_detail.proto"],
     deps = [
+        ":bxk_proto",
         ":ch_proto",
         ":chassis_proto",
         ":devkit_proto",
@@ -229,4 +230,21 @@ proto_library(
 py_proto_library(
     name = "yunle_py_pb2",
     deps = [":yunle_proto"],
+)
+
+cc_proto_library(
+    name = "bxk_cc_proto",
+    deps = [
+        ":bxk_proto",
+    ],
+)
+
+proto_library(
+    name = "bxk_proto",
+    srcs = ["bxk.proto"],
+)
+
+py_proto_library(
+    name = "bxk_py_pb2",
+    deps = [":bxk_proto"],
 )
