@@ -59,7 +59,7 @@ bool YgRadarComponent::Init() {
     AERROR << "failed to create message manager for yg radar.";
     return false;
   }
-  message_manager_->set_message_id_offset((config_.sensor_id() & 0x03) << 6);
+  message_manager_->set_message_id_offset(config_.can_message_id_offset());
   message_manager_->set_writer(writer_);
   AINFO << "yg radar message manager is created successfully.";
   if (can_receiver_.Init(can_client_.get(), message_manager_.get(),

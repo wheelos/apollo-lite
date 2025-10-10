@@ -41,13 +41,16 @@ void YgRadarMessageManager::Parse(const uint32_t message_id,
                                   const uint8_t* data, int32_t length) {
   // Parse method triggered by CanReceiver when a new message is received
 
-  if (((message_id & 0xFF3F) | message_id_offset_) != message_id) {
-    // ignore messages that not match the sensor ID
+  if (message_id > Radarobjectlist560::ID + message_id_offset_ ||
+      message_id < Radarobjectinfo540::ID + message_id_offset_) {
+    // ignore messages that not match the message_id_offset_
     return;
   }
+  // treat 0x540~0x55F as 0x540
+  // treat 0x560 as 0x560
   apollo::drivers::canbus::ProtocolData<apollo::drivers::yg_radar::Yg_radar>*
-      protocol_data =
-          GetMutableProtocolDataById((message_id & 0xFF20) | 0x0040);
+      protocol_data = GetMutableProtocolDataById(
+          (message_id - message_id_offset_) & 0xFFE0);
   if (protocol_data == nullptr) {
     return;
   }
@@ -56,7 +59,8 @@ void YgRadarMessageManager::Parse(const uint32_t message_id,
     std::lock_guard<std::mutex> lock(sensor_data_mutex_);
     protocol_data->Parse(data, length, &sensor_data_);
     // object list received
-    if ((message_id & 0xFF20) == (Radarobjectlist560::ID & 0xFF20)) {
+    if (((message_id - message_id_offset_) & 0xFFE0) ==
+        Radarobjectlist560::ID) {
       auto& obj_list = sensor_data_.radar_object_list_560();
       current_obstacle_size_ = obj_list.object_number();
       // trigger obstacle message publish
@@ -74,7 +78,8 @@ void YgRadarMessageManager::Parse(const uint32_t message_id,
       modified_ = true;
     }
     // object info received
-    if ((message_id & 0xFF20) == (Radarobjectinfo540::ID & 0xFF20)) {
+    if (((message_id - message_id_offset_) & 0xFFE0) ==
+        Radarobjectinfo540::ID) {
       auto& obj_info = sensor_data_.radar_object_info_540();
       auto& obstacle =
           (*(radar_obstacles_
@@ -105,9 +110,9 @@ void YgRadarMessageManager::Parse(const uint32_t message_id,
     }
   }
 
-  received_ids_.insert((message_id & 0xFF20) | 0x0040);
+  received_ids_.insert((message_id - message_id_offset_) & 0xFFE0);
   // check if need to check period
-  const auto it = check_ids_.find((message_id & 0xFF20) | 0x0040);
+  const auto it = check_ids_.find((message_id - message_id_offset_) & 0xFFE0);
   if (it != check_ids_.end()) {
     const int64_t time = cyber::Time::Now().ToNanosecond() / 1e3;
     it->second.real_period = time - it->second.last_time;

@@ -3,16 +3,32 @@ module_config {
     timer_components {
         class_name : "YgRadarComponent"
         config {
-            name: "yg_radar_left"
-            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_left.pb.txt"
+            name: "yg_radar_left_rear"
+            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_left_rear.pb.txt"
             interval: 100
         }
     }
     timer_components {
         class_name : "YgRadarComponent"
         config {
-            name: "yg_radar_right"
-            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_right.pb.txt"
+            name: "yg_radar_right_rear"
+            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_right_rear.pb.txt"
+            interval: 100
+        }
+    }
+    timer_components {
+        class_name : "YgRadarComponent"
+        config {
+            name: "yg_radar_left_front"
+            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_left_front.pb.txt"
+            interval: 100
+        }
+    }
+    timer_components {
+        class_name : "YgRadarComponent"
+        config {
+            name: "yg_radar_right_front"
+            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_right_front.pb.txt"
             interval: 100
         }
     }
