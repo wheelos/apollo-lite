@@ -9,8 +9,16 @@ cc_library(
     includes = [
         "QtCore",
     ],
-    linkopts = [
-        "-Wl,-rpath,/usr/local/qt5/lib",
+    linkopts = select({
+        "@platforms//cpu:aarch64": [
+            "-L/lib/aarch64-linux-gnu", 
+            "-Wl,-rpath,/lib/aarch64-linux-gnu",
+        ],
+        "//conditions:default": [
+            "-L/usr/local/qt5/lib",
+            "-Wl,-rpath,/usr/local/qt5/lib",
+        ],
+    }) + [
         "-lQt5Core",
     ],
     visibility = ["//visibility:public"],
@@ -23,8 +31,16 @@ cc_library(
         "-I.",
     ],
     includes = ["QtWidgets"],
-    linkopts = [
-        "-L/usr/local/qt5/lib",
+    linkopts = select({
+        "@platforms//cpu:aarch64": [
+            "-L/lib/aarch64-linux-gnu", 
+            "-Wl,-rpath,/lib/aarch64-linux-gnu",
+        ],
+        "//conditions:default": [
+            "-L/usr/local/qt5/lib",
+            "-Wl,-rpath,/usr/local/qt5/lib",
+        ],
+    }) + [
         "-lQt5Widgets",
     ],
     visibility = ["//visibility:public"],
@@ -38,8 +54,16 @@ cc_library(
         "-I.",
     ],
     includes = ["QtGui"],
-    linkopts = [
-        "-L/usr/local/qt5/lib",
+    linkopts = select({
+        "@platforms//cpu:aarch64": [
+            "-L/lib/aarch64-linux-gnu", 
+            "-Wl,-rpath,/lib/aarch64-linux-gnu",
+        ],
+        "//conditions:default": [
+            "-L/usr/local/qt5/lib",
+            "-Wl,-rpath,/usr/local/qt5/lib",
+        ],
+    }) + [
         "-lQt5Gui",
     ],
     visibility = ["//visibility:public"],
@@ -56,8 +80,16 @@ cc_library(
         "-I.",
     ],
     includes = ["QtOpenGL"],
-    linkopts = [
-        "-L/usr/local/qt5/lib",
+    linkopts = select({
+        "@platforms//cpu:aarch64": [
+            "-L/lib/aarch64-linux-gnu", 
+            "-Wl,-rpath,/lib/aarch64-linux-gnu",
+        ],
+        "//conditions:default": [
+            "-L/usr/local/qt5/lib",
+            "-Wl,-rpath,/usr/local/qt5/lib",
+        ],
+    }) + [
         "-lQt5OpenGL",
         "-lGL",
     ],
@@ -69,3 +101,4 @@ cc_library(
         #"@opengl",
     ],
 )
+
