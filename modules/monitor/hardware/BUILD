@@ -7,6 +7,21 @@ package(default_visibility = ["//visibility:public"])
 MONITOR_COPTS = ['-DMODULE_NAME=\\"monitor\\"']
 
 cc_library(
+    name = "collision_monitor",
+    srcs = ["collision_monitor.cc"],
+    hdrs = ["collision_monitor.h"],
+    copts = MONITOR_COPTS,
+    deps = [
+        "//modules/monitor/common:monitor_manager",
+        "//modules/monitor/common:recurrent_runner",
+        "//modules/common/adapters:adapter_gflags",
+        "//modules/common/util:map_util",
+        "//modules/common_msgs/perception_msgs:collision_warning_cc_proto",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "gps_monitor",
     srcs = ["gps_monitor.cc"],
     hdrs = ["gps_monitor.h"],

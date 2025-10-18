@@ -147,6 +147,32 @@ cc_library(
     alwayslink = True,
 )
 
+cc_binary(
+    name = "libcollision_guardian_component.so",
+    linkshared = True,
+    linkstatic = True,
+    deps = [":collision_guardian_component_lib"],
+)
+
+cc_library(
+    name = "collision_guardian_component_lib",
+    srcs = ["collision_guardian_component.cc"],
+    hdrs = ["collision_guardian_component.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
+    deps = [
+        "//cyber",
+        "//modules/perception/onboard/proto:collision_guardian_component_cc_proto",
+        "//modules/common_msgs/monitor_msgs:system_status_cc_proto",
+        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "//modules/common_msgs/perception_msgs:collision_warning_cc_proto",
+        "//modules/perception/onboard/transform_wrapper",
+        "//modules/common/adapters:adapter_gflags",
+    ],
+    alwayslink = True
+)
+
 cc_library(
     name = "multi_sensor_fusion_component",
     srcs = ["multi_sensor_fusion_component.cc"],

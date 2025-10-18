@@ -6,6 +6,23 @@ load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 package(default_visibility = ["//visibility:public"])
 
 cc_proto_library(
+    name = "collision_guardian_component_cc_proto",
+    deps = [
+        ":collision_guardian_component_proto",
+    ],
+)
+
+proto_library(
+    name = "collision_guardian_component_proto",
+    srcs = ["collision_guardian_component.proto"],
+)
+
+py_proto_library(
+    name = "collision_guardian_component_py_pb2",
+    deps = [":collision_guardian_component_proto"],
+)
+
+cc_proto_library(
     name = "lane_perception_component_cc_proto",
     deps = [
         ":lane_perception_component_proto",

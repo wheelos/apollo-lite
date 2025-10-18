@@ -1,0 +1,15 @@
+module_config {
+  module_library : "/apollo/bazel-bin/modules/perception/onboard/component/libcollision_guardian_component.so"
+
+  components {
+    class_name : "CollisionGuardianComponent"
+    config {
+      name: "CollisionGuardian"
+      config_file_path: "/apollo/modules/perception/production/conf/perception/lidar/collision_guardian_conf.pb.txt"
+      flag_file_path: "/apollo/modules/perception/production/conf/perception/perception_common.flag"
+      readers {
+        channel: "/apollo/sensor/vanjeelidar/up/PointCloud2"
+      }
+    }
+  }
+}
