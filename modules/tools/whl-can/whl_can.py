@@ -65,6 +65,11 @@ class KeyboardController:
         self.speed = 0
         self.steering = 0.0
         self.turn_signal_threshold = 0.0
+        self.turn_signal = 0  # 0:None, 1:Left, 2:Right, 3:Hazard
+        self.horn = False
+        self.high_beam = False
+        self.low_beam = False
+        self.emergency_light = False
         self.speed_delta = speed_delta
         self.steering_delta = steering_delta
         # check defination of in modules/common_msgs/chassis_msgs/chassis.proto
@@ -80,14 +85,14 @@ class KeyboardController:
 
         self.help_text_lines = [
             "Key instructions:",
-            "  w/s: Increase/Decrease speed",
-            "  a/d: Turn left/right",
-            "  m: Change gear",
-            "  b/B: Brake +/-",
-            "  p: Toggle Electronic Parking Brake (EPB)",
-            "  o/O: Turn signal threshold +/-",
-            "  Space: Emergency stop",
-            "  q: Quit program",
+            "  w/s: Increase/Decrease speed       a/d: Turn left/right",
+            "  m: Change gear                     b/B: Brake +/-",
+            "  p: Toggle Electronic Parking Brake (EPB)  o/O: Turn signal threshold +/-",
+            "  Space: Emergency stop              h: Toggle Horn",
+            "  l: Toggle Low Beam                 k: Toggle High Beam",
+            "  e: Toggle Emergency Light          [: Turn Signal Left",
+            "  ]: Turn Signal Right               \\: Turn Signal Off",
+            "  =: Hazard Warning Lights           q: Quit program",
         ]
 
         # Key mapping: map keys using ASCII codes
@@ -104,6 +109,14 @@ class KeyboardController:
             ord("o"): self.turn_signal_threshold_inc,
             ord("O"): self.turn_signal_threshold_dec,
             ord(" "): self.emergency_stop,  # space key
+            ord("h"): self.toggle_horn,
+            ord("l"): self.toggle_low_beam,
+            ord("k"): self.toggle_high_beam,
+            ord("e"): self.toggle_emergency_light,
+            ord("["): lambda: self.set_turn_signal(1, "LEFT"),
+            ord("]"): lambda: self.set_turn_signal(2, "RIGHT"),
+            ord("\\"): lambda: self.set_turn_signal(0, "NONE"),
+            ord("="): lambda: self.set_turn_signal(3, "HAZARD"),
         }
 
     def get_control_cmd(self):
@@ -118,7 +131,7 @@ class KeyboardController:
         self.screen.addstr(0, 0,
                            "Keyboard control started, press 'q' to exit.    ")
         for idx, line in enumerate(self.help_text_lines):
-            self.screen.addstr(10 + idx, 0, line)
+            self.screen.addstr(15 + idx, 0, line)
         self.thread = threading.Thread(target=self._listen_keyboard,
                                        daemon=True)
         self.thread.start()
@@ -175,7 +188,14 @@ class KeyboardController:
             else:
                 self.control_cmd_msg.parking_brake = False
             # TODO(All): set signal via keyboard input
-            if self.turn_signal_threshold <= 0:
+            self.control_cmd_msg.signal.horn = self.horn
+            self.control_cmd_msg.signal.high_beam = self.high_beam
+            self.control_cmd_msg.signal.low_beam = self.low_beam
+            self.control_cmd_msg.signal.emergency_light = self.emergency_light
+            self.control_cmd_msg.signal.turn_signal = self.turn_signal
+            if self.turn_signal in [1, 2, 3]:  # Manual signal is active
+                self.control_cmd_msg.signal.turn_signal = self.turn_signal
+            elif self.turn_signal_threshold <= 0:
                 # disable turn signal overwrite, use the vehicle logic
                 self.control_cmd_msg.signal.ClearField("turn_signal")
             else:
@@ -248,10 +268,35 @@ class KeyboardController:
             7, 0,
             f"turn signal threshold: {self.turn_signal_threshold:.2f}    ")
 
+    def toggle_horn(self):
+        self.horn = not self.horn
+        self.screen.addstr(8, 0,
+                           f"Horn:        {'ON' if self.horn else 'OFF'}  ")
+
+    def toggle_low_beam(self):
+        self.low_beam = not self.low_beam
+        self.screen.addstr(
+            9, 0, f"Low Beam:          {'ON' if self.low_beam else 'OFF'}  ")
+
+    def toggle_high_beam(self):
+        self.high_beam = not self.high_beam
+        self.screen.addstr(
+            10, 0, f"High Beam:         {'ON' if self.high_beam else 'OFF'}  ")
+
+    def toggle_emergency_light(self):
+        self.emergency_light = not self.emergency_light
+        self.screen.addstr(
+            11, 0,
+            f"Emergency Light:   {'ON' if self.emergency_light else 'OFF'}  ")
+
+    def set_turn_signal(self, signal_val, signal_str):
+        self.turn_signal = signal_val
+        self.screen.addstr(12, 0, f"Turn Signal: {signal_str}      ")
+
     def emergency_stop(self):
         self.speed = 0
         self.brake = BRAKE_MAX
-        self.screen.addstr(8, 0, "Emergency Stop activated!       ")
+        self.screen.addstr(13, 0, "Emergency Stop activated!       ")
 
 
 def main(screen):
@@ -260,7 +305,16 @@ def main(screen):
     cyber.init()
     node = cyber.Node("can_easy")
     writer = node.create_writer(CONTROL_TOPIC, control_cmd_pb2.ControlCommand)
-
+    # Check if the terminal window is large enough
+    max_y, max_x = screen.getmaxyx()
+    if max_y < 20:
+        screen.addstr(0, 0, "Error: Terminal window is too small.")
+        screen.addstr(
+            1, 0,
+            "Please resize your terminal to at least 20 rows and try again.")
+        screen.refresh()
+        time.sleep(3)
+        return
     # Pre-print the fixed format lines
     screen.addstr(2, 0, "speed: 0.00    ")
     screen.addstr(3, 0, "steer_percentage: 0.00    ")
@@ -268,7 +322,11 @@ def main(screen):
     screen.addstr(5, 0, "brake: 0.00    ")
     screen.addstr(6, 0, "epb:   0       ")
     screen.addstr(7, 0, "turn signal threshold:   0")
-
+    screen.addstr(8, 0, "Horn:        OFF")
+    screen.addstr(9, 0, "Low Beam:          OFF")
+    screen.addstr(10, 0, "High Beam:         OFF")
+    screen.addstr(11, 0, "Emergency Light:   OFF")
+    screen.addstr(12, 0, "Turn Signal:   NONE")
     controller = KeyboardController(screen)
     controller.start()
 
@@ -288,4 +346,11 @@ def main(screen):
 
 if __name__ == "__main__":
     # Use curses.wrapper to ensure proper initialization and cleanup of the curses environment
-    curses.wrapper(main)
+    try:
+        curses.wrapper(main)
+    except curses.error as e:
+        # This can happen if the terminal is too small
+        print(f"Error initializing curses: {e}")
+        print(
+            "Please ensure your terminal is large enough (e.g., 80x25) and try again."
+        )
