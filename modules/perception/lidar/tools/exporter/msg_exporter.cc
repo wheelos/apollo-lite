@@ -24,9 +24,10 @@
 #include "absl/strings/str_split.h"
 #include "pcl/io/pcd_io.h"
 
+#include "modules/common_msgs/transform_msgs/transform.pb.h"
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
-#include "modules/common_msgs/transform_msgs/transform.pb.h"
 
 namespace apollo {
 namespace perception {
@@ -41,7 +42,7 @@ MsgExporter::MsgExporter(std::shared_ptr<apollo::cyber::Node> node,
   _localization_method = "perception_localization_100hz";
   auto create_folder = [](const std::string& folder) {
     if (cyber::common::DirectoryExists(folder)) {
-      cyber::common::DeleteFile(folder);
+      cyber::common::Remove(folder);
     }
     cyber::common::CreateDir(folder);
   };

@@ -14,414 +14,429 @@
  * limitations under the License.
  *****************************************************************************/
 
+//  Created Date: 2025-10-25
+//  Author: daohu527 <daohu527@gmail.com>
+
 #include "cyber/common/file.h"
 
-#include <dirent.h>
-#include <fcntl.h>
-#include <glob.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <cerrno>
-#include <cstddef>
 #include <fstream>
-#include <string>
+#include <regex>
 
-#include "google/protobuf/util/json_util.h"
-#include "nlohmann/json.hpp"
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/util/json_util.h>
+
+#include "cyber/common/log.h"
 
 namespace apollo {
 namespace cyber {
 namespace common {
 
-using std::istreambuf_iterator;
-using std::string;
-using std::vector;
+namespace fs = std::filesystem;
 
-bool SetProtoToASCIIFile(const google::protobuf::Message &message,
-                         int file_descriptor) {
-  using google::protobuf::TextFormat;
-  using google::protobuf::io::FileOutputStream;
-  using google::protobuf::io::ZeroCopyOutputStream;
-  if (file_descriptor < 0) {
-    AERROR << "Invalid file descriptor.";
-    return false;
+// ===================================================================
+//                        Path and Name Utilities
+// ===================================================================
+
+std::string GetAbsolutePath(const std::string& prefix,
+                            const std::string& relative_path) {
+  // If relative_path is already an absolute path, just normalize and return it.
+  if (!relative_path.empty() && relative_path[0] == '/') {
+    return fs::weakly_canonical(fs::path(relative_path)).string();
   }
-  ZeroCopyOutputStream *output = new FileOutputStream(file_descriptor);
-  bool success = TextFormat::Print(message, output);
-  delete output;
-  close(file_descriptor);
-  return success;
+
+  // Define the base for our combination. If prefix is empty, use the current
+  // path.
+  fs::path base_path = prefix.empty() ? fs::current_path() : fs::path(prefix);
+
+  // Combine the base and relative path, and let weakly_canonical do the work.
+  return fs::weakly_canonical(base_path / relative_path).string();
 }
 
-bool SetProtoToASCIIFile(const google::protobuf::Message &message,
-                         const std::string &file_name) {
-  int fd = open(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-  if (fd < 0) {
-    AERROR << "Unable to open file " << file_name << " to write.";
-    return false;
-  }
-  return SetProtoToASCIIFile(message, fd);
-}
-
-bool GetProtoFromASCIIFile(const std::string &file_name,
-                           google::protobuf::Message *message) {
-  using google::protobuf::TextFormat;
-  using google::protobuf::io::FileInputStream;
-  using google::protobuf::io::ZeroCopyInputStream;
-  int file_descriptor = open(file_name.c_str(), O_RDONLY);
-  if (file_descriptor < 0) {
-    AERROR << "Failed to open file " << file_name << " in text mode.";
-    // Failed to open;
-    return false;
-  }
-
-  ZeroCopyInputStream *input = new FileInputStream(file_descriptor);
-  bool success = TextFormat::Parse(input, message);
-  if (!success) {
-    AERROR << "Failed to parse file " << file_name << " as text proto.";
-  }
-  delete input;
-  close(file_descriptor);
-  return success;
-}
-
-bool SetProtoToBinaryFile(const google::protobuf::Message &message,
-                          const std::string &file_name) {
-  std::fstream output(file_name,
-                      std::ios::out | std::ios::trunc | std::ios::binary);
-  return message.SerializeToOstream(&output);
-}
-
-bool GetProtoFromBinaryFile(const std::string &file_name,
-                            google::protobuf::Message *message) {
-  std::fstream input(file_name, std::ios::in | std::ios::binary);
-  if (!input.good()) {
-    AERROR << "Failed to open file " << file_name << " in binary mode.";
-    return false;
-  }
-  if (!message->ParseFromIstream(&input)) {
-    AERROR << "Failed to parse file " << file_name << " as binary proto.";
-    return false;
-  }
-  return true;
-}
-
-bool GetProtoFromFile(const std::string &file_name,
-                      google::protobuf::Message *message) {
-  if (!PathExists(file_name)) {
-    AERROR << "File does not exist! " << file_name;
-    return false;
-  }
-  // Try the binary parser first if it's much likely a binary proto.
-  static const std::string kBinExt = ".bin";
-  if (std::equal(kBinExt.rbegin(), kBinExt.rend(), file_name.rbegin())) {
-    return GetProtoFromBinaryFile(file_name, message) ||
-           GetProtoFromASCIIFile(file_name, message);
-  }
-
-  return GetProtoFromASCIIFile(file_name, message) ||
-         GetProtoFromBinaryFile(file_name, message);
-}
-
-bool GetProtoFromJsonFile(const std::string &file_name,
-                          google::protobuf::Message *message) {
-  using google::protobuf::util::JsonParseOptions;
-  using google::protobuf::util::JsonStringToMessage;
-  std::ifstream ifs(file_name);
-  if (!ifs.is_open()) {
-    AERROR << "Failed to open file " << file_name;
-    return false;
-  }
-  nlohmann::json Json;
-  ifs >> Json;
-  ifs.close();
-  JsonParseOptions options;
-  options.ignore_unknown_fields = true;
-  return (JsonStringToMessage(Json.dump(), message, options).ok());
-}
-
-bool GetContent(const std::string &file_name, std::string *content) {
-  std::ifstream fin(file_name);
-  if (!fin) {
-    return false;
-  }
-
-  std::stringstream str_stream;
-  str_stream << fin.rdbuf();
-  *content = str_stream.str();
-  return true;
-}
-
-std::string GetAbsolutePath(const std::string &prefix,
-                            const std::string &relative_path) {
-  if (relative_path.empty()) {
-    return prefix;
-  }
-  // If prefix is empty or relative_path is already absolute.
-  if (prefix.empty() || relative_path.front() == '/') {
-    return relative_path;
-  }
-
-  if (prefix.back() == '/') {
-    return prefix + relative_path;
-  }
-  return prefix + "/" + relative_path;
-}
-
-bool PathExists(const std::string &path) {
-  struct stat info;
-  return stat(path.c_str(), &info) == 0;
-}
-
-bool DirectoryExists(const std::string &directory_path) {
-  struct stat info;
-  return stat(directory_path.c_str(), &info) == 0 && (info.st_mode & S_IFDIR);
-}
-
-std::vector<std::string> Glob(const std::string &pattern) {
-  glob_t globs = {};
-  std::vector<std::string> results;
-  if (glob(pattern.c_str(), GLOB_TILDE, nullptr, &globs) == 0) {
-    for (size_t i = 0; i < globs.gl_pathc; ++i) {
-      results.emplace_back(globs.gl_pathv[i]);
-    }
-  }
-  globfree(&globs);
-  return results;
-}
-
-bool CopyFile(const std::string &from, const std::string &to) {
-  std::ifstream src(from, std::ios::binary);
-  if (!src) {
-    AWARN << "Source path could not be normally opened: " << from;
-    std::string command = "cp -r " + from + " " + to;
-    ADEBUG << command;
-    const int ret = std::system(command.c_str());
-    if (ret == 0) {
-      ADEBUG << "Copy success, command returns " << ret;
-      return true;
-    } else {
-      ADEBUG << "Copy error, command returns " << ret;
-      return false;
-    }
-  }
-
-  std::ofstream dst(to, std::ios::binary);
-  if (!dst) {
-    AERROR << "Target path is not writable: " << to;
-    return false;
-  }
-
-  dst << src.rdbuf();
-  return true;
-}
-
-bool CopyDir(const std::string &from, const std::string &to) {
-  DIR *directory = opendir(from.c_str());
-  if (directory == nullptr) {
-    AERROR << "Cannot open directory " << from;
-    return false;
-  }
-
-  bool ret = true;
-  if (EnsureDirectory(to)) {
-    struct dirent *entry;
-    while ((entry = readdir(directory)) != nullptr) {
-      // skip directory_path/. and directory_path/..
-      if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
-        continue;
-      }
-      const std::string sub_path_from = from + "/" + entry->d_name;
-      const std::string sub_path_to = to + "/" + entry->d_name;
-      if (entry->d_type == DT_DIR) {
-        ret &= CopyDir(sub_path_from, sub_path_to);
-      } else {
-        ret &= CopyFile(sub_path_from, sub_path_to);
-      }
-    }
-  } else {
-    AERROR << "Cannot create target directory " << to;
-    ret = false;
-  }
-  closedir(directory);
-  return ret;
-}
-
-bool Copy(const std::string &from, const std::string &to) {
-  return DirectoryExists(from) ? CopyDir(from, to) : CopyFile(from, to);
-}
-
-bool EnsureDirectory(const std::string &directory_path) {
-  std::string path = directory_path;
-  for (size_t i = 1; i < directory_path.size(); ++i) {
-    if (directory_path[i] == '/') {
-      // Whenever a '/' is encountered, create a temporary view from
-      // the start of the path to the character right before this.
-      path[i] = 0;
-
-      if (mkdir(path.c_str(), S_IRWXU) != 0) {
-        if (errno != EEXIST) {
-          return false;
-        }
-      }
-
-      // Revert the temporary view back to the original.
-      path[i] = '/';
-    }
-  }
-
-  // Make the final (full) directory.
-  if (mkdir(path.c_str(), S_IRWXU) != 0) {
-    if (errno != EEXIST) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool RemoveAllFiles(const std::string &directory_path) {
-  DIR *directory = opendir(directory_path.c_str());
-  if (directory == nullptr) {
-    AERROR << "Cannot open directory " << directory_path;
-    return false;
-  }
-
-  struct dirent *file;
-  while ((file = readdir(directory)) != nullptr) {
-    // skip directory_path/. and directory_path/..
-    if (!strcmp(file->d_name, ".") || !strcmp(file->d_name, "..")) {
-      continue;
-    }
-    // build the path for each file in the folder
-    std::string file_path = directory_path + "/" + file->d_name;
-    if (unlink(file_path.c_str()) < 0) {
-      AERROR << "Fail to remove file " << file_path << ": " << strerror(errno);
-      closedir(directory);
-      return false;
-    }
-  }
-  closedir(directory);
-  return true;
-}
-
-std::vector<std::string> ListSubPaths(const std::string &directory_path,
-                                      const unsigned char d_type) {
-  std::vector<std::string> result;
-  DIR *directory = opendir(directory_path.c_str());
-  if (directory == nullptr) {
-    AERROR << "Cannot open directory " << directory_path;
-    return result;
-  }
-
-  struct dirent *entry;
-  while ((entry = readdir(directory)) != nullptr) {
-    // Skip "." and "..".
-    if (entry->d_type == d_type && strcmp(entry->d_name, ".") != 0 &&
-        strcmp(entry->d_name, "..") != 0) {
-      result.emplace_back(entry->d_name);
-    }
-  }
-  closedir(directory);
-  return result;
-}
-
-std::string GetFileName(const std::string &path, const bool remove_extension) {
-  std::string::size_type start = path.rfind('/');
-  if (start == std::string::npos) {
-    start = 0;
-  } else {
-    // Move to the next char after '/'.
-    ++start;
-  }
-
-  std::string::size_type end = std::string::npos;
-  if (remove_extension) {
-    end = path.rfind('.');
-    // The last '.' is found before last '/', ignore.
-    if (end != std::string::npos && end < start) {
-      end = std::string::npos;
-    }
-  }
-  const auto len = (end != std::string::npos) ? end - start : end;
-  return path.substr(start, len);
+std::string GetFileName(const std::string& path_str, bool remove_extension) {
+  fs::path p(path_str);
+  return remove_extension ? p.stem().string() : p.filename().string();
 }
 
 std::string GetCurrentPath() {
-  char tmp[PATH_MAX];
-  return getcwd(tmp, sizeof(tmp)) ? std::string(tmp) : std::string("");
+  std::error_code ec;
+  fs::path current_path = fs::current_path(ec);
+  if (ec) {
+    AERROR << "Failed to get current path: " << ec.message();
+    return "";
+  }
+  return current_path.string();
 }
 
-bool GetType(const string &filename, FileType *type) {
-  struct stat stat_buf;
-  if (lstat(filename.c_str(), &stat_buf) != 0) {
+// ===================================================================
+//                 Path Status and Query Utilities
+// ===================================================================
+
+bool PathExists(const std::string& path) {
+  std::error_code ec;
+  bool exists = fs::exists(path, ec);
+  if (ec) {
+    AWARN << "Error checking existence of path '" << path
+          << "': " << ec.message();
     return false;
   }
-  if (S_ISDIR(stat_buf.st_mode) != 0) {
-    *type = TYPE_DIR;
-  } else if (S_ISREG(stat_buf.st_mode) != 0) {
-    *type = TYPE_FILE;
-  } else {
-    AWARN << "failed to get type: " << filename;
+  return exists;
+}
+
+bool DirectoryExists(const std::string& directory_path) {
+  std::error_code ec;
+  bool is_dir = fs::is_directory(directory_path, ec);
+  if (ec) {
+    AWARN << "Error checking if path '" << directory_path
+          << "' is a directory: " << ec.message();
+    return false;
+  }
+  return is_dir;
+}
+
+PathStatus GetPathStatus(const fs::path& path, std::error_code& ec) {
+  fs::file_status status = fs::status(path, ec);
+  if (ec) {
+    if (ec == std::errc::no_such_file_or_directory) {
+      ec.clear();
+      return PathStatus::NotFound;
+    }
+    AERROR << "Failed to get status for path: " << path
+           << ", Error: " << ec.message();
+    return PathStatus::Error;
+  }
+  switch (status.type()) {
+    case fs::file_type::regular:
+      return PathStatus::IsRegularFile;
+    case fs::file_type::directory:
+      return PathStatus::IsDirectory;
+    case fs::file_type::not_found:
+      return PathStatus::NotFound;
+    default:
+      return PathStatus::IsOther;
+  }
+}
+
+bool EnsureDirectory(const std::string& directory_path) {
+  return CreateDirectories(directory_path);
+}
+
+// ===================================================================
+//                   File Content I/O Utilities
+// ===================================================================
+
+bool GetContent(const std::string& file_name, std::string* content) {
+  if (!content) {
+    AERROR << "Input content string pointer is null.";
+    return false;
+  }
+  std::ifstream file(file_name, std::ios::binary);
+  if (!file) {
+    AWARN << "Failed to open file for reading: " << file_name;
+    return false;
+  }
+  content->assign((std::istreambuf_iterator<char>(file)),
+                  std::istreambuf_iterator<char>());
+  return true;
+}
+
+bool SetProtoToASCIIFile(const google::protobuf::Message& message,
+                         const std::string& file_name) {
+  std::ofstream fs(file_name, std::ios::out | std::ios::trunc);
+  if (!fs) {
+    AERROR << "Failed to open file for writing: " << file_name;
+    return false;
+  }
+  google::protobuf::io::OstreamOutputStream zcs(&fs);
+  return google::protobuf::TextFormat::Print(message, &zcs);
+}
+
+bool GetProtoFromASCIIFile(const std::string& file_name,
+                           google::protobuf::Message* message) {
+  std::ifstream fs(file_name, std::ios::in);
+  if (!fs) {
+    AWARN << "Failed to open ASCII file for reading: " << file_name;
+    return false;
+  }
+  google::protobuf::io::IstreamInputStream zcs(&fs);
+  return google::protobuf::TextFormat::Parse(&zcs, message);
+}
+
+bool SetProtoToBinaryFile(const google::protobuf::Message& message,
+                          const std::string& file_name) {
+  std::ofstream fs(file_name,
+                   std::ios::out | std::ios::trunc | std::ios::binary);
+  if (!fs) {
+    AERROR << "Failed to open file for writing: " << file_name;
+    return false;
+  }
+  return message.SerializeToOstream(&fs);
+}
+
+bool GetProtoFromBinaryFile(const std::string& file_name,
+                            google::protobuf::Message* message) {
+  std::ifstream fs(file_name, std::ios::in | std::ios::binary);
+  if (!fs) {
+    AWARN << "Failed to open binary file for reading: " << file_name;
+    return false;
+  }
+  return message->ParseFromIstream(&fs);
+}
+
+bool GetProtoFromJsonFile(const std::string& file_name,
+                          google::protobuf::Message* message) {
+  std::string json_content;
+  if (!GetContent(file_name, &json_content)) {
+    return false;
+  }
+  google::protobuf::util::JsonParseOptions options;
+  options.ignore_unknown_fields = true;
+  auto status = google::protobuf::util::JsonStringToMessage(json_content,
+                                                            message, options);
+  if (!status.ok()) {
+    AERROR << "Failed to parse JSON from file '" << file_name
+           << "': " << status.ToString();
     return false;
   }
   return true;
 }
 
-bool DeleteFile(const string &filename) {
-  if (!PathExists(filename)) {
-    return true;
-  }
-  FileType type;
-  if (!GetType(filename, &type)) {
+bool GetProtoFromFile(const std::string& file_name,
+                      google::protobuf::Message* message) {
+  if (!PathExists(file_name)) {
+    AERROR << "File does not exist: " << file_name;
     return false;
   }
-  if (type == TYPE_FILE) {
-    if (remove(filename.c_str()) != 0) {
-      AERROR << "failed to remove file: " << filename;
+
+  if (GetProtoFromASCIIFile(file_name, message)) {
+    return true;
+  }
+  AWARN << "Failed to parse file [" << file_name
+        << "] as ASCII format, trying binary format now.";
+
+  if (GetProtoFromBinaryFile(file_name, message)) {
+    return true;
+  }
+
+  AERROR << "Failed to parse file [" << file_name
+         << "] as both ASCII and binary format.";
+  return false;
+}
+
+// ===================================================================
+//                 Filesystem Modification Utilities
+// ===================================================================
+
+bool CreateDirectory(const std::string& path) {
+  if (path.empty()) {
+    return false;
+  }
+  std::error_code ec;
+  fs::create_directory(path, ec);
+  if (ec && ec != std::errc::file_exists) {
+    AERROR << "Failed to create directory: " << path
+           << ", Error: " << ec.message();
+    return false;
+  }
+  return true;
+}
+
+bool CreateDirectories(const std::string& path) {
+  if (path.empty()) {
+    return false;
+  }
+  std::error_code ec;
+  fs::create_directories(path, ec);
+  if (ec) {
+    AERROR << "Failed to create directories: " << path
+           << ", Error: " << ec.message();
+    return false;
+  }
+  return true;
+}
+
+bool Copy(const std::string& from, const std::string& to,
+          fs::copy_options options) {
+  std::error_code ec;
+  fs::copy(from, to, options, ec);
+  if (ec) {
+    AERROR << "Failed to copy from '" << from << "' to '" << to
+           << "', Error: " << ec.message();
+    return false;
+  }
+  return true;
+}
+
+bool CopyFile(const std::string& from, const std::string& to) {
+  return Copy(from, to, fs::copy_options::overwrite_existing);
+}
+
+bool CopyDir(const std::string& from, const std::string& to) {
+  return Copy(
+      from, to,
+      fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+}
+
+bool Remove(const std::string& path) {
+  std::error_code ec;
+  if (!fs::remove(path, ec)) {
+    if (ec && ec != std::errc::no_such_file_or_directory) {
+      AERROR << "Failed to remove path: " << path
+             << ", Error: " << ec.message();
       return false;
     }
-    return true;
   }
-  DIR *dir = opendir(filename.c_str());
-  if (dir == nullptr) {
-    AWARN << "failed to opendir: " << filename;
+  return true;
+}
+
+bool RemoveAll(const std::string& path) {
+  if (path.empty()) {
+    AWARN << "Attempting to remove an empty path.";
     return false;
   }
-  dirent *dir_info = nullptr;
-  while ((dir_info = readdir(dir)) != nullptr) {
-    if (strcmp(dir_info->d_name, ".") == 0 ||
-        strcmp(dir_info->d_name, "..") == 0) {
+
+  std::error_code ec;
+  const fs::path p(path);
+  fs::path normalized_path = fs::canonical(p, ec);
+  if (ec) {
+    if (ec == std::errc::no_such_file_or_directory) {
+      return true;
+    }
+    AERROR << "Failed to normalize path for removal: " << path
+           << ", Error: " << ec.message();
+    return false;
+  }
+
+  // Prohibit deletion of root directory
+  if (normalized_path == "/") {
+    AERROR << "Critical error: Attempting to remove root directory. Aborted.";
+    return false;
+  }
+
+  // Check if it is the current working directory
+  if (normalized_path == fs::current_path(ec)) {
+    AWARN << "Attempting to remove current working directory. Aborted.";
+    return false;
+  }
+
+  std::uintmax_t removed = fs::remove_all(p, ec);
+  if (ec) {
+    AERROR << "Failed to remove path recursively: " << path
+           << ", Error: " << ec.message();
+    return false;
+  }
+  (void)removed;
+  return true;
+}
+
+// ===================================================================
+//                 Filesystem Enumeration Utilities
+// ===================================================================
+
+namespace {
+std::string WildcardToRegex(const std::string& wildcard) {
+  std::string r;
+  r.reserve(wildcard.size() * 2);
+  for (char c : wildcard) {
+    switch (c) {
+      case '*':
+        r += "[^/]*";
+        break;
+      case '?':
+        r += ".";
+        break;
+      // Escape all special regex characters.
+      case '.':
+      case '+':
+      case '(':
+      case ')':
+      case '{':
+      case '}':
+      case '[':
+      case ']':
+      case '\\':
+      case '|':
+      case '^':
+      case '$':
+        r += '\\';
+        r += c;
+        break;
+      default:
+        r += c;
+        break;
+    }
+  }
+  return r;
+}
+}  // namespace
+
+std::vector<std::string> Glob(const std::string& pattern) {
+  std::vector<std::string> results;
+  const fs::path p(pattern);
+  const fs::path dir =
+      p.has_parent_path() ? p.parent_path() : fs::current_path();
+
+  if (dir.empty() || !DirectoryExists(dir.string())) {
+    return results;
+  }
+
+  const std::string fname_pattern = p.filename().string();
+
+  try {
+    const std::regex matcher(WildcardToRegex(fname_pattern));
+    for (const auto& entry : fs::directory_iterator(dir)) {
+      if (std::regex_match(entry.path().filename().string(), matcher)) {
+        results.push_back(entry.path().string());
+      }
+    }
+  } catch (const std::regex_error& e) {
+    AERROR << "Invalid glob pattern: " << pattern
+           << ", regex error: " << e.what();
+  }
+  return results;
+}
+
+std::vector<std::string> ListSubPaths(const std::string& directory_path,
+                                      FileTypeFilter filter) {
+  std::vector<std::string> result;
+  std::error_code ec;
+
+  if (!DirectoryExists(directory_path)) {
+    AWARN << "Cannot open non-existent directory: " << directory_path;
+    return result;
+  }
+
+  auto it = fs::directory_iterator(directory_path, ec);
+  if (ec) {
+    AERROR << "Cannot create directory iterator for: " << directory_path
+           << ", Error: " << ec.message();
+    return result;
+  }
+
+  for (const auto& entry : it) {
+    bool match = false;
+    std::error_code type_ec;
+    switch (filter) {
+      case FileTypeFilter::All:
+        match = true;
+        break;
+      case FileTypeFilter::Files:
+        match = entry.is_regular_file(type_ec);
+        break;
+      case FileTypeFilter::Directories:
+        match = entry.is_directory(type_ec);
+        break;
+    }
+    if (type_ec) {
+      AWARN << "Failed to check type of path " << entry.path().string() << ": "
+            << type_ec.message();
       continue;
     }
-    string temp_file = filename + "/" + string(dir_info->d_name);
-    FileType temp_type;
-    if (!GetType(temp_file, &temp_type)) {
-      AWARN << "failed to get file type: " << temp_file;
-      closedir(dir);
-      return false;
+    if (match) {
+      result.push_back(entry.path().string());
     }
-    if (type == TYPE_DIR) {
-      DeleteFile(temp_file);
-    }
-    remove(temp_file.c_str());
   }
-  closedir(dir);
-  remove(filename.c_str());
-  return true;
-}
-
-bool CreateDir(const string &dir) {
-  int ret = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
-  if (ret != 0) {
-    AWARN << "failed to create dir. [dir: " << dir
-          << "] [err: " << strerror(errno) << "]";
-    return false;
-  }
-  return true;
+  return result;
 }
 
 }  // namespace common

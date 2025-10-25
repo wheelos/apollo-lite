@@ -141,7 +141,7 @@ cc_test(
     srcs = ["pnc_map_test.cc"],
     data = [
         ":testdata",
-        "//modules/map/data:map_sunnyvale_loop",
+        # "//modules/map/data:map_sunnyvale_loop",
     ],
     linkstatic = True,
     deps = [
@@ -158,7 +158,7 @@ cc_test(
     srcs = ["route_segments_test.cc"],
     data = [
         ":testdata",
-        "//modules/map/data:map_sunnyvale_loop",
+        # "//modules/map/data:map_sunnyvale_loop",
     ],
     deps = [
         ":route_segments",
