@@ -131,6 +131,36 @@ bool RemoveAll(const std::string& path);
 //                 Filesystem Enumeration Utilities
 // ===================================================================
 
+/**
+ * @brief Performs a simplified glob pattern search in a directory.
+ *
+ * @note
+ * **Important Limitations:** This is a lightweight glob implementation with
+ * specific constraints. It is **not** a full-featured glob parser.
+ *
+ * - **Non-Recursive**: The search is limited to the single directory level
+ *   specified in the pattern's parent path.
+ *
+ * - **Filename-Only Matching**: Wildcards are only evaluated against the
+ *   filename component of the pattern. They are not effective in the
+ *   directory parts of the path.
+ *
+ * - **Limited Syntax Support**:
+ *   - **Supported:**
+ *     - `*`: Matches zero or more characters (excluding the path separator '/').
+ *     - `?`: Matches exactly one character (excluding the path separator '/').
+ *   - **Unsupported:**
+ *     - Character sets (e.g., `[0-9]`, `[^a-f]`).
+ *     - Brace expansion (e.g., `file_{a,b}.txt`).
+ *     - Recursive globbing (e.g., `dir/**/*.log`).
+ *
+ * @param pattern The input glob pattern. For example, `/path/to/data/*.bin`.
+ *        If the pattern has no directory part (e.g., `*.txt`), the search is
+ *        performed in the current working directory.
+ * @return A std::vector<std::string> containing the full paths of all
+ *         matching entries. Returns an empty vector if the directory does not
+ *         exist, the pattern is invalid, or no matches are found.
+ */
 std::vector<std::string> Glob(const std::string& pattern);
 std::vector<std::string> ListSubPaths(
     const std::string& directory_path,
