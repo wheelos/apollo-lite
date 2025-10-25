@@ -16,6 +16,8 @@
 
 #include "modules/planning/integration_tests/planning_test_base.h"
 
+#include <filesystem>
+
 #include "modules/common_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
 #include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
@@ -246,21 +248,26 @@ bool PlanningTestBase::RunPlanning(const std::string& test_case_name,
     TrimPlanning(&golden_result, no_trajectory_point);
     if (!load_success ||
         !common::util::IsProtoEqual(golden_result, adc_trajectory_)) {
-      char tmp_fname[100] = "/tmp/XXXXXX";
-      int fd = mkstemp(tmp_fname);
-      if (fd < 0) {
-        AERROR << "Failed to create temporary file: " << tmp_fname;
+      const auto temp_dir = std::filesystem::temp_directory_path();
+      std::string unique_filename =
+          "adc_trajectory_" + std::to_string(getpid()) + "_" +
+          std::to_string(std::chrono::high_resolution_clock::now()
+                             .time_since_epoch()
+                             .count()) +
+          ".proto.txt";
+      std::string temp_file_str = (temp_dir / unique_filename).string();
+      if (!cyber::common::SetProtoToASCIIFile(adc_trajectory_, temp_file_str)) {
+        AERROR << "Failed to write trajectory to temporary file: "
+               << temp_file_str;
         return false;
       }
-      if (!cyber::common::SetProtoToASCIIFile(adc_trajectory_, fd)) {
-        AERROR << "Failed to write to file: " << tmp_fname;
-      }
-      AERROR << "found error\ndiff -y " << tmp_fname << " " << full_golden_path;
-      AERROR << "to override error\nmv " << tmp_fname << " "
+      AERROR << "found error\ndiff -y " << temp_file_str << " "
+             << full_golden_path;
+      AERROR << "to override error\nmv " << temp_file_str << " "
              << full_golden_path;
       AERROR << "to visualize\n/usr/bin/python "
                 "modules/tools/plot_trace/plot_planning_result.py "
-             << tmp_fname << " " << full_golden_path;
+             << temp_file_str << " " << full_golden_path;
       return false;
     }
   }

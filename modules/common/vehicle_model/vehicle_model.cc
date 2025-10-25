@@ -17,6 +17,7 @@
 #include "modules/common/vehicle_model/vehicle_model.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/log.h"
 #include "modules/common/configs/config_gflags.h"
 
 namespace apollo {

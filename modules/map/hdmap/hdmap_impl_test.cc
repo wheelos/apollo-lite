@@ -13,14 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 =========================================================================*/
 
+#include "modules/map/hdmap/hdmap_impl.h"
+
 #include <chrono>
+
+#include "gtest/gtest.h"
 
 #include "absl/strings/str_cat.h"
 #include "gflags/gflags.h"
-#include "gtest/gtest.h"
 
 #include "cyber/common/file.h"
-#include "modules/map/hdmap/hdmap_impl.h"
 
 DEFINE_string(output_dir, "/tmp", "output map directory");
 
@@ -429,7 +431,7 @@ TEST_F(HDMapImplTestSuite, GetLocalMap) {
   local_map.Clear();
   ACHECK(cyber::common::GetProtoFromFile(output_bin_file, &local_map))
       << "failed to load map";
-  cyber::common::DeleteFile(output_bin_file);
+  cyber::common::Remove(output_bin_file);
 }
 
 }  // namespace hdmap

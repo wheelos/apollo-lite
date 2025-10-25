@@ -23,6 +23,7 @@
 #include "modules/planning/proto/task_config.pb.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/log.h"
 #include "modules/common/configs/config_gflags.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/learning_based/img_feature_renderer/birdview_img_feature_renderer.h"

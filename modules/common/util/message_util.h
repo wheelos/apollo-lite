@@ -28,6 +28,7 @@
 #include "google/protobuf/message.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/log.h"
 #include "cyber/time/clock.h"
 
 /**
