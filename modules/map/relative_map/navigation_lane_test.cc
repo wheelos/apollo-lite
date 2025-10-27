@@ -21,20 +21,14 @@
 
 #include "modules/map/relative_map/navigation_lane.h"
 
-#include <fstream>
-
-#include "gtest/gtest.h"
-
-#include "nlohmann/json.hpp"
-
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/planning_msgs/navigation.pb.h"
-#include "modules/map/relative_map/proto/relative_map_config.pb.h"
-
 #include "cyber/common/file.h"
-#include "cyber/common/log.h"
+#include "gtest/gtest.h"
+#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/relative_map/common/relative_map_gflags.h"
+#include "modules/common_msgs/planning_msgs/navigation.pb.h"
+#include "modules/map/relative_map/proto/relative_map_config.pb.h"
+#include "nlohmann/json.hpp"
 
 namespace apollo {
 namespace relative_map {

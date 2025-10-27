@@ -18,8 +18,6 @@
  * @file
  **/
 
-#include <fstream>
-
 #include "gflags/gflags.h"
 
 #include "cyber/common/file.h"
