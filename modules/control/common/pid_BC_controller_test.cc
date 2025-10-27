@@ -18,10 +18,13 @@
 
 #include <string>
 
-#include "cyber/common/file.h"
 #include "gtest/gtest.h"
+
 #include "modules/control/proto/control_conf.pb.h"
 #include "modules/control/proto/pid_conf.pb.h"
+
+#include "cyber/common/file.h"
+#include "cyber/common/log.h"
 
 namespace apollo {
 namespace control {

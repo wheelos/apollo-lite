@@ -16,6 +16,9 @@
 
 #include "cyber/record/file/record_file_reader.h"
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "cyber/common/file.h"
 
 namespace apollo {
@@ -147,9 +150,7 @@ bool RecordFileReader::SkipSection(int64_t size) {
   return true;
 }
 
-RecordFileReader::~RecordFileReader() {
-  Close();
-}
+RecordFileReader::~RecordFileReader() { Close(); }
 
 }  // namespace record
 }  // namespace cyber

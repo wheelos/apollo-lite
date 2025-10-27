@@ -1,0 +1,54 @@
+# The coordinate frame attached to the vehicle's chassis/center of rotation.
+# All filtering operations (ego, height, ROI) are performed in this stable frame.
+# Common values are "imu" or "base_link".
+vehicle_frame_id: "imu"
+
+
+# --- Ego Vehicle Dimensions (for Self-Filtering) ---
+# Defines the vehicle's own physical boundaries to prevent self-detection.
+# These values should be slightly larger than the actual vehicle dimensions.
+# (All values are in meters, relative to the 'vehicle_frame_id' origin)
+
+# Furthest point of the vehicle in the forward direction (e.g., front bumper).
+ego_box_forward: 0.7
+# Furthest point of the vehicle in the backward direction (e.g., rear bumper).
+ego_box_backward: 0.15
+# Furthest point of the vehicle to the side (e.g., edge of side mirrors).
+ego_box_side: 0.30
+
+
+# --- ROI (Protective Field) Dimensions ---
+# Defines the "danger zone" that is monitored for obstacles. This zone is
+# located OUTSIDE the ego vehicle's own box.
+
+# The forward extent of the protective field.
+# A value of 3.0m means we monitor from ego_box_forward (2.5m) to 3.0m.
+roi_forward_distance: 0.8
+# The backward extent of the protective field.
+# A value of 1.2m means we monitor from ego_box_side (1.1m) to 1.2m on each side.
+roi_backward_distance: 0.25
+# The side extent of the protective field.
+# A value of 1.2m means we monitor from ego_box_side (1.1m) to 1.2m on each side.
+roi_side_distance: 0.40
+
+
+# --- Point Cloud Filter Parameters ---
+
+# The minimum height for a point to be considered a potential obstacle.
+# Used to filter out ground points. Should be slightly below the vehicle frame origin.
+height_min_threshold: -0.1
+# The maximum height for a point to be considered.
+# Used to filter out irrelevant overhead objects (e.g., tree branches, high signs).
+height_max_threshold: 1.0
+
+
+# --- Trigger Logic (Temporal Filtering) ---
+
+# The minimum number of valid points detected within the ROI in a SINGLE frame
+# to consider it a "hit". This filters out sparse, random noise.
+min_points_in_roi_to_trigger: 5
+
+# The number of CONSECUTIVE frames that must register a "hit" before a
+# persistent collision risk is confirmed and published.
+# This is the most critical parameter for preventing false positives from transient noise.
+min_consecutive_frames_to_trigger: 3

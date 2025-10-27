@@ -16,6 +16,8 @@
 
 #include "modules/drivers/video/video_driver_component.h"
 
+#include <sys/stat.h>
+
 #include "cyber/common/file.h"
 
 namespace apollo {

@@ -16,6 +16,7 @@
 
 #include "modules/localization/msf/local_tool/local_visualization/engine/visualization_engine.h"
 
+#include <fstream>
 #include <limits>
 
 #include <boost/filesystem.hpp>

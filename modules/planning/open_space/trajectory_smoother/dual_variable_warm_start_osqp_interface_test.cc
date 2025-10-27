@@ -25,6 +25,7 @@
 #include "gtest/gtest.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/log.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/open_space/trajectory_smoother/dual_variable_warm_start_ipopt_qp_interface.h"
 

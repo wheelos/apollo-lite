@@ -16,8 +16,8 @@ proto_library(
     name = "perception_lane_proto",
     srcs = ["perception_lane.proto"],
     deps = [
-        ":perception_camera_proto",
         "//modules/common_msgs/basic_msgs:header_proto",
+        ":perception_camera_proto",
     ],
 )
 
@@ -44,6 +44,26 @@ proto_library(
 py_proto_library(
     name = "traffic_light_detection_py_pb2",
     deps = [":traffic_light_detection_proto"],
+)
+
+cc_proto_library(
+    name = "collision_warning_cc_proto",
+    deps = [
+        ":collision_warning_proto",
+    ],
+)
+
+proto_library(
+    name = "collision_warning_proto",
+    srcs = ["collision_warning.proto"],
+    deps = [
+        "//modules/common_msgs/basic_msgs:header_proto",
+    ],
+)
+
+py_proto_library(
+    name = "collision_warning_py_pb2",
+    deps = [":collision_warning_proto"],
 )
 
 cc_proto_library(
@@ -81,9 +101,9 @@ proto_library(
     name = "perception_camera_proto",
     srcs = ["perception_camera.proto"],
     deps = [
-        ":perception_obstacle_proto",
         "//modules/common_msgs/basic_msgs:geometry_proto",
         "//modules/common_msgs/basic_msgs:header_proto",
+        ":perception_obstacle_proto",
     ],
 )
 
@@ -91,3 +111,4 @@ py_proto_library(
     name = "perception_camera_py_pb2",
     deps = [":perception_camera_proto"],
 )
+
