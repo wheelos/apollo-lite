@@ -23,6 +23,8 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
 QT5_PREFIX="/usr/local/qt5"
 
+rm -rf /usr/local/qt5 /usr/local/Qt-5.12.9 && sudo ldconfig
+
 # References:
 # 1) http://www.linuxfromscratch.org/blfs/view/svn/x/qt5.html
 # 2) https://src.fedoraproject.org/rpms/qt5-qtbase/tree/master
@@ -52,6 +54,7 @@ apt_get_update_and_install \
     libxcb-xkb-dev \
     libxkbcommon-dev \
     libxkbcommon-x11-dev \
+    libqt5opengl5-dev \
     qtbase5-dev
 
 mkdir ${QT5_PREFIX} && ln -snf /usr/include/aarch64-linux-gnu/qt5 ${QT5_PREFIX}/include
