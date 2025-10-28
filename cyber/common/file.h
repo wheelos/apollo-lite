@@ -14,9 +14,6 @@
  * limitations under the License.
  *****************************************************************************/
 
-//  Created Date: 2025-10-25
-//  Author: daohu527 <daohu527@gmail.com>
-
 /**
  * @file
  */
@@ -24,139 +21,197 @@
 #ifndef CYBER_COMMON_FILE_H_
 #define CYBER_COMMON_FILE_H_
 
-#include <filesystem>
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <cstdio>
+#include <fstream>
 #include <string>
-#include <system_error>
 #include <vector>
 
-#include <google/protobuf/message.h>
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/text_format.h"
 
+#include "cyber/common/log.h"
+
+/**
+ * @namespace apollo::common::util
+ * @brief apollo::common::util
+ */
 namespace apollo {
 namespace cyber {
 namespace common {
 
-// Enums for path status and filtering.
-enum class PathStatus { NotFound, IsRegularFile, IsDirectory, IsOther, Error };
-enum class FileTypeFilter { All, Files, Directories };
+// file type: file or directory
+enum FileType { TYPE_FILE, TYPE_DIR };
 
-// ===================================================================
-//                        Path and Name Utilities
-// ===================================================================
-
-std::string GetAbsolutePath(const std::string& prefix,
-                            const std::string& relative_path);
-std::string GetFileName(const std::string& path_str,
-                        bool remove_extension = false);
-std::string GetCurrentPath();
-
-// ===================================================================
-//                 Path Status and Query Utilities
-// ===================================================================
-
-bool PathExists(const std::string& path);
-bool DirectoryExists(const std::string& directory_path);
-PathStatus GetPathStatus(const std::filesystem::path& path,
-                         std::error_code& ec);
-bool EnsureDirectory(const std::string& directory_path);
-
-// ===================================================================
-//                   File Content I/O Utilities
-// ===================================================================
-
-bool GetContent(const std::string& file_name, std::string* content);
-bool SetProtoToASCIIFile(const google::protobuf::Message& message,
-                         const std::string& file_name);
-bool GetProtoFromASCIIFile(const std::string& file_name,
-                           google::protobuf::Message* message);
-bool SetProtoToBinaryFile(const google::protobuf::Message& message,
-                          const std::string& file_name);
-bool GetProtoFromBinaryFile(const std::string& file_name,
-                            google::protobuf::Message* message);
-bool GetProtoFromJsonFile(const std::string& file_name,
-                          google::protobuf::Message* message);
-bool GetProtoFromFile(const std::string& file_name,
-                      google::protobuf::Message* message);
-
-// ===================================================================
-//                 Filesystem Modification Utilities
-// ===================================================================
+bool SetProtoToASCIIFile(const google::protobuf::Message &message,
+                         int file_descriptor);
+/**
+ * @brief Sets the content of the file specified by the file_name to be the
+ *        ascii representation of the input protobuf.
+ * @param message The proto to output to the specified file.
+ * @param file_name The name of the target file to set the content.
+ * @return If the action is successful.
+ */
+bool SetProtoToASCIIFile(const google::protobuf::Message &message,
+                         const std::string &file_name);
 
 /**
- * @brief Create a single directory. Fails if parent directory does not exist.
- * Mirrors std::filesystem::create_directory.
- * @param path The path of the directory to create.
- * @return True if successful or if the directory already exists and is a
- * directory.
+ * @brief Parses the content of the file specified by the file_name as ascii
+ *        representation of protobufs, and merges the parsed content to the
+ *        proto.
+ * @param file_name The name of the file to parse whose content.
+ * @param message The proto to carry the parsed content in the specified file.
+ * @return If the action is successful.
  */
-bool CreateDirectory(const std::string& path);
+bool GetProtoFromASCIIFile(const std::string &file_name,
+                           google::protobuf::Message *message);
 
 /**
- * @brief Create a directory and all its parent directories if they do not
- * exist. Mirrors std::filesystem::create_directories (like mkdir -p).
- * @param path The path of the directory to create.
- * @return True on success.
+ * @brief Sets the content of the file specified by the file_name to be the
+ *        binary representation of the input protobuf.
+ * @param message The proto to output to the specified file.
+ * @param file_name The name of the target file to set the content.
+ * @return If the action is successful.
  */
-bool CreateDirectories(const std::string& path);
+bool SetProtoToBinaryFile(const google::protobuf::Message &message,
+                          const std::string &file_name);
+
+/**
+ * @brief Parses the content of the file specified by the file_name as binary
+ *        representation of protobufs, and merges the parsed content to the
+ *        proto.
+ * @param file_name The name of the file to parse whose content.
+ * @param message The proto to carry the parsed content in the specified file.
+ * @return If the action is successful.
+ */
+bool GetProtoFromBinaryFile(const std::string &file_name,
+                            google::protobuf::Message *message);
+
+/**
+ * @brief Parses the content of the file specified by the file_name as a
+ *        representation of protobufs, and merges the parsed content to the
+ *        proto.
+ * @param file_name The name of the file to parse whose content.
+ * @param message The proto to carry the parsed content in the specified file.
+ * @return If the action is successful.
+ */
+bool GetProtoFromFile(const std::string &file_name,
+                      google::protobuf::Message *message);
+
+/**
+ * @brief Parses the content of the json file specified by the file_name as ascii
+ *        representation of protobufs, and merges the parsed content to the
+ *        proto.
+ * @param file_name The name of the file to parse whose content.
+ * @param message The proto to carry the parsed content in the specified file.
+ * @return If the action is successful.
+ */
+bool GetProtoFromJsonFile(const std::string &file_name,
+                           google::protobuf::Message *message);
+
+/**
+ * @brief Get file content as string.
+ * @param file_name The name of the file to read content.
+ * @param content The file content.
+ * @return If the action is successful.
+ */
+bool GetContent(const std::string &file_name, std::string *content);
+
+/**
+ * @brief Get absolute path by concatenating prefix and relative_path.
+ * @return The absolute path.
+ */
+std::string GetAbsolutePath(const std::string &prefix,
+                            const std::string &relative_path);
+
+/**
+ * @brief Check if the path exists.
+ * @param path a file name, such as /a/b/c.txt
+ * @return If the path exists.
+ */
+bool PathExists(const std::string &path);
+
+/**
+ * @brief Check if the directory specified by directory_path exists
+ *        and is indeed a directory.
+ * @param directory_path Directory path.
+ * @return If the directory specified by directory_path exists
+ *         and is indeed a directory.
+ */
+bool DirectoryExists(const std::string &directory_path);
+
+/**
+ * @brief Expand path pattern to matched paths.
+ * @param pattern Path pattern, which may contain wildcards [?*].
+ * @return Matched path list.
+ */
+std::vector<std::string> Glob(const std::string &pattern);
+
+/**
+ * @brief Copy a file.
+ * @param from The file path to copy from.
+ * @param to The file path to copy to.
+ * @return If the action is successful.
+ */
+bool CopyFile(const std::string &from, const std::string &to);
+
+/**
+ * @brief Copy a directory.
+ * @param from The path to copy from.
+ * @param to The path to copy to.
+ * @return If the action is successful.
+ */
+bool CopyDir(const std::string &from, const std::string &to);
 
 /**
  * @brief Copy a file or directory.
- * @param from The source path.
- * @param to The destination path.
- * @param options The copy options from std::filesystem::copy_options.
- * @return True on success.
+ * @param from The path to copy from.
+ * @param to The path to copy to.
+ * @return If the action is successful.
  */
-bool Copy(const std::string& from, const std::string& to,
-          std::filesystem::copy_options options =
-              std::filesystem::copy_options::recursive);
-bool CopyFile(const std::string& from, const std::string& to);
-bool CopyDir(const std::string& from, const std::string& to);
+bool Copy(const std::string &from, const std::string &to);
 
 /**
- * @brief Remove a file or an empty directory. Fails if directory is not empty.
- * Mirrors std::filesystem::remove.
- * @param path The path to remove.
- * @return True on success or if the path did not exist.
+ * @brief Check if a specified directory specified by directory_path exists.
+ *        If not, recursively create the directory (and its parents).
+ * @param directory_path Directory path.
+ * @return If the directory does exist or its creation is successful.
  */
-bool Remove(const std::string& path);
+bool EnsureDirectory(const std::string &directory_path);
 
 /**
- * @brief Remove a file or a directory and all its contents recursively.
- * Mirrors std::filesystem::remove_all.
- * @param path The path to remove.
- * @return True on success or if the path did not exist.
+ * @brief Remove all the files under a specified directory. Note that
+ *        sub-directories are NOT affected.
+ * @param directory_path Directory path.
+ * @return If the action is successful.
  */
-bool RemoveAll(const std::string& path);
-
-// ===================================================================
-//                 Filesystem Enumeration Utilities
-// ===================================================================
+bool RemoveAllFiles(const std::string &directory_path);
 
 /**
- * @brief Performs a simplified, non-recursive glob search in a directory.
- *
- * This function only evaluates wildcards in the filename portion of the path.
- * It is not a full-featured glob parser. To prevent C++ compilation errors with
- * nested comments, examples containing the asterisk character are omitted.
- *
- * - **Supported Wildcards**:
- *   - The asterisk (star) for matching zero or more characters.
- *   - The question mark (@c ?), matching exactly one character.
- *
- * - **Unsupported Syntax**:
- *   - Character sets (e.g., @c "[a-z]").
- *   - Brace expansion (e.g., @c "{a,b}").
- *   - Recursive directory traversal.
- *
- * @param pattern The input glob pattern. For instance, @c
- * "/path/to/data/file?.bin".
- * @return A std::vector<std::string> containing the full paths of matching
- * entries.
+ * @brief List sub-paths.
+ * @param directory_path Directory path.
+ * @param d_type Sub-path type, DT_DIR for directory, or DT_REG for file.
+ * @return A vector of sub-paths, without the directory_path prefix.
  */
-std::vector<std::string> Glob(const std::string& pattern);
-std::vector<std::string> ListSubPaths(
-    const std::string& directory_path,
-    FileTypeFilter filter = FileTypeFilter::All);
+std::vector<std::string> ListSubPaths(const std::string &directory_path,
+                                      const unsigned char d_type = DT_DIR);
 
+std::string GetFileName(const std::string &path,
+                        const bool remove_extension = false);
+
+std::string GetCurrentPath();
+
+// delete file including file or directory
+bool DeleteFile(const std::string &filename);
+
+bool GetType(const std::string &filename, FileType *type);
+
+bool CreateDir(const std::string &dir);
 }  // namespace common
 }  // namespace cyber
 }  // namespace apollo

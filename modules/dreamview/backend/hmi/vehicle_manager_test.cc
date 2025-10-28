@@ -15,12 +15,10 @@
  *****************************************************************************/
 #include "modules/dreamview/backend/hmi/vehicle_manager.h"
 
-#include "gtest/gtest.h"
-
 #include "absl/strings/str_cat.h"
-#include "gflags/gflags.h"
-
 #include "cyber/common/file.h"
+#include "gflags/gflags.h"
+#include "gtest/gtest.h"
 
 DECLARE_string(vehicle_data_config_filename);
 
@@ -52,7 +50,7 @@ TEST_F(VehicleManagerTest, Success) {
   EXPECT_TRUE(cyber::common::PathExists(
       absl::StrCat(kTargetDir, "/vehicle_data.pb.txt")));
 
-  ASSERT_TRUE(cyber::common::RemoveAll(kTargetDir));
+  ASSERT_TRUE(cyber::common::RemoveAllFiles(kTargetDir));
 }
 
 }  // namespace dreamview

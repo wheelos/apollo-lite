@@ -20,7 +20,6 @@
 #include <cmath>
 
 #include "cyber/common/file.h"
-#include "cyber/common/log.h"
 #include "modules/common/configs/config_gflags.h"
 
 namespace apollo {
@@ -31,7 +30,9 @@ bool VehicleConfigHelper::is_init_ = false;
 
 VehicleConfigHelper::VehicleConfigHelper() {}
 
-void VehicleConfigHelper::Init() { Init(FLAGS_vehicle_config_path); }
+void VehicleConfigHelper::Init() {
+  Init(FLAGS_vehicle_config_path); 
+}
 
 void VehicleConfigHelper::Init(const std::string &config_file) {
   VehicleConfig params;
