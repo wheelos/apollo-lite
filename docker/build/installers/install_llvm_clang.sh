@@ -24,15 +24,8 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # Install clang via apt to reduce image size
 apt_get_update_and_install \
-    clang-10 \
-    clang-format-10
-
-#    clang-tidy-10 \
-#    clang-tools-10
-
-sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 100
-sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-10 100
-sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-10 100
+    clang \
+    clang-format
 
 # Clean up cache to reduce layer size.
 apt-get clean && \
@@ -43,4 +36,4 @@ apt-get clean && \
 # https://releases.llvm.org/download.html
 # https://github.com/llvm/llvm-project/releases
 
-ok "Done installing LLVM Clang-10."
+ok "Done installing LLVM Clang."

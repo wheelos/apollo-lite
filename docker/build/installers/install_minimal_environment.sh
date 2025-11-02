@@ -121,7 +121,9 @@ else
 fi
 
 # link Python 3 to /usr/bin/python
-sudo ln -s /usr/bin/python3 /usr/bin/python
+if [ ! -e /usr/bin/python ]; then
+  sudo ln -s /usr/bin/python3 /usr/bin/python
+fi
 
 # Default shell configuration
 info "--- Setting default shell to Bash ---"

@@ -26,7 +26,6 @@ install(
     deps = [
         ":pb_map",
         ":pb_hdrs",
-        "//modules/map/data:install",
         "//modules/map/relative_map:install",
         "//modules/map/tools:install",
         "//modules/map/hdmap/adapter:install",

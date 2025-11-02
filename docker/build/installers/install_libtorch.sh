@@ -117,7 +117,7 @@ function install_libtorch_cpp() {
     #     pip3 install --no-cache-dir PyYAML typing typing-extensions
     # 3. set envs, e.g.:
     #     export USE_CUDA=1
-    #     export TORCH_CUDA_ARCH_LIST="3.5;5.0;5.2;6.1;7.0;7.5;8.6;8.7"
+    #     export TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.2;7.5;8.6;8.6;8.9"
     #     export BUILD_CAFFE2=1
     #     export USE_NCCL=0
     # 4. build

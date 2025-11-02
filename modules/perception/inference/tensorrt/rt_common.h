@@ -28,9 +28,8 @@
 
 #include "NvCaffeParser.h"
 #include "NvInfer.h"
-#if GPU_PLATFORM == NVIDIA
-#include <cudnn.h>
-#elif GPU_PLATFORM == AMD
+
+#if GPU_PLATFORM == AMD
 #include <miopen/miopen.h>
 #define CUDNN_DATA_FLOAT miopenFloat
 #define CUDNN_SOFTMAX_ACCURATE MIOPEN_SOFTMAX_ACCURATE

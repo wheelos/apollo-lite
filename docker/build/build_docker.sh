@@ -6,7 +6,7 @@ TAB="    " # 4 Spaces
 DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-1}
 
 APOLLO_REPO="${APOLLO_REPO:-wheelos/apollo}"
-UBUNTU_LTS="${UBUNTU_LTS:-20.04}"
+UBUNTU_LTS="${UBUNTU_LTS:-22.04}"
 
 declare -A CUDA_LITE_VERSIONS
 declare -A CUDNN_VERSIONS
@@ -16,14 +16,14 @@ CUDA_LITE_VERSIONS["x86_64"]="11.8.0"
 CUDNN_VERSIONS["x86_64"]="8"
 TENSORRT_VERSIONS["x86_64"]="8.6.1.6"
 # aarch64
-CUDA_LITE_VERSIONS["aarch64"]="11.4.3"
+CUDA_LITE_VERSIONS["aarch64"]="12.6"
 CUDNN_VERSIONS["aarch64"]="8.6.0.166"
-TENSORRT_VERSIONS["aarch64"]="8.5.2"
+TENSORRT_VERSIONS["aarch64"]="10.3"
 
 SUPPORTED_ARCHS=( x86_64 aarch64 )
 SUPPORTED_STAGES=( base cyber dev runtime )
 # TODO(All): maybe ROCm support in the future
-SUPPORTED_COMPUTE_PLATFORM=( cpu cuda )
+SUPPORTED_COMPUTE_PLATFORM=( cpu cuda l4t)
 SUPPORTED_CPU_STAGES=( cyber dev runtime )
 
 HOST_ARCH="$(uname -m)"
@@ -212,14 +212,13 @@ function determine_gpu_img() {
 
   case "${stage}" in
     base)
-      IMAGE_IN="nvidia/cuda:${CUDA_LITE}-cudnn${cudnn_ver}-devel-ubuntu${UBUNTU_LTS}"
-      if [[ "${arch}" == "aarch64" ]]; then
-        # Note: nvidia/cuda may not work for all arm64v8 hardware, here
-        # we use a generic arm64v8 Ubuntu image as the base image. And
-        # install CUDA/CuDNN/TensorRT manually in the Dockerfile.
-        # See the Dockerfile(base.aarch64.dockerfile) for more details.
-        # TODO(All): specified via args, such as orin or xavier
-        IMAGE_IN="docker.io/arm64v8/ubuntu:${UBUNTU_LTS}"
+      if [[ "${arch}" == "aarch64" && "${TARGET_EXTRA}" == "cuda" ]]; then
+          # Note: nvidia/cuda may not work for all arm64v8 hardware, here
+          # we use a generic arm64v8 Ubuntu image as the base image. And
+          # install CUDA/CuDNN/TensorRT manually in the Dockerfile.
+          # See the Dockerfile(base.aarch64.dockerfile) for more details.
+          # TODO(All): specified via args, such as orin or xavier
+          IMAGE_IN="docker.io/arm64v8/ubuntu:${UBUNTU_LTS}"
       fi
       IMAGE_OUT="${base_image_tagged}"
       ;;
@@ -288,7 +287,10 @@ function docker_build_run() {
     local context="$(dirname "${BASH_SOURCE[0]}")"
 
     local build_args_array=()
-    build_args_array+=( "--build-arg" "BASE_IMAGE=${IMAGE_IN}" )
+    # If IMAGE_IN is empty, then use default value
+    if [[ -n "${IMAGE_IN}" ]]; then
+      build_args_array+=( "--build-arg" "BASE_IMAGE=${IMAGE_IN}" )
+    fi
     build_args_array+=( "--build-arg" "LOCAL_HTTP_ADDR=${LOCAL_HTTP_ADDR}" )
 
     # Common args based on TARGET_EXTRA or specific stages

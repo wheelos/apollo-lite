@@ -15,8 +15,7 @@ cc_library(
         ":rpn_proposal_ssd_plugin",
         ":perception_inference_tensorrt_plugins_argmax_cuda",
         ":perception_inference_tensorrt_plugins_leakyrelu_cuda",
-        ":perception_inference_tensorrt_plugins_slice_cuda",
-        ":perception_inference_tensorrt_plugins_softmax_cuda",
+        ":perception_inference_tensorrt_plugins_slice_cuda"
     ],
     hdrs = glob([
         "*.h",
@@ -96,18 +95,6 @@ cuda_library(
     name = "perception_inference_tensorrt_plugins_argmax_cuda",
     srcs = ["argmax_plugin.cu"],
     hdrs = ["argmax_plugin.h"],
-    deps = [
-        "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@eigen",
-        "@local_config_cuda//cuda:cudart",
-        "@local_config_tensorrt//:tensorrt",
-    ],
-)
-
-cuda_library(
-    name = "perception_inference_tensorrt_plugins_softmax_cuda",
-    srcs = ["softmax_plugin.cu"],
-    hdrs = ["softmax_plugin.h"],
     deps = [
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
         "@eigen",
