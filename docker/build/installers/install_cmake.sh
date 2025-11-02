@@ -16,7 +16,7 @@
 ###############################################################################
 
 # Fail on first error, unset variables are errors, print commands and their arguments as they are executed.
-set -eux
+set -euo pipefail
 
 # Navigate to the script's directory and source the base installer functions.
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
@@ -84,7 +84,7 @@ else
 
     # Clean up the installer script
     info "Cleaning up CMake installer script..."
-    rm -f "${CMAKE_SH_FILE}" || warn "Failed to remove CMake installer script: ${CMAKE_SH_FILE}."
+    rm -f "${CMAKE_SH_FILE}" || warning "Failed to remove CMake installer script: ${CMAKE_SH_FILE}."
 
     info "CMake version ${CMAKE_VERSION} installed successfully."
 fi
@@ -107,13 +107,13 @@ link_cmake_to_system_path() {
         if [[ "${current_target}" == "${installed_cmake_bin}" ]]; then
             info "System-wide CMake symlink ${system_cmake_link} already points to ${installed_cmake_bin}."
         else
-            warn "Existing symlink ${system_cmake_link} points to ${current_target}. Updating to ${installed_cmake_bin}."
+            warning "Existing symlink ${system_cmake_link} points to ${current_target}. Updating to ${installed_cmake_bin}."
             rm "${system_cmake_link}" || error "Failed to remove old symlink ${system_cmake_link}."
             ln -sf "${installed_cmake_bin}" "${system_cmake_link}" || error "Failed to create symlink ${system_cmake_link}."
         fi
     elif [[ -e "${system_cmake_link}" ]]; then
         # It's a regular file or directory, not a symlink. This is unusual.
-        warn "${system_cmake_link} exists but is not a symlink. Skipping automatic linking. Manual intervention may be required."
+        warning "${system_cmake_link} exists but is not a symlink. Skipping automatic linking. Manual intervention may be required."
     else
         info "Creating system-wide CMake symlink: ${system_cmake_link} -> ${installed_cmake_bin}."
         ln -sf "${installed_cmake_bin}" "${system_cmake_link}" || error "Failed to create symlink ${system_cmake_link}."

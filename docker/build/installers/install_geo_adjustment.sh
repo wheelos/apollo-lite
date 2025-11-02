@@ -61,10 +61,7 @@ configure_apt_sources() {
 
   local preferred_sources=(
     "${RCFILES_DIR}/sources.list.${geo}.${arch}.${os_id}.${os_version}"
-    "${RCFILES_DIR}/sources.list.${geo}.${arch}.${os_id}"
     "${RCFILES_DIR}/sources.list.${geo}.${arch}"
-    "${RCFILES_DIR}/sources.list.default.${arch}"
-    "${RCFILES_DIR}/sources.list.default"
   )
 
   info "Configuring APT sources for ${geo^^} (${arch})..."
@@ -82,8 +79,8 @@ configure_apt_sources() {
     install -m 0644 "${found_source_file}" "${sources_list_file}" ||
       error "Failed to copy APT sources file '${found_source_file}' to '${sources_list_file}'."
   else
-    warn "No suitable APT sources file found for ${geo^^} (${arch})."
-    warn "APT sources remain as default; downloads may be slow."
+    warning "No suitable APT sources file found for ${geo^^} (${arch})."
+    warning "APT sources remain as default; downloads may be slow."
     # Uncomment below to enforce sources file requirement:
     # error "Critical: No suitable APT sources file found. Exiting."
     # exit 1
@@ -112,7 +109,7 @@ configure_pypi_mirror() {
       ;;
     *)
       pypi_mirror="https://pypi.org/simple"
-      warn "Unsupported geolocation '${geo}' for PyPI mirror. Defaulting to official PyPI: ${pypi_mirror}"
+      warning "Unsupported geolocation '${geo}' for PyPI mirror. Defaulting to official PyPI: ${pypi_mirror}"
       ;;
   esac
 
@@ -127,8 +124,8 @@ configure_pypi_mirror() {
 
   # Minimal cleanup
   info "--- Performing minimal cleanup ---"
-  apt-get clean || warn "Failed to clean apt cache."
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* || warn "Failed to remove temporary files."
+  apt-get clean || warning "Failed to clean apt cache."
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* || warning "Failed to remove temporary files."
 }
 
 # ============================

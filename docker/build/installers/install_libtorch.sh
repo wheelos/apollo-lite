@@ -84,98 +84,136 @@ if torch.cuda.is_available():
 
 # --- C++ LibTorch Installation ---
 function install_libtorch_cpp() {
+  if [ -z "${PYTORCH_VERSION}" ]; then
+    error "PYTORCH_VERSION is not set. Please export PYTORCH_VERSION before calling this function."
+    return 1
+  fi
+
   info "Installing LibTorch C++ ${PYTORCH_VERSION}..."
   local BASE_URL="https://download.pytorch.org/libtorch"
   local ARCHIVE=""
   local URL=""
+  local INSTALL_DIR="/usr/local/libtorch"
 
+  # x86_64: Official pre-built libtorch
   if [ "${TARGET_ARCH}" = "x86_64" ]; then
+    info "Detected x86_64 architecture. Installing official precompiled package."
+
     if [ "$CUDA_SUPPORT" = true ]; then
       ARCHIVE="libtorch-cxx11-abi-shared-with-deps-${PYTORCH_VERSION}+${CUDA_VERSION_TAG}.zip"
-      CHECKSUM='36835d6c6315d741ad687632516f7bcd8efb6de3b57b61ca66b96f98e5ea30e8'
       URL="${BASE_URL}/${CUDA_VERSION_TAG}/${ARCHIVE}"
     else
       ARCHIVE="libtorch-cxx11-abi-shared-with-deps-${PYTORCH_VERSION}%2Bcpu.zip"
-      CHECKSUM="6887b5186e466a6d5ca044a51d083bb03c48cb1b4952059b7ca51a5398fbafcc"
       URL="${BASE_URL}/cpu/${ARCHIVE}"
     fi
+
+    local DOWNLOAD_DIR="/tmp/libtorch_download"
+    mkdir -p "${DOWNLOAD_DIR}"
+    pushd "${DOWNLOAD_DIR}" > /dev/null
+
+    info "Downloading LibTorch from ${URL}"
+    if ! wget -q "${URL}" -O "${ARCHIVE}"; then
+        error "Download failed: ${URL}"
+        return 1
+    fi
+
+    unzip -q "${ARCHIVE}"
+
+    info "Installing to ${INSTALL_DIR}..."
+    sudo rm -rf "${INSTALL_DIR}"
+    sudo mkdir -p "${INSTALL_DIR}"
+    sudo mv libtorch/* "${INSTALL_DIR}/"
+
+    popd > /dev/null
+    rm -rf "${DOWNLOAD_DIR}"
+
+  # aarch64: Build libtorch from source
   elif [ "${TARGET_ARCH}" = "aarch64" ]; then
-    # WARNING: Official pre-compiled LibTorch C++ package is not available for aarch64.
-    # If needed, you must build from source. Skipping installation here.
-    warning "Official pre-compiled LibTorch C++ is not available for aarch64."
-    warning "We default install our own compiled for orin(l4t r35.2)"
-    warning "If not suitable, please build from source yourself."
+    info "Detected aarch64 (Jetson) architecture. Building LibTorch from source..."
 
-    # TODO(build): Docs on how to build libtorch on Jetson boards
-    # References:
-    #   https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
-    #
-    # Following content is an example to build libtorch source on orin:
-    # 1. Downloading source of specific version libtorch and it's submodules:
-    #     git clone --recursive --single-branch --branch release/1.11 --depth 1 https://github.com/pytorch/pytorch.git
-    # 2. install py deps:
-    #     pip3 install --no-cache-dir PyYAML typing typing-extensions
-    # 3. set envs, e.g.:
-    #     export USE_CUDA=1
-    #     export TORCH_CUDA_ARCH_LIST="3.5;5.0;5.2;6.1;7.0;7.5;8.6;8.7"
-    #     export BUILD_CAFFE2=1
-    #     export USE_NCCL=0
-    # 4. build
-    #     python3 setup.py install
-    # 5. packaging/install
-    #     mkdir libtorch && cp -r include libtorch && cp -r lib libtorch/ && sudo mv libtorch /usr/local/
+    # 0. Pre-check CUDA/cuDNN/TensorRT presence
+    if [ ! -f /usr/include/cudnn.h ]; then
+        warning "cuDNN header not found. Please install libcudnn9-dev before building."
+    fi
+    if [ ! -f /usr/include/NvInfer.h ]; then
+        warning "TensorRT headers not found. Please ensure TensorRT 10.3 is installed."
+    fi
 
-    # download the original pre-compiled libtorch for aarch64
-    local pkg_version='1.11.0'
-    local pkg_filename="libtorch_gpu-${pkg_version}-linux-${TARGET_ARCH}.tar.gz"
-    local pkg_uri="https://apollo-pkg-beta.cdn.bcebos.com/archive/${pkg_filename}"
-    local pkg_checksum='8413dd02c08fe7d0384e4ac0a66449f22c8fbe99f252015d6020174e8ecd5acf'
-    download_if_not_cached "${pkg_filename}" "${pkg_checksum}" "${pkg_uri}"
-    mkdir -p /usr/local/libtorch
-    tar -xzf "${pkg_filename}" -C /usr/local/libtorch --strip-components=1
+    # 1. Install system dependencies
+    info "Installing build dependencies..."
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        git cmake ninja-build build-essential \
+        python3-dev python3-pip python3-setuptools python3-wheel \
+        libopenblas-dev libomp-dev libjpeg-dev zlib1g-dev libffi-dev
+    pip3 install --no-cache-dir numpy pyyaml typing_extensions sympy filelock
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-    # Add runtime library path
-    ensure_ld_path "/usr/local/libtorch/lib"
+    # 2. Clone PyTorch source
+    local BUILD_DIR="/tmp/pytorch_build"
+    mkdir -p "${BUILD_DIR}"
+    pushd "${BUILD_DIR}" > /dev/null
+    info "Cloning PyTorch source for version v${PYTORCH_VERSION}"
+    git clone --recursive --single-branch --branch "v${PYTORCH_VERSION}" https://github.com/pytorch/pytorch.git
+    cd pytorch
 
-    rm -rf "${pkg_filename}"
+    # 3. Configure environment for Jetson Orin
+    info "Configuring build environment (CUDA 12.6, cuDNN 9.3, TensorRT 10.3)..."
+    export USE_CUDA=1
+    export USE_CUDNN=1
+    export USE_TENSORRT=1
+    export TORCH_CUDA_ARCH_LIST="8.7"
+    export USE_NCCL=0
+    export USE_DISTRIBUTED=0
+    export USE_QNNPACK=1
+    export USE_PYTORCH_QNNPACK=1
+    export BUILD_TEST=0
+    export CMAKE_GENERATOR="Ninja"
+    export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
 
-    ldconfig
+    info "Starting PyTorch C++ library build..."
+    info "TIP: Ensure swapfile (>=8GB) is enabled to prevent OOM during the build."
+    python3 setup.py bdist_wheel > /tmp/pytorch_build.log 2>&1 || {
+        error "Build failed. Check /tmp/pytorch_build.log for details."
+        return 1
+    }
+    ok "PyTorch build completed."
+    pip3 install dist/*.whl
 
-    ok "LibTorch C++ pre-compiled package for jetson installed successfully."
+    # 4. Copy libtorch headers and libs to /usr/local/libtorch
+    info "Installing compiled LibTorch to ${INSTALL_DIR}..."
+    sudo rm -rf "${INSTALL_DIR}"
+    sudo mkdir -p "${INSTALL_DIR}"
 
-    return 0 # Exit normally
+    local PYTORCH_SITE=$(python3 -c "import torch; import os; print(os.path.dirname(torch.__file__))")
+    sudo cp -r ${PYTORCH_SITE}/include "${INSTALL_DIR}"
+    sudo cp -r ${PYTORCH_SITE}/lib "${INSTALL_DIR}"
+
+    popd > /dev/null
+    info "Cleaning up build directory..."
+    rm -rf "${BUILD_DIR}"
+
   else
     error "Unsupported architecture: ${TARGET_ARCH}"
     return 1
   fi
 
-  local DOWNLOAD_DIR="/tmp/libtorch_download"
-  mkdir -p "${DOWNLOAD_DIR}"
-  pushd "${DOWNLOAD_DIR}" > /dev/null
+  # -------------------- Post-install steps (all arches) ---------------------
+  if [ -d "${INSTALL_DIR}/lib" ]; then
+    ensure_ld_path "${INSTALL_DIR}/lib"
+    ldconfig
+    ok "LibTorch C++ ${PYTORCH_VERSION} installed successfully at ${INSTALL_DIR}."
+  else
+    error "LibTorch installation failed — ${INSTALL_DIR}/lib directory missing."
+    return 1
+  fi
 
-  info "Downloading from ${URL}"
-  download_if_not_cached "${ARCHIVE}" "${CHECKSUM}" "${URL}"
-  unzip -q "${ARCHIVE}"
-
-  # Install to system path
-  INSTALL_DIR="/usr/local/libtorch"
-  info "Installing LibTorch to ${INSTALL_DIR}..."
-  rm -rf "${INSTALL_DIR}" # Remove old version
-  mkdir -p "${INSTALL_DIR}"
-  # Use mv instead of cp -r for better efficiency
-  mv libtorch/* "${INSTALL_DIR}/"
-
-  # Add runtime library path
-  ensure_ld_path "${INSTALL_DIR}/lib"
-
-  # Clean up downloaded files
-  popd > /dev/null
-  rm -rf "${DOWNLOAD_DIR}"
-
-  # Optionally: update dynamic linker cache
-  ldconfig
-
-  ok "LibTorch C++ ${PYTORCH_VERSION} installed successfully."
+  # Verify installation
+  if [ -f "${INSTALL_DIR}/lib/libtorch.so" ]; then
+    info "libtorch.so located successfully in ${INSTALL_DIR}/lib"
+  else
+    warning "libtorch.so not found — verify your build output."
+  fi
 }
 
 # --- Main Execution Flow ---

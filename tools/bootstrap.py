@@ -48,7 +48,7 @@ except ImportError:
 _DEFAULT_CUDA_VERSION = "10"
 _DEFAULT_CUDNN_VERSION = "7"
 _DEFAULT_TENSORRT_VERSION = "7"
-_DEFAULT_CUDA_COMPUTE_CAPABILITIES = "3.7,5.2,6.0,6.1,7.0,7.2,7.5"
+_DEFAULT_CUDA_COMPUTE_CAPABILITIES = "6.0,6.1,7.0,7.2,7.5,8.6,8.9"
 _DEFAULT_PYTHON_LIB_PATH = "/usr/lib/python3/dist-packages"
 
 _DEFAULT_PROMPT_ASK_ATTEMPTS = 3
@@ -833,37 +833,73 @@ def set_other_cuda_vars(environ_cp):
 def validate_cuda_config(environ_cp):
     """Run find_cuda_config.py and return cuda_toolkit_path, or None."""
 
-    cuda_libraries = ["cuda", "cudnn"]
-    if int(environ_cp.get("TF_NEED_TENSORRT", False)):
-        cuda_libraries.append("tensorrt")
+    # Primary check: Only for CUDA, which is essential.
+    base_cuda_libraries = ["cuda"]
+    if int(environ_cp.get("TF_NEED_TENSORRT", "0")):
+        base_cuda_libraries.append("tensorrt")
     if environ_cp.get("TF_NCCL_VERSION", None):
-        cuda_libraries.append("nccl")
+        base_cuda_libraries.append("nccl")
 
     find_cuda_script = os.path.join(
         _APOLLO_ROOT_DIR, "third_party/gpus/find_cuda_config.py"
     )
+
+    # Find essential libraries (without cuDNN)
     proc = subprocess.Popen(
-        ["python", find_cuda_script] + cuda_libraries,
+        ["python", find_cuda_script] + base_cuda_libraries,
         stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, # Capture stderr to check for cudnn errors later
         env=environ_cp,
     )
+    stdout, stderr = proc.communicate()
 
-    if proc.wait():
-        # Errors from find_cuda_config.py were sent to stderr.
-        print("Asking for detailed CUDA configuration...\n")
+    # If even the base libraries (CUDA, TensorRT) can't be found, then fail.
+    if proc.returncode != 0:
+        print("Error: Could not find required libraries: {}".format(base_cuda_libraries))
+        print("--- find_cuda_config.py stderr ---")
+        print(stderr.decode('ascii'))
+        print("-----------------------------------")
+        # In non-interactive mode, this signals a hard failure.
+        # The original script's logic will handle this.
         return False
 
+    # Second, Optional Attempt: Try to find cuDNN as well
+    all_cuda_libraries = base_cuda_libraries + ["cudnn"]
+    proc_with_cudnn = subprocess.Popen(
+        ["python", find_cuda_script] + all_cuda_libraries,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=environ_cp,
+    )
+    # The output of this second run is what we'll actually use, if successful.
+    stdout_with_cudnn, _ = proc_with_cudnn.communicate()
+
+    final_stdout = stdout
+    # If the run with cuDNN was successful, we use its output.
+    # Otherwise, we stick with the successful output from the base library check.
+    if proc_with_cudnn.returncode == 0:
+        final_stdout = stdout_with_cudnn
+        # Inform bazel that cuDNN is available and should be used.
+        write_action_env_to_bazelrc("TF_NEED_CUDNN", "1")
+    else:
+        # cuDNN was not found, which is now acceptable.
+        print("INFO: cuDNN not found or configured. Proceeding without cuDNN support.")
+        write_action_env_to_bazelrc("TF_NEED_CUDNN", "0")
+
+    # Now, parse the final (successful) output
     config = dict(
-        tuple(line.decode("ascii").rstrip().split(": ")) for line in proc.stdout
+        tuple(line.decode("ascii").rstrip().split(": ")) for line in final_stdout.strip().split(b'\n')
     )
 
     print("Found CUDA %s in:" % config["cuda_version"])
     print("    %s" % config["cuda_library_dir"])
     print("    %s" % config["cuda_include_dir"])
 
-    print("Found cuDNN %s in:" % config["cudnn_version"])
-    print("    %s" % config["cudnn_library_dir"])
-    print("    %s" % config["cudnn_include_dir"])
+    # Only print cuDNN info if it was found
+    if "cudnn_version" in config:
+        print("Found cuDNN %s in:" % config["cudnn_version"])
+        print("    %s" % config["cudnn_library_dir"])
+        print("    %s" % config["cudnn_include_dir"])
 
     if "tensorrt_version" in config:
         print("Found TensorRT %s in:" % config["tensorrt_version"])

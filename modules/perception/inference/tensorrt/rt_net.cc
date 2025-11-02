@@ -459,56 +459,19 @@ void RTNet::addSoftmaxLayer(const LayerParameter &layer_param,
                             nvinfer1::INetworkDefinition *net,
                             TensorMap *tensor_map,
                             TensorModifyMap *tensor_modify_map) {
-  if (layer_param.has_softmax_param()) {
-#ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
-    std::shared_ptr<SoftmaxPlugin> softmax_plugin;
-    // TODO(All): refactor it
-    // convert proto message to pure struct to avoid adding protobuf as
-    // cuda_library's dependence, which may case compile issue of nvcc
-    StSoftmaxParameter softmax_param;
-    softmax_param.engine =
-        static_cast<int32_t>(layer_param.softmax_param().engine());
-    sofmax_param.axis = layer_param.softmax_param().axis();
-    softmax_plugin.reset(
-        new SoftmaxPlugin(softmax_param, inputs[0]->getDimensions()));
-    softmax_plugins_.push_back(softmax_plugin);
-    nvinfer1::IPluginLayer *softmaxLayer =
-        net->addPlugin(inputs, nbInputs, *softmax_plugin);
-    softmaxLayer->setName(layer_param.name().c_str());
-
-    ConstructMap(layer_param, softmaxLayer, tensor_map, tensor_modify_map);
-#else
-    const auto mPluginRegistry = getPluginRegistry();
-    auto creator =
-        mPluginRegistry->getPluginCreator("softmax_plugin", "1", "camera");
-
-    auto softmax_param = layer_param.softmax_param();
-    int axis = softmax_param.axis();
-    nvinfer1::Dims in_dims = inputs[0]->getDimensions();
-    std::vector<nvinfer1::PluginField> f;
-    f.emplace_back(nvinfer1::PluginField("axis", &axis,
-                                         nvinfer1::PluginFieldType::kINT32, 1));
-    f.emplace_back(nvinfer1::PluginField("in_dims", &in_dims,
-                                         nvinfer1::PluginFieldType::kDIMS, 1));
-
-    nvinfer1::PluginFieldCollection fc;
-    fc.nbFields = f.size();
-    fc.fields = f.data();
-    nvinfer1::IPluginV2 *softmax_plugin =
-        creator->createPlugin("softmax_layer", &fc);
-
-    nvinfer1::IPluginV2Layer *softmaxLayer =
-        net->addPluginV2(inputs, nbInputs, *softmax_plugin);
-    softmaxLayer->setName(layer_param.name().c_str());
-    ConstructMap(layer_param, softmaxLayer, tensor_map, tensor_modify_map);
-#endif
-#endif
-  } else {
-    nvinfer1::ISoftMaxLayer *softmaxLayer = net->addSoftMax(*inputs[0]);
-    softmaxLayer->setName(layer_param.name().c_str());
-    ConstructMap(layer_param, softmaxLayer, tensor_map, tensor_modify_map);
+  nvinfer1::ISoftmaxLayer *softmaxLayer = net->addSoftmax(*inputs[0]);
+  if (softmaxLayer == nullptr) {
+    AERROR << "Failed to add Softmax layer for: " << layer_param.name();
+    return;
   }
+  softmaxLayer->setName(layer_param.name().c_str());
+  int proto_axis = 1;
+  if (layer_param.has_softmax_param()) {
+    proto_axis = layer_param.softmax_param().axis();
+  }
+  int trt_axis = proto_axis - 1;
+  softmaxLayer->setAxes(1 << trt_axis);
+  ConstructMap(layer_param, softmaxLayer, tensor_map, tensor_modify_map);
 }
 
 void RTNet::addEltwiseLayer(const LayerParameter &layer_param,
