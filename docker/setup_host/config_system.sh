@@ -179,54 +179,75 @@ setup_bazel_cache_dir() {
   return 0
 }
 
-# Configures NTP synchronization using systemd-timesyncd.
+# Configures NTP synchronization using chrony.
 configure_ntp() {
-  info "Configuring NTP synchronization with systemd-timesyncd..."
+  info "Standardizing NTP synchronization on chrony..."
 
-  # Step 1: Check if systemd-timesyncd service unit file exists
-  local service_exists=false
-  if sudo systemctl list-unit-files systemd-timesyncd.service | grep -c systemd-timesyncd.service &> /dev/null; then
-    service_exists=true
+  # --- Step 1: Detect and disable conflicting NTP services ---
+  if systemctl list-unit-files | grep -q 'systemd-timesyncd.service'; then
+    if systemctl is-active --quiet systemd-timesyncd.service; then
+      info "Conflict detected: systemd-timesyncd is active. Disabling it now."
+      sudo systemctl disable --now systemd-timesyncd.service || warning "Failed to disable systemd-timesyncd."
+    fi
   fi
 
-  if ! "$service_exists"; then
-    error "systemd-timesyncd.service not found on this system."
-    error "Please ensure 'systemd-timesyncd' is installed if accurate time synchronization is critical."
-    return 1 # Exit if the service file itself doesn't exist
+  local ntpd_service
+  ntpd_service=$(systemctl list-unit-files | grep -Eo '^(ntp|ntpd)\.service' | head -n 1)
+  if [ -n "$ntpd_service" ]; then
+    if systemctl is-active --quiet "$ntpd_service"; then
+      info "Conflict detected: $ntpd_service is active. Disabling it now."
+      sudo systemctl disable --now "$ntpd_service" || warning "Failed to disable $ntpd_service."
+    fi
   fi
 
-  # Step 2: If service exists, check if it's already in the desired state (enabled and active)
-  local is_enabled=false
-  if sudo systemctl is-enabled --quiet systemd-timesyncd.service; then
-    is_enabled=true
+  # --- Step 2: Check for chrony, install if missing ---
+  # 'command -v' is a reliable way to check if a command is in the system's PATH
+  if ! command -v chronyc &> /dev/null; then
+    info "chrony is not installed. Attempting to install via apt..."
+
+    # Update package list and install chrony
+    sudo apt-get update
+    sudo apt-get install -y chrony
+
+    if [ $? -ne 0 ]; then
+      error "Failed to install 'chrony' via apt. Please check for errors above. Aborting."
+      return 1
+    fi
+    success "'chrony' package installed successfully."
+
+    # Reload systemd to recognize the new service file. This is crucial.
+    info "Reloading systemd daemon..."
+    sudo systemctl daemon-reload
   fi
 
-  local is_active=false
-  if sudo systemctl is-active --quiet systemd-timesyncd.service; then
-    is_active=true
+  # --- Step 3: Ensure chrony service is enabled and active ---
+  # Find the exact service name (usually 'chrony.service' on Debian/Ubuntu)
+  local chrony_service
+  chrony_service=$(systemctl list-unit-files | grep -Eo '^chrony(d)?\.service' | head -n 1)
+
+  if [ -z "$chrony_service" ]; then
+    error "chrony appears to be installed, but its systemd service could not be found. Investigation needed."
+    return 1
   fi
 
-  if "$is_enabled" && "$is_active"; then
-    info "systemd-timesyncd service is already enabled and active. Skipping configuration."
-    return 0 # Configuration is already complete, no action needed
+  if systemctl is-enabled --quiet "$chrony_service" && systemctl is-active --quiet "$chrony_service"; then
+    success "chrony ($chrony_service) is already enabled and running correctly."
   else
-    info "systemd-timesyncd service found but not fully enabled or active. Attempting to enable and start."
+    info "Enabling and starting chrony service ($chrony_service)..."
+    sudo systemctl enable --now "$chrony_service"
+    if [ $? -ne 0 ]; then
+      error "Failed to start $chrony_service. Diagnose with 'systemctl status $chrony_service'."
+      return 1
+    fi
+    success "chrony ($chrony_service) has been enabled and started."
   fi
 
-  # Step 3: Enable and start the service if it's not already in the desired state
-  info "Enabling and starting systemd-timesyncd time synchronization service..."
-  sudo systemctl enable systemd-timesyncd.service
-  if [ $? -ne 0 ]; then
-    error "Failed to enable systemd-timesyncd. Please check systemd status and permissions."
-    return 1
-  fi
+  # --- Step 4: Verify synchronization status ---
+  info "Verifying chrony synchronization status..."
+  # Allow a few seconds for chrony to establish a connection
+  sleep 3
+  chronyc tracking
 
-  sudo systemctl start systemd-timesyncd.service
-  if [ $? -ne 0 ]; then
-    error "Failed to start systemd-timesyncd. Please check systemd logs for details (e.g., journalctl -xeu systemd-timesyncd)."
-    return 1
-  fi
-  success "systemd-timesyncd enabled and started."
   return 0
 }
 
