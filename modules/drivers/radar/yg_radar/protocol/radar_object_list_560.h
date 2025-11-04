@@ -48,11 +48,11 @@ class Radarobjectlist560 : public ::apollo::drivers::canbus::ProtocolData<
   double guardrail_distance(const std::uint8_t* bytes,
                             const int32_t length) const;
 
-  // config detail: {'bit': 24, 'is_signed_var': True, 'len': 1, 'name':
+  // config detail: {'bit': 24, 'is_signed_var': True, 'len': 16, 'name':
   // 'Vehicle_Speed', 'offset': 0.0, 'order': 'intel', 'physical_range':
   // '[-3276.8|3276.7]', 'physical_unit': 'km/h', 'precision': 0.1, 'type':
-  // 'bool'}
-  bool vehicle_speed(const std::uint8_t* bytes, const int32_t length) const;
+  // 'double'}
+  double vehicle_speed(const std::uint8_t* bytes, const int32_t length) const;
 };
 
 }  // namespace yg_radar

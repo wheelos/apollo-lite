@@ -78,19 +78,24 @@ double Radarobjectlist560::guardrail_distance(const std::uint8_t* bytes,
   return ret;
 }
 
-// config detail: {'bit': 24, 'is_signed_var': True, 'len': 1, 'name':
+// config detail: {'bit': 24, 'is_signed_var': True, 'len': 16, 'name':
 // 'vehicle_speed', 'offset': 0.0, 'order': 'intel', 'physical_range':
 // '[-3276.8|3276.7]', 'physical_unit': 'km/h', 'precision': 0.1, 'type':
-// 'bool'}
-bool Radarobjectlist560::vehicle_speed(const std::uint8_t* bytes,
-                                       int32_t length) const {
-  Byte t0(bytes + 3);
-  int32_t x = t0.get_byte(0, 1);
+// 'double'}
+double Radarobjectlist560::vehicle_speed(const std::uint8_t* bytes,
+                                         int32_t length) const {
+  Byte t0(bytes + 4);
+  int32_t x = t0.get_byte(0, 8);
 
-  x <<= 31;
-  x >>= 31;
+  Byte t1(bytes + 3);
+  int32_t t = t1.get_byte(0, 8);
+  x <<= 8;
+  x |= t;
 
-  bool ret = x * 0.100000;
+  x <<= 16;
+  x >>= 16;
+
+  double ret = x * 0.100000;
   return ret;
 }
 }  // namespace yg_radar

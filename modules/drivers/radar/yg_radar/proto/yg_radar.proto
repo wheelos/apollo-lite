@@ -25,7 +25,7 @@ message Radar_object_list_560 {
   // [m] [-3276.8|3276.7]
   optional double guardrail_distance = 2;
   // [km/h] [-3276.8|3276.7]
-  optional bool vehicle_speed = 3;
+  optional double vehicle_speed = 3;
 }
 
 message Yg_radar {
