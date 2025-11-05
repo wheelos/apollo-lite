@@ -112,8 +112,15 @@ link_cmake_to_system_path() {
             ln -sf "${installed_cmake_bin}" "${system_cmake_link}" || error "Failed to create symlink ${system_cmake_link}."
         fi
     elif [[ -e "${system_cmake_link}" ]]; then
-        # It's a regular file or directory, not a symlink. This is unusual.
-        warning "${system_cmake_link} exists but is not a symlink. Skipping automatic linking. Manual intervention may be required."
+        # It's a regular file or directory. We will replace it.
+        warning "${system_cmake_link} exists as a file and will be replaced."
+
+        # Use sudo to remove the existing file
+        sudo rm -f "${system_cmake_link}" || error "Failed to remove existing file: ${system_cmake_link}."
+
+        # Use sudo to create the new symlink
+        info "Creating system-wide CMake symlink: ${system_cmake_link} -> ${installed_cmake_bin}."
+        sudo ln -s "${installed_cmake_bin}" "${system_cmake_link}" || error "Failed to create symlink ${system_cmake_link}."
     else
         info "Creating system-wide CMake symlink: ${system_cmake_link} -> ${installed_cmake_bin}."
         ln -sf "${installed_cmake_bin}" "${system_cmake_link}" || error "Failed to create symlink ${system_cmake_link}."
