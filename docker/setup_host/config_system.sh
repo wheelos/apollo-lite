@@ -25,6 +25,12 @@ BAZEL_CACHE_DIR="/var/cache/bazel/repo_cache"
 UVCVIDEO_CONF_FILE="/etc/modprobe.d/uvcvideo.conf"
 UDEV_RULES_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/udev/rules.d"
 UDEV_RULES_DEST_DIR="/etc/udev/rules.d"
+LIMITS_CONF_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/security/limits.d"
+LIMITS_CONF_DEST_DIR="/etc/security/limits.d"
+NETWORK_CONF_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/network"
+NETWORK_CONF_DEST_DIR="/etc/systemd/network"
+SYSTEMD_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system"
+SYSTEMD_DEST_DIR="/etc/systemd/system"
 
 # Source path of the service file within the project
 AUTOSERVICE_SRC_FILE="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/autostart.service"
@@ -441,6 +447,92 @@ install_autostart_service() {
   return 0
 }
 
+# Sets the system-wide limits for core dump file size by copying config.
+setup_core_limits() {
+    info "Configuring system-wide core dump size limits..."
+    if [ ! -d "${LIMITS_CONF_SRC_DIR}" ] || [ -z "$(ls -A "${LIMITS_CONF_SRC_DIR}")" ]; then
+        info "Core limits source directory not found or empty. Skipping."
+        return 0
+    fi
+    sudo cp -f "${LIMITS_CONF_SRC_DIR}"/* "${LIMITS_CONF_DEST_DIR}/"
+    if [ $? -ne 0 ]; then error "Failed to copy core limits configuration." && return 1; fi
+    success "Core dump size limits configured."
+    return 0
+}
+
+# Configures CAN bus using systemd-networkd for permanent setup.
+configure_can_bus() {
+    info "Configuring CAN bus interfaces using systemd-networkd..."
+    if [ ! -d "${NETWORK_CONF_SRC_DIR}" ] || [ -z "$(ls -A "${NETWORK_CONF_SRC_DIR}")" ]; then
+        info "systemd-networkd source directory not found or empty. Skipping CAN bus setup."
+        return 0
+    fi
+
+    sudo mkdir -p "${NETWORK_CONF_DEST_DIR}"
+    # This robustly copies any .network files present (e.g., just 10-can0.network)
+    sudo cp -f "${NETWORK_CONF_SRC_DIR}"/*.network "${NETWORK_CONF_DEST_DIR}/"
+    if [ $? -ne 0 ]; then error "Failed to copy systemd-networkd CAN configurations." && return 1; fi
+    info "CAN network configuration files copied."
+
+    info "Enabling and restarting systemd-networkd service..."
+    sudo systemctl enable --now systemd-networkd.service > /dev/null 2>&1
+    sudo systemctl restart systemd-networkd.service
+    if [ $? -ne 0 ]; then error "Failed to restart systemd-networkd. Check its status." && return 1; fi
+    success "CAN bus interfaces configured via systemd-networkd."
+    return 0
+}
+
+# Sets up Jetson performance optimizations (nvpmodel, jetson_clocks).
+setup_jetson_performance() {
+    if ! command -v nvpmodel &> /dev/null; then
+        info "Not a Jetson device. Skipping Jetson performance setup."
+        return 0
+    fi
+
+    info "Configuring Jetson performance services (nvpmodel and jetson_clocks)..."
+    local service_file="jetson-performance.service"
+
+    if [ ! -f "${SYSTEMD_SRC_DIR}/${service_file}" ]; then
+        error "'${service_file}' not found in source directory. Skipping." && return 1
+    fi
+
+    sudo cp -f "${SYSTEMD_SRC_DIR}/${service_file}" "${SYSTEMD_DEST_DIR}/"
+    if [ $? -ne 0 ]; then error "Failed to copy ${service_file}." && return 1; fi
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now "${service_file}"
+    if [ $? -ne 0 ]; then error "Failed to enable and start ${service_file}." && return 1; fi
+    success "Jetson performance service enabled and started."
+    return 0
+}
+
+# Switches the system to non-graphical multi-user mode (headless).
+configure_headless_mode() {
+    # This is a significant change, only run if explicitly requested.
+    if [[ "${SETUP_HEADLESS_MODE:-no}" != "yes" ]]; then
+        info "SETUP_HEADLESS_MODE is not 'yes'. Skipping GUI disable."
+        return 0
+    fi
+
+    info "Configuring system for headless operation (disabling GUI)..."
+    # Check if it's already in the desired state (idempotency)
+    if systemctl get-default | grep -q "multi-user.target"; then
+        info "System is already set to multi-user (headless) mode."
+        return 0
+    fi
+
+    sudo systemctl set-default multi-user.target
+    if [ $? -ne 0 ]; then
+        error "Failed to set default target to multi-user.target."
+        return 1
+    fi
+
+    success "System configured for headless mode. GUI will be disabled on next reboot."
+    info "To revert this change, run: sudo systemctl set-default graphical.target"
+    return 0
+}
+
+
 # --- Main Host Setup Orchestration Function ---
 # This is the primary entry point for setting up the host machine.
 setup_host_machine() {
@@ -455,6 +547,11 @@ setup_host_machine() {
   # 2. Configure core dump settings
   if ! setup_core_dump; then
     error "Failed to configure core dump settings. Aborting host setup."
+    return 1
+  fi
+
+  if ! setup_core_limits; then
+    error "Failed to configure core limits."
     return 1
   fi
 
@@ -479,6 +576,21 @@ setup_host_machine() {
   # 6. Configure uvcvideo module
   if ! configure_uvcvideo_module; then
     error "Failed to configure uvcvideo module. Aborting host setup."
+    return 1
+  fi
+
+  if ! configure_can_bus; then
+    error "Failed to configure CAN bus."
+    return 1
+  fi
+
+  if ! setup_jetson_performance; then
+    error "Failed to configure Jetson performance."
+    return 1
+  fi
+
+  if ! configure_headless_mode; then
+    error "Failed to configure headless mode."
     return 1
   fi
 
