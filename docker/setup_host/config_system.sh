@@ -278,15 +278,15 @@ apply_udev_rules() {
   fi
 
   if "${all_udev_rules_present}"; then
-    info "Udev rules already appear to be in place. Skipping copy."
-  else
-    sudo cp -r "${UDEV_RULES_SRC_DIR}"/* "${UDEV_RULES_DEST_DIR}/"
-    if [ $? -ne 0 ]; then
-      error "Failed to copy udev rules. Check source/destination permissions or path."
-      return 1
-    fi
-    info "Udev rules copied."
+    info "Udev rules already appear to be in place. Force copy."
   fi
+
+  sudo cp -r "${UDEV_RULES_SRC_DIR}"/* "${UDEV_RULES_DEST_DIR}/"
+  if [ $? -ne 0 ]; then
+    error "Failed to copy udev rules. Check source/destination permissions or path."
+    return 1
+  fi
+  info "Udev rules copied."
 
   info "Reloading udev rules and triggering devices..."
   sudo udevadm control --reload-rules
