@@ -17,9 +17,7 @@ deployment of Autonomous Vehicles.
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Build & Compile](#build--compile)
 - [Copyright and License](#copyright-and-license)
 - [Connect with Us](#connect-with-us)
 
@@ -27,12 +25,18 @@ deployment of Autonomous Vehicles.
 
 ## Introduction
 
-Apollo-Lite provides powerful modules and features for autonomous driving
-development. Before getting started, please ensure your environment meets the
-prerequisites and follow the installation instructions below. For a deeper
-understanding, refer to the
-[architecture overview](http://apollo.auto/docs/architecture_overview.html) to
-learn more about the core technologies and platform design.
+Apollo-Lite provides powerful modules and features for autonomous driving development.
+Before getting started, please ensure your environment meets the prerequisites and follow the installation instructions below.
+
+For a deeper understanding, refer to the following documents:
+- Design Document: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/J5ujwMD44iz6IlkD7etcFfrinZf?fromScene=spaceOverview) | [English]]
+- Integration Document: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/WQVmwCVw6i93wOk68QRchUQMnwe?fromScene=spaceOverview) | [English]]
+- Development Process: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/XdlSwmdLiiDXBdkuF9qcwKFun2d?fromScene=spaceOverview) | [English]]
+- Tools Document: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/SQVtw66pCiJlOTkZBoCc4tzlnzg?fromScene=spaceOverview) | [English]]
+- Product Manual: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/Y4WKw4oX4iCfQ8kmmabccgEUnhf?fromScene=spaceOverview) | [English]]
+- Issues / FAQ: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/IS9Vw11zcir6u5k8xFIc3BXJnEf?fromScene=spaceOverview) | [English]]
+- WEP Proposal: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/WSgLwkMOkir6aSkaJGWcYa5ZnJb?fromScene=spaceOverview) | [English]]
+- Company Introduction: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/Fp3WwaoZ9iUuw8kD6sgcEsERnSe?fromScene=spaceOverview) | [English]]
 
 ---
 
@@ -41,12 +45,6 @@ learn more about the core technologies and platform design.
 - **Machine:** Minimum 8-core CPU, 8GB RAM
 - **GPU:** NVIDIA Turing GPU recommended for acceleration
 - **Operating System:** Ubuntu 20.04 LTS
-
----
-
-## Installation
-
-> Detailed installation steps and scripts are provided for a smooth setup.
 
 ---
 
