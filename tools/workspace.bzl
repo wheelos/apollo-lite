@@ -42,7 +42,7 @@ load("//third_party/localization_msf:workspace.bzl", localization_msf = "repo")
 load("//third_party/gpus:cuda_configure.bzl", "cuda_configure")
 load("//third_party/py:python_configure.bzl", "python_configure")
 load("//third_party/tensorrt:tensorrt_configure.bzl", "tensorrt_configure")
-load("//third_party/vtk:vtk_configure.bzl", "vtk_configure")
+# load("//third_party/vtk:vtk_configure.bzl", "vtk_configure")
 load("//third_party/pcl:pcl_configure.bzl", "pcl_configure")
 load("//third_party/vanjee_driver:workspace.bzl", vanjee_driver = "repo")
 load("//third_party/rs_driver:workspace.bzl", rs_driver = "repo")
@@ -99,7 +99,7 @@ def apollo_repositories():
 
     tensorrt_configure(name = "local_config_tensorrt")
     python_configure(name = "local_config_python")
-    vtk_configure(name = "local_config_vtk")
+    # vtk_configure(name = "local_config_vtk")
     # pcl_configure(name = "local_config_pcl")
 
     initialize_third_party()

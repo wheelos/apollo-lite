@@ -31,7 +31,7 @@ bash ${CURR_DIR}/install_ffmpeg.sh
 
 # Proj was required to install VTK
 bash ${CURR_DIR}/install_proj.sh
-bash ${CURR_DIR}/install_vtk.sh
+# bash ${CURR_DIR}/install_vtk.sh
 
 # PCL is required by [ Perception Localization Dreamview ]
 # bash ${CURR_DIR}/install_pcl.sh

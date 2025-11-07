@@ -17,6 +17,7 @@
 #pragma once
 
 #include <NvInferLegacyDims.h>
+#include <NvInferVersion.h>
 
 namespace nvinfer1 {
 class DimsNCHW : public Dims4 {
@@ -25,21 +26,23 @@ class DimsNCHW : public Dims4 {
   DimsNCHW(int32_t batch_size, int32_t channels, int32_t height, int32_t width)
       : Dims4(batch_size, channels, height, width) {}
 
-  int32_t& n() { return d[0]; }
+#if NV_TENSORRT_MAJOR >= 10
+  using DimT = int64_t;
+#else
+  using DimT = int32_t;
+#endif
 
-  int32_t n() const { return d[0]; }
+  DimT& n() { return d[0]; }
+  DimT n() const { return d[0]; }
 
-  int32_t& c() { return d[1]; }
+  DimT& c() { return d[1]; }
+  DimT c() const { return d[1]; }
 
-  int32_t c() const { return d[1]; }
+  DimT& h() { return d[2]; }
+  DimT h() const { return d[2]; }
 
-  int32_t& h() { return d[2]; }
-
-  int32_t h() const { return d[2]; }
-
-  int32_t& w() { return d[3]; }
-
-  int32_t w() const { return d[3]; }
+  DimT& w() { return d[3]; }
+  DimT w() const { return d[3]; }
 };
 
 class DimsCHW : public Dims3 {
@@ -48,16 +51,19 @@ class DimsCHW : public Dims3 {
   DimsCHW(int32_t channels, int32_t height, int32_t width)
       : Dims3(channels, height, width) {}
 
-  int32_t& c() { return d[0]; }
+#if NV_TENSORRT_MAJOR >= 10
+  using DimT = int64_t;
+#else
+  using DimT = int32_t;
+#endif
 
-  int32_t c() const { return d[0]; }
+  DimT& c() { return d[0]; }
+  DimT c() const { return d[0]; }
 
-  int32_t& h() { return d[1]; }
+  DimT& h() { return d[1]; }
+  DimT h() const { return d[1]; }
 
-  int32_t h() const { return d[1]; }
-
-  int32_t& w() { return d[2]; }
-
-  int32_t w() const { return d[2]; }
+  DimT& w() { return d[2]; }
+  DimT w() const { return d[2]; }
 };
 }  // namespace nvinfer1

@@ -55,7 +55,7 @@ __global__ void cmp(const int nthreads, const float *in_data,
 }
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 int ArgMax1Plugin::enqueue(int batchSize, const void *const *inputs,
                            void **outputs, void *workspace,
                            cudaStream_t stream) {

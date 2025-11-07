@@ -1,0 +1,11 @@
+[Unit]
+Description=Set Jetson Performance Mode (MAXN) and Clocks
+
+[Service]
+Type=oneshot
+ExecStartPre=nvpmodel -m 0
+ExecStart=jetson_clocks
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

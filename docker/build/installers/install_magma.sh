@@ -25,7 +25,7 @@ if ldconfig -p | grep -q magma ; then
     exit 0
 fi
 
-: ${INSTALL_MODE:=download}
+: ${INSTALL_MODE:=build}
 # : ${APOLLO_DIST:=stable} # re-enable this if differentiation is needed.
 
 GPU_ARCHS=
@@ -48,7 +48,7 @@ apt_get_update_and_install \
     gfortran
 
 TARGET_ARCH="$(uname -m)"
-VERSION="2.5.4"
+VERSION="2.7.1"
 
 if [[ "${INSTALL_MODE}" == "download" ]]; then
     if [[ "${TARGET_ARCH}" == "x86_64" ]]; then

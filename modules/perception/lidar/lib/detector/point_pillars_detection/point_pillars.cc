@@ -486,8 +486,8 @@ void PointPillars::OnnxToTRTModel(
 
   // create the builder
   const auto explicit_batch =
-      static_cast<uint32_t>(kBatchSize) << static_cast<uint32_t>(
-          nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
+      (1U << static_cast<uint32_t>(
+                nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH));
   nvinfer1::IBuilder* builder = nvinfer1::createInferBuilder(g_logger_);
   nvinfer1::INetworkDefinition* network =
       builder->createNetworkV2(explicit_batch);
@@ -500,18 +500,50 @@ void PointPillars::OnnxToTRTModel(
     exit(EXIT_FAILURE);
   }
 
-  // Build the engine
-  builder->setMaxBatchSize(kBatchSize);
   nvinfer1::IBuilderConfig* config = builder->createBuilderConfig();
+#if NV_TENSORRT_MAJOR >= 10
+  // Set workspace memory and build serialized network (TRT10)
+  config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
+                             static_cast<size_t>(1ULL << 20));
+  auto plan = builder->buildSerializedNetwork(*network, *config);
+  if (!plan) {
+    std::string msg("failed to build serialized network");
+    g_logger_.log(nvinfer1::ILogger::Severity::kERROR, msg.c_str());
+    exit(EXIT_FAILURE);
+  }
+  auto runtime = nvinfer1::createInferRuntime(g_logger_);
+  if (!runtime) {
+    std::string msg("failed to create TensorRT runtime");
+    g_logger_.log(nvinfer1::ILogger::Severity::kERROR, msg.c_str());
+    exit(EXIT_FAILURE);
+  }
+  nvinfer1::ICudaEngine* engine =
+      runtime->deserializeCudaEngine(plan->data(), plan->size());
+  if (!engine) {
+    std::string msg("failed to deserialize CUDA engine");
+    g_logger_.log(nvinfer1::ILogger::Severity::kERROR, msg.c_str());
+    exit(EXIT_FAILURE);
+  }
+  *engine_ptr = engine;
+  // Cleanup
+  delete runtime;
+  delete plan;
+  delete parser;
+  delete network;
+  delete config;
+  delete builder;
+#else
+  // TRT < 10 fallback
+  builder->setMaxBatchSize(kBatchSize);
   config->setMaxWorkspaceSize(1 << 20);
   nvinfer1::ICudaEngine* engine =
       builder->buildEngineWithConfig(*network, *config);
-
   *engine_ptr = engine;
   parser->destroy();
   network->destroy();
   config->destroy();
   builder->destroy();
+#endif
 }
 
 void PointPillars::PreprocessCPU(const float* in_points_array,
@@ -689,3 +721,4 @@ void PointPillars::DoInference(const float* in_points_array,
 }  // namespace lidar
 }  // namespace perception
 }  // namespace apollo
+

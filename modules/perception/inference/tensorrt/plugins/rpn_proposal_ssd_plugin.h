@@ -28,7 +28,7 @@ namespace inference {
 // Custom layer for RPNProposalSSD operation, i.e.
 // anchor generation and nms filtering
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 class RPNProposalSSDPlugin : public nvinfer1::IPlugin {
  public:
   RPNProposalSSDPlugin(

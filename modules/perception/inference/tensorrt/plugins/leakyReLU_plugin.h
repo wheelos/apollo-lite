@@ -28,7 +28,7 @@ namespace perception {
 namespace inference {
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 class ReLUPlugin : public nvinfer1::IPlugin {
  public:
   ReLUPlugin(const StReLUParameter &param, const nvinfer1::Dims &in_dims) {

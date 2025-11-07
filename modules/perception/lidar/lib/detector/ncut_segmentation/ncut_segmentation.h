@@ -19,9 +19,9 @@
 #include <string>
 #include <vector>
 
-#ifdef DEBUG_NCUT
-#include "pcl/visualization/pcl_visualizer.h"
-#endif
+// #ifdef DEBUG_NCUT
+// #include "pcl/visualization/pcl_visualizer.h"
+// #endif
 
 #include "modules/perception/base/object.h"
 #include "modules/perception/lib/thread/thread_worker.h"
@@ -116,17 +116,17 @@ class NCutSegmentation : public BaseLidarDetector {
 
   NCutConfig ncut_config_;
 
-#ifdef DEBUG_NCUT
-  pcl::visualization::PCLVisualizer::Ptr _viewer;
-  CPointCloudPtr _rgb_cloud;
-  char _viewer_id[128];
-  int _viewer_count;
-  void VisualizePointCloud(const base::PointFCloudPtr& cloud);
-  void VisualizeSegments(const std::vector<base::ObjectPtr>& segments);
-  void VisualizeComponents(
-      const base::PointFCloudPtr& cloud,
-      const std::vector<std::vector<int>>& component_points);
-#endif
+// #ifdef DEBUG_NCUT
+//   pcl::visualization::PCLVisualizer::Ptr _viewer;
+//   CPointCloudPtr _rgb_cloud;
+//   char _viewer_id[128];
+//   int _viewer_count;
+//   void VisualizePointCloud(const base::PointFCloudPtr& cloud);
+//   void VisualizeSegments(const std::vector<base::ObjectPtr>& segments);
+//   void VisualizeComponents(
+//       const base::PointFCloudPtr& cloud,
+//       const std::vector<std::vector<int>>& component_points);
+// #endif
 };  // class NCutSegmentation
 
 }  // namespace lidar
