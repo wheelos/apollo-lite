@@ -22,10 +22,10 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
 # TODO(All): detect if the installed version consists with the required version
-# if [[ -e '/usr/local/libtorch/lib/libtorch.so' ]]; then
-#   warning "LibTorch already installed, re-installation skipped."
-#   exit 0
-# fi
+if [[ -e '/usr/local/libtorch/lib/libtorch.so' ]]; then
+  warning "LibTorch already installed, re-installation skipped."
+  exit 0
+fi
 
 PYTORCH_VERSION="2.6.0"
 TARGET_ARCH="$(uname -m)"
@@ -98,10 +98,10 @@ function install_libtorch_cpp() {
     info "Executing aarch64 strategy..."
     if ! _install_libtorch_from_wheel_aarch64; then
       warning "Pre-compiled wheel installation failed. Falling back to building from source."
-      # if ! _build_libtorch_from_source_aarch64; then
-      #   error "LibTorch installation failed after both attempts."
-      #   return 1
-      # fi
+      if ! _build_libtorch_from_source_aarch64; then
+        error "LibTorch installation failed after both attempts."
+        return 1
+      fi
     fi
     # Common step for aarch64: Copy from Python site-packages
     info "Copying LibTorch C++ headers and libraries to final destination..."

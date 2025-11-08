@@ -1,4 +1,4 @@
-FROM wheelos/apollo:cuda12.6-cudnn8-trt10-devel-22.04-aarch64-20251103_1226
+FROM wheelos/apollo:cuda12.6-cudnn9-trt10-devel-22.04-aarch64-20251103_1226
 ENV CUDA_LITE 12.6
 
 ENV CUDA_VERSION 12.6.0

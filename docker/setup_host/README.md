@@ -12,3 +12,22 @@ Please use the following command to check the device (_e.g. video0_) attributes:
 
 `udevadm info --attribute-walk --name /dev/video0`
 
+---
+
+## Run `config_system.sh`
+
+#### **Standard Installation (with GUI)**:
+
+This command executes all configurations but skips the step of disabling the graphical user interface (GUI). It is suitable for your development machine or for vehicles that require local debugging with a display.
+
+```bash
+sudo ./config_system.sh
+```
+
+#### **Headless Mode Installation (GUI disabled)**:
+
+This command executes all configurations and sets the system to boot into command-line mode. This frees up maximum system resources for your autonomous driving application and is suitable for final deployment on in-vehicle computing units.
+
+```bash
+sudo SETUP_HEADLESS_MODE=yes ./config_system.sh
+```
