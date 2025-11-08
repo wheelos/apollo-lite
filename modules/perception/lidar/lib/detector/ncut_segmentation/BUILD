@@ -42,8 +42,7 @@ cc_library(
         "//modules/perception/lidar/lib/detector/ncut_segmentation/proto:ncut_param_cc_proto",
         "//modules/perception/lidar/lib/interface:base_lidar_detector",
         "//modules/perception/pipeline:stage",
-        "@local_config_pcl//:common",
-        # "@local_config_vtk//:vtk",
+        "@local_config_pcl//:common"
     ],
 )
 

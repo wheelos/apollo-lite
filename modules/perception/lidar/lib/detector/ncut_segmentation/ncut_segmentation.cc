@@ -17,14 +17,14 @@
 #include "modules/perception/lidar/lib/detector/ncut_segmentation/ncut_segmentation.h"
 
 #include <algorithm>
-#include <limits>
-#include <map>
+#include <memory>
+#include <numeric>
 
-#include <omp.h>
-
-#include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "modules/common/util/file.h"
+#include "modules/perception/common/perception_gflags.h"
 #include "modules/perception/lib/config_manager/config_manager.h"
+#include "modules/perception/lib/registerer/registerer.h"
 
 namespace apollo {
 namespace perception {
@@ -65,7 +65,9 @@ bool NCutSegmentation::Init(const LidarDetectorInitOptions& options) {
   }
   int num_threads = 1;
 #pragma omp parallel
-  { num_threads = omp_get_num_threads(); }
+  {
+    num_threads = omp_get_num_threads();
+  }
 
   AINFO << "number threads " << num_threads;
   _segmentors.resize(num_threads);
@@ -110,16 +112,6 @@ bool NCutSegmentation::Init(const LidarDetectorInitOptions& options) {
   });
 
   worker_.Start();
-
-#ifdef DEBUG_NCUT
-  _viewer = pcl::visualization::PCLVisualizer::Ptr(
-      new pcl::visualization::PCLVisualizer("3D Viewer"));
-  _viewer->setBackgroundColor(0, 0, 0);
-  _viewer->addCoordinateSystem(1.0);
-  _viewer->initCameraParameters();
-  _viewer_count = 0;
-  _rgb_cloud = CPointCloudPtr(new CPointCloud);
-#endif
 
   AINFO << "NCutSegmentation init success, num_threads: " << num_threads;
   return true;
@@ -158,7 +150,9 @@ bool NCutSegmentation::Init(const StageConfig& stage_config) {
   }
   int num_threads = 1;
 #pragma omp parallel
-  { num_threads = omp_get_num_threads(); }
+  {
+    num_threads = omp_get_num_threads();
+  }
 
   AINFO << "number threads " << num_threads;
   _segmentors.resize(num_threads);
@@ -204,27 +198,21 @@ bool NCutSegmentation::Init(const StageConfig& stage_config) {
 
   worker_.Start();
 
-#ifdef DEBUG_NCUT
-  _viewer = pcl::visualization::PCLVisualizer::Ptr(
-      new pcl::visualization::PCLVisualizer("3D Viewer"));
-  _viewer->setBackgroundColor(0, 0, 0);
-  _viewer->addCoordinateSystem(1.0);
-  _viewer->initCameraParameters();
-  _viewer_count = 0;
-  _rgb_cloud = CPointCloudPtr(new CPointCloud);
-#endif
+  if (publish_debug_info_) {
+    const std::string debug_topic = "/apollo/perception/ncut_debug_info";
+    debug_writer_ = node_->CreateWriter<NCutDebugInfo>(debug_topic);
+    AINFO << "NCutSegmentation: Publishing debug info on topic " << debug_topic;
+  }
 
   AINFO << "NCutSegmentation init success, num_threads: " << num_threads;
   return true;
 }
 
 bool NCutSegmentation::Process(DataFrame* data_frame) {
-  if (data_frame == nullptr)
-    return false;
+  if (data_frame == nullptr) return false;
 
   LidarFrame* lidar_frame = data_frame->lidar_frame;
-  if (lidar_frame == nullptr)
-    return false;
+  if (lidar_frame == nullptr) return false;
 
   LidarDetectorOptions options;
   bool res = Detect(options, lidar_frame);
@@ -251,7 +239,11 @@ bool NCutSegmentation::Configure(std::string param_file) {
   roi_filter_str_ = seg_param_.roi_filter();
   ncut_param_ = seg_param_.ncut_param();
   do_classification_ = seg_param_.do_classification();
+  publish_debug_info_ = seg_param_.publish_debug_info();
+
   AINFO << "NCut Segmentation " << seg_param_.DebugString();
+  AINFO << "NCut debug publishing: "
+        << (publish_debug_info_ ? "enabled" : "disabled");
   return true;
 }
 
@@ -277,7 +269,7 @@ bool NCutSegmentation::GetConfigs(std::string* param_file) {
 }
 
 bool NCutSegmentation::Detect(const LidarDetectorOptions& options,
-                               LidarFrame* frame) {
+                              LidarFrame* frame) {
   // check input
   if (frame == nullptr) {
     AERROR << "Input null frame ptr.";
@@ -309,12 +301,20 @@ bool NCutSegmentation::Detect(const LidarDetectorOptions& options,
   double start_t = omp_get_wtime();
   int num_threads = 1;
 #pragma omp parallel
-  { num_threads = omp_get_num_threads(); }
+  {
+    num_threads = omp_get_num_threads();
+  }
 
   AINFO << "input point cloud: " << original_cloud_->size() << " points";
-#ifdef DEBUG_NCUT
-  VisualizePointCloud(original_cloud_);
-#endif
+
+  std::unique_ptr<NCutDebugInfo> debug_msg = nullptr;
+  if (publish_debug_info_ && debug_writer_ != nullptr) {
+    debug_msg = std::make_unique<NCutDebugInfo>();
+    debug_msg->mutable_header()->set_timestamp_sec(frame->timestamp);
+    debug_msg->mutable_header()->set_frame_id(frame->sensor_info.name());
+    debug_msg->mutable_header()->set_lidar_timestamp(frame->timestamp);
+    FillProtoPointCloud(*original_cloud_, debug_msg->mutable_original_cloud());
+  }
 
   if (remove_roi_) {
     AINFO << "remove roi and remove ground for ncut segmentation";
@@ -333,52 +333,34 @@ bool NCutSegmentation::Detect(const LidarDetectorOptions& options,
                                        lidar_frame_ref_->secondary_indices);
   }
 
-#ifdef DEBUG_NCUT
-  // filter_by_ground(cloud, non_ground_indices, &cloud_above_ground);
-  AINFO << "filter ground, elapsed time: " << omp_get_wtime() - start_t
-        << cloud_above_ground->size() << " points left";
-  start_t = omp_get_wtime();
-  VisualizePointCloud(cloud_above_ground);
-#endif
+  if (debug_msg) {
+    FillProtoPointCloud(*cloud_above_ground,
+                        debug_msg->mutable_cloud_above_ground());
+  }
 
   // .3 filter vehicle
   base::PointFCloudPtr cloud_after_car_filter;
   ObstacleFilter(cloud_above_ground, vehicle_filter_cell_size_, false,
                  &cloud_after_car_filter, segments);
-#ifdef DEBUG_NCUT
-  AINFO << "filter vehicle, elapsed time: " << omp_get_wtime() - start_t
-        << "filter vehicle: " << cloud_after_car_filter->size()
-        << " points left";
-  start_t = omp_get_wtime();
-  VisualizePointCloud(cloud_after_car_filter);
-#endif
+  if (debug_msg) {
+    FillProtoPointCloud(*cloud_after_car_filter,
+                        debug_msg->mutable_cloud_after_vehicle_filter());
+  }
 
   // .4 filter pedestrian
   base::PointFCloudPtr cloud_after_people_filter;
   ObstacleFilter(cloud_after_car_filter, pedestrian_filter_cell_size_, true,
                  &cloud_after_people_filter, segments);
 
-#ifdef DEBUG_NCUT
-  AINFO << "filter pedestrian, elapsed time: " << omp_get_wtime() - start_t;
-  start_t = omp_get_wtime();
-  AINFO << "filter pedestrian: " << cloud_after_people_filter->size()
-        << " points left";
-  VisualizePointCloud(cloud_after_people_filter);
-  AINFO << "after filter car/pedestrian #segments " << segments->size();
-// VisualizeSegments(*segments);
-#endif
+  if (debug_msg) {
+    FillProtoPointCloud(*cloud_after_people_filter,
+                        debug_msg->mutable_cloud_for_clustering());
+  }
 
   // .5 partition into small regions
   std::vector<base::PointFCloudPtr> cloud_components;
   PartitionConnectedComponents(cloud_after_people_filter, partition_cell_size_,
                                &cloud_components);
-
-#ifdef DEBUG_NCUT
-  AINFO << "partition small regions, elapsed time: "
-        << omp_get_wtime() - start_t;
-  start_t = omp_get_wtime();
-  AINFO << "partition " << cloud_components.size() << " components";
-#endif
 
   std::vector<bool> cloud_outlier_flag(cloud_components.size());
 
@@ -407,10 +389,7 @@ bool NCutSegmentation::Detect(const LidarDetectorOptions& options,
     obj->lidar_supplement.cloud = *pc;
     _outliers->push_back(obj);
   }
-#ifdef DEBUG_NCUT
-  AINFO << "filter outlier, elapsed time: " << omp_get_wtime() - start_t;
-  start_t = omp_get_wtime();
-#endif
+
   // .6 graph cut each
   std::vector<std::vector<base::PointFCloudPtr>> threads_segment_pcs(
       num_threads);
@@ -444,11 +423,7 @@ bool NCutSegmentation::Detect(const LidarDetectorOptions& options,
       }
     }
   }
-#ifdef DEBUG_NCUT
-  ADEBUG << "parallel normalized cut, elapsed time: "
-         << omp_get_wtime() - start_t;
-  start_t = omp_get_wtime();
-#endif
+
   // .6.2 aggregate results
   std::vector<int> segment_offset(num_threads,
                                   static_cast<int>(segments->size()));
@@ -496,10 +471,27 @@ bool NCutSegmentation::Detect(const LidarDetectorOptions& options,
   AINFO << "final #segments " << segments->size();
   AINFO << "final #outliers " << _outliers->size();
 
-#ifdef DEBUG_NCUT
-  VisualizeSegments(*segments);
-  VisualizeSegments(*_outliers);
-#endif
+  if (debug_msg) {
+    // Fill in the final segmented obstacles
+    for (const auto& obj_ptr : *segments) {
+      if (obj_ptr) {
+        auto* dbg_obj = debug_msg->add_final_segments();
+        FillProtoPointCloud(obj_ptr->lidar_supplement.cloud,
+                            dbg_obj->mutable_cloud());
+        dbg_obj->set_label(base::ObjectTypeToString(obj_ptr->type));
+      }
+    }
+    // Fill in the identified outliers
+    for (const auto& obj_ptr : *_outliers) {
+      if (obj_ptr) {
+        auto* dbg_obj = debug_msg->add_outliers();
+        FillProtoPointCloud(obj_ptr->lidar_supplement.cloud,
+                            dbg_obj->mutable_cloud());
+        dbg_obj->set_label("OUTLIER");
+      }
+    }
+    debug_writer_->Write(std::move(debug_msg));
+  }
 
   return true;
 }
@@ -544,11 +536,6 @@ void NCutSegmentation::ObstacleFilter(const base::PointFCloudPtr& in_cloud,
   std::vector<std::vector<int>> component_points;
   std::vector<int> num_cells_per_components;
   FFfilter.GetSegments(in_cloud, &component_points, &num_cells_per_components);
-
-#ifdef DEBUG_NCUT
-  AINFO << "flood fill: " << component_points.size() << " components";
-// VisualizeComponents(in_cloud, component_points);
-#endif
 
   const unsigned int min_num_points = 50;
   const int num_components = static_cast<int>(component_points.size());
@@ -637,104 +624,22 @@ bool NCutSegmentation::IsOutlier(const base::PointFCloudPtr& in_cloud) {
   return false;
 }
 
-#ifdef DEBUG_NCUT
-void NCutSegmentation::VisualizePointCloud(const base::PointFCloudPtr& cloud) {
-  // _viewer->removePointCloud(_viewer_id, 0);
-  _viewer->removeAllPointClouds(0);
-  _viewer->removeAllShapes(0);
-  _rgb_cloud->clear();
-  for (size_t i = 0; i < cloud->size(); ++i) {
-    CPoint pt;
-    pt.x = (*cloud)[i].x;
-    pt.y = (*cloud)[i].y;
-    pt.z = (*cloud)[i].z;
-    pt.r = 255;
-    pt.g = 255;
-    pt.b = 255;
-    _rgb_cloud->push_back(pt);
-  }
-  snprintf(_viewer_id, sizeof(_viewer_id), "vis%06d", _viewer_count++);
-  _viewer->addPointCloud(_rgb_cloud, _viewer_id, 0);
-  _viewer->spin();
-}
-
-void NCutSegmentation::VisualizeSegments(
-    const std::vector<base::ObjectPtr>& segments) {
-  // _viewer->removePointCloud(_viewer_id, 0);
-  unsigned int seed;
-  _viewer->removeAllPointClouds(0);
-  _viewer->removeAllShapes(0);
-  _rgb_cloud->clear();
-  for (size_t i = 0; i < segments.size(); ++i) {
-    int red = 50 + rand_r(&seed) % 206;
-    int green = 50 + rand_r(&seed) % 206;
-    int blue = 50 + rand_r(&seed) % 206;
-    const base::PointFCloud& pc = segments[i]->lidar_supplement.cloud;
-    for (size_t j = 0; j < pc.size(); ++j) {
-      CPoint pt;
-      pt.x = pc[j].x;
-      pt.y = pc[j].y;
-      pt.z = pc[j].z;
-      pt.r = static_cast<uint8_t>(red);
-      pt.g = static_cast<uint8_t>(green);
-      pt.b = static_cast<uint8_t>(blue);
-      _rgb_cloud->push_back(pt);
+void NCutSegmentation::FillProtoPointCloud(
+    const base::PointFCloud& cloud,
+    apollo::perception::PointCloud* proto_cloud) const {
+  proto_cloud->clear_point();
+  proto_cloud->set_height(1);
+  proto_cloud->set_width(cloud.size());
+  for (const auto& pt : cloud) {
+    auto* proto_pt = proto_cloud->add_point();
+    proto_pt->set_x(pt.x);
+    proto_pt->set_y(pt.y);
+    proto_pt->set_z(pt.z);
+    if (cloud.points_attribute().has_intensity()) {
+      proto_pt->set_intensity(pt.intensity);
     }
   }
-  snprintf(_viewer_id, sizeof(_viewer_id), "vis%06d", _viewer_count++);
-  _viewer->addPointCloud(_rgb_cloud, _viewer_id, 0);
-  _viewer->spin();
 }
-
-void NCutSegmentation::VisualizeComponents(
-    const base::PointFCloudPtr& cloud,
-    const std::vector<std::vector<int>>& component_points) {
-  // _viewer->removePointCloud(_viewer_id, 0);
-  unsigned int seed;
-  _viewer->removeAllPointClouds(0);
-  _viewer->removeAllShapes(0);
-  _rgb_cloud->clear();
-  std::vector<CPoint> centers(component_points.size());
-  for (size_t i = 0; i < component_points.size(); ++i) {
-    int red = 50 + rand_r(&seed) % 206;
-    int green = 50 + rand_r(&seed) % 206;
-    int blue = 50 + rand_r(&seed) % 206;
-    const int num_points = static_cast<int>(component_points[i].size());
-    CPoint center;
-    center.x = 0.f;
-    center.y = 0.f;
-    center.z = 0.f;
-    for (size_t j = 0; j < component_points[i].size(); ++j) {
-      CPoint pt;
-      int pid = component_points[i][j];
-      pt.x = (*cloud)[pid].x;
-      pt.y = (*cloud)[pid].y;
-      pt.z = (*cloud)[pid].z;
-      pt.r = static_cast<uint8_t>(red);
-      pt.g = static_cast<uint8_t>(green);
-      pt.b = static_cast<uint8_t>(blue);
-      _rgb_cloud->push_back(pt);
-      center.x += pt.x;
-      center.y += pt.y;
-      center.z += pt.z;
-    }
-    center.x /= static_cast<float>(num_points);
-    center.y /= static_cast<float>(num_points);
-    center.z /= static_cast<float>(num_points);
-    centers[i] = center;
-  }
-  snprintf(_viewer_id, sizeof(_viewer_id), "vis%06d", _viewer_count++);
-  _viewer->addPointCloud(_rgb_cloud, _viewer_id, 0);
-  for (size_t i = 0; i < component_points.size(); ++i) {
-    char text[256];
-    char text_id[256];
-    snprintf(text, sizeof(text), "%zu", i);
-    snprintf(text_id, sizeof(text_id), "c%zu", i);
-    _viewer->addText3D(text, centers[i], 0.3, 1.0, 1.0, 1.0, text_id, 0);
-  }
-  _viewer->spin();
-}
-#endif
 
 PERCEPTION_REGISTER_LIDARDETECTOR(NCutSegmentation);
 
