@@ -43,7 +43,8 @@ class Plane : public RenderableObject {
     }
   }
 
-  GLenum GetPrimitiveType(void) const override { return GL_QUADS; }
+  // Use triangles to avoid culling flipping issues on triangle strips
+  GLenum GetPrimitiveType(void) const override { return GL_TRIANGLES; }
   GLsizei texWidth(void) const { return texture_->width(); }
   GLsizei texHeight(void) const { return texture_->height(); }
 
@@ -51,8 +52,10 @@ class Plane : public RenderableObject {
   bool FillVertexBuffer(GLfloat* pBuffer) override;
   void Draw(void) override;
   void SetupAllAttrPointer(void) override;
+  void SetupExtraUniforms(void) override;
 
  private:
   GLuint texture_id_;
   std::shared_ptr<Texture> texture_;
 };
+
