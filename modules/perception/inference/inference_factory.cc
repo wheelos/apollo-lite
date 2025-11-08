@@ -18,7 +18,6 @@
 
 #include "modules/perception/inference/libtorch/torch_net.h"
 #include "modules/perception/inference/onnx/libtorch_obstacle_detector.h"
-// #include "modules/perception/inference/paddlepaddle/paddle_net.h"
 #include "modules/perception/inference/tensorrt/rt_net.h"
 
 namespace apollo {
@@ -40,9 +39,6 @@ Inference *CreateInferenceByName(const std::string &name,
     return new TorchNet(proto_file, outputs, inputs);
   } else if (name == "Obstacle") {
     return new ObstacleDetector(proto_file, weight_file, outputs, inputs);
-  } else if (name == "PaddleNet") {
-    // return new PaddleNet(proto_file, weight_file, outputs, inputs);
-    throw std::exception();
   }
   return nullptr;
 }
