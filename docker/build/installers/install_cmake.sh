@@ -60,7 +60,7 @@ DOWNLOAD_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSIO
 # Define installation directory based on SYSROOT_DIR
 # Assuming SYSROOT_DIR is defined in installer_base.sh, e.g., /opt/apollo/sysroot
 CMAKE_INSTALL_DIR="${SYSROOT_DIR}/cmake-${CMAKE_VERSION}"
-CMAKE_BIN_PATH="${SYSROOT_DIR}/bin/cmake"
+CMAKE_BIN_PATH="${CMAKE_INSTALL_DIR}/bin/cmake"
 
 # Create the installation directory if it does not exist, already created by installer_base.sh, here we confirm again
 if [[ ! -d "${SYSROOT_DIR}" ]]; then

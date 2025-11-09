@@ -19,7 +19,7 @@ message NCutSegmentationParam {
   optional bool remove_roi = 13 [default = true];
   optional bool do_classification = 14 [default = true];
   optional NCutParam ncut_param = 15;
-  optional bool publish_debug_info = 13 [default = false];
+  optional bool publish_debug_info = 16 [default = false];
 }
 
 message NCutParam {

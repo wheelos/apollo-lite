@@ -20,8 +20,7 @@
 #include <memory>
 #include <numeric>
 
-#include "cyber/common/log.h"
-#include "modules/common/util/file.h"
+#include "cyber/cyber.h"
 #include "modules/perception/common/perception_gflags.h"
 #include "modules/perception/lib/config_manager/config_manager.h"
 #include "modules/perception/lib/registerer/registerer.h"
@@ -127,6 +126,8 @@ bool NCutSegmentation::Init(const StageConfig& stage_config) {
     AERROR << "failed to load ncut config.";
     return false;
   }
+
+  node_ = cyber::CreateNode("ncut");
 
   // init ground detector
   ground_detector_ =
@@ -311,7 +312,7 @@ bool NCutSegmentation::Detect(const LidarDetectorOptions& options,
   if (publish_debug_info_ && debug_writer_ != nullptr) {
     debug_msg = std::make_unique<NCutDebugInfo>();
     debug_msg->mutable_header()->set_timestamp_sec(frame->timestamp);
-    debug_msg->mutable_header()->set_frame_id(frame->sensor_info.name());
+    debug_msg->mutable_header()->set_frame_id(frame->sensor_info.name);
     debug_msg->mutable_header()->set_lidar_timestamp(frame->timestamp);
     FillProtoPointCloud(*original_cloud_, debug_msg->mutable_original_cloud());
   }
@@ -478,7 +479,6 @@ bool NCutSegmentation::Detect(const LidarDetectorOptions& options,
         auto* dbg_obj = debug_msg->add_final_segments();
         FillProtoPointCloud(obj_ptr->lidar_supplement.cloud,
                             dbg_obj->mutable_cloud());
-        dbg_obj->set_label(base::ObjectTypeToString(obj_ptr->type));
       }
     }
     // Fill in the identified outliers
@@ -626,7 +626,7 @@ bool NCutSegmentation::IsOutlier(const base::PointFCloudPtr& in_cloud) {
 
 void NCutSegmentation::FillProtoPointCloud(
     const base::PointFCloud& cloud,
-    apollo::perception::PointCloud* proto_cloud) const {
+    apollo::drivers::PointCloud* proto_cloud) const {
   proto_cloud->clear_point();
   proto_cloud->set_height(1);
   proto_cloud->set_width(cloud.size());
@@ -635,9 +635,6 @@ void NCutSegmentation::FillProtoPointCloud(
     proto_pt->set_x(pt.x);
     proto_pt->set_y(pt.y);
     proto_pt->set_z(pt.z);
-    if (cloud.points_attribute().has_intensity()) {
-      proto_pt->set_intensity(pt.intensity);
-    }
   }
 }
 

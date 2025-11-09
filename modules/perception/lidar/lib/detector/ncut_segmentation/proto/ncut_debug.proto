@@ -2,13 +2,13 @@ syntax = "proto2";
 
 package apollo.perception.lidar;
 
-import "modules/common/proto/header.proto";
-import "modules/perception/proto/perception_obstacle.proto";
+import "modules/common_msgs/basic_msgs/header.proto";
+import "modules/common_msgs/sensor_msgs/pointcloud.proto";
 
 // Debug information for a single segmented object
 message DebugObject {
   // Segmented point cloud
-  optional apollo.perception.PointCloud cloud = 1;
+  optional apollo.drivers.PointCloud cloud = 1;
   // Label assigned by algorithm (e.g., "VEHICLE", "PEDESTRIAN", "UNKNOWN")
   optional string label = 2;
 }
@@ -18,16 +18,16 @@ message NCutDebugInfo {
   optional apollo.common.Header header = 1;
 
   // 0. Original input point cloud (before ROI and ground filtering)
-  optional apollo.perception.PointCloud original_cloud = 2;
+  optional apollo.drivers.PointCloud original_cloud = 2;
 
   // 1. Point cloud after ground removal
-  optional apollo.perception.PointCloud cloud_above_ground = 3;
+  optional apollo.drivers.PointCloud cloud_above_ground = 3;
 
   // 2. Remaining point cloud after filtering out vehicle class
-  optional apollo.perception.PointCloud cloud_after_vehicle_filter = 4;
+  optional apollo.drivers.PointCloud cloud_after_vehicle_filter = 4;
 
   // 3. Point cloud used for clustering after filtering pedestrians/non-motor vehicles
-  optional apollo.perception.PointCloud cloud_for_clustering = 5;
+  optional apollo.drivers.PointCloud cloud_for_clustering = 5;
 
   // 4. Final recognized obstacle segments
   repeated DebugObject final_segments = 6;

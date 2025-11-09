@@ -81,7 +81,7 @@ class NCutSegmentation : public BaseLidarDetector {
   base::ObjectType Label2Type(const std::string& label);
 
   void FillProtoPointCloud(const base::PointFCloud& cloud,
-                           apollo::perception::PointCloud* proto_cloud) const;
+                           apollo::drivers::PointCloud* proto_cloud) const;
 
   // ground detector for background segmentation
   BaseGroundDetector* ground_detector_;
@@ -121,6 +121,7 @@ class NCutSegmentation : public BaseLidarDetector {
 
   bool publish_debug_info_ = false;
   std::shared_ptr<apollo::cyber::Writer<NCutDebugInfo>> debug_writer_ = nullptr;
+  std::shared_ptr<apollo::cyber::Node> node_;
 };
 
 }  // namespace lidar
