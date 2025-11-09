@@ -58,3 +58,4 @@ class Plane : public RenderableObject {
   GLuint texture_id_;
   std::shared_ptr<Texture> texture_;
 };
+

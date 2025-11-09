@@ -1,0 +1,20 @@
+syntax = "proto2";
+
+package apollo.drivers.yg_radar;
+
+import "modules/common_msgs/drivers_msgs/can_card_parameter.proto";
+
+message YgRadarConfig {
+  optional apollo.drivers.canbus.CANCardParameter can_card_parameter = 1;
+  optional bool enable_debug_mode = 2 [default = false];
+  optional bool enable_receiver_log = 3 [default = false];
+  optional bool enable_sender_log = 4 [default = false];
+  // Offset to add to the CAN message ID defined in the radar manual.
+  // you should confirm the message id with your radar supplier.
+  // 0 means no offset. and will receive message 0x540~0x560
+  // if receive message id between 0x580~0x5A0, then set offset to 0x040
+  // if receive message id between 0x640~0x660, then set offset to 0x100
+  // if receive message id between 0x680~0x6A0, then set offset to 0x140
+  optional int32 can_message_id_offset = 5 [default = 0];
+  optional string radar_channel = 6;
+}

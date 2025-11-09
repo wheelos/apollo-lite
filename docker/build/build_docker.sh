@@ -47,7 +47,7 @@ IMAGE_IN=
 IMAGE_OUT=
 DEV_IMAGE_IN=
 
-LOCAL_HTTP_ADDR=${LOCAL_HTTP_ADDR:-http://172.17.0.1:8388}
+LOCAL_HTTP_ADDR=${LOCAL_HTTP_ADDR:-http://172.17.0.1:8080/build/${HOST_ARCH}}
 
 function fail() {
     echo "Error: $1" >&2
