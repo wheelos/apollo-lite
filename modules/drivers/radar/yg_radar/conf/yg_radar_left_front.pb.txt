@@ -1,0 +1,19 @@
+can_card_parameter {
+  brand: SOCKET_CAN_RAW
+  channel_id: CHANNEL_ID_ONE
+  num_ports: 8
+  interface: NATIVE
+}
+
+enable_debug_mode: false
+enable_receiver_log: false
+enable_sender_log: false
+
+# Offset to add to the CAN message ID defined in the radar manual.
+# you should confirm the message id with your radar supplier.
+# 0 means no offset. and will receive message 0x540~0x560
+# if receive message id between 0x580~0x5A0, then set offset to 0x040
+# if receive message id between 0x640~0x660, then set offset to 0x100
+# if receive message id between 0x680~0x6A0, then set offset to 0x140
+can_message_id_offset: 0x100
+radar_channel: "/apollo/sensor/yg_radar/left_front"
