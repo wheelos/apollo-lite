@@ -48,6 +48,10 @@ DEV_INSIDE="in-dev-docker" # Hostname inside the container
 # Ensure cache dir exists early
 [ -d "${CACHE_ROOT_DIR}" ] || mkdir -p "${CACHE_ROOT_DIR}"
 
+# TODO(daohu527): Ensure calibration dir exists! need deprecated
+CALIBRATION_DIR="${APOLLO_ROOT_DIR}/modules/calibration/data"
+[ -d "${CALIBRATION_DIR}" ] || mkdir -p "${CALIBRATION_DIR}"
+
 # --- Constants: Host Environment ---
 SUPPORTED_ARCHS=(x86_64 aarch64)
 TARGET_ARCH="$(uname -m)"

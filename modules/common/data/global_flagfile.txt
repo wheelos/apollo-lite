@@ -19,4 +19,4 @@
 # modified for multi-host development scenarios if needed.
 --server_ports=8888
 
---map_dir=/apollo/modules/map/data/demo
+--map_dir=/apollo/modules/map/data/borregas_ave
