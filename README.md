@@ -1,17 +1,25 @@
-# Welcome to Apollo-Lite's GitHub Page!
+<div align="center">
 
-[Apollo-Lite](https://github.com/wheelos/apollo-lite) is a high-performance,
-flexible architecture designed to accelerate the development, testing, and
-deployment of Autonomous Vehicles.
+<h1>
+  <a href="#"><img src="docs/images/wheelos.jpg" width="100%"/></a>
+</h1>
 
----
+[English](README.md) | [中文](README.zh-cn.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
 
-> We choose to go to the moon in this decade and do the other things, not
-> because they are easy, but because they are hard.
->
-> -- John F. Kennedy, 1962
+<p>
+  <a href="https://github.com/wheelos/apollo-lite/actions/workflows/lint-format.yml?query=main" alt="GitHub Actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/wheelos/apollo-lite/lint-format.yml?branch=main">
+  </a>
+  <a href='https://readthedocs.org/projects/apollo-lite/badge/?version=latest' alt='Documentation Status'>
+      <img src='https://readthedocs.org/projects/apollo-lite/badge/?version=latest' alt='Documentation Status' />
+  </a>
+  <a href="https://github.com/wheelos/apollo-lite/blob/main/LICENSE" alt="License">
+    <img src="https://img.shields.io/github/license/wheelos/apollo-lite">
+  </a>
+</p>
 
----
+A high-performance autonomous driving system
+</div>
 
 ## Table of Contents
 
