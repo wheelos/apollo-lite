@@ -239,7 +239,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       if (HandleGnssBestpos(
               reinterpret_cast<const novatel::BestPos*>(payload_data), gps_week,
               gps_millisecs)) {
-        auto msg_ptr = std::make_shared<apollo::drivers::gnss::Gnss>();
+        auto msg_ptr = std::make_shared<apollo::drivers::gnss::GnssBestPose>();
         msg_ptr->CopyFrom(bestpos_);
         messages.emplace_back(MessageType::BEST_GNSS_POS, msg_ptr);
       }
