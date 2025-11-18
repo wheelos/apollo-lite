@@ -539,10 +539,7 @@ bool NovatelParser::HandleBestPos(const novatel::BestPos* pos,
   }
 
   double seconds = gps_week * kSecondsPerWeek + gps_millisecs * 1e-3;
-  if (gnss_.measurement_time() != seconds) {
-    gnss_.set_measurement_time(seconds);
-    return true;
-  }
+  gnss_.set_measurement_time(seconds);
   return true;
 }
 
@@ -563,10 +560,7 @@ bool NovatelParser::HandleBestVel(const novatel::BestVel* vel,
   gnss_.mutable_linear_velocity()->set_z(vel->vertical_speed);
 
   double seconds = gps_week * kSecondsPerWeek + gps_millisecs * 1e-3;
-  if (gnss_.measurement_time() != seconds) {
-    gnss_.set_measurement_time(seconds);
-    return false;
-  }
+  gnss_.set_measurement_time(seconds);
   return true;
 }
 
@@ -581,10 +575,7 @@ bool NovatelParser::HandleCorrImuData(const novatel::CorrImuData* imu) {
                ins_.mutable_angular_velocity());
 
   double seconds = imu->gps_week * kSecondsPerWeek + imu->gps_seconds;
-  if (ins_.measurement_time() != seconds) {
-    ins_.set_measurement_time(seconds);
-    return false;
-  }
+  ins_.set_measurement_time(seconds);
 
   ins_.mutable_header()->set_timestamp_sec(cyber::Time::Now().ToSecond());
   return true;
@@ -633,10 +624,7 @@ bool NovatelParser::HandleInsPva(const novatel::InsPva* pva) {
   }
 
   double seconds = pva->gps_week * kSecondsPerWeek + pva->gps_seconds;
-  if (ins_.measurement_time() != seconds) {
-    ins_.set_measurement_time(seconds);
-    return false;
-  }
+  ins_.set_measurement_time(seconds);
 
   ins_.mutable_header()->set_timestamp_sec(cyber::Time::Now().ToSecond());
   return true;
