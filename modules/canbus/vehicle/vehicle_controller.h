@@ -168,6 +168,8 @@ class VehicleController {
 
   virtual void SetLimits() {}
 
+  virtual bool VerifyID() { return true; }
+
  protected:
   virtual Chassis::DrivingMode driving_mode();
   virtual void set_driving_mode(const Chassis::DrivingMode &driving_mode);
