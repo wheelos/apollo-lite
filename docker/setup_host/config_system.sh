@@ -68,6 +68,18 @@ error() {
 check_host_setup_pre_conditions() {
   info "Checking host setup pre-conditions..."
 
+  # APT authentication will fail if the time is incorrect! so time
+  # synchronization is required the first time.
+  if ! command -v chronyc &>/dev/null; then
+    if sudo timedatectl set-ntp true; then
+      timedatectl status
+    else
+      error "Failed to enable NTP via timedatectl"
+      timedatectl status
+      return 1
+    fi
+  fi
+
   # 1. Check for root privileges
   if [ "$(id -u)" -ne 0 ]; then
     error "This script must be run with root privileges (sudo)."
@@ -186,6 +198,7 @@ setup_bazel_cache_dir() {
 }
 
 # Configures NTP synchronization using chrony.
+  sudo timedatectl set-ntp true
 configure_ntp() {
   info "Standardizing NTP synchronization on chrony..."
 
