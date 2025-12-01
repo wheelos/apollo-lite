@@ -63,7 +63,7 @@ TIMEZONE_CN=(
 
 # --- Constants: Container Resources ---
 # Resource limits (can be overridden by environment variables)
-DOCKER_CPUS="${DOCKER_CPUS:-8}"
+DOCKER_CPUS="${DOCKER_CPUS:-4}"
 DOCKER_MEMORY="${DOCKER_MEMORY:-8g}"
 
 # --- Constants: Image Name and Versions ---
@@ -563,10 +563,12 @@ function main() {
 
     # Add resource limits (cpus, memory)
     # TODO(zero): move to CI, --memory will force OOM when the content exceeds the memory limit.
-    local resource_opts=(
-        # --cpus="${DOCKER_CPUS}"
-        # --memory="${DOCKER_MEMORY}"
-    )
+    if [[ "${CUSTOM_DIST}" == "testing" ]]; then
+        local resource_opts=(
+            --cpus="${DOCKER_CPUS}"
+            --memory="${DOCKER_MEMORY}"
+        )
+    fi
 
     # --- Phase 4: Run the Container ---
     info "Starting Docker container \"${DEV_CONTAINER}\" from image: ${FULL_IMAGE_NAME} ..."
