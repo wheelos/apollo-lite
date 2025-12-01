@@ -404,75 +404,87 @@ add_user_to_docker_group() {
 install_autostart_service() {
   info "Installing and configuring the autostart systemd service..."
 
-  # 1: Hard Fail on Root Installation (Security Best Practice) ---
-  # Running the main AD stack as root is a major security risk.
-  # We now block this by default and require an explicit, intentional override.
+  # --- 1: Security & User Validation ---
+  # Check for Root installation attempt (Blocked by default)
   if [[ "${WHL_HOST_USER}" == "root" ]]; then
      error "Running the autonomous driving stack as 'root' is not allowed for security reasons."
-     error "To override this critical check, set the environment variable ALLOW_ROOT_INSTALL=yes and re-run."
+     error "To override, set ALLOW_ROOT_INSTALL=yes. (NOT RECOMMENDED)"
      if [[ "${ALLOW_ROOT_INSTALL:-no}" != "yes" ]]; then
-         return 1 # Hard fail, aborting the installation.
+         return 1
      else
-         info "ALLOW_ROOT_INSTALL=yes detected. Proceeding with installation as root. THIS IS NOT RECOMMENDED."
+         warning "ALLOW_ROOT_INSTALL=yes detected. Proceeding as root."
      fi
   fi
 
-  # 2: Input Validation for Username (Prevent Command Injection) ---
-  # Ensure the username consists only of safe, alphanumeric characters.
+  # Validate Username (Alphanumeric check)
   if ! [[ "${WHL_HOST_USER}" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_-]*$ ]]; then
-    error "Invalid username detected: '${WHL_HOST_USER}'. Usernames must be alphanumeric (with _ or -)."
-    error "Aborting installation to prevent potential command injection."
+    error "Invalid username: '${WHL_HOST_USER}'. Aborting."
     return 1
   fi
-  info "Target user '${WHL_HOST_USER}' validated."
 
-  # 3: Input Validation for Path (Prevent Command Injection) ---
-  # Ensure the path is a valid absolute path and does not contain characters
-  # that could break the sed command or be interpreted by the shell.
+  # Validate Path (Absolute path check)
   if ! [[ "${APOLLO_ROOT_DIR}" =~ ^/[a-zA-Z0-9_/.-]+$ ]]; then
-    error "Invalid APOLLO_ROOT_DIR detected: '${APOLLO_ROOT_DIR}'."
-    error "Path must be absolute and contain only safe characters (alphanumeric, /, _, ., -)."
-    error "Aborting installation to prevent potential command injection."
-    return 1
-  fi
-  info "Apollo root directory '${APOLLO_ROOT_DIR}' validated."
-
-  info "Copying '${AUTOSERVICE_SRC_FILE}' to '${AUTOSERVICE_DEST_FILE}'..."
-  if ! cp "${AUTOSERVICE_SRC_FILE}" "${AUTOSERVICE_DEST_FILE}"; then
-    error "Failed to copy service file. Check permissions."
+    error "Invalid APOLLO_ROOT_DIR: '${APOLLO_ROOT_DIR}'. Must be absolute path."
     return 1
   fi
 
-  # 4: Safer Replacement Method ---
-  # By using a different delimiter for sed (like '#'), we make the replacement
-  # robust even if the path contains the default '/' delimiter.
-  # The validation above already mitigates this, but this is a defense-in-depth measure.
-  info "Customizing service file with user='${WHL_HOST_USER}' and path='${APOLLO_ROOT_DIR}'..."
-  if ! sed -i "s#__USER__#${WHL_HOST_USER}#g" "${AUTOSERVICE_DEST_FILE}"; then
-    error "Failed to replace user placeholder in service file."
-    return 1
-  fi
-  if ! sed -i "s#__APOLLO_ROOT_DIR__#${APOLLO_ROOT_DIR}#g" "${AUTOSERVICE_DEST_FILE}"; then
-    error "Failed to replace path placeholder in service file."
-    return 1
+  # --- 2: Context Gathering ---
+  # We need the Group and Home directory for the systemd service context
+  local host_group=$(id -gn "${WHL_HOST_USER}")
+  local host_home=$(eval echo "~${WHL_HOST_USER}")
+
+  info "Target Context -> User: ${WHL_HOST_USER}, Group: ${host_group}, Home: ${host_home}"
+
+  # --- 3: File Preparation ---
+  if [[ ! -f "${AUTOSERVICE_SRC_FILE}" ]]; then
+      error "Source service file not found at: ${AUTOSERVICE_SRC_FILE}"
+      return 1
   fi
 
-  # Reload the systemd daemon
+  info "Copying template to '${AUTOSERVICE_DEST_FILE}'..."
+  # We use a temporary file to do sed replacements to avoid permission issues before sudo mv
+  local tmp_service_file="/tmp/wheelos_autostart.service.tmp"
+  cp "${AUTOSERVICE_SRC_FILE}" "${tmp_service_file}"
+
+  # --- 4: Template Replacement ---
+  info "Configuring service parameters..."
+
+  # Use '#' as delimiter to safely handle paths containing '/'
+  sed -i "s#__USER__#${WHL_HOST_USER}#g" "${tmp_service_file}"
+  sed -i "s#__GROUP__#${host_group}#g" "${tmp_service_file}"
+  sed -i "s#__APOLLO_ROOT_DIR__#${APOLLO_ROOT_DIR}#g" "${tmp_service_file}"
+  sed -i "s#__HOME_DIR__#${host_home}#g" "${tmp_service_file}"
+
+  # --- 5: Installation & Activation ---
+  # Move to system directory (requires sudo implicitly if running as setup script,
+  # or ensure script is run with sufficient privs for this step)
+  if ! sudo mv "${tmp_service_file}" "${AUTOSERVICE_DEST_FILE}"; then
+      error "Failed to move service file to /etc/systemd/system/. Permission denied?"
+      return 1
+  fi
+
+  # Ensure the apollo wrapper script is executable
+  if [[ -f "${APOLLO_ROOT_DIR}/apollo" ]]; then
+      chmod +x "${APOLLO_ROOT_DIR}/apollo"
+  else
+      warning "Wrapper script '${APOLLO_ROOT_DIR}/apollo' not found. Service may fail to start."
+  fi
+
+  # Systemd Reload
   info "Reloading systemd daemon..."
-  if ! systemctl daemon-reload; then
-    error "Failed to reload systemd daemon. Run 'journalctl -xe' for details."
+  if ! sudo systemctl daemon-reload; then
+    error "Failed to reload systemd."
     return 1
   fi
 
-  # Enable the service
-  info "Enabling 'autostart.service' to run on boot..."
-  if ! systemctl enable autostart.service; then
-    error "Failed to enable autostart.service."
+  # Enable Service
+  info "Enabling 'autostart.service'..."
+  if ! sudo systemctl enable $(basename "${AUTOSERVICE_DEST_FILE}"); then
+    error "Failed to enable service."
     return 1
   fi
 
-  success "Autostart service installed and enabled successfully."
-  info "The autonomous driving system will now start automatically on the next boot."
+  success "Autostart service installed. The system will start automatically on boot."
   return 0
 }
 

@@ -1,0 +1,28 @@
+services:
+  core:
+    image: ${WHEELOS_IMAGE}
+    restart: "no"
+    tty: true
+    stdin_open: true
+
+    user: "${USER_ID}:${GROUP_ID}"
+    working_dir: /apollo
+    shm_size: ${SHM_SIZE}
+
+    environment:
+      - USER=${USER_NAME}
+      - DOCKER_USER=${USER_NAME}
+      - DOCKER_USER_ID=${USER_ID}
+      - DOCKER_GRP_ID=${GROUP_ID}
+      - TZ=${TZ}
+      - DISPLAY=${DISPLAY}
+      - AUTO_BOOTSTRAP=${AUTO_BOOTSTRAP}
+
+    volumes:
+      - ${APOLLO_ROOT}:/apollo
+      - /media:/media
+      - ${HOME}/.cache:${HOME}/.cache
+      - /etc/localtime:/etc/localtime:ro
+      - ${APOLLO_ROOT}/docker/scripts/entrypoint.sh:/entrypoint.sh
+
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
