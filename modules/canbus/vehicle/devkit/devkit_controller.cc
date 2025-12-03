@@ -18,12 +18,13 @@
 
 #include <string>
 
+#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
+
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
 #include "modules/canbus/common/canbus_gflags.h"
 #include "modules/canbus/vehicle/devkit/devkit_message_manager.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
-#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
 #include "modules/drivers/canbus/can_comm/can_sender.h"
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
@@ -422,6 +423,16 @@ Chassis DevkitController::chassis() {
     }
   } else {
     chassis_.set_front_bumper_event(Chassis::BUMPER_INVALID);
+  }
+
+  // if take over, reset to manual mode
+  if (chassis_detail.devkit().throttle_report_500().throttle_en_state() ==
+          Throttle_report_500::THROTTLE_EN_STATE_TAKEOVER ||
+      chassis_detail.devkit().brake_report_501().brake_en_state() ==
+          Brake_report_501::BRAKE_EN_STATE_TAKEOVER ||
+      chassis_detail.devkit().steering_report_502().steer_en_state() ==
+          Steering_report_502::STEER_EN_STATE_TAKEOVER) {
+    set_driving_mode(Chassis::COMPLETE_MANUAL);
   }
 
   return chassis_;

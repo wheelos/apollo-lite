@@ -17,6 +17,7 @@
 #include "modules/canbus/vehicle/devkit/protocol/steering_report_502.h"
 
 #include "glog/logging.h"
+
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -47,7 +48,7 @@ void Steeringreport502::Parse(const std::uint8_t* bytes, int32_t length,
       ->mutable_steering_report_502()
       ->set_steer_angle_actual(steer_angle_actual(bytes, length));
   chassis->mutable_check_response()->set_is_eps_online(
-      steer_en_state(bytes, length) == 1);
+      steer_flt1(bytes, length) == 0 && steer_flt2(bytes, length) == 0);
 }
 
 // config detail: {'bit': 47, 'is_signed_var': False, 'len': 16, 'name':
