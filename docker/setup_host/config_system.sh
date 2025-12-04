@@ -198,7 +198,6 @@ setup_bazel_cache_dir() {
 }
 
 # Configures NTP synchronization using chrony.
-  sudo timedatectl set-ntp true
 configure_ntp() {
   info "Standardizing NTP synchronization on chrony..."
 
