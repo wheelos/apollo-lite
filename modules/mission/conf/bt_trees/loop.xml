@@ -1,0 +1,11 @@
+<root BTCPP_format="4">
+    <BehaviorTree ID="PatrolTask">
+        <Sequence>
+            <Action ID="MoveTo" goal="{Station_A}" />
+            <Action ID="StationWait" seconds="5.0" />
+
+            <Action ID="MoveTo" goal="{Station_B}" />
+            <Action ID="StationWait" seconds="5.0" />
+        </Sequence>
+    </BehaviorTree>
+</root>
