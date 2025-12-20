@@ -97,6 +97,7 @@ class HMIWorker {
                          ScenarioSet* new_scenario_set);
   bool UpdateDynamicModelToStatus(const std::string& dynamic_model_name);
   void UpdateComponentStatus();
+  void UpdateHMIStatus();
   // bool UpdateRecordToStatus(const std::string& record_id,
   //                     const std::string& record_status);
   bool LoadRecords();

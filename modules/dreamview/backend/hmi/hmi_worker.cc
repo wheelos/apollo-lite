@@ -722,6 +722,7 @@ void HMIWorker::StatusUpdateThreadLoop() {
   while (!stop_) {
     std::this_thread::sleep_for(std::chrono::milliseconds(kLoopIntervalMs));
     UpdateComponentStatus();
+    UpdateHMIStatus();
     bool status_changed = false;
     {
       WLock wlock(status_mutex_);
@@ -776,6 +777,41 @@ void HMIWorker::UpdateComponentStatus() {
   } else {
     monitor_timed_out_ = false;
   }
+}
+
+void HMIWorker::UpdateHMIStatus() {
+  constexpr double kSecondsTillTimeout(1);
+  static double last_load_time = 0;
+  const double now = Clock::NowInSeconds();
+  if (now - last_load_time < kSecondsTillTimeout) {
+    return;
+  }
+
+  HMIConfig config = LoadConfig();
+  {
+    WLock wlock(status_mutex_);
+    // Update UTM zone id
+    status_.set_utm_zone_id(FLAGS_local_utm_zone_id);
+    // Update available modes
+    status_.clear_modes();
+    for (const auto &iter : config.modes()) {
+      status_.add_modes(iter.first);
+    }
+    // Update available maps
+    status_.clear_maps();
+    for (const auto &map_entry : config.maps()) {
+      status_.add_maps(map_entry.first);
+    }
+    // Update available vehicles
+    status_.clear_vehicles();
+    for (const auto &vehicle : config.vehicles()) {
+      status_.add_vehicles(vehicle.first);
+    }
+
+    status_changed_ = true;
+  }
+
+  last_load_time = now;
 }
 
 void HMIWorker::ChangeScenarioSet(const std::string &scenario_set_id) {
@@ -1313,9 +1349,7 @@ bool HMIWorker::RePlayRecord(const std::string &record_id) {
 }
 void HMIWorker::StopRecordPlay() {
   WLock wlock(status_mutex_);
-  {
-    status_.set_current_record_id("");
-  }
+  { status_.set_current_record_id(""); }
   if (!StopModuleByCommand(FLAGS_cyber_recorder_stop_command)) {
     AERROR << "stop record failed";
   }
