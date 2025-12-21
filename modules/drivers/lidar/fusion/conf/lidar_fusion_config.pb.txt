@@ -1,0 +1,22 @@
+# channel names of pointclouds which will be fused
+input_channel: [
+    "/apollo/sensor/lidar16/left/PointCloud2",
+    "/apollo/sensor/lidar16/right/PointCloud2"
+]
+#  channel name of the output pointcloud
+output_channel: "/apollo/sensor/lidar/fusion/PointCloud2"
+
+# the frame id of the output point cloud, if not set, it will be the same as the main lidar frame
+target_frame_id: "vanjeelidar_up"
+
+# drop expired data, if true, the point cloud will be dropped if the difference between the main channel and the input channel is larger than max_interval_ms
+drop_expired_data: true
+
+# if drop expired data is true, the point cloud will be dropped if the difference between the main channel and the input channel is larger than this value
+max_interval_ms: 50
+
+# wait time after main channel data arrives
+wait_time_seconds: 0.02
+
+# set if using system time as the measurement time, default is false
+use_system_clock: true

@@ -1,0 +1,9 @@
+can_card_parameter {
+  brand: SOCKET_CAN_RAW
+  channel_id: CHANNEL_ID_ZERO
+}
+
+enable_debug_mode: false
+enable_receiver_log: false
+
+entrance_num: 12

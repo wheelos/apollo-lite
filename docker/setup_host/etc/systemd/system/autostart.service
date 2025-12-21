@@ -1,0 +1,30 @@
+[Unit]
+Description=WheelOS Autonomous Driving System Autostart Service
+Documentation=https://www.wheelos.cn/
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+# These values will be replaced by the config_system.sh script
+Environment="USER=__USER__"
+WorkingDirectory=__APOLLO_ROOT_DIR__
+
+# --- Service Behavior ---
+# Systemd will now correctly monitor this script's exit code.
+Type=oneshot
+RemainAfterExit=yes
+
+# --- Commands ---
+ExecStart=/bin/bash docker/scripts/dev_into.sh --command "/apollo/scripts/bootstrap.sh start"
+
+# ExecStop remains the same, it's called when the service is stopped.
+ExecStop=/bin/bash docker/scripts/dev_into.sh --command "/apollo/scripts/bootstrap.sh stop"
+ExecStopPost=/bin/sh -c '/usr/bin/docker stop apollo_dev_${USER}'
+
+# --- Resiliency ---
+# If the ExecStart script fails (returns a non-zero exit code), systemd will restart it.
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+syntax = "proto2";
+
+package apollo.drivers.lidar;
+
+message LidarFusionConfig {
+  // channel names of pointclouds which will be fused
+  repeated string input_channel = 1;
+  // channel name of the output pointcloud
+  optional string output_channel = 2;
+  // if setted, the output pointcloud will be set to this frame id
+  optional string target_frame_id = 3;
+  // wait time after main channel data arrives
+  optional float wait_time_seconds = 4;
+  // drop expired data, if true, the point cloud will be dropped if the
+  // difference between the main channel and the input channel is larger than
+  // max_interval_ms
+  optional bool drop_expired_data = 5;
+  // if drop expired data is true, the point cloud will be dropped if the
+  // difference between the main channel and the input channel is larger than
+  // this value
+  optional uint32 max_interval_ms = 6;
+  // set if using system time as the measurement time, default is false
+  optional bool use_system_clock = 7;
+}

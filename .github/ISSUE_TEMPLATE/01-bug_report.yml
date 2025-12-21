@@ -1,0 +1,52 @@
+name: '🐞 Bug Report'
+description: 'Report a reproducible bug in WheelOS'
+title: '[Bug]: '
+labels: ['bug', 'needs-triage']
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please provide clear and complete information to help us reproduce and fix it.
+
+  - type: textarea
+    id: system_info
+    attributes:
+      label: 'System Information / Logs'
+      description: |
+        Paste `whl-env` output **or** drag-and-drop logs/config files here.
+        GitHub will auto-upload and link them in the issue.
+      placeholder: |
+        Paste content here, or drag files into this box to attach them.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 'Steps to Reproduce'
+      description: 'List the minimal steps to reproduce this bug, in order'
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_vs_actual
+    attributes:
+      label: 'Expected vs Actual Behavior'
+      description: |
+        **Expected:** what you expected
+        **Actual:** what actually happened (include errors/logs)
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 'Additional Information'
+      description: 'Screenshots, logs, or configuration (optional)'
+    validations:
+      required: false

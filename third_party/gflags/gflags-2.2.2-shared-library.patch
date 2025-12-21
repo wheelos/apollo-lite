@@ -1,0 +1,62 @@
+diff --git a/BUILD b/BUILD
+index 0e7ccdd..fb7a11f 100644
+--- a/BUILD
++++ b/BUILD
+@@ -13,6 +13,10 @@ config_setting(
+ 
+ load(":bazel/gflags.bzl", "gflags_sources", "gflags_library")
+ 
+-(hdrs, srcs) = gflags_sources(namespace=["gflags", "google"])
++# Note: the pre-compiled paddleinference library depends on namespace "google",
++# so we need to use the same namespace for gflags.
++# TODO(All): re-compile paddleinference or include via source and then remove
++# this patch
++(hdrs, srcs) = gflags_sources(namespace=["google", "gflags"])
+ gflags_library(hdrs=hdrs, srcs=srcs, threads=0)
+ gflags_library(hdrs=hdrs, srcs=srcs, threads=1)
+diff --git a/bazel/gflags.bzl b/bazel/gflags.bzl
+index 533fd61..58b47e9 100644
+--- a/bazel/gflags.bzl
++++ b/bazel/gflags.bzl
+@@ -93,11 +93,40 @@ def gflags_library(hdrs=[], srcs=[], threads=1):
+         name += "_nothreads"
+         copts += ["-DNO_THREADS"]
+     native.cc_library(
+-        name       = name,
++        name       = name + "_",
+         hdrs       = hdrs,
+         srcs       = srcs,
+         copts      = copts,
+         linkopts   = linkopts,
++        alwayslink = True,
++        linkstatic = True,
+         visibility = ["//visibility:public"],
+         include_prefix = 'gflags'
+     )
++    native.cc_binary(
++        name       = "lib" + name + ".so.2.2",
++        copts      = copts,
++        linkopts   = [
++            # Note: the pre-compiled paddleinference library expects
++            # this soname.
++            # TODO(All): re-compile paddleinference with this gflags
++            # directly. and remove this patch
++            '-Wl,-soname=libgflags.so.2.2',
++        ] + linkopts,
++        linkshared = True,
++        linkstatic = True,
++        deps       = [":" + name + "_"],
++        visibility = ["//visibility:public"],
++    )
++    native.cc_library(
++        name       = name,
++        hdrs       = hdrs,
++        srcs       = [":lib" + name + ".so.2.2"],
++        copts      = copts,
++        linkopts   = linkopts,
++        alwayslink = True,
++        linkstatic = True,
++        visibility = ["//visibility:public"],
++        include_prefix = 'gflags'
++    )
++

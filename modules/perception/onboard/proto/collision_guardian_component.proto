@@ -1,0 +1,32 @@
+syntax = "proto2";
+
+package apollo.perception.lidar;
+
+message CollisionGuardianComponentConfig {
+    // The frame_id of the vehicle's main body, e.g., "imu" or "base_link".
+    // This is the coordinate system where all filtering occurs.
+    optional string vehicle_frame_id = 3 [default = "base_link"];
+
+    // --- Ego Vehicle Dimensions (for self-filtering) ---
+    // These dimensions define the precise bounding box of the vehicle itself.
+    // ANY point falling inside this box will be DISCARDED.
+    // All dimensions are in meters, relative to the vehicle_frame_id origin.
+    optional double ego_box_forward = 11 [default = 2.5];      // e.g., front bumper
+    optional double ego_box_backward = 12 [default = -2.2];     // e.g., rear bumper
+    optional double ego_box_side = 13 [default = 1.1];        // e.g., side mirrors
+
+    // --- ROI (Protective Field) Dimensions ---
+    // This defines the "danger zone" OUTSIDE the ego vehicle.
+    // ANY point falling inside this zone will trigger a potential risk.
+    optional double roi_forward_distance = 4 [default = 3.0];
+    optional double roi_backward_distance = 5 [default = 1.0];
+    optional double roi_side_distance = 6 [default = 1.2];
+
+    // --- Filter Parameters ---
+    optional double height_min_threshold = 7 [default = -0.1];
+    optional double height_max_threshold = 8 [default = 2.0];
+
+    // --- Trigger Logic ---
+    optional uint32 min_points_in_roi_to_trigger = 9 [default = 5];
+    optional uint32 min_consecutive_frames_to_trigger = 10 [default = 3];
+}

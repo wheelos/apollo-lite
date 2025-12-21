@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+package apollo.drivers.lidar;
+
+message LidarCompensatorConfig {
+  optional string output_channel = 1;
+  optional float transform_query_timeout = 2 [default = 0.02];
+  optional string world_frame_id = 3 [default = "world"];
+  optional string target_frame_id = 4;
+  optional uint32 point_cloud_size = 5;
+  optional uint64 reserve_point_cloud_size = 6 [default = 500000];
+}

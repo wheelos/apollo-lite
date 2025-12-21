@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NanoRadar Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        .channel-selector {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 5px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="channel-selector">
+        <label for="channel-selector">channel:</label>
+        <select id="channel-selector">
+        </select>
+    </div>
+    <script>
+        let scene, camera, renderer;
+        let channels = [];
+
+        // 初始化三维场景
+        function init() {
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // set z-axis as up direction
+            camera.up.set(0, 0, 1);
+            camera.position.set(0, -5, 5);
+            camera.lookAt(0, 20, 0);
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth * 0.98, window.innerHeight * 0.97);
+            document.body.appendChild(renderer.domElement);
+
+            // add orbit controls
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.update();
+
+            // initialize grid
+            const grid = new THREE.GridHelper(160, 160, 0x444444, 0x888888);
+            grid.rotation.x = -Math.PI / 2;
+            scene.add(grid);
+
+            // initial axes helper
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+        }
+
+        // create WebSocket connection
+        const ws = new WebSocket('/ws');
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const keys = Object.keys(data);
+            const channelSelector = document.getElementById('channel-selector');
+            // current channel
+            const currentChannel = channelSelector.value;
+            // clear previous options
+            channelSelector.innerHTML = '';
+            for (let i = 0; i < keys.length; i++) {
+                const option = document.createElement('option');
+                option.value = keys[i];
+                option.textContent = keys[i];
+                channelSelector.appendChild(option);
+            }
+            // if current channel is not in keys, set to first key
+            if (!keys.includes(currentChannel)) {
+                channelSelector.value = keys[0];
+            } else {
+                channelSelector.value = currentChannel;
+            }
+            if (!data[channelSelector.value]) {
+                console.warn('No data for channel:', channelSelector.value);
+                return;
+            }
+            // only support one channel for now
+            // TODO(All): support multiple channels or fusion
+            updateScene(data[channelSelector.value]);
+        };
+
+        // update scene with new data
+        function updateScene(data) {
+            // clear objects and scan_region
+            scene.children.slice().forEach(obj => {
+                if (obj.type !== 'GridHelper'
+                    && obj.type !== 'AxesHelper') {
+                    scene.remove(obj);
+                }
+            });
+
+            // draw obstacles (green cubes)
+            data.obstacles.forEach(obj => {
+                if (obj.type == 0) {
+                    // point type
+                    const geometry = new THREE.SphereGeometry(0.1, 16, 16);
+                    const material = new THREE.MeshBasicMaterial({color: 0x00ff00});
+                    const sphere = new THREE.Mesh(geometry, material);
+                    sphere.position.set(obj.x, obj.y, obj.z);
+                    scene.add(sphere);
+                } else if (obj.type == 1) {
+                    // car type
+                    const geometry = new THREE.BoxGeometry(0.5, 0.25, 0.25);
+                    const material = new THREE.MeshBasicMaterial({color: 0x00ff00});
+                    const cube = new THREE.Mesh(geometry, material);
+                    cube.position.set(obj.x, obj.y, obj.z);
+                    if (obj.vx || obj.vy) {
+                        // rotate to face direction
+                        const angle = Math.atan2(obj.vy, obj.vx);
+                        cube.rotation.z = angle;
+                    } else {
+                        cube.rotation.z = 90 * Math.PI / 180; // default rotation if no velocity
+                    }
+                    scene.add(cube);
+                } else {
+                    // unknown type
+                    const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+                    const material = new THREE.MeshBasicMaterial({color: 0xc8c8c8});
+                    const cube = new THREE.Mesh(geometry, material);
+                    cube.position.set(obj.x, obj.y, obj.z);
+                    scene.add(cube);
+                }
+                // add object ID as a label
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                const fontSize = 24;
+                context.font = `${fontSize}px Arial`;
+                context.fillStyle = "blue";
+                context.textAlign = "center";
+                context.fillText(
+                    `id: ${obj.id}, type: ${obj.type}, dynprop: ${obj.dynprop}`,
+                    canvas.width / 2,
+                    canvas.height / 2
+                );
+                context.fillText(
+                    `x: ${obj.x.toFixed(2)}, y: ${obj.y.toFixed(2)}, r: ${obj.range.toFixed(2)}`,
+                    canvas.width / 2,
+                    canvas.height / 2 + 32,
+                );
+                context.fillText(
+                    `vx: ${obj.vx.toFixed(2)}, vy: ${obj.vy.toFixed(2)}, rcs: ${obj.rcs.toFixed(2)}`,
+                    canvas.width / 2,
+                    canvas.height / 2 + 64,
+                );
+                const texture = new THREE.CanvasTexture(canvas);
+                const textMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                const textSprite = new THREE.Sprite(textMaterial);
+                textSprite.scale.set(2, 1, 1); // 调整标签大小
+                // position the label slightly above the object
+                textSprite.position.set(obj.x, obj.y, obj.z + 0.6);
+                scene.add(textSprite);
+
+                // add arrow to indicate direction
+                if (obj.vx !== 0 || obj.vy !== 0) {
+                    const arrowHelper = new THREE.ArrowHelper(
+                        new THREE.Vector3(obj.vx, obj.vy, 0).normalize(),
+                        new THREE.Vector3(obj.x, obj.y, obj.z),
+                        0.7,
+                        0xff0000
+                    );
+                    arrowHelper.line.material.linewidth = 3; // set arrow line width
+                    scene.add(arrowHelper);
+                }
+            });
+
+            // draw scan area (red) as a rectangle
+            const scanHeight = Math.abs(data.scan_area.p2.y - data.scan_area.p1.y);
+            const scanWidth = Math.abs(data.scan_area.p2.x - data.scan_area.p1.x);
+            const scanRegionGeometry = new THREE.BoxGeometry(
+                scanWidth, scanHeight, 0.5,
+            );
+            const scanRegionMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.3,
+                // wireframe: true,
+            });
+            const scanRegion = new THREE.Mesh(scanRegionGeometry, scanRegionMaterial);
+            scanRegion.position.set(
+                (data.scan_area.p1.x + data.scan_area.p2.x) / 2,
+                (data.scan_area.p1.y + data.scan_area.p2.y) / 2,
+                0,
+            );
+            scene.add(scanRegion);
+        }
+
+        // animate the scene
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
