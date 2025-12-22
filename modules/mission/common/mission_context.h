@@ -76,7 +76,15 @@ class MissionContext {
     return true;
   }
 
-  void SendRoutingRequest(const common::PointENU& end_pose);
+  void SendRoutingRequest(const common::PointENU& end_pose) {
+    if (routing_writer_ == nullptr) {
+      return;
+    }
+    routing::RoutingRequest request;
+    auto* waypoint = request.add_waypoint();
+    *waypoint->mutable_pose() = end_pose;
+    routing_writer_->Write(request);
+  }
 
   void SetCurrentMissionId(const std::string& id) {
     std::lock_guard<std::mutex> lock(mutex_);

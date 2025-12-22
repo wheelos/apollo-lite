@@ -6,6 +6,7 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "mission_context",
+    srcs = ["mission_context.cc"],
     hdrs = ["mission_context.h"],
     deps = [
         "//cyber",
