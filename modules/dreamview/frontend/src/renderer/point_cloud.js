@@ -15,77 +15,104 @@ export default class PointCloud {
   constructor() {
     this.points = null;
     this.initialized = false;
+
+    // Pre-allocated TypedArray
+    this.positions = new Float32Array(MAX_POINTS * 3);
+    this.colors = new Float32Array(MAX_POINTS * 3);
   }
 
   initialize() {
-    this.points = this.createPointCloud(HEIGHT_COLOR_MAPPING[0.5]);
+    // Create circular point texture
+    const sprite = document.createElement('canvas');
+    sprite.width = sprite.height = 64;
+    const ctx = sprite.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(32, 32, 30, 0, Math.PI * 2);
+    ctx.fill();
+    const texture = new THREE.CanvasTexture(sprite);
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(this.positions, 3)
+    );
+    geometry.setAttribute(
+      'color',
+      new THREE.BufferAttribute(this.colors, 3)
+    );
+
+    const material = new THREE.PointsMaterial({
+      size: 0.05,          // Smaller point
+      map: texture,
+      alphaTest: 0.5,
+      transparent: true,
+      vertexColors: true,
+      sizeAttenuation: true, // Scaling with distance
+    });
+
+    this.points = new THREE.Points(geometry, material);
+    this.points.frustumCulled = false;
     this.initialized = true;
   }
 
-  createPointCloud(hex_color) {
-    const geometry = new THREE.Geometry();
-    const colors = [];
-    for (let i = 0; i < MAX_POINTS; ++i) {
-      const vertex = new THREE.Vector3();
-      vertex.set(0, 0, -10);
-      geometry.vertices.push(vertex);
-
-      colors[i] = new THREE.Color(hex_color);
-    }
-    geometry.colors = colors;
-
-    const material = new THREE.PointsMaterial({
-      size: 0.25,
-      transparent: true,
-      opacity: 0.7,
-      vertexColors: THREE.VertexColors,
-    });
-    const points = new THREE.Points(geometry, material);
-    points.frustumCulled = false;
-    return points;
-  }
-
   update(pointCloud, adcMesh) {
-    if (this.points === null) {
-      return;
-    }
-    if (pointCloud.num.length % 3 !== 0) {
+    if (!this.initialized || !this.points) return;
+    const len = pointCloud.num.length;
+
+    if (len % 3 !== 0) {
       console.warn('PointCloud length should be multiples of 3!');
       return;
     }
-    const pointCloudSize = pointCloud.num.length / 3;
-    const total = (pointCloudSize < MAX_POINTS) ? pointCloudSize : MAX_POINTS;
-    let colorKey = 0.5;
-    for (let i = 0; i < total; i++) {
+
+    const pointCount = Math.min(len / 3, MAX_POINTS);
+
+    // Batch update position and color
+    let posIdx = 0,
+        colIdx = 0;
+    for (let i = 0; i < pointCount; i++) {
       const x = pointCloud.num[i * 3];
       const y = pointCloud.num[i * 3 + 1];
       const z = pointCloud.num[i * 3 + 2];
-      this.points.geometry.vertices[i].set(x, y, z + 0.8);
-      // Update color based on height.
-      if (z < 0.5) {
-        colorKey = 0.5;
-      } else if (z < 1.0) {
-        colorKey = 1.0;
-      } else if (z < 1.5) {
-        colorKey = 1.5;
-      } else if (z < 2.0) {
-        colorKey = 2.0;
-      } else if (z < 2.5) {
-        colorKey = 2.5;
-      } else if (z < 3.0) {
-        colorKey = 3.0;
-      } else {
-        colorKey = 10.0;
-      }
-      this.points.geometry.colors[i].setHex(HEIGHT_COLOR_MAPPING[colorKey]);
+
+      // Write positions
+      this.positions[posIdx++] = x;
+      this.positions[posIdx++] = y;
+      this.positions[posIdx++] = z + 0.8;
+
+      // Color by height range
+      let key = 10.0;
+      if (z < 0.5) key = 0.5;
+      else if (z < 1.0) key = 1.0;
+      else if (z < 1.5) key = 1.5;
+      else if (z < 2.0) key = 2.0;
+      else if (z < 2.5) key = 2.5;
+      else if (z < 3.0) key = 3.0;
+
+      const colorHex = HEIGHT_COLOR_MAPPING[key];
+      const color = new THREE.Color(colorHex);
+      this.colors[colIdx++] = color.r;
+      this.colors[colIdx++] = color.g;
+      this.colors[colIdx++] = color.b;
     }
-    // Hide unused points.
-    for (let i = total; i < MAX_POINTS; ++i) {
-      this.points.geometry.vertices[i].set(0, 0, -10);
+
+    // Mark unused points as hidden (or 0,0,-10 etc.)
+    for (let i = pointCount; i < MAX_POINTS; i++) {
+      const base = i * 3;
+      this.positions[base] = 0;
+      this.positions[base + 1] = 0;
+      this.positions[base + 2] = -10;
+      this.colors[base] = 0;
+      this.colors[base + 1] = 0;
+      this.colors[base + 2] = 0;
     }
-    this.points.geometry.verticesNeedUpdate = true;
-    this.points.geometry.colorsNeedUpdate = true;
-    this.points.position.set(adcMesh.position.x, adcMesh.position.y, adcMesh.position.z);
+
+    // The marker needs to be updated.
+    this.points.geometry.attributes.position.needsUpdate = true;
+    this.points.geometry.attributes.color.needsUpdate = true;
+
+    // Follow the parent object's position and orientation
+    this.points.position.copy(adcMesh.position);
     this.points.rotation.set(0, 0, adcMesh.rotation.y);
   }
 }
