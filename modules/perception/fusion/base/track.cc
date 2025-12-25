@@ -28,15 +28,49 @@ double Track::s_max_camera_invisible_period_ = 0.75;  // in second
 
 Track::Track() { fused_object_.reset(new FusedObject()); }
 
+int Track::ComputeBackgroundGlobalId(const std::string& sensor_id,
+                                     int local_id) {
+  size_t sensor_hash = std::hash<std::string>{}(sensor_id);
+  return static_cast<int>((sensor_hash % 1000) * 100000 + local_id);
+}
+
 bool Track::Initialize(SensorObjectPtr obj, bool is_background) {
+  // 1. State Reset
   Reset();
-  int track_id = static_cast<int>(GenerateNewTrackId());
   is_background_ = is_background;
+
+  // 2. ID allocation
+  int track_id = 0;
+  if (is_background) {
+    std::string sensor_id = obj->GetSensorId();
+    int local_id = obj->GetBaseObject()->track_id;
+    track_id = ComputeBackgroundGlobalId(sensor_id, local_id);
+
+    // TODO(daohu527): Establish a dedicated GlobalIdManager module to
+    // uniformly manage the IDs of different types of targets and ensure that
+    // the background IDs of different sensors fall within different ranges.
+  } else {
+    // Foreground target uses a globally incrementing ID
+    track_id = static_cast<int>(GenerateNewTrackId());
+  }
+
+  // 3. Basic attribute copying and ID injection
   std::shared_ptr<base::Object> fused_base_obj = fused_object_->GetBaseObject();
   std::shared_ptr<const base::Object> sensor_base_obj = obj->GetBaseObject();
+
+  // Perform deep copy
   *fused_base_obj = *sensor_base_obj;
   fused_base_obj->track_id = track_id;
+
+  // 4. Status update
   UpdateWithSensorObject(obj);
+
+  ADEBUG << "Track initialized. Type: "
+         << (is_background ? "Background" : "Foreground")
+         << " Sensor: " << obj->GetSensorId()
+         << " Local ID: " << obj->GetBaseObject()->track_id
+         << " Fused ID: " << track_id;
+
   return true;
 }
 

@@ -108,6 +108,8 @@ class Track {
   void UpdateWithoutSensorObject(const std::string& sensor_id,
                                  double measurement_timestamp);
 
+  static int ComputeBackgroundGlobalId(const std::string& sensor_id, int local_id);
+
   std::string DebugString() const;
 
  protected:

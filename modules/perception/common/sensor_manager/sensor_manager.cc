@@ -17,11 +17,12 @@
 
 #include <utility>
 
+#include "modules/perception/proto/sensor_meta_schema.pb.h"
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/perception/common/io/io_util.h"
 #include "modules/perception/lib/config_manager/config_manager.h"
-#include "modules/perception/proto/sensor_meta_schema.pb.h"
 
 namespace apollo {
 namespace perception {
