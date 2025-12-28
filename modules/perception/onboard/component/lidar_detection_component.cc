@@ -52,7 +52,7 @@ bool LidarDetectionComponent::Init() {
 
   const auto& lidar_detection_root_dir = comp_config.lidar_detection_conf_dir();
   const auto& lidar_detection_conf_file =
-                  comp_config.lidar_detection_conf_file();
+      comp_config.lidar_detection_conf_file();
 
   std::string work_root = "";
   std::string lidardetection_config_file =
@@ -60,11 +60,9 @@ bool LidarDetectionComponent::Init() {
   lidardetection_config_file =
       GetAbsolutePath(work_root, lidardetection_config_file);
 
-  ACHECK(
-      cyber::common::GetProtoFromFile(
-        lidardetection_config_file, &lidar_detection_config_))
-      << "failed to load trafficlight config file "
-      << lidardetection_config_file;
+  ACHECK(cyber::common::GetProtoFromFile(lidardetection_config_file,
+                                         &lidar_detection_config_))
+      << "failed to load lidar detection file " << lidardetection_config_file;
 
   if (!InitAlgorithmPlugin()) {
     AERROR << "Failed to init detection component algorithm plugin.";
@@ -95,8 +93,8 @@ bool LidarDetectionComponent::InitAlgorithmPlugin() {
                                                           &sensor_info_));
 
   lidar::BaseLidarObstacleDetection* detector =
-      lidar::BaseLidarObstacleDetectionRegisterer::
-      GetInstanceByName(detector_name_);
+      lidar::BaseLidarObstacleDetectionRegisterer::GetInstanceByName(
+          detector_name_);
   CHECK_NOTNULL(detector);
   // detector_.reset(detector);
   // lidar::LidarObstacleDetectionInitOptions init_options;
