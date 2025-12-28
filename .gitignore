@@ -83,4 +83,10 @@ tools/FlameGraph
 # jetbrain profiler
 .DS_Store
 
+# node js
+dist/
+node_modules/
+*.bundle.js
+*.map
+
 #WORKSPACE

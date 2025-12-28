@@ -1,5 +1,10 @@
 import {
-  observable, action, computed, extendObservable, isComputed,
+  action,
+  computed,
+  extendObservable,
+  isComputed,
+  makeObservable,
+  observable
 } from 'mobx';
 
 import _ from 'lodash';
@@ -15,10 +20,15 @@ export const MONITOR_MENU = Object.freeze({
 });
 
 export default class Options {
-    // Toggles added by planning paths when pnc monitor is on
+    // 显式声明 observable 属性
     @observable customizedToggles = observable.map();
+    @observable togglesToHide = observable.map();
+    @observable cameraAngle = 'Default';
 
     constructor() {
+      // 【核心修复】MobX 6 必须在构造函数中调用此函数以激活装饰器
+      makeObservable(this);
+
       this.cameraAngleNames = null;
       this.mainSideBarOptions = [
         'showTasks',
@@ -30,32 +40,43 @@ export default class Options {
       ];
       this.secondarySideBarOptions = ['showPOI'];
 
-      // Set options and their default values from PARAMETERS.options
+      // 初始化设置
       this.resetOptions();
 
-      // Define toggles to hide in layer menu. These include PncMonitor
-      // toggles, which are visible only when PNC Monitor is on.
-      const togglesToHide = {
+      const initialToggles = {
         perceptionPointCloud: OFFLINE_PLAYBACK,
         perceptionLaneMarker: OFFLINE_PLAYBACK,
         planningCar: OFFLINE_PLAYBACK,
       };
-      this.togglesToHide = observable(togglesToHide);
+      // 使用 merge 保持响应式链接
+      this.togglesToHide.merge(initialToggles);
     }
 
     @action resetOptions() {
-      const options = {};
-      for (const name in PARAMETERS.options) {
-        let defaultValue = PARAMETERS.options[name].default;
-        if (OFFLINE_PLAYBACK && name === 'showTasks') {
-          defaultValue = false;
+      const dynamicOptions = {};
+      const staticOptions = PARAMETERS.options;
+
+      for (const name in staticOptions) {
+        let defaultValue = staticOptions[name].default;
+
+        // Apollo 特殊逻辑处理
+        if (OFFLINE_PLAYBACK) {
+          if (name === 'showTasks') defaultValue = false;
+          if (name === 'showPositionShadow') defaultValue = true;
         }
-        if (OFFLINE_PLAYBACK && name === 'showPositionShadow') {
-          defaultValue = true;
+
+        if (Object.prototype.hasOwnProperty.call(this, name) || this[name] !== undefined) {
+          this[name] = defaultValue;
+        } else {
+          // 如果是 PARAMETERS 中有，但类定义中完全没写的属性，才放入待扩展对象
+          dynamicOptions[name] = defaultValue;
         }
-        options[name] = defaultValue;
       }
-      extendObservable(this, options);
+
+      // 仅对真正“额外”的属性进行扩展
+      if (Object.keys(dynamicOptions).length > 0) {
+        extendObservable(this, dynamicOptions);
+      }
     }
 
     @computed get showTools() {
@@ -75,28 +96,16 @@ export default class Options {
     }
 
     @computed get showMonitor() {
-      for (const option of Object.values(MONITOR_MENU)) {
-        if (this[option]) {
-          return true;
-        }
-      }
-      return false;
+      return Object.values(MONITOR_MENU).some(option => this[option]);
     }
 
     @computed get monitorName() {
-      if (this.showConsoleTeleopMonitor) {
-        return MONITOR_MENU.CONSOLE_TELEOP_MONITOR;
-      } if (this.showCarTeleopMonitor) {
-        return MONITOR_MENU.CAR_TELEOP_MONITOR;
-      } if (this.showCameraView) {
-        return MONITOR_MENU.CAMERA_PARAM;
-      } if (this.showDataCollectionMonitor) {
-        return MONITOR_MENU.DATA_COLLECTION_MONITOR;
-      } if (this.showPNCMonitor) {
-        return MONITOR_MENU.PNC_MONITOR;
-      } if (this.showFuelClient) {
-        return MONITOR_MENU.FUEL_CLIENT;
-      }
+      if (this.showConsoleTeleopMonitor) return MONITOR_MENU.CONSOLE_TELEOP_MONITOR;
+      if (this.showCarTeleopMonitor) return MONITOR_MENU.CAR_TELEOP_MONITOR;
+      if (this.showCameraView) return MONITOR_MENU.CAMERA_PARAM;
+      if (this.showDataCollectionMonitor) return MONITOR_MENU.DATA_COLLECTION_MONITOR;
+      if (this.showPNCMonitor) return MONITOR_MENU.PNC_MONITOR;
+      if (this.showFuelClient) return MONITOR_MENU.FUEL_CLIENT;
       return null;
     }
 
@@ -106,54 +115,51 @@ export default class Options {
 
     @action toggle(option, isCustomized) {
       if (isCustomized) {
-        this.customizedToggles.set(option, !this.customizedToggles.get(option));
+        const currentValue = this.customizedToggles.get(option);
+        this.customizedToggles.set(option, !currentValue);
       } else {
         this[option] = !this[option];
       }
 
-      // Disable other mutually exclusive options
+      // 侧边栏互斥逻辑
       if (this[option] && this.mainSideBarOptions.includes(option)) {
-        for (const other of this.mainSideBarOptions) {
-          if (other !== option) {
-            this[other] = false;
-          }
-        }
+        this.mainSideBarOptions.forEach(other => {
+          if (other !== option) this[other] = false;
+        });
       }
-      const monitorOptions = new Set(Object.values(MONITOR_MENU));
-      if (monitorOptions.has(option)) {
-        for (const other of monitorOptions) {
+
+      // Monitor 菜单互斥逻辑
+      const monitorOptions = Object.values(MONITOR_MENU);
+      if (monitorOptions.includes(option)) {
+        monitorOptions.forEach(other => {
           if (other !== option && !isComputed(this, other)) {
             this[other] = false;
           }
-        }
+        });
       }
     }
 
     @action setCustomizedToggles(toggles) {
-      // Set additional toggle in observable map
       this.customizedToggles.clear();
       if (toggles) {
         this.customizedToggles.merge(toggles);
       }
     }
 
+    // 辅助方法不需要装饰器
     isSideBarButtonDisabled(option, enableHMIButtonsOnly, inNavigationMode) {
       if (!this.mainSideBarOptions.includes(option)
             && !this.secondarySideBarOptions.includes(option)) {
-        console.warn(`Disable logic for ${option} is not defined, return false.`);
         return false;
       }
 
-      // enable the side bar button as follows.
-      if ([
-        'showTasks',
-        'showModuleController',
-        'showProfile'
-      ].includes(option)) {
+      if (['showTasks', 'showModuleController', 'showProfile'].includes(option)) {
         return false;
-      } if (option === 'showRouteEditingBar') {
+      }
+      if (option === 'showRouteEditingBar') {
         return enableHMIButtonsOnly || inNavigationMode;
-      } if (option === 'showPOI') {
+      }
+      if (option === 'showPOI') {
         return enableHMIButtonsOnly || this.showRouteEditingBar;
       }
       return enableHMIButtonsOnly;
@@ -162,11 +168,10 @@ export default class Options {
     rotateCameraAngle() {
       if (!this.cameraAngleNames) {
         const cameraData = MENU_DATA.find((data) => data.id === 'camera');
-
         this.cameraAngleNames = Object.values(cameraData.data);
-        // Default screen shielding shortcut key v switch cameraView
-        const shouldFilterCameraView = _.get(PARAMETERS, 'cameraAngle.hasCameraView', false);
-        if (shouldFilterCameraView) {
+
+        const shouldFilter = _.get(PARAMETERS, 'cameraAngle.hasCameraView', false);
+        if (shouldFilter) {
           this.cameraAngleNames = this.cameraAngleNames.filter((name) => name !== 'CameraView');
         }
       }

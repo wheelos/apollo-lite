@@ -82,39 +82,15 @@ module.exports = {
                     loader: "file-loader",
                 }],
             }, {
-                test: require.resolve("three/examples/js/loaders/MTLLoader.js"),
-                use: "imports-loader?THREE=three"
-            }, {
-                test: require.resolve("three/examples/js/loaders/OBJLoader.js"),
-                use: "imports-loader?THREE=three"
-            }, {
-                test: require.resolve("three/examples/js/controls/OrbitControls.js"),
-                use: "imports-loader?THREE=three"
-            }, {
                 // Load the images. They goes through image-webpack-loader
                 // first, and then file-loader.
                 //
                 // Now you can import images just like js.
-                test: /\.(png|jpe?g|svg|mp4|mov|gif)$/i,
-                use: [
-                    {
-                        loader: "file-loader",
-                        options: {
-                            name: 'assets/[hash:base64:55].[ext]',
-                        }
-                    }, {
-                        loader: "image-webpack-loader",
-                        options: {
-                            pngquant: {
-                                quality: "65-90",
-                                speed: 4,
-                            },
-                            mozjpeg: {
-                                progressive: true,
-                            }
-                        }
-                    }
-                ]
+              test: /\.(png|jpe?g|svg|mp4|mov|gif)$/i,
+              type: 'asset',
+              generator: {
+                  filename: 'assets/[hash][ext][query]',
+              },
             }, {
                 // This is to apply the following style loaders in (reverse) order.
                 // Grommet scss files needs to be processed this way.

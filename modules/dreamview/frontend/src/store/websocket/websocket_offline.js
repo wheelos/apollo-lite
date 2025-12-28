@@ -1,5 +1,5 @@
-import STORE from 'store';
 import RENDERER from 'renderer';
+import STORE_IMPORT from 'store';
 
 export default class OfflinePlaybackWebSocketEndpoint {
   constructor(serverAddr) {
@@ -9,17 +9,34 @@ export default class OfflinePlaybackWebSocketEndpoint {
     this.lastSeqNum = -1;
     this.requestTimer = null;
     this.processTimer = null;
-    this.frameData = {}; // cache frames
+    this.frameData = {}; // 帧缓存
     this.routingTime2Path = {};
   }
 
+  /**
+   * 安全获取 STORE 实例。
+   * 如果 import 的 STORE 是空的，则尝试从全局 window.STORE 获取
+   */
+  get activeStore() {
+    return STORE_IMPORT || window.STORE;
+  }
+
   initialize(params) {
+    const store = this.activeStore;
+
+    // 防御性检查：确保回放模块所需的状态已准备好
+    if (!store || !store.playback) {
+      console.warn('OfflinePlaybackWS: Store.playback is not initialized yet. Retrying...');
+      setTimeout(() => this.initialize(params), 500);
+      return;
+    }
+
     if (params && params.id && params.map) {
-      STORE.playback.setRecordId(params.id);
-      STORE.playback.setMapId(params.map);
+      store.playback.setRecordId(params.id);
+      store.playback.setMapId(params.map);
     } else {
       console.error('ERROR: missing required parameter(s)');
-      STORE.setOfflineViewErrorMsg('Missing required parameter(s).');
+      store.setOfflineViewErrorMsg('Missing required parameter(s).');
       return;
     }
 
@@ -31,41 +48,46 @@ export default class OfflinePlaybackWebSocketEndpoint {
       this.websocket = new WebSocket(this.serverAddr);
     } catch (error) {
       console.error(`Failed to establish a connection: ${error}`);
-      setTimeout(() => {
-        this.initialize(params);
-      }, 1000);
+      setTimeout(() => this.initialize(params), 1000);
       return;
     }
-    this.websocket.onopen = (event) => {
-      this.requestGroundMeta(STORE.playback.mapId);
+
+    this.websocket.onopen = () => {
+      this.requestGroundMeta(store.playback.mapId);
     };
+
     this.websocket.onmessage = (event) => {
+      const currentStore = this.activeStore;
       const message = JSON.parse(event.data);
+
       if (message.load_error) {
-        STORE.setOfflineViewErrorMsg(message.load_error);
+        currentStore.setOfflineViewErrorMsg(message.load_error);
         return;
       }
+
       switch (message.type) {
         case 'GroundMetadata':
           RENDERER.updateGroundMetadata(message.data);
-          this.requestFrameCount(STORE.playback.recordId);
+          this.requestFrameCount(currentStore.playback.recordId);
           break;
         case 'FrameCount':
-          STORE.playback.setNumFrames(message.data);
-          if (STORE.playback.hasNext()) {
-            this.requestSimulationWorld(STORE.playback.recordId, STORE.playback.next());
-            this.requestCheckPoints(STORE.playback.recordId, STORE.playback.mapId);
+          currentStore.playback.setNumFrames(message.data);
+          if (currentStore.playback.hasNext()) {
+            this.requestSimulationWorld(currentStore.playback.recordId, currentStore.playback.next());
+            this.requestCheckPoints(currentStore.playback.recordId, currentStore.playback.mapId);
           }
           break;
         case 'RoutePath':
           this.routingTime2Path[message.routingTime] = message.routePath;
           break;
         case 'CheckPoints':
-          RENDERER.checkPoints.update(message.data);
+          if (RENDERER.checkPoints) {
+            RENDERER.checkPoints.update(message.data);
+          }
           break;
         case 'SimWorldUpdate':
           this.checkMessage(message);
-          STORE.setInitializationStatus(true);
+          currentStore.setInitializationStatus(true);
 
           const world = (typeof message.world) === 'string'
             ? JSON.parse(message.world) : message.world;
@@ -73,72 +95,60 @@ export default class OfflinePlaybackWebSocketEndpoint {
           if (world.routePath) {
             this.routingTime2Path[world.routingTime] = world.routePath;
           } else if (!(world.routingTime in this.routingTime2Path)) {
-            // A new routing needs to be fetched from backend.
-            this.requestRoutePath(STORE.playback.recordId, world.sequenceNum);
+            this.requestRoutePath(currentStore.playback.recordId, world.sequenceNum);
           }
 
-          if (STORE.playback.isSeeking) {
+          if (currentStore.playback.isSeeking) {
             this.processSimWorld(world);
           }
 
           if (world.sequenceNum && !(world.sequenceNum in this.frameData)) {
             this.frameData[world.sequenceNum] = world;
-            STORE.playback.setLoadingMarker(world.sequenceNum);
+            currentStore.playback.setLoadingMarker(world.sequenceNum);
           }
-
           break;
       }
     };
+
     this.websocket.onclose = (event) => {
-      console.log(`WebSocket connection closed, close_code: ${event.code}`);
-      this.initialize(params);
+      console.log(`WebSocket connection closed, code: ${event.code}`);
+      this.pausePlayback(); // 关闭时清除定时器
+      setTimeout(() => this.initialize(params), 2000);
     };
   }
 
-  setPointCloudWS() {
-    // Stub as offline version doesn't support point cloud
-  }
-
   checkMessage(message) {
-    if (this.lastUpdateTimestamp !== 0
-            && message.timestamp - this.lastUpdateTimestamp > 150) {
-      console.log(`Last sim_world_update took ${
-        message.timestamp - this.lastUpdateTimestamp}ms`);
+    const seq = message.world ? message.world.sequenceNum : message.sequenceNum;
+    if (this.lastUpdateTimestamp !== 0 && message.timestamp - this.lastUpdateTimestamp > 150) {
+      console.warn(`SimWorldUpdate delay: ${message.timestamp - this.lastUpdateTimestamp}ms`);
     }
     this.lastUpdateTimestamp = message.timestamp;
-    if (this.lastSeqNum !== -1
-            && message.world.sequenceNum > this.lastSeqNum + 1) {
-      console.debug(`Last seq: ${this.lastSeqNum
-      }. New seq: ${message.world.sequenceNum}.`);
-    }
-    this.lastSeqNum = message.world.sequenceNum;
+    this.lastSeqNum = seq;
   }
 
   startPlayback(msPerFrame) {
+    const store = this.activeStore;
     clearInterval(this.requestTimer);
     this.requestTimer = setInterval(() => {
-      if (this.websocket.readyState === this.websocket.OPEN && STORE.playback.initialized()) {
-        if (!STORE.playback.hasNext()) {
+      if (this.websocket && this.websocket.readyState === WebSocket.OPEN && store.playback.initialized()) {
+        if (!store.playback.hasNext()) {
           clearInterval(this.requestTimer);
           this.requestTimer = null;
           return;
         }
-
-        this.requestSimulationWorld(STORE.playback.recordId, STORE.playback.next());
+        this.requestSimulationWorld(store.playback.recordId, store.playback.next());
       }
     }, msPerFrame / 2);
 
     clearInterval(this.processTimer);
     this.processTimer = setInterval(() => {
-      if (STORE.playback.initialized()) {
-        const frameId = STORE.playback.seekingFrame;
+      if (store.playback.initialized()) {
+        const frameId = store.playback.seekingFrame;
         if (frameId in this.frameData) {
           this.processSimWorld(this.frameData[frameId]);
         }
-
-        if (STORE.playback.replayComplete) {
-          clearInterval(this.processTimer);
-          this.processTimer = null;
+        if (store.playback.replayComplete) {
+          this.pausePlayback();
         }
       }
     }, msPerFrame);
@@ -151,72 +161,68 @@ export default class OfflinePlaybackWebSocketEndpoint {
     this.processTimer = null;
   }
 
-  requestGroundMeta(mapId) {
-    this.websocket.send(JSON.stringify({
-      type: 'RetrieveGroundMeta',
-      mapId,
-    }));
-  }
-
   processSimWorld(world) {
-    if (STORE.playback.shouldProcessFrame(world)) {
+    const store = this.activeStore;
+    // 关键修复：确保调用前 store 内的方法依然存在
+    if (store && store.playback && store.playback.shouldProcessFrame(world)) {
       if (!world.routePath) {
         world.routePath = this.routingTime2Path[world.routingTime];
       }
 
-      STORE.updateTimestamp(world.timestamp);
-      RENDERER.maybeInitializeOffest(
-        world.autoDrivingCar.positionX,
-        world.autoDrivingCar.positionY,
-      );
-      RENDERER.updateWorld(world);
-      STORE.meters.update(world);
-      STORE.monitor.update(world);
-      STORE.trafficSignal.update(world);
+      // 执行状态分发，需确保这些方法在 Store 中定义为 @action
+      store.updateTimestamp(world.timestamp);
+
+      if (RENDERER) {
+        RENDERER.maybeInitializeOffest(
+          world.autoDrivingCar.positionX,
+          world.autoDrivingCar.positionY,
+        );
+        RENDERER.updateWorld(world);
+      }
+
+      // 批量分发到子模块
+      if (store.meters) store.meters.update(world);
+      if (store.monitor) store.monitor.update(world);
+      if (store.trafficSignal) store.trafficSignal.update(world);
     }
   }
 
+  requestGroundMeta(mapId) {
+    this.send({ type: 'RetrieveGroundMeta', mapId });
+  }
+
   requestFrameCount(recordId) {
-    this.websocket.send(JSON.stringify({
-      type: 'RetrieveFrameCount',
-      recordId,
-    }));
+    this.send({ type: 'RetrieveFrameCount', recordId });
   }
 
   requestCheckPoints(recordId, mapId) {
-    this.websocket.send(JSON.stringify({
-      type: 'RequestCheckPoints',
-      recordId,
-      mapId,
-    }));
+    this.send({ type: 'RequestCheckPoints', recordId, mapId });
   }
 
   requestSimulationWorld(recordId, frameId) {
+    const store = this.activeStore;
     if (!(frameId in this.frameData)) {
-      this.websocket.send(JSON.stringify({
-        type: 'RequestSimulationWorld',
-        recordId,
-        frameId,
-      }));
+      this.send({ type: 'RequestSimulationWorld', recordId, frameId });
     } else {
-      if (STORE.playback.isSeeking) {
+      if (store.playback.isSeeking) {
         this.processSimWorld(this.frameData[frameId]);
       }
       let loadingMarker = frameId;
       while (loadingMarker in this.frameData) {
         loadingMarker++;
       }
-      STORE.playback.setLoadingMarker(loadingMarker - 1);
+      store.playback.setLoadingMarker(loadingMarker - 1);
     }
   }
 
   requestRoutePath(recordId, frameId) {
-    this.websocket.send(
-      JSON.stringify({
-        type: 'requestRoutePath',
-        recordId,
-        frameId,
-      }),
-    );
+    this.send({ type: 'requestRoutePath', recordId, frameId });
+  }
+
+  // 通用发送指令方法，增加状态检查
+  send(data) {
+    if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+      this.websocket.send(JSON.stringify(data));
+    }
   }
 }

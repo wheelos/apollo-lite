@@ -1,12 +1,8 @@
-import 'imports-loader?THREE=three!three/examples/js/controls/OrbitControls.js';
-
 import routingPointPin from 'assets/images/routing/pin.png';
-
-import WS from 'store/websocket';
-import { IsPointInRectangle } from 'utils/misc';
 import _ from 'lodash';
-import { drawImage, drawRoutingPointArrow, disposeMesh } from 'utils/draw';
-
+import WS from 'store/websocket';
+import { disposeMesh, drawImage, drawRoutingPointArrow } from 'utils/draw';
+import { IsPointInRectangle } from 'utils/misc';
 export default class RoutingEditor {
   constructor() {
     this.routePoints = [];

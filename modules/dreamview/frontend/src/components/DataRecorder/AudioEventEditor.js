@@ -1,11 +1,11 @@
-import React from 'react';
-import protobuf from 'protobufjs/light';
 import classNames from 'classnames';
 import _ from 'lodash';
+import protobuf from 'protobufjs/light';
+import React from 'react';
 
+import CheckboxItem from 'components/common/CheckboxItem';
 import STORE from 'store';
 import WS from 'store/websocket';
-import CheckboxItem from 'components/common/CheckboxItem';
 
 const simWorldRoot = protobuf.Root.fromJSON(require('proto_bundle/sim_world_proto_bundle.json'));
 
@@ -84,7 +84,10 @@ export default class DriveEventEditor extends React.Component {
   }
 
   renderRadioGroupButtons(groupName, items) {
-    return items.sort().map((type) => (
+    // 【关键修复点】强制转换为 Array
+    const itemsArray = Array.from(items || []);
+
+    return itemsArray.sort().map((type) => (
       <button
         key={type}
         onClick={this.handleRadioSelection.bind(this, groupName, type)}

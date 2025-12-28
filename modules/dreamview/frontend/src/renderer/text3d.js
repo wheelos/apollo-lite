@@ -1,20 +1,28 @@
 import * as THREE from 'three';
+// 1. 必须显式从 jsm 导入扩展组件
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 
 const _ = require('lodash');
 
 const fonts = {};
 let fontsLoaded = false;
-const loader = new THREE.FontLoader();
+
+// 2. 实例化 FontLoader (不再使用 THREE.FontLoader)
+const loader = new FontLoader();
 const fontPath = 'fonts/gentilis_bold.typeface.json';
+
 loader.load(fontPath, (font) => {
   fonts.gentilis_bold = font;
   fontsLoaded = true;
 },
 (xhr) => {
-  console.log(`${fontPath + (xhr.loaded / xhr.total * 100)}% loaded`);
+  if (xhr.total > 0) {
+    console.log(`${fontPath}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% loaded`);
+  }
 },
-(xhr) => {
-  console.log(`An error happened when loading ${fontPath}`);
+(error) => {
+  console.error(`An error happened when loading ${fontPath}`, error);
 });
 
 export const TEXT_ALIGN = {
@@ -26,20 +34,17 @@ const LETTER_OFFSET = 0.05;
 
 export default class Text3D {
   constructor() {
-    // The meshes for each ASCII char, created and reused when needed.
-    // e.g. {65: [mesh('a'), mesh('a')], 66: [mesh('b')]}
-    // These meshes will not be deleted even when not in use,
-    // as the construction is expensive.
     this.charMeshes = {};
-    // Mapping from each ASCII char to the index of the mesh used
-    // e.g. {65: 1, 66: 0}
     this.charPointers = {};
-    // Mapping from each ASCII char to the char mesh width
     this.charWidths = {};
   }
 
   reset() {
     this.charPointers = {};
+    // 性能优化：重置时将所有已有 mesh 设为不可见，而不是销毁
+    _.forEach(this.charMeshes, (meshes) => {
+        meshes.forEach(m => { m.visible = false; });
+    });
   }
 
   drawText(text, scene, color = 0xFFEA00, textAlign = TEXT_ALIGN.CENTER) {
@@ -52,45 +57,50 @@ export default class Text3D {
     if (camera !== undefined) {
       textMesh.quaternion.copy(camera.quaternion);
     }
-    textMesh.children.forEach((c) => c.visible = true);
+
+    // 确保子节点可见
+    textMesh.children.forEach((c) => { c.visible = true; });
     textMesh.visible = true;
 
     return textMesh;
   }
 
   composeText(text, color, textAlign) {
-    if (!fontsLoaded) {
+    if (!fontsLoaded || !text) {
       return null;
     }
-    // 32 is the ASCII code for white space.
+
     const charIndices = _.map(text, (l) => l.charCodeAt(0) - 32);
     const textMesh = new THREE.Object3D();
     let offsetSum = 0;
 
     for (let j = 0; j < charIndices.length; j++) {
       const idx = charIndices[j];
-      let pIdx = this.charPointers[idx];
-      if (pIdx === undefined) {
-        pIdx = 0;
-        this.charPointers[idx] = pIdx;
+      const charStr = text[j];
+
+      if (this.charPointers[idx] === undefined) {
+        this.charPointers[idx] = 0;
       }
       if (this.charMeshes[idx] === undefined) {
         this.charMeshes[idx] = [];
       }
+
+      let pIdx = this.charPointers[idx];
       let mesh = this.charMeshes[idx][pIdx];
+
       if (mesh === undefined) {
-        if (this.charMeshes[idx].length > 0) {
-          mesh = this.charMeshes[idx][0].clone();
-        } else {
-          const { charMesh, charWidth } = this.drawChar3D(text[j], color);
-          mesh = charMesh;
-          this.charWidths[idx] = isFinite(charWidth) ? charWidth : 0.2;
-        }
+        // 如果池中没有可用 mesh，则创建
+        const { charMesh, charWidth } = this.drawChar3D(charStr, color);
+        mesh = charMesh;
+        this.charWidths[idx] = isFinite(charWidth) ? charWidth : 0.2;
         this.charMeshes[idx].push(mesh);
+      } else {
+        // 性能优化：复用时仅更新颜色，不重新创建 Geometry
+        mesh.material.color.setHex(color);
       }
 
       mesh.position.set(offsetSum, 0, 0);
-      offsetSum = offsetSum + this.charWidths[idx] + LETTER_OFFSET;
+      offsetSum = offsetSum + (this.charWidths[idx] || 0.2) + LETTER_OFFSET;
       this.charPointers[idx]++;
       textMesh.add(mesh);
     }
@@ -98,19 +108,24 @@ export default class Text3D {
     if (textAlign === 'center') {
       const offset = offsetSum / 2;
       textMesh.children.forEach((child) => {
-        child.position.setX(child.position.x - offset);
+        child.position.x -= offset;
       });
     }
 
     return textMesh;
   }
 
+  // 3. 修改 drawChar3D 以适配 TextGeometry API
   drawChar3D(char, color, font = fonts.gentilis_bold, size = 0.6, height = 0) {
-    const charGeo = new THREE.TextGeometry(char, {
+    if (!font) return { charMesh: new THREE.Group(), charWidth: 0 };
+
+    const charGeo = new TextGeometry(char, {
       font,
       size,
-      height,
+      height, // 2D 效果通常设为 0
+      curveSegments: 4, // 性能优化：自动驾驶场景不需要太高的曲线细分数
     });
+
     const charMaterial = new THREE.MeshBasicMaterial({ color });
     const charMesh = new THREE.Mesh(charGeo, charMaterial);
 

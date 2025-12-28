@@ -1,6 +1,5 @@
-import STORE from 'store';
+import STORE_IMPORT from 'store';
 import Worker from 'utils/webworker.js';
-import { action } from 'mobx';
 
 export default class PluginWebSocketEndpoint {
   constructor(serverAddr) {
@@ -9,8 +8,15 @@ export default class PluginWebSocketEndpoint {
     this.worker = new Worker();
   }
 
+  /**
+   * 安全获取 STORE 实例
+   */
+  get activeStore() {
+    return STORE_IMPORT || window.STORE;
+  }
+
   checkWsConnection() {
-    if (this.websocket.readyState === this.websocket.OPEN) {
+    if (this.websocket && this.websocket.readyState === this.websocket.OPEN) {
       return this;
     }
     return this.initialize();
@@ -18,481 +24,245 @@ export default class PluginWebSocketEndpoint {
 
   initialize() {
     try {
-      // The connection is not initiated in the connected state
       if (this.websocket && this.websocket.readyState === this.websocket.OPEN) {
         return this;
       }
       this.websocket = new WebSocket(this.serverAddr);
       this.websocket.binaryType = 'arraybuffer';
     } catch (error) {
-      console.error(`Failed to establish a connection: ${error}`);
+      console.error(`PluginWS: Failed to establish a connection: ${error}`);
       setTimeout(() => {
         this.initialize();
       }, 1000);
       return this;
     }
+
     this.websocket.addEventListener('message', (event) => {
       this.worker.postMessage({
-        source: 'point_cloud',
+        source: 'point_cloud', // 注意：此处逻辑沿用原代码，通常插件数据通过此 worker 处理
         data: event.data,
       });
     });
+
     this.websocket.onclose = (event) => {
-      console.log(`WebSocket connection closed with code: ${event.code}`);
+      console.log(`Plugin WebSocket connection closed with code: ${event.code}`);
       this.initialize();
     };
+
+    // 处理来自 Worker 的解析数据
     this.worker.addEventListener('message', (event) => {
       if (event.data.type === 'PluginMsg') {
         const message = event.data;
+        const store = this.activeStore;
+
+        // 防御性校验：确保 StudioConnector 模块已就绪
+        if (!store || !store.studioConnector) {
+          console.warn('PluginWS: Store.studioConnector is not ready.');
+          return;
+        }
+
+        const connector = store.studioConnector;
+        const info = JSON.parse(message.data.info ?? '{}');
 
         switch (message.data.name) {
           case 'StudioConnectorCertStatus':
-            const status = JSON.parse(message.data.info ?? '{}').status;
+            const status = info.status;
             if (status === 'OK') {
               this.getScenarioSetList();
               this.getDynamicsModelList();
               this.getRecordList();
             }
-            STORE.studioConnector.checkCertificate(status);
+            connector.checkCertificate(status);
             break;
-          // Get Scenario Set Info Success
+
           case 'GetScenarioSetListSuccess':
-            STORE.studioConnector.updateRemoteScenarioSetList(
-              JSON.parse(message.data.info ?? '{}'));
-            break;
-          // Get Scenario Set Info Failed
           case 'GetScenarioSetListFail':
-            STORE.studioConnector.updateRemoteScenarioSetList(
-              JSON.parse(message.data.info ?? '{}')
-            );
+            connector.updateRemoteScenarioSetList(info);
             break;
+
           case 'DownloadScenarioSetSuccess':
-            STORE.studioConnector.updateRemoteScenarioSetStatus(
-              JSON.parse(message.data.info ?? '{}')?.scenario_set_id,
-              JSON.parse(message.data.info ?? '{}')?.status,
-            );
+            connector.updateRemoteScenarioSetStatus(info?.scenario_set_id, info?.status);
             break;
+
           case 'DownloadScenarioSetFail':
-            STORE.studioConnector.updateRemoteScenarioSetStatus(
-              JSON.parse(message.data.info ?? '{}')?.scenario_set_id,
-              'fail',
-              JSON.parse(message.data.info ?? '{}')?.error_msg,
-            );
+            connector.updateRemoteScenarioSetStatus(info?.scenario_set_id, 'fail', info?.error_msg);
             break;
+
           case 'GetDynamicModelListSuccess':
-            STORE.studioConnector.updateRemoteDynamicsModelList(
-              JSON.parse(message.data.info ?? '{}'));
-            break;
           case 'GetDynamicModelListFail':
-            STORE.studioConnector.updateRemoteDynamicsModelList(
-              JSON.parse(message.data.info ?? '{}')
-            );
+            connector.updateRemoteDynamicsModelList(info);
             break;
+
           case 'DownloadDynamicModelSuccess':
-            STORE.studioConnector.updateRemoteDynamicsModelStatus(
-              JSON.parse(message.data.info ?? '{}')?.dynamic_model_name,
-              JSON.parse(message.data.info ?? '{}')?.status,
-            );
+            connector.updateRemoteDynamicsModelStatus(info?.dynamic_model_name, info?.status);
             break;
+
           case 'DownloadDynamicModelFail':
-            STORE.studioConnector.updateRemoteDynamicsModelStatus(
-              JSON.parse(message.data.info ?? '{}')?.dynamic_model_name,
-              'fail',
-              JSON.parse(message.data.info ?? '{}')?.error_msg,
-            );
+            connector.updateRemoteDynamicsModelStatus(info?.dynamic_model_name, 'fail', info?.error_msg);
             break;
+
           case 'GetRecordsListSuccess':
-            STORE.studioConnector.updateRemoteRecordsList(
-              JSON.parse(message.data.info ?? '{}'));
-            break;
           case 'GetRecordListFail':
-            STORE.studioConnector.updateRemoteRecordsList(
-              JSON.parse(message.data.info ?? '{}')
-            );
+            connector.updateRemoteRecordsList(info);
             break;
-          // 下载record成功
+
           case 'UpdateRecordToStatus':
-            STORE.studioConnector.updateRemoteRecordStatus(
-              JSON.parse(message.data.info ?? '{}')?.record_id,
-              JSON.parse(message.data.info ?? '{}')?.status,
-            );
+            connector.updateRemoteRecordStatus(info?.record_id, info?.status);
             break;
+
           case 'DownloadRecordFail':
-            STORE.studioConnector.updateRemoteRecordStatus(
-              JSON.parse(message.data.info ?? '{}')?.record_id,
-              'fail',
-              JSON.parse(message.data.info ?? '{}')?.error_msg,
-            );
+            connector.updateRemoteRecordStatus(info?.record_id, 'fail', info?.error_msg);
+            break;
+
           case 'GetVehicleInfoSuccess':
-            STORE.studioConnector.updateVehicleInfo(
-              JSON.parse(message.data.info ?? '{}'),
-              2,
-            );
+            connector.updateVehicleInfo(info, 2);
             break;
+
           case 'GetVehicleInfoFail':
-            STORE.studioConnector.updateVehicleInfo(
-              JSON.parse(message.data.info ?? '{}'),
-              3,
-            );
+            connector.updateVehicleInfo(info, 3);
             break;
+
           case 'RefreshVehicleConfigSuccess':
-            STORE.studioConnector.refreshVehicleConfig(
-              JSON.parse(message.data.info ?? '{}'),
-              2,
-            );
+            connector.refreshVehicleConfig(info, 2);
+            break;
         }
       }
     });
+
     return this;
+  }
+
+  // --- 通用发送指令封装 ---
+  sendPluginRequest(name, info = '') {
+    if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+      this.websocket.send(JSON.stringify({
+        type: 'PluginRequest',
+        data: {
+          name,
+          info,
+          source: 'dreamview',
+          target: 'studio_connector',
+          source_type: 'module',
+          target_type: 'plugins',
+        }
+      }));
+    }
   }
 
   checkCertificate() {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'CheckCertStatus',
-        'source': 'dreamview',
-        'info': '',
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
+    this.sendPluginRequest('CheckCertStatus');
     return this;
   }
 
-
   getScenarioSetList() {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'GetScenarioSetList',
-        'source': 'dreamview',
-        'info': '',
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
+    this.sendPluginRequest('GetScenarioSetList');
     return this;
   }
 
   downloadScenarioSetById(scenarioSetId) {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'DownloadScenarioSet',
-        'source': 'dreamview',
-        'info': scenarioSetId,
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
+    this.sendPluginRequest('DownloadScenarioSet', scenarioSetId);
     return this;
   }
 
-  // 下载record
   downloadRecord(id) {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'DownloadRecord',
-        'source': 'dreamview',
-        'info': id,
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
+    this.sendPluginRequest('DownloadRecord', id);
     return this;
   }
 
-  // 获取动力学模型列表
   getDynamicsModelList() {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'GetDynamicModelList',
-        'source': 'dreamview',
-        'info': '',
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
+    this.sendPluginRequest('GetDynamicModelList');
     return this;
   }
 
-  // 下载动力学模型
   downloadDynamicsModel(modelName) {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'DownloadDynamicModel',
-        'source': 'dreamview',
-        'info': modelName,
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
+    this.sendPluginRequest('DownloadDynamicModel', modelName);
     return this;
   }
 
-  // 获取数据包列表
   getRecordList() {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'GetRecordsList',
-        'source': 'dreamview',
-        'info': '',
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
+    this.sendPluginRequest('GetRecordsList');
     return this;
   }
 
   getVehicleInfo() {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'GetVehicleInfo',
-        'source': 'dreamview',
-        'info': '',
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
+    this.sendPluginRequest('GetVehicleInfo');
     return this;
   }
 
-  /**
-   * refresh vehicle config
-   */
+  // --- 带有 Promise 回调的方法 (用于 UI 交互确认) ---
+
+  createPluginPromise(successMsg, failMsg, sendAction) {
+    sendAction();
+    return new Promise((resolve, reject) => {
+      const listener = (event) => {
+        if (event.data.type === 'PluginMsg') {
+          const name = event.data.data.name;
+          if (name === successMsg) {
+            this.worker.removeEventListener('message', listener);
+            resolve(event.data.data.info ? JSON.parse(event.data.data.info) : null);
+          } else if (name === failMsg) {
+            this.worker.removeEventListener('message', listener);
+            reject();
+          }
+        }
+      };
+      this.worker.addEventListener('message', listener);
+    });
+  }
+
   refreshVehicleConfig(vehicle_id) {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'RefreshVehicleConfig',
-        'source': 'dreamview',
-        'info': vehicle_id,
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
-    return new Promise((resolve, reject) => {
-      this.worker.addEventListener('message', (event) => {
-        if (event.data.type === 'PluginMsg') {
-          const message = event.data;
-          switch (message.data.name) {
-            case 'RefreshVehicleConfigSuccess':
-              resolve();
-              break;
-            case 'RefreshVehicleConfigFail':
-              reject();
-              break;
-          }
-        }
-      },
-      );
-    });
+    return this.createPluginPromise(
+      'RefreshVehicleConfigSuccess',
+      'RefreshVehicleConfigFail',
+      () => this.sendPluginRequest('RefreshVehicleConfig', vehicle_id)
+    );
   }
 
-  /**
-   * reset vehicle config
-   */
   resetVehicleConfig(vehicle_id) {
-    this.websocket.send(JSON.stringify({
-      'type': 'PluginRequest',
-      'data': {
-        'name': 'ResetVehicleConfig',
-        'source': 'dreamview',
-        'info': vehicle_id,
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins'
-      }
-    }));
-    return new Promise((resolve, reject) => {
-      this.worker.addEventListener('message', (event) => {
-        if (event.data.type === 'PluginMsg') {
-          const message = event.data;
-          switch (message.data.name) {
-            case 'ResetVehicleConfigSuccess':
-              resolve();
-              break;
-            case 'ResetVehicleConfigFail':
-              reject();
-              break;
-          }
-        }
-      },
-
-      );
-    });
+    return this.createPluginPromise(
+      'ResetVehicleConfigSuccess',
+      'ResetVehicleConfigFail',
+      () => this.sendPluginRequest('ResetVehicleConfig', vehicle_id)
+    );
   }
 
-  /**
-   * upload vehicle config
-   */
   uploadVehicleConfig(vehicle_id) {
-    this.websocket.send(JSON.stringify({
-      'type': 'PluginRequest',
-      'data': {
-        'name': 'UploadVehicleConfig',
-        'source': 'dreamview',
-        'info': vehicle_id,
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins'
-      }
-    }));
-    return new Promise((resolve, reject) => {
-      this.worker.addEventListener(
-        'message',
-        (event) => {
-          if (event.data.type === 'PluginMsg') {
-            const message = event.data;
-            switch (message.data.name) {
-              case 'UploadConfigSuccess':
-                resolve();
-                break;
-              case 'UploadConfigFail':
-                reject();
-                break;
-            }
-          }
-        },);
-    });
+    return this.createPluginPromise(
+      'UploadConfigSuccess',
+      'UploadConfigFail',
+      () => this.sendPluginRequest('UploadVehicleConfig', vehicle_id)
+    );
   }
 
-  /** GetV2xInfo */
   getV2xInfo() {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'GetV2xInfo',
-        'source': 'dreamview',
-        'info': '',
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
-    return new Promise((resolve, reject) => {
-      this.worker.addEventListener('message', (event) => {
-        if (event.data.type === 'PluginMsg') {
-          const message = event.data;
-          switch (message.data.name) {
-            case 'GetV2xInfoSuccess':
-              resolve(JSON.parse(message.data.info ?? '{}'));
-              break;
-            case 'GetV2xInfoFail':
-              reject(JSON.parse(message.data.info ?? '{}'));
-              break;
-          }
-        }
-      },
-      );
-    });
+    return this.createPluginPromise(
+      'GetV2xInfoSuccess',
+      'GetV2xInfoFail',
+      () => this.sendPluginRequest('GetV2xInfo')
+    );
   }
 
-  /** RefreshV2xConf */
   refreshV2xConf(v2xId) {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'RefreshV2xConf',
-        'source': 'dreamview',
-        'info': v2xId,
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
-    return new Promise((resolve, reject) => {
-      this.worker.addEventListener('message', (event) => {
-        if (event.data.type === 'PluginMsg') {
-          const message = event.data;
-          switch (message.data.name) {
-            case 'RefreshV2xConfSuccess':
-              resolve();
-              break;
-            case 'RefreshV2xConfFail':
-              reject();
-              break;
-          }
-        }
-      },
-      );
-    });
+    return this.createPluginPromise(
+      'RefreshV2xConfSuccess',
+      'RefreshV2xConfFail',
+      () => this.sendPluginRequest('RefreshV2xConf', v2xId)
+    );
   }
 
-  /** ResetV2xConf */
   resetV2xConf(v2xId) {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'ResetV2xConf',
-        'source': 'dreamview',
-        'info': v2xId,
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
-    return new Promise((resolve, reject) => {
-      this.worker.addEventListener('message', (event) => {
-        if (event.data.type === 'PluginMsg') {
-          const message = event.data;
-          switch (message.data.name) {
-            case 'ResetV2xConfSuccess':
-              resolve();
-              break;
-            case 'ResetV2xConfFail':
-              reject();
-              break;
-          }
-        }
-      },
-      );
-    });
+    return this.createPluginPromise(
+      'ResetV2xConfSuccess',
+      'ResetV2xConfFail',
+      () => this.sendPluginRequest('ResetV2xConf', v2xId)
+    );
   }
 
-  /** UploadV2xConf */
   uploadV2xConf(v2xId) {
-    this.websocket.send(JSON.stringify({
-      type: 'PluginRequest',
-      data: {
-        'name': 'UploadV2xConf',
-        'source': 'dreamview',
-        'info': v2xId,
-        'target': 'studio_connector',
-        'source_type': 'module',
-        'target_type': 'plugins',
-      }
-    }));
-    return new Promise((resolve, reject) => {
-      this.worker.addEventListener('message', (event) => {
-        if (event.data.type === 'PluginMsg') {
-          const message = event.data;
-          switch (message.data.name) {
-            case 'UploadV2xSuccess':
-              resolve();
-              break;
-            case 'UploadV2xFail':
-              reject();
-              break;
-          }
-        }
-      },
-      );
-    });
+    return this.createPluginPromise(
+      'UploadV2xSuccess',
+      'UploadV2xFail',
+      () => this.sendPluginRequest('UploadV2xConf', v2xId)
+    );
   }
 }

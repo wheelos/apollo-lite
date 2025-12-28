@@ -39,17 +39,13 @@ class MenuItemCheckbox extends React.Component {
   }
 
   componentDidMount() {
-    const {
-      id,
-    } = this.props;
+    const { id } = this.props;
     if (id === 'perceptionPointCloud') {
       POINT_CLOUD_WS.getPointCloudChannel().then((channels) => {
         this.setState({ channels });
-      }).catch(
-        err => {
-          this.setState({ channels: [] });
-        }
-      );
+      }).catch(() => {
+        this.setState({ channels: [] });
+      });
     }
   }
 
@@ -61,15 +57,16 @@ class MenuItemCheckbox extends React.Component {
 
   render() {
     const {
-      id,
-      title,
-      optionName,
-      options,
-      isCustomized,
-      store,
+      id, title, optionName, options, isCustomized, store,
     } = this.props;
 
     const { hmi } = store;
+
+    // 获取当前 Checkbox 的选中状态
+    const isChecked = isCustomized
+      ? options.customizedToggles.get(optionName)
+      : options[optionName];
+
     return (
       <ul className="item">
         <li
@@ -87,30 +84,27 @@ class MenuItemCheckbox extends React.Component {
               name={id}
               className="toggle-switch"
               id={id}
-              checked={isCustomized ? options.customizedToggles.get(optionName)
-                : options[optionName]}
+              checked={!!isChecked} // 确保是布尔值
               readOnly
             />
             <label className="toggle-switch-label" htmlFor={id} />
           </div>
           <span>{title}</span>
-          {id === 'perceptionPointCloud' && <span className='point_cloud_channel_select'>
-            <span className="arrow" />
-            <select
-              onClick={(e) => e.stopPropagation()}
-              value={hmi.currentPointCloudChannel}
-              onChange={this.onStatusSelectChange}
-            >
-              <option key={'select-channel'} value={''}>- select channel -</option>
-              {
-                this.state.channels.map((channel) => {
-                  return (
-                    <option key={channel} value={channel}>{channel}</option>
-                  );
-                })
-              }
-            </select>
-          </span>}
+          {id === 'perceptionPointCloud' && (
+            <span className='point_cloud_channel_select'>
+              <span className="arrow" />
+              <select
+                onClick={(e) => e.stopPropagation()}
+                value={hmi.currentPointCloudChannel || ''}
+                onChange={this.onStatusSelectChange}
+              >
+                <option value=''>- select channel -</option>
+                {this.state.channels.map((channel) => (
+                  <option key={channel} value={channel}>{channel}</option>
+                ))}
+              </select>
+            </span>
+          )}
         </li>
       </ul>
     );
@@ -121,7 +115,6 @@ class MenuItemCheckbox extends React.Component {
 class SubMenu extends React.Component {
   constructor(props) {
     super(props);
-
     this.menuIdOptionMapping = {};
     for (const name in PARAMETERS.options) {
       const option = PARAMETERS.options[name];
@@ -136,11 +129,13 @@ class SubMenu extends React.Component {
       tabId, tabTitle, tabType, data, options,
     } = this.props;
     let entries = null;
+
     if (tabType === 'checkbox') {
+      // 这里的 Object.keys 工作正常，因为 data 是普通对象
       entries = Object.keys(data)
         .map((key) => {
           const item = data[key];
-          if (options.togglesToHide[key]) {
+          if (options.togglesToHide.get(key)) { // MobX 6 Map 使用 .get()
             return null;
           }
           return (
@@ -154,8 +149,11 @@ class SubMenu extends React.Component {
             />
           );
         });
+
+      // 修复定制化 Planning Path 路径
       if (tabId === 'planning' && options.customizedToggles.size > 0) {
-        const extraEntries = options.customizedToggles.keys().map((pathName) => {
+        // 【关键修复位置】将 Iterator 转换为 Array
+        const extraEntries = Array.from(options.customizedToggles.keys()).map((pathName) => {
           const title = _.startCase(_.snakeCase(pathName));
           return (
             <MenuItemCheckbox
@@ -171,7 +169,6 @@ class SubMenu extends React.Component {
         entries = entries.concat(extraEntries);
       }
     } else if (tabType === 'radio') {
-      // Now we only have camera tab using radio in menu
       if (tabId === 'camera') {
         const cameraAngles = Object.values(data)
           .filter((angle) => PARAMETERS.options.cameraAngle[`has${angle}`] !== false);
@@ -179,16 +176,15 @@ class SubMenu extends React.Component {
           <RadioItem
             key={`${tabId}_${item}`}
             id={tabId}
-            onClick={() => {
-              options.selectCamera(item);
-            }}
+            onClick={() => options.selectCamera(item)}
             checked={options.cameraAngle === item}
             title={_.startCase(item)}
           />
         ));
       }
     }
-    const result = (
+
+    return (
       <div className="card">
         <div className="card-header summary">
           <span>
@@ -199,7 +195,6 @@ class SubMenu extends React.Component {
         <div className="card-content-column">{entries}</div>
       </div>
     );
-    return result;
   }
 }
 
@@ -211,7 +206,6 @@ export default class LayerMenu extends React.Component {
     const subMenu = Object.keys(menuData)
       .map((key) => {
         const item = menuData[key];
-
         if (OFFLINE_PLAYBACK && !item.supportInOfflineView) {
           return null;
         }

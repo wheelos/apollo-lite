@@ -1,23 +1,23 @@
-import * as THREE from 'three';
 import Stats from 'stats.js';
+import * as THREE from 'three';
 
 import Styles from 'styles/main.scss';
 
-import Coordinates from 'renderer/coordinates';
 import AutoDrivingCar from 'renderer/adc';
 import CheckPoints from 'renderer/check_points.js';
-import Ground from 'renderer/ground';
-import TileGround from 'renderer/tileground';
-import Map from 'renderer/map';
-import PlanningTrajectory from 'renderer/trajectory.js';
-import PlanningStatus from 'renderer/status.js';
-import PerceptionObstacles from 'renderer/obstacles.js';
+import Coordinates from 'renderer/coordinates';
 import Decision from 'renderer/decision.js';
+import Gnss from 'renderer/gnss.js';
+import Ground from 'renderer/ground';
+import Map from 'renderer/map';
+import PerceptionObstacles from 'renderer/obstacles.js';
+import PointCloud from 'renderer/point_cloud.js';
 import Prediction from 'renderer/prediction.js';
 import Routing from 'renderer/routing.js';
 import RoutingEditor from 'renderer/routing_editor.js';
-import Gnss from 'renderer/gnss.js';
-import PointCloud from 'renderer/point_cloud.js';
+import PlanningStatus from 'renderer/status.js';
+import TileGround from 'renderer/tileground';
+import PlanningTrajectory from 'renderer/trajectory.js';
 
 const _ = require('lodash');
 
@@ -126,7 +126,7 @@ class Renderer {
     this.scene.add(this.camera);
 
     this.updateDimension(width, height);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     const container = document.getElementById(canvasId);
     container.appendChild(this.renderer.domElement);
@@ -544,10 +544,16 @@ class Renderer {
   }
 
   updatePointCloud(pointCloud) {
-    if (!this.coordinates.isInitialized() || !this.adc.mesh) {
+    // Use optional chaining and strict checks
+    if (!this.coordinates.isInitialized() || !this.adc?.mesh) {
       return;
     }
-    this.pointCloud.update(pointCloud, this.adc.mesh);
+
+    // The optimized PointCloud.update handles empty data internally now,
+    // but a quick check here saves a function call.
+    if (pointCloud && pointCloud.num && pointCloud.num.length > 0) {
+        this.pointCloud.update(pointCloud, this.adc.mesh);
+    }
   }
 
   updateMapIndex(hash, elementIds, radius) {

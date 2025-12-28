@@ -8,20 +8,15 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const ESLintPlugin = require('eslint-webpack-plugin');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 const FaviconsWebpackPlugin = require('favicons-webpack-plugin');
-// const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = (env, argv) => {
-
   const { mode } = argv;
-
   const isEnvDevelopment = mode === 'development';
   const isEnvProduction = mode === 'production';
 
-  // style files regexes
   const cssRegex = /\.css$/;
   const sassRegex = /\.(scss|sass)$/;
   const lessRegex = /\.less$/;
-
 
   return {
     context: path.join(__dirname, 'src'),
@@ -40,15 +35,7 @@ module.exports = (env, argv) => {
     devtool: isEnvDevelopment ? 'inline-source-map' : 'hidden-source-map',
 
     resolve: {
-      // Files with the following extensions here can be "import"
-      // without the extension.
-      //
-      // Needs ".json" and ".scss" for Grommet.
-      extensions: ['.webpack.js', '.web.js',
-        '.jsx', '.js',
-        '.json',
-        '.scss', '.css',
-        '.png', '.svg'],
+      extensions: ['.jsx', '.js', '.json', '.scss', '.css', '.png', '.svg'],
       alias: {
         store: path.resolve(__dirname, 'src/store'),
         styles: path.resolve(__dirname, 'src/styles'),
@@ -57,6 +44,9 @@ module.exports = (env, argv) => {
         renderer: path.resolve(__dirname, 'src/renderer'),
         assets: path.resolve(__dirname, 'assets'),
         proto_bundle: path.resolve(__dirname, 'proto_bundle'),
+        'three': path.resolve(__dirname, 'node_modules/three'),
+        'three/examples/jsm': path.resolve(__dirname, 'node_modules/three/examples/jsm'),
+        'three/addons': path.resolve(__dirname, 'node_modules/three/examples/jsm'),
       },
     },
 
@@ -70,20 +60,21 @@ module.exports = (env, argv) => {
               loader: 'babel-loader',
               options: {
                 presets: [
-                  '@babel/preset-env',
-                  '@babel/preset-react'],
+                  ['@babel/preset-env', { targets: "defaults" }],
+                  // 【核心修复2】解决 React is not defined 错误
+                  ['@babel/preset-react', {
+                    "runtime": "automatic"
+                  }]
+                ],
                 plugins: [
                   isEnvDevelopment && require.resolve('react-refresh/babel'),
-                  ['@babel/plugin-proposal-decorators', {
-                    legacy: true,
-                  }],
-                  '@babel/plugin-proposal-class-properties',
+                  // MobX 6 推荐配置：装饰器在前，Class Properties 在后
+                  ['@babel/plugin-proposal-decorators', { legacy: true }],
+                  ['@babel/plugin-proposal-class-properties', { loose: true }],
                   '@babel/plugin-proposal-optional-chaining',
                   [
                     '@babel/plugin-transform-modules-commonjs',
-                    {
-                      allowTopLevelThis: true,
-                    },
+                    { allowTopLevelThis: true },
                   ],
                   [
                     'import',
@@ -100,30 +91,11 @@ module.exports = (env, argv) => {
           ],
         },
         {
-          // Object models and materials.
           test: /\.mtl$|\.obj$/,
           exclude: /node_modules/,
-          use: [{
-            loader: 'file-loader',
-          }],
+          use: [{ loader: 'file-loader' }],
         },
         {
-          test: require.resolve('three/examples/js/loaders/MTLLoader.js'),
-          use: 'imports-loader?THREE=three',
-        },
-        {
-          test: require.resolve('three/examples/js/loaders/OBJLoader.js'),
-          use: 'imports-loader?THREE=three',
-        },
-        {
-          test: require.resolve('three/examples/js/controls/OrbitControls.js'),
-          use: 'imports-loader?THREE=three',
-        },
-        {
-          // Load the images. They goes through image-webpack-loader
-          // first, and then file-loader.
-          //
-          // Now you can import images just like js.
           test: /\.(png|jpe?g|svg|mp4|mov|gif)$/i,
           type: 'asset',
           generator: {
@@ -132,36 +104,20 @@ module.exports = (env, argv) => {
         },
         {
           test: cssRegex,
-          use: [
-            {
-              loader: 'style-loader',
-            }, {
-              loader: 'css-loader',
-            }
-          ]
+          use: [{ loader: 'style-loader' }, { loader: 'css-loader' }]
         },
         {
           test: sassRegex,
           use: [
-            {
-              loader: 'style-loader',
-            },
+            { loader: 'style-loader' },
             {
               loader: 'css-loader',
-              options: {
-                modules: {
-                  mode: 'global',
-                },
-              }
+              options: { modules: { mode: 'global' } }
             },
             {
               loader: 'sass-loader',
               options: {
-                sassOptions: {
-                  includePaths: [
-                    './node_modules',
-                  ],
-                },
+                sassOptions: { includePaths: ['./node_modules'] },
               },
             },
           ],
@@ -169,24 +125,15 @@ module.exports = (env, argv) => {
         {
           test: lessRegex,
           use: [
-            {
-              loader: 'style-loader',
-            },
-            {
-              loader: 'css-loader',
-            },
+            { loader: 'style-loader' },
+            { loader: 'css-loader' },
             {
               loader: 'less-loader',
-              options: {
-                lessOptions: {
-                  javascriptEnabled: true,
-                }
-              }
+              options: { lessOptions: { javascriptEnabled: true } }
             },
           ],
         },
         {
-          // For font-awesome (woff)
           test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/,
           use: [
             {
@@ -199,7 +146,6 @@ module.exports = (env, argv) => {
           ],
         },
         {
-          // For font-awesome (ttf)
           test: /\.(ttf|eot|svg)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
           loader: 'file-loader',
         },
@@ -208,15 +154,11 @@ module.exports = (env, argv) => {
           use: [
             {
               loader: 'worker-loader',
-              options: {
-                filename: 'worker.bundle.js',
-              },
+              options: { filename: 'worker.bundle.js' },
             },
             {
               loader: 'babel-loader',
-              options: {
-                presets: ['@babel/preset-env'],
-              },
+              options: { presets: ['@babel/preset-env'] },
             }],
         },
         {
@@ -229,14 +171,12 @@ module.exports = (env, argv) => {
                   options: {
                     name: '[path][name].json',
                     context: 'src/store/config',
-                    outputPath: '.', // the "dist" dir
+                    outputPath: '.',
                   },
                 },
                 {
                   loader: 'yaml-loader',
-                  options: {
-                    asJSON: true,
-                  }
+                  options: { asJSON: true }
                 },
               ]
             },
@@ -247,9 +187,7 @@ module.exports = (env, argv) => {
                 'json-loader',
                 {
                   loader: 'yaml-loader',
-                  options: {
-                    asJSON: true,
-                  }
+                  options: { asJSON: true }
                 },
               ],
             },
@@ -259,7 +197,6 @@ module.exports = (env, argv) => {
     },
 
     plugins: [
-      // Show compilation progress bar.
       new ProgressBarPlugin({
         format: 'build [:bar] :percent (:elapsed seconds)',
         clear: false,
@@ -267,14 +204,11 @@ module.exports = (env, argv) => {
       isEnvDevelopment && new ReactRefreshWebpackPlugin(),
       new ESLintPlugin({
         fix: true,
-        // 仅针对变更文件
         lintDirtyModulesOnly: true,
         extensions: ['js', 'jsx'],
       }),
-      // Generate the actual html from the hbs.
       new HtmlWebpackPlugin({
         template: './index.hbs',
-        // Include only the app. Do not include the service worker.
         chunks: ['app'],
       }),
       new FaviconsWebpackPlugin({
@@ -288,47 +222,27 @@ module.exports = (env, argv) => {
           to: 'fonts',
         },
       ]),
-      // As of moment 2.18, all locales are bundled together with the core library
-      // use the IgnorePlugin to stop any locale being bundled with moment:
       new webpack.IgnorePlugin({
         resourceRegExp: /^\.\/locale$/,
         contextRegExp: /moment$/,
       }),
-
       new webpack.DefinePlugin({
         OFFLINE_PLAYBACK: JSON.stringify(false),
       }),
-
-      // Uncomment me to analyze bundles
-      // new BundleAnalyzerPlugin({
-      //     analyzerMode: 'server',
-      //     analyzerPort: '7777'
-      // }),
     ].filter(Boolean),
 
     devServer: {
-      client: {
-        progress: true,
-      },
+      client: { progress: true },
       static: {
         directory: path.join(__dirname, 'src'),
-        staticOptions: {},
-        serveIndex: true,
         watch: true,
       },
       hot: true,
       open: true,
       compress: true,
       port: 8080,
-      devMiddleware: {
-        // debug devserver
-        // writeToDisk: true,
-      },
     },
 
-    // Disable the warning of large size bundle files.
-    performance: {
-      hints: false,
-    },
+    performance: { hints: false },
   };
 };
