@@ -8479,7 +8479,9 @@
                 "ZHONGYUN": 6,
                 "CH": 7,
                 "DKIT": 8,
-                "NEOLIX": 9
+                "NEOLIX": 9,
+                "MK_MINI": 10,
+                "YUNLE": 50
               }
             },
             "LatencyParam": {
@@ -8656,6 +8658,18 @@
                 "brakeLatencyParam": {
                   "type": "LatencyParam",
                   "id": 24
+                },
+                "maxFrontWheelSteer": {
+                  "type": "double",
+                  "id": 25
+                },
+                "maxBackWheelSteer": {
+                  "type": "double",
+                  "id": 26
+                },
+                "trackWidth": {
+                  "type": "double",
+                  "id": 27
                 }
               }
             },
@@ -8721,7 +8735,8 @@
                         "MOBILEYE": 18,
                         "DELPHI_ESR": 19,
                         "STORYTELLING": 20,
-                        "TASK_MANAGER": 21
+                        "TASK_MANAGER": 21,
+                        "NANO_RADAR": 22
                       }
                     },
                     "LogLevel": {
@@ -8818,14 +8833,25 @@
                 "turnSignalCmd": {
                   "type": "Turn_signal_cmdType",
                   "id": 1
+                },
+                "lowBeamCmd": {
+                  "type": "Low_beam_cmdType",
+                  "id": 2
                 }
               },
               "nested": {
+                "Low_beam_cmdType": {
+                  "values": {
+                    "LOW_BEAM_CMD_OFF": 0,
+                    "LOW_BEAM_CMD_ON": 1
+                  }
+                },
                 "Turn_signal_cmdType": {
                   "values": {
                     "TURN_SIGNAL_CMD_NONE": 0,
                     "TURN_SIGNAL_CMD_LEFT": 1,
-                    "TURN_SIGNAL_CMD_RIGHT": 2
+                    "TURN_SIGNAL_CMD_RIGHT": 2,
+                    "TURN_SIGNAL_CMD_HAZARD_WARNING_LAMPSTS": 3
                   }
                 }
               }
@@ -8860,6 +8886,22 @@
                   "values": {
                     "CTRL_CMD_OUT_OF_CONTROL": 0,
                     "CTRL_CMD_UNDER_CONTROL": 1
+                  }
+                }
+              }
+            },
+            "Vehicle_mode_command_116": {
+              "fields": {
+                "vinReqCmd": {
+                  "type": "Vin_req_cmdType",
+                  "id": 1
+                }
+              },
+              "nested": {
+                "Vin_req_cmdType": {
+                  "values": {
+                    "VIN_REQ_CMD_VIN_REQ_DISABLE": 0,
+                    "VIN_REQ_CMD_VIN_REQ_ENABLE": 1
                   }
                 }
               }
@@ -8934,9 +8976,19 @@
                 "overspdEnv": {
                   "type": "Overspd_envType",
                   "id": 7
+                },
+                "brakeLightActual": {
+                  "type": "Brake_light_actualType",
+                  "id": 8
                 }
               },
               "nested": {
+                "Overspd_envType": {
+                  "values": {
+                    "OVERSPD_ENV_NOENV": 0,
+                    "OVERSPD_ENV_OVERSPEED_ENV": 1
+                  }
+                },
                 "Brake_pedal_en_stsType": {
                   "values": {
                     "BRAKE_PEDAL_EN_STS_DISABLE": 0,
@@ -8968,10 +9020,10 @@
                     "BACK_BUMP_ENV_BACK_BUMPER_ENV": 1
                   }
                 },
-                "Overspd_envType": {
+                "Brake_light_actualType": {
                   "values": {
-                    "OVERSPD_ENV_NOENV": 0,
-                    "OVERSPD_ENV_OVERSPEED_ENV": 1
+                    "BRAKE_LIGHT_ACTUAL_BRAKELIGHT_OFF": 0,
+                    "BRAKE_LIGHT_ACTUAL_BRAKELIGHT_ON": 1
                   }
                 }
               }
@@ -9022,14 +9074,25 @@
                 "turnSignalSts": {
                   "type": "Turn_signal_stsType",
                   "id": 1
+                },
+                "lowBeamSts": {
+                  "type": "Low_beam_stsType",
+                  "id": 2
                 }
               },
               "nested": {
+                "Low_beam_stsType": {
+                  "values": {
+                    "LOW_BEAM_STS_ON": 0,
+                    "LOW_BEAM_STS_OFF": 1
+                  }
+                },
                 "Turn_signal_stsType": {
                   "values": {
                     "TURN_SIGNAL_STS_NONE": 0,
                     "TURN_SIGNAL_STS_LEFT": 1,
-                    "TURN_SIGNAL_STS_RIGHT": 2
+                    "TURN_SIGNAL_STS_RIGHT": 2,
+                    "TURN_SIGNAL_STS_HAZARD_WARNING_LAMPSTS_ON": 3
                   }
                 }
               }
@@ -9073,6 +9136,42 @@
                 "chassisErr": {
                   "type": "int32",
                   "id": 5
+                },
+                "chassisMcuErr": {
+                  "type": "Chassis_mcu_errType",
+                  "id": 6
+                },
+                "chassisMcuCan": {
+                  "type": "Chassis_mcu_canType",
+                  "id": 7
+                },
+                "chassisHwLost": {
+                  "type": "Chassis_hw_lostType",
+                  "id": 8
+                },
+                "chassisEpsErr": {
+                  "type": "Chassis_eps_errType",
+                  "id": 9
+                },
+                "chassisEpsCan": {
+                  "type": "Chassis_eps_canType",
+                  "id": 10
+                },
+                "chassisEhbErr": {
+                  "type": "Chassis_ehb_errType",
+                  "id": 11
+                },
+                "chassisEhbCan": {
+                  "type": "Chassis_ehb_canType",
+                  "id": 12
+                },
+                "chassisBmsCan": {
+                  "type": "Chassis_bms_canType",
+                  "id": 13
+                },
+                "chassisAdsErr": {
+                  "type": "Chassis_ads_errType",
+                  "id": 14
                 }
               },
               "nested": {
@@ -9080,6 +9179,61 @@
                   "values": {
                     "CTRL_STS_OUT_OF_CONTROL": 0,
                     "CTRL_STS_UNDER_CONTROL": 1
+                  }
+                },
+                "Chassis_mcu_errType": {
+                  "values": {
+                    "CHASSIS_MCU_ERR_NORMAL": 0,
+                    "CHASSIS_MCU_ERR_ERROR": 1
+                  }
+                },
+                "Chassis_mcu_canType": {
+                  "values": {
+                    "CHASSIS_MCU_CAN_NORMAL": 0,
+                    "CHASSIS_MCU_CAN_ERROR": 1
+                  }
+                },
+                "Chassis_hw_lostType": {
+                  "values": {
+                    "CHASSIS_HW_LOST_NORMAL": 0,
+                    "CHASSIS_HW_LOST_ERROR": 1
+                  }
+                },
+                "Chassis_eps_errType": {
+                  "values": {
+                    "CHASSIS_EPS_ERR_NORMAL": 0,
+                    "CHASSIS_EPS_ERR_ERROR": 1
+                  }
+                },
+                "Chassis_eps_canType": {
+                  "values": {
+                    "CHASSIS_EPS_CAN_NORMAL": 0,
+                    "CHASSIS_EPS_CAN_ERROR": 1
+                  }
+                },
+                "Chassis_ehb_errType": {
+                  "values": {
+                    "CHASSIS_EHB_ERR_NORMAL": 0,
+                    "CHASSIS_EHB_ERR_ERROR": 1
+                  }
+                },
+                "Chassis_ehb_canType": {
+                  "values": {
+                    "CHASSIS_EHB_CAN_NORMAL": 0,
+                    "CHASSIS_EHB_CAN_ERROR": 1
+                  }
+                },
+                "Chassis_bms_canType": {
+                  "values": {
+                    "CHASSIS_BMS_CAN_NORMAL": 0,
+                    "CHASSIS_BMS_CAN_ERROR": 1
+                  }
+                },
+                "Chassis_ads_errType": {
+                  "values": {
+                    "CHASSIS_ADS_ERR_NORMAL": 0,
+                    "CHASSIS_ADS_ERR_ADS_CAN_LOST": 1,
+                    "CHASSIS_ADS_ERR_ADS_CAN_RECOVERY": 2
                   }
                 }
               }
@@ -9105,6 +9259,10 @@
                 "batteryTemperature": {
                   "type": "int32",
                   "id": 5
+                },
+                "isBatterySocLow": {
+                  "type": "bool",
+                  "id": 6
                 }
               }
             },
@@ -9144,6 +9302,142 @@
                 }
               }
             },
+            "Ecu_status_4_518": {
+              "fields": {
+                "ultrasoundDist_9": {
+                  "type": "double",
+                  "id": 1
+                },
+                "ultrasoundDist_10": {
+                  "type": "double",
+                  "id": 2
+                },
+                "ultrasoundDist_11": {
+                  "type": "double",
+                  "id": 3
+                },
+                "ultrasoundDist_12": {
+                  "type": "double",
+                  "id": 4
+                },
+                "ultrasoundDist_13": {
+                  "type": "double",
+                  "id": 5
+                },
+                "ultrasoundDist_14": {
+                  "type": "double",
+                  "id": 6
+                },
+                "ultrasoundDist_15": {
+                  "type": "double",
+                  "id": 7
+                },
+                "ultrasoundDist_16": {
+                  "type": "double",
+                  "id": 8
+                }
+              }
+            },
+            "Vin_resp1_51b": {
+              "fields": {
+                "vin08": {
+                  "type": "string",
+                  "id": 1
+                },
+                "vin07": {
+                  "type": "string",
+                  "id": 2
+                },
+                "vin06": {
+                  "type": "string",
+                  "id": 3
+                },
+                "vin05": {
+                  "type": "string",
+                  "id": 4
+                },
+                "vin04": {
+                  "type": "string",
+                  "id": 5
+                },
+                "vin03": {
+                  "type": "string",
+                  "id": 6
+                },
+                "vin02": {
+                  "type": "string",
+                  "id": 7
+                },
+                "vin01": {
+                  "type": "string",
+                  "id": 8
+                }
+              }
+            },
+            "Vin_resp2_51c": {
+              "fields": {
+                "vin16": {
+                  "type": "string",
+                  "id": 1
+                },
+                "vin15": {
+                  "type": "string",
+                  "id": 2
+                },
+                "vin14": {
+                  "type": "string",
+                  "id": 3
+                },
+                "vin13": {
+                  "type": "string",
+                  "id": 4
+                },
+                "vin12": {
+                  "type": "string",
+                  "id": 5
+                },
+                "vin11": {
+                  "type": "string",
+                  "id": 6
+                },
+                "vin10": {
+                  "type": "string",
+                  "id": 7
+                },
+                "vin09": {
+                  "type": "string",
+                  "id": 8
+                }
+              }
+            },
+            "Vin_resp3_51d": {
+              "fields": {
+                "vin17": {
+                  "type": "string",
+                  "id": 1
+                }
+              }
+            },
+            "Wheelspeed_report_51e": {
+              "fields": {
+                "rr": {
+                  "type": "double",
+                  "id": 1
+                },
+                "rl": {
+                  "type": "double",
+                  "id": 2
+                },
+                "fr": {
+                  "type": "double",
+                  "id": 3
+                },
+                "fl": {
+                  "type": "double",
+                  "id": 4
+                }
+              }
+            },
             "Ch": {
               "fields": {
                 "throttleCommand_110": {
@@ -9168,7 +9462,10 @@
                 },
                 "controlCommand_115": {
                   "type": "Control_command_115",
-                  "id": 6
+                  "id": 6,
+                  "options": {
+                    "deprecated": true
+                  }
                 },
                 "throttleStatus__510": {
                   "type": "Throttle_status__510",
@@ -9201,6 +9498,30 @@
                 "ecuStatus_3_517": {
                   "type": "Ecu_status_3_517",
                   "id": 14
+                },
+                "ecuStatus_4_518": {
+                  "type": "Ecu_status_4_518",
+                  "id": 15
+                },
+                "vehicleModeCommand_116": {
+                  "type": "Vehicle_mode_command_116",
+                  "id": 16
+                },
+                "vinResp1_51b": {
+                  "type": "Vin_resp1_51b",
+                  "id": 17
+                },
+                "vinResp2_51c": {
+                  "type": "Vin_resp2_51c",
+                  "id": 18
+                },
+                "vinResp3_51d": {
+                  "type": "Vin_resp3_51d",
+                  "id": 19
+                },
+                "wheelspeedReport_51e": {
+                  "type": "Wheelspeed_report_51e",
+                  "id": 20
                 }
               }
             },
@@ -9945,6 +10266,14 @@
                 "neolixEdu": {
                   "type": "Neolix_edu",
                   "id": 26
+                },
+                "mkMini": {
+                  "type": "Mk_mini",
+                  "id": 27
+                },
+                "yunle": {
+                  "type": "Yunle",
+                  "id": 50
                 },
                 "vehicleId": {
                   "type": "apollo.common.VehicleID",
@@ -11912,6 +12241,10 @@
                 "throttleEnCtrl": {
                   "type": "Throttle_en_ctrlType",
                   "id": 4
+                },
+                "speedTarget": {
+                  "type": "double",
+                  "id": 5
                 }
               },
               "nested": {
@@ -11971,7 +12304,7 @@
                   "type": "int32",
                   "id": 2
                 },
-                "steerAngleSpd": {
+                "steerAngleSpdTarget": {
                   "type": "int32",
                   "id": 3
                 },
@@ -12048,6 +12381,59 @@
                   "values": {
                     "PARK_EN_CTRL_DISABLE": 0,
                     "PARK_EN_CTRL_ENABLE": 1
+                  }
+                }
+              }
+            },
+            "Vehicle_mode_command_105": {
+              "fields": {
+                "checksum_105": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "turnLightCtrl": {
+                  "type": "Turn_light_ctrlType",
+                  "id": 2
+                },
+                "vinReq": {
+                  "type": "Vin_reqType",
+                  "id": 3
+                },
+                "driveModeCtrl": {
+                  "type": "Drive_mode_ctrlType",
+                  "id": 4
+                },
+                "steerModeCtrl": {
+                  "type": "Steer_mode_ctrlType",
+                  "id": 5
+                }
+              },
+              "nested": {
+                "Turn_light_ctrlType": {
+                  "values": {
+                    "TURN_LIGHT_CTRL_TURNLAMP_OFF": 0,
+                    "TURN_LIGHT_CTRL_LEFT_TURNLAMP_ON": 1,
+                    "TURN_LIGHT_CTRL_RIGHT_TURNLAMP_ON": 2,
+                    "TURN_LIGHT_CTRL_HAZARD_WARNING_LAMPSTS_ON": 3
+                  }
+                },
+                "Vin_reqType": {
+                  "values": {
+                    "VIN_REQ_VIN_REQ_DISABLE": 0,
+                    "VIN_REQ_VIN_REQ_ENABLE": 1
+                  }
+                },
+                "Drive_mode_ctrlType": {
+                  "values": {
+                    "DRIVE_MODE_CTRL_THROTTLE_PADDLE_DRIVE": 0,
+                    "DRIVE_MODE_CTRL_SPEED_DRIVE": 1
+                  }
+                },
+                "Steer_mode_ctrlType": {
+                  "values": {
+                    "STEER_MODE_CTRL_STANDARD_STEER": 0,
+                    "STEER_MODE_CTRL_NON_DIRECTION_STEER": 1,
+                    "STEER_MODE_CTRL_SYNC_DIRECTION_STEER": 2
                   }
                 }
               }
@@ -12157,6 +12543,10 @@
                 "steerAngleActual": {
                   "type": "int32",
                   "id": 5
+                },
+                "steerAngleRearActual": {
+                  "type": "int32",
+                  "id": 6
                 }
               },
               "nested": {
@@ -12243,25 +12633,49 @@
                   "type": "Vehicle_mode_stateType",
                   "id": 1
                 },
+                "aebMode": {
+                  "type": "Aeb_modeType",
+                  "id": 2
+                },
+                "brakeLightActual": {
+                  "type": "Brake_light_actualType",
+                  "id": 3
+                },
+                "turnLightActual": {
+                  "type": "Turn_light_actualType",
+                  "id": 4
+                },
+                "chassisErrcode": {
+                  "type": "int32",
+                  "id": 5
+                },
+                "driveModeSts": {
+                  "type": "Drive_mode_stsType",
+                  "id": 6
+                },
+                "steerModeSts": {
+                  "type": "Steer_mode_stsType",
+                  "id": 7
+                },
                 "frontcrashState": {
                   "type": "Frontcrash_stateType",
-                  "id": 2
+                  "id": 8
                 },
                 "backcrashState": {
                   "type": "Backcrash_stateType",
-                  "id": 3
+                  "id": 9
                 },
-                "aebState": {
-                  "type": "Aeb_stateType",
-                  "id": 4
+                "aebBrakeState": {
+                  "type": "Aeb_brake_stateType",
+                  "id": 10
                 },
                 "acc": {
                   "type": "double",
-                  "id": 5
+                  "id": 11
                 },
                 "speed": {
                   "type": "double",
-                  "id": 6
+                  "id": 12
                 }
               },
               "nested": {
@@ -12271,6 +12685,39 @@
                     "VEHICLE_MODE_STATE_AUTO_MODE": 1,
                     "VEHICLE_MODE_STATE_EMERGENCY_MODE": 2,
                     "VEHICLE_MODE_STATE_STANDBY_MODE": 3
+                  }
+                },
+                "Aeb_modeType": {
+                  "values": {
+                    "AEB_MODE_DISABLE": 0,
+                    "AEB_MODE_ENABLE": 1
+                  }
+                },
+                "Brake_light_actualType": {
+                  "values": {
+                    "BRAKE_LIGHT_ACTUAL_BRAKELIGHT_OFF": 0,
+                    "BRAKE_LIGHT_ACTUAL_BRAKELIGHT_ON": 1
+                  }
+                },
+                "Turn_light_actualType": {
+                  "values": {
+                    "TURN_LIGHT_ACTUAL_TURNLAMPSTS_OFF": 0,
+                    "TURN_LIGHT_ACTUAL_LEFT_TURNLAMPSTS_ON": 1,
+                    "TURN_LIGHT_ACTUAL_RIGHT_TURNLAMPSTS_ON": 2,
+                    "TURN_LIGHT_ACTUAL_HAZARD_WARNING_LAMPSTS_ON": 3
+                  }
+                },
+                "Drive_mode_stsType": {
+                  "values": {
+                    "DRIVE_MODE_STS_THROTTLE_PADDLE_DRIVE_MODE": 0,
+                    "DRIVE_MODE_STS_SPEED_DRIVE_MODE": 1
+                  }
+                },
+                "Steer_mode_stsType": {
+                  "values": {
+                    "STEER_MODE_STS_STANDARD_STEER_MODE": 0,
+                    "STEER_MODE_STS_NON_DIRECTION_STEER_MODE": 1,
+                    "STEER_MODE_STS_SYNC_DIRECTION_STEER_MODE": 2
                   }
                 },
                 "Frontcrash_stateType": {
@@ -12285,10 +12732,10 @@
                     "BACKCRASH_STATE_CRASH_EVENT": 1
                   }
                 },
-                "Aeb_stateType": {
+                "Aeb_brake_stateType": {
                   "values": {
-                    "AEB_STATE_INACTIVE": 0,
-                    "AEB_STATE_ACTIVE": 1
+                    "AEB_BRAKE_STATE_INACTIVE": 0,
+                    "AEB_BRAKE_STATE_ACTIVE": 1
                   }
                 }
               }
@@ -12423,9 +12870,119 @@
                   "type": "double",
                   "id": 2
                 },
-                "batterySoc": {
+                "batterySocPercentage": {
                   "type": "int32",
                   "id": 3
+                },
+                "isBatterySocLow": {
+                  "type": "bool",
+                  "id": 4
+                },
+                "batteryInsideTemperature": {
+                  "type": "double",
+                  "id": 5
+                },
+                "batteryFltLowTemp": {
+                  "type": "Battery_flt_lowtempType",
+                  "id": 6
+                },
+                "batteryFltOverTemp": {
+                  "type": "Battery_flt_overtempType",
+                  "id": 7
+                }
+              },
+              "nested": {
+                "Battery_flt_lowtempType": {
+                  "values": {
+                    "BATTERY_FLT_LOW_TEMP_NO_FAULT": 0,
+                    "BATTERY_FLT_LOW_TEMP_FAULT": 1
+                  }
+                },
+                "Battery_flt_overtempType": {
+                  "values": {
+                    "BATTERY_FLT_OVER_TEMP_NO_FAULT": 0,
+                    "BATTERY_FLT_OVER_TEMP_FAULT": 1
+                  }
+                }
+              }
+            },
+            "Vin_resp1_514": {
+              "fields": {
+                "vin07": {
+                  "type": "string",
+                  "id": 1
+                },
+                "vin06": {
+                  "type": "string",
+                  "id": 2
+                },
+                "vin05": {
+                  "type": "string",
+                  "id": 3
+                },
+                "vin04": {
+                  "type": "string",
+                  "id": 4
+                },
+                "vin03": {
+                  "type": "string",
+                  "id": 5
+                },
+                "vin02": {
+                  "type": "string",
+                  "id": 6
+                },
+                "vin01": {
+                  "type": "string",
+                  "id": 7
+                },
+                "vin00": {
+                  "type": "string",
+                  "id": 8
+                }
+              }
+            },
+            "Vin_resp2_515": {
+              "fields": {
+                "vin15": {
+                  "type": "string",
+                  "id": 1
+                },
+                "vin14": {
+                  "type": "string",
+                  "id": 2
+                },
+                "vin13": {
+                  "type": "string",
+                  "id": 3
+                },
+                "vin12": {
+                  "type": "string",
+                  "id": 4
+                },
+                "vin11": {
+                  "type": "string",
+                  "id": 5
+                },
+                "vin10": {
+                  "type": "string",
+                  "id": 6
+                },
+                "vin09": {
+                  "type": "string",
+                  "id": 7
+                },
+                "vin08": {
+                  "type": "string",
+                  "id": 8
+                }
+              }
+            },
+            "Vin_resp3_516": {
+              "fields": {
+                "vin16": {
+                  "type": "string",
+                  "id": 1
                 }
               }
             },
@@ -12502,6 +13059,22 @@
                 "bmsReport_512": {
                   "type": "Bms_report_512",
                   "id": 18
+                },
+                "vehicleModeCommand_105": {
+                  "type": "Vehicle_mode_command_105",
+                  "id": 19
+                },
+                "vinResp1_514": {
+                  "type": "Vin_resp1_514",
+                  "id": 20
+                },
+                "vinResp2_515": {
+                  "type": "Vin_resp2_515",
+                  "id": 21
+                },
+                "vinResp3_516": {
+                  "type": "Vin_resp3_516",
+                  "id": 22
                 }
               }
             },
@@ -15929,6 +16502,630 @@
                 }
               }
             },
+            "Ctrl_cmd_18c4d2d0": {
+              "fields": {
+                "ctrlCmdCheckBcc": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "ctrlCmdAliveCnt": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "ctrlCmdBrake": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "ctrlCmdSteering": {
+                  "type": "double",
+                  "id": 4
+                },
+                "ctrlCmdVelocity": {
+                  "type": "double",
+                  "id": 5
+                },
+                "ctrlCmdGear": {
+                  "type": "int32",
+                  "id": 6
+                }
+              }
+            },
+            "Ctrl_fb_18c4d2ef": {
+              "fields": {
+                "ctrlFbRemotest": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "ctrlFbCheckBcc": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "ctrlFbAliveCnt": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "ctrlFbMode": {
+                  "type": "int32",
+                  "id": 4
+                },
+                "ctrlFbBrake": {
+                  "type": "int32",
+                  "id": 5
+                },
+                "ctrlFbSteering": {
+                  "type": "double",
+                  "id": 6
+                },
+                "ctrlFbVelocity": {
+                  "type": "double",
+                  "id": 7
+                },
+                "ctrlFbGear": {
+                  "type": "int32",
+                  "id": 8
+                }
+              }
+            },
+            "Io_cmd_18c4d7d0": {
+              "fields": {
+                "ioCmdDischarge": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "ioCmdCheckBcc": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "ioCmdAliveCnt": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "ioCmdSpeaker": {
+                  "type": "bool",
+                  "id": 4
+                },
+                "ioCmdFogLamp": {
+                  "type": "bool",
+                  "id": 5
+                },
+                "ioCmdClearanceLamp": {
+                  "type": "bool",
+                  "id": 6
+                },
+                "ioCmdBrakingLamp": {
+                  "type": "bool",
+                  "id": 7
+                },
+                "ioCmdTurnLamp": {
+                  "type": "int32",
+                  "id": 8
+                },
+                "ioCmdUpperBeamHeadlamp": {
+                  "type": "bool",
+                  "id": 9
+                },
+                "ioCmdLowerBeamHeadlamp": {
+                  "type": "bool",
+                  "id": 10
+                },
+                "ioCmdEnable": {
+                  "type": "bool",
+                  "id": 11
+                }
+              }
+            },
+            "Lr_wheel_fb_18c4d7ef": {
+              "fields": {
+                "lrWheelFbCheckBcc": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "lrWheelFbAliveCnt": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "lrWheelFbPulse": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "lrWheelFbVelocity": {
+                  "type": "double",
+                  "id": 4
+                }
+              }
+            },
+            "Rr_wheel_fb_18c4d8ef": {
+              "fields": {
+                "rrWheelFbVelocity": {
+                  "type": "double",
+                  "id": 1
+                },
+                "rrWheelFbPulse": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "rrWheelFbCheckBcc": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "rrWheelFbAliveCnt": {
+                  "type": "int32",
+                  "id": 4
+                }
+              }
+            },
+            "Io_fb_18c4daef": {
+              "fields": {
+                "ioFbScramst": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "ioFbChargeen": {
+                  "type": "bool",
+                  "id": 2
+                },
+                "ioFbDischargeflg": {
+                  "type": "bool",
+                  "id": 3
+                },
+                "ioFbCheckBcc": {
+                  "type": "int32",
+                  "id": 4
+                },
+                "ioFbAliveCnt": {
+                  "type": "int32",
+                  "id": 5
+                },
+                "ioFbRrDropSensor": {
+                  "type": "bool",
+                  "id": 6
+                },
+                "ioFbRmDropSensor": {
+                  "type": "bool",
+                  "id": 7
+                },
+                "ioFbRlDropSensor": {
+                  "type": "bool",
+                  "id": 8
+                },
+                "ioFbFrDropSensor": {
+                  "type": "bool",
+                  "id": 9
+                },
+                "ioFbFmDropSensor": {
+                  "type": "bool",
+                  "id": 10
+                },
+                "ioFbFlDropSensor": {
+                  "type": "bool",
+                  "id": 11
+                },
+                "ioFbRrImpactSensor": {
+                  "type": "bool",
+                  "id": 12
+                },
+                "ioFbRmImpactSensor": {
+                  "type": "bool",
+                  "id": 13
+                },
+                "ioFbRlImpactSensor": {
+                  "type": "bool",
+                  "id": 14
+                },
+                "ioFbFrImpactSensor": {
+                  "type": "bool",
+                  "id": 15
+                },
+                "ioFbFmImpactSensor": {
+                  "type": "bool",
+                  "id": 16
+                },
+                "ioFbFlImpactSensor": {
+                  "type": "bool",
+                  "id": 17
+                },
+                "ioFbSpeaker": {
+                  "type": "bool",
+                  "id": 18
+                },
+                "ioFbFogLamp": {
+                  "type": "bool",
+                  "id": 19
+                },
+                "ioFbClearanceLamp": {
+                  "type": "bool",
+                  "id": 20
+                },
+                "ioFbBrakingLamp": {
+                  "type": "bool",
+                  "id": 21
+                },
+                "ioFbTurnLamp": {
+                  "type": "int32",
+                  "id": 22
+                },
+                "ioFbUpperBeamHeadlamp": {
+                  "type": "bool",
+                  "id": 23
+                },
+                "ioFbLowerBeamHeadlamp": {
+                  "type": "bool",
+                  "id": 24
+                },
+                "ioFbEnable": {
+                  "type": "bool",
+                  "id": 25
+                }
+              }
+            },
+            "Odo_fb_18c4deef": {
+              "fields": {
+                "odoFbAccumulativeAngular": {
+                  "type": "double",
+                  "id": 1
+                },
+                "odoFbAccumulativeMileage": {
+                  "type": "double",
+                  "id": 2
+                }
+              }
+            },
+            "Bms_infor_18c4e1ef": {
+              "fields": {
+                "bmsInforCheckBcc": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "bmsInforAliveCnt": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "bmsInforRemainingCapacity": {
+                  "type": "double",
+                  "id": 3
+                },
+                "bmsInforCurrent": {
+                  "type": "double",
+                  "id": 4
+                },
+                "bmsInforVoltage": {
+                  "type": "double",
+                  "id": 5
+                }
+              }
+            },
+            "Bms_flag_infor_18c4e2ef": {
+              "fields": {
+                "bmsFlagInforSoclowprotection": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "bmsFlagInforCheckBcc": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "bmsFlagInforAliveCnt": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "bmsFlagInforSocwarning": {
+                  "type": "bool",
+                  "id": 4
+                },
+                "bmsFlagInforLowTemperature": {
+                  "type": "double",
+                  "id": 5
+                },
+                "bmsFlagInforHightTemperature": {
+                  "type": "double",
+                  "id": 6
+                },
+                "bmsFlagInforChargeSt": {
+                  "type": "int32",
+                  "id": 7
+                },
+                "bmsFlagInforLockMos": {
+                  "type": "bool",
+                  "id": 8
+                },
+                "bmsFlagInforIcError": {
+                  "type": "bool",
+                  "id": 9
+                },
+                "bmsFlagInforShort": {
+                  "type": "bool",
+                  "id": 10
+                },
+                "bmsFlagInforDischargeOc": {
+                  "type": "bool",
+                  "id": 11
+                },
+                "bmsFlagInforChargeOc": {
+                  "type": "bool",
+                  "id": 12
+                },
+                "bmsFlagInforDischargeUt": {
+                  "type": "bool",
+                  "id": 13
+                },
+                "bmsFlagInforDischargeOt": {
+                  "type": "bool",
+                  "id": 14
+                },
+                "bmsFlagInforChargeUt": {
+                  "type": "bool",
+                  "id": 15
+                },
+                "bmsFlagInforChargeOt": {
+                  "type": "bool",
+                  "id": 16
+                },
+                "bmsFlagInforUv": {
+                  "type": "bool",
+                  "id": 17
+                },
+                "bmsFlagInforOv": {
+                  "type": "bool",
+                  "id": 18
+                },
+                "bmsFlagInforSingleUv": {
+                  "type": "bool",
+                  "id": 19
+                },
+                "bmsFlagInforSingleOv": {
+                  "type": "bool",
+                  "id": 20
+                },
+                "bmsFlagInforSoc": {
+                  "type": "int32",
+                  "id": 21
+                }
+              }
+            },
+            "Ultrasonic_1_fb_18c4e8ef": {
+              "fields": {
+                "ultrasonicFb_01CheckBcc": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "ultrasonicFb_01AliveCnt": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "ultrasonicFb_04": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "ultrasonicFb_03": {
+                  "type": "int32",
+                  "id": 4
+                },
+                "ultrasonicFb_02": {
+                  "type": "int32",
+                  "id": 5
+                },
+                "ultrasonicFb_01": {
+                  "type": "int32",
+                  "id": 6
+                }
+              }
+            },
+            "Ultrasonic_2_fb_18c4e9ef": {
+              "fields": {
+                "ultrasonicFb_02CheckBcc": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "ultrasonicFb_02AliveCnt": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "ultrasonicFb_08": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "ultrasonicFb_07": {
+                  "type": "int32",
+                  "id": 4
+                },
+                "ultrasonicFb_06": {
+                  "type": "int32",
+                  "id": 5
+                },
+                "ultrasonicFb_05": {
+                  "type": "int32",
+                  "id": 6
+                }
+              }
+            },
+            "Veh_fb_diag_18c4eaef": {
+              "fields": {
+                "vehFbRdrvmcufault": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "vehFbLdrvmcufault": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "vehFbEhboilfault": {
+                  "type": "bool",
+                  "id": 3
+                },
+                "vehFbEhboilpresssensorfault": {
+                  "type": "bool",
+                  "id": 4
+                },
+                "vehFbEhbmotorfault": {
+                  "type": "bool",
+                  "id": 5
+                },
+                "vehFbEhbsensorabnomal": {
+                  "type": "bool",
+                  "id": 6
+                },
+                "vehFbEhbpowerfault": {
+                  "type": "bool",
+                  "id": 7
+                },
+                "vehFbEhbot": {
+                  "type": "bool",
+                  "id": 8
+                },
+                "vehFbEhbangulefault": {
+                  "type": "bool",
+                  "id": 9
+                },
+                "vehFbEhbdisen": {
+                  "type": "bool",
+                  "id": 10
+                },
+                "vehFbEhbworkmodelfault": {
+                  "type": "bool",
+                  "id": 11
+                },
+                "vehFbEpsovercurrent": {
+                  "type": "bool",
+                  "id": 12
+                },
+                "vehFbEpsdiswork": {
+                  "type": "bool",
+                  "id": 13
+                },
+                "vehFbEpswarning": {
+                  "type": "bool",
+                  "id": 14
+                },
+                "vehFbAuxremotedisonline": {
+                  "type": "bool",
+                  "id": 15
+                },
+                "vehFbAuxremoteclose": {
+                  "type": "bool",
+                  "id": 16
+                },
+                "vehFbAuxbmsdisonline": {
+                  "type": "bool",
+                  "id": 17
+                },
+                "vehFbAutoiocancmd": {
+                  "type": "bool",
+                  "id": 18
+                },
+                "vehFbAutocanctrlcmd": {
+                  "type": "bool",
+                  "id": 19
+                },
+                "vehFbInforCheckBcc": {
+                  "type": "int32",
+                  "id": 20
+                },
+                "vehFbInforAliveCnt": {
+                  "type": "int32",
+                  "id": 21
+                },
+                "vehFbAuxscram": {
+                  "type": "bool",
+                  "id": 22
+                },
+                "vehFbEhbdisonline": {
+                  "type": "bool",
+                  "id": 23
+                },
+                "vehFbEhbecufault": {
+                  "type": "bool",
+                  "id": 24
+                },
+                "vehFbEpsmosfetot": {
+                  "type": "bool",
+                  "id": 25
+                },
+                "vehFbEpsfault": {
+                  "type": "bool",
+                  "id": 26
+                },
+                "vehFbEpsdisonline": {
+                  "type": "bool",
+                  "id": 27
+                },
+                "vehFbFaultlevel": {
+                  "type": "int32",
+                  "id": 28
+                }
+              }
+            },
+            "Sensor_reset_18ffffff": {
+              "fields": {
+                "closeCandiag": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "brakeReset": {
+                  "type": "bool",
+                  "id": 2
+                },
+                "steerReset": {
+                  "type": "bool",
+                  "id": 3
+                }
+              }
+            },
+            "Mk_mini": {
+              "fields": {
+                "ctrlCmd_18c4d2d0": {
+                  "type": "Ctrl_cmd_18c4d2d0",
+                  "id": 1
+                },
+                "ctrlFb_18c4d2ef": {
+                  "type": "Ctrl_fb_18c4d2ef",
+                  "id": 2
+                },
+                "ioCmd_18c4d7d0": {
+                  "type": "Io_cmd_18c4d7d0",
+                  "id": 3
+                },
+                "lrWheelFb_18c4d7ef": {
+                  "type": "Lr_wheel_fb_18c4d7ef",
+                  "id": 4
+                },
+                "rrWheelFb_18c4d8ef": {
+                  "type": "Rr_wheel_fb_18c4d8ef",
+                  "id": 5
+                },
+                "ioFb_18c4daef": {
+                  "type": "Io_fb_18c4daef",
+                  "id": 6
+                },
+                "odoFb_18c4deef": {
+                  "type": "Odo_fb_18c4deef",
+                  "id": 7
+                },
+                "bmsInfor_18c4e1ef": {
+                  "type": "Bms_infor_18c4e1ef",
+                  "id": 8
+                },
+                "bmsFlagInfor_18c4e2ef": {
+                  "type": "Bms_flag_infor_18c4e2ef",
+                  "id": 9
+                },
+                "ultrasonic_1Fb_18c4e8ef": {
+                  "type": "Ultrasonic_1_fb_18c4e8ef",
+                  "id": 10
+                },
+                "ultrasonic_2Fb_18c4e9ef": {
+                  "type": "Ultrasonic_2_fb_18c4e9ef",
+                  "id": 11
+                },
+                "vehFbDiag_18c4eaef": {
+                  "type": "Veh_fb_diag_18c4eaef",
+                  "id": 12
+                },
+                "sensorReset_18ffffff": {
+                  "type": "Sensor_reset_18ffffff",
+                  "id": 13
+                }
+              }
+            },
             "Aeb_systemstate_11": {
               "fields": {
                 "aebState": {
@@ -16190,6 +17387,10 @@
                 "vcuBrakereptChecksum": {
                   "type": "int32",
                   "id": 10
+                },
+                "vcuEhbBrakeState": {
+                  "type": "Vcu_ehb_brakeType",
+                  "id": 11
                 }
               },
               "nested": {
@@ -16200,6 +17401,15 @@
                     "CONTROL_MODE_RESP_NET_DRIVE": 2,
                     "CONTROL_MODE_RESP_REMOTE_CONTROL": 3,
                     "CONTROL_MODE_RESP_EMERGENCY_BRAKE": 4
+                  }
+                },
+                "Vcu_ehb_brakeType": {
+                  "values": {
+                    "VCU_EHB_NORMAL_BRAKE": 0,
+                    "VCU_EHB_BACKUP_REMOTE_BRAKE": 1,
+                    "VCU_EHB_EMERGENCY_BUTTON_BRAKE": 2,
+                    "VCU_EHB_ULTR_BRAKE": 3,
+                    "VCU_EHB_BUMPER_BRAKE": 4
                   }
                 }
               }
@@ -18375,6 +19585,330 @@
                 "ads3_38e": {
                   "type": "Ads3_38e",
                   "id": 14
+                }
+              }
+            },
+            "Bms_vol_cur_100": {
+              "fields": {
+                "totalVoltage": {
+                  "type": "double",
+                  "id": 1
+                },
+                "socCurrent": {
+                  "type": "double",
+                  "id": 2
+                }
+              }
+            },
+            "Bms_soc_101": {
+              "fields": {
+                "rsoc": {
+                  "type": "int32",
+                  "id": 1
+                }
+              }
+            },
+            "Scu_1_121": {
+              "fields": {
+                "angularSpeedFlag": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "scuSteeringWheelAngleR": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "scuSteeringWheelAngleF": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "gwLowbeamReq": {
+                  "type": "int32",
+                  "id": 4
+                },
+                "gwPositionLightReq": {
+                  "type": "int32",
+                  "id": 5
+                },
+                "gwRightTurnLightReq": {
+                  "type": "int32",
+                  "id": 6
+                },
+                "gwLeftTurnLightReq": {
+                  "type": "int32",
+                  "id": 7
+                },
+                "scuBrkEn": {
+                  "type": "bool",
+                  "id": 8
+                },
+                "scuTargetSpeed": {
+                  "type": "double",
+                  "id": 9
+                },
+                "scuShiftlevelReq": {
+                  "type": "int32",
+                  "id": 10
+                },
+                "scuDriveModeReq": {
+                  "type": "int32",
+                  "id": 11
+                }
+              }
+            },
+            "Scu_tq_123": {
+              "fields": {
+                "torqueCmdRearR": {
+                  "type": "double",
+                  "id": 1
+                },
+                "torqueCmdRearL": {
+                  "type": "double",
+                  "id": 2
+                },
+                "torqueCmdForwardR": {
+                  "type": "double",
+                  "id": 3
+                },
+                "torqueCmdForwardL": {
+                  "type": "double",
+                  "id": 4
+                }
+              }
+            },
+            "Wheel_speed_feedback_rpm_168": {
+              "fields": {
+                "rearRightRpm": {
+                  "type": "double",
+                  "id": 1
+                },
+                "rearLeftRpm": {
+                  "type": "double",
+                  "id": 2
+                },
+                "frontRightRpm": {
+                  "type": "double",
+                  "id": 3
+                },
+                "frontLeftRpm": {
+                  "type": "double",
+                  "id": 4
+                }
+              }
+            },
+            "Bms_rt_soc_17904001": {
+              "fields": {
+                "bmsCurrentCur": {
+                  "type": "double",
+                  "id": 1
+                },
+                "bmsCurrentVol": {
+                  "type": "double",
+                  "id": 2
+                },
+                "bmsTotalVolbat": {
+                  "type": "double",
+                  "id": 3
+                },
+                "bmsSoc": {
+                  "type": "double",
+                  "id": 4
+                }
+              }
+            },
+            "Ccu_status_51": {
+              "fields": {
+                "scuBrakeSingal": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "emergencyBrake": {
+                  "type": "bool",
+                  "id": 2
+                },
+                "remoteBrake": {
+                  "type": "bool",
+                  "id": 3
+                },
+                "ccuDriveModeShift": {
+                  "type": "bool",
+                  "id": 4
+                },
+                "positionLightSts": {
+                  "type": "bool",
+                  "id": 5
+                },
+                "steeringWheelDirection": {
+                  "type": "bool",
+                  "id": 6
+                },
+                "rightTurnLightSts": {
+                  "type": "bool",
+                  "id": 7
+                },
+                "lowbeamSts": {
+                  "type": "bool",
+                  "id": 8
+                },
+                "leftTurnLightSts": {
+                  "type": "bool",
+                  "id": 9
+                },
+                "ccuVehicleSpeed": {
+                  "type": "double",
+                  "id": 10
+                },
+                "ccuSteeringWheelAngle": {
+                  "type": "double",
+                  "id": 11
+                },
+                "ccuShiftlevelSts": {
+                  "type": "int32",
+                  "id": 12
+                },
+                "ccuPSts": {
+                  "type": "bool",
+                  "id": 13
+                },
+                "ccuIgnitionSts": {
+                  "type": "int32",
+                  "id": 14
+                },
+                "ccuDriveMode": {
+                  "type": "int32",
+                  "id": 15
+                }
+              }
+            },
+            "Waring_level_77": {
+              "fields": {
+                "mcuVolWarning": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "turnUnstoppableWarning": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "turnLockWarning": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "turnDisconnectWarning": {
+                  "type": "int32",
+                  "id": 4
+                },
+                "mcuTemperatureWarning": {
+                  "type": "int32",
+                  "id": 5
+                },
+                "mcuSpeedWarning": {
+                  "type": "int32",
+                  "id": 6
+                },
+                "mcuMotorWarning": {
+                  "type": "int32",
+                  "id": 7
+                },
+                "mcuDisconnectWarning": {
+                  "type": "int32",
+                  "id": 8
+                },
+                "mcuCurWarning": {
+                  "type": "int32",
+                  "id": 9
+                },
+                "bmsTemperatureWarning": {
+                  "type": "int32",
+                  "id": 10
+                },
+                "bmsSocWarning": {
+                  "type": "int32",
+                  "id": 11
+                },
+                "bmsDischargecurWarning": {
+                  "type": "int32",
+                  "id": 12
+                },
+                "bmsChargecurWarning": {
+                  "type": "int32",
+                  "id": 13
+                }
+              }
+            },
+            "Target_speed_feedback_7f1": {
+              "fields": {
+                "targetSpeedRpm": {
+                  "type": "double",
+                  "id": 1
+                },
+                "targetSpeed": {
+                  "type": "double",
+                  "id": 2
+                },
+                "scuSpeed": {
+                  "type": "double",
+                  "id": 3
+                },
+                "hdwSpeed": {
+                  "type": "double",
+                  "id": 4
+                }
+              }
+            },
+            "Sas_angle_feedback_e1": {
+              "fields": {
+                "sasAngleR": {
+                  "type": "double",
+                  "id": 1
+                },
+                "sasAngleF": {
+                  "type": "double",
+                  "id": 2
+                }
+              }
+            },
+            "Yunle": {
+              "fields": {
+                "bmsVolCur_100": {
+                  "type": "Bms_vol_cur_100",
+                  "id": 1
+                },
+                "bmsSoc_101": {
+                  "type": "Bms_soc_101",
+                  "id": 2
+                },
+                "scu_1_121": {
+                  "type": "Scu_1_121",
+                  "id": 3
+                },
+                "scuTq_123": {
+                  "type": "Scu_tq_123",
+                  "id": 4
+                },
+                "wheelSpeedFeedbackRpm_168": {
+                  "type": "Wheel_speed_feedback_rpm_168",
+                  "id": 5
+                },
+                "bmsRtSoc_17904001": {
+                  "type": "Bms_rt_soc_17904001",
+                  "id": 6
+                },
+                "ccuStatus_51": {
+                  "type": "Ccu_status_51",
+                  "id": 7
+                },
+                "waringLevel_77": {
+                  "type": "Waring_level_77",
+                  "id": 8
+                },
+                "targetSpeedFeedback_7f1": {
+                  "type": "Target_speed_feedback_7f1",
+                  "id": 9
+                },
+                "sasAngleFeedbackE1": {
+                  "type": "Sas_angle_feedback_e1",
+                  "id": 10
                 }
               }
             },
@@ -22556,6 +24090,378 @@
                 }
               }
             },
+            "NanoObjectListStatus_60A": {
+              "fields": {
+                "nofObjects": {
+                  "type": "int32",
+                  "id": 1,
+                  "options": {
+                    "default": 0
+                  }
+                },
+                "measCounter": {
+                  "type": "int32",
+                  "id": 2,
+                  "options": {
+                    "default": -1
+                  }
+                },
+                "interfaceVersion": {
+                  "type": "int32",
+                  "id": 3
+                }
+              }
+            },
+            "NanoRadarState_201": {
+              "fields": {
+                "maxDistance": {
+                  "type": "uint32",
+                  "id": 1
+                },
+                "radarPower": {
+                  "type": "uint32",
+                  "id": 2
+                },
+                "outputType": {
+                  "type": "OutputType",
+                  "id": 3
+                },
+                "rcsThreshold": {
+                  "type": "RcsThreshold",
+                  "id": 4
+                },
+                "sendQuality": {
+                  "type": "bool",
+                  "id": 5
+                },
+                "sendExtInfo": {
+                  "type": "bool",
+                  "id": 6
+                },
+                "nvmReadStatus": {
+                  "type": "bool",
+                  "id": 7
+                },
+                "nvmWriteStatus": {
+                  "type": "bool",
+                  "id": 8
+                },
+                "sortIndex": {
+                  "type": "SortIndex",
+                  "id": 9
+                },
+                "ctrlRelayCfg": {
+                  "type": "bool",
+                  "id": 10
+                },
+                "motionRxState": {
+                  "type": "uint32",
+                  "id": 11
+                },
+                "canBaudrate": {
+                  "type": "CANBaudrate",
+                  "id": 12
+                },
+                "interfaceType": {
+                  "type": "uint32",
+                  "id": 13
+                },
+                "lvdsSelect": {
+                  "type": "bool",
+                  "id": 14
+                },
+                "calibrationEnabled": {
+                  "type": "CalibrationEnabled",
+                  "id": 15
+                }
+              },
+              "nested": {
+                "OutputType": {
+                  "values": {
+                    "OUTPUT_TYPE_NONE": 0,
+                    "OUTPUT_TYPE_OBJECTS": 1,
+                    "OUTPUT_TYPE_CLUSTERS": 2,
+                    "OUTPUT_TYPE_ERROR": 3
+                  }
+                },
+                "RcsThreshold": {
+                  "values": {
+                    "RCS_THRESHOLD_STANDARD": 0,
+                    "RCS_THRESHOLD_HIGH_SENSITIVITY": 1,
+                    "RCS_THRESHOLD_ERROR": 2
+                  }
+                },
+                "SortIndex": {
+                  "values": {
+                    "SORT_INDEX_NO_SORTING": 0,
+                    "SORT_INDEX_SORT_BY_RANGE": 1,
+                    "SORT_INDEX_SORT_BY_RCS": 2,
+                    "SORT_INDEX_ERROR": 3
+                  }
+                },
+                "CANBaudrate": {
+                  "values": {
+                    "CAN_BAUDRATE_500K": 0,
+                    "CAN_BAUDRATE_250K": 1,
+                    "CAN_BAUDRATE_1M": 2,
+                    "CAN_BAUDRATE_ERROR": 3
+                  }
+                },
+                "CalibrationEnabled": {
+                  "values": {
+                    "CALIBRATION_ENABLED_ENABLED": 1,
+                    "CALIBRATION_ENABLED_INITIAL_RECOVERY": 2,
+                    "CALIBRATION_ENABLED_ERROR": 3
+                  }
+                }
+              }
+            },
+            "NanoSoftwareVersion_700": {
+              "fields": {
+                "softMajorRelease": {
+                  "type": "uint32",
+                  "id": 1
+                },
+                "softMinorRelease": {
+                  "type": "uint32",
+                  "id": 2
+                },
+                "softPatchLevel": {
+                  "type": "uint32",
+                  "id": 3
+                }
+              }
+            },
+            "NanoCollisionDetectionRegionState_402": {
+              "fields": {
+                "regionId": {
+                  "type": "uint32",
+                  "id": 1
+                },
+                "regionMaxOutputNumber": {
+                  "type": "uint32",
+                  "id": 2
+                },
+                "point1Longitude": {
+                  "type": "double",
+                  "id": 3
+                },
+                "point1Lateral": {
+                  "type": "double",
+                  "id": 4
+                },
+                "point2Longitude": {
+                  "type": "double",
+                  "id": 5
+                },
+                "point2Lateral": {
+                  "type": "double",
+                  "id": 6
+                },
+                "coordinatesValid": {
+                  "type": "bool",
+                  "id": 7
+                },
+                "activationValid": {
+                  "type": "bool",
+                  "id": 8
+                },
+                "warningLevel": {
+                  "type": "uint32",
+                  "id": 9
+                },
+                "numberOfObjects": {
+                  "type": "uint32",
+                  "id": 10
+                }
+              }
+            },
+            "NanoCollisionDetectionState_408": {
+              "fields": {
+                "activation": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "numberOfRegions": {
+                  "type": "uint32",
+                  "id": 2
+                },
+                "minDetectTime": {
+                  "type": "double",
+                  "id": 3
+                },
+                "mesaCounter": {
+                  "type": "uint32",
+                  "id": 4
+                }
+              }
+            },
+            "NanoRadarObs": {
+              "fields": {
+                "header": {
+                  "type": "apollo.common.Header",
+                  "id": 1
+                },
+                "clusterortrack": {
+                  "type": "bool",
+                  "id": 2
+                },
+                "obstacleId": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "longitudeDist": {
+                  "type": "double",
+                  "id": 4
+                },
+                "lateralDist": {
+                  "type": "double",
+                  "id": 5
+                },
+                "longitudeVel": {
+                  "type": "double",
+                  "id": 6
+                },
+                "lateralVel": {
+                  "type": "double",
+                  "id": 7
+                },
+                "rcs": {
+                  "type": "double",
+                  "id": 8
+                },
+                "dynprop": {
+                  "type": "int32",
+                  "id": 9
+                },
+                "longitudeDistRms": {
+                  "type": "double",
+                  "id": 10
+                },
+                "lateralDistRms": {
+                  "type": "double",
+                  "id": 11
+                },
+                "longitudeVelRms": {
+                  "type": "double",
+                  "id": 12
+                },
+                "lateralVelRms": {
+                  "type": "double",
+                  "id": 13
+                },
+                "probexist": {
+                  "type": "double",
+                  "id": 14
+                },
+                "measState": {
+                  "type": "int32",
+                  "id": 15
+                },
+                "longitudeAccel": {
+                  "type": "double",
+                  "id": 16
+                },
+                "lateralAccel": {
+                  "type": "double",
+                  "id": 17
+                },
+                "oritationAngle": {
+                  "type": "double",
+                  "id": 18
+                },
+                "longitudeAccelRms": {
+                  "type": "double",
+                  "id": 19
+                },
+                "lateralAccelRms": {
+                  "type": "double",
+                  "id": 20
+                },
+                "oritationAngleRms": {
+                  "type": "double",
+                  "id": 21
+                },
+                "length": {
+                  "type": "double",
+                  "id": 22
+                },
+                "width": {
+                  "type": "double",
+                  "id": 23
+                },
+                "obstacleClass": {
+                  "type": "int32",
+                  "id": 24
+                },
+                "obstacleRange": {
+                  "type": "double",
+                  "id": 25
+                },
+                "obstacleVel": {
+                  "type": "double",
+                  "id": 26
+                },
+                "obstacleAngle": {
+                  "type": "double",
+                  "id": 27
+                }
+              }
+            },
+            "NanoRadarCollisionDetectionWarning_60E": {
+              "fields": {
+                "header": {
+                  "type": "apollo.common.Header",
+                  "id": 1
+                },
+                "obstacleId": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "regionBitField": {
+                  "type": "int32",
+                  "id": 3
+                }
+              }
+            },
+            "NanoRadar": {
+              "fields": {
+                "header": {
+                  "type": "apollo.common.Header",
+                  "id": 1
+                },
+                "contiobs": {
+                  "rule": "repeated",
+                  "type": "NanoRadarObs",
+                  "id": 2
+                },
+                "radarState": {
+                  "type": "NanoRadarState_201",
+                  "id": 3
+                },
+                "radarRegionState": {
+                  "type": "NanoCollisionDetectionRegionState_402",
+                  "id": 4
+                },
+                "objectListStatus": {
+                  "type": "NanoObjectListStatus_60A",
+                  "id": 6
+                },
+                "softwareVersion": {
+                  "type": "NanoSoftwareVersion_700",
+                  "id": 7
+                },
+                "collisionDetectionState": {
+                  "type": "NanoCollisionDetectionState_408",
+                  "id": 8
+                },
+                "collisionDetectionWarnings": {
+                  "rule": "repeated",
+                  "type": "NanoRadarCollisionDetectionWarning_60E",
+                  "id": 9
+                }
+              }
+            },
             "PointXYZIT": {
               "fields": {
                 "x": {
@@ -25013,6 +26919,29 @@
         },
         "perception": {
           "nested": {
+            "CollisionWarning": {
+              "fields": {
+                "header": {
+                  "type": "apollo.common.Header",
+                  "id": 1
+                },
+                "isCollision": {
+                  "type": "bool",
+                  "id": 2,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "pointsNum": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "confirmedFrames": {
+                  "type": "int32",
+                  "id": 4
+                }
+              }
+            },
             "camera": {
               "nested": {
                 "CameraErrorCode": {
