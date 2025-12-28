@@ -247,7 +247,7 @@ bool GraphSegmentation::Segment(LidarFrame* frame) {
   }
   GetObjectsFromClusters(frame);
 
-  for (int i = 0; i <= clusters_.size() - 1; i++) {
+  for (size_t i = 0; i <= clusters_.size() - 1; i++) {
     clusters_[i]->clear();
   }
   clusters_.Reset();
