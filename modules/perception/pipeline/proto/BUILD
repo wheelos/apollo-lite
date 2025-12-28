@@ -72,8 +72,8 @@ proto_library(
         "//modules/perception/pipeline/proto/stage:ncut_config_proto",
         "//modules/perception/pipeline/proto/stage:object_builder_config_proto",
         "//modules/perception/pipeline/proto/stage:object_filter_bank_config_proto",
-        "//modules/perception/pipeline/proto/stage:omt_bev_proto",
         "//modules/perception/pipeline/proto/stage:omt_proto",
+        "//modules/perception/pipeline/proto/stage:omt_bev_proto",
         "//modules/perception/pipeline/proto/stage:pbf_tracker_config_proto",
         "//modules/perception/pipeline/proto/stage:point_pillars_detection_config_proto",
         "//modules/perception/pipeline/proto/stage:pointcloud_detection_postprocessor_config_proto",
@@ -85,6 +85,7 @@ proto_library(
         "//modules/perception/pipeline/proto/stage:singlestage_proto",
         "//modules/perception/pipeline/proto/stage:smoke_obstacle_detection_config_proto",
         "//modules/perception/pipeline/proto/stage:spatio_temporal_ground_detector_config_proto",
+        "//modules/perception/pipeline/proto/stage:graph_segmentation_config_proto",
         "//modules/perception/pipeline/proto/stage:yolo_obstacle_detector_config_proto",
     ],
 )

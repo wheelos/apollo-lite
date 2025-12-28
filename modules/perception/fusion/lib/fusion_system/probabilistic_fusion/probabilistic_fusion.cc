@@ -339,9 +339,11 @@ void ProbabilisticFusion::FusebackgroundTrack(const SensorFramePtr& frame) {
 
   std::vector<TrackMeasurmentPair> assignments;
   std::vector<SensorObjectPtr>& frame_objs = frame->GetBackgroundObjects();
+  std::string sensor_id = frame->GetSensorId();
   for (size_t i = 0; i < obj_size; ++i) {
     int local_id = frame_objs[i]->GetBaseObject()->track_id;
-    const auto& it = local_id_2_track_ind_map.find(local_id);
+    int search_id = Track::ComputeBackgroundGlobalId(sensor_id, local_id);
+    const auto& it = local_id_2_track_ind_map.find(search_id);
     if (it != local_id_2_track_ind_map.end()) {
       size_t track_ind = it->second;
       assignments.push_back(std::make_pair(track_ind, i));
@@ -358,7 +360,6 @@ void ProbabilisticFusion::FusebackgroundTrack(const SensorFramePtr& frame) {
   }
 
   // 3. update unassigned track
-  std::string sensor_id = frame->GetSensorId();
   for (size_t i = 0; i < track_tag.size(); ++i) {
     if (!track_tag[i]) {
       background_tracks[i]->UpdateWithoutSensorObject(sensor_id,
@@ -402,7 +403,7 @@ void ProbabilisticFusion::RemoveLostTrack() {
     }
   }
   AINFO << "Remove " << background_tracks.size() - b_alive_index
-        << " background tracks";
+        << " background tracks. " << b_alive_index << " tracks left.";
   background_tracks.resize(b_alive_index);
 }
 

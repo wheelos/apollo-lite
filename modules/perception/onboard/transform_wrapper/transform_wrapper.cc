@@ -25,11 +25,11 @@ namespace apollo {
 namespace perception {
 namespace onboard {
 
-DEFINE_string(obs_sensor2novatel_tf2_frame_id, "novatel",
+DEFINE_string(obs_sensor2novatel_tf2_frame_id, "imu",
               "sensor to novatel frame id");
 DEFINE_string(obs_novatel2world_tf2_frame_id, "world",
               "novatel to world frame id");
-DEFINE_string(obs_novatel2world_tf2_child_frame_id, "novatel",
+DEFINE_string(obs_novatel2world_tf2_child_frame_id, "imu",
               "novatel to world child frame id");
 DEFINE_double(obs_tf2_buff_size, 0.01, "query Cyber TF buffer size in second");
 DEFINE_double(obs_transform_cache_size, 1.0, "transform cache size in second");

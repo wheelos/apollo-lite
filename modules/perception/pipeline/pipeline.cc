@@ -37,15 +37,18 @@
 #include "modules/perception/lidar/lib/classifier/fused_classifier/fused_classifier.h"
 #include "modules/perception/lidar/lib/detector/center_point_detection/center_point_detection.h"
 #include "modules/perception/lidar/lib/detector/cnn_segmentation/cnn_segmentation.h"
+#include "modules/perception/lidar/lib/detector/graph_segmentation/graph_segmentation.h"
 #include "modules/perception/lidar/lib/detector/mask_pillars_detection/mask_pillars_detection.h"
 #include "modules/perception/lidar/lib/detector/ncut_segmentation/ncut_segmentation.h"
 #include "modules/perception/lidar/lib/detector/point_pillars_detection/point_pillars_detection.h"
+#include "modules/perception/lidar/lib/ground_detector/spatio_temporal_ground_detector/spatio_temporal_ground_detector.h"
 #include "modules/perception/lidar/lib/map_manager/map_manager.h"
 #include "modules/perception/lidar/lib/object_builder/object_builder.h"
 #include "modules/perception/lidar/lib/object_filter_bank/object_filter_bank.h"
 #include "modules/perception/lidar/lib/pointcloud_detection_postprocessor/pointcloud_detection_postprocessor.h"
 #include "modules/perception/lidar/lib/pointcloud_detection_preprocessor/pointcloud_detection_preprocessor.h"
 #include "modules/perception/lidar/lib/pointcloud_preprocessor/pointcloud_preprocessor.h"
+#include "modules/perception/lidar/lib/roi_filter/hdmap_roi_filter/hdmap_roi_filter.h"
 #include "modules/perception/lidar/lib/tracker/multi_lidar_fusion/mlf_engine.h"
 #include "modules/perception/pipeline/plugin_factory.h"
 
@@ -143,6 +146,12 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::MAP_MANAGER:
       stage_ptr.reset(new lidar::MapManager());
       break;
+    case StageType::HDMAP_ROI_FILTER:
+      stage_ptr.reset(new lidar::HdmapROIFilter());
+      break;
+    case StageType::GROUND_DETECTOR:
+      stage_ptr.reset(new lidar::SpatioTemporalGroundDetector());
+      break;
     case StageType::POINT_PILLARS_DETECTION:
       stage_ptr.reset(new lidar::PointPillarsDetection());
       break;
@@ -151,6 +160,9 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
       break;
     case StageType::NCUT_SEGMENTATION:
       stage_ptr.reset(new lidar::NCutSegmentation());
+      break;
+    case StageType::GRAPH_SEGMENTATION:
+      stage_ptr.reset(new lidar::GraphSegmentation());
       break;
     case StageType::MASK_PILLARS_DETECTION:
       stage_ptr.reset(new lidar::MaskPillarsDetection());
