@@ -1,0 +1,45 @@
+syntax = "proto2";
+
+package apollo.control;
+
+import "modules/common_msgs/basic_msgs/header.proto";
+
+
+enum FaultLevel {
+  LEVEL_NONE = 0;
+  LEVEL_WARNING = 1;
+  LEVEL_SOFT_STOP = 2;
+  LEVEL_HARD_ESTOP = 3;
+  LEVEL_FATAL = 4;
+}
+
+enum FaultSource {
+  SOURCE_INPUT = 0;    // Issues from upstream modules or sensors
+  SOURCE_INTERNAL = 1; // Issues within the control algorithm math/logic
+  SOURCE_OUTPUT = 2;   // Issues with the generated control command
+  SOURCE_MONITOR = 3;  // Issues detected by external safety watchdogs
+}
+
+message FaultEvent {
+  optional uint32 fault_id = 1;        // Bitwise ID: Module|Category|ID
+  optional FaultLevel level = 2;       // Severity of this specific event
+  optional FaultSource source = 3;     // Origin of the fault
+  optional string description = 4;     // Human-readable debug message
+  optional double timestamp_sec = 5;   // Time when the fault was triggered
+}
+
+message SafetyStatus {
+  optional apollo.common.Header header = 1;
+  optional FaultLevel current_state = 2 [default = LEVEL_NONE];
+
+  // List of all currently active faults in the current cycle
+  repeated FaultEvent active_faults = 3;
+
+  // Rolling buffer of recent faults for intermittent issue tracking
+  repeated FaultEvent fault_history = 4;
+
+  // Diagnostic metadata
+  optional double current_cycle_duration_ms = 5;
+  optional bool is_reset_required = 6 [default = false];
+  optional uint32 primary_fault_id = 7; // The fault ID that triggered the current state
+}
