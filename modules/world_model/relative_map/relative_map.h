@@ -18,13 +18,14 @@
 
 #include <string>
 
+#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "modules/common_msgs/planning_msgs/navigation.pb.h"
+#include "modules/world_model/relative_map/proto/relative_map_config.pb.h"
+
 #include "modules/common/monitor_log/monitor_log_buffer.h"
 #include "modules/common/status/status.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
-#include "modules/map/relative_map/navigation_lane.h"
-#include "modules/common_msgs/planning_msgs/navigation.pb.h"
-#include "modules/map/relative_map/proto/relative_map_config.pb.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "modules/world_model/relative_map/navigation_lane.h"
 
 namespace apollo {
 namespace relative_map {

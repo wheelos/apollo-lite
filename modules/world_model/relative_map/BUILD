@@ -44,9 +44,9 @@ cc_library(
         "//modules/common/monitor_log",
         "//modules/common/status",
         "//modules/common/util",
-        "//modules/map/relative_map/common:relative_map_gflags",
+        "//modules/world_model/relative_map/common:relative_map_gflags",
         "//modules/common_msgs/planning_msgs:navigation_cc_proto",
-        "//modules/map/relative_map/proto:relative_map_config_cc_proto",
+        "//modules/world_model/relative_map/proto:relative_map_config_cc_proto",
         "//modules/common_msgs/perception_msgs:perception_obstacle_cc_proto",
     ],
 )
@@ -66,8 +66,8 @@ cc_library(
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
-        "//modules/map/relative_map/common:relative_map_gflags",
-        "//modules/map/relative_map/proto:relative_map_config_cc_proto",
+        "//modules/world_model/relative_map/common:relative_map_gflags",
+        "//modules/world_model/relative_map/proto:relative_map_config_cc_proto",
         "@com_google_absl//absl/strings",
     ],
 )

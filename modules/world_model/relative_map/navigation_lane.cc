@@ -19,19 +19,21 @@
  * @brief This file provides the implementation of the class `NavigationLane`.
  */
 
-#include "modules/map/relative_map/navigation_lane.h"
+#include "modules/world_model/relative_map/navigation_lane.h"
 
 #include <algorithm>
 #include <limits>
 #include <string>
 
 #include "absl/strings/str_cat.h"
+
+#include "modules/common_msgs/map_msgs/map_lane.pb.h"
+
 #include "cyber/common/log.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/common/util/util.h"
-#include "modules/common_msgs/map_msgs/map_lane.pb.h"
-#include "modules/map/relative_map/common/relative_map_gflags.h"
+#include "modules/world_model/relative_map/common/relative_map_gflags.h"
 
 namespace apollo {
 namespace relative_map {

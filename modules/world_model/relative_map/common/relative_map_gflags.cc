@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/map/relative_map/common/relative_map_gflags.h"
+#include "modules/world_model/relative_map/common/relative_map_gflags.h"
 
 DEFINE_string(
     relative_map_config_filename,
