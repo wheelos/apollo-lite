@@ -25,24 +25,12 @@ install(
     ],
     deps = [
         ":pb_map",
-        ":pb_hdrs",
         # "//modules/map/data:install",
-        "//modules/map/relative_map:install",
         "//modules/map/tools:install",
         "//modules/map/hdmap/adapter:install",
         "//modules/map/hdmap:install",
         "//modules/map/pnc_map:install",
-        "//modules/map/relative_map/tools:install",
         ":map_testdata"
-    ],
-)
-
-install(
-    name = "pb_hdrs",
-    data_dest = "map/include",
-    data = [
-        "//modules/map/relative_map/proto:navigator_config_cc_proto",
-        "//modules/map/relative_map/proto:relative_map_config_cc_proto",
     ],
 )
 
@@ -68,8 +56,6 @@ install_files(
         "//modules/common_msgs/map_msgs:map_stop_sign_py_pb2",
         "//modules/common_msgs/map_msgs:map_yield_sign_py_pb2",
         "//modules/common_msgs/planning_msgs:navigation_py_pb2",
-        "//modules/map/relative_map/proto:navigator_config_py_pb2",
-        "//modules/map/relative_map/proto:relative_map_config_py_pb2",
     ],
 )
 

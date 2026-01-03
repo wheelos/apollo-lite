@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/map/relative_map/relative_map_component.h"
+#include "modules/world_model/relative_map/relative_map_component.h"
 
 #include "modules/common/adapters/adapter_gflags.h"
 
