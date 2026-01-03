@@ -21,15 +21,16 @@
 
 #include "nlohmann/json.hpp"
 
+#include "modules/common_msgs/planning_msgs/navigation.pb.h"
+#include "modules/world_model/relative_map/proto/navigator_config.pb.h"
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "cyber/cyber.h"
 #include "cyber/time/rate.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/util/message_util.h"
-#include "modules/map/relative_map/common/relative_map_gflags.h"
-#include "modules/common_msgs/planning_msgs/navigation.pb.h"
-#include "modules/map/relative_map/proto/navigator_config.pb.h"
+#include "modules/world_model/relative_map/common/relative_map_gflags.h"
 
 using apollo::cyber::Rate;
 using apollo::relative_map::NavigationInfo;

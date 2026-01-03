@@ -20,9 +20,8 @@
 
 #include "cyber/component/timer_component.h"
 #include "cyber/cyber.h"
-
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
-#include "modules/map/relative_map/relative_map.h"
+#include "modules/world_model/relative_map/relative_map.h"
 
 namespace apollo {
 namespace relative_map {
