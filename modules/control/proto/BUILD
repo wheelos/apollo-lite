@@ -3,6 +3,7 @@ load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
 load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 
+
 package(default_visibility = ["//visibility:public"])
 
 cc_proto_library(
@@ -28,6 +29,26 @@ py_proto_library(
 )
 
 cc_proto_library(
+    name = "safety_status_cc_proto",
+    deps = [
+        ":safety_status_proto",
+    ],
+)
+
+proto_library(
+    name = "safety_status_proto",
+    srcs = ["safety_status.proto"],
+    deps = [
+        "//modules/common_msgs/basic_msgs:header_proto",
+    ],
+)
+
+py_proto_library(
+    name = "safety_status_py_pb2",
+    deps = [":safety_status_proto"],
+)
+
+cc_proto_library(
     name = "local_view_cc_proto",
     deps = [
         ":local_view_proto",
@@ -38,8 +59,8 @@ proto_library(
     name = "local_view_proto",
     srcs = ["local_view.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
         "//modules/common_msgs/chassis_msgs:chassis_proto",
+        "//modules/common_msgs/basic_msgs:header_proto",
         "//modules/common_msgs/control_msgs:pad_msg_proto",
         "//modules/common_msgs/localization_msgs:localization_proto",
         "//modules/common_msgs/planning_msgs:planning_proto",
@@ -49,26 +70,6 @@ proto_library(
 py_proto_library(
     name = "local_view_py_pb2",
     deps = [":local_view_proto"],
-)
-
-cc_proto_library(
-    name = "diff_drive_lat_controller_conf_cc_proto",
-    deps = [
-        ":diff_drive_lat_controller_conf_proto",
-    ],
-)
-
-proto_library(
-    name = "diff_drive_lat_controller_conf_proto",
-    srcs = ["diff_drive_lat_controller_conf.proto"],
-    deps = [
-        ":pid_conf_proto"
-    ],
-)
-
-py_proto_library(
-    name = "diff_drive_lat_controller_conf_py_pb2",
-    deps = [":diff_drive_lat_controller_conf_proto"],
 )
 
 cc_proto_library(
@@ -109,7 +110,6 @@ py_proto_library(
     name = "mrac_conf_py_pb2",
     deps = [":mrac_conf_proto"],
 )
-
 cc_proto_library(
     name = "gain_scheduler_conf_cc_proto",
     deps = [
@@ -126,7 +126,6 @@ py_proto_library(
     name = "gain_scheduler_conf_py_pb2",
     deps = [":gain_scheduler_conf_proto"],
 )
-
 cc_proto_library(
     name = "mpc_controller_conf_cc_proto",
     deps = [
@@ -159,12 +158,12 @@ proto_library(
     name = "control_conf_proto",
     srcs = ["control_conf.proto"],
     deps = [
+        "//modules/common_msgs/chassis_msgs:chassis_proto",
+        "//modules/common_msgs/control_msgs:pad_msg_proto",
         ":lat_controller_conf_proto",
         ":lon_controller_conf_proto",
         ":mpc_controller_conf_proto",
         ":diff_drive_lat_controller_conf_proto",
-        "//modules/common_msgs/chassis_msgs:chassis_proto",
-        "//modules/common_msgs/control_msgs:pad_msg_proto",
     ],
 )
 
@@ -195,6 +194,26 @@ py_proto_library(
 )
 
 cc_proto_library(
+    name = "diff_drive_lat_controller_conf_cc_proto",
+    deps = [
+        ":diff_drive_lat_controller_conf_proto",
+    ],
+)
+
+proto_library(
+    name = "diff_drive_lat_controller_conf_proto",
+    srcs = ["diff_drive_lat_controller_conf.proto"],
+    deps = [
+        ":pid_conf_proto",
+    ],
+)
+
+py_proto_library(
+    name = "diff_drive_lat_controller_conf_py_pb2",
+    deps = [":diff_drive_lat_controller_conf_proto"],
+)
+
+cc_proto_library(
     name = "leadlag_conf_cc_proto",
     deps = [
         ":leadlag_conf_proto",
@@ -210,7 +229,6 @@ py_proto_library(
     name = "leadlag_conf_py_pb2",
     deps = [":leadlag_conf_proto"],
 )
-
 cc_proto_library(
     name = "pid_conf_cc_proto",
     deps = [
@@ -227,7 +245,6 @@ py_proto_library(
     name = "pid_conf_py_pb2",
     deps = [":pid_conf_proto"],
 )
-
 cc_proto_library(
     name = "calibration_table_cc_proto",
     deps = [
@@ -244,7 +261,6 @@ py_proto_library(
     name = "calibration_table_py_pb2",
     deps = [":calibration_table_proto"],
 )
-
 cc_proto_library(
     name = "preprocessor_cc_proto",
     deps = [
@@ -256,10 +272,10 @@ proto_library(
     name = "preprocessor_proto",
     srcs = ["preprocessor.proto"],
     deps = [
-        ":local_view_proto",
-        "//modules/common_msgs/basic_msgs:drive_state_proto",
         "//modules/common_msgs/basic_msgs:header_proto",
+        "//modules/common_msgs/basic_msgs:drive_state_proto",
         "//modules/common_msgs/control_msgs:input_debug_proto",
+        ":local_view_proto",
     ],
 )
 
@@ -267,3 +283,4 @@ py_proto_library(
     name = "preprocessor_py_pb2",
     deps = [":preprocessor_proto"],
 )
+

@@ -18,14 +18,16 @@
 
 #include <thread>
 
+#include "gtest/gtest.h"
+
+#include "modules/control/proto/control_conf.pb.h"
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "cyber/cyber.h"
-#include "gtest/gtest.h"
-
 #include "modules/common/adapters/adapter_gflags.h"
+#include "modules/common/util/util.h"
 #include "modules/control/common/control_gflags.h"
-#include "modules/control/proto/control_conf.pb.h"
 
 namespace apollo {
 namespace control {

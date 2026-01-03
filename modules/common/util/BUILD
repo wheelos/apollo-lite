@@ -66,6 +66,11 @@ cc_library(
 )
 
 cc_library(
+    name = "debouncer",
+    hdrs = ["debouncer.h"]
+)
+
+cc_library(
     name = "future",
     hdrs = ["future.h"],
     deps = [
@@ -288,6 +293,16 @@ cc_test(
     srcs = ["perf_util_test.cc"],
     deps = [
         ":perf_util",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "debouncer_test",
+    size = "small",
+    srcs = ["debouncer_test.cc"],
+    deps = [
+        ":debouncer",
         "@com_google_googletest//:gtest_main",
     ],
 )

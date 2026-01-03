@@ -18,11 +18,13 @@
 
 #include <memory>
 
-#include "cyber/common/file.h"
 #include "google/protobuf/text_format.h"
+
+#include "modules/common_msgs/control_msgs/control_cmd.pb.h"
+
+#include "cyber/common/file.h"
 #include "modules/common/util/util.h"
 #include "modules/control/common/dependency_injector.h"
-#include "modules/common_msgs/control_msgs/control_cmd.pb.h"
 
 DEFINE_string(test_chassis_file, "", "chassis input file");
 DEFINE_string(test_data_dir, "", "the test data folder");
@@ -111,18 +113,6 @@ bool ControlTestBase::test_control() {
       return false;
     }
     control_.OnChassis(std::make_shared<apollo::canbus::Chassis>(chassis));
-  }
-
-  // Monitor
-  if (!FLAGS_test_monitor_file.empty()) {
-    MonitorMessage monitor_message;
-    if (!cyber::common::GetProtoFromFile(
-            FLAGS_test_data_dir + FLAGS_test_monitor_file, &monitor_message)) {
-      AERROR << "Failed to load monitor file " << FLAGS_test_data_dir
-             << FLAGS_test_monitor_file;
-      return false;
-    }
-    control_.OnMonitor(monitor_message);
   }
 
   control_.local_view_.mutable_chassis()->CopyFrom(control_.latest_chassis_);
