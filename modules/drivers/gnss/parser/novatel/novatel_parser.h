@@ -140,6 +140,9 @@ class NovatelParser : public Parser {
   // RTKLIB raw observation data structure
   raw_t raw_;
 
+  bool has_ins_stat_message_ = false;
+  bool has_corr_imu_message_ = false;
+
   ::apollo::drivers::gnss::Gnss gnss_;  // For combined position/velocity
   ::apollo::drivers::gnss::GnssBestPose bestpos_;
   ::apollo::drivers::gnss::Imu imu_;  // For RAWIMU/RAWIMUX
