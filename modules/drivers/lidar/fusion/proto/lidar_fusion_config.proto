@@ -21,4 +21,8 @@ message LidarFusionConfig {
   optional uint32 max_interval_ms = 6;
   // set if using system time as the measurement time, default is false
   optional bool use_system_clock = 7;
+  optional bool enable_nan_filter = 8 [default = false];
+  // enable parallel fusion for multiple input channels, if nan_filter is true,
+  // has no effect
+  optional bool enable_parallel_fusion = 9 [default = false];
 }

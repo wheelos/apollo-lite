@@ -26,6 +26,16 @@ namespace apollo {
 namespace drivers {
 namespace lidar {
 
+VanjeelidarComponent::~VanjeelidarComponent() {
+  if (cloud_handle_thread_.joinable()) {
+    cloud_handle_thread_.join();
+  }
+  if (driver_ptr_ != nullptr) {
+    driver_ptr_->stop();
+    driver_ptr_ = nullptr;
+  }
+}
+
 bool VanjeelidarComponent::Init() {
   if (!GetProtoConfig(&conf_)) {
     AERROR << "load config error, file:" << config_file_path_;

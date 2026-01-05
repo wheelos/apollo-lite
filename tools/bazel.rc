@@ -42,6 +42,7 @@ build --cxxopt="-fdiagnostics-color=always"
 # build --profile=data/build_profile.gz
 
 # Set compiler warning options, with flexibility for development
+build --per_file_copt=external/.*@-Wno-unused-variable
 build --per_file_copt=external/.*@-Wno-unused-but-set-variable
 build --per_file_copt=external/.*@-Wno-sign-compare
 build --per_file_copt=external/.*@-Wno-return-type
