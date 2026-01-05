@@ -41,6 +41,7 @@ using ::vanjee::lidar::InputType;
 class VanjeelidarComponent
     : public LidarComponentBase<vanjee::VanjeeScanPacket> {
  public:
+  ~VanjeelidarComponent();
   bool Init() override;
 
   void ReadScanCallback(

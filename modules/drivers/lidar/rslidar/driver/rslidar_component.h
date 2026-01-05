@@ -41,6 +41,8 @@ using ::robosense::lidar::InputType;
 class RslidarComponent
     : public LidarComponentBase<robosense::RobosenseScanPacket> {
  public:
+  ~RslidarComponent();
+
   bool Init() override;
 
   void ReadScanCallback(const std::shared_ptr<robosense::RobosenseScanPacket>&
