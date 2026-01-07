@@ -23,13 +23,13 @@
 #include <thread>
 #include <vector>
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
-#include "modules/drivers/lidar/seyond/proto/seyond.pb.h"
-
 #include "seyond/sdk_common/inno_lidar_api.h"
 #include "seyond/sdk_common/inno_lidar_other_api.h"
 #include "seyond/sdk_common/inno_lidar_packet.h"
 #include "seyond/sdk_common/inno_lidar_packet_utils.h"
+
+#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "modules/drivers/lidar/seyond/proto/seyond.pb.h"
 
 namespace apollo {
 namespace drivers {
@@ -99,8 +99,7 @@ class SeyondDriver {
 
   // lidar configuration
   void register_publish_packet_callback(
-      const std::function<void(const InnoDataPacket *, bool)>
-          &callback) {
+      const std::function<void(const InnoDataPacket *, bool)> &callback) {
     packet_publish_cb_ = callback;
   }
   void register_publish_point_callback(
@@ -116,7 +115,7 @@ class SeyondDriver {
     log_cb_s_ = log_callback;
   }
   bool setup_lidar();
-  bool init(SeyondParam& param);
+  bool init(SeyondParam &param);
   bool start();
   bool pause();
   bool stop();
@@ -150,7 +149,7 @@ class SeyondDriver {
   std::function<void(std::shared_ptr<PointCloud>)> cloud_publish_cb_;
   std::function<std::shared_ptr<PointCloud>()> allocate_cloud_cb_;
 
-  static std::function<void(int32_t, const char*, const char*)> log_cb_s_;
+  static std::function<void(int32_t, const char *, const char *)> log_cb_s_;
 
   // config
   SeyondParam param_;
@@ -163,6 +162,7 @@ class SeyondDriver {
   double current_ts_start_;
   uint64_t frame_points_width_;
   std::vector<uint8_t> convert_buffer_;
+  static bool inno_logs_setted_;
 };
 
 }  // namespace lidar
