@@ -22,6 +22,8 @@ namespace apollo {
 namespace drivers {
 namespace lidar {
 
+bool SeyondDriver::inno_logs_setted_ = false;
+
 std::function<void(int32_t, const char *, const char *)>
     SeyondDriver::log_cb_s_ = nullptr;
 
@@ -61,13 +63,9 @@ static void coordinate_transfer(PointXYZIT *point, uint32_t coordinate_mode,
   }
 }
 
-SeyondDriver::SeyondDriver() {
-  convert_buffer_.resize(KBUF_SIZE);
-}
+SeyondDriver::SeyondDriver() { convert_buffer_.resize(KBUF_SIZE); }
 
-SeyondDriver::~SeyondDriver() {
-  stop();
-}
+SeyondDriver::~SeyondDriver() { stop(); }
 
 bool SeyondDriver::setup_lidar() {
   // setup read from live
@@ -139,10 +137,15 @@ bool SeyondDriver::setup_lidar() {
   return true;
 }
 
-bool SeyondDriver::init(SeyondParam& param) {
+bool SeyondDriver::init(SeyondParam &param) {
   param_ = param;
   set_log_and_message_level();
-  inno_lidar_set_logs(-1, -1, NULL, 0, 0, log_callback_s_, NULL, NULL, 0, 0, 1);
+  // async log cannot init twice, if multiple lidars in one process, skip it
+  if (!inno_logs_setted_) {
+    inno_lidar_set_logs(-1, -1, NULL, 0, 0, log_callback_s_, NULL, NULL, 0, 0,
+                        1);
+    inno_logs_setted_ = true;
+  }
   return true;
 }
 
