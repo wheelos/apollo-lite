@@ -17,7 +17,7 @@ cc_library(
     deps = [
         "//cyber/common:log",
         "//cyber/transport/qos",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
@@ -27,7 +27,7 @@ cc_library(
     hdrs = ["underlay_message.h"],
     deps = [
         "//cyber/common:log",
-        "@fastrtps",
+        "@wheelos_fastcdr//:fastcdr",
     ],
 )
 
@@ -59,7 +59,8 @@ cc_library(
     hdrs = ["underlay_message_type.h"],
     deps = [
         ":underlay_message",
-        "@fastrtps",
+        "@wheelos_fastcdr//:fastcdr",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
@@ -70,7 +71,7 @@ cc_test(
     deps = [
         "//cyber:cyber_core",
         "@com_google_googletest//:gtest_main",
-        "@fastrtps",
+        "@wheelos_fastcdr//:fastcdr",
     ],
 )
 

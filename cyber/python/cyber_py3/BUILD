@@ -36,7 +36,7 @@ py_library(
     data = [
         "//cyber/python/internal:_cyber_time_wrapper.so",
         "//cyber/python/internal:_cyber_wrapper.so",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
@@ -45,7 +45,7 @@ py_library(
     srcs = ["cyber_timer.py"],
     data = [
         "//cyber/python/internal:_cyber_timer_wrapper.so",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
@@ -54,7 +54,7 @@ py_library(
     srcs = ["cyber.py"],
     data = [
         "//cyber/python/internal:_cyber_wrapper.so",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
@@ -63,7 +63,7 @@ py_library(
     srcs = ["parameter.py"],
     data = [
         "//cyber/python/internal:_cyber_parameter_wrapper.so",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
@@ -72,6 +72,6 @@ py_library(
     srcs = ["record.py"],
     data = [
         "//cyber/python/internal:_cyber_record_wrapper.so",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
