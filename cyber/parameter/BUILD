@@ -41,7 +41,7 @@ cc_library(
         ":parameter_service_names",
         "//cyber/node",
         "//cyber/service:client",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
     alwayslink = True,
 )
@@ -66,7 +66,7 @@ cc_library(
         ":parameter_service_names",
         "//cyber/node",
         "//cyber/service",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
     alwayslink = True,
 )

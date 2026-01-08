@@ -172,6 +172,49 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
       });
 
   websocket_->RegisterMessageHandler(
+      "SendMissionRequest",
+      [this](constJson &json, WebSocketHandler::Connection *conn) {
+        auto mission_request =
+            std::make_shared<apollo::mission::MissionRequest>();
+
+        // Parse common fields
+        if (ContainsKey(json, "task_name")) {
+          mission_request->set_task_name(json["task_name"]);
+        }
+        if (ContainsKey(json, "enable_loop")) {
+          mission_request->set_enable_loop(json["enable_loop"]);
+        }
+
+        // Analyzing key points (Waypoints)
+        if (ContainsKey(json, "waypoints")) {
+          for (const auto &wp_json : json["waypoints"]) {
+            auto *wp = mission_request->add_global_waypoints();
+            wp->set_name(wp_json["name"]);
+            wp->mutable_pose()->set_x(wp_json["x"]);
+            wp->mutable_pose()->set_y(wp_json["y"]);
+          }
+        }
+
+        // Parse the command queue.
+        if (ContainsKey(json, "commands")) {
+          for (const auto &cmd_json : json["commands"]) {
+            auto *cmd = mission_request->add_command_queue();
+            cmd->set_command_name(cmd_json["command"]);
+
+            // Automatically convert the params dictionary in JSON to Proto
+            // param
+            if (cmd_json.contains("params")) {
+              for (auto &element : cmd_json["params"].items()) {
+                SetMissionParam(element.key(), element.value(), cmd);
+              }
+            }
+          }
+        }
+
+        mission_writer_->Write(mission_request);
+      });
+
+  websocket_->RegisterMessageHandler(
       "SendDefaultCycleRoutingRequest",
       [this](const Json &json, WebSocketHandler::Connection *conn) {
         auto task = std::make_shared<Task>();

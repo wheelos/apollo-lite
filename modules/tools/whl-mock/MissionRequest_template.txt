@@ -1,0 +1,43 @@
+header {
+  timestamp_sec: 1735984200.123
+  module_name: "mission_client"
+  sequence_num: 1
+}
+mission_id: "mission_20250104_001"
+task_name: "PatrolTask"
+
+parameters {
+  key: "speed_mps"
+  double_value: 2.5
+}
+parameters {
+  key: "use_safe_mode"
+  bool_value: true
+}
+parameters {
+  key: "note"
+  string_value: "demo run"
+}
+parameters {
+  key: "retry_limit"
+  int_value: 3
+}
+
+waypoints {
+  name: "Station_A"
+  pose {
+    x: 12.34
+    y: -56.78
+    z: 0.0
+  }
+  heading: 1.5708
+}
+waypoints {
+  name: "Station_B"
+  pose {
+    x: 90.12
+    y: 34.56
+    z: 0.0
+  }
+  heading: 3.1416
+}
