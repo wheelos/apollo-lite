@@ -149,7 +149,7 @@ cc_binary(
         "//cyber/transport/rtps:sub_listener",
         "@com_github_google_glog//:glog",
         "@com_google_protobuf//:protobuf",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
@@ -218,7 +218,7 @@ cc_library(
         "@com_github_gflags_gflags//:gflags",
         "@com_github_google_glog//:glog",
         "@com_google_protobuf//:protobuf",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
