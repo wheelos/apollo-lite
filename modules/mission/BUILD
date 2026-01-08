@@ -22,7 +22,8 @@ cc_library(
         "//modules/common_msgs/mission_msgs:mission_request_cc_proto",
         "//modules/mission/proto:mission_config_cc_proto",
         "//modules/common/adapters:adapter_gflags",
-        "@behaviortree_cpp//:behaviortree_cpp"
+        "@behaviortree_cpp//:behaviortree_cpp",
+        "@tinyxml2//:tinyxml2"
     ],
     alwayslink = True,
 )

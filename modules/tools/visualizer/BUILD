@@ -17,7 +17,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":visualizer_lib",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
         "@qt//:qt_core",
         "@qt//:qt_gui",
         "@qt//:qt_opengl",

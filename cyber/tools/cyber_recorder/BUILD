@@ -48,7 +48,7 @@ cc_library(
         "//cyber",
         "//cyber/common:log",
         "//cyber/proto:record_cc_proto",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
