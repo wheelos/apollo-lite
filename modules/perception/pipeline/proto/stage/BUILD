@@ -3,6 +3,7 @@ load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
 load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 
+
 package(default_visibility = ["//visibility:public"])
 
 cc_proto_library(
@@ -21,7 +22,6 @@ py_proto_library(
     name = "object_filter_bank_config_py_pb2",
     deps = [":object_filter_bank_config_proto"],
 )
-
 cc_proto_library(
     name = "ground_service_detector_config_cc_proto",
     deps = [
@@ -38,7 +38,6 @@ py_proto_library(
     name = "ground_service_detector_config_py_pb2",
     deps = [":ground_service_detector_config_proto"],
 )
-
 cc_proto_library(
     name = "darkSCNN_postprocessor_cc_proto",
     deps = [
@@ -55,7 +54,6 @@ py_proto_library(
     name = "darkSCNN_postprocessor_py_pb2",
     deps = [":darkSCNN_postprocessor_proto"],
 )
-
 cc_proto_library(
     name = "recognition_cc_proto",
     deps = [
@@ -72,7 +70,6 @@ py_proto_library(
     name = "recognition_py_pb2",
     deps = [":recognition_proto"],
 )
-
 cc_proto_library(
     name = "center_point_detection_config_cc_proto",
     deps = [
@@ -89,7 +86,6 @@ py_proto_library(
     name = "center_point_detection_config_py_pb2",
     deps = [":center_point_detection_config_proto"],
 )
-
 cc_proto_library(
     name = "omt_bev_cc_proto",
     deps = [
@@ -106,7 +102,6 @@ py_proto_library(
     name = "omt_bev_py_pb2",
     deps = [":omt_bev_proto"],
 )
-
 cc_proto_library(
     name = "mlf_engine_config_cc_proto",
     deps = [
@@ -123,7 +118,22 @@ py_proto_library(
     name = "mlf_engine_config_py_pb2",
     deps = [":mlf_engine_config_proto"],
 )
+cc_proto_library(
+    name = "graph_segmentation_config_cc_proto",
+    deps = [
+        ":graph_segmentation_config_proto",
+    ],
+)
 
+proto_library(
+    name = "graph_segmentation_config_proto",
+    srcs = ["graph_segmentation_config.proto"],
+)
+
+py_proto_library(
+    name = "graph_segmentation_config_py_pb2",
+    deps = [":graph_segmentation_config_proto"],
+)
 cc_proto_library(
     name = "camera_detection_preprocessor_config_cc_proto",
     deps = [
@@ -140,7 +150,6 @@ py_proto_library(
     name = "camera_detection_preprocessor_config_py_pb2",
     deps = [":camera_detection_preprocessor_config_proto"],
 )
-
 cc_proto_library(
     name = "caddn_detection_config_cc_proto",
     deps = [
@@ -157,7 +166,6 @@ py_proto_library(
     name = "caddn_detection_config_py_pb2",
     deps = [":caddn_detection_config_proto"],
 )
-
 cc_proto_library(
     name = "location_refiner_cc_proto",
     deps = [
@@ -174,7 +182,6 @@ py_proto_library(
     name = "location_refiner_py_pb2",
     deps = [":location_refiner_proto"],
 )
-
 cc_proto_library(
     name = "fused_classifier_config_cc_proto",
     deps = [
@@ -191,7 +198,6 @@ py_proto_library(
     name = "fused_classifier_config_py_pb2",
     deps = [":fused_classifier_config_proto"],
 )
-
 cc_proto_library(
     name = "mask_pillars_detection_config_cc_proto",
     deps = [
@@ -208,7 +214,6 @@ py_proto_library(
     name = "mask_pillars_detection_config_py_pb2",
     deps = [":mask_pillars_detection_config_proto"],
 )
-
 cc_proto_library(
     name = "spatio_temporal_ground_detector_config_cc_proto",
     deps = [
@@ -225,7 +230,6 @@ py_proto_library(
     name = "spatio_temporal_ground_detector_config_py_pb2",
     deps = [":spatio_temporal_ground_detector_config_proto"],
 )
-
 cc_proto_library(
     name = "smoke_obstacle_detection_config_cc_proto",
     deps = [
@@ -242,7 +246,6 @@ py_proto_library(
     name = "smoke_obstacle_detection_config_py_pb2",
     deps = [":smoke_obstacle_detection_config_proto"],
 )
-
 cc_proto_library(
     name = "singlestage_cc_proto",
     deps = [
@@ -259,7 +262,6 @@ py_proto_library(
     name = "singlestage_py_pb2",
     deps = [":singlestage_proto"],
 )
-
 cc_proto_library(
     name = "tracking_feature_cc_proto",
     deps = [
@@ -276,7 +278,6 @@ py_proto_library(
     name = "tracking_feature_py_pb2",
     deps = [":tracking_feature_proto"],
 )
-
 cc_proto_library(
     name = "point_pillars_detection_config_cc_proto",
     deps = [
@@ -293,7 +294,6 @@ py_proto_library(
     name = "point_pillars_detection_config_py_pb2",
     deps = [":point_pillars_detection_config_proto"],
 )
-
 cc_proto_library(
     name = "pointcloud_detection_postprocessor_config_cc_proto",
     deps = [
@@ -310,7 +310,6 @@ py_proto_library(
     name = "pointcloud_detection_postprocessor_config_py_pb2",
     deps = [":pointcloud_detection_postprocessor_config_proto"],
 )
-
 cc_proto_library(
     name = "yolo_obstacle_detector_config_cc_proto",
     deps = [
@@ -347,7 +346,6 @@ py_proto_library(
     name = "darkSCNN_py_pb2",
     deps = [":darkSCNN_proto"],
 )
-
 cc_proto_library(
     name = "camera_detector_config_cc_proto",
     deps = [
@@ -364,7 +362,6 @@ py_proto_library(
     name = "camera_detector_config_py_pb2",
     deps = [":camera_detector_config_proto"],
 )
-
 cc_proto_library(
     name = "probabilistic_fusion_config_cc_proto",
     deps = [
@@ -381,7 +378,6 @@ py_proto_library(
     name = "probabilistic_fusion_config_py_pb2",
     deps = [":probabilistic_fusion_config_proto"],
 )
-
 cc_proto_library(
     name = "denseline_cc_proto",
     deps = [
@@ -398,7 +394,6 @@ py_proto_library(
     name = "denseline_py_pb2",
     deps = [":denseline_proto"],
 )
-
 cc_proto_library(
     name = "cnnseg_config_cc_proto",
     deps = [
@@ -415,7 +410,6 @@ py_proto_library(
     name = "cnnseg_config_py_pb2",
     deps = [":cnnseg_config_proto"],
 )
-
 cc_proto_library(
     name = "all_latest_fusion_config_cc_proto",
     deps = [
@@ -432,7 +426,6 @@ py_proto_library(
     name = "all_latest_fusion_config_py_pb2",
     deps = [":all_latest_fusion_config_proto"],
 )
-
 cc_proto_library(
     name = "hdmap_roi_filter_config_cc_proto",
     deps = [
@@ -449,7 +442,6 @@ py_proto_library(
     name = "hdmap_roi_filter_config_py_pb2",
     deps = [":hdmap_roi_filter_config_proto"],
 )
-
 cc_proto_library(
     name = "bev_obstacle_detection_config_cc_proto",
     deps = [
@@ -466,7 +458,6 @@ py_proto_library(
     name = "bev_obstacle_detection_config_py_pb2",
     deps = [":bev_obstacle_detection_config_proto"],
 )
-
 cc_proto_library(
     name = "pbf_tracker_config_cc_proto",
     deps = [
@@ -483,7 +474,6 @@ py_proto_library(
     name = "pbf_tracker_config_py_pb2",
     deps = [":pbf_tracker_config_proto"],
 )
-
 cc_proto_library(
     name = "map_manager_config_cc_proto",
     deps = [
@@ -500,7 +490,6 @@ py_proto_library(
     name = "map_manager_config_py_pb2",
     deps = [":map_manager_config_proto"],
 )
-
 cc_proto_library(
     name = "object_builder_config_cc_proto",
     deps = [
@@ -517,7 +506,6 @@ py_proto_library(
     name = "object_builder_config_py_pb2",
     deps = [":object_builder_config_proto"],
 )
-
 cc_proto_library(
     name = "denseline_postprocessor_cc_proto",
     deps = [
@@ -534,7 +522,6 @@ py_proto_library(
     name = "denseline_postprocessor_py_pb2",
     deps = [":denseline_postprocessor_proto"],
 )
-
 cc_proto_library(
     name = "detection_cc_proto",
     deps = [
@@ -551,7 +538,6 @@ py_proto_library(
     name = "detection_py_pb2",
     deps = [":detection_proto"],
 )
-
 cc_proto_library(
     name = "camera_detection_postprocessor_config_cc_proto",
     deps = [
@@ -568,7 +554,6 @@ py_proto_library(
     name = "camera_detection_postprocessor_config_py_pb2",
     deps = [":camera_detection_postprocessor_config_proto"],
 )
-
 cc_proto_library(
     name = "multicue_cc_proto",
     deps = [
@@ -585,7 +570,6 @@ py_proto_library(
     name = "multicue_py_pb2",
     deps = [":multicue_proto"],
 )
-
 cc_proto_library(
     name = "semantic_cc_proto",
     deps = [
@@ -602,7 +586,6 @@ py_proto_library(
     name = "semantic_py_pb2",
     deps = [":semantic_proto"],
 )
-
 cc_proto_library(
     name = "pointcloud_detection_preprocessor_config_cc_proto",
     deps = [
@@ -619,7 +602,6 @@ py_proto_library(
     name = "pointcloud_detection_preprocessor_config_py_pb2",
     deps = [":pointcloud_detection_preprocessor_config_proto"],
 )
-
 cc_proto_library(
     name = "bev_detection_config_cc_proto",
     deps = [
@@ -636,7 +618,6 @@ py_proto_library(
     name = "bev_detection_config_py_pb2",
     deps = [":bev_detection_config_proto"],
 )
-
 cc_proto_library(
     name = "pointcloud_preprocessor_config_cc_proto",
     deps = [
@@ -653,7 +634,6 @@ py_proto_library(
     name = "pointcloud_preprocessor_config_py_pb2",
     deps = [":pointcloud_preprocessor_config_proto"],
 )
-
 cc_proto_library(
     name = "ncut_config_cc_proto",
     deps = [
@@ -670,7 +650,6 @@ py_proto_library(
     name = "ncut_config_py_pb2",
     deps = [":ncut_config_proto"],
 )
-
 cc_proto_library(
     name = "omt_cc_proto",
     deps = [

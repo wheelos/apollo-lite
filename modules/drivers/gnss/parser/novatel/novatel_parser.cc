@@ -286,6 +286,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
         break;
       }
       // HandleCorrImuData updates internal ins_.
+      has_corr_imu_message_ = true;
       if (HandleCorrImuData(
               reinterpret_cast<const novatel::CorrImuData*>(payload_data))) {
         auto msg_ptr = std::make_shared<apollo::drivers::gnss::Ins>();
@@ -744,6 +745,16 @@ bool NovatelParser::HandleRawImu(const novatel::RawImu* imu) {
                    -imu->y_angle_change_neg * gyro_scale,
                    imu->z_angle_change * gyro_scale,
                    imu_.mutable_angular_velocity());
+      if (!has_corr_imu_message_) {
+        z_rot_90_ccw(imu->x_velocity_change * accel_scale,
+                     -imu->y_velocity_change_neg * accel_scale,
+                     imu->z_velocity_change * accel_scale,
+                     ins_.mutable_linear_acceleration());
+        z_rot_90_ccw(imu->x_angle_change * gyro_scale,
+                     -imu->y_angle_change_neg * gyro_scale,
+                     imu->z_angle_change * gyro_scale,
+                     ins_.mutable_angular_velocity());
+      }
       break;
     case 6:
       z_rot_90_ccw(-imu->y_velocity_change_neg * accel_scale,
@@ -754,6 +765,16 @@ bool NovatelParser::HandleRawImu(const novatel::RawImu* imu) {
                    imu->x_angle_change * gyro_scale,
                    -imu->z_angle_change * gyro_scale,
                    imu_.mutable_angular_velocity());
+      if (!has_corr_imu_message_) {
+        z_rot_90_ccw(-imu->y_velocity_change_neg * accel_scale,
+                     imu->x_velocity_change * accel_scale,
+                     -imu->z_velocity_change * accel_scale,
+                     ins_.mutable_linear_acceleration());
+        z_rot_90_ccw(-imu->y_angle_change_neg * gyro_scale,
+                     imu->x_angle_change * gyro_scale,
+                     -imu->z_angle_change * gyro_scale,
+                     ins_.mutable_angular_velocity());
+      }
       break;
     default:
       AERROR_EVERY(5) << "Unsupported IMU frame mapping: "

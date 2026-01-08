@@ -28,6 +28,7 @@ cc_library(
         "//modules/control/submodules:preprocessor_submodule_lib",
         "//modules/common_msgs/localization_msgs:localization_cc_proto",
         "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "//modules/control/safety:safety_manager",
         "@com_github_gflags_gflags//:gflags",
     ],
 )
@@ -65,7 +66,6 @@ install(
     data_dest = "control",
     data = [
         ":runtime_data",
-        "control.BUILD",
     ],
     targets = [
         ":libcontrol_component.so",
@@ -145,6 +145,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":control_component_lib",
+        "//modules/common/util:util_lib",
         "@com_google_googletest//:gtest_main",
     ],
     linkstatic = True,

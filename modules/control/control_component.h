@@ -17,95 +17,80 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
 
-#include "cyber/class_loader/class_loader.h"
-#include "cyber/component/timer_component.h"
-#include "cyber/time/time.h"
-
 #include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common/monitor_log/monitor_log_buffer.h"
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
-#include "modules/control/proto/control_conf.pb.h"
 #include "modules/common_msgs/control_msgs/pad_msg.pb.h"
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
 #include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "modules/control/proto/control_conf.pb.h"
 
-#include "modules/common/util/util.h"
+#include "cyber/component/timer_component.h"
+#include "cyber/time/time.h"
+#include "modules/common/monitor_log/monitor_log_buffer.h"
 #include "modules/control/common/dependency_injector.h"
 #include "modules/control/controller/controller_agent.h"
-#include "modules/control/proto/preprocessor.pb.h"
-#include "modules/control/submodules/preprocessor_submodule.h"
+#include "modules/control/safety/safety_manager.h"
 
-/**
- * @namespace apollo::control
- * @brief apollo::control
- */
 namespace apollo {
 namespace control {
 
 /**
- * @class Control
+ * @class ControlComponent
  *
- * @brief control module main class, it processes localization, chassis, and
- * pad data to compute throttle, brake and steer values.
+ * @brief Control module main class. It schedules the data flow:
+ * 1. Reads inputs (Chassis, Localization, Planning, Pad).
+ * 2. Delegates safety checks to SafetyManager.
+ * 3. Invokes ControllerAgent for core computation.
+ * 4. Applies Safety Overrides (Estop/Degradation).
+ * 5. Publishes Control Command.
  */
 class ControlComponent final : public apollo::cyber::TimerComponent {
-  friend class ControlTestBase;
-
  public:
   ControlComponent();
   bool Init() override;
-
   bool Proc() override;
 
  private:
-  // Upon receiving pad message
+  // Data Callbacks
   void OnPad(const std::shared_ptr<PadMessage> &pad);
-
   void OnChassis(const std::shared_ptr<apollo::canbus::Chassis> &chassis);
-
   void OnPlanning(
       const std::shared_ptr<apollo::planning::ADCTrajectory> &trajectory);
-
   void OnLocalization(
       const std::shared_ptr<apollo::localization::LocalizationEstimate>
           &localization);
 
-  // Upon receiving monitor message
-  void OnMonitor(
-      const apollo::common::monitor::MonitorMessage &monitor_message);
-
+  // Core Logic
+  void InitReaders();
   common::Status ProduceControlCommand(ControlCommand *control_command);
-  common::Status CheckInput(LocalView *local_view);
-  common::Status CheckTimestamp(const LocalView &local_view);
-  common::Status CheckPad();
   void ResetAndProduceZeroControlCommand(ControlCommand *control_command);
 
  private:
   apollo::cyber::Time init_time_;
+  ControlConf control_conf_;
+  std::mutex mutex_;
 
+  // Data Buffers (Protected by mutex_)
   localization::LocalizationEstimate latest_localization_;
   canbus::Chassis latest_chassis_;
   planning::ADCTrajectory latest_trajectory_;
   PadMessage pad_msg_;
-  common::Header latest_replan_trajectory_header_;
 
+  // Modules
   ControllerAgent controller_agent_;
+  std::shared_ptr<DependencyInjector> injector_;
+  std::unique_ptr<SafetyManager> safety_manager_;
+  common::monitor::MonitorLogBuffer monitor_logger_buffer_;
 
-  bool estop_ = false;
-  std::string estop_reason_;
+  // Runtime State
+  LocalView local_view_;
+  ControlCommand previous_cmd_;
   bool pad_received_ = false;
 
-  unsigned int status_lost_ = 0;
-  unsigned int status_sanity_check_failed_ = 0;
-  unsigned int total_status_lost_ = 0;
-  unsigned int total_status_sanity_check_failed_ = 0;
-
-  ControlConf control_conf_;
-
-  std::mutex mutex_;
-
+  // Cyber RT Interfaces
   std::shared_ptr<cyber::Reader<apollo::canbus::Chassis>> chassis_reader_;
   std::shared_ptr<cyber::Reader<PadMessage>> pad_msg_reader_;
   std::shared_ptr<cyber::Reader<apollo::localization::LocalizationEstimate>>
@@ -114,16 +99,9 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
       trajectory_reader_;
 
   std::shared_ptr<cyber::Writer<ControlCommand>> control_cmd_writer_;
-  // when using control submodules
-  std::shared_ptr<cyber::Writer<LocalView>> local_view_writer_;
-
-  common::monitor::MonitorLogBuffer monitor_logger_buffer_;
-
-  LocalView local_view_;
-
-  std::shared_ptr<DependencyInjector> injector_;
 };
 
 CYBER_REGISTER_COMPONENT(ControlComponent)
+
 }  // namespace control
 }  // namespace apollo
