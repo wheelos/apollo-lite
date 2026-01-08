@@ -22,7 +22,7 @@ cc_library(
         "@boost.filesystem",
         "@com_github_google_glog//:glog",
         "@eigen",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
