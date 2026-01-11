@@ -58,11 +58,11 @@ For a deeper understanding, refer to the following documents:
 
 ## Quick Start
 
-**Note:** For quick startup and verification, only the CPU-based image
-(simulation planning module) is provided. The full GPU-dependent tutorial will
-be released later. We recommend starting with the CPU image because the GPU
-image is large and has complex dependencies, which may not be suitable for
-beginners.
+We recommend using the **CPU version for quick experience and verification**.
+- The CPU-based image is smaller and has simpler dependencies, making it suitable for beginners and basic planning modules.
+- The **GPU version** has a larger image size and more complex dependencies, and is more appropriate for **deep development scenarios** such as deep learning and GPU-accelerated workflows.
+
+---
 
 ### 1. Install Deployment Tool
 
@@ -70,17 +70,16 @@ beginners.
 pip install whl-deploy
 ```
 
+`whl-deploy` is a tool that simplifies deployment of WheelOS environments using **bundle packages** or **`manifest.yaml`**. For detailed usage, ref [docs](https://github.com/wheelos-tools/whl-deploy/blob/main/README.md)
+
+---
+
 ### 2. Setup Host Environment
 
-Run the following scripts to prepare your host machine. These steps will:
-
-1. Install Docker (checks if already installed)
-2. [skip] Install NVIDIA Container Toolkit (checks if already installed, depends
-   on Docker)
-3. [skip] Perform host system configurations
+Run the following to prepare your host machine:
 
 ```bash
-whl-deploy setup docker
+whl-deploy run
 ```
 
 ### 3. Start Docker Container
@@ -95,12 +94,6 @@ To enter the running container environment in subsequent sessions:
 
 ```bash
 bash docker/scripts/dev_into.sh
-```
-
-Set environment variables:
-
-```bash
-source cyber/setup.bash
 ```
 
 ### 4. Build Apollo
