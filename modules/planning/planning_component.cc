@@ -24,7 +24,6 @@
 #include "modules/map/pnc_map/pnc_map.h"
 #include "modules/planning/common/history.h"
 #include "modules/planning/common/planning_context.h"
-#include "modules/planning/navi_planning.h"
 #include "modules/planning/on_lane_planning.h"
 
 namespace apollo {
@@ -174,8 +173,8 @@ bool PlanningComponent::Proc(
     LearningDataFrame* learning_data_frame =
         injector_->learning_based_data()->GetLatestLearningDataFrame();
     if (learning_data_frame) {
-      planning_learning_data.mutable_learning_data_frame()
-                            ->CopyFrom(*learning_data_frame);
+      planning_learning_data.mutable_learning_data_frame()->CopyFrom(
+          *learning_data_frame);
       common::util::FillHeader(node_->Name(), &planning_learning_data);
       planning_learning_data_writer_->Write(planning_learning_data);
     } else {
