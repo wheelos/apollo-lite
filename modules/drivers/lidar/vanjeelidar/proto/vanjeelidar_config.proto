@@ -4,6 +4,7 @@ package apollo.drivers.vanjee;
 
 import "modules/drivers/lidar/common/proto/lidar_config_base.proto";
 
+// keep consistent with vanjee_driver ::vanjee::lidar::WJTransfromParam
 message VanjeeTransformParam {
   optional float x = 1 [default = 0.0];
   optional float y = 2 [default = 0.0];
@@ -11,8 +12,15 @@ message VanjeeTransformParam {
   optional float roll = 4 [default = 0.0];
   optional float pitch = 5 [default = 0.0];
   optional float yaw = 6 [default = 0.0];
+  optional float x_imu = 7 [default = 0.0];
+  optional float y_imu = 8 [default = 0.0];
+  optional float z_imu = 9 [default = 0.0];
+  optional float roll_imu = 10 [default = 0.0];
+  optional float pitch_imu = 11 [default = 0.0];
+  optional float yaw_imu = 12 [default = 0.0];
 }
 
+// keep consistent with vanjee_driver ::vanjee::lidar::WJDecoderParam
 message VanjeeDecoderParam {
   optional bool config_from_file = 1 [default = true];
   optional bool wait_for_difop = 2 [default = true];
@@ -31,15 +39,23 @@ message VanjeeDecoderParam {
   optional string imu_param_path = 15 [default = ""];
 
   optional bool point_cloud_enable = 16 [default = false];
-  optional int32 imu_enable = 17 [default = 1];
+  optional int32 imu_enable = 17 [default = -1];
   optional bool laser_scan_enable = 18 [default = false];
   optional bool device_ctrl_state_enable = 19 [default = false];
   optional bool device_ctrl_cmd_enable = 20 [default = false];
 
   optional string hide_points_range = 21 [default = ""];
   optional VanjeeTransformParam transform_param = 22;
+  optional bool query_via_external_interface_enable = 23 [default = false];
+  optional bool imu_orientation_enable = 24 [default = true];
+  optional bool send_packet_enable = 25 [default = false];
+  optional bool recv_packet_enable = 26 [default = false];
+  optional bool send_lidar_param_enable = 27 [default = false];
+  optional bool recv_lidar_param_cmd_enable = 28 [default = false];
+  optional bool tail_filter_enable = 29 [default = false];
 }
 
+// keep consistent with vanjee_driver ::vanjee::lidar::WJInputParam
 message VanjeeInputParam {
   optional uint32 connect_type = 1 [default = 1];
   optional uint32 host_msop_port = 2 [default = 3333];
@@ -54,8 +70,12 @@ message VanjeeInputParam {
   optional bool use_vlan = 11 [default = false];
   optional uint32 user_layer_bytes = 12 [default = 0];
   optional uint32 tail_layer_bytes = 13 [default = 0];
+  optional string port_name = 14 [default = ""];
+  optional uint32 baud_rate = 15 [default = 115200];
+  optional string network_interface = 16 [default = ""];
 }
 
+// keep consistent with vanjee_driver ::vanjee::lidar::WJDriverParam
 message VanjeeDriverParam {
   // here not use the enum, because the order defined in vanjee driver may
   // change
@@ -66,11 +86,14 @@ message VanjeeDriverParam {
   optional VanjeeDecoderParam decoder_param = 4;
 }
 
+// keep consistent with vanjee_driver ::vanjee::lidar::WJMemsParam
 message VanjeeMemsParam {
   optional float rotate_mirror_pitch = 1 [default = 0.0];
   repeated float rotate_mirror_offset = 2;
   repeated float view_center_yaws = 3;
+  // vanjee_driver rename to raw_data_yaw_resolution
   optional float rwadata_yaw_resolution = 4 [default = 0.0];
+  // vanjee_driver rename to raw_data_pitch_resolution
   optional float rwadata_pitch_resolution = 5 [default = 0.0];
   optional float start_pitch = 6 [default = 0.0];
   optional float end_pitch = 7 [default = 0.0];
@@ -114,7 +137,7 @@ message Config {
   optional bool point_cloud_enable = 17 [default = true];
 
   // make consistent with the latest param definitions in vanjee_driver, all
-  // fields above are deprecated
+  // fields above are deprecated except config_base
   optional VanjeeDriverParam driver_param = 101;
   optional VanjeeMemsParam mems_param = 102;
 }

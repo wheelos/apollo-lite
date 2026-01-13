@@ -2,7 +2,25 @@
 
 ## 1 工程简介
 
- **vanjee** 为万集科技在阿波罗平台上的雷达驱动集成包。 目前支持*vanjee_720_16"、"vanjee_720_32*型号的雷达。 
+ **vanjee** 为万集科技在阿波罗平台上的雷达驱动集成包。
+
+### 支持的雷达型号
+
+- `vanjee_716mini`
+- `vanjee_718h`
+- `vanjee_719`
+- `vanjee_719c`
+- `vanjee_719e`
+- `vanjee_720` / `vanjee_720_16`
+- `vanjee_720_32`
+- `vanjee_721`
+- `vanjee_722`
+- `vanjee_722f`
+- `vanjee_722h`
+- `vanjee_722z`
+- `vanjee_733`
+- `vanjee_750`
+- `vanjee_760`
 
 ## 2 运行
 
@@ -20,8 +38,8 @@ mainboard -d /apollo/modules/drivers/lidar/vanjeelidar/dag/vanjeelidar.dag
 
 默认话题名：
 
-- 原始点云 -- /apollo/sensor/vanjeelidar/up/PointCloud2"
-- Scan--/apollo/sensor/vanjeelidar/up/Scan
+- 原始点云 -- `/apollo/sensor/vanjeelidar/up/PointCloud2`
+- Scan -- `/apollo/sensor/vanjeelidar/up/Scan`
 
 ## 3 参数介绍
 
