@@ -52,13 +52,16 @@ class ImageProcessor {
 class YuvProcessor : public ImageProcessor {
  public:
   enum class OutputFormat { YUYV, RGB };
+  enum class YuvFormat { YUYV, YVYU, UYVY, VYUY };
 
   /**
    * @brief Constructs a YuvProcessor.
    * @param format The desired output format (YUYV or RGB).
-   * @param is_uyvy True if the source YUV format is UYVY, false if YUYV.
+   * @param yuv_format The source YUV format (YUYV, YVYU, UYVY, or VYUY).
+   * @param swap_uv If true, swap U and V channels (e.g., treat YUYV as YVYU).
    */
-  YuvProcessor(OutputFormat format, bool is_uyvy);
+  YuvProcessor(OutputFormat format, YuvFormat yuv_format = YuvFormat::YUYV,
+               bool swap_uv = false);
 
   /**
    * @brief Processes YUYV/UYVY data.
@@ -69,22 +72,24 @@ class YuvProcessor : public ImageProcessor {
 
  private:
   /**
-   * @brief Converts YUYV (YUV 4:2:2) formatted data to a BGR image.
+   * @brief Converts YUYV (YUV 4:2:2) formatted data to a RGB image.
    *
    * @param src       Pointer to input YUYV data, with length width * height * 2
    * bytes.
    * @param width     Image width in pixels.
    * @param height    Image height in pixels.
-   * @param dst_bgr   Pointer to output buffer for BGR data, size should be
+   * @param dst_rgb   Pointer to output buffer for RGB data, size should be
    * width * height * 3 bytes.
    */
-  void ConvertYUYVToBGR(const uint8_t* src, int width, int height,
-                        uint8_t* dst_bgr);
+  void ConvertYUYVToRGB(const uint8_t* src, int width, int height,
+                        uint8_t* dst_rgb);
 
  private:
   OutputFormat output_format_;
-  bool is_uyvy_;                      ///< True if input is UYVY, false if YUYV
-  std::vector<uint8_t> yuyv_buffer_;  ///< Buffer for UYVY to YUYV conversion
+  YuvFormat yuv_format_;  ///< The source YUV format variant
+  bool swap_uv_;          ///< If true, swap U and V channels
+  std::vector<uint8_t>
+      yuyv_buffer_;  ///< Buffer for UYVY/VYUY to YUYV conversion
   std::vector<uint8_t> opencv_yuyv_temp_buffer_;
 };
 

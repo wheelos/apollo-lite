@@ -18,10 +18,14 @@
 
 #include <memory>
 
+#include <opencv2/opencv.hpp>
+#include <mutex>
+
+#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "modules/drivers/camera/proto/config.pb.h"
+
 #include "cyber/base/concurrent_object_pool.h"
 #include "cyber/cyber.h"
-#include "modules/drivers/camera/proto/config.pb.h"
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 
 namespace apollo {
 namespace drivers {
@@ -31,6 +35,7 @@ using apollo::cyber::Component;
 using apollo::cyber::Writer;
 using apollo::cyber::base::CCObjectPool;
 using apollo::drivers::Image;
+using apollo::drivers::CompressedImage;
 using apollo::drivers::camera::config::Config;
 
 class CompressComponent : public Component<Image> {
@@ -39,9 +44,16 @@ class CompressComponent : public Component<Image> {
   bool Proc(const std::shared_ptr<Image>& image) override;
 
  private:
-  std::shared_ptr<CCObjectPool<CompressedImage>> image_pool_;
-  std::shared_ptr<Writer<CompressedImage>> writer_ = nullptr;
   Config config_;
+  std::shared_ptr<CCObjectPool<CompressedImage>> image_pool_;
+  std::shared_ptr<Writer<CompressedImage>> writer_;
+  std::mutex mutex_;
+
+  // 预分配的 Buffer，成员变量复用
+  std::vector<uint8_t> compressed_buffer_;
+  std::vector<int> compress_params_;
+  // 临时 Mat，避免反复构造
+  cv::Mat resize_mat_;
 };
 
 CYBER_REGISTER_COMPONENT(CompressComponent)
