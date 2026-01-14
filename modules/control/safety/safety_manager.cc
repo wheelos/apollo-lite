@@ -35,60 +35,71 @@ bool SafetyManager::Init(const ControlConf& conf) {
     active_faults_.clear();
   }
 
-  trajectory_loss_debouncer_ = std::make_unique<CounterDebouncer>(3);
+  // Control logic runs at 100Hz (10ms/cycle).
+  // Planning logic runs at 10Hz (100ms/cycle).
+  // Setting debouncer to 30 allows for a maximum of 300ms (3 missing planning
+  // frames) before triggering a trajectory loss fault.
+  trajectory_loss_debouncer_ = std::make_unique<CounterDebouncer>(30);
+  output_fault_debouncer_ = std::make_unique<CounterDebouncer>(3);
   return true;
 }
 
-bool SafetyManager::CheckInput(const LocalView& view) {
+SafetyResult SafetyManager::PreCheck(const LocalView& view) {
   std::lock_guard<std::mutex> lk(mutex_);
-  // Clear transient faults from the previous cycle
   active_faults_.clear();
+  SafetyResult result;
 
-  CheckPlanningTrajectory(view);
-  CheckKinematics(view);
+  CheckPlanningTrajectory(view, &result);
 
-  // Determine if state transition is needed based on inputs
-  Arbitrate();
+  CheckKinematics(view, &result);
 
-  // Return true if the system is in a critical state where
-  // running the control algorithm is futile or dangerous.
-  return (current_state_ == SafetyState::kHardEstop ||
-          current_state_ == SafetyState::kFatal);
+  return result;
 }
 
-void SafetyManager::CheckOutput(const ControlCommand& cmd,
-                                const ControlCommand& prev_cmd) {
+SafetyResult SafetyManager::PostCheck(const ControlCommand& cmd,
+                                      const ControlCommand& prev_cmd) {
   std::lock_guard<std::mutex> lk(mutex_);
-  CheckControlOutputDynamic(cmd, prev_cmd);
+  SafetyResult result;
 
-  // Re-arbitrate with output faults included
-  Arbitrate();
+  CheckControlOutputDynamic(cmd, prev_cmd, &result);
+
+  return result;
 }
 
-void SafetyManager::CheckPlanningTrajectory(const LocalView& view) {
-  // Check if trajectory is empty
-  bool is_traj_empty = view.trajectory().trajectory_point().empty();
-  if (trajectory_loss_debouncer_->Update(is_traj_empty)) {
-    ReportFault(CONTROL_FAULT_ID(0x02, 0x03), FaultLevel::LEVEL_SOFT_STOP,
-                FaultSource::SOURCE_INPUT);
+void SafetyManager::CheckPlanningTrajectory(const LocalView& view,
+                                            SafetyResult* result) {
+  bool traj_invalid = false;
+
+  if (view.trajectory().trajectory_point().empty()) {
+    traj_invalid = true;
+  } else {
+    for (const auto& pt : view.trajectory().trajectory_point()) {
+      if (std::isnan(pt.v()) || std::isnan(pt.a()) || std::isinf(pt.v()) ||
+          std::isinf(pt.a())) {
+        traj_invalid = true;
+        break;
+      }
+    }
   }
 
-  if (is_traj_empty) return;
+  if (traj_invalid) {
+    result->must_bypass = true;
+  }
 
-  // Physical Sanity Check (NaN/Inf protection)
-  // This prevents the PID/MPC solvers from crashing or outputting garbage
-  const auto& pt = view.trajectory().trajectory_point(0);
-  if (std::isnan(pt.v()) || std::isnan(pt.a()) || std::isinf(pt.v())) {
-    ReportFault(CONTROL_FAULT_ID(0x02, 0x04), FaultLevel::LEVEL_HARD_ESTOP,
-                FaultSource::SOURCE_INPUT);
+  if (trajectory_loss_debouncer_->Update(traj_invalid)) {
+    ReportFault(0x0203, FaultLevel::LEVEL_SOFT_STOP, FaultSource::SOURCE_INPUT);
   }
 }
 
-void SafetyManager::CheckKinematics(const LocalView& view) {
+void SafetyManager::CheckKinematics(const LocalView& view,
+                                    SafetyResult* result) {
   if (view.trajectory().trajectory_point().empty()) return;
 
   const double kEpsilon = 0.001;
   auto first_pt = view.trajectory().trajectory_point(0);
+
+  // Check if the gear selection conflicts with the intended speed (e.g., a
+  // forward gear is planned for reverse speed).
   if (view.chassis().gear_location() == canbus::Chassis::GEAR_DRIVE &&
       first_pt.v() < -kEpsilon) {
     ReportFault(0x0205, FaultLevel::LEVEL_HARD_ESTOP,
@@ -97,30 +108,21 @@ void SafetyManager::CheckKinematics(const LocalView& view) {
 }
 
 void SafetyManager::CheckControlOutputDynamic(const ControlCommand& cmd,
-                                              const ControlCommand& prev_cmd) {
-  // 1. Steering Rate Protection
-  // Prevents violent steering movements that could destabilize the vehicle
-  double dt = conf_.control_period();
-  if (dt <= 0.0) {
-    dt = 0.01;  // Avoid division by zero
-  }
-
-  double steer_diff =
-      std::abs(cmd.steering_target() - prev_cmd.steering_target());
-  double steer_rate = steer_diff / dt;
-
+                                              const ControlCommand& prev_cmd,
+                                              SafetyResult* result) {
   const auto& vehicle_param =
       common::VehicleConfigHelper::GetConfig().vehicle_param();
 
-  if (steer_rate > vehicle_param.max_steer_angle_rate()) {
-    ReportFault(CONTROL_FAULT_ID(0x03, 0x01), FaultLevel::LEVEL_HARD_ESTOP,
-                FaultSource::SOURCE_OUTPUT);
-    AERROR << "Steer rate limit violation: " << steer_rate;
+  // 1. Physical inspection logic: Acceleration over-limit check
+  bool is_accel_insane =
+      std::abs(cmd.acceleration()) > vehicle_param.max_acceleration();
+
+  if (is_accel_insane) {
+    result->need_freeze = true;  // Intercept this frame
   }
 
-  // 2. Acceleration Sanity Check
-  if (std::abs(cmd.acceleration()) > vehicle_param.max_acceleration()) {
-    ReportFault(CONTROL_FAULT_ID(0x03, 0x02), FaultLevel::LEVEL_HARD_ESTOP,
+  if (output_fault_debouncer_->Update(is_accel_insane)) {
+    ReportFault(0x0302, FaultLevel::LEVEL_HARD_ESTOP,
                 FaultSource::SOURCE_OUTPUT);
   }
 }
@@ -146,6 +148,7 @@ void SafetyManager::Arbitrate() {
 
   // Find the highest severity level among all active faults
   for (const auto& event : active_faults_) {
+    AINFO << event.DebugString();
     if (event.has_level() && event.level() > max_level) {
       max_level = event.level();
     }
@@ -192,6 +195,8 @@ void SafetyManager::ExecuteHardEstop(ControlCommand* cmd) {
 }
 
 void SafetyManager::ApplySafetyPolicy(ControlCommand* cmd) {
+  Arbitrate();
+
   if (current_state_ == SafetyState::kNormal) return;
 
   switch (current_state_) {

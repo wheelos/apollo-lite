@@ -34,6 +34,11 @@
 namespace apollo {
 namespace control {
 
+struct SafetyResult {
+  bool must_bypass = false;
+  bool need_freeze = false;
+};
+
 class SafetyManager {
  public:
   SafetyManager() = default;
@@ -43,11 +48,12 @@ class SafetyManager {
 
   // Phase 1: Pre-Computation Check
   // Returns true if critical failure detected (Skip Compute)
-  bool CheckInput(const LocalView& view);
+  SafetyResult PreCheck(const LocalView& view);
 
   // Phase 2: Post-Computation Check
   // Validates the calculated command
-  void CheckOutput(const ControlCommand& cmd, const ControlCommand& prev_cmd);
+  SafetyResult PostCheck(const ControlCommand& cmd,
+                         const ControlCommand& prev_cmd);
 
   // Phase 3: Policy Application
   // Overrides the command based on current SafetyState
@@ -59,10 +65,11 @@ class SafetyManager {
   SafetyState GetState() const { return current_state_; }
 
  private:
-  void CheckPlanningTrajectory(const LocalView& view);
-  void CheckKinematics(const LocalView& view);
+  void CheckPlanningTrajectory(const LocalView& view, SafetyResult* result);
+  void CheckKinematics(const LocalView& view, SafetyResult* result);
   void CheckControlOutputDynamic(const ControlCommand& cmd,
-                                 const ControlCommand& prev_cmd);
+                                 const ControlCommand& prev_cmd,
+                                 SafetyResult* result);
   void Arbitrate();
 
   void ExecuteSoftStop(ControlCommand* cmd);
@@ -82,6 +89,7 @@ class SafetyManager {
 
   // Debouncers for signal stability
   std::unique_ptr<CounterDebouncer> trajectory_loss_debouncer_;
+  std::unique_ptr<CounterDebouncer> output_fault_debouncer_;
 };
 
 }  // namespace control
