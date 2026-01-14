@@ -140,11 +140,12 @@ Status ControlComponent::ProduceControlCommand(
 
   // 2. Safety Pre-Check (Input Validation)
   // Checks timestamps, sensor health, and trajectory integrity.
-  bool critical_failure = safety_manager_->CheckInput(local_view_);
+  SafetyResult input_res = safety_manager_->PreCheck(local_view_);
 
   Status status = Status::OK();
+  bool use_previous_cmd = false;
 
-  if (!critical_failure) {
+  if (!input_res.must_bypass) {
     // 3. Core Control Computation
     // Only run algorithms if system is relatively healthy.
     status = controller_agent_.ComputeControlCommand(
@@ -154,21 +155,32 @@ Status ControlComponent::ProduceControlCommand(
     if (status.ok()) {
       // 4. Safety Post-Check (Output Validation)
       // Sanity check on computed commands (e.g., jerk, steering rate).
-      safety_manager_->CheckOutput(*control_command, previous_cmd_);
+      SafetyResult output_res =
+          safety_manager_->PostCheck(*control_command, previous_cmd_);
+      if (output_res.need_freeze) {
+        use_previous_cmd = true;
+        status = Status(ErrorCode::CONTROL_COMPUTE_ERROR,
+                        "Output Limits Violated (Freeze)");
+      }
     } else {
-      AERROR_EVERY(100) << "Controller Agent Compute failed: "
-                        << status.error_message();
       // Logic failure (e.g., solver error) is treated as an internal fault.
-      controller_agent_.Reset();
+      status = Status(ErrorCode::CONTROL_COMPUTE_ERROR,
+                      "Controller Agent Compute failed");
+      use_previous_cmd = true;
     }
   } else {
-    // skip control algorithm on input failure.
-    // Set status to error, but proceed to Safety Policy to generate Estop cmd.
-    status =
-        Status(ErrorCode::CONTROL_COMPUTE_ERROR, "Safety Input Check Failed");
+    use_previous_cmd = true;
+    status = Status(ErrorCode::CONTROL_COMPUTE_ERROR,
+                    "Input Physics Missing (Bypass)");
   }
 
-  // 5. Apply Safety Policy (The Override)
+  // 5. Freeze Strategy
+  if (use_previous_cmd) {
+    *control_command = previous_cmd_;
+    controller_agent_.Reset();
+  }
+
+  // 6. Apply Safety Policy (The Override)
   // This is the final authority. It overrides the command based on the FSM
   // state (Normal, SoftStop, HardEstop).
   safety_manager_->ApplySafetyPolicy(control_command);
@@ -238,6 +250,10 @@ bool ControlComponent::Proc() {
 
     // Note: Manual mode does not bypass SafetyManager state entirely,
     // but the Reset command ensures no actuator conflict.
+  }
+
+  if (pad_msg != nullptr) {
+    control_command.mutable_pad_msg()->CopyFrom(pad_msg_);
   }
 
   // 4. Header & Diagnostics

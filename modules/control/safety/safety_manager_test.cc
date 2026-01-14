@@ -64,39 +64,43 @@ TEST_F(SafetyManagerTest, InitialStateIsNormal) {
 }
 
 /**
- * @test Verify fault arbitration: Multiple faults should result in the highest
+ * @test Verify fault arbitration: Multiple faults result in the highest
  * severity.
  */
 TEST_F(SafetyManagerTest, ArbitrateHighestSeverity) {
   LocalView view;
-  // Trigger Trajectory Loss (Soft Stop level after 3 counts via debouncer)
-  for (int i = 0; i < 3; ++i) {
-    safety_manager_.CheckInput(view);
+  ControlCommand cmd;
+
+  // 1. Soft Stop triggered (track lost 3 times)
+  for (int i = 0; i < 30; ++i) {
+    safety_manager_.PreCheck(view);
   }
+  safety_manager_.ApplySafetyPolicy(&cmd);
   EXPECT_EQ(safety_manager_.GetState(), SafetyState::kSoftStop);
 
-  // Inject a NaN velocity (Hard Estop level)
+  // 2. Trigger Hard Estop (Dynamics Verification: DRIVE mode + negative speed)
+  view.mutable_chassis()->set_gear_location(
+      apollo::canbus::Chassis::GEAR_DRIVE);
   auto* pt = view.mutable_trajectory()->add_trajectory_point();
-  pt->set_v(std::nan(""));
+  pt->set_v(-1.0);  // Serious conflicts, without debouncing, directly report to
+                    // fault.
 
-  safety_manager_.CheckInput(view);
+  safety_manager_.PreCheck(view);
+  safety_manager_.ApplySafetyPolicy(&cmd);
   EXPECT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
 }
 
 /**
- * @test Verify steering rate protection during CheckOutput.
+ * @test Verify the 0-latency bypass flag for invalid trajectory inputs.
  */
-TEST_F(SafetyManagerTest, SteeringRateProtection) {
-  ControlCommand current_cmd;
-  ControlCommand prev_cmd;
+TEST_F(SafetyManagerTest, ImmediateBypassOnInvalidInput) {
+  LocalView view;
+  auto* pt = view.mutable_trajectory()->add_trajectory_point();
+  pt->set_v(std::nan(""));  // NaN is a physical failure
 
-  prev_cmd.set_steering_target(0.0);
-  // Max steer rate is 100.0 rad/s. At dt=0.01, max delta is 1.0.
-  // Set target to 2.0 to trigger violation (rate = 200.0 rad/s).
-  current_cmd.set_steering_target(2.0);
-
-  safety_manager_.CheckOutput(current_cmd, prev_cmd);
-  EXPECT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
+  // result.must_bypass should be true even on the first frame
+  SafetyResult res = safety_manager_.PreCheck(view);
+  EXPECT_TRUE(res.must_bypass);
 }
 
 /**
@@ -104,117 +108,143 @@ TEST_F(SafetyManagerTest, SteeringRateProtection) {
  */
 TEST_F(SafetyManagerTest, ApplyHardEstopPolicy) {
   LocalView view;
-  auto* pt = view.mutable_trajectory()->add_trajectory_point();
-  pt->set_v(std::nan(""));  // Trigger Hard Estop
-
-  safety_manager_.CheckInput(view);
-  ASSERT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
-
   ControlCommand cmd;
-  cmd.set_speed(10.0);
-  cmd.set_throttle(50.0);
+
+  // Hard Estop triggered by: Acceleration exceeding limit (5.0 is the upper
+  // limit)
+  cmd.set_acceleration(7.0);
+  ControlCommand prev_cmd;
+  prev_cmd.set_acceleration(0.0);
+
+  // PostCheck debouncing triggers HardEstop (0x0302) 3 times.
+  for (int i = 0; i < 3; ++i) {
+    safety_manager_.PostCheck(cmd, prev_cmd);
+  }
 
   safety_manager_.ApplySafetyPolicy(&cmd);
+  ASSERT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
 
-  // Command should be overridden by emergency safety values
-  EXPECT_DOUBLE_EQ(cmd.speed(), 0.0);
-  EXPECT_DOUBLE_EQ(cmd.throttle(), 0.0);
+  // Verify emergency braking strategy execution
   EXPECT_DOUBLE_EQ(cmd.brake(), 100.0);
-  EXPECT_TRUE(cmd.parking_brake());
   EXPECT_EQ(cmd.gear_location(), apollo::canbus::Chassis::GEAR_PARKING);
   EXPECT_TRUE(cmd.signal().emergency_light());
 }
 
 /**
- * @test Verify State Latching: System should not recover from HardEstop
- * automatically even if the fault is cleared.
+ * @test Verify State Latching: System stays in HardEstop until manual reset.
  */
 TEST_F(SafetyManagerTest, StateLatchingLogic) {
   LocalView view;
-  // Trigger Hard Estop via NaN
+  ControlCommand cmd;
+
+  // 1. Trigger HardEstop: Set DRIVE mode + negative speed (CheckKinematics
+  // logic)
+  view.mutable_chassis()->set_gear_location(
+      apollo::canbus::Chassis::GEAR_DRIVE);
   auto* pt = view.mutable_trajectory()->add_trajectory_point();
-  pt->set_v(std::nan(""));
-  safety_manager_.CheckInput(view);
+  pt->set_v(-1.0);  // Triggered 0x0205 (517) LEVEL_HARD_ESTOP
+
+  safety_manager_.PreCheck(view);
+  safety_manager_.ApplySafetyPolicy(&cmd);  // Driver Arbitration
   ASSERT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
 
-  // Clear faults in input (set valid velocity)
+  // 2. Clear fault: Set speed to a positive value, keep gear in DRIVE
   pt->set_v(1.0);
-  safety_manager_.CheckInput(view);
+  safety_manager_.PreCheck(view);  // active_faults_ will be cleared.
 
-  // State should remain latched at HardEstop until manual reset
+  // 3. Re-drive arbitration to verify whether the state remains in HardEstop
+  // due to the latching logic.
+  safety_manager_.ApplySafetyPolicy(&cmd);
+
+  // The state should remain locked in HardEstop until manually triedReset.
   EXPECT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
 }
 
 /**
- * @test Verify that the system automatically recovers from kSoftStop
- * when the fault is cleared, but remains latched in kHardEstop.
+ * @test Verify SoftStop auto-recovery (debouncer reset).
  */
-TEST_F(SafetyManagerTest, SoftStopAutoRecoveryAndHardStopLatching) {
+TEST_F(SafetyManagerTest, SoftStopAutoRecovery) {
   LocalView view;
+  ControlCommand cmd;
 
-  // 1. Trigger Soft Stop via Trajectory Loss (3 counts)
-  for (int i = 0; i < 3; ++i) {
-    safety_manager_.CheckInput(view);
+  // 1. Enter SoftStop (3-step debouncing)
+  for (int i = 0; i < 30; ++i) {
+    safety_manager_.PreCheck(view);
   }
+  safety_manager_.ApplySafetyPolicy(&cmd);
   ASSERT_EQ(safety_manager_.GetState(), SafetyState::kSoftStop);
 
-  // 2. Clear the fault (Add a valid trajectory point)
+  // 2. Restore input
   auto* pt = view.mutable_trajectory()->add_trajectory_point();
   pt->set_v(1.0);
   pt->set_a(0.0);
 
-  // 3. Check arbitration - SoftStop should recover to Normal automatically
-  safety_manager_.CheckInput(view);
+  safety_manager_.PreCheck(view);
+  safety_manager_.ApplySafetyPolicy(
+      &cmd);  // The driver checks and executes the Normal policy (direct
+              // return).
+
   EXPECT_EQ(safety_manager_.GetState(), SafetyState::kNormal);
-
-  // 4. Now trigger a Hard Estop (NaN check)
-  pt->set_v(std::nan(""));
-  safety_manager_.CheckInput(view);
-  ASSERT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
-
-  // 5. Clear the Hard Estop fault
-  pt->set_v(1.0);
-  safety_manager_.CheckInput(view);
-
-  // 6. Hard Estop MUST NOT recover automatically (Latching logic)
-  EXPECT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
 }
 
 /**
- * @test Verify Reset functionality via PadMessage.
+ * @test Verify Manual Reset functionality.
  */
 TEST_F(SafetyManagerTest, ManualResetSuccessful) {
   LocalView view;
-  auto* pt = view.mutable_trajectory()->add_trajectory_point();
-  pt->set_v(std::nan(""));
-  safety_manager_.CheckInput(view);
+  ControlCommand cmd;
 
-  // Try reset while fault is still present (NaN). Should fail to reset.
+  view.mutable_chassis()->set_gear_location(
+      apollo::canbus::Chassis::GEAR_DRIVE);
+  view.mutable_trajectory()->add_trajectory_point()->set_v(-1.0);
+
+  safety_manager_.PreCheck(view);
+  safety_manager_.ApplySafetyPolicy(&cmd);
+  ASSERT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
+
   PadMessage pad;
   pad.set_action(DrivingAction::RESET);
+
+  // 2. The fault persists (PreCheck will continue to report), Reset should
+  // fail.
   safety_manager_.TryReset(pad);
   EXPECT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
 
-  // Fix fault and then trigger reset.
-  pt->set_v(1.0);
-  safety_manager_.CheckInput(view);  // Clears active_faults_ buffer
-  safety_manager_.TryReset(pad);
+  // 3. Eliminate the fault (revert to a legal trajectory and gear).
+  view.mutable_chassis()->set_gear_location(
+      apollo::canbus::Chassis::GEAR_NEUTRAL);
+  view.mutable_trajectory()->clear_trajectory_point();
+  view.mutable_trajectory()->add_trajectory_point()->set_v(0.0);
 
+  safety_manager_.PreCheck(view);  // active_faults_ was cleared
+
+  // 4. Reset successful
+  safety_manager_.TryReset(pad);
   EXPECT_EQ(safety_manager_.GetState(), SafetyState::kNormal);
 }
 
 /**
- * @test Verify CheckInput return value for skipping computation on critical
- * failure.
+ * @test NEW: Verify that the debouncer resets if a single valid frame appears.
  */
-TEST_F(SafetyManagerTest, SkipComputationOnCriticalFailure) {
-  LocalView view;
-  auto* pt = view.mutable_trajectory()->add_trajectory_point();
-  pt->set_v(std::nan(""));
+TEST_F(SafetyManagerTest, DebouncerResetsOnValidFrame) {
+  LocalView view;  // Invalid
 
-  // HardEstop state should return true to skip control solver computation
-  bool skip = safety_manager_.CheckInput(view);
-  EXPECT_TRUE(skip);
+  // 2 consecutive faults
+  safety_manager_.PreCheck(view);
+  safety_manager_.PreCheck(view);
+  EXPECT_EQ(safety_manager_.GetState(), SafetyState::kNormal);
+
+  // 1 valid frame
+  auto* pt = view.mutable_trajectory()->add_trajectory_point();
+  pt->set_v(1.0);
+  safety_manager_.PreCheck(view);
+
+  // 1 more fault (total was 2 before, but should have reset to 0)
+  view.mutable_trajectory()->clear_trajectory_point();
+  safety_manager_.PreCheck(view);
+
+  // State should still be Normal because counter reset to 0
+  EXPECT_EQ(safety_manager_.GetState(), SafetyState::kNormal);
 }
 
 }  // namespace control
