@@ -18,12 +18,11 @@
 #include <memory>
 #include <string>
 
-#include "cyber/common/macros.h"
 #include "modules/perception/camera/app/proto/perception.pb.h"
+
+#include "cyber/common/macros.h"
 #include "modules/perception/camera/common/camera_frame.h"
 #include "modules/perception/camera/lib/interface/base_camera_perception.h"
-#include "modules/perception/camera/lib/interface/base_feature_extractor.h"
-#include "modules/perception/camera/lib/interface/base_init_options.h"
 #include "modules/perception/camera/lib/interface/base_traffic_light_detector.h"
 #include "modules/perception/camera/lib/interface/base_traffic_light_tracker.h"
 
@@ -39,16 +38,12 @@ class TrafficLightCameraPerception final : public BaseCameraPerception {
   bool Init(const CameraPerceptionInitOptions &options) override;
   bool Perception(const CameraPerceptionOptions &options,
                   CameraFrame *frame) override;
-
-  bool Init(const PipelineConfig& pipeline_config) override;
-
-  bool Process(DataFrame* data_frame) override;
-
-  std::string Name() const override { return name_; }
+  bool Init(const PipelineConfig &pipeline_config) override;
+  bool Process(DataFrame *data_frame) override;
+  std::string Name() const override { return "TrafficLightCameraPerception"; }
 
  private:
   std::shared_ptr<BaseTrafficLightDetector> detector_;
-  std::shared_ptr<BaseTrafficLightDetector> recognizer_;
   std::shared_ptr<BaseTrafficLightTracker> tracker_;
   app::TrafficLightParam tl_param_;
 

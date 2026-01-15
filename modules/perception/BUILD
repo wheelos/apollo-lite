@@ -83,7 +83,6 @@ install(
         "//modules/perception/pipeline/proto/stage:pbf_tracker_config_cc_proto",
         "//modules/perception/pipeline/proto/stage:pointcloud_preprocessor_config_cc_proto",
         "//modules/perception/pipeline/proto/stage:probabilistic_fusion_config_cc_proto",
-        "//modules/perception/pipeline/proto/stage:recognition_cc_proto",
         "//modules/perception/pipeline/proto/stage:semantic_cc_proto",
         "//modules/perception/pipeline/proto/stage:singlestage_cc_proto",
         "//modules/perception/pipeline/proto/stage:spatio_temporal_ground_detector_config_cc_proto",

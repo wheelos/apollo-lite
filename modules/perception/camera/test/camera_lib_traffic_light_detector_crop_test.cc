@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
-#include "modules/perception/camera/lib/traffic_light/detector/detection/cropbox.h"
+#include "modules/perception/camera/lib/traffic_light/detector/cropbox.h"
 
 #include "cyber/common/log.h"
 #include "gtest/gtest.h"

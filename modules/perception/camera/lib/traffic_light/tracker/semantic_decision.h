@@ -1,86 +1,85 @@
-/******************************************************************************
- * Copyright 2018 The Apollo Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the License);
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an AS IS BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *****************************************************************************/
 #pragma once
 
+#include <map>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
-#include "cyber/common/macros.h"
+#include "modules/perception/pipeline/proto/stage/semantic.pb.h"
+
 #include "modules/perception/camera/lib/interface/base_traffic_light_tracker.h"
-#include "modules/perception/pipeline/proto/pipeline_config.pb.h"
-#include "modules/perception/pipeline/stage.h"
 
 namespace apollo {
 namespace perception {
 namespace camera {
 
-struct HystereticWindow {
-  int hysteretic_count = 0;
-  base::TLColor hysteretic_color = base::TLColor::TL_UNKNOWN_COLOR;
-};
+// 定义状态维度：Unknown, Red, Yellow, Green, Black
+constexpr int kNumColors = 5;
 
-struct SemanticTable {
-  double time_stamp = 0.0;
-  double last_bright_time_stamp = 0.0;
-  double last_dark_time_stamp = 0.0;
-  bool blink = false;
-  std::string semantic;
-  std::vector<int> light_ids;
-  base::TLColor color;
-  HystereticWindow hystertic_window;
-};
-
-class SemanticReviser final : public BaseTrafficLightTracker {
+class LightBayesFilter {
  public:
-  SemanticReviser();
-  ~SemanticReviser() = default;
+  LightBayesFilter();
 
-  bool Init(const TrafficLightTrackerInitOptions &options =
-                TrafficLightTrackerInitOptions()) override;
+  // 核心：根据当前观测更新后验概率
+  // timestamp: 当前时间戳
+  // obs_color: 检测器给出的颜色
+  // obs_conf: 检测器的置信度
+  void Update(double timestamp, base::TLColor obs_color, float obs_conf);
 
-  bool Track(const TrafficLightTrackerOptions &options,
-             CameraFrame *frame) override;
-  base::TLColor ReviseBySemantic(SemanticTable semantic_table,
-                                 std::vector<base::TrafficLightPtr> *lights);
-  void ReviseByTimeSeries(double time_stamp, SemanticTable semantic_table,
-                          std::vector<base::TrafficLightPtr> *lights);
-  void UpdateHistoryAndLights(const SemanticTable &cur,
-                              std::vector<base::TrafficLightPtr> *lights,
-                              std::vector<SemanticTable>::iterator *history);
-  void ReviseLights(std::vector<base::TrafficLightPtr> *lights,
-                    const std::vector<int> &light_ids, base::TLColor dst_color);
+  // 获取概率最大的颜色
+  base::TLColor GetMaxProbColor() const;
 
-  bool Init(const StageConfig& stage_config) override;
+  // 检查是否在闪烁（简单的后处理）
+  bool IsBlinking() const { return is_blinking_; }
 
-  bool Process(DataFrame* data_frame) override;
-
-  bool IsEnabled() const override { return enable_; }
-
-  std::string Name() const override { return name_; }
+  // 获取当前状态向量（用于调试）
+  const std::vector<float>& GetProbs() const { return probs_; }
 
  private:
+  void Predict();
+  void Correct(base::TLColor obs_color, float obs_conf);
+  void Normalize();
+  void CheckBlink(double timestamp, base::TLColor cur_max_color);
+
+  // 状态向量 P(X)，顺序对应 base::TLColor 枚举值
+  std::vector<float> probs_;
+
+  double last_timestamp_ = 0.0;
+
+  // 闪烁检测辅助变量
+  bool is_blinking_ = false;
+  double last_bright_ts_ = 0.0;
+  double last_dark_ts_ = 0.0;
+  base::TLColor last_color_ = base::TLColor::TL_UNKNOWN_COLOR;
+};
+
+class SemanticReviser : public BaseTrafficLightTracker {
+ public:
+  SemanticReviser();
+  virtual ~SemanticReviser() = default;
+
+  bool Init(const TrafficLightTrackerInitOptions& options) override;
+  bool Init(const StageConfig& stage_config) override;
+
+  bool Track(const TrafficLightTrackerOptions& options,
+             CameraFrame* frame) override;
+
+  std::string Name() const override { return "SemanticReviser"; }
+  bool Process(DataFrame* data_frame) override;
+  bool IsEnabled() const override { return enable_; }
+
+ private:
+  // 将检测器输出的多个 Box (针对同一个 ID) 合并为一个观测结果
+  std::pair<base::TLColor, float> AggregateObservations(
+      const std::vector<base::TrafficLightPtr>& lights,
+      const std::vector<int>& light_ids);
+
   SemanticReviserConfig semantic_param_;
 
-  float revise_time_s_;
-  float blink_threshold_s_;
-  float non_blink_threshold_s_;
-  int hysteretic_threshold_;
-  std::vector<SemanticTable> history_semantic_;
-
-  DISALLOW_COPY_AND_ASSIGN(SemanticReviser);
+  // 维护每个 Semantic ID 对应的滤波器状态
+  // Key: semantic_id (string), Value: Filter Object
+  std::unordered_map<std::string, LightBayesFilter> filters_;
 };
 
 }  // namespace camera

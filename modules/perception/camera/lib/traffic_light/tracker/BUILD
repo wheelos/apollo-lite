@@ -1,5 +1,5 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
-load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,6 +15,16 @@ cc_library(
         "@boost.bind",
     ],
     alwayslink = True,
+)
+
+cc_test(
+    name = "semantic_decision_test",
+    size = "small",
+    srcs = ["semantic_decision_test.cc"],
+    deps = [
+        ":semantic_decision",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cpplint()

@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
-#include "modules/perception/camera/lib/traffic_light/detector/detection/select.h"
+#include "modules/perception/camera/lib/traffic_light/detector/select.h"
+
+#include <cmath>
 
 #include "cyber/common/log.h"
 

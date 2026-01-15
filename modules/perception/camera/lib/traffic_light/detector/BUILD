@@ -1,7 +1,8 @@
 load("//tools:cpplint.bzl", "cpplint")
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
+
 
 cc_library(
     name = "detection",
@@ -14,14 +15,16 @@ cc_library(
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
-        "//modules/perception/inference:inference_factory",
+        "//modules/perception/inference:inference_factory_libtorch",
         "//modules/perception/inference:inference_lib",
-        "//modules/perception/inference/utils:inference_resize_lib",
-        "//modules/perception/inference/utils:inference_util_lib",
+        "//modules/perception/inference/utils:inference_resize_lib_libtorch",
+        "//modules/perception/inference/utils:inference_util_lib_libtorch",
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:detection_cc_proto",
-    ],
-    alwayslink = True,
+    ]  + if_gpu(
+        ["@libtorch_gpu"],
+        ["@libtorch_cpu"],
+    ),
 )
 
 cc_library(
@@ -44,6 +47,21 @@ cc_library(
     deps = [
         "//modules/perception/base",
         "//modules/perception/camera/common",
+    ],
+)
+
+cc_test(
+    name = "detection_test",
+    size = "small",
+    srcs = ["detection_test.cc"],
+    deps = [
+        ":detection",
+        "//cyber",
+        "//modules/perception/camera/common",
+        "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
+        "@com_google_googletest//:gtest_main",
+        "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
     ],
 )
 

@@ -19,9 +19,6 @@
 #include "cyber/common/log.h"
 #include "modules/common/util/perf_util.h"
 #include "modules/perception/camera/common/util.h"
-#include "modules/perception/camera/lib/traffic_light/detector/detection/detection.h"
-#include "modules/perception/camera/lib/traffic_light/detector/recognition/recognition.h"
-#include "modules/perception/camera/lib/traffic_light/tracker/semantic_decision.h"
 #include "modules/perception/pipeline/pipeline.h"
 
 namespace apollo {
@@ -30,97 +27,95 @@ namespace camera {
 
 using cyber::common::GetAbsolutePath;
 
+bool TrafficLightCameraPerception::Init(const PipelineConfig &pipeline_config) {
+  return Initialize(pipeline_config);
+}
+
 bool TrafficLightCameraPerception::Init(
     const CameraPerceptionInitOptions &options) {
-  std::string work_root = "";
-  if (options.use_cyber_work_root) {
-    work_root = GetCyberWorkRoot();
-  }
+  std::string work_root = options.use_cyber_work_root ? GetCyberWorkRoot() : "";
   std::string proto_path = GetAbsolutePath(options.root_dir, options.conf_file);
   proto_path = GetAbsolutePath(work_root, proto_path);
-  AINFO << "proto_path " << proto_path;
+
   if (!cyber::common::GetProtoFromFile(proto_path, &tl_param_)) {
-    AINFO << "load proto param failed, root dir: " << options.root_dir;
+    AERROR << "Load proto param failed, path: " << proto_path;
     return false;
   }
 
+  // 1. Init Detector (One-Stage)
   TrafficLightDetectorInitOptions init_options;
+  // 假设 proto 中 detector_param(0) 是检测器配置
+  if (tl_param_.detector_param_size() == 0) {
+    AERROR << "No detector param found.";
+    return false;
+  }
   auto plugin_param = tl_param_.detector_param(0).plugin_param();
-
   init_options.root_dir = GetAbsolutePath(work_root, plugin_param.root_dir());
   init_options.conf_file = plugin_param.config_file();
   init_options.gpu_id = tl_param_.gpu_id();
+
   detector_.reset(BaseTrafficLightDetectorRegisterer::GetInstanceByName(
       plugin_param.name()));
-  ACHECK(detector_ != nullptr);
-  if (!detector_->Init(init_options)) {
-    AERROR << "tl detector init failed";
+  if (!detector_ || !detector_->Init(init_options)) {
+    AERROR << "Traffic Light Detector init failed: " << plugin_param.name();
     return false;
   }
 
-  plugin_param = tl_param_.detector_param(1).plugin_param();
-  init_options.root_dir = GetAbsolutePath(work_root, plugin_param.root_dir());
-  init_options.conf_file = plugin_param.config_file();
-  init_options.gpu_id = tl_param_.gpu_id();
-  recognizer_.reset(BaseTrafficLightDetectorRegisterer::GetInstanceByName(
-      plugin_param.name()));
-  ACHECK(recognizer_ != nullptr);
-  if (!recognizer_->Init(init_options)) {
-    AERROR << "tl recognizer init failed";
+  // 2. Init Tracker (Semantic Reviser)
+  if (!tl_param_.has_tracker_param()) {
+    AERROR << "No tracker param found.";
     return false;
   }
-
   TrafficLightTrackerInitOptions tracker_init_options;
   auto tracker_plugin_param = tl_param_.tracker_param().plugin_param();
   tracker_init_options.root_dir =
       GetAbsolutePath(work_root, tracker_plugin_param.root_dir());
   tracker_init_options.conf_file = tracker_plugin_param.config_file();
+
   tracker_.reset(BaseTrafficLightTrackerRegisterer::GetInstanceByName(
       tracker_plugin_param.name()));
-  ACHECK(tracker_ != nullptr);
-  AINFO << tracker_init_options.root_dir << " "
-        << tracker_init_options.conf_file;
-  if (!tracker_->Init(tracker_init_options)) {
-    AERROR << "tl tracker init failed";
+  if (!tracker_ || !tracker_->Init(tracker_init_options)) {
+    AERROR << "Traffic Light Tracker init failed: "
+           << tracker_plugin_param.name();
     return false;
   }
 
-  AINFO << "tl pipeline init done";
+  AINFO << "TrafficLight Pipeline Init Success. Detector: "
+        << plugin_param.name() << ", Tracker: " << tracker_plugin_param.name();
   return true;
 }
 
-bool TrafficLightCameraPerception::Init(const PipelineConfig& pipeline_config) {
-  return Initialize(pipeline_config);
-}
-
-bool TrafficLightCameraPerception::Process(DataFrame* data_frame) {
-  if (data_frame == nullptr)
-    return false;
-
+bool TrafficLightCameraPerception::Process(DataFrame *data_frame) {
+  if (data_frame == nullptr) return false;
   return InnerProcess(data_frame);
 }
 
 bool TrafficLightCameraPerception::Perception(
     const CameraPerceptionOptions &options, CameraFrame *frame) {
   PERF_FUNCTION();
-  PERF_BLOCK_START();
+  if (frame == nullptr) return false;
+
+  // 1. Detection (Includes classification in One-Stage)
   TrafficLightDetectorOptions detector_options;
-  if (!detector_->Detect(detector_options, frame)) {
-    AERROR << "tl failed to detect.";
-    return false;
+  {
+    PERF_BLOCK("TL_Detection");
+    if (!detector_->Detect(detector_options, frame)) {
+      AERROR << "TL detection failed.";
+      return false;
+    }
   }
 
-  TrafficLightDetectorOptions recognizer_options;
-  if (!recognizer_->Detect(recognizer_options, frame)) {
-    AERROR << "tl failed to recognize.";
-    return false;
-  }
-
+  // 2. Tracking (Semantic Revision / Bayesian Filter)
   TrafficLightTrackerOptions tracker_options;
-  if (!tracker_->Track(tracker_options, frame)) {
-    AERROR << "tl failed to track.";
-    return false;
+  tracker_options.time_stamp = frame->timestamp;
+  {
+    PERF_BLOCK("TL_Tracking");
+    if (!tracker_->Track(tracker_options, frame)) {
+      AERROR << "TL tracking failed.";
+      return false;
+    }
   }
+
   return true;
 }
 
