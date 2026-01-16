@@ -48,7 +48,8 @@ void Steeringreport502::Parse(const std::uint8_t* bytes, int32_t length,
       ->mutable_steering_report_502()
       ->set_steer_angle_actual(steer_angle_actual(bytes, length));
   chassis->mutable_check_response()->set_is_eps_online(
-      steer_flt1(bytes, length) == 0 && steer_flt2(bytes, length) == 0);
+      steer_en_state(bytes, length) ==
+      Steering_report_502::STEER_EN_STATE_AUTO);
 }
 
 // config detail: {'bit': 47, 'is_signed_var': False, 'len': 16, 'name':

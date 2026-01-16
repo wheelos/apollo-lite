@@ -41,7 +41,7 @@ namespace {
 const int32_t kMaxFailAttempt = 10;
 const int32_t CHECK_RESPONSE_STEER_UNIT_FLAG = 1;
 const int32_t CHECK_RESPONSE_SPEED_UNIT_FLAG = 2;
-bool emergency_brake = false;
+
 }  // namespace
 
 ErrorCode DevkitController::Init(
@@ -417,22 +417,12 @@ Chassis DevkitController::chassis() {
       chassis_detail.devkit().vcu_report_505().has_backcrash_state()) {
     if (chassis_detail.devkit().vcu_report_505().backcrash_state() ==
         Vcu_report_505::BACKCRASH_STATE_CRASH_EVENT) {
-      chassis_.set_front_bumper_event(Chassis::BUMPER_PRESSED);
+      chassis_.set_back_bumper_event(Chassis::BUMPER_PRESSED);
     } else {
-      chassis_.set_front_bumper_event(Chassis::BUMPER_NORMAL);
+      chassis_.set_back_bumper_event(Chassis::BUMPER_NORMAL);
     }
   } else {
-    chassis_.set_front_bumper_event(Chassis::BUMPER_INVALID);
-  }
-
-  // if take over, reset to manual mode
-  if (chassis_detail.devkit().throttle_report_500().throttle_en_state() ==
-          Throttle_report_500::THROTTLE_EN_STATE_TAKEOVER ||
-      chassis_detail.devkit().brake_report_501().brake_en_state() ==
-          Brake_report_501::BRAKE_EN_STATE_TAKEOVER ||
-      chassis_detail.devkit().steering_report_502().steer_en_state() ==
-          Steering_report_502::STEER_EN_STATE_TAKEOVER) {
-    set_driving_mode(Chassis::COMPLETE_MANUAL);
+    chassis_.set_back_bumper_event(Chassis::BUMPER_INVALID);
   }
 
   return chassis_;
@@ -452,6 +442,9 @@ bool DevkitController::VerifyID() {
 void DevkitController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  if (chassis_error_code() == Chassis::NO_ERROR) {
+    set_chassis_error_code(Chassis::CHASSIS_ERROR);
+  }
 }
 
 ErrorCode DevkitController::EnableAutoMode() {
@@ -506,7 +499,7 @@ ErrorCode DevkitController::EnableSteeringOnlyMode() {
     AINFO << "Already in AUTO_STEER_ONLY mode.";
     return ErrorCode::OK;
   }
-  AFATAL << "SpeedOnlyMode is not supported in devkit!";
+  AFATAL << "AUTO_STEER_ONLY is not supported in devkit!";
   return ErrorCode::CANBUS_ERROR;
 }
 
@@ -517,7 +510,7 @@ ErrorCode DevkitController::EnableSpeedOnlyMode() {
     AINFO << "Already in AUTO_SPEED_ONLY mode";
     return ErrorCode::OK;
   }
-  AFATAL << "SpeedOnlyMode is not supported in devkit!";
+  AFATAL << "AUTO_SPEED_ONLY is not supported in devkit!";
   return ErrorCode::CANBUS_ERROR;
 }
 
@@ -566,10 +559,8 @@ void DevkitController::Brake(double pedal) {
     AINFO << "The current drive mode does not need to set brake pedal.";
     return;
   }
-  if (!emergency_brake) {
-    brake_command_101_->set_brake_pedal_target(pedal);
-  }
-  // brake_command_101_->set_brake_pedal_target(pedal);
+
+  brake_command_101_->set_brake_pedal_target(pedal);
 }
 
 // drive with pedal
@@ -580,10 +571,8 @@ void DevkitController::Throttle(double pedal) {
     AINFO << "The current drive mode does not need to set throttle pedal.";
     return;
   }
-  if (!emergency_brake) {
-    throttle_command_100_->set_throttle_pedal_target(pedal);
-  }
-  // throttle_command_100_->set_throttle_pedal_target(pedal);
+
+  throttle_command_100_->set_throttle_pedal_target(pedal);
 }
 
 // confirm the car is driven by acceleration command instead of
@@ -611,10 +600,8 @@ void DevkitController::Steer(double angle) {
   const double real_angle =
       vehicle_params_.max_steer_angle() / M_PI * 180 * angle / 100.0;
 
-  if (!emergency_brake) {
-    steering_command_102_->set_steer_angle_target(real_angle)
-        ->set_steer_angle_spd_target(250);
-  }
+  steering_command_102_->set_steer_angle_target(real_angle)
+      ->set_steer_angle_spd_target(250);
 }
 
 // steering with new angle speed
@@ -629,10 +616,8 @@ void DevkitController::Steer(double angle, double angle_spd) {
   const double real_angle =
       vehicle_params_.max_steer_angle() / M_PI * 180 * angle / 100.0;
 
-  if (!emergency_brake) {
-    steering_command_102_->set_steer_angle_target(real_angle)
-        ->set_steer_angle_spd_target(250);
-  }
+  steering_command_102_->set_steer_angle_target(real_angle)
+      ->set_steer_angle_spd_target(250);
 }
 
 void DevkitController::SetEpbBreak(const ControlCommand& command) {
@@ -712,64 +697,92 @@ void DevkitController::ResetProtocol() {
 
 bool DevkitController::CheckChassisError() {
   ChassisDetail chassis_detail;
-  message_manager_->GetSensorData(&chassis_detail);
+  if (message_manager_->GetSensorData(&chassis_detail) != ErrorCode::OK) {
+    AERROR_EVERY(100) << "Get chassis detail failed.";
+    return true;
+  }
+
   if (!chassis_detail.has_devkit()) {
-    AERROR_EVERY(100) << "ChassisDetail has no devkit vehicle info."
-                      << chassis_detail.DebugString();
+    AERROR_EVERY(100) << "ChassisDetail has no devkit vehicle info.";
     return false;
   }
 
-  Devkit devkit = chassis_detail.devkit();
+  const auto& devkit = chassis_detail.devkit();
+  int32_t error_cnt = 0;
+  int32_t chassis_error_mask = 0;
+  bool has_error = false;
 
-  // steer fault
+  // 1. Steer Fault
   if (devkit.has_steering_report_502()) {
-    if (Steering_report_502::STEER_FLT1_STEER_SYSTEM_HARDWARE_FAULT ==
-        devkit.steering_report_502().steer_flt1()) {
-      AERROR_EVERY(100) << "Chassis has steer system fault.";
-      return true;
-    }
-  }
-  // drive fault
-  if (devkit.has_throttle_report_500()) {
-    if (Throttle_report_500::THROTTLE_FLT1_DRIVE_SYSTEM_HARDWARE_FAULT ==
-        devkit.throttle_report_500().throttle_flt1()) {
-      AERROR_EVERY(100) << "Chassis has drive system fault.";
-      return true;
-    }
-  }
-  // brake fault
-  if (devkit.has_brake_report_501()) {
-    if (Brake_report_501::BRAKE_FLT1_BRAKE_SYSTEM_HARDWARE_FAULT ==
-        devkit.brake_report_501().brake_flt1()) {
-      AERROR_EVERY(100) << "Chassis has brake system fault.";
-      return true;
-    }
-  }
-  // battery soc low
-  if (devkit.has_bms_report_512()) {
-    if (devkit.bms_report_512().is_battery_soc_low()) {
-      AERROR_EVERY(100) << "Chassis battery has low soc, please charge.";
-      return true;
-    }
-  }
-  // battery over emperature fault
-  if (devkit.has_bms_report_512()) {
-    if (Bms_report_512::BATTERY_FLT_OVER_TEMP_FAULT ==
-        devkit.bms_report_512().battery_flt_over_temp()) {
-      AERROR_EVERY(100) << "Chassis battery has over temperature fault.";
-      return true;
-    }
-  }
-  // battery low temperature fault
-  if (devkit.has_bms_report_512()) {
-    if (Bms_report_512::BATTERY_FLT_LOW_TEMP_FAULT ==
-        devkit.bms_report_512().battery_flt_low_temp()) {
-      AERROR_EVERY(100) << "Chassis battery has below low temperature fault.";
-      return true;
+    const auto& steer = devkit.steering_report_502();
+    bool steer_fault =
+        (steer.steer_flt1() != Steering_report_502::STEER_FLT1_NO_FAULT ||
+         steer.steer_flt2() != Steering_report_502::STEER_FLT2_NO_FAULT);
+
+    chassis_error_mask |= ((steer.steer_flt1()) << (++error_cnt));
+    chassis_error_mask |= ((steer.steer_flt2()) << (++error_cnt));
+
+    if (steer_fault) {
+      set_chassis_error_code(Chassis::CHASSIS_ERROR_ON_STEER);
+      AERROR_EVERY(100) << "Steer fault: FLT1(HW):" << steer.steer_flt1()
+                        << " FLT2(COM):" << steer.steer_flt2();
+      has_error = true;
     }
   }
 
-  return false;
+  // 2. Brake Fault
+  if (devkit.has_brake_report_501()) {
+    const auto& brake = devkit.brake_report_501();
+    bool brake_fault =
+        (brake.brake_flt1() != Brake_report_501::BRAKE_FLT1_NO_FAULT ||
+         brake.brake_flt2() != Brake_report_501::BRAKE_FLT2_NO_FAULT);
+
+    chassis_error_mask |= ((brake.brake_flt1()) << (++error_cnt));
+    chassis_error_mask |= ((brake.brake_flt2()) << (++error_cnt));
+
+    if (brake_fault) {
+      set_chassis_error_code(Chassis::CHASSIS_ERROR_ON_BRAKE);
+      AERROR_EVERY(100) << "Brake fault: FLT1(HW):" << brake.brake_flt1()
+                        << " FLT2(COM):" << brake.brake_flt2();
+      has_error = true;
+    }
+  }
+
+  // 3. Throttle Fault
+  if (devkit.has_throttle_report_500()) {
+    const auto& throttle = devkit.throttle_report_500();
+    bool throttle_fault = (throttle.throttle_flt1() !=
+                               Throttle_report_500::THROTTLE_FLT1_NO_FAULT ||
+                           throttle.throttle_flt2() !=
+                               Throttle_report_500::THROTTLE_FLT2_NO_FAULT);
+
+    chassis_error_mask |= ((throttle.throttle_flt1()) << (++error_cnt));
+    chassis_error_mask |= ((throttle.throttle_flt2()) << (++error_cnt));
+
+    if (throttle_fault) {
+      set_chassis_error_code(Chassis::CHASSIS_ERROR_ON_THROTTLE);
+      AERROR_EVERY(100) << "Throttle fault: FLT1(HW):"
+                        << throttle.throttle_flt1()
+                        << " FLT2(COM):" << throttle.throttle_flt2();
+      has_error = true;
+    }
+  }
+
+  // Battery / BMS Fault
+  if (devkit.has_bms_report_512()) {
+    const auto& bms = devkit.bms_report_512();
+    if (bms.battery_flt_over_temp() !=
+            Bms_report_512::BATTERY_FLT_OVER_TEMP_NO_FAULT ||
+        bms.battery_flt_low_temp() !=
+            Bms_report_512::BATTERY_FLT_LOW_TEMP_NO_FAULT) {
+      AERROR_EVERY(100) << "Battery SOC Temperature Fault.";
+      has_error = true;
+    }
+  }
+
+  set_chassis_error_mask(chassis_error_mask);
+
+  return has_error;
 }
 
 void DevkitController::SecurityDogThreadFunc() {
@@ -792,7 +805,6 @@ void DevkitController::SecurityDogThreadFunc() {
     start = ::apollo::cyber::Time::Now().ToMicrosecond();
     const Chassis::DrivingMode mode = driving_mode();
     bool emergency_mode = false;
-    emergency_brake = false;
 
     // 1. horizontal control check
     if ((mode == Chassis::COMPLETE_AUTO_DRIVE ||
@@ -822,25 +834,11 @@ void DevkitController::SecurityDogThreadFunc() {
       vertical_ctrl_fail = 0;
     }
     if (CheckChassisError()) {
-      set_chassis_error_code(Chassis::CHASSIS_ERROR);
       emergency_mode = true;
-      if (chassis_.speed_mps() > 0.3) {
-        emergency_brake = true;
-      }
     }
 
     if (emergency_mode && mode != Chassis::EMERGENCY_MODE) {
-      set_driving_mode(Chassis::EMERGENCY_MODE);
-      if (emergency_brake) {
-        throttle_command_100_->set_throttle_pedal_target(0);
-        brake_command_101_->set_brake_pedal_target(40);
-        steering_command_102_->set_steer_angle_target(0);
-        std::this_thread::sleep_for(
-            std::chrono::duration<double, std::milli>(3000));
-      }
-      message_manager_->ResetSendMessages();
-      can_sender_->Update();
-      emergency_brake = false;
+      Emergency();
     }
     end = ::apollo::cyber::Time::Now().ToMicrosecond();
     std::chrono::duration<double, std::micro> elapsed{end - start};
@@ -883,21 +881,22 @@ bool DevkitController::CheckResponse(const int32_t flags, bool need_wait) {
                       chassis_detail.check_response().is_esp_online();
       check_ok = check_ok && is_vcu_online && is_esp_online;
     }
+
     if (check_ok) {
       return true;
-    } else {
-      AINFO << "Need to check response again.";
     }
+
     if (need_wait) {
+      AINFO << "Waiting for Devkit response... retry: " << retry_num;
       --retry_num;
       std::this_thread::sleep_for(
           std::chrono::duration<double, std::milli>(20));
     }
   } while (need_wait && retry_num);
 
-  AINFO << "check_response fail: is_eps_online:" << is_eps_online
-        << ", is_vcu_online:" << is_vcu_online
-        << ", is_esp_online:" << is_esp_online;
+  AERROR_EVERY(100) << "check_response fail: eps_auto:" << is_eps_online
+                    << ", vcu_auto:" << is_vcu_online
+                    << ", esp_auto:" << is_esp_online;
 
   return false;
 }
