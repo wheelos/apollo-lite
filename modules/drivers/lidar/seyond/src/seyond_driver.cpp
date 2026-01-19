@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
+
 #include "modules/drivers/lidar/seyond/src/seyond_driver.h"
+
+#include "cyber/time/time.h"
 
 static const uint32_t KBUF_SIZE = 1024 * 1024 * 10;
 static const double us_in_second_c = 1000000.0;
@@ -244,12 +247,28 @@ int32_t SeyondDriver::data_callback_(const InnoDataPacket *pkt) {
     is_next_frame = true;
   }
 
+  uint64_t lidar_raw_ns = static_cast<uint64_t>(pkt->common.ts_start_us) * 1000;
+  if (!param_.raw_packets_mode) {
+    if (lidar_raw_ns < 1577836800000000000ULL) {
+      if (ts_offset_ns_ == 0) {
+        ts_offset_ns_ =
+            apollo::cyber::Time::Now().ToNanosecond() - lidar_raw_ns;
+      }
+    } else {
+      ts_offset_ns_ = 0;
+    }
+  } else {
+    // There should be no software offset during playback of
+    // the recorded package.
+    ts_offset_ns_ = 0;
+  }
+
   packet_publish_cb_(pkt, is_next_frame);
 
   if (is_next_frame) {
-    point_cloud_ptr_->mutable_header()->set_lidar_timestamp(
-        (static_cast<uint64_t>(pkt->common.ts_start_us)) * 1000);
-    point_cloud_ptr_->set_measurement_time(pkt->common.ts_start_us * 1e-6);
+    uint64_t corrected_ns = lidar_raw_ns + ts_offset_ns_;
+    point_cloud_ptr_->mutable_header()->set_lidar_timestamp(corrected_ns);
+    point_cloud_ptr_->set_measurement_time(corrected_ns * 1e-9);
     point_cloud_ptr_->set_height(1);
     point_cloud_ptr_->set_width(frame_points_width_);
     // data publish
@@ -324,7 +343,8 @@ void SeyondDriver::convert_and_parse_(const InnoDataPacket *pkt) {
 
 int32_t SeyondDriver::process_data_packet_(const InnoDataPacket *pkt) {
   // calculate the point timestamp
-  current_ts_start_ = pkt->common.ts_start_us / us_in_second_c;
+  current_ts_start_ = (static_cast<double>(pkt->common.ts_start_us) * 1e-6) +
+                      (static_cast<double>(ts_offset_ns_) * 1e-9);
   // adapt different data structures form different lidar
   if (CHECK_EN_XYZ_POINTCLOUD_DATA(pkt->type)) {
     const InnoEnXyzPoint *pt = reinterpret_cast<const InnoEnXyzPoint *>(
