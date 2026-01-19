@@ -20,10 +20,16 @@ namespace apollo {
 namespace perception {
 namespace camera {
 
+struct LetterboxInfo {
+    float scale;
+    int pad_w;
+    int pad_h;
+};
+
 class TrafficLightDetection : public BaseTrafficLightDetector {
  public:
   TrafficLightDetection();
-  ~TrafficLightDetection() = default;
+  ~TrafficLightDetection();
 
   bool Init(const TrafficLightDetectorInitOptions &options) override;
   bool Init(const StageConfig &stage_config) override;
@@ -42,16 +48,16 @@ class TrafficLightDetection : public BaseTrafficLightDetector {
   bool Inference(std::vector<base::TrafficLightPtr> *lights,
                  DataProvider *data_provider);
 
-  bool SelectOutputBoxes(const torch::Tensor &output_tensor,
+  bool ProcessYOLOOutput(
+    const torch::Tensor &output_tensor,
                          const std::vector<base::RectI> &crop_box_list,
-                         const std::vector<float> &resize_scale_list_col,
-                         const std::vector<float> &resize_scale_list_row,
+    const std::vector<LetterboxInfo> &letterbox_infos,
                          std::vector<base::TrafficLightPtr> *detected_lights);
 
   void ApplyNMS(std::vector<base::TrafficLightPtr> *lights,
                 double iou_thresh = 0.6);
 
-  base::TLColor ClassIdToColor(int class_id) const;
+  base::TLColor ClassIdToColor(apollo::perception::base::TLDetectionClass class_id) const;
 
  private:
   TrafficLightDetectionConfig detection_param_;
@@ -69,7 +75,7 @@ class TrafficLightDetection : public BaseTrafficLightDetector {
   std::vector<base::RectI> crop_box_list_;
   std::vector<float> resize_scale_list_;
   std::vector<base::TrafficLightPtr> detected_bboxes_;
-  std::map<int, base::TLColor> class_id_map_;
+  std::map<base::TLDetectionClass, base::TLColor> class_id_map_;
 
   DataProvider::ImageOptions data_provider_image_option_;
 

@@ -36,6 +36,7 @@ class LightBayesFilter {
   // 获取当前状态向量（用于调试）
   const std::vector<float>& GetProbs() const { return probs_; }
 
+  double GetLastTimestamp() const { return last_timestamp_; }
  private:
   void Predict();
   void Correct(base::TLColor obs_color, float obs_conf);

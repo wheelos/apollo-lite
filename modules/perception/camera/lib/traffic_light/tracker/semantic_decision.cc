@@ -20,6 +20,20 @@ constexpr float kMinConfidence = 0.1f;          // 最低置信度钳位
 // 辅助函数：将枚举转为整数索引
 inline int ColorToInt(base::TLColor color) { return static_cast<int>(color); }
 
+std::string ColorToString(base::TLColor color) {
+  switch (color) {
+    case base::TLColor::TL_RED:
+      return "RED";
+    case base::TLColor::TL_YELLOW:
+      return "YELLOW";
+    case base::TLColor::TL_GREEN:
+      return "GREEN";
+    case base::TLColor::TL_BLACK:
+      return "BLACK";
+    default:
+      return "UNKNOWN";
+  }
+}
 LightBayesFilter::LightBayesFilter() {
   // 初始化：Unknown 概率最大，其余均分
   // 顺序: Unknown, Red, Yellow, Green, Black
@@ -290,9 +304,11 @@ bool SemanticReviser::Track(const TrafficLightTrackerOptions& options,
           (final_color != base::TLColor::TL_UNKNOWN_COLOR);
     }
 
-    ADEBUG << "Tracker [" << key << "] Obs: " << ColorToString(obs_color) << "("
-           << obs_conf << ") -> Final: " << ColorToString(final_color) << "("
-           << final_conf << ")";
+ADEBUG << "Tracker [" << key << "] Obs: "
+       << ColorToString(obs_color)
+       << "(" << obs_conf << ") -> Final: "
+       << ColorToString(final_color)
+       << "(" << final_conf << ")";
   }
 
   return true;

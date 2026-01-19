@@ -92,13 +92,11 @@ bool TrafficLightCameraPerception::Process(DataFrame *data_frame) {
 
 bool TrafficLightCameraPerception::Perception(
     const CameraPerceptionOptions &options, CameraFrame *frame) {
-  PERF_FUNCTION();
   if (frame == nullptr) return false;
 
   // 1. Detection (Includes classification in One-Stage)
   TrafficLightDetectorOptions detector_options;
   {
-    PERF_BLOCK("TL_Detection");
     if (!detector_->Detect(detector_options, frame)) {
       AERROR << "TL detection failed.";
       return false;
@@ -109,7 +107,6 @@ bool TrafficLightCameraPerception::Perception(
   TrafficLightTrackerOptions tracker_options;
   tracker_options.time_stamp = frame->timestamp;
   {
-    PERF_BLOCK("TL_Tracking");
     if (!tracker_->Track(tracker_options, frame)) {
       AERROR << "TL tracking failed.";
       return false;

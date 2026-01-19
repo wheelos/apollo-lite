@@ -1,5 +1,6 @@
 load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,12 +16,9 @@ cc_library(
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
-        "//modules/perception/inference:inference_factory_libtorch",
-        "//modules/perception/inference:inference_lib",
-        "//modules/perception/inference/utils:inference_resize_lib_libtorch",
-        "//modules/perception/inference/utils:inference_util_lib_libtorch",
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:detection_cc_proto",
+        "@opencv//:imgcodecs",
     ]  + if_gpu(
         ["@libtorch_gpu"],
         ["@libtorch_cpu"],

@@ -1,4 +1,4 @@
-#include "modules/perception/camera/lib/traffic_light/detector/detection/detection.h"
+#include "modules/perception/camera/lib/traffic_light/detector/detection.h"
 
 #include <cstdlib>
 #include <string>
@@ -59,10 +59,10 @@ class TrafficLightDetectionTest : public ::testing::Test {
     // 实际使用时替换为真实的 TorchScript 模型路径
     model_path_ =
         "/apollo/modules/perception/production/data/perception/camera/models/"
-        "traffic_light_detection/yolo_traffic.pt";
+        "traffic_light_detection/yolo12n.torchscript";
     image_path_ =
         "/apollo/modules/perception/camera/lib/traffic_light/detector/"
-        "test_data/test.jpg";
+        "test_data/1768553194299049787.jpg";
 
     // 如果找不到图片，构造一个假的
     if (!cyber::common::PathExists(image_path_)) {

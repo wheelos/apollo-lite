@@ -104,7 +104,7 @@ cc_library(
     "//modules/perception/camera/lib/obstacle/tracker/omt:omt_obstacle_tracker",
     "//modules/perception/camera/lib/obstacle/tracker/omt2:omt_bev_tracker",
     "//modules/perception/camera/lib/obstacle/transformer/multicue:multicue_obstacle_transformer",
-    "//modules/perception/camera/lib/traffic_light/detector",
+    "//modules/perception/camera/lib/traffic_light/detector:detection",
     "//modules/perception/camera/lib/traffic_light/tracker:semantic_decision",
     "//modules/perception/fusion/lib/data_fusion/all_latest_fusion",
     "//modules/perception/fusion/lib/fusion_system/probabilistic_fusion",
