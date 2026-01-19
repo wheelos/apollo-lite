@@ -160,6 +160,7 @@ class SeyondDriver {
   uint32_t packets_width_{0};
   int64_t current_frame_id_{-1};
   double current_ts_start_;
+  uint64_t ts_offset_ns_ = 0;
   uint64_t frame_points_width_;
   std::vector<uint8_t> convert_buffer_;
   static bool inno_logs_setted_;
