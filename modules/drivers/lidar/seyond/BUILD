@@ -33,10 +33,8 @@ cc_library(
         "src/seyond_driver.h",
     ],
     copts = SEYOND_COPTS + ["-std=c++17"],
-    # linkopts = [
-    #     "-linnoclientsdk",
-    # ],
     deps = [
+        "//cyber",
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/seyond/proto:seyond_cc_proto",
