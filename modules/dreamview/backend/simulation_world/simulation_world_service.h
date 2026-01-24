@@ -42,6 +42,7 @@
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
 #include "modules/common_msgs/localization_msgs/gps.pb.h"
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
+#include "modules/common_msgs/mission_msgs/mission_request.pb.h"
 #include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
 #include "modules/common_msgs/planning_msgs/planning.pb.h"
 #include "modules/common_msgs/planning_msgs/planning_internal.pb.h"
@@ -151,6 +152,9 @@ class SimulationWorldService {
 
   void PublishTask(const std::shared_ptr<apollo::task_manager::Task> &);
 
+  void PublishMissionRequest(
+      const std::shared_ptr<apollo::mission::MissionRequest> &);
+
   void GetMapElementIds(double radius, MapElementIds *ids) const;
 
   const apollo::hdmap::Map &GetRelativeMap() const;
@@ -188,8 +192,9 @@ class SimulationWorldService {
   void SetObstacleSource(const apollo::perception::PerceptionObstacle &obstacle,
                          Object *world_object);
   /**
-   * @brief Set the distance beetween the auto driving car polygon and the obstacle polygon.
-  */
+   * @brief Set the distance beetween the auto driving car polygon and the
+   * obstacle polygon.
+   */
   void SetObstacleDistanceToAdc(
       const apollo::perception::PerceptionObstacle &obstacle,
       Object *world_object);
@@ -416,6 +421,8 @@ class SimulationWorldService {
   std::shared_ptr<cyber::Writer<apollo::routing::RoutingResponse>>
       routing_response_writer_;
   std::shared_ptr<cyber::Writer<apollo::task_manager::Task>> task_writer_;
+  std::shared_ptr<cyber::Writer<apollo::mission::MissionRequest>>
+      mission_request_writer_;
 
   FRIEND_TEST(SimulationWorldServiceTest, UpdateMonitorSuccess);
   FRIEND_TEST(SimulationWorldServiceTest, UpdateMonitorRemove);
