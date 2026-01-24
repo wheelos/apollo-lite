@@ -270,3 +270,6 @@ DEFINE_string(lidar_model_version, "",
 
 DEFINE_string(collision_warning_topic, "/apollo/perception/collision_warning",
               "Collision warning topic.");
+
+DEFINE_string(mission_request_topic, "/apollo/mission_request",
+              "mission request topic name");
