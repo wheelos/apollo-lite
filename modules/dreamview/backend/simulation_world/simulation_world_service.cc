@@ -61,6 +61,7 @@ using apollo::hdmap::Map;
 using apollo::hdmap::Path;
 using apollo::localization::Gps;
 using apollo::localization::LocalizationEstimate;
+using apollo::mission::MissionRequest;
 using apollo::perception::PerceptionObstacle;
 using apollo::perception::PerceptionObstacles;
 using apollo::perception::SensorMeasurement;
@@ -342,6 +343,21 @@ void SimulationWorldService::InitWriters() {
         apollo::cyber::proto::QosDurabilityPolicy::DURABILITY_SYSTEM_DEFAULT);
     routing_request_writer_ =
         node_->CreateWriter<RoutingRequest>(routing_request_attr);
+  }
+  {
+    apollo::cyber::proto::RoleAttributes mission_request_attr;
+    mission_request_attr.set_channel_name(FLAGS_mission_request_topic);
+    auto qos = mission_request_attr.mutable_qos_profile();
+    // only keeps the last message in history
+    qos->set_history(apollo::cyber::proto::QosHistoryPolicy::HISTORY_KEEP_LAST);
+    // reliable transfer
+    qos->set_reliability(
+        apollo::cyber::proto::QosReliabilityPolicy::RELIABILITY_RELIABLE);
+    // Don't send the history message when new readers are found.
+    qos->set_durability(
+        apollo::cyber::proto::QosDurabilityPolicy::DURABILITY_SYSTEM_DEFAULT);
+    mission_request_writer_ =
+        node_->CreateWriter<MissionRequest>(mission_request_attr);
   }
 
   routing_response_writer_ =
@@ -723,8 +739,8 @@ void SimulationWorldService::SetObstacleDistanceToAdc(
   world_object->clear_distance_to_adc();
   if (obstacle_points.size() > 2 && adc_polygon_points.size() > 2) {
     world_object->set_distance_to_adc(std::fabs(
-      apollo::common::math::Polygon2d(obstacle_points)
-          .DistanceTo(apollo::common::math::Polygon2d(adc_polygon_points))));
+        apollo::common::math::Polygon2d(obstacle_points)
+            .DistanceTo(apollo::common::math::Polygon2d(adc_polygon_points))));
   }
 }
 
@@ -1441,5 +1457,12 @@ void SimulationWorldService::PublishMonitorMessage(
   monitor_logger_buffer_.AddMonitorMsgItem(log_level, msg);
   monitor_logger_buffer_.Publish();
 }
+
+void SimulationWorldService::PublishMissionRequest(
+    const std::shared_ptr<MissionRequest> &mission_request) {
+  FillHeader(FLAGS_dreamview_module_name, mission_request.get());
+  mission_request_writer_->Write(mission_request);
+}
+
 }  // namespace dreamview
 }  // namespace apollo
