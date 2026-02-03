@@ -1,0 +1,146 @@
+syntax = "proto2";
+
+package apollo.canbus;
+
+message Motion_command_111 {
+// Control Message
+  // [m/s] [-4.8|4.8]
+  optional double speed_command = 1;
+  // [rad] [-0.4|0.4]
+  optional double steering_command = 2;
+}
+
+message Chassis_status_report_211 {
+// Report Message
+  enum Vehicle_stateType {
+  }
+  enum Control_mode_stateType {
+  }
+  // [] [0|2]
+  optional Vehicle_stateType vehicle_state = 1;
+  // [] [0|2]
+  optional Control_mode_stateType control_mode_state = 2;
+  // [V] [0|300]
+  optional double battery_voltage = 3;
+}
+
+message Motion_feedback_221 {
+// Report Message
+  // [m/s] [-5|5]
+  optional double vehicle_speed = 1;
+  // [rad] [-1|1]
+  optional double steering_angle = 2;
+}
+
+message Motor_highspeed_251_251 {
+// Report Message
+  // [rpm] [-5000|5000]
+  optional int32 motor_speed = 1;
+  // [A] [-300|300]
+  optional double motor_current = 2;
+}
+
+message Motor_highspeed_252_252 {
+// Report Message
+  // [rpm] [-5000|5000]
+  optional int32 motor_speed = 1;
+  // [A] [-300|300]
+  optional double motor_current = 2;
+}
+
+message Motor_highspeed_253_253 {
+// Report Message
+  // [rpm] [-5000|5000]
+  optional int32 motor_speed = 1;
+  // [A] [-300|300]
+  optional double motor_current = 2;
+}
+
+message Motor_lowspeed_261_261 {
+// Report Message
+  // [V] [0|100]
+  optional double driver_voltage = 1;
+  // [C] [-40|125]
+  optional int32 driver_temp = 2;
+  // [C] [-40|125]
+  optional int32 motor_temp = 3;
+  // [] [0|255]
+  optional int32 driver_status = 4;
+}
+
+message Motor_lowspeed_262_262 {
+// Report Message
+  // [V] [0|100]
+  optional double driver_voltage = 1;
+  // [C] [-40|125]
+  optional int32 driver_temp = 2;
+  // [C] [-40|125]
+  optional int32 motor_temp = 3;
+  // [] [0|255]
+  optional int32 driver_status = 4;
+}
+
+message Motor_lowspeed_263_263 {
+// Report Message
+  // [V] [0|100]
+  optional double driver_voltage = 1;
+  // [C] [-40|125]
+  optional int32 driver_temp = 2;
+  // [C] [-40|125]
+  optional int32 motor_temp = 3;
+  // [] [0|255]
+  optional int32 driver_status = 4;
+}
+
+message Control_mode_command_421 {
+// Control Message
+  enum Control_mode_cmdType {
+    CONTROL_MODE_CMD_STANDBY = 0;
+    CONTROL_MODE_CMD_CAN = 1;
+  }
+  // [] [0|1]
+  optional Control_mode_cmdType control_mode_cmd = 1;
+}
+
+message Steering_zero_set_432 {
+// Control Message
+  // [] [0|255]
+  optional int32 zero_offset_h = 1;
+}
+
+message Steering_zero_query_433 {
+// Control Message
+  // [] [170|170]
+  optional int32 zero_query = 1;
+}
+
+message Steering_zero_feedback_43b {
+// Report Message
+  // [] [0|255]
+  optional int32 zero_offset_h = 1;
+  // [] [0|255]
+  optional int32 zero_offset_l = 2;
+}
+
+message Error_clear_command_441 {
+// Control Message
+  // [] [0|255]
+  optional int32 error_clear_cmd = 1;
+}
+
+message Agilex_hunter {
+  optional Motion_command_111 motion_command_111 = 1; // control message
+  optional Chassis_status_report_211 chassis_status_report_211 = 2; // report message
+  optional Motion_feedback_221 motion_feedback_221 = 3; // report message
+  optional Motor_highspeed_251_251 motor_highspeed_251_251 = 4; // report message
+  optional Motor_highspeed_252_252 motor_highspeed_252_252 = 5; // report message
+  optional Motor_highspeed_253_253 motor_highspeed_253_253 = 6; // report message
+  optional Motor_lowspeed_261_261 motor_lowspeed_261_261 = 7; // report message
+  optional Motor_lowspeed_262_262 motor_lowspeed_262_262 = 8; // report message
+  optional Motor_lowspeed_263_263 motor_lowspeed_263_263 = 9; // report message
+  optional Control_mode_command_421 control_mode_command_421 = 10; // control message
+  optional Steering_zero_set_432 steering_zero_set_432 = 11; // control message
+  optional Steering_zero_query_433 steering_zero_query_433 = 12; // control message
+  optional Steering_zero_feedback_43b steering_zero_feedback_43b = 13; // report message
+  optional Error_clear_command_441 error_clear_command_441 = 14; // control message
+}
