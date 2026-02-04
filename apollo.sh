@@ -102,6 +102,7 @@ function apollo_env_setup() {
 #TODO(all): Update node modules
 function build_dreamview_frontend() {
     pushd "${APOLLO_ROOT_DIR}/modules/dreamview/frontend" >/dev/null
+    yarn install --frozen-lockfile
     yarn build
     popd >/dev/null
 }
