@@ -296,3 +296,22 @@ function setup_gpu_support() {
 if ${APOLLO_IN_DOCKER} ; then
     setup_gpu_support
 fi
+
+function setup_dreamview_server_port() {
+  local GLOBAL_FLAGFILE="${TOP_DIR}/modules/common/data/global_flagfile.txt"
+
+  # 2. Set default value (must be exported)
+  export SERVER_PORT="8888"
+
+  # 3. Read SERVER_PORT from global_flagfile.txt
+  if [[ -f "$GLOBAL_FLAGFILE" ]]; then
+    local READ_PORT
+    READ_PORT=$(grep -E '^--server_ports=' "$GLOBAL_FLAGFILE" | head -n1 | cut -d'=' -f2 | cut -d',' -f1)
+
+    # 4. Update the exported variable if a valid port is found
+    if [[ -n "$READ_PORT" ]]; then
+      export SERVER_PORT="${READ_PORT}"
+    fi
+  fi
+}
+setup_dreamview_server_port
