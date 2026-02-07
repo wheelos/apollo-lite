@@ -39,6 +39,23 @@ AUTOSERVICE_DEST_FILE="/etc/systemd/system/autostart.service"
 # User who will run the autonomous driving stack. SUDO_USER is the user who invoked sudo.
 WHL_HOST_USER="${SUDO_USER:-$(whoami)}"
 
+# --- PTP Variables ---
+PTP_CONF_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/linuxptp/ptp4l.conf"
+PTP_CONF_DEST_DIR="/etc/linuxptp"
+PTP_CONF_DEST="/etc/linuxptp/ptp4l.conf"
+
+# Service Base Files
+SYSTEMD_DEST_DIR="/etc/systemd/system"
+PTP4L_SERVICE_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/ptp4l.service"
+PHC2SYS_SERVICE_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/phc2sys.service"
+
+# Service Overrides
+PTP4L_OVERRIDE_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/ptp4l.service.d/override.conf"
+PTP4L_OVERRIDE_DEST_DIR="/etc/systemd/system/ptp4l.service.d"
+
+PHC2SYS_OVERRIDE_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/phc2sys.service.d/override.conf"
+PHC2SYS_OVERRIDE_DEST_DIR="/etc/systemd/system/phc2sys.service.d"
+
 # --- Color Definitions for Output ---
 BOLD='\033[1m'
 RED='\033[0;31m'
@@ -544,6 +561,50 @@ configure_headless_mode() {
     return 0
 }
 
+# Configures Linux PTP (ptp4l and phc2sys) as Master.
+configure_ptp() {
+  info "Configuring Linux PTP as Master..."
+
+  # 1. Install linuxptp
+  if ! command -v ptp4l &> /dev/null; then
+    sudo apt-get update && sudo apt-get install -y linuxptp
+  fi
+
+  # 2. Force overwrite configuration file
+  if [ -f "${PTP_CONF_SRC}" ]; then
+    sudo mkdir -p "${PTP_CONF_DEST_DIR}"
+    sudo cp -f "${PTP_CONF_SRC}" "${PTP_CONF_DEST}"
+    success "PTP configuration file copied."
+  fi
+
+  # 3. Systemd Unit Files
+  [ -f "${PTP4L_SERVICE_SRC}" ] && sudo cp -f "${PTP4L_SERVICE_SRC}" "${SYSTEMD_DEST_DIR}/ptp4l.service"
+  [ -f "${PHC2SYS_SERVICE_SRC}" ] && sudo cp -f "${PHC2SYS_SERVICE_SRC}" "${SYSTEMD_DEST_DIR}/phc2sys.service"
+
+  # 4. Overrides
+  [ -f "${PTP4L_OVERRIDE_SRC}" ] && {
+    sudo mkdir -p "${PTP4L_OVERRIDE_DEST_DIR}";
+    sudo cp -f "${PTP4L_OVERRIDE_SRC}" "${PTP4L_OVERRIDE_DEST_DIR}/override.conf";
+  }
+  [ -f "${PHC2SYS_OVERRIDE_SRC}" ] && {
+    sudo mkdir -p "${PHC2SYS_OVERRIDE_DEST_DIR}";
+    sudo cp -f "${PHC2SYS_OVERRIDE_SRC}" "${PHC2SYS_OVERRIDE_DEST_DIR}/override.conf";
+  }
+
+  # 5. Restart service
+  sudo systemctl daemon-reload
+  sudo systemctl enable ptp4l phc2sys
+  sudo systemctl restart ptp4l phc2sys
+
+  # 6. info
+  if systemctl is-active --quiet ptp4l; then
+    success "PTP E2E is ACTIVE."
+  else
+    error "PTP failed to start. Check 'journalctl -u ptp4l'."
+    return 1
+  fi
+}
+
 
 # --- Main Host Setup Orchestration Function ---
 # This is the primary entry point for setting up the host machine.
@@ -576,6 +637,12 @@ setup_host_machine() {
   # 4. Configure NTP synchronization
   if ! configure_ntp; then
     error "Failed to configure NTP synchronization. Aborting host setup."
+    return 1
+  fi
+
+  # 4.5 Configure Linux PTP (New Step)
+  if ! configure_ptp; then
+    error "Failed to configure Linux PTP. Aborting host setup."
     return 1
   fi
 

@@ -1,0 +1,15 @@
+[Unit]
+Description=Synchronize PHC to system clock
+After=ptp4l.service
+Requires=ptp4l.service
+
+[Service]
+Type=simple
+# -a indicates automatic interface selection, and -r indicates synchronizing
+# the PHC to the system clock.
+ExecStart=/usr/sbin/phc2sys -a -r
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
