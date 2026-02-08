@@ -14,8 +14,8 @@
  * limitations under the License.
  *****************************************************************************/
 #include <NvInferPlugin.h>
-#include <NvInferRuntimeCommon.h>
 #include <NvInferRuntime.h>
+#include <NvInferRuntimeCommon.h>
 #include <NvInferVersion.h>
 
 #ifdef NV_TENSORRT_MAJOR
@@ -124,8 +124,7 @@ void RTNet::addConvLayer(const LayerParameter &layer_param,
                             bias_weight);
 #else
       net->addConvolution(*inTensor, nbOutputs,
-                          nvinfer1::DimsHW{kernelH, kernelW}, wt,
-                          bias_weight);
+                          nvinfer1::DimsHW{kernelH, kernelW}, wt, bias_weight);
 #endif
 
   if (convLayer) {
@@ -148,16 +147,16 @@ void RTNet::addConvLayer(const LayerParameter &layer_param,
                     : p.dilation_size() > 0 ? p.dilation(0)
                                             : 1;
 
-    #if NV_TENSORRT_MAJOR >= 10
+#if NV_TENSORRT_MAJOR >= 10
     convLayer->setStrideNd(nvinfer1::DimsHW{strideH, strideW});
     convLayer->setPaddingNd(nvinfer1::DimsHW{padH, padW});
     convLayer->setDilationNd(nvinfer1::DimsHW{dilationH, dilationW});
-    #else
+#else
     convLayer->setStride(nvinfer1::DimsHW{strideH, strideW});
     convLayer->setPadding(nvinfer1::DimsHW{padH, padW});
     convLayer->setPaddingMode(nvinfer1::PaddingMode::kCAFFE_ROUND_DOWN);
     convLayer->setDilation(nvinfer1::DimsHW{dilationH, dilationW});
-    #endif
+#endif
 
     convLayer->setNbGroups(G);
   }
@@ -204,41 +203,41 @@ void RTNet::addDeconvLayer(const LayerParameter &layer_param,
   ParserConvParam(conv, &param);
   nvinfer1::IDeconvolutionLayer *deconvLayer = nullptr;
   if ((*weight_map)[layer_param.name().c_str()].size() == 2) {
-    #if NV_TENSORRT_MAJOR >= 10
+#if NV_TENSORRT_MAJOR >= 10
     deconvLayer = net->addDeconvolutionNd(
         *inputs[0], conv.num_output(),
         nvinfer1::DimsHW{param.kernel_h, param.kernel_w},
         (*weight_map)[layer_param.name().c_str()][0],
         (*weight_map)[layer_param.name().c_str()][1]);
-    #else
-    deconvLayer = net->addDeconvolution(
-        *inputs[0], conv.num_output(),
-        nvinfer1::DimsHW{param.kernel_h, param.kernel_w},
-        (*weight_map)[layer_param.name().c_str()][0],
-        (*weight_map)[layer_param.name().c_str()][1]);
-    #endif
+#else
+    deconvLayer =
+        net->addDeconvolution(*inputs[0], conv.num_output(),
+                              nvinfer1::DimsHW{param.kernel_h, param.kernel_w},
+                              (*weight_map)[layer_param.name().c_str()][0],
+                              (*weight_map)[layer_param.name().c_str()][1]);
+#endif
   } else {
     nvinfer1::Weights bias_weight{nvinfer1::DataType::kFLOAT, nullptr, 0};
-    #if NV_TENSORRT_MAJOR >= 10
+#if NV_TENSORRT_MAJOR >= 10
     deconvLayer = net->addDeconvolutionNd(
         *inputs[0], conv.num_output(),
         nvinfer1::DimsHW{param.kernel_h, param.kernel_w},
         (*weight_map)[layer_param.name().c_str()][0], bias_weight);
-    #else
+#else
     deconvLayer = net->addDeconvolution(
         *inputs[0], conv.num_output(),
         nvinfer1::DimsHW{param.kernel_h, param.kernel_w},
         (*weight_map)[layer_param.name().c_str()][0], bias_weight);
-    #endif
+#endif
   }
-  #if NV_TENSORRT_MAJOR >= 10
+#if NV_TENSORRT_MAJOR >= 10
   deconvLayer->setStrideNd(nvinfer1::DimsHW{param.stride_h, param.stride_w});
   deconvLayer->setPaddingNd(nvinfer1::DimsHW{param.padding_h, param.padding_w});
-  #else
+#else
   deconvLayer->setStride(nvinfer1::DimsHW{param.stride_h, param.stride_w});
   deconvLayer->setPadding(nvinfer1::DimsHW{param.padding_h, param.padding_w});
   deconvLayer->setPaddingMode(nvinfer1::PaddingMode::kCAFFE_ROUND_DOWN);
-  #endif
+#endif
   deconvLayer->setNbGroups(conv.group());
 
   deconvLayer->setName(layer_param.name().c_str());
@@ -336,19 +335,19 @@ void RTNet::addPoolingLayer(const LayerParameter &layer_param,
   ACHECK(modify_pool_param(&pool));
   nvinfer1::IPoolingLayer *poolLayer = nullptr;
 #if NV_TENSORRT_MAJOR >= 10
-  poolLayer = net->addPoolingNd(
-      *inputs[0], pool_type,
-      nvinfer1::DimsHW{static_cast<int>(pool.kernel_h()),
-                       static_cast<int>(pool.kernel_w())});
+  poolLayer =
+      net->addPoolingNd(*inputs[0], pool_type,
+                        nvinfer1::DimsHW{static_cast<int>(pool.kernel_h()),
+                                         static_cast<int>(pool.kernel_w())});
   poolLayer->setStrideNd(nvinfer1::DimsHW{static_cast<int>(pool.stride_h()),
                                           static_cast<int>(pool.stride_w())});
   poolLayer->setPaddingNd(nvinfer1::DimsHW{static_cast<int>(pool.pad_h()),
                                            static_cast<int>(pool.pad_w())});
 #else
-  poolLayer = net->addPooling(
-      *inputs[0], pool_type,
-      nvinfer1::DimsHW{static_cast<int>(pool.kernel_h()),
-                       static_cast<int>(pool.kernel_w())});
+  poolLayer =
+      net->addPooling(*inputs[0], pool_type,
+                      nvinfer1::DimsHW{static_cast<int>(pool.kernel_h()),
+                                       static_cast<int>(pool.kernel_w())});
   poolLayer->setStride(nvinfer1::DimsHW{static_cast<int>(pool.stride_h()),
                                         static_cast<int>(pool.stride_w())});
   poolLayer->setPadding(nvinfer1::DimsHW{static_cast<int>(pool.pad_h()),
@@ -455,15 +454,15 @@ void RTNet::addInnerproductLayer(const LayerParameter &layer_param,
   w_dims.nbDims = 2;
   w_dims.d[0] = fc.num_output();
   w_dims.d[1] = K;
-  auto w_const = net->addConstant(w_dims, (*weight_map)[layer_param.name().c_str()][0]);
+  auto w_const =
+      net->addConstant(w_dims, (*weight_map)[layer_param.name().c_str()][0]);
 
   // MatMul: [M,K] x [K,1] -> [M,1]
-  auto mm = net->addMatrixMultiply(*w_const->getOutput(0),
-                                   nvinfer1::MatrixOperation::kNONE,
-                                   *shp->getOutput(0),
-                                   nvinfer1::MatrixOperation::kNONE);
+  auto mm = net->addMatrixMultiply(
+      *w_const->getOutput(0), nvinfer1::MatrixOperation::kNONE,
+      *shp->getOutput(0), nvinfer1::MatrixOperation::kNONE);
 
-  nvinfer1::ITensor* out = mm->getOutput(0);
+  nvinfer1::ITensor *out = mm->getOutput(0);
   // Add bias if any
   if (bias.values != nullptr && bias.count > 0) {
     nvinfer1::Dims b_dims;
@@ -1277,23 +1276,44 @@ bool RTNet::shape(const std::string &name, std::vector<int> *res) {
   if (it != tensor_modify_map_.end()) {
     trt_name = it->second;
   }
+
 #if NV_TENSORRT_MAJOR >= 10
   nvinfer1::Dims dims = engine.getTensorShape(trt_name.c_str());
 #else
   int bindingIndex = engine.getBindingIndex(trt_name.c_str());
+  if (bindingIndex < 0) return false;
   nvinfer1::Dims dims = engine.getBindingDimensions(bindingIndex);
 #endif
-  if (dims.nbDims < 3) {
-    AERROR << "Unexpected dims for " << trt_name << ": nbDims=" << dims.nbDims;
+
+  res->resize(4);
+
+  // Batch (nbDims is 4)
+  if (dims.nbDims == 4) {
+    (*res)[0] = static_cast<int>(dims.d[0]);  // N
+    (*res)[1] = static_cast<int>(dims.d[1]);  // C
+    (*res)[2] = static_cast<int>(dims.d[2]);  // H
+    (*res)[3] = static_cast<int>(dims.d[3]);  // W
+
+    // Check: if explicit Batch dynamic range does not match max_batch_size_,
+    // warn
+    if ((*res)[0] == -1) {  // Dynamic dimension
+      (*res)[0] = max_batch_size_;
+    }
+  }
+  // Handle implicit Batch or special case (nbDims is 3)
+  else if (dims.nbDims == 3) {
+    (*res)[0] = max_batch_size_;              // N (externally provided)
+    (*res)[1] = static_cast<int>(dims.d[0]);  // C
+    (*res)[2] = static_cast<int>(dims.d[1]);  // H
+    (*res)[3] = static_cast<int>(dims.d[2]);  // W
+  } else {
+    AERROR << "Unsupported dims count " << dims.nbDims << " for " << trt_name;
     return false;
   }
-  res->resize(4);
-  (*res)[0] = max_batch_size_;
-  (*res)[1] = static_cast<int>(dims.d[0]);
-  (*res)[2] = static_cast<int>(dims.d[1]);
-  (*res)[3] = static_cast<int>(dims.d[2]);
+
   return true;
 }
+
 void RTNet::init_blob(std::vector<std::string> *names) {
   auto &engine = context_->getEngine();
   for (auto &name : *names) {
@@ -1419,7 +1439,7 @@ bool RTNet::Init(const std::map<std::string, std::vector<int>> &shapes) {
   // Network creation
   const auto explicit_batch =
       (1U << static_cast<uint32_t>(
-                nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH));
+           nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH));
   network_ = builder_->createNetworkV2(explicit_batch);
   builder_config_ = builder_->createBuilderConfig();
   builder_config_->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
@@ -1479,12 +1499,12 @@ bool RTNet::Init(const std::map<std::string, std::vector<int>> &shapes) {
 #endif
 #endif
   context_ = engine->createExecutionContext();
-  #if NV_TENSORRT_MAJOR < 10
+#if NV_TENSORRT_MAJOR < 10
   buffers_.resize(input_names_.size() + output_names_.size());
-  #else
+#else
   buffers_.clear();
   tensor_buffer_index_.clear();
-  #endif
+#endif
   init_blob(&input_names_);
   init_blob(&output_names_);
   AINFO << "engine init success";
@@ -1570,17 +1590,17 @@ RTNet::~RTNet() {
   }
   if (gpu_id_ >= 0) {
     BASE_CUDA_CHECK(cudaStreamDestroy(stream_));
-    #if NV_TENSORRT_MAJOR >= 10
-    // network_ and builder_config_ were deleted after build.
-    #else
+#if NV_TENSORRT_MAJOR >= 10
+// network_ and builder_config_ were deleted after build.
+#else
     network_->destroy();
     builder_config_->destroy();
-    #endif
-    #if NV_TENSORRT_MAJOR >= 10
+#endif
+#if NV_TENSORRT_MAJOR >= 10
     delete context_;
-    #else
+#else
     context_->destroy();
-    #endif
+#endif
     for (auto buf : buffers_) {
       cudaFree(buf);
     }
@@ -1608,27 +1628,51 @@ void RTNet::Infer() {
       blob->gpu_data();
     }
   }
-  #if NV_TENSORRT_MAJOR >= 10
-  // Bind inputs
-  for (auto &name : input_names_) {
-    std::string trt_name = name;
-    auto it = tensor_buffer_index_.find(trt_name);
-    if (it == tensor_buffer_index_.end()) continue;
-    context_->setTensorAddress(trt_name.c_str(), buffers_[it->second]);
+#if NV_TENSORRT_MAJOR >= 10
+  auto bind_tensors = [&](const std::vector<std::string> &names,
+                          const char *type_label) {
+    for (const auto &name : names) {
+      std::string trt_name = name;
+
+      // 1. Unified Application Name Mapping
+      auto itmap = tensor_modify_map_.find(name);
+      if (itmap != tensor_modify_map_.end()) {
+        trt_name = itmap->second;
+      }
+
+      // 2. Find Buffer Index
+      auto it = tensor_buffer_index_.find(trt_name);
+      if (it == tensor_buffer_index_.end()) {
+        // 3. Report error and return immediately, do not continue
+        AERROR << "TensorRT 10: Cannot find buffer index for " << type_label
+               << " tensor: " << trt_name << " (original name: " << name << ")";
+        return false;
+      }
+
+      // 4. Set tensor address
+      if (!context_->setTensorAddress(trt_name.c_str(), buffers_[it->second])) {
+        AERROR << "TensorRT 10: Failed to set address for tensor: " << trt_name;
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (!bind_tensors(input_names_, "input") ||
+      !bind_tensors(output_names_, "output")) {
+    return false;
   }
-  // Bind outputs (may be renamed)
-  for (auto &name : output_names_) {
-    std::string trt_name = name;
-    auto itmap = tensor_modify_map_.find(name);
-    if (itmap != tensor_modify_map_.end()) trt_name = itmap->second;
-    auto it = tensor_buffer_index_.find(trt_name);
-    if (it == tensor_buffer_index_.end()) continue;
-    context_->setTensorAddress(trt_name.c_str(), buffers_[it->second]);
+
+  if (!context_->enqueueV3(stream_)) {
+    AERROR << "TensorRT 10: Failed to enqueue V3";
+    return false;
   }
-  context_->enqueueV3(stream_);
-  #else
-  context_->enqueue(max_batch_size_, &buffers_[0], stream_, nullptr);
-  #endif
+#else
+  if (!context_->enqueue(max_batch_size_, &buffers_[0], stream_, nullptr)) {
+    AERROR << "TensorRT < 10: Failed to enqueue";
+    return false;
+  }
+#endif
   BASE_CUDA_CHECK(cudaStreamSynchronize(stream_));
 
   for (auto name : output_names_) {

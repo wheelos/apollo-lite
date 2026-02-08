@@ -10,6 +10,7 @@ bazel_dep(name = "rules_cc", version = "0.0.9")
 bazel_dep(name = "rules_pkg", version = "0.10.1")
 bazel_dep(name = "rules_proto", version = "6.0.2")
 bazel_dep(name = "rules_python", version = "0.34.0")
+bazel_dep(name = "rules_cuda", version = "0.2.5")
 
 # TODO: Keep the version of Python toolchain consistent with Docker.
 # Note whether there is any duplication with .apollo.bazelrc?

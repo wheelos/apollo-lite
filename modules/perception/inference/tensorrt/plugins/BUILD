@@ -8,24 +8,19 @@ licenses(["notice"])
 
 cc_library(
     name = "perception_inference_tensorrt_plugins",
-    srcs = [
+    hdrs = glob(["*.h"]),
+    deps = [
         ":dfmb_psroi_align_plugin",
-        ":kernels_cuda",
         ":rcnn_proposal_plugin",
         ":rpn_proposal_ssd_plugin",
         ":perception_inference_tensorrt_plugins_argmax_cuda",
         ":perception_inference_tensorrt_plugins_leakyrelu_cuda",
         ":perception_inference_tensorrt_plugins_slice_cuda",
-        ":perception_inference_tensorrt_plugins_softmax_cuda"
-    ],
-    hdrs = glob([
-        "*.h",
-    ]),
-    linkstatic = True,
-    deps = [
+        ":perception_inference_tensorrt_plugins_softmax_cuda",
         "@local_config_cuda//cuda:cublas",
         "@local_config_cuda//cuda:cudart",
     ],
+    alwayslink = True,
 )
 
 cuda_library(
@@ -85,7 +80,6 @@ cuda_library(
     hdrs = ["slice_plugin.h"],
     deps = [
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@eigen",
         "@local_config_cuda//cuda:cudart",
         "@local_config_tensorrt//:tensorrt",
     ],
@@ -97,7 +91,6 @@ cuda_library(
     hdrs = ["argmax_plugin.h"],
     deps = [
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@eigen",
         "@local_config_cuda//cuda:cudart",
         "@local_config_tensorrt//:tensorrt",
     ],
@@ -109,7 +102,6 @@ cuda_library(
     hdrs = ["leakyReLU_plugin.h"],
     deps = [
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@eigen",
         "@local_config_cuda//cuda:cudart",
         "@local_config_tensorrt//:tensorrt",
     ],
@@ -121,7 +113,6 @@ cuda_library(
     hdrs = ["softmax_plugin.h"],
     deps = [
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@eigen",
         "@local_config_cuda//cuda:cudart",
         "@local_config_tensorrt//:tensorrt",
     ],
