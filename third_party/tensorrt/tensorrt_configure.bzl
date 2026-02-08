@@ -37,11 +37,14 @@ def _get_tensorrt_libs(tensorrt_version):
 _TF_TENSORRT_HEADERS = ["NvInfer.h", "NvInferPlugin.h"]
 _TF_TENSORRT_HEADERS_V6 = [
     "NvInfer.h",
+    "NvUtils.h",
     "NvInferPlugin.h",
     "NvInferVersion.h",
     "NvInferRuntime.h",
     "NvInferRuntimeCommon.h",
     "NvInferPluginUtils.h",
+    "NvUffParser.h",
+    "NvCaffeParser.h",
 ]
 
 _DEFINE_TENSORRT_SONAME_MAJOR = "#define NV_TENSORRT_SONAME_MAJOR"
@@ -54,10 +57,13 @@ def _at_least_version(actual_version, required_version):
     return actual >= required
 
 def _get_tensorrt_headers(tensorrt_version):
-    # TensorRT 10 removes NvUtils.h and legacy UFF/Caffe parser headers.
-    if _at_least_version(tensorrt_version, "6"):
-        return _TF_TENSORRT_HEADERS_V6
-    return _TF_TENSORRT_HEADERS
+    headers = list(_TF_TENSORRT_HEADERS_V6) if _at_least_version(tensorrt_version, "6") else list(_TF_TENSORRT_HEADERS)
+
+    if _at_least_version(tensorrt_version, "10"):
+        removed_in_v10 = ["NvUffParser.h", "NvCaffeParser.h"]
+        headers = [h for h in headers if h not in removed_in_v10]
+
+    return headers
 
 def _tpl_path(repository_ctx, filename):
     return repository_ctx.path(Label("//third_party/tensorrt:%s.tpl" % filename))

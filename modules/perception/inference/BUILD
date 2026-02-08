@@ -56,16 +56,16 @@ cc_library(
     ],
 )
 
-# cc_test(
-#     name = "inference_factory_test",
-#     size = "small",
-#     srcs = ["inference_factory_test.cc"],
-#     deps = [
-#         ":inference_factory",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-#     linkstatic = True,
-# )
+cc_test(
+    name = "inference_factory_test",
+    size = "small",
+    srcs = ["inference_factory_test.cc"],
+    deps = [
+        ":inference_factory",
+        "@com_google_googletest//:gtest_main",
+    ],
+    linkstatic = True,
+)
 
 filegroup(
     name = "inference_test_data",

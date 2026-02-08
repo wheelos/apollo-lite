@@ -28,7 +28,6 @@
 #endif
 #endif
 
-// #include "NvCaffeParser.h"
 #include "NvInfer.h"
 
 #include "cyber/common/log.h"

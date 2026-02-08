@@ -4,17 +4,17 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
-# install(
-#     name = "install",
-#     data_dest = "drivers/addition_data/video",
-#     library_dest = "drivers/lib/video",
-#     data = [
-#         ":runtime_files",
-#     ],
-#     targets = [
-#         "libvideo_driver_component.so",
-#     ],
-# )
+install(
+    name = "install",
+    data_dest = "drivers/addition_data/video",
+    library_dest = "drivers/lib/video",
+    data = [
+        ":runtime_files",
+    ],
+    targets = [
+        "libvideo_driver_component.so",
+    ],
+)
 
 filegroup(
     name = "runtime_files",

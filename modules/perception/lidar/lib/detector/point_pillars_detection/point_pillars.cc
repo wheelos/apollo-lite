@@ -487,7 +487,7 @@ void PointPillars::OnnxToTRTModel(
   // create the builder
   const auto explicit_batch =
       (1U << static_cast<uint32_t>(
-                nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH));
+           nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH));
   nvinfer1::IBuilder* builder = nvinfer1::createInferBuilder(g_logger_);
   nvinfer1::INetworkDefinition* network =
       builder->createNetworkV2(explicit_batch);
@@ -504,7 +504,7 @@ void PointPillars::OnnxToTRTModel(
 #if NV_TENSORRT_MAJOR >= 10
   // Set workspace memory and build serialized network (TRT10)
   config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
-                             static_cast<size_t>(1ULL << 20));
+                             static_cast<size_t>(1ULL << 30));
   auto plan = builder->buildSerializedNetwork(*network, *config);
   if (!plan) {
     std::string msg("failed to build serialized network");
@@ -705,14 +705,12 @@ void PointPillars::DoInference(const float* in_points_array,
 
   GPU_CHECK(cudaMemset(dev_filter_count_, 0, sizeof(int)));
   postprocess_cuda_ptr_->DoPostprocessCuda(
-      bbox_pred.data_ptr<float>(),
-      cls_score.data_ptr<float>(),
-      dir_cls_preds.data_ptr<float>(),
-      dev_anchor_mask_, dev_anchors_px_, dev_anchors_py_, dev_anchors_pz_,
-      dev_anchors_dx_, dev_anchors_dy_, dev_anchors_dz_, dev_anchors_ro_,
-      dev_filtered_box_, dev_filtered_score_, dev_filtered_label_,
-      dev_filtered_dir_, dev_box_for_nms_, dev_filter_count_, out_detections,
-      out_labels);
+      bbox_pred.data_ptr<float>(), cls_score.data_ptr<float>(),
+      dir_cls_preds.data_ptr<float>(), dev_anchor_mask_, dev_anchors_px_,
+      dev_anchors_py_, dev_anchors_pz_, dev_anchors_dx_, dev_anchors_dy_,
+      dev_anchors_dz_, dev_anchors_ro_, dev_filtered_box_, dev_filtered_score_,
+      dev_filtered_label_, dev_filtered_dir_, dev_box_for_nms_,
+      dev_filter_count_, out_detections, out_labels);
 
   // release the stream and the buffers
   cudaStreamDestroy(stream);
@@ -721,4 +719,3 @@ void PointPillars::DoInference(const float* in_points_array,
 }  // namespace lidar
 }  // namespace perception
 }  // namespace apollo
-

@@ -16,54 +16,75 @@
 
 #pragma once
 
-#include <NvInferLegacyDims.h>
 #include <NvInferVersion.h>
 
+#include <cstdint>
+
 namespace nvinfer1 {
+
+#if NV_TENSORRT_MAJOR >= 10
+using TRTDim_t = int64_t;
+#else
+using TRTDim_t = int32_t;
+#endif
+
 class DimsNCHW : public Dims4 {
  public:
   DimsNCHW() : Dims4() {}
-  DimsNCHW(int32_t batch_size, int32_t channels, int32_t height, int32_t width)
-      : Dims4(batch_size, channels, height, width) {}
 
-#if NV_TENSORRT_MAJOR >= 10
-  using DimT = int64_t;
-#else
-  using DimT = int32_t;
-#endif
+  DimsNCHW(TRTDim_t batch_size, TRTDim_t channels, TRTDim_t height,
+           TRTDim_t width) {
+    nbDims = 4;
+    d[0] = batch_size;
+    d[1] = channels;
+    d[2] = height;
+    d[3] = width;
+  }
 
-  DimT& n() { return d[0]; }
-  DimT n() const { return d[0]; }
-
-  DimT& c() { return d[1]; }
-  DimT c() const { return d[1]; }
-
-  DimT& h() { return d[2]; }
-  DimT h() const { return d[2]; }
-
-  DimT& w() { return d[3]; }
-  DimT w() const { return d[3]; }
+  TRTDim_t& n() { return d[0]; }
+  TRTDim_t n() const { return d[0]; }
+  TRTDim_t& c() { return d[1]; }
+  TRTDim_t c() const { return d[1]; }
+  TRTDim_t& h() { return d[2]; }
+  TRTDim_t h() const { return d[2]; }
+  TRTDim_t& w() { return d[3]; }
+  TRTDim_t w() const { return d[3]; }
 };
 
 class DimsCHW : public Dims3 {
  public:
-  DimsCHW() : Dims3() {}
-  DimsCHW(int32_t channels, int32_t height, int32_t width)
-      : Dims3(channels, height, width) {}
+  DimsCHW() : Dims3() {
+    this->nbDims = 3;
+    this->d[0] = 0;
+    this->d[1] = 0;
+    this->d[2] = 0;
+  }
 
-#if NV_TENSORRT_MAJOR >= 10
-  using DimT = int64_t;
-#else
-  using DimT = int32_t;
-#endif
+  DimsCHW(TRTDim_t channels, TRTDim_t height, TRTDim_t width) {
+    this->nbDims = 3;
+    this->d[0] = channels;
+    this->d[1] = height;
+    this->d[2] = width;
+  }
 
-  DimT& c() { return d[0]; }
-  DimT c() const { return d[0]; }
+  // Channel (C) Accessor
+  TRTDim_t& c() { return d[0]; }
+  TRTDim_t c() const { return d[0]; }
 
-  DimT& h() { return d[1]; }
-  DimT h() const { return d[1]; }
+  // Height (H) Accessor
+  TRTDim_t& h() { return d[1]; }
+  TRTDim_t h() const { return d[1]; }
 
-  DimT& w() { return d[2]; }
-  DimT w() const { return d[2]; }
+  // Width (W) Accessor
+  TRTDim_t& w() { return d[2]; }
+  TRTDim_t w() const { return d[2]; }
+
+  /**
+   * @brief Calculate the total number of elements
+   */
+  size_t totalElements() const {
+    return static_cast<size_t>(d[0]) * d[1] * d[2];
+  }
 };
+
 }  // namespace nvinfer1
