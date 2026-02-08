@@ -11,12 +11,12 @@ cc_library(
     ],
     deps = [
         ":rt_common_without_protobuf",
+        "@local_config_tensorrt//:tensorrt",
         "//cyber",
         "//modules/perception/base:common",
         "//modules/perception/proto:rt_cc_proto",
         "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
-        "@local_config_cuda//cuda:cudnn_header",
+        "@com_google_protobuf//:protobuf"
     ],
 )
 
@@ -29,8 +29,8 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/perception/base:common",
-        "@local_config_cuda//cuda:cudnn_header",
+        "@local_config_tensorrt//:tensorrt",
+        "//modules/perception/base:common"
     ],
 )
 

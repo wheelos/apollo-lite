@@ -69,14 +69,18 @@ void YuvProcessor::ConvertYUYVToBGR(const uint8_t* src, int width, int height,
   if (opencv_yuyv_temp_buffer_.size() < yuyv_len) {
     opencv_yuyv_temp_buffer_.resize(yuyv_len);
   }
-  std::memcpy(opencv_yuyv_temp_buffer_.data(), src, yuyv_len);
-  cv::Mat yuyv_mat(height, width, CV_8UC2, opencv_yuyv_temp_buffer_.data());
+  cv::Mat yuyv_mat(height, width, CV_8UC2, const_cast<uint8_t*>(src));
   cv::Mat bgr_mat(height, width, CV_8UC3, dst_bgr);
   cv::cvtColor(yuyv_mat, bgr_mat, cv::COLOR_YUV2BGR_YUYV);
 }
 
 void YuvProcessor::Process(const void* src, size_t len,
                            std::shared_ptr<Image> dest_pb) {
+  if (src == nullptr || len == 0) {
+    AERROR << "YuvProcessor: received empty or null image data.";
+    return;
+  }
+
   const uint8_t* yuv_data_ptr = static_cast<const uint8_t*>(src);
 
   // If the format is UYVY, convert to YUYV first.

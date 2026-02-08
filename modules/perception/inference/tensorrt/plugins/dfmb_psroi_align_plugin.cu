@@ -143,7 +143,7 @@ __global__ void DFMBPSROIAlignForward(
 }
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 int DFMBPSROIAlignPlugin::enqueue(int batchSize, const void *const *inputs,
                                   void **outputs, void *workspace,
                                   cudaStream_t stream) {

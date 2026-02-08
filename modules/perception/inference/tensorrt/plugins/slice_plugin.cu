@@ -44,7 +44,7 @@ __global__ void Slice(const int nthreads, const Dtype *in_data,
 }
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 int SLICEPlugin::enqueue(int batchSize, const void *const *inputs,
                          void **outputs, void *workspace, cudaStream_t stream) {
 #else
