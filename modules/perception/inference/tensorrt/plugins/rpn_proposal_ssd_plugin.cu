@@ -107,7 +107,7 @@ __global__ void reshape_scores_kernel(const int nthreads,
 }
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 int RPNProposalSSDPlugin::enqueue(int batchSize, const void *const *inputs,
                                   void **outputs, void *workspace,
                                   cudaStream_t stream) {

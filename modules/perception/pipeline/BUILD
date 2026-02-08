@@ -112,7 +112,7 @@ cc_library(
     "//modules/perception/fusion/lib/fusion_system/probabilistic_fusion",
     "//modules/perception/fusion/lib/gatekeeper:collect_fused_object",
     "//modules/perception/lidar/lib/classifier/fused_classifier",
-    "//modules/perception/lidar/lib/detector/center_point_detection",
+    # "//modules/perception/lidar/lib/detector/center_point_detection",
     "//modules/perception/lidar/lib/detector/mask_pillars_detection",
     "//modules/perception/lidar/lib/detector/point_pillars_detection",
     "//modules/perception/lidar/lib/detector/cnn_segmentation",
@@ -126,8 +126,8 @@ cc_library(
     "//modules/perception/lidar/lib/tracker/multi_lidar_fusion:mlf_engine",
     "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
     "//modules/perception/camera/lib/obstacle/postprocessor/location_refiner:location_refiner_obstacle_postprocessor",
-    "//modules/perception/camera/lib/obstacle/detector/bev_detection:bev_obstacle_detector",
-    "//modules/perception/camera/lib/obstacle/detector/caddn:caddn_obstacle_detector",
+    # "//modules/perception/camera/lib/obstacle/detector/bev_detection:bev_obstacle_detector",
+    # "//modules/perception/camera/lib/obstacle/detector/caddn:caddn_obstacle_detector",
   ],
 )
 

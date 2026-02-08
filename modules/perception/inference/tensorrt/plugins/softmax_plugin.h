@@ -17,6 +17,7 @@
 #pragma once
 
 #include <NvInferVersion.h>
+#include <cudnn.h>
 
 #include <string>
 
@@ -27,7 +28,7 @@ namespace perception {
 namespace inference {
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 class SoftmaxPlugin : public nvinfer1::IPlugin {
  public:
   SoftmaxPlugin(const StSoftmaxParameter &param, nvinfer1::Dims in_dims) {

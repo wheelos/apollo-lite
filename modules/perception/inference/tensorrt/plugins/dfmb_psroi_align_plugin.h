@@ -29,7 +29,7 @@ namespace inference {
 // input0 dims: [C, H, W], input1 dims: [num_rois, 5, 1, 1]
 // input2 dims: [N, C2, H2, W2]
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 class DFMBPSROIAlignPlugin : public nvinfer1::IPlugin {
  public:
   DFMBPSROIAlignPlugin(

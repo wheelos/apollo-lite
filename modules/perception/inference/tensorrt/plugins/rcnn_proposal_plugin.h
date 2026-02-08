@@ -26,7 +26,7 @@ namespace inference {
 
 // TODO(chenjiahao): complete member functions
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 class RCNNProposalPlugin : public nvinfer1::IPlugin {
  public:
   RCNNProposalPlugin(

@@ -24,8 +24,17 @@ _TF_TENSORRT_CONFIG_REPO = "TF_TENSORRT_CONFIG_REPO"
 _TF_TENSORRT_VERSION = "TF_TENSORRT_VERSION"
 _TF_NEED_TENSORRT = "TF_NEED_TENSORRT"
 
-_TF_TENSORRT_LIBS = ["nvinfer", "nvinfer_plugin", "nvparsers", "nvonnxparser"]
-_TF_TENSORRT_HEADERS = ["NvInfer.h", "NvUtils.h", "NvInferPlugin.h"]
+def _get_tensorrt_libs(tensorrt_version):
+    """Return TensorRT library basenames for the detected version.
+
+    - TensorRT >= 10 drops legacy "nvparsers". Keep only nvinfer, nvinfer_plugin, nvonnxparser.
+    - TensorRT < 10 keeps nvparsers for legacy parsers.
+    """
+    libs = ["nvinfer", "nvinfer_plugin", "nvonnxparser"]
+    if not _at_least_version(tensorrt_version, "10"):
+        libs.append("nvparsers")
+    return libs
+_TF_TENSORRT_HEADERS = ["NvInfer.h", "NvInferPlugin.h"]
 _TF_TENSORRT_HEADERS_V6 = [
     "NvInfer.h",
     "NvUtils.h",
@@ -48,9 +57,13 @@ def _at_least_version(actual_version, required_version):
     return actual >= required
 
 def _get_tensorrt_headers(tensorrt_version):
-    if _at_least_version(tensorrt_version, "6"):
-        return _TF_TENSORRT_HEADERS_V6
-    return _TF_TENSORRT_HEADERS
+    headers = list(_TF_TENSORRT_HEADERS_V6) if _at_least_version(tensorrt_version, "6") else list(_TF_TENSORRT_HEADERS)
+
+    if _at_least_version(tensorrt_version, "10"):
+        removed_in_v10 = ["NvUffParser.h", "NvCaffeParser.h"]
+        headers = [h for h in headers if h not in removed_in_v10]
+
+    return headers
 
 def _tpl_path(repository_ctx, filename):
     return repository_ctx.path(Label("//third_party/tensorrt:%s.tpl" % filename))
@@ -102,7 +115,7 @@ def _create_local_tensorrt_repository(repository_ctx):
     cpu_value = get_cpu_value(repository_ctx)
 
     # Copy the library and header files.
-    libraries = [lib_name(lib, cpu_value, trt_version) for lib in _TF_TENSORRT_LIBS]
+    libraries = [lib_name(lib, cpu_value, trt_version) for lib in _get_tensorrt_libs(trt_version)]
 
     library_dir = config["tensorrt_library_dir"] + "/"
     headers = _get_tensorrt_headers(trt_version)

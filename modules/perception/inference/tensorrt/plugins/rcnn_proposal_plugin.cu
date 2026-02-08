@@ -14,6 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include <cfloat>
 #include <thrust/functional.h>
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/sort.h>
@@ -104,7 +105,7 @@ __global__ void get_max_score_kernel(const int nthreads, const float *bbox_pred,
 }
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 int RCNNProposalPlugin::enqueue(int batchSize, const void *const *inputs,
                                 void **outputs, void *workspace,
                                 cudaStream_t stream) {

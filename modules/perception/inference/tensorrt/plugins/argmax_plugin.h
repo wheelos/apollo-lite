@@ -27,7 +27,7 @@ namespace perception {
 namespace inference {
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 class ArgMax1Plugin : public nvinfer1::IPlugin {
  public:
   ArgMax1Plugin(const StArgMaxParameter &argmax_param, nvinfer1::Dims in_dims)

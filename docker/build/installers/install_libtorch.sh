@@ -144,7 +144,7 @@ function _install_libtorch_from_wheel_aarch64() {
 
   # IMPORTANT: Add the real SHA256 checksum for your wheel file.
   # Run this on your server: sha256sum torch-2.6.0a0+git1eba9b3-cp310-cp310-linux_aarch64.whl
-  local CHECKSUM="TODO_ADD_SHA256_CHECKSUM_FOR_THE_AARCH64_WHEEL"
+  local CHECKSUM="828ffcf5b4185eef382b0f1e9bd479201c4cae1bb16abd84f45195cdb4eed205"
 
   info "Attempt 1/2: Trying to install from pre-compiled aarch64 wheel..."
 

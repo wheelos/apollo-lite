@@ -68,7 +68,6 @@ compile_ffmpeg() {
         # can help find dependencies in our custom prefix if needed.
         ./configure \
             --prefix="${SYSROOT_DIR}" \
-            --pkg-config-flags="--static" \
             --extra-cflags="-I${SYSROOT_DIR}/include" \
             --extra-ldflags="-L${SYSROOT_DIR}/lib" \
             --enable-gpl \

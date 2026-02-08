@@ -11,6 +11,7 @@ cc_library(
     ],
     deps = [
         ":rt_common_without_protobuf",
+        "@local_config_tensorrt//:tensorrt",
         "//cyber",
         "//modules/perception/base:common",
         "//modules/perception/proto:rt_cc_proto",
@@ -28,6 +29,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
+        "@local_config_tensorrt//:tensorrt",
         "//modules/perception/base:common"
     ],
 )
