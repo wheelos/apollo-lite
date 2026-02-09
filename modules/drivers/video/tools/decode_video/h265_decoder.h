@@ -16,11 +16,13 @@
 
 #pragma once
 
+#include <memory>
 #include <vector>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/error.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 }
@@ -31,7 +33,7 @@ namespace video {
 
 /**
  * @class H265Decoder
- * @brief H265Decoder is a class to actually decode videos.
+ * @brief H265Decoder uses FFmpeg 7.x API for H.265 decoding and MJPEG encoding.
  */
 class H265Decoder {
  public:
@@ -47,12 +49,17 @@ class H265Decoder {
   // Init decoder by acquiring resources
   bool Init();
 
-  // Process frames according to input data, and output converted data
+  /**
+   * @brief Process frames: Decodes H265 -> Encodes to MJPEG
+   * Note: This function assumes 1 input packet produces 1 output packet,
+   * which is generally true for low-latency video but not guaranteed by the
+   * standard.
+   */
   DecodingResult Process(const uint8_t* indata, const int32_t insize,
                          std::vector<uint8_t>* outdata) const;
 
   // Destructor, releasing the resources
-  ~H265Decoder() { Release(); }
+  ~H265Decoder();
 
   // Getter of codec_ctx_h265_
   AVCodecContext* GetCodecCtxH265() const { return codec_ctx_h265_; }
@@ -60,9 +67,17 @@ class H265Decoder {
  private:
   void Release();
 
+  // Helper for internal error logging
+  void LogError(const char* func_name, int error_code) const;
+
   AVCodecContext* codec_ctx_h265_ = nullptr;
   AVCodecContext* codec_ctx_jpeg_ = nullptr;
   AVFrame* yuv_frame_ = nullptr;
+
+  // Reuse packets to avoid frequent malloc/free
+  // Note: Mutable because Process is const but these are internal buffers
+  mutable AVPacket* input_packet_ = nullptr;
+  mutable AVPacket* output_packet_ = nullptr;
 };
 
 }  // namespace video

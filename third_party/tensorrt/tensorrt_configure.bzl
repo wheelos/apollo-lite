@@ -38,7 +38,6 @@ def _get_tensorrt_libs(tensorrt_version):
 _TF_TENSORRT_HEADERS = ["NvInfer.h", "NvUtils.h", "NvInferPlugin.h"]
 _TF_TENSORRT_HEADERS_V6 = [
     "NvInfer.h",
-    "NvUtils.h",
     "NvInferPlugin.h",
     "NvInferVersion.h",
     "NvInferRuntime.h",
