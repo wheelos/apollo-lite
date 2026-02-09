@@ -54,8 +54,11 @@ nvinfer1::Dims ReshapeDims(const nvinfer1::Dims &dims,
   }
 
   if (axis_inference != -1) {
-    CHECK_GT(constant, 0);
-    outDims.d[axis_inference] = static_cast<TRTDim_t>(count / constant);
+    CHECK_GT(constant, 0)
+        << "Constant product must be positive to avoid division by zero";
+
+    using DType = std::decay<decltype(outDims.d[0])>::type;
+    outDims.d[axis_inference] = static_cast<DType>(count / constant);
   }
 
   return outDims;

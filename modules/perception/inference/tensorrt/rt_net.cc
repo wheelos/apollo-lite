@@ -1655,17 +1655,17 @@ void RTNet::Infer() {
 
   if (!bind_tensors(input_names_, "input") ||
       !bind_tensors(output_names_, "output")) {
-    return false;
+    return;
   }
 
   if (!context_->enqueueV3(stream_)) {
     AERROR << "TensorRT 10: Failed to enqueue V3";
-    return false;
+    return;
   }
 #else
   if (!context_->enqueue(max_batch_size_, &buffers_[0], stream_, nullptr)) {
     AERROR << "TensorRT < 10: Failed to enqueue";
-    return false;
+    return;
   }
 #endif
   BASE_CUDA_CHECK(cudaStreamSynchronize(stream_));
@@ -1677,6 +1677,7 @@ void RTNet::Infer() {
     }
   }
 }
+
 std::shared_ptr<apollo::perception::base::Blob<float>> RTNet::get_blob(
     const std::string &name) {
   auto iter = blobs_.find(name);

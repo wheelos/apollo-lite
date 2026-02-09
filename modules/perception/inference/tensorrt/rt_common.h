@@ -41,8 +41,9 @@ typedef std::map<std::string, std::vector<nvinfer1::Weights>> WeightMap;
 typedef std::map<std::string, nvinfer1::ITensor *> TensorMap;
 typedef std::map<std::string, nvinfer1::DimsCHW> TensorDimsMap;
 
-nvinfer1::DimsCHW ReshapeDims(const nvinfer1::DimsCHW &dims,
-                              const nvinfer1::DimsCHW &inputDims);
+nvinfer1::Dims ReshapeDims(const nvinfer1::Dims &dims,
+                           const nvinfer1::Dims &inputDims);
+
 void ParseNetParam(const NetParameter &net_param,
                    TensorDimsMap *tensor_dims_map,
                    std::map<std::string, std::string> *tensor_modify_map,
