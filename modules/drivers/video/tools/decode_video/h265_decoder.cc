@@ -14,10 +14,11 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include "modules/drivers/video/tools/decode_video/h265_decoder.h"
+
 #include <algorithm>
 
 #include "cyber/common/log.h"
-#include "modules/drivers/video/tools/decode_video/h265_decoder.h"
 
 namespace apollo {
 namespace drivers {
@@ -28,7 +29,6 @@ namespace video {
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 bool H265Decoder::Init() {
-  avcodec_register_all();
   AVCodec* codec_h265 = avcodec_find_decoder(AV_CODEC_ID_H265);
   if (codec_h265 == nullptr) {
     AERROR << "error: codec not found";
