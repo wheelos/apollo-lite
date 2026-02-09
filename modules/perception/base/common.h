@@ -16,11 +16,14 @@
 
 #pragma once
 
+#include <stdio.h>
+
 #include <cassert>
 
 #if USE_GPU == 1
 
 #include <cublas_v2.h>
+
 #include <cuda_runtime.h>
 
 #endif
@@ -35,8 +38,10 @@ namespace base {
 
 #if USE_GPU == 1
 
-#define BASE_CUDA_CHECK(condition) \
-  { apollo::perception::base::GPUAssert((condition), __FILE__, __LINE__); }
+#define BASE_CUDA_CHECK(condition)                                        \
+  {                                                                       \
+    apollo::perception::base::GPUAssert((condition), __FILE__, __LINE__); \
+  }
 
 inline void GPUAssert(cudaError_t code, const char *file, int line,
                       bool abort = true) {

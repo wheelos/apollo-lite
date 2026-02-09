@@ -34,7 +34,8 @@ def _get_tensorrt_libs(tensorrt_version):
     if not _at_least_version(tensorrt_version, "10"):
         libs.append("nvparsers")
     return libs
-_TF_TENSORRT_HEADERS = ["NvInfer.h", "NvInferPlugin.h"]
+
+_TF_TENSORRT_HEADERS = ["NvInfer.h", "NvUtils.h", "NvInferPlugin.h"]
 _TF_TENSORRT_HEADERS_V6 = [
     "NvInfer.h",
     "NvUtils.h",
