@@ -12,6 +12,17 @@ bazel_dep(name = "rules_proto", version = "6.0.2")
 bazel_dep(name = "rules_python", version = "0.34.0")
 bazel_dep(name = "rules_cuda", version = "0.2.5")
 
+cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
+# Use local_toolchain to automatically detect NVCC and libraries on Jetson.
+cuda.local_toolchain(
+    name = "local_cuda",
+    toolkit_path = "/usr/local/cuda",
+)
+use_repo(cuda, "local_cuda")
+
+tensorrt_ext = use_extension("//third_party/tensorrt:extensions.bzl", "tensorrt_configure")
+use_repo(tensorrt_ext, "local_config_tensorrt")
+
 # TODO: Keep the version of Python toolchain consistent with Docker.
 # Note whether there is any duplication with .apollo.bazelrc?
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
