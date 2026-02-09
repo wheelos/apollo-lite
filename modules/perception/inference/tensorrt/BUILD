@@ -4,7 +4,7 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
-cuda_library(
+cc_library(
     name = "rt_common",
     srcs = ["rt_common.cc"],
     hdrs = [
@@ -18,7 +18,6 @@ cuda_library(
         "//modules/perception/proto:rt_cc_proto",
         "@local_config_tensorrt//:tensorrt",
         "@local_cuda//:cuda",
-        "@local_cuda//:cudart",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf"
     ],
