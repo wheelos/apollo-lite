@@ -1,20 +1,24 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
-cc_library(
+cuda_library(
     name = "rt_common",
     srcs = ["rt_common.cc"],
     hdrs = [
         "rt_common.h",
+        "rt_legacy.h",
     ],
     deps = [
         ":rt_common_without_protobuf",
-        "@local_config_tensorrt//:tensorrt",
         "//cyber",
         "//modules/perception/base:common",
         "//modules/perception/proto:rt_cc_proto",
+        "@local_config_tensorrt//:tensorrt",
+        "@local_cuda//:cuda",
+        "@local_cuda//:cudart",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf"
     ],
