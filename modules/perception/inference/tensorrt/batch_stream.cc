@@ -16,13 +16,8 @@
 
 #include "modules/perception/inference/tensorrt/batch_stream.h"
 
-#ifdef NV_TENSORRT_MAJOR
-    #if NV_TENSORRT_MAJOR >= 8
-    #include "modules/perception/inference/tensorrt/rt_legacy.h"
-    #endif
-#endif
-
 #include <math.h>
+
 #include <algorithm>
 
 #include "absl/strings/str_cat.h"
@@ -76,7 +71,8 @@ bool BatchStream::next() {
 
     // copy the smaller of: elements left to fulfill the request,
     // or elements left in the file buffer.
-    csize = std::min(mBatchSize - batchPos, static_cast<int>(mDims.n()) - mFileBatchPos);
+    csize = std::min(mBatchSize - batchPos,
+                     static_cast<int>(mDims.n()) - mFileBatchPos);
     std::copy_n(getFileBatch() + mFileBatchPos * mImageSize, csize * mImageSize,
                 getBatch() + batchPos * mImageSize);
   }

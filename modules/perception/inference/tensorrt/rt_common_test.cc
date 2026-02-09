@@ -25,18 +25,20 @@ namespace inference {
 TEST(RTReshapeDimsTest, test) {
   nvinfer1::DimsCHW dims;
   nvinfer1::DimsCHW input_dims;
-  dims.d[2] = -1;
-  dims.d[1] = 0;
-  dims.d[0] = 3;
 
-  input_dims.d[0] = 2;
-  input_dims.d[1] = 3;
-  input_dims.d[2] = 4;
+  dims[2] = -1;
+  dims[1] = 0;
+  dims[0] = 3;
+
+  input_dims[0] = 2;
+  input_dims[1] = 3;
+  input_dims[2] = 4;
 
   auto outdims = apollo::perception::inference::ReshapeDims(dims, input_dims);
-  EXPECT_EQ(outdims.d[0], 2);
-  EXPECT_EQ(outdims.d[1], 3);
-  EXPECT_EQ(outdims.d[2], 2);
+
+  EXPECT_EQ(outdims[0], 2);
+  EXPECT_EQ(outdims[1], 3);
+  EXPECT_EQ(outdims[2], 2);
 }
 
 TEST(RTModifyPoolingParamTest, test) {

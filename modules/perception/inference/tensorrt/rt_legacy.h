@@ -17,60 +17,41 @@
 
 #pragma once
 
-#include <NvInfer.h>
-#include <NvInferVersion.h>
-
-#include <cstdint>
+#include "NvInferRuntime.h"
 
 namespace nvinfer1 {
-
 #if NV_TENSORRT_MAJOR >= 10
 using TRTDim_t = int64_t;
 #else
 using TRTDim_t = int32_t;
 #endif
 
-struct DimsNCHW {
-  Dims dims;
-
-  DimsNCHW() {
-    dims.nbDims = 4;
-    for (int i = 0; i < 4; ++i) dims.d[i] = 0;
-  }
-
+struct DimsNCHW : public Dims {
+  DimsNCHW() { this->nbDims = 4; }
   DimsNCHW(TRTDim_t n, TRTDim_t c, TRTDim_t h, TRTDim_t w) {
-    dims.nbDims = 4;
-    dims.d[0] = n;
-    dims.d[1] = c;
-    dims.d[2] = h;
-    dims.d[3] = w;
+    this->nbDims = 4;
+    this->d[0] = n;
+    this->d[1] = c;
+    this->d[2] = h;
+    this->d[3] = w;
   }
-
-  operator const Dims&() const { return dims; }
-  operator Dims&() { return dims; }
-
-  TRTDim_t& n() { return dims.d[0]; }
-  TRTDim_t& c() { return dims.d[1]; }
-  TRTDim_t& h() { return dims.d[2]; }
-  TRTDim_t& w() { return dims.d[3]; }
+  TRTDim_t n() const { return this->d[0]; }
+  TRTDim_t c() const { return this->d[1]; }
+  TRTDim_t h() const { return this->d[2]; }
+  TRTDim_t w() const { return this->d[3]; }
 };
 
-struct DimsCHW {
-  Dims dims;
-
-  DimsCHW() {
-    dims.nbDims = 3;
-    dims.d[0] = dims.d[1] = dims.d[2] = 0;
-  }
-
+struct DimsCHW : public Dims {
+  DimsCHW() { this->nbDims = 3; }
   DimsCHW(TRTDim_t c, TRTDim_t h, TRTDim_t w) {
-    dims.nbDims = 3;
-    dims.d[0] = c;
-    dims.d[1] = h;
-    dims.d[2] = w;
+    this->nbDims = 3;
+    this->d[0] = c;
+    this->d[1] = h;
+    this->d[2] = w;
   }
-
-  operator const Dims&() const { return dims; }
+  TRTDim_t c() const { return this->d[0]; }
+  TRTDim_t h() const { return this->d[1]; }
+  TRTDim_t w() const { return this->d[2]; }
 };
 
 }  // namespace nvinfer1

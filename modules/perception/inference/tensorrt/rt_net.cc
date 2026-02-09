@@ -13,16 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
+#include "modules/perception/inference/tensorrt/rt_net.h"
+
 #include <NvInferPlugin.h>
 #include <NvInferRuntime.h>
 #include <NvInferRuntimeCommon.h>
 #include <NvInferVersion.h>
-
-#ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR == 8
-#include "modules/perception/inference/tensorrt/rt_legacy.h"
-#endif
-#endif
 #include <sys/stat.h>
 
 #include <algorithm>
@@ -47,7 +43,6 @@
 #include "modules/perception/inference/tensorrt/plugins/slice_plugin.h"
 #include "modules/perception/inference/tensorrt/plugins/softmax_plugin.h"
 #include "modules/perception/inference/tensorrt/rt_common.h"
-#include "modules/perception/inference/tensorrt/rt_net.h"
 
 class RTLogger : public nvinfer1::ILogger {
   void log(Severity severity, const char *msg) noexcept override {
