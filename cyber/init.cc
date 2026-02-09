@@ -82,7 +82,13 @@ void InitLogger(const char* binary_name) {
   async_logger->Start();
 }
 
-void StopLogger() { delete async_logger; }
+void StopLogger() {
+  if (async_logger) {
+    // only stop the async logger, do not delete it to avoid dangling pointer
+    // in glog static object destructor
+    async_logger->Stop();
+  }
+}
 
 }  // namespace
 
