@@ -1,0 +1,17 @@
+# config/default.yaml
+topics:
+  control: "/apollo/control"
+  chassis: "/apollo/chassis"
+
+limits:
+  max_speed_mps: 20.0
+  max_throttle_pct: 100.0
+  max_brake_pct: 100.0
+  max_steering_pct: 100.0
+  emergency_brake_val: 60.0
+
+thresholds:
+  latency_ms: 200
+  steering_steady_error: 2.0
+  speed_steady_error: 0.5
+  chassis_wait_sec: 5.0
