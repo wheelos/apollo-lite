@@ -35,7 +35,11 @@ def test_l2_throttle_linearity(runner):
                     )
                 time.sleep(0.01)
 
-            actual = runner.get_latest_chassis().throttle_percentage
+            chassis = runner.get_latest_chassis()
+            if not chassis:
+                return fail("No chassis feedback")
+
+            actual = chassis.throttle_percentage
             if abs(actual - throttle) > 3.0:
                 return fail(f"Linearity error at {throttle}%")
 
