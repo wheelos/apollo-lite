@@ -228,7 +228,7 @@ class TestRunner:
             self.ui.log("Sequence aborted due to ESTOP.", "RED")
         else:
             self.ui.log("All tests completed.", "GREEN")
-            self.ui.log("Press any key to exit.", "CYAN")
+            self.ui.log("Press [Enter] to exit.", "CYAN")
             self.ui.wait_for_enter()
 
     def cleanup(self):
