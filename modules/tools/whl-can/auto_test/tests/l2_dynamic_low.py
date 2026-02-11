@@ -247,8 +247,16 @@ def test_l2_mode_protection(runner):
     runner.update_command(cmd)
     time.sleep(2.0)
 
-    final_gear = runner.get_latest_chassis().gear_location
+    chassis = runner.get_latest_chassis()
+    if chassis is None:
+        # Cleanup before failing to keep runner in a safe state
+        cmd.speed = 0
+        cmd.brake = 50.0
+        cmd.gear_location = chassis_pb2.Chassis.GEAR_NEUTRAL
+        runner.update_command(cmd)
+        return fail("No chassis feedback available")
 
+    final_gear = chassis.gear_location
     # Cleanup
     cmd.speed = 0
     cmd.brake = 50.0
