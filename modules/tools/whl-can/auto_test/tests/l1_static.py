@@ -161,7 +161,7 @@ def test_l1_static_brake_consistency(runner):
             diff = abs(actual - target)
 
             # 3. Verify consistency
-            runner.ui.log(f"  -> Feedback: {actual:.1f}% (Diff: {diff:.1f}%)", "WHITE")
+            runner.ui.log(f"  -> Feedback: {actual:.1f}% (Diff: {diff:.1f}%)", "CYAN")
 
             if diff > tolerance:
                 return fail(f"Mismatch at {target}%: Cmd={target}, Act={actual:.1f}")
