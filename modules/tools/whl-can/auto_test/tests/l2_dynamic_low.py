@@ -195,28 +195,33 @@ def test_l2_gear_protection(runner):
     cmd.speed = 1.5
     runner.update_command(cmd)
 
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis().speed_mps > 1.0, 5.0, "Speed > 1m/s"
-    ):
-        return fail("Could not build speed")
+    try:
+        if not runner.wait_for_condition(
+            lambda: runner.get_latest_chassis().speed_mps > 1.0, 5.0, "Speed > 1m/s"
+        ):
+            return fail("Could not build speed")
 
-    # 2. Try Reverse
-    runner.ui.log("Attempting Shift to REVERSE...", "YELLOW")
-    cmd.gear_location = chassis_pb2.Chassis.GEAR_REVERSE
-    runner.update_command(cmd)
-    time.sleep(2.0)
+        # 2. Try Reverse
+        runner.ui.log("Attempting Shift to REVERSE...", "YELLOW")
+        cmd.gear_location = chassis_pb2.Chassis.GEAR_REVERSE
+        runner.update_command(cmd)
+        time.sleep(2.0)
 
-    final_gear = runner.get_latest_chassis().gear_location
+        chassis = runner.get_latest_chassis()
+        if not chassis:
+            return fail("No chassis feedback")
 
-    # Stop
-    cmd.speed = 0
-    cmd.brake = 50.0
-    cmd.gear_location = chassis_pb2.Chassis.GEAR_NEUTRAL
-    runner.update_command(cmd)
+        final_gear = chassis.gear_location
 
-    if final_gear == chassis_pb2.Chassis.GEAR_REVERSE:
-        return fail("Safety Failure: Shifted to R while moving!")
-    return success("Gear Protection Active")
+        if final_gear == chassis_pb2.Chassis.GEAR_REVERSE:
+            return fail("Safety Failure: Shifted to R while moving!")
+        return success("Gear Protection Active")
+    finally:
+        # Stop
+        cmd.speed = 0
+        cmd.brake = 50.0
+        cmd.gear_location = chassis_pb2.Chassis.GEAR_NEUTRAL
+        runner.update_command(cmd)
 
 
 def test_l2_mode_protection(runner):
