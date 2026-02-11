@@ -124,8 +124,9 @@ class TestRunner:
             try:
                 if condition_fn():
                     return True
-            except Exception:
-                pass
+            except Exception as exc:
+                # Log and continue polling so transient condition errors don't abort the test.
+                logging.exception("Error while evaluating wait_for_condition '%s': %s", desc, exc)
             time.sleep(0.01)
         self.ui.log(f"Timeout: {desc}", "YELLOW")
         return False
