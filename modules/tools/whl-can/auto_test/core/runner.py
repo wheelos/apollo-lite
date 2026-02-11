@@ -1,7 +1,7 @@
 import threading
 import time
 import logging
-from typing import Optional, List, Dict, Callable
+from typing import Optional, Callable
 
 from cyber.python.cyber_py3 import cyber
 from modules.common_msgs.control_msgs import control_cmd_pb2
