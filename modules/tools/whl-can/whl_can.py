@@ -30,6 +30,7 @@ STEERING_MIN, STEERING_MAX = -100.0, 100.0
 THROTTLE_MIN, THROTTLE_MAX = 0.0, 100.0
 BRAKE_MIN, BRAKE_MAX = 0.0, 100.0
 STEERING_RATE_MIN, STEERING_RATE_MAX = -6.28, 6.28
+ACCEL_MIN, ACCEL_MAX = -5.0, 5.0
 
 SPEED_DELTA = 0.1
 STEERING_DELTA = 1
@@ -37,6 +38,11 @@ THROTTLE_DELTA = 2
 STEERING_RATE_DELTA = 0.1
 BRAKE_DELTA = 1
 TURN_SIGNAL_THRESHOLD_DELTA = 1.0
+ACCEL_DELTA = 0.1
+
+CONTROL_MODE_SPEED = "SPEED"
+CONTROL_MODE_THROTTLE = "THROTTLE"
+CONTROL_MODE_ACCEL = "ACCEL"
 
 
 class KeyboardController:
@@ -45,14 +51,17 @@ class KeyboardController:
     Linux terminal environments.
 
     Listens for key presses in non-blocking mode:
-      - w: Forward (accelerate)
-      - s: Backward (decelerate)
+      - w: Increase target (speed/throttle/accel based on mode)
+      - s: Decrease target (speed/throttle/accel based on mode)
       - a: Turn left (increase steering angle)
       - d: Turn right (decrease steering angle)
+      - 1/2/3: Switch control mode (speed/throttle/accel)
       - m: Change gear (loop through P, R, N, D)
       - b: Increase brake
       - B: Decrease brake
       - p: Toggle Electronic Parking Brake (EPB)
+      - E: Toggle auto-drive (pad-only clean message)
+      - ?: Toggle extended help
       - q: Exit the program
     """
 
@@ -68,6 +77,7 @@ class KeyboardController:
         self.control_cmd_msg = control_cmd_pb2.ControlCommand()
         self.speed = 0
         self.throttle = 0
+        self.acceleration = 0.0
         self.steering = 0.0
         self.steering_rate = 0.0
         self.turn_signal_threshold = 0.0
@@ -86,19 +96,23 @@ class KeyboardController:
         self.brake = 0
         self.brake_delta = brake_delta
         self.epb = 0
-        self.engage = True
+        self.engage = False
+        self.control_mode = CONTROL_MODE_THROTTLE
+        self.pad_only_pending = True
+        self.show_extended_help = False
         self.lock = threading.Lock()
         self.logger = logging.getLogger(__name__)
 
-        self.help_text_lines = [
-            "Key instructions:",
-            "  E: Toggle auto-drive mode          A/D: Increase/Decrease steering rate",
-            "  w/s: Increase/Decrease speed       a/d: Turn left/right",
-            "  m: Change gear                     b/B: Brake +/-",
-            "  p: Toggle Electronic Parking Brake (EPB)  o/O: Turn signal threshold +/-",
-            "  h/l/k/e: Toggle Horn/Low Beam/High Beam/Emergency Light",
-            "  [/]/\\/=: Turn Signal Left/Right/Off/Hazard",
-            "  Space: Emergency stop              q: Quit program     ",
+        self.base_help_lines = [
+            "Keys: E engage/disengage | Space emergency stop | q quit",
+            "w/s: inc/dec target | a/d: steer | b/B: brake +/-",
+            "1/2/3: mode Speed/Throttle/Accel | m: gear | p: EPB",
+            "?: toggle extra keys",
+        ]
+        self.ext_help_lines = [
+            "Extra: A/D steering rate +/- | o/O turn-signal threshold +/-",
+            "Extra: h/l/k/e horn/low/high/emergency lights",
+            "Extra: [/] left/right, \\ off, = hazard",
         ]
 
         # Key mapping: map keys using ASCII codes
@@ -108,6 +122,9 @@ class KeyboardController:
             ord("s"): self.move_backward,
             ord("a"): self.turn_left,
             ord("d"): self.turn_right,
+            ord("1"): self.set_mode_speed,
+            ord("2"): self.set_mode_throttle,
+            ord("3"): self.set_mode_accel,
             ord("m"): self.loop_gear,
             ord("b"): self.brake_inc,
             ord("B"): self.brake_dec,
@@ -126,6 +143,7 @@ class KeyboardController:
             ord("]"): lambda: self.set_turn_signal(2, "RIGHT"),
             ord("\\"): lambda: self.set_turn_signal(0, "NONE"),
             ord("="): lambda: self.set_turn_signal(3, "HAZARD"),
+            ord("?"): self.toggle_help,
         }
 
     def get_control_cmd(self):
@@ -137,20 +155,16 @@ class KeyboardController:
         """Starts keyboard listening, sets curses to non-blocking mode and starts the listening thread."""
         self.screen.nodelay(True)  # Set non-blocking input
         self.screen.keypad(True)
-        self.screen.addstr(0, 0,
-                           "Keyboard control started, press 'q' to exit.    ")
-        for idx, line in enumerate(self.help_text_lines):
-            self.screen.addstr(16 + idx, 0, line)
-        self.thread = threading.Thread(target=self._listen_keyboard,
-                                       daemon=True)
+        self.screen.addstr(0, 0, "Keyboard control started, press 'q' to exit.    ")
+        self.render_help()
+        self.thread = threading.Thread(target=self._listen_keyboard, daemon=True)
         self.thread.start()
 
     def stop(self):
         """Stops keyboard listening."""
         with self.lock:
             self.running = False
-        self.screen.addstr(1, 0,
-                           "Keyboard control stopped.                    ")
+        self.screen.addstr(1, 0, "Keyboard control stopped.                    ")
 
     def _listen_keyboard(self):
         """Loop reads keyboard input and calls the corresponding control method based on the key pressed."""
@@ -168,7 +182,7 @@ class KeyboardController:
                 elif key in self.control_map:
                     with self.lock:
                         self.control_map[key]()
-                self.fill_control_cmd()
+            self.fill_control_cmd()
             self.fill_control_cmd_header()
             time.sleep(0.05)
 
@@ -176,23 +190,35 @@ class KeyboardController:
         """Fills the header of the control command message."""
         with self.lock:
             self.control_cmd_msg.header.timestamp_sec = (
-                datetime.datetime.now().timestamp())
+                datetime.datetime.now().timestamp()
+            )
             self.control_cmd_msg.header.module_name = "can_easy"
             self.control_cmd_msg.header.sequence_num += 1
 
     def fill_control_cmd(self):
         """Updates the current speed and steering to the protobuf message."""
         with self.lock:
-            # TODO(All): start auto-drive via keyboard input
-            if self.engage:
-                self.control_cmd_msg.pad_msg.driving_mode = 1
-                self.control_cmd_msg.pad_msg.action = 1
+            if self.pad_only_pending:
+                self.control_cmd_msg = control_cmd_pb2.ControlCommand()
+                self.control_cmd_msg.pad_msg.driving_mode = 1 if self.engage else 0
+                self.control_cmd_msg.pad_msg.action = 1 if self.engage else 0
+                self.pad_only_pending = False
+                return
+
+            # Control command should not carry pad_msg for safety
+            self.control_cmd_msg.ClearField("pad_msg")
+
+            # set control command via control mode (avoid mixed longitudinal fields)
+            self.control_cmd_msg.ClearField("speed")
+            self.control_cmd_msg.ClearField("throttle")
+            self.control_cmd_msg.ClearField("acceleration")
+            if self.control_mode == CONTROL_MODE_SPEED:
+                self.control_cmd_msg.speed = self.speed
+            elif self.control_mode == CONTROL_MODE_THROTTLE:
+                self.control_cmd_msg.throttle = self.throttle
             else:
-                self.control_cmd_msg.pad_msg.driving_mode = 0
-                self.control_cmd_msg.pad_msg.action = 0
-            # TODO(All): set control command via control mode
-            self.control_cmd_msg.throttle = self.throttle
-            self.control_cmd_msg.speed = self.speed
+                self.control_cmd_msg.acceleration = self.acceleration
+
             self.control_cmd_msg.steering_target = self.steering
             self.control_cmd_msg.steering_rate = self.steering_rate
             self.control_cmd_msg.gear_location = self.gear
@@ -221,46 +247,52 @@ class KeyboardController:
                     self.control_cmd_msg.signal.turn_signal = 0
 
     def move_forward(self):
-        self.speed = min(self.speed + self.speed_delta, SPEED_MAX)
-        self.throttle = min(self.throttle + THROTTLE_DELTA, THROTTLE_MAX)
-        self.screen.addstr(
-            2, 0, f"speed: {self.speed:.2f} [{SPEED_MIN}, {SPEED_MAX}], "
-            f"throttle: {self.throttle:.2f} [0, 100]       ")
+        if self.control_mode == CONTROL_MODE_SPEED:
+            self.speed = min(self.speed + self.speed_delta, SPEED_MAX)
+        elif self.control_mode == CONTROL_MODE_THROTTLE:
+            self.throttle = min(self.throttle + THROTTLE_DELTA, THROTTLE_MAX)
+        else:
+            self.acceleration = min(self.acceleration + ACCEL_DELTA, ACCEL_MAX)
+        self.update_longitudinal_status()
 
     def move_backward(self):
-        self.speed = max(self.speed - self.speed_delta, SPEED_MIN)
-        self.throttle = max(self.throttle - THROTTLE_DELTA, THROTTLE_MIN)
-        self.screen.addstr(
-            2, 0, f"speed: {self.speed:.2f} [{SPEED_MIN}, {SPEED_MAX}], "
-            f"throttle: {self.throttle:.2f} [0, 100]       ")
+        if self.control_mode == CONTROL_MODE_SPEED:
+            self.speed = max(self.speed - self.speed_delta, SPEED_MIN)
+        elif self.control_mode == CONTROL_MODE_THROTTLE:
+            self.throttle = max(self.throttle - THROTTLE_DELTA, THROTTLE_MIN)
+        else:
+            self.acceleration = max(self.acceleration - ACCEL_DELTA, ACCEL_MIN)
+        self.update_longitudinal_status()
 
     def turn_left(self):
         self.steering = min(self.steering + self.steering_delta, STEERING_MAX)
 
         self.screen.addstr(
-            3, 0,
-            f"steer: {self.steering:.2f} [{STEERING_MIN}, {STEERING_MAX}]    ")
+            3, 0, f"steer: {self.steering:.2f} [{STEERING_MIN}, {STEERING_MAX}]    "
+        )
 
     def turn_right(self):
         self.steering = max(self.steering - self.steering_delta, STEERING_MIN)
         self.screen.addstr(
-            3, 0,
-            f"steer: {self.steering:.2f} [{STEERING_MIN}, {STEERING_MAX}]    ")
+            3, 0, f"steer: {self.steering:.2f} [{STEERING_MIN}, {STEERING_MAX}]    "
+        )
 
     def brake_inc(self):
         self.brake = min(self.brake + self.brake_delta, BRAKE_MAX)
         self.screen.addstr(
-            5, 0, f"brake: {self.brake:.2f} [{BRAKE_MIN}, {BRAKE_MAX}]    ")
+            5, 0, f"brake: {self.brake:.2f} [{BRAKE_MIN}, {BRAKE_MAX}]    "
+        )
 
     def brake_dec(self):
         self.brake = max(self.brake - self.brake_delta, BRAKE_MIN)
         self.screen.addstr(
-            5, 0, f"brake: {self.brake:.2f} [{BRAKE_MIN}, {BRAKE_MAX}]    ")
+            5, 0, f"brake: {self.brake:.2f} [{BRAKE_MIN}, {BRAKE_MAX}]    "
+        )
 
     def loop_gear(self):
         self.gear_index = (self.gear_index + 1) % len(self.gear_list)
         self.gear = self.gear_list[self.gear_index]
-        self.screen.addstr(4, 0, f"gear:  {self.gear_str[self.gear_index]}")
+        self.screen.addstr(6, 0, f"gear:  {self.gear_str[self.gear_index]}")
 
     def toggle_epb(self):
         """Toggle Electronic Parking Brake (EPB) state."""
@@ -268,73 +300,110 @@ class KeyboardController:
             self.epb = 1
         else:
             self.epb = 0
-        self.screen.addstr(6, 0, f"epb:   {self.epb}")
+        self.screen.addstr(7, 0, f"epb:   {self.epb}")
 
     def turn_signal_threshold_inc(self):
         """Increase turn signal threshold"""
         self.turn_signal_threshold = min(
-            self.turn_signal_threshold + TURN_SIGNAL_THRESHOLD_DELTA,
-            STEERING_MAX)
+            self.turn_signal_threshold + TURN_SIGNAL_THRESHOLD_DELTA, STEERING_MAX
+        )
         self.screen.addstr(
-            7, 0,
-            f"turn signal threshold: {self.turn_signal_threshold:.2f}    ")
+            9, 0, f"turn signal threshold: {self.turn_signal_threshold:.2f}    "
+        )
 
     def turn_signal_threshold_dec(self):
         """Decrease turn signal threshold"""
         self.turn_signal_threshold = max(
-            self.turn_signal_threshold - TURN_SIGNAL_THRESHOLD_DELTA, 0.0)
+            self.turn_signal_threshold - TURN_SIGNAL_THRESHOLD_DELTA, 0.0
+        )
         self.screen.addstr(
-            7, 0,
-            f"turn signal threshold: {self.turn_signal_threshold:.2f}        ")
+            9, 0, f"turn signal threshold: {self.turn_signal_threshold:.2f}        "
+        )
 
     def toggle_horn(self):
         self.horn = not self.horn
-        self.screen.addstr(8, 0,
-                           f"Horn:        {'ON' if self.horn else 'OFF'}  ")
+        self.screen.addstr(10, 0, f"Horn:        {'ON' if self.horn else 'OFF'}  ")
 
     def toggle_low_beam(self):
         self.low_beam = not self.low_beam
         self.screen.addstr(
-            9, 0, f"Low Beam:          {'ON' if self.low_beam else 'OFF'}  ")
+            11, 0, f"Low Beam:          {'ON' if self.low_beam else 'OFF'}  "
+        )
 
     def toggle_high_beam(self):
         self.high_beam = not self.high_beam
         self.screen.addstr(
-            10, 0, f"High Beam:         {'ON' if self.high_beam else 'OFF'}  ")
+            12, 0, f"High Beam:         {'ON' if self.high_beam else 'OFF'}  "
+        )
 
     def toggle_emergency_light(self):
         self.emergency_light = not self.emergency_light
         self.screen.addstr(
-            11, 0,
-            f"Emergency Light:   {'ON' if self.emergency_light else 'OFF'}  ")
+            13, 0, f"Emergency Light:   {'ON' if self.emergency_light else 'OFF'}  "
+        )
 
     def set_turn_signal(self, signal_val, signal_str):
         self.turn_signal = signal_val
-        self.screen.addstr(12, 0, f"Turn Signal: {signal_str}      ")
+        self.screen.addstr(14, 0, f"Turn Signal: {signal_str}      ")
 
     def steering_rate_inc(self):
-        self.steering_rate = min(self.steering_rate + STEERING_RATE_DELTA,
-                                 STEERING_RATE_MAX)
-        self.screen.addstr(13, 0,
-                           f"steering rate: {self.steering_rate:.2f}       ")
+        self.steering_rate = min(
+            self.steering_rate + STEERING_RATE_DELTA, STEERING_RATE_MAX
+        )
+        self.screen.addstr(4, 0, f"steering rate: {self.steering_rate:.2f}       ")
 
     def steering_rate_dec(self):
-        self.steering_rate = max(self.steering_rate - STEERING_RATE_DELTA,
-                                 STEERING_RATE_MIN)
-        self.screen.addstr(13, 0,
-                           f"steering rate: {self.steering_rate:.2f}       ")
+        self.steering_rate = max(
+            self.steering_rate - STEERING_RATE_DELTA, STEERING_RATE_MIN
+        )
+        self.screen.addstr(4, 0, f"steering rate: {self.steering_rate:.2f}       ")
 
     def toggle_engage(self):
         """Toggle auto-drive state."""
         self.engage = not self.engage
-
-        self.screen.addstr(14, 0, f"Auto-drive: {self.engage}              ")
+        self.pad_only_pending = True
+        self.screen.addstr(8, 0, f"Auto-drive: {self.engage}              ")
 
     def emergency_stop(self):
         self.speed = 0
         self.throttle = 0
+        self.acceleration = 0
         self.brake = BRAKE_MAX
         self.screen.addstr(15, 0, "Emergency Stop activated!       ")
+
+    def set_mode_speed(self):
+        self.control_mode = CONTROL_MODE_SPEED
+        self.update_longitudinal_status()
+
+    def set_mode_throttle(self):
+        self.control_mode = CONTROL_MODE_THROTTLE
+        self.update_longitudinal_status()
+
+    def set_mode_accel(self):
+        self.control_mode = CONTROL_MODE_ACCEL
+        self.update_longitudinal_status()
+
+    def update_longitudinal_status(self):
+        self.screen.addstr(
+            2,
+            0,
+            f"mode: {self.control_mode:<8} | speed: {self.speed:.2f} m/s | "
+            f"throttle: {self.throttle:.2f}% | accel: {self.acceleration:.2f} m/s^2     ",
+        )
+
+    def toggle_help(self):
+        self.show_extended_help = not self.show_extended_help
+        self.render_help()
+
+    def render_help(self):
+        help_start = 16
+        help_lines = list(self.base_help_lines)
+        if self.show_extended_help:
+            help_lines.extend(self.ext_help_lines)
+        for idx in range(8):
+            self.screen.addstr(help_start + idx, 0, " " * 78)
+        for idx, line in enumerate(help_lines):
+            self.screen.addstr(help_start + idx, 0, line)
 
 
 def main(screen):
@@ -345,28 +414,30 @@ def main(screen):
     writer = node.create_writer(CONTROL_TOPIC, control_cmd_pb2.ControlCommand)
     # Check if the terminal window is large enough
     max_y, max_x = screen.getmaxyx()
-    if max_y < 20:
+    if max_y < 24:
         screen.addstr(0, 0, "Error: Terminal window is too small.")
         screen.addstr(
-            1, 0,
-            "Please resize your terminal to at least 20 rows and try again.")
+            1, 0, "Please resize your terminal to at least 24 rows and try again."
+        )
         screen.refresh()
         time.sleep(3)
         return
     # Pre-print the fixed format lines
-    screen.addstr(2, 0, "speed: 0.00, throttle: 0.0    ")
-    screen.addstr(3, 0, "steer_percentage: 0.00    ")
-    screen.addstr(4, 0, "gear:  P")
+    screen.addstr(
+        2, 0, "mode: SPEED   | speed: 0.00 m/s | throttle: 0.00% | accel: 0.00 m/s^2"
+    )
+    screen.addstr(3, 0, "steer: 0.00 [-100.0, 100.0]    ")
+    screen.addstr(4, 0, "steering rate: 0.00       ")
     screen.addstr(5, 0, "brake: 0.00    ")
-    screen.addstr(6, 0, "epb:   0       ")
-    screen.addstr(7, 0, "turn signal threshold:   0")
-    screen.addstr(8, 0, "Horn:        OFF")
-    screen.addstr(9, 0, "Low Beam:          OFF")
-    screen.addstr(10, 0, "High Beam:         OFF")
-    screen.addstr(11, 0, "Emergency Light:   OFF")
-    screen.addstr(12, 0, "Turn Signal:   NONE")
-    screen.addstr(13, 0, "steering rate: 0.00       ")
-    screen.addstr(14, 0, "Auto-drive: True              ")
+    screen.addstr(6, 0, "gear:  P")
+    screen.addstr(7, 0, "epb:   0       ")
+    screen.addstr(8, 0, "Auto-drive: True              ")
+    screen.addstr(9, 0, "turn signal threshold:   0")
+    screen.addstr(10, 0, "Horn:        OFF")
+    screen.addstr(11, 0, "Low Beam:          OFF")
+    screen.addstr(12, 0, "High Beam:         OFF")
+    screen.addstr(13, 0, "Emergency Light:   OFF")
+    screen.addstr(14, 0, "Turn Signal:   NONE")
     controller = KeyboardController(screen)
     controller.start()
 
