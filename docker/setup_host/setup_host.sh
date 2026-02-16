@@ -113,3 +113,9 @@ echo ""
 
 echo "--- 🎉 Congratulations! Autonomous Driving Host Environment Configuration is fully complete. ---"
 echo "You might need to reboot your system or log out/in for all changes to take full effect."
+
+# Mark host setup completion
+sudo touch /etc/wheelos_setup_host.done
+
+# Install whl command
+sudo ln -sf "${APOLLO_ROOT_DIR}/docker/scripts/whl.sh" /usr/local/bin/whl

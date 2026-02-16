@@ -1,6 +1,6 @@
 services:
   core:
-    image: ${WHEELOS_IMAGE}
+    image: ${APOLLO_IMAGE}
     restart: "no"
     tty: true
     stdin_open: true

@@ -463,12 +463,12 @@ install_autostart_service() {
       return 1
   fi
 
-  # Ensure the apollo wrapper script is executable
-  if [[ -f "${APOLLO_ROOT_DIR}/apollo" ]]; then
-      chmod +x "${APOLLO_ROOT_DIR}/apollo"
-  else
-      warning "Wrapper script '${APOLLO_ROOT_DIR}/apollo' not found. Service may fail to start."
-  fi
+    # Ensure the whl script is executable
+    if [[ -f "${APOLLO_ROOT_DIR}/docker/scripts/whl.sh" ]]; then
+      chmod +x "${APOLLO_ROOT_DIR}/docker/scripts/whl.sh"
+    else
+      warning "Script '${APOLLO_ROOT_DIR}/docker/scripts/whl.sh' not found. Service may fail to start."
+    fi
 
   # Systemd Reload
   info "Reloading systemd daemon..."

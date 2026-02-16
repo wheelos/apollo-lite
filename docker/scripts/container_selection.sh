@@ -2,7 +2,7 @@
 
 # ----- Constants -----
 DOCKER_IMAGE_REPO=${DOCKER_IMAGE_REPO:="wheelos/apollo"}
-GEOLOC="cn"
+GEOLOC=${GEOLOC:="cn"}
 GEO_REGISTRY=""
 
 function geo_specific_config() {

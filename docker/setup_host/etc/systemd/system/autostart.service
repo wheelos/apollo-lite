@@ -15,6 +15,8 @@ WorkingDirectory=__APOLLO_ROOT_DIR__
 # --- Environment ---
 # Docker Compose sometimes needs HOME to find .docker/config.json or similar
 Environment="HOME=__HOME_DIR__"
+# Auto-start Dreamview inside the container on boot
+Environment="AUTO_BOOTSTRAP=true"
 # Ensure the script can find standard tools
 Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
@@ -27,10 +29,10 @@ RemainAfterExit=yes
 # --- Commands ---
 # We delegate the complexity of architecture detection and env generation to the 'whl' script.
 # The 'start' command in 'whl' script handles 'docker compose up -d'.
-ExecStart=/bin/bash __APOLLO_ROOT_DIR__/whl start
+ExecStart=/bin/bash __APOLLO_ROOT_DIR__/docker/scripts/whl.sh start
 
 # The 'stop' command handles 'docker compose down'.
-ExecStop=/bin/bash __APOLLO_ROOT_DIR__/whl stop
+ExecStop=/bin/bash __APOLLO_ROOT_DIR__/docker/scripts/whl.sh stop
 
 # --- Resiliency ---
 # If the whl script itself fails (exit code != 0), wait and retry.

@@ -15,11 +15,5 @@ services:
       - /lib/modules:/lib/modules:ro
       - /usr/src:/usr/src:ro
 
-    # GPU access
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    # GPU access (docker compose v2)
+    gpus: all
