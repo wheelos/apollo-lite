@@ -119,18 +119,9 @@ proto_library(
     name = "chassis_detail_proto",
     srcs = ["chassis_detail.proto"],
     deps = [
-        ":ch_proto",
         ":chassis_proto",
-        ":devkit_proto",
-        ":ge3_proto",
-        ":lexus_proto",
-        ":mk_mini_proto",
-        ":neolix_edu_proto",
-        ":transit_proto",
-        ":wey_proto",
-        ":yunle_proto",
-        ":zhongyun_proto",
         "//modules/common_msgs/basic_msgs:vehicle_id_proto",
+        "@com_google_protobuf//:any_proto",
     ],
 )
 

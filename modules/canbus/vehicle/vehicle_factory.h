@@ -38,21 +38,21 @@ namespace canbus {
  * @brief This class is a factory class that will generate different
  * vehicle factories based on the vehicle brand.
  */
-class VehicleFactory
+class VehicleFactoryRegistry
     : public common::util::Factory<apollo::common::VehicleBrand,
                                    AbstractVehicleFactory> {
  public:
-  /**
-   * @brief register supported vehicle factories.
-   */
-  void RegisterVehicleFactory();
+  static VehicleFactoryRegistry& Instance();
+};
 
+class VehicleFactory {
+ public:
   /**
    * @brief Creates an AbstractVehicleFactory object based on vehicle_parameter
    * @param vehicle_parameter is defined in vehicle_parameter.proto
    */
   std::unique_ptr<AbstractVehicleFactory> CreateVehicle(
-      const VehicleParameter &vehicle_parameter);
+      const VehicleParameter& vehicle_parameter);
 };
 
 }  // namespace canbus

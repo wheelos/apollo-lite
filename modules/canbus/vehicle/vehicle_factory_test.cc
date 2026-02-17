@@ -25,7 +25,7 @@ namespace canbus {
 
 class VehicleFactoryTest : public ::testing::Test {
  public:
-  virtual void SetUp() { factory_.RegisterVehicleFactory(); }
+  virtual void SetUp() {}
 
  protected:
   VehicleFactory factory_;

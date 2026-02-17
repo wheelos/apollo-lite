@@ -19,6 +19,7 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/lincoln/lincoln_controller.h"
 #include "modules/canbus/vehicle/lincoln/lincoln_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory_register_macro.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
@@ -37,3 +38,6 @@ LincolnVehicleFactory::CreateMessageManager() {
 
 }  // namespace canbus
 }  // namespace apollo
+
+CANBUS_REGISTER_VEHICLE_FACTORY(apollo::common::LINCOLN_MKZ,
+                                apollo::canbus::LincolnVehicleFactory)

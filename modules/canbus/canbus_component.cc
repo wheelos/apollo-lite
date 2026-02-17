@@ -58,7 +58,6 @@ bool CanbusComponent::Init() {
   AINFO << "Can client is successfully created.";
 
   VehicleFactory vehicle_factory;
-  vehicle_factory.RegisterVehicleFactory();
   auto vehicle_object =
       vehicle_factory.CreateVehicle(canbus_conf_.vehicle_parameter());
   if (!vehicle_object) {

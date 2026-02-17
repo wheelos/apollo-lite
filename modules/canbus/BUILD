@@ -15,6 +15,7 @@ cc_library(
         "//cyber",
         "//modules/canbus/common:canbus_common",
         "//modules/canbus/vehicle:vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_plugins",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "//modules/common/status",

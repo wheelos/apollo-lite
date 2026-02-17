@@ -19,6 +19,7 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/lexus/lexus_controller.h"
 #include "modules/canbus/vehicle/lexus/lexus_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory_register_macro.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
@@ -37,3 +38,6 @@ LexusVehicleFactory::CreateMessageManager() {
 
 }  // namespace canbus
 }  // namespace apollo
+
+CANBUS_REGISTER_VEHICLE_FACTORY(apollo::common::LEXUS,
+                                apollo::canbus::LexusVehicleFactory)

@@ -19,6 +19,7 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/mk_mini/mk_mini_controller.h"
 #include "modules/canbus/vehicle/mk_mini/mk_mini_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory_register_macro.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
@@ -37,3 +38,6 @@ Mk_miniVehicleFactory::CreateMessageManager() {
 
 }  // namespace canbus
 }  // namespace apollo
+
+CANBUS_REGISTER_VEHICLE_FACTORY(apollo::common::MK_MINI,
+                                apollo::canbus::Mk_miniVehicleFactory)

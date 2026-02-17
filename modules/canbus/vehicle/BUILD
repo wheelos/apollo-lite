@@ -44,6 +44,13 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         ":abstract_vehicle_factory",
+        "//modules/common/util:factory",
+    ],
+)
+
+cc_library(
+    name = "vehicle_plugins",
+    deps = [
         "//modules/canbus/vehicle/ch:ch_vehicle_factory",
         "//modules/canbus/vehicle/devkit:devkit_vehicle_factory",
         "//modules/canbus/vehicle/ge3:ge3_vehicle_factory",
@@ -56,8 +63,8 @@ cc_library(
         "//modules/canbus/vehicle/wey:wey_vehicle_factory",
         "//modules/canbus/vehicle/yunle:yunle_vehicle_factory",
         "//modules/canbus/vehicle/zhongyun:zhongyun_vehicle_factory",
-        "//modules/common/util:factory",
     ],
+    alwayslink = True,
 )
 
 cc_test(
@@ -66,6 +73,7 @@ cc_test(
     srcs = ["vehicle_factory_test.cc"],
     deps = [
         ":vehicle_factory",
+        ":vehicle_plugins",
         "@com_google_googletest//:gtest_main",
     ],
 )

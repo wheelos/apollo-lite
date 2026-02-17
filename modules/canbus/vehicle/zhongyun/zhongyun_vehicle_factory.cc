@@ -17,6 +17,7 @@
 #include "modules/canbus/vehicle/zhongyun/zhongyun_vehicle_factory.h"
 
 #include "cyber/common/log.h"
+#include "modules/canbus/vehicle/vehicle_factory_register_macro.h"
 #include "modules/canbus/vehicle/zhongyun/zhongyun_controller.h"
 #include "modules/canbus/vehicle/zhongyun/zhongyun_message_manager.h"
 #include "modules/common/util/util.h"
@@ -37,3 +38,6 @@ ZhongyunVehicleFactory::CreateMessageManager() {
 
 }  // namespace canbus
 }  // namespace apollo
+
+CANBUS_REGISTER_VEHICLE_FACTORY(apollo::common::ZHONGYUN,
+                                apollo::canbus::ZhongyunVehicleFactory)

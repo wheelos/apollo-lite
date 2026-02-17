@@ -15,6 +15,8 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/wey_vehicle_factory.h"
+
+#include "modules/canbus/vehicle/vehicle_factory_register_macro.h"
 #include "modules/canbus/vehicle/wey/wey_controller.h"
 #include "modules/canbus/vehicle/wey/wey_message_manager.h"
 #include "modules/common/util/util.h"
@@ -35,3 +37,6 @@ WeyVehicleFactory::CreateMessageManager() {
 
 }  // namespace canbus
 }  // namespace apollo
+
+CANBUS_REGISTER_VEHICLE_FACTORY(apollo::common::WEY,
+                                apollo::canbus::WeyVehicleFactory)

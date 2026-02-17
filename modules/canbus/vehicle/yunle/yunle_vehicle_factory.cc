@@ -16,9 +16,10 @@
 
 #include "modules/canbus/vehicle/yunle/yunle_vehicle_factory.h"
 
+#include "cyber/common/log.h"
+#include "modules/canbus/vehicle/vehicle_factory_register_macro.h"
 #include "modules/canbus/vehicle/yunle/yunle_controller.h"
 #include "modules/canbus/vehicle/yunle/yunle_message_manager.h"
-#include "cyber/common/log.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
@@ -32,8 +33,11 @@ YunleVehicleFactory::CreateVehicleController() {
 std::unique_ptr<MessageManager<::apollo::canbus::ChassisDetail>>
 YunleVehicleFactory::CreateMessageManager() {
   return std::unique_ptr<MessageManager<::apollo::canbus::ChassisDetail>>(
-	new yunle::YunleMessageManager());
+      new yunle::YunleMessageManager());
 }
 
 }  // namespace canbus
 }  // namespace apollo
+
+CANBUS_REGISTER_VEHICLE_FACTORY(apollo::common::YUNLE,
+                                apollo::canbus::YunleVehicleFactory)
