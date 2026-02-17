@@ -29,15 +29,16 @@ fi
 
 # --- Unified Version Control ---
 # Manage all Pytorch related component versions here
-PYTORCH_VERSION="2.6.0"
-TORCHVISION_VERSION="0.18.0" # Note: Version must be compatible with Pytorch
-TORCHAUDIO_VERSION="2.4.0"  # Note: Version must be compatible with Pytorch
+PYTORCH_VERSION="${PYTORCH_VERSION:-2.6.0}"
+TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.21.0}" # Note: Version must be compatible with Pytorch
+TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.6.0}"  # Note: Version must be compatible with Pytorch
+LIBTORCH_CHECKSUM_REQUIRED="${LIBTORCH_CHECKSUM_REQUIRED:-false}"
 
 # --- Environment Detection ---
 TARGET_ARCH="$(uname -m)"
 CUDA_SUPPORT=false
-CUDA_VERSION_STR="" # e.g., "11.8"
-CUDA_VERSION_TAG="" # e.g., "cu118"
+CUDA_VERSION_STR="" # e.g., "12.6"
+CUDA_VERSION_TAG="" # e.g., "cu126"
 
 if [ "${TARGET_ARCH}" = "x86_64" ] && command -v nvcc >/dev/null 2>&1; then
   # Get CUDA major and minor version (e.g., 11.8)
@@ -83,21 +84,67 @@ if torch.cuda.is_available():
 }
 
 # --- C++ LibTorch Installation ---
+function resolve_libtorch_checksum() {
+  local cuda_tag="$1"
+  local archive_name="$2"
+
+  if [ -n "${LIBTORCH_SHA256:-}" ]; then
+    echo "${LIBTORCH_SHA256}"
+    return 0
+  fi
+
+  case "${cuda_tag}" in
+    cpu)
+      echo "6887b5186e466a6d5ca044a51d083bb03c48cb1b4952059b7ca51a5398fbafcc"
+      ;;
+    cu118)
+      echo "36835d6c6315d741ad687632516f7bcd8efb6de3b57b61ca66b96f98e5ea30e8"
+      ;;
+    cu126)
+      echo ""
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+function download_libtorch_archive() {
+  local archive_name="$1"
+  local checksum="$2"
+  local download_url="$3"
+
+  if [ -n "${checksum}" ]; then
+    download_if_not_cached "${archive_name}" "${checksum}" "${download_url}"
+    return 0
+  fi
+
+  if [[ "${LIBTORCH_CHECKSUM_REQUIRED}" == "true" ]]; then
+    error "LIBTORCH_CHECKSUM_REQUIRED=true but no checksum found for ${archive_name}."
+    return 1
+  fi
+
+  warning "No checksum configured for ${archive_name}, downloading without checksum validation."
+  wget -q --tries=3 --timeout=30 --no-dns-cache -4 -N "${download_url}" -O "${archive_name}"
+}
+
 function install_libtorch_cpp() {
   info "Installing LibTorch C++ ${PYTORCH_VERSION}..."
   local BASE_URL="https://download.pytorch.org/libtorch"
   local ARCHIVE=""
   local URL=""
 
+  local CHECKSUM=""
+
   if [ "${TARGET_ARCH}" = "x86_64" ]; then
     if [ "$CUDA_SUPPORT" = true ]; then
       ARCHIVE="libtorch-cxx11-abi-shared-with-deps-${PYTORCH_VERSION}+${CUDA_VERSION_TAG}.zip"
-      CHECKSUM='36835d6c6315d741ad687632516f7bcd8efb6de3b57b61ca66b96f98e5ea30e8'
       URL="${BASE_URL}/${CUDA_VERSION_TAG}/${ARCHIVE}"
+      CHECKSUM="$(resolve_libtorch_checksum "${CUDA_VERSION_TAG}" "${ARCHIVE}")"
     else
       ARCHIVE="libtorch-cxx11-abi-shared-with-deps-${PYTORCH_VERSION}%2Bcpu.zip"
-      CHECKSUM="6887b5186e466a6d5ca044a51d083bb03c48cb1b4952059b7ca51a5398fbafcc"
       URL="${BASE_URL}/cpu/${ARCHIVE}"
+      CHECKSUM="$(resolve_libtorch_checksum "cpu" "${ARCHIVE}")"
     fi
   elif [ "${TARGET_ARCH}" = "aarch64" ]; then
     # WARNING: Official pre-compiled LibTorch C++ package is not available for aarch64.
@@ -154,7 +201,7 @@ function install_libtorch_cpp() {
   pushd "${DOWNLOAD_DIR}" > /dev/null
 
   info "Downloading from ${URL}"
-  download_if_not_cached "${ARCHIVE}" "${CHECKSUM}" "${URL}"
+  download_libtorch_archive "${ARCHIVE}" "${CHECKSUM}" "${URL}"
   unzip -q "${ARCHIVE}"
 
   # Install to system path
