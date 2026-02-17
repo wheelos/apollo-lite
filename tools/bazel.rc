@@ -15,9 +15,9 @@ common --color=yes
 common --enable_bzlmod
 
 # Prefer https://bcr.bazel.build/
-build --registry=https://bcr.bazel.build/
-build --registry=https://raw.githubusercontent.com/wheelos/bazel-central-registry/main
 build --registry=file:///apollo/data/bazel-central-registry
+build --registry=https://bcr.wheelos.cn/
+build --registry=https://bcr.bazel.build/
 
 # Set up a shared cache to avoid repeated pulls from remote libraries
 build --repository_cache=/var/cache/bazel/repo_cache
