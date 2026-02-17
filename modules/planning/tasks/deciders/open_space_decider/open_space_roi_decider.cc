@@ -29,6 +29,47 @@
 namespace apollo {
 namespace planning {
 
+namespace {
+
+bool GetParkingSpotCenterFromRouting(
+    const Frame &frame, apollo::common::math::Vec2d *parking_spot_center) {
+  const auto &routing_request = frame.local_view().routing->routing_request();
+  if (!routing_request.has_parking_info()) {
+    return false;
+  }
+  const auto &corner_point = routing_request.parking_info().corner_point();
+  if (corner_point.point_size() <= 0) {
+    return false;
+  }
+  double center_x = 0.0;
+  double center_y = 0.0;
+  for (const auto &point : corner_point.point()) {
+    center_x += point.x();
+    center_y += point.y();
+  }
+  center_x /= static_cast<double>(corner_point.point_size());
+  center_y /= static_cast<double>(corner_point.point_size());
+  parking_spot_center->set_x(center_x);
+  parking_spot_center->set_y(center_y);
+  return true;
+}
+
+apollo::common::math::Vec2d GetParkingSpotCenterFromMap(
+    const apollo::hdmap::ParkingSpaceInfoConstPtr &target_parking_spot) {
+  const auto &points = target_parking_spot->polygon().points();
+  double center_x = 0.0;
+  double center_y = 0.0;
+  for (const auto &point : points) {
+    center_x += point.x();
+    center_y += point.y();
+  }
+  center_x /= static_cast<double>(points.size());
+  center_y /= static_cast<double>(points.size());
+  return apollo::common::math::Vec2d(center_x, center_y);
+}
+
+}  // namespace
+
 using apollo::common::ErrorCode;
 using apollo::common::Status;
 using apollo::common::math::Box2d;
@@ -1299,52 +1340,47 @@ bool OpenSpaceRoiDecider::GetParkingSpot(Frame *const frame,
   }
   frame->mutable_open_space_info()->set_target_parking_lane(nearest_lane);
 
-  // Find parking spot by getting nearestlane
+  // Find parking spot directly by parking-space-id
   ParkingSpaceInfoConstPtr target_parking_spot = nullptr;
+  if (!GetTargetParkingSpotById(&target_parking_spot)) {
+    AERROR << "No such parking spot found in HDMap";
+    return false;
+  }
+
+  // Construct nearby path from nearest lane and its successors for ROI
+  // boundary generation.
   LaneSegment nearest_lanesegment =
       LaneSegment(nearest_lane, nearest_lane->accumulate_s().front(),
                   nearest_lane->accumulate_s().back());
   std::vector<LaneSegment> segments_vector;
-  int next_lanes_num = nearest_lane->lane().successor_id_size();
-  if (next_lanes_num != 0) {
-    for (int i = 0; i < next_lanes_num; ++i) {
-      auto next_lane_id = nearest_lane->lane().successor_id(i);
-      segments_vector.push_back(nearest_lanesegment);
-      auto next_lane = hdmap_->GetLaneById(next_lane_id);
-      LaneSegment next_lanesegment =
-          LaneSegment(next_lane, next_lane->accumulate_s().front(),
-                      next_lane->accumulate_s().back());
-      segments_vector.push_back(next_lanesegment);
-      size_t succeed_lanes_num = next_lane->lane().successor_id_size();
-      if (succeed_lanes_num != 0) {
-        for (size_t j = 0; j < succeed_lanes_num; j++) {
-          auto succeed_lane_id = next_lane->lane().successor_id(j);
-          auto succeed_lane = hdmap_->GetLaneById(succeed_lane_id);
-          LaneSegment succeed_lanesegment =
-              LaneSegment(succeed_lane, succeed_lane->accumulate_s().front(),
-                          succeed_lane->accumulate_s().back());
-          segments_vector.push_back(succeed_lanesegment);
-        }
-      }
-      *nearby_path = Path(segments_vector);
-      SearchTargetParkingSpotOnPath(*nearby_path, &target_parking_spot);
-      if (target_parking_spot != nullptr) {
-        break;
-      }
+  segments_vector.push_back(nearest_lanesegment);
+  const int next_lanes_num = nearest_lane->lane().successor_id_size();
+  for (int i = 0; i < next_lanes_num; ++i) {
+    auto next_lane_id = nearest_lane->lane().successor_id(i);
+    auto next_lane = hdmap_->GetLaneById(next_lane_id);
+    if (next_lane == nullptr) {
+      continue;
     }
-  } else {
-    segments_vector.push_back(nearest_lanesegment);
-    *nearby_path = Path(segments_vector);
-    SearchTargetParkingSpotOnPath(*nearby_path, &target_parking_spot);
+    LaneSegment next_lanesegment =
+        LaneSegment(next_lane, next_lane->accumulate_s().front(),
+                    next_lane->accumulate_s().back());
+    segments_vector.push_back(next_lanesegment);
+    const size_t succeed_lanes_num = next_lane->lane().successor_id_size();
+    for (size_t j = 0; j < succeed_lanes_num; ++j) {
+      auto succeed_lane_id = next_lane->lane().successor_id(j);
+      auto succeed_lane = hdmap_->GetLaneById(succeed_lane_id);
+      if (succeed_lane == nullptr) {
+        continue;
+      }
+      LaneSegment succeed_lanesegment =
+          LaneSegment(succeed_lane, succeed_lane->accumulate_s().front(),
+                      succeed_lane->accumulate_s().back());
+      segments_vector.push_back(succeed_lanesegment);
+    }
   }
+  *nearby_path = Path(segments_vector);
 
-  if (target_parking_spot == nullptr) {
-    AERROR << "No such parking spot found after searching all path forward "
-              "possible";
-    return false;
-  }
-
-  if (!CheckDistanceToParkingSpot(frame, *nearby_path, target_parking_spot)) {
+  if (!CheckDistanceToParkingSpot(frame, target_parking_spot)) {
     AERROR << "target parking spot found, but too far, distance larger than "
               "pre-defined distance";
     return false;
@@ -1437,49 +1473,33 @@ bool OpenSpaceRoiDecider::GetPullOverSpot(
   return true;
 }
 
-void OpenSpaceRoiDecider::SearchTargetParkingSpotOnPath(
-    const hdmap::Path &nearby_path,
+bool OpenSpaceRoiDecider::GetTargetParkingSpotById(
     ParkingSpaceInfoConstPtr *target_parking_spot) {
-  const auto &parking_space_overlaps = nearby_path.parking_space_overlaps();
-  for (const auto &parking_overlap : parking_space_overlaps) {
-    if (parking_overlap.object_id == target_parking_spot_id_) {
-      hdmap::Id id;
-      id.set_id(parking_overlap.object_id);
-      *target_parking_spot = hdmap_->GetParkingSpaceById(id);
-    }
-  }
+  hdmap::Id id;
+  id.set_id(target_parking_spot_id_);
+  *target_parking_spot = hdmap_->GetParkingSpaceById(id);
+  return *target_parking_spot != nullptr;
 }
 
 bool OpenSpaceRoiDecider::CheckDistanceToParkingSpot(
-    Frame *const frame, const hdmap::Path &nearby_path,
+    Frame *const frame,
     const hdmap::ParkingSpaceInfoConstPtr &target_parking_spot) {
-  const auto &routing_request = frame->local_view().routing->routing_request();
-  auto corner_point = routing_request.parking_info().corner_point();
-  Vec2d left_bottom_point = target_parking_spot->polygon().points().at(0);
-  Vec2d right_bottom_point = target_parking_spot->polygon().points().at(1);
-  left_bottom_point.set_x(corner_point.point().at(0).x());
-  left_bottom_point.set_y(corner_point.point().at(0).y());
-  right_bottom_point.set_x(corner_point.point().at(1).x());
-  right_bottom_point.set_y(corner_point.point().at(1).y());
-  double left_bottom_point_s = 0.0;
-  double left_bottom_point_l = 0.0;
-  double right_bottom_point_s = 0.0;
-  double right_bottom_point_l = 0.0;
-  double vehicle_point_s = 0.0;
-  double vehicle_point_l = 0.0;
-  nearby_path.GetNearestPoint(left_bottom_point, &left_bottom_point_s,
-                              &left_bottom_point_l);
-  nearby_path.GetNearestPoint(right_bottom_point, &right_bottom_point_s,
-                              &right_bottom_point_l);
-  Vec2d vehicle_vec(vehicle_state_.x(), vehicle_state_.y());
-  nearby_path.GetNearestPoint(vehicle_vec, &vehicle_point_s, &vehicle_point_l);
-  if (std::abs((left_bottom_point_s + right_bottom_point_s) / 2 -
-               vehicle_point_s) <
-      config_.open_space_roi_decider_config().parking_start_range()) {
-    return true;
-  } else {
+  if (target_parking_spot == nullptr ||
+      target_parking_spot->polygon().points().empty()) {
+    AERROR << "target parking spot is invalid";
     return false;
   }
+
+  Vec2d parking_spot_center;
+  if (!GetParkingSpotCenterFromRouting(*frame, &parking_spot_center)) {
+    parking_spot_center = GetParkingSpotCenterFromMap(target_parking_spot);
+  }
+
+  Vec2d vehicle_vec(vehicle_state_.x(), vehicle_state_.y());
+  const double distance_to_parking_spot =
+      vehicle_vec.DistanceTo(parking_spot_center);
+  return distance_to_parking_spot <
+         config_.open_space_roi_decider_config().parking_start_range();
 }
 
 bool OpenSpaceRoiDecider::FuseLineSegments(

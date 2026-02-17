@@ -16,6 +16,7 @@
 
 #include "modules/routing/routing.h"
 
+#include <array>
 #include <limits>
 #include <unordered_map>
 
@@ -174,15 +175,38 @@ bool Routing::SupplementParkingRequest(
   if (!has_parking_info) {
     return true;
   }
+  if (!routing_request.parking_info().has_parking_space_id()) {
+    AWARN << "Supplement Parking Request but parking_space_id is missing";
+    return true;
+  }
 
   // 1. Get the nearest lane along the parking spot, called "parking spot
   // lane". Calculate the center point of the parking spot, to find out the
   // lane with which the parking spot overlaps.
   const auto& points = routing_request.parking_info().corner_point();
   double headings[4];
+  std::array<common::PointENU, 4> fallback_corner_points;
   const common::PointENU* corner_points[4];
-  for (size_t i = 0; i < 4; i++) {
-    corner_points[i] = &(points.point().at(i));
+  if (points.point_size() >= 4) {
+    for (size_t i = 0; i < 4; i++) {
+      corner_points[i] = &(points.point().at(i));
+    }
+  } else {
+    const auto parking_space_id =
+        hdmap::MakeMapId(routing_request.parking_info().parking_space_id());
+    auto parking_space_ptr = hdmap_->GetParkingSpaceById(parking_space_id);
+    if (parking_space_ptr == nullptr ||
+        parking_space_ptr->parking_space().polygon().point_size() < 4) {
+      AWARN << "Supplement Parking Request but parking corner points are "
+               "unavailable";
+      return true;
+    }
+    const auto& polygon = parking_space_ptr->parking_space().polygon();
+    for (size_t i = 0; i < 4; ++i) {
+      fallback_corner_points[i].set_x(polygon.point(i).x());
+      fallback_corner_points[i].set_y(polygon.point(i).y());
+      corner_points[i] = &fallback_corner_points[i];
+    }
   }
   headings[0] = std::atan2(corner_points[1]->y() - corner_points[0]->y(),
                            corner_points[1]->x() - corner_points[0]->x());
@@ -293,7 +317,7 @@ bool Routing::SupplementParkingRequest(
 
 void Routing::GetAllOverlapObjectIds(
     const hdmap::Id& parking_spot_id,
-    std::vector<std::string> *object_ids) const {
+    std::vector<std::string>* object_ids) const {
   object_ids->clear();
   auto parking_spot_info = hdmap_->GetParkingSpaceById(parking_spot_id);
   if (nullptr == parking_spot_info) {

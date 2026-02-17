@@ -20,8 +20,11 @@
 
 #include "modules/planning/scenarios/park/valet_parking/stage_approaching_parking_spot.h"
 
+#include <cmath>
+
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
+#include "modules/planning/common/planning_context.h"
 
 namespace apollo {
 namespace planning {
@@ -31,7 +34,9 @@ namespace valet_parking {
 Stage::StageStatus StageApproachingParkingSpot::Process(
     const common::TrajectoryPoint& planning_init_point, Frame* frame) {
   ADEBUG << "stage: StageApproachingParkingSpot";
+  (void)planning_init_point;
   CHECK_NOTNULL(frame);
+  scenario_config_.CopyFrom(GetContext()->scenario_config);
   GetContext()->target_parking_spot_id.clear();
   if (frame->local_view().routing->routing_request().has_parking_info() &&
       frame->local_view()
@@ -53,19 +58,28 @@ Stage::StageStatus StageApproachingParkingSpot::Process(
 
   *(frame->mutable_open_space_info()->mutable_target_parking_spot_id()) =
       GetContext()->target_parking_spot_id;
-  frame->mutable_open_space_info()->set_pre_stop_rightaway_flag(
-      GetContext()->pre_stop_rightaway_flag);
-  *(frame->mutable_open_space_info()->mutable_pre_stop_rightaway_point()) =
-      GetContext()->pre_stop_rightaway_point;
 
-  bool plan_ok = ExecuteTaskOnReferenceLine(planning_init_point, frame);
+  auto* park_and_go_status = injector_->planning_context()
+                                 ->mutable_planning_status()
+                                 ->mutable_park_and_go();
+  if (!park_and_go_status->has_adc_init_position() ||
+      !park_and_go_status->in_check_stage()) {
+    park_and_go_status->Clear();
+    park_and_go_status->mutable_adc_init_position()->set_x(
+        injector_->vehicle_state()->x());
+    park_and_go_status->mutable_adc_init_position()->set_y(
+        injector_->vehicle_state()->y());
+    park_and_go_status->mutable_adc_init_position()->set_z(0.0);
+    park_and_go_status->set_adc_init_heading(
+        injector_->vehicle_state()->heading());
+    park_and_go_status->set_in_check_stage(true);
+  }
 
-  GetContext()->pre_stop_rightaway_flag =
-      frame->open_space_info().pre_stop_rightaway_flag();
-  GetContext()->pre_stop_rightaway_point =
-      frame->open_space_info().pre_stop_rightaway_point();
+  frame->mutable_open_space_info()->set_is_on_open_space_trajectory(true);
+  bool plan_ok = ExecuteTaskOnOpenSpace(frame);
 
   if (CheckADCStop(*frame)) {
+    park_and_go_status->set_in_check_stage(false);
     next_stage_ = StageType::VALET_PARKING_PARKING;
     return Stage::FINISHED;
   }
@@ -78,7 +92,6 @@ Stage::StageStatus StageApproachingParkingSpot::Process(
 }
 
 bool StageApproachingParkingSpot::CheckADCStop(const Frame& frame) {
-  const auto& reference_line_info = frame.reference_line_info().front();
   const double adc_speed = injector_->vehicle_state()->linear_velocity();
   const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()
                                         ->GetConfig()
@@ -89,18 +102,27 @@ bool StageApproachingParkingSpot::CheckADCStop(const Frame& frame) {
     return false;
   }
 
-  // check stop close enough to stop line of the stop_sign
-  const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
-  const double stop_fence_start_s =
-      frame.open_space_info().open_space_pre_stop_fence_s();
-  const double distance_stop_line_to_adc_front_edge =
-      stop_fence_start_s - adc_front_edge_s;
-
-  if (distance_stop_line_to_adc_front_edge >
-      scenario_config_.max_valid_stop_distance()) {
-    ADEBUG << "not a valid stop. too far from stop line.";
+  const auto& park_and_go_status =
+      injector_->planning_context()->planning_status().park_and_go();
+  if (!park_and_go_status.has_adc_adjust_end_pose()) {
+    ADEBUG << "approach end pose is not ready";
     return false;
   }
+
+  const double adc_x = injector_->vehicle_state()->x();
+  const double adc_y = injector_->vehicle_state()->y();
+  const double end_x = park_and_go_status.adc_adjust_end_pose().x();
+  const double end_y = park_and_go_status.adc_adjust_end_pose().y();
+  const double distance_to_setup_pose =
+      std::hypot(adc_x - end_x, adc_y - end_y);
+  ADEBUG << "distance_to_setup_pose[" << distance_to_setup_pose
+         << "] max_valid_stop_distance["
+         << scenario_config_.max_valid_stop_distance() << "]";
+
+  if (distance_to_setup_pose > scenario_config_.max_valid_stop_distance()) {
+    return false;
+  }
+
   return true;
 }
 

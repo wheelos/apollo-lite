@@ -28,11 +28,51 @@ namespace planning {
 namespace scenario {
 namespace valet_parking {
 
+namespace {
+
+bool GetParkingSpotCenterFromRouting(
+    const Frame& frame, apollo::common::math::Vec2d* const parking_center) {
+  const auto& routing_request = frame.local_view().routing->routing_request();
+  if (!routing_request.has_parking_info()) {
+    return false;
+  }
+  const auto& corner_point = routing_request.parking_info().corner_point();
+  if (corner_point.point_size() <= 0) {
+    return false;
+  }
+
+  double center_x = 0.0;
+  double center_y = 0.0;
+  for (const auto& point : corner_point.point()) {
+    center_x += point.x();
+    center_y += point.y();
+  }
+  center_x /= static_cast<double>(corner_point.point_size());
+  center_y /= static_cast<double>(corner_point.point_size());
+  parking_center->set_x(center_x);
+  parking_center->set_y(center_y);
+  return true;
+}
+
+apollo::common::math::Vec2d GetParkingSpotCenterFromMap(
+    const ParkingSpaceInfoConstPtr& target_parking_spot) {
+  const auto& points = target_parking_spot->polygon().points();
+  double center_x = 0.0;
+  double center_y = 0.0;
+  for (const auto& point : points) {
+    center_x += point.x();
+    center_y += point.y();
+  }
+  center_x /= static_cast<double>(points.size());
+  center_y /= static_cast<double>(points.size());
+  return apollo::common::math::Vec2d(center_x, center_y);
+}
+
+}  // namespace
+
 using apollo::common::VehicleState;
 using apollo::common::math::Vec2d;
 using apollo::hdmap::ParkingSpaceInfoConstPtr;
-using apollo::hdmap::Path;
-using apollo::hdmap::PathOverlap;
 
 apollo::common::util::Factory<
     StageType, Stage,
@@ -119,23 +159,19 @@ bool ValetParkingScenario::IsTransferable(const Frame& frame,
     return false;
   }
 
-  const auto& nearby_path =
-      frame.reference_line_info().front().reference_line().map_path();
-  PathOverlap parking_space_overlap;
+  ParkingSpaceInfoConstPtr target_parking_spot;
   const auto& vehicle_state = frame.vehicle_state();
 
-  if (!SearchTargetParkingSpotOnPath(nearby_path, target_parking_spot_id,
-                                     &parking_space_overlap)) {
-    ADEBUG << "No such parking spot found after searching all path forward "
-              "possible"
+  if (!GetTargetParkingSpotById(target_parking_spot_id, &target_parking_spot)) {
+    ADEBUG << "No such parking spot found in HDMap, parking_space_id: "
            << target_parking_spot_id;
     return false;
   }
 
-  if (!CheckDistanceToParkingSpot(frame, vehicle_state, nearby_path,
-                                  parking_start_range, parking_space_overlap)) {
-    ADEBUG << "target parking spot found, but too far, distance larger than "
-              "pre-defined distance"
+  if (!CheckDistanceToParkingSpot(frame, vehicle_state, parking_start_range,
+                                  target_parking_spot)) {
+    ADEBUG << "target parking spot found, but euclidean distance is larger "
+              "than configured threshold. parking_space_id: "
            << target_parking_spot_id;
     return false;
   }
@@ -143,59 +179,39 @@ bool ValetParkingScenario::IsTransferable(const Frame& frame,
   return true;
 }
 
-bool ValetParkingScenario::SearchTargetParkingSpotOnPath(
-    const Path& nearby_path, const std::string& target_parking_id,
-    PathOverlap* parking_space_overlap) {
-  const auto& parking_space_overlaps = nearby_path.parking_space_overlaps();
-  for (const auto& parking_overlap : parking_space_overlaps) {
-    if (parking_overlap.object_id == target_parking_id) {
-      *parking_space_overlap = parking_overlap;
-      return true;
-    }
-  }
-  return false;
+bool ValetParkingScenario::GetTargetParkingSpotById(
+    const std::string& target_parking_id,
+    ParkingSpaceInfoConstPtr* target_parking_spot) {
+  const hdmap::HDMap* hdmap = hdmap::HDMapUtil::BaseMapPtr();
+  CHECK_NOTNULL(hdmap);
+  hdmap::Id id;
+  id.set_id(target_parking_id);
+  *target_parking_spot = hdmap->GetParkingSpaceById(id);
+  return *target_parking_spot != nullptr;
 }
 
 bool ValetParkingScenario::CheckDistanceToParkingSpot(
     const Frame& frame, const VehicleState& vehicle_state,
-    const Path& nearby_path, const double parking_start_range,
-    const PathOverlap& parking_space_overlap) {
-  // TODO(Jinyun) parking overlap s are wrong on map, not usable
-  // double parking_space_center_s =
-  //     (parking_space_overlap.start_s + parking_space_overlap.end_s) / 2.0;
-  const hdmap::HDMap* hdmap = hdmap::HDMapUtil::BaseMapPtr();
-  hdmap::Id id;
-  id.set_id(parking_space_overlap.object_id);
-  ParkingSpaceInfoConstPtr target_parking_spot_ptr =
-      hdmap->GetParkingSpaceById(id);
-  Vec2d left_bottom_point = target_parking_spot_ptr->polygon().points().at(0);
-  Vec2d right_bottom_point = target_parking_spot_ptr->polygon().points().at(1);
-  const auto& routing_request = frame.local_view().routing->routing_request();
-  auto corner_point = routing_request.parking_info().corner_point();
-  left_bottom_point.set_x(corner_point.point().at(0).x());
-  left_bottom_point.set_y(corner_point.point().at(0).y());
-  right_bottom_point.set_x(corner_point.point().at(1).x());
-  right_bottom_point.set_y(corner_point.point().at(1).y());
-  double left_bottom_point_s = 0.0;
-  double left_bottom_point_l = 0.0;
-  double right_bottom_point_s = 0.0;
-  double right_bottom_point_l = 0.0;
-  nearby_path.GetNearestPoint(left_bottom_point, &left_bottom_point_s,
-                              &left_bottom_point_l);
-  nearby_path.GetNearestPoint(right_bottom_point, &right_bottom_point_s,
-                              &right_bottom_point_l);
-  double parking_space_center_s =
-      (left_bottom_point_s + right_bottom_point_s) / 2.0;
-  double vehicle_point_s = 0.0;
-  double vehicle_point_l = 0.0;
-  Vec2d vehicle_vec(vehicle_state.x(), vehicle_state.y());
-  nearby_path.GetNearestPoint(vehicle_vec, &vehicle_point_s, &vehicle_point_l);
-  if (std::abs(parking_space_center_s - vehicle_point_s) <
-      parking_start_range) {
-    return true;
-  } else {
+    const double parking_start_range,
+    const ParkingSpaceInfoConstPtr& target_parking_spot) {
+  CHECK_NOTNULL(target_parking_spot);
+  if (target_parking_spot->polygon().points().empty()) {
+    ADEBUG << "parking spot polygon is empty";
     return false;
   }
+
+  Vec2d parking_spot_center;
+  if (!GetParkingSpotCenterFromRouting(frame, &parking_spot_center)) {
+    parking_spot_center = GetParkingSpotCenterFromMap(target_parking_spot);
+  }
+
+  const Vec2d vehicle_vec(vehicle_state.x(), vehicle_state.y());
+  const double distance_to_parking_spot =
+      vehicle_vec.DistanceTo(parking_spot_center);
+  ADEBUG << "distance_to_parking_spot[" << distance_to_parking_spot
+         << "] parking_start_range[" << parking_start_range << "]";
+
+  return distance_to_parking_spot < parking_start_range;
 }
 
 }  // namespace valet_parking

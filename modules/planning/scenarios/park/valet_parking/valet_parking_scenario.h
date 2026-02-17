@@ -63,13 +63,13 @@ class ValetParkingScenario : public Scenario {
  private:
   static void RegisterStages();
   bool GetScenarioConfig();
-  static bool SearchTargetParkingSpotOnPath(
-      const hdmap::Path& nearby_path, const std::string& target_parking_id,
-      hdmap::PathOverlap* parking_space_overlap);
+  static bool GetTargetParkingSpotById(
+      const std::string& target_parking_id,
+      hdmap::ParkingSpaceInfoConstPtr* target_parking_spot);
   static bool CheckDistanceToParkingSpot(
       const Frame& frame, const common::VehicleState& vehicle_state,
-      const hdmap::Path& nearby_path, const double parking_start_range,
-      const hdmap::PathOverlap& parking_space_overlap);
+      const double parking_start_range,
+      const hdmap::ParkingSpaceInfoConstPtr& target_parking_spot);
 
  private:
   bool init_ = false;
