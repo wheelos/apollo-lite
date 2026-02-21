@@ -112,6 +112,9 @@ Status Dreamview::Init() {
   server_->addWebSocketHandler("/camera", *camera_ws_);
   server_->addWebSocketHandler("/plugin", *plugin_ws_);
   server_->addHandler("/image", *image_);
+  // Initialize data handler for serving map data files and register it.
+  map_data_handler_.reset(new MapDataHandler());
+  server_->addHandler("/assets/map_data/", *map_data_handler_);
 #if WITH_TELEOP == 1
   teleop_ws_.reset(new WebSocketHandler("Teleop"));
   teleop_.reset(new TeleopService(teleop_ws_.get()));
