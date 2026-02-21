@@ -20,6 +20,18 @@ cc_library(
 )
 
 cc_library(
+    name = "map_data_handler",
+    srcs = ["map_data_handler.cc"],
+    hdrs = ["map_data_handler.h"],
+    copts = DREAMVIEW_COPTS,
+    alwayslink = True,
+    deps = [
+        "@civetweb//:civetweb",
+        "@civetweb//:civetserver",
+    ],
+)
+
+cc_library(
     name = "image_handler",
     srcs = ["image_handler.cc"],
     hdrs = ["image_handler.h"],
