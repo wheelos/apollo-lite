@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -33,6 +33,24 @@ cc_binary(
     linkshared = True,
     linkstatic = True,
     deps = [":mission_component_lib"],
+)
+
+cc_test(
+    name = "mission_test",
+    size = "small",
+    srcs = ["mission_test.cc"],
+    copts = MISSION_COPTS,
+    deps = [
+        "//modules/mission/nodes/action",
+        "//modules/mission/nodes/condition",
+        "//modules/mission/common:mission_context",
+        "//modules/mission/common:bt_type_converters",
+        "//modules/common_msgs/basic_msgs:geometry_cc_proto",
+        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
+        "//modules/common_msgs/localization_msgs:localization_cc_proto",
+        "@behaviortree_cpp//:behaviortree_cpp",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cpplint()
