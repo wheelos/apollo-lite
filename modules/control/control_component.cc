@@ -19,6 +19,7 @@
 #include "absl/strings/str_cat.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/config_loader.h"
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
 #include "modules/common/adapters/adapter_gflags.h"
@@ -46,8 +47,8 @@ bool ControlComponent::Init() {
 
   AINFO << "Control init, starting ...";
 
-  ACHECK(
-      cyber::common::GetProtoFromFile(FLAGS_control_conf_file, &control_conf_))
+  ACHECK(cyber::common::GetProtoFromFileWithOverride(FLAGS_control_conf_file,
+                                                      &control_conf_))
       << "Unable to load control conf file: " + FLAGS_control_conf_file;
 
   // 1. Initialize Controller Agent

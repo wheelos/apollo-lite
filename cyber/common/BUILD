@@ -6,6 +6,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "common",
     deps = [
+        "//cyber/common:config_loader",
         "//cyber/common:environment",
         "//cyber/common:file",
         "//cyber/common:global_data",
@@ -14,6 +15,29 @@ cc_library(
         "//cyber/common:time_conversion",
         "//cyber/common:types",
         "//cyber/common:util",
+    ],
+)
+
+cc_library(
+    name = "config_loader",
+    srcs = ["config_loader.cc"],
+    hdrs = ["config_loader.h"],
+    deps = [
+        "//cyber/common:file",
+        "//cyber/common:log",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "config_loader_test",
+    size = "small",
+    srcs = ["config_loader_test.cc"],
+    deps = [
+        "//cyber/common:config_loader",
+        "//cyber/common:file",
+        "//cyber/proto:unit_test_cc_proto",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
