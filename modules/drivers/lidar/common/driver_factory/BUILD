@@ -11,7 +11,6 @@ cc_library(
         ":driver_base",
         "//cyber",
         "//modules/common/util:util_tool",
-        "//modules/drivers/lidar/hesai/driver",
         "//modules/drivers/lidar/proto:config_cc_proto",
         "//modules/drivers/lidar/proto:lidar_parameter_cc_proto",
         "//modules/drivers/lidar/velodyne/driver",
