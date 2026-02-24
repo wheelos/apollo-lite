@@ -324,6 +324,7 @@ Chassis ChController::chassis() {
 void ChController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  can_sender_->Update();
 }
 
 ErrorCode ChController::EnableAutoMode() {
