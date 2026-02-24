@@ -249,6 +249,7 @@ Chassis TransitController::chassis() {
 void TransitController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  can_sender_->Update();
 }
 
 ErrorCode TransitController::EnableAutoMode() {

@@ -290,6 +290,7 @@ bool Neolix_eduController::VerifyID() { return true; }
 void Neolix_eduController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  can_sender_->Update();
 }
 
 ErrorCode Neolix_eduController::EnableAutoMode() {

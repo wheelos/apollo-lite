@@ -384,6 +384,7 @@ Chassis LincolnController::chassis() {
 void LincolnController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  can_sender_->Update();
   if (chassis_error_code() == Chassis::NO_ERROR) {
     set_chassis_error_code(Chassis::CHASSIS_ERROR);
   }
