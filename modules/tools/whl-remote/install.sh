@@ -10,10 +10,18 @@ if [ "$(uname -s)" != "Linux" ]; then
     exit 1
 fi
 
-mkdir -p "$INSTALL_DIR" && cd "$INSTALL_DIR"
+if ! mkdir -p "$INSTALL_DIR"; then
+    echo "Error: failed to create install directory: $INSTALL_DIR"
+    echo "Tip: run with sudo or set INSTALL_DIR to a user-writable location."
+    exit 1
+fi
+if ! cd "$INSTALL_DIR"; then
+    echo "Error: failed to enter install directory: $INSTALL_DIR"
+    exit 1
+fi
 
 TARGET_BIN="frpc"
-    if [ -x "$TARGET_BIN" ]; then
+if [ -x "$TARGET_BIN" ]; then
     echo "Detected existing $TARGET_BIN, skipping download."
 else
     arch="$(uname -m)"
@@ -62,8 +70,14 @@ else
         exit 1
     fi
 
-    tar -zxf frp.tar.gz
-    cp "frp_${FRP_VER}_${suffix}/frpc" .
+    if ! tar -zxf frp.tar.gz; then
+        echo "Error: failed to extract frp.tar.gz"
+        exit 1
+    fi
+    if ! cp "frp_${FRP_VER}_${suffix}/frpc" .; then
+        echo "Error: failed to copy frpc from archive"
+        exit 1
+    fi
     chmod +x frpc
     rm -rf "frp.tar.gz" "frp_${FRP_VER}_${suffix}"
 fi
@@ -89,6 +103,13 @@ if [ -z "$AUTH_TOKEN" ]; then
 fi
 
 REMOTE_PORT=$((60000 + C_ID))
+# Validate that the computed remote port is within the valid TCP port range.
+if [ "$REMOTE_PORT" -lt 1 ] || [ "$REMOTE_PORT" -gt 65535 ]; then
+    echo "Error: computed remote port $REMOTE_PORT is outside the valid TCP port range (1-65535)."
+    echo "Please choose a car ID such that 60000 + C_ID is within 1-65535 (e.g., C_ID in the range 0..5535)."
+    exit 1
+fi
+
 cat <<EOF > frpc.toml
 serverAddr = "$S_IP"
 serverPort = 7000

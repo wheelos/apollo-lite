@@ -21,7 +21,16 @@ is_running() {
     if [ -f "$PID_FILE" ]; then
         pid="$(cat "$PID_FILE")"
         if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-            return 0
+            # ensure the process is frpc (not PID reuse)
+            if command -v ps >/dev/null 2>&1; then
+                cmd="$(ps -p "$pid" -o comm= 2>/dev/null)"
+                if [ "$cmd" = "frpc" ]; then
+                    return 0
+                fi
+            else
+                # fallback: assume running if kill -0 succeeded
+                return 0
+            fi
         fi
     fi
     return 1
@@ -60,6 +69,12 @@ case "$ACTION" in
             sleep 1
             if kill -0 "$pid" 2>/dev/null; then
                 kill -9 "$pid" 2>/dev/null || true
+                sleep 1
+            fi
+            if kill -0 "$pid" 2>/dev/null; then
+                # still alive after SIGKILL
+                echo "Failed to stop $PROC (pid $pid still running)" >&2
+                exit 1
             fi
             rm -f "$PID_FILE"
             echo "$PROC stopped"
@@ -99,7 +114,7 @@ case "$ACTION" in
         fi
         ;;
     *)
-        echo "用法: $0 {start|stop|status}"
+        echo "Usage: $0 {start|stop|status}"
         exit 1
         ;;
 esac
