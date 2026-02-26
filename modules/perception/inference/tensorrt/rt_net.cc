@@ -143,6 +143,7 @@ void RTNet::addConvLayer(const LayerParameter &layer_param,
                                             : 1;
 
 #if NV_TENSORRT_MAJOR >= 10
+    // TODO(all):  whether caffe padding mode could affect other shape or value
     convLayer->setStrideNd(nvinfer1::DimsHW{strideH, strideW});
     convLayer->setPaddingNd(nvinfer1::DimsHW{padH, padW});
     convLayer->setDilationNd(nvinfer1::DimsHW{dilationH, dilationW});
@@ -226,6 +227,7 @@ void RTNet::addDeconvLayer(const LayerParameter &layer_param,
 #endif
   }
 #if NV_TENSORRT_MAJOR >= 10
+  // TODO(all):  whether caffe padding mode could affect other shape or value
   deconvLayer->setStrideNd(nvinfer1::DimsHW{param.stride_h, param.stride_w});
   deconvLayer->setPaddingNd(nvinfer1::DimsHW{param.padding_h, param.padding_w});
 #else
@@ -326,10 +328,11 @@ void RTNet::addPoolingLayer(const LayerParameter &layer_param,
       (pool.pool() == PoolingParameter_PoolMethod_MAX)
           ? nvinfer1::PoolingType::kMAX
           : nvinfer1::PoolingType::kAVERAGE;
-  // TRT10 removes Caffe round padding; use default behavior.
   ACHECK(modify_pool_param(&pool));
   nvinfer1::IPoolingLayer *poolLayer = nullptr;
 #if NV_TENSORRT_MAJOR >= 10
+  // TRT10 removes Caffe round padding; use default behavior.
+  // TODO(all):  whether caffe padding mode could affect other shape or value
   poolLayer =
       net->addPoolingNd(*inputs[0], pool_type,
                         nvinfer1::DimsHW{static_cast<int>(pool.kernel_h()),
@@ -339,6 +342,20 @@ void RTNet::addPoolingLayer(const LayerParameter &layer_param,
   poolLayer->setPaddingNd(nvinfer1::DimsHW{static_cast<int>(pool.pad_h()),
                                            static_cast<int>(pool.pad_w())});
 #else
+  // keep padding mode on TRT 7, 8
+  nvinfer1::PaddingMode padding_mode = nvinfer1::PaddingMode::kCAFFE_ROUND_UP;
+  if (pool.has_round_mode()) {
+    switch (static_cast<int>(pool.round_mode())) {
+      case 0:
+        padding_mode = nvinfer1::PaddingMode::kCAFFE_ROUND_UP;
+        break;
+      case 1:
+        padding_mode = nvinfer1::PaddingMode::kCAFFE_ROUND_DOWN;
+        break;
+      default:
+        padding_mode = nvinfer1::PaddingMode::kCAFFE_ROUND_UP;
+    }
+  }
   poolLayer =
       net->addPooling(*inputs[0], pool_type,
                       nvinfer1::DimsHW{static_cast<int>(pool.kernel_h()),
@@ -347,7 +364,7 @@ void RTNet::addPoolingLayer(const LayerParameter &layer_param,
                                         static_cast<int>(pool.stride_w())});
   poolLayer->setPadding(nvinfer1::DimsHW{static_cast<int>(pool.pad_h()),
                                          static_cast<int>(pool.pad_w())});
-  // poolLayer->setPaddingMode(padding_mode);
+  poolLayer->setPaddingMode(padding_mode);
 #endif
   // unlike other frameworks, caffe use inclusive counting for padded averaging
   poolLayer->setAverageCountExcludesPadding(false);
@@ -551,7 +568,7 @@ void RTNet::addSoftmaxLayer(const LayerParameter &layer_param,
     StSoftmaxParameter softmax_param;
     softmax_param.engine =
         static_cast<int32_t>(layer_param.softmax_param().engine());
-    sofmax_param.axis = layer_param.softmax_param().axis();
+    softmax_param.axis = layer_param.softmax_param().axis();
     softmax_plugin.reset(
         new SoftmaxPlugin(softmax_param, inputs[0]->getDimensions()));
     softmax_plugins_.push_back(softmax_plugin);
@@ -1321,6 +1338,7 @@ void RTNet::init_blob(std::vector<std::string> *names) {
     nvinfer1::Dims dims = engine.getTensorShape(trt_name.c_str());
 #else
     int bindingIndex = engine.getBindingIndex(trt_name.c_str());
+    CHECK_GE(bindingIndex, 0);
     nvinfer1::Dims dims = engine.getBindingDimensions(bindingIndex);
 #endif
     int c = (dims.nbDims > 0) ? static_cast<int>(dims.d[0]) : 1;
@@ -1330,7 +1348,11 @@ void RTNet::init_blob(std::vector<std::string> *names) {
     void *dev_ptr = nullptr;
     BASE_CUDA_CHECK(cudaMalloc(&dev_ptr, count * sizeof(float)));
     int idx = static_cast<int>(buffers_.size());
+#if NV_TENSORRT_MAJOR >= 10
     buffers_.push_back(dev_ptr);
+#else
+    buffers_[bindingIndex] = dev_ptr;
+#endif
     tensor_buffer_index_[trt_name] = idx;
 
     std::vector<int> shape;
@@ -1461,6 +1483,7 @@ bool RTNet::Init(const std::map<std::string, std::vector<int>> &shapes) {
       f.write(reinterpret_cast<const char *>(plan->data()), plan->size());
       AINFO << "Saved serialized model file to " << trt_cache_path;
     }
+    initLibNvInferPlugins(&rt_gLogger, "");
     auto runtime = nvinfer1::createInferRuntime(rt_gLogger);
     engine = runtime->deserializeCudaEngine(plan->data(), plan->size());
     delete runtime;

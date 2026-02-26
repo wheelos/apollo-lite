@@ -19,14 +19,14 @@
 #include <NvInferVersion.h>
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR == 8
+#if NV_TENSORRT_MAJOR > 7
 #include "modules/perception/inference/tensorrt/rt_legacy.h"
 #endif
 #endif
 #include <map>
-#include <unordered_map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "modules/perception/proto/rt.pb.h"
