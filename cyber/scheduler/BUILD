@@ -36,6 +36,9 @@ cc_library(
     srcs = ["scheduler.cc"],
     hdrs = ["scheduler.h"],
     deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
         "//cyber/croutine",
         "//cyber/scheduler:mutex_wrapper",
         "//cyber/scheduler:pin_thread",
@@ -67,6 +70,8 @@ cc_library(
     srcs = ["scheduler_factory.cc"],
     hdrs = ["scheduler_factory.h"],
     deps = [
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
         "//cyber/proto:component_conf_cc_proto",
         "//cyber/scheduler:scheduler_choreography",
         "//cyber/scheduler:scheduler_classic",
@@ -78,6 +83,8 @@ cc_library(
     srcs = ["policy/scheduler_choreography.cc"],
     hdrs = ["policy/scheduler_choreography.h"],
     deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/synchronization",
         "//cyber/scheduler",
         "//cyber/scheduler:choreography_context",
         "//cyber/scheduler:classic_context",
@@ -89,6 +96,8 @@ cc_library(
     srcs = ["policy/scheduler_classic.cc"],
     hdrs = ["policy/scheduler_classic.h"],
     deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/synchronization",
         "//cyber/scheduler",
         "//cyber/scheduler:classic_context",
     ],
@@ -123,6 +132,7 @@ cc_test(
     size = "small",
     srcs = ["scheduler_test.cc"],
     deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
         "//cyber",
         "@com_google_googletest//:gtest_main",
     ],

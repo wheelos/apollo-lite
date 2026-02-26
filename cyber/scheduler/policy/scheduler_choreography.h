@@ -19,9 +19,9 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "cyber/croutine/croutine.h"
 #include "cyber/proto/choreography_conf.pb.h"
 #include "cyber/scheduler/scheduler.h"
@@ -46,7 +46,7 @@ class SchedulerChoreography : public Scheduler {
   void CreateProcessor();
   bool NotifyProcessor(uint64_t crid) override;
 
-  std::unordered_map<std::string, ChoreographyTask> cr_confs_;
+  absl::flat_hash_map<std::string, ChoreographyTask> cr_confs_;
 
   int32_t choreography_processor_prio_;
   int32_t pool_processor_prio_;

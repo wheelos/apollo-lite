@@ -21,8 +21,9 @@
 
 #include <atomic>
 #include <string>
-#include <unordered_map>
 
+#include "absl/strings/str_cat.h"
+#include "absl/synchronization/mutex.h"
 #include "cyber/common/environment.h"
 #include "cyber/common/file.h"
 #include "cyber/common/global_data.h"
@@ -43,18 +44,18 @@ using apollo::cyber::common::WorkRoot;
 
 namespace {
 std::atomic<Scheduler*> instance = {nullptr};
-std::mutex mutex;
+absl::Mutex mutex;
 }  // namespace
 
 Scheduler* Instance() {
   Scheduler* obj = instance.load(std::memory_order_acquire);
   if (obj == nullptr) {
-    std::lock_guard<std::mutex> lock(mutex);
+    absl::WriterMutexLock lock(&mutex);
     obj = instance.load(std::memory_order_relaxed);
     if (obj == nullptr) {
       std::string policy("classic");
-      std::string conf("conf/");
-      conf.append(GlobalData::Instance()->ProcessGroup()).append(".conf");
+      auto conf = absl::StrCat("conf/", GlobalData::Instance()->ProcessGroup(),
+                               ".conf");
       auto cfg_file = GetAbsolutePath(WorkRoot(), conf);
       apollo::cyber::proto::CyberConfig cfg;
       if (PathExists(cfg_file) && GetProtoFromFile(cfg_file, &cfg)) {

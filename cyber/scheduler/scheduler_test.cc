@@ -21,6 +21,7 @@
 
 #include "gtest/gtest.h"
 
+#include "absl/container/flat_hash_map.h"
 #include "cyber/proto/scheduler_conf.pb.h"
 
 #include "cyber/common/global_data.h"
@@ -72,7 +73,7 @@ TEST(SchedulerTest, set_inner_thread_attr) {
   auto sched = Instance();
   cyber::Init("scheduler_test");
   std::thread t = std::thread([]() {});
-  std::unordered_map<std::string, InnerThread> thread_confs;
+  absl::flat_hash_map<std::string, InnerThread> thread_confs;
   InnerThread inner_thread;
   inner_thread.set_cpuset("0-1");
   inner_thread.set_policy("SCHED_FIFO");

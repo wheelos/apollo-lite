@@ -20,6 +20,7 @@
 #include <memory>
 #include <utility>
 
+#include "absl/synchronization/mutex.h"
 #include "cyber/common/environment.h"
 #include "cyber/common/file.h"
 #include "cyber/scheduler/policy/classic_context.h"
@@ -115,7 +116,7 @@ bool SchedulerClassic::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
   MutexWrapper* wrapper = nullptr;
   if (!id_map_mutex_.Get(cr->id(), &wrapper)) {
     {
-      std::lock_guard<std::mutex> wl_lg(cr_wl_mtx_);
+      absl::WriterMutexLock wl_lg(&cr_wl_mtx_);
       if (!id_map_mutex_.Get(cr->id(), &wrapper)) {
         wrapper = new MutexWrapper();
         id_map_mutex_.Set(cr->id(), wrapper);
@@ -196,7 +197,7 @@ bool SchedulerClassic::RemoveCRoutine(uint64_t crid) {
   MutexWrapper* wrapper = nullptr;
   if (!id_map_mutex_.Get(crid, &wrapper)) {
     {
-      std::lock_guard<std::mutex> wl_lg(cr_wl_mtx_);
+      absl::WriterMutexLock wl_lg(&cr_wl_mtx_);
       if (!id_map_mutex_.Get(crid, &wrapper)) {
         wrapper = new MutexWrapper();
         id_map_mutex_.Set(crid, wrapper);

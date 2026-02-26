@@ -20,6 +20,7 @@
 
 #include <utility>
 
+#include "absl/strings/str_cat.h"
 #include "cyber/common/environment.h"
 #include "cyber/common/file.h"
 #include "cyber/common/global_data.h"
@@ -106,18 +107,17 @@ void Scheduler::CheckSchedStatus() {
     auto snap = processor->ProcSnapshot();
     if (snap->execute_start_time.load()) {
       auto execute_time = (now - snap->execute_start_time.load()) / 1000000;
-      snap_info.append(std::to_string(snap->processor_id.load()))
-          .append(":")
-          .append(snap->routine_name)
-          .append(":")
-          .append(std::to_string(execute_time));
+      absl::StrAppend(&snap_info,
+                      std::to_string(snap->processor_id.load()), ":",
+                      snap->routine_name, ":",
+                      std::to_string(execute_time));
     } else {
-      snap_info.append(std::to_string(snap->processor_id.load()))
-          .append(":idle");
+      absl::StrAppend(&snap_info,
+                      std::to_string(snap->processor_id.load()), ":idle");
     }
-    snap_info.append(", ");
+    absl::StrAppend(&snap_info, ", ");
   }
-  snap_info.append("timestamp: ").append(std::to_string(now));
+  absl::StrAppend(&snap_info, "timestamp: ", std::to_string(now));
   AINFO << snap_info;
   snap_info.clear();
 }

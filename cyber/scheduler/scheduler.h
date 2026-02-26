@@ -22,12 +22,12 @@
 #include <atomic>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/synchronization/mutex.h"
 #include "cyber/proto/choreography_conf.pb.h"
 
 #include "cyber/base/atomic_hash_map.h"
@@ -80,7 +80,7 @@ class Scheduler {
   void CheckSchedStatus();
 
   void SetInnerThreadConfs(
-      const std::unordered_map<std::string, InnerThread>& confs) {
+      const absl::flat_hash_map<std::string, InnerThread>& confs) {
     inner_thr_confs_ = confs;
   }
 
@@ -89,13 +89,13 @@ class Scheduler {
 
   AtomicRWLock id_cr_lock_;
   AtomicHashMap<uint64_t, MutexWrapper*> id_map_mutex_;
-  std::mutex cr_wl_mtx_;
+  absl::Mutex cr_wl_mtx_;
 
-  std::unordered_map<uint64_t, std::shared_ptr<CRoutine>> id_cr_;
+  absl::flat_hash_map<uint64_t, std::shared_ptr<CRoutine>> id_cr_;
   std::vector<std::shared_ptr<ProcessorContext>> pctxs_;
   std::vector<std::shared_ptr<Processor>> processors_;
 
-  std::unordered_map<std::string, InnerThread> inner_thr_confs_;
+  absl::flat_hash_map<std::string, InnerThread> inner_thr_confs_;
 
   std::string process_level_cpuset_;
   uint32_t proc_num_ = 0;

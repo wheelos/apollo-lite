@@ -170,6 +170,9 @@ cc_library(
 cc_library(
     name = "thread_safe_queue",
     hdrs = ["thread_safe_queue.h"],
+    deps = [
+        "@com_google_absl//absl/synchronization",
+    ],
 )
 
 cc_library(

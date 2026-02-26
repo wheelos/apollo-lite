@@ -17,11 +17,10 @@
 #ifndef CYBER_BASE_THREAD_SAFE_QUEUE_H_
 #define CYBER_BASE_THREAD_SAFE_QUEUE_H_
 
-#include <condition_variable>
-#include <mutex>
 #include <queue>
-#include <thread>
 #include <utility>
+
+#include "absl/synchronization/mutex.h"
 
 namespace apollo {
 namespace cyber {
@@ -37,13 +36,12 @@ class ThreadSafeQueue {
   ~ThreadSafeQueue() { BreakAllWait(); }
 
   void Enqueue(const T& element) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    absl::MutexLock lock(&mutex_);
     queue_.emplace(element);
-    cv_.notify_one();
   }
 
   bool Dequeue(T* element) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    absl::MutexLock lock(&mutex_);
     if (queue_.empty()) {
       return false;
     }
@@ -53,8 +51,8 @@ class ThreadSafeQueue {
   }
 
   bool WaitDequeue(T* element) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [this]() { return break_all_wait_ || !queue_.empty(); });
+    absl::MutexLock lock(&mutex_);
+    mutex_.Await(absl::Condition(this, &ThreadSafeQueue::IsReadyForDequeue));
     if (break_all_wait_) {
       return false;
     }
@@ -64,25 +62,30 @@ class ThreadSafeQueue {
   }
 
   typename std::queue<T>::size_type Size() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    absl::MutexLock lock(&mutex_);
     return queue_.size();
   }
 
   bool Empty() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    absl::MutexLock lock(&mutex_);
     return queue_.empty();
   }
 
   void BreakAllWait() {
+    absl::MutexLock lock(&mutex_);
     break_all_wait_ = true;
-    cv_.notify_all();
   }
 
  private:
-  volatile bool break_all_wait_ = false;
-  std::mutex mutex_;
+  // Returns true when the queue is ready for dequeue: either the queue has
+  // elements or BreakAllWait() has been called.
+  bool IsReadyForDequeue() const ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
+    return break_all_wait_ || !queue_.empty();
+  }
+
+  bool break_all_wait_ ABSL_GUARDED_BY(mutex_) = false;
+  absl::Mutex mutex_;
   std::queue<T> queue_;
-  std::condition_variable cv_;
 };
 
 }  // namespace base

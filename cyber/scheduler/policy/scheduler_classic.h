@@ -19,9 +19,9 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "cyber/croutine/croutine.h"
 #include "cyber/proto/classic_conf.pb.h"
 #include "cyber/scheduler/scheduler.h"
@@ -47,7 +47,7 @@ class SchedulerClassic : public Scheduler {
   void CreateProcessor();
   bool NotifyProcessor(uint64_t crid) override;
 
-  std::unordered_map<std::string, ClassicTask> cr_confs_;
+  absl::flat_hash_map<std::string, ClassicTask> cr_confs_;
 
   ClassicConf classic_conf_;
 };
