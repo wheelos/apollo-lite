@@ -292,6 +292,7 @@ Chassis GemController::chassis() {
 void GemController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  can_sender_->Update();
   set_chassis_error_code(Chassis::CHASSIS_ERROR);
 }
 

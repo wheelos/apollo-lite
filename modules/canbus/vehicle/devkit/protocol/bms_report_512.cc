@@ -39,8 +39,6 @@ void Bmsreport512::Parse(const std::uint8_t* bytes, int32_t length,
   chassis->mutable_devkit()
       ->mutable_bms_report_512()
       ->set_battery_soc_percentage(battery_soc_percentage(bytes, length));
-  chassis->mutable_devkit()->mutable_bms_report_512()->set_is_battery_soc_low(
-      battery_soc_percentage(bytes, length) <= 15);
   chassis->mutable_devkit()
       ->mutable_bms_report_512()
       ->set_battery_inside_temperature(

@@ -81,7 +81,7 @@ DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:=""} # Default empty
 GEOLOC=""            # Default: auto-detect ('us', 'cn', 'none')
 SHM_SIZE="2G"        # Default shared memory size
 USE_LOCAL_IMAGE=1    # Flag to use local image (0 or 1)
-CUSTOM_DIST="stable" # Apollo distribution (stable/testing)
+CUSTOM_DIST="stable" # Apollo distribution (stable/test)
 USER_AGREED="no"     # Flag for Apollo License Agreement ('yes' or 'no')
 FORCE_PULL="no"      # Flag to force pull the image
 

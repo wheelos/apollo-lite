@@ -76,6 +76,7 @@ docs/demo_guide/*.record
 
 # Directory for binary distribution
 output
+modules/dreamview/frontend
 
 # Flamegraph files
 tools/FlameGraph

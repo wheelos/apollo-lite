@@ -1,0 +1,19 @@
+services:
+  core:
+    container_name: ${CONTAINER_NAME}
+    network_mode: "host"
+    privileged: true
+    pid: "host"
+
+    environment:
+      - USE_GPU_HOST=1
+      - TEST_MODE=false
+
+    volumes:
+      - /dev:/dev
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /lib/modules:/lib/modules:ro
+      - /usr/src:/usr/src:ro
+
+    # GPU access (docker compose v2)
+    gpus: all

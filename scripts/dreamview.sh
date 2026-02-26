@@ -19,5 +19,33 @@
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "${TOP_DIR}/scripts/apollo_base.sh"
 
-# run_module command_name module_name
+# --- Configuration ---
+# Target link path matches the gflags default: --static_file_dir
+FIXED_FRONTEND_LINK="${TOP_DIR}/modules/dreamview/frontend/dist"
+DREAMVIEW_BIN="${APOLLO_BIN_PREFIX}/modules/dreamview/dreamview"
+
+# --- 1. Locate Physical Path ---
+# Dynamically find the real path in Bazel output_base to bypass Bzlmod mangled hashes
+OUTPUT_BASE=$(bazel info output_base 2>/dev/null)
+REAL_PATH=$(ls -d ${OUTPUT_BASE}/external/*dreamview_frontend_assets*/dist 2>/dev/null | head -n 1)
+
+# --- 2. Update Symlink ---
+if [ -d "${REAL_PATH}" ]; then
+    echo "Updating frontend symlink: ${FIXED_FRONTEND_LINK} -> ${REAL_PATH}"
+
+    # Remove existing directory or symlink to prevent nested links (e.g., dist/dist)
+    # This ensures FIXED_FRONTEND_LINK points directly to the asset contents
+    rm -rf "${FIXED_FRONTEND_LINK}"
+
+    # Ensure the parent directory exists before creating the link
+    mkdir -p "$(dirname "${FIXED_FRONTEND_LINK}")"
+
+    # Create a symbolic link to the stable logical path
+    ln -snf "${REAL_PATH}" "${FIXED_FRONTEND_LINK}"
+else
+    error "Frontend assets not found! Please ensure '@dreamview_frontend_assets' is correctly fetched."
+    exit 1
+fi
+
+# --- 3. Execute Module ---
 run_module dreamview "$@"

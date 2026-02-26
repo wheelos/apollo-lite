@@ -410,6 +410,7 @@ Chassis WeyController::chassis() {
 void WeyController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  can_sender_->Update();
 }
 
 ErrorCode WeyController::EnableAutoMode() {
