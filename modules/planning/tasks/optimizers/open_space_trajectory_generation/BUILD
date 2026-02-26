@@ -3,7 +3,9 @@ load("//tools:cpplint.bzl", "cpplint")
 load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
+
 PLANNING_COPTS = ["-DMODULE_NAME=\\\"planning\\\""]
+
 FOPENMP_COPTS = ["-fopenmp"]
 
 cc_library(
@@ -23,7 +25,7 @@ cc_library(
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/tasks:task",
         "//modules/planning/tasks/optimizers:trajectory_optimizer",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
+    ],
 )
 
 cc_library(
@@ -36,10 +38,10 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/status",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
+        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:frame",
         "//modules/planning/open_space/coarse_trajectory_generator:hybrid_a_star",
         "//modules/planning/open_space/trajectory_smoother:distance_approach_problem",
@@ -72,7 +74,7 @@ cc_test(
     deps = [
         ":open_space_trajectory_optimizer",
         "@com_google_googletest//:gtest_main",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
+    ],
 )
 
 cpplint()

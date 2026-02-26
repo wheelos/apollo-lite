@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library", "requires_cuda")
 load("//tools:cpplint.bzl", "cpplint")
 load("//tools/platform:build_defs.bzl", "if_gpu")
 
@@ -239,9 +239,9 @@ cc_library(
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
+        "//modules/common_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
         "@adolc",
         "@eigen",
         "@ipopt",
@@ -271,9 +271,8 @@ cuda_library(
     name = "planning_block",
     srcs = ["planning_block.cu"],
     hdrs = ["planning_block.h"],
+    target_compatible_with = requires_cuda(),
     deps = [
-        "@local_config_cuda//cuda:cuda_headers",
-        "@local_config_cuda//cuda:cudart",
     ],
 )
 
@@ -301,7 +300,7 @@ cc_test(
         ":distance_approach_ipopt_cuda_interface",
         "//cyber",
         "@com_google_googletest//:gtest_main",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
+    ],
 )
 
 cc_test(
@@ -315,7 +314,7 @@ cc_test(
         ":distance_approach_problem",
         "//cyber",
         "@com_google_googletest//:gtest_main",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
+    ],
 )
 
 cc_test(

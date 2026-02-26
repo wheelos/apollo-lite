@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -11,14 +11,14 @@ cc_library(
     hdrs = glob(["*.h"]),
     deps = [
         ":dfmb_psroi_align_plugin",
-        ":rcnn_proposal_plugin",
-        ":rpn_proposal_ssd_plugin",
         ":perception_inference_tensorrt_plugins_argmax_cuda",
         ":perception_inference_tensorrt_plugins_leakyrelu_cuda",
         ":perception_inference_tensorrt_plugins_slice_cuda",
         ":perception_inference_tensorrt_plugins_softmax_cuda",
-        "@local_config_cuda//cuda:cublas",
-        "@local_config_cuda//cuda:cudart",
+        ":rcnn_proposal_plugin",
+        ":rpn_proposal_ssd_plugin",
+        "@cuda//:cublas",
+        "@cuda//:cuda_runtime",
     ],
     alwayslink = True,
 )
@@ -30,11 +30,12 @@ cuda_library(
         "nms_cuda.cu",
     ],
     hdrs = ["kernels.h"],
-    alwayslink = True,
+    # copts = ["-DUSE_GPU=1"],
     deps = [
         "//modules/perception/base:common",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
+    alwayslink = True,
 )
 
 cuda_library(
@@ -45,7 +46,7 @@ cuda_library(
         ":kernels_cuda",
         "//cyber",
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -57,7 +58,7 @@ cuda_library(
     deps = [
         ":kernels_cuda",
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -69,7 +70,7 @@ cuda_library(
     deps = [
         ":kernels_cuda",
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -80,7 +81,7 @@ cuda_library(
     hdrs = ["slice_plugin.h"],
     deps = [
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -91,7 +92,7 @@ cuda_library(
     hdrs = ["argmax_plugin.h"],
     deps = [
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -102,7 +103,7 @@ cuda_library(
     hdrs = ["leakyReLU_plugin.h"],
     deps = [
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -113,7 +114,9 @@ cuda_library(
     hdrs = ["softmax_plugin.h"],
     deps = [
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cublas",
+        "@cuda//:cuda_runtime",
+        "@local_config_cudnn//:cudnn",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -122,26 +125,25 @@ cc_test(
     name = "slice_plugin_test",
     size = "small",
     srcs = ["slice_plugin_test.cc"],
+    linkstatic = True,
     deps = [
         ":perception_inference_tensorrt_plugins",
         "//modules/perception/inference/tensorrt:rt_common",
         "//modules/perception/inference/tensorrt:rt_net",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
     name = "argmax_plugin_test",
     size = "small",
     srcs = ["argmax_plugin_test.cc"],
+    linkstatic = True,
     deps = [
         ":perception_inference_tensorrt_plugins",
         "//modules/perception/inference/tensorrt:rt_common",
         "@com_google_googletest//:gtest_main",
-        "@local_config_cuda//cuda:cublas",
     ],
-    linkstatic = True,
 )
 
 cpplint()

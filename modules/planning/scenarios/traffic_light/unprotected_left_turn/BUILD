@@ -29,7 +29,7 @@ cc_library(
         "//modules/planning/tasks/deciders/creep_decider",
         "@com_github_gflags_gflags//:gflags",
         "@eigen",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
+    ],
 )
 
 cc_test(
@@ -38,11 +38,11 @@ cc_test(
     srcs = ["traffic_light_unprotected_left_turn_scenario_test.cc"],
     data = ["//modules/planning:planning_conf"],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":traffic_light_unprotected_left_turn_scenario",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -53,11 +53,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":traffic_light_unprotected_left_turn_scenario",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -68,11 +68,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":traffic_light_unprotected_left_turn_scenario",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

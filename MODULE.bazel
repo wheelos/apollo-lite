@@ -10,7 +10,22 @@ bazel_dep(name = "rules_cc", version = "0.0.9")
 bazel_dep(name = "rules_pkg", version = "0.10.1")
 bazel_dep(name = "rules_proto", version = "6.0.2")
 bazel_dep(name = "rules_python", version = "0.34.0")
-bazel_dep(name = "rules_cuda", version = "0.2.5")
+bazel_dep(name = "rules_cuda", version = "0.3.0")
+
+cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
+cuda.toolkit(
+    name = "cuda",
+    toolkit_path = "",
+)
+use_repo(cuda, "cuda")
+
+bazel_dep(name = "platforms", version = "0.0.10")
+
+cudnn_ext = use_extension("//third_party/cudnn:extensions.bzl", "cudnn")
+use_repo(cudnn_ext, "local_config_cudnn")
+
+tensorrt_ext = use_extension("//third_party/tensorrt:extensions.bzl", "tensorrt_configure")
+use_repo(tensorrt_ext, "local_config_tensorrt")
 
 # TODO: Keep the version of Python toolchain consistent with Docker.
 # Note whether there is any duplication with .apollo.bazelrc?

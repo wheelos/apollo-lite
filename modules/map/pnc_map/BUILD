@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library", "requires_cuda")
 load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install")
 
@@ -21,10 +21,12 @@ cuda_library(
     srcs = ["cuda_util.cu"],
     hdrs = ["cuda_util.h"],
     tags = ["exclude"],
+    target_compatible_with = requires_cuda(),
     deps = [
         "//cyber",
         "//modules/common/math",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cublas",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -32,18 +34,14 @@ cc_test(
     name = "cuda_util_test",
     size = "small",
     srcs = [
-        "cuda_util.h",
         "cuda_util_test.cc",
-        ":cuda_pnc_util",
     ],
     linkstatic = True,
     tags = ["exclude"],
     deps = [
+        ":cuda_pnc_util",
         "//modules/common/math",
         "@com_google_googletest//:gtest_main",
-        "@local_config_cuda//cuda:cublas",
-        "@local_config_cuda//cuda:cuda_headers",
-        "@local_config_cuda//cuda:cudart",
     ],
 )
 

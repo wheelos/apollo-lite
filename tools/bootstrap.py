@@ -48,7 +48,7 @@ except ImportError:
 _DEFAULT_CUDA_VERSION = "10"
 _DEFAULT_CUDNN_VERSION = "7"
 _DEFAULT_TENSORRT_VERSION = "7"
-_DEFAULT_CUDA_COMPUTE_CAPABILITIES = "6.0,6.1,7.0,7.2,7.5,8.6,8.9"
+_DEFAULT_CUDA_COMPUTE_CAPABILITIES = "6.0,6.1,7.0,7.2,7.5,8.6,8.9,12.0"
 _DEFAULT_PYTHON_LIB_PATH = "/usr/lib/python3/dist-packages"
 
 _DEFAULT_PROMPT_ASK_ATTEMPTS = 3
@@ -1002,7 +1002,7 @@ def set_other_build_config():
 # This config refers to building with CUDA available.
 build:using_cuda --define=using_cuda=true
 build:using_cuda --action_env TF_NEED_CUDA=1
-build:using_cuda --extra_toolchains=@local_config_cuda//crosstool:toolchain-linux
+build:using_cuda --@rules_cuda//cuda:enable=true
 
 # This config refers to building CUDA with nvcc.
 build:cuda --config=using_cuda

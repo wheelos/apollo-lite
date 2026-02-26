@@ -8,15 +8,16 @@ cc_library(
     srcs = ["rt_common.cc"],
     hdrs = [
         "rt_common.h",
+        "rt_legacy.h",
     ],
     deps = [
         ":rt_common_without_protobuf",
-        "@local_config_tensorrt//:tensorrt",
         "//cyber",
         "//modules/perception/base:common",
         "//modules/perception/proto:rt_cc_proto",
         "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf"
+        "@com_google_protobuf//:protobuf",
+        "@local_config_tensorrt//:tensorrt",
     ],
 )
 
@@ -29,8 +30,8 @@ cc_library(
     ],
     deps = [
         "//cyber",
+        "//modules/perception/base:common",
         "@local_config_tensorrt//:tensorrt",
-        "//modules/perception/base:common"
     ],
 )
 
@@ -60,11 +61,11 @@ cc_test(
     name = "rt_utils_test",
     size = "small",
     srcs = ["rt_utils_test.cc"],
+    linkstatic = True,
     deps = [
         ":rt_utils",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -96,6 +97,7 @@ cc_test(
     data = [
         "//modules/perception/inference:inference_test_data",
     ],
+    linkstatic = True,
     tags = ["exclude"],
     deps = [
         ":rt_net",
@@ -103,7 +105,6 @@ cc_test(
         "@atlas//:cblas",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -112,10 +113,9 @@ cc_library(
     hdrs = ["entropy_calibrator.h"],
     deps = [
         ":batch_stream",
-        ":rt_utils",
         ":rt_common",
+        ":rt_utils",
         "@com_google_protobuf//:protobuf",
-        "@local_config_cuda//cuda:cudart",
         "@local_config_tensorrt//:tensorrt",
         "@opencv//:imgcodecs",
     ],
@@ -129,11 +129,11 @@ cc_test(
     data = [
         "//modules/perception/inference:inference_test_data",
     ],
+    linkstatic = True,
     deps = [
         ":entropy_calibrator",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -158,11 +158,11 @@ cc_test(
     data = [
         "//modules/perception/inference:inference_test_data",
     ],
+    linkstatic = True,
     deps = [
         ":batch_stream",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

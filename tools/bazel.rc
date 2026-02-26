@@ -68,6 +68,8 @@ build:opt -c opt
 # CPU / GPU Configuration
 build:cpu --verbose_failures
 build:gpu --define USE_GPU=true
+build:gpu --@rules_cuda//cuda:copts=-DUSE_GPU=1
+build:gpu --copt="-DUSE_GPU=1"
 build:gpu --cxxopt="-DUSE_GPU=1"
 
 # Build with profiling

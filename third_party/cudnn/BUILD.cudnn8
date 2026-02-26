@@ -1,0 +1,83 @@
+package(default_visibility = ["//visibility:private"])
+
+# cudnn_headers simply serve as a dummy target by adding
+cc_library(
+    name = "cudnn_headers",
+    srcs = glob(["cudnn/include/**/*.h"]),
+    includes = ["cudnn/include"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "cudnn",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+        ":cudnn_so",
+    ],
+)
+
+cc_library(
+    name = "cudnn_adv",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+        ":cudnn_adv_infer_so",
+        ":cudnn_adv_train_so",
+    ],
+)
+
+cc_library(
+    name = "cudnn_cnn",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+        ":cudnn_cnn_infer_so",
+        ":cudnn_cnn_train_so",
+    ],
+)
+
+cc_library(
+    name = "cudnn_ops",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+        ":cudnn_ops_infer_so",
+        ":cudnn_ops_train_so",
+    ],
+)
+
+cc_import(
+    name = "cudnn_so",
+    shared_library = "cudnn/lib/libcudnn.so",
+)
+
+cc_import(
+    name = "cudnn_ops_infer_so",
+    shared_library = "cudnn/lib/libcudnn_ops_infer.so",
+)
+
+cc_import(
+    name = "cudnn_ops_train_so",
+    shared_library = "cudnn/lib/libcudnn_ops_train.so",
+)
+
+cc_import(
+    name = "cudnn_cnn_infer_so",
+    shared_library = "cudnn/lib/libcudnn_cnn_infer.so",
+)
+
+cc_import(
+    name = "cudnn_cnn_train_so",
+    shared_library = "cudnn/lib/libcudnn_cnn_train.so",
+)
+
+cc_import(
+    name = "cudnn_adv_infer_so",
+    shared_library = "cudnn/lib/libcudnn_adv_infer.so",
+)
+
+cc_import(
+    name = "cudnn_adv_train_so",
+    shared_library = "cudnn/lib/libcudnn_adv_train.so",
+)
