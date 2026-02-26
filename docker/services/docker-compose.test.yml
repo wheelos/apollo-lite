@@ -1,0 +1,20 @@
+services:
+  core:
+    container_name: ${CONTAINER_NAME}
+    privileged: false
+
+    environment:
+      - USE_GPU_HOST=0
+      - TEST_MODE=true
+
+    # Port mapping: Host machine dynamic port -> Container port 8888
+    # Do not write network_mode: host
+    ports:
+      - "${SERVER_PORT}:8888"
+
+    # Resource limitations: To prevent the test server from crashing.
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: '8G'
