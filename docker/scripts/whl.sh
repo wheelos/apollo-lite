@@ -21,13 +21,142 @@ function calculate_dreamview_port() {
 }
 DREAMVIEW_PORT=$(calculate_dreamview_port)
 
+# ----- OS Detection -----
+# Detect Ubuntu version, fallback to 22.04 for non-Ubuntu or detection failure
+function detect_os_version() {
+    local os_version="${OS:-}"
+
+    # If OS is already set via environment or command line, use it
+    if [[ -n "${os_version}" ]]; then
+        echo "${os_version}"
+        return
+    fi
+
+    # Try to detect Ubuntu version
+    if [[ -f /etc/os-release ]]; then
+        local os_id=""
+        local version_id=""
+        # shellcheck source=/dev/null
+        source /etc/os-release 2>/dev/null || true
+        os_id="${ID:-}"
+        version_id="${VERSION_ID:-}"
+
+        if [[ "${os_id}" == "ubuntu" && -n "${version_id}" ]]; then
+            # Extract major version (e.g., "22.04" -> "22.04")
+            echo "${version_id}"
+            return
+        fi
+
+        if [[ "${os_id}" != "ubuntu" ]]; then
+            echo ">>> NOTICE: Non-Ubuntu system detected (${os_id:-unknown}), falling back to 22.04" >&2
+        fi
+    else
+        echo ">>> NOTICE: Cannot detect OS version (/etc/os-release not found), falling back to 22.04" >&2
+    fi
+
+    # Fallback to 22.04
+    echo "22.04"
+}
+
+detect_timezone() {
+    if command -v timedatectl 2>&1 >/dev/null; then
+        # Use timedatectl if available (systemd based systems)
+        timedatectl | grep "Time zone" | awk '{print $3}'
+    elif [[ -f /etc/timezone ]]; then
+        # Fallback to /etc/timezone file if it exists
+        cat /etc/timezone
+    elif [[ -L /etc/localtime ]]; then
+        # Fallback to /etc/localtime symlink if it exists
+        readlink -f /etc/localtime | sed 's|.*/zoneinfo/||'
+    else
+        # Fallback to date command for other systems
+        local tzoffset="$(date +"%z")"
+        local tzoffset_sign="${tzoffset:0:1}"
+        local tzoffset_sign_r=$(echo "${tzoffset_sign}" | sed 's/+/@/g; s/-/+/g; s/@/-/g')
+        local tzoffset_hours=$((10#${tzoffset:1:2}))
+        timezone="Etc/GMT${tzoffset_sign_r}${tzoffset_hours}"
+        echo "${timezone}"
+    fi
+}
+
+# ----- Command Line Arguments -----
+CUSTOM_CONTAINER_NAME=""
+CUSTOM_IMAGE=""
+
+function parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -n|--name)
+                if [[ -z "${2:-}" || "${2}" == -* ]]; then
+                    echo ">>> ERROR: --name requires a container name argument"
+                    exit 2
+                fi
+                CUSTOM_CONTAINER_NAME="$2"
+                shift 2
+                ;;
+            -i|--image)
+                if [[ -z "${2:-}" || "${2}" == -* ]]; then
+                    echo ">>> ERROR: --image requires an image name argument"
+                    exit 2
+                fi
+                CUSTOM_IMAGE="$2"
+                shift 2
+                ;;
+            --os)
+                if [[ -z "${2:-}" || "${2}" == -* ]]; then
+                    echo ">>> ERROR: --os requires an OS version argument"
+                    exit 2
+                fi
+                OS="$2"
+                shift 2
+                ;;
+            enter|start|stop|status|update|prune|help|--help|-h)
+                # These are commands, stop parsing options
+                break
+                ;;
+            dev|test)
+                # These are modes, stop parsing options
+                break
+                ;;
+            *)
+                # Unknown option or positional argument
+                break
+                ;;
+        esac
+    done
+}
+
+# Parse options before the command
+parse_args "$@"
+
+# Shift parsed options, keep remaining args for command routing
+remaining_args=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -n|--name)
+            shift 2
+            ;;
+        -i|--image)
+            shift 2
+            ;;
+        --os)
+            shift 2
+            ;;
+        *)
+            remaining_args+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${remaining_args[@]}"
+
 # Prepare to call the container selection script
 ARCH=$(uname -m)
-OS="${OS:-20.04}"
+OS=$(detect_os_version)
 USE_GPU="${USE_GPU:-auto}"
 BAZEL_CACHE_DIR="${BAZEL_CACHE_DIR:-/var/cache/bazel/repo_cache}"
 TARGET_ARCH="${TARGET_ARCH:-${ARCH}}"
-SYSTEM_TZ="${SYSTEM_TZ:-$(cat /etc/timezone 2>/dev/null  || date +%Z)}"
+SYSTEM_TZ="$(detect_timezone)"
 
 # ----- Phase 1: Container Selection -----
 
@@ -96,7 +225,14 @@ if [[ "${USE_GPU}" == "auto" ]]; then
 fi
 require_host_ready
 verify_gpu_ready
-select_container "$ARCH" "$OS" "$USE_GPU"
+
+# Use custom image or select container automatically
+if [[ -n "${CUSTOM_IMAGE}" ]]; then
+  echo ">>> Using custom image: ${CUSTOM_IMAGE}"
+  APOLLO_IMAGE="${CUSTOM_IMAGE}"
+else
+  select_container "$ARCH" "$OS" "$USE_GPU"
+fi
 
 # ----- Phase 2: Environment Variable Generation -----
 function generate_env() {
@@ -105,6 +241,11 @@ function generate_env() {
 
   if [[ "${mode}" == "test" ]]; then
     container_name="apollo_test_${USER}"
+  fi
+
+  # Override with custom container name if specified
+  if [[ -n "${CUSTOM_CONTAINER_NAME}" ]]; then
+    container_name="${CUSTOM_CONTAINER_NAME}"
   fi
 
   echo ">>> Generating .env for [${mode}]..."
@@ -243,7 +384,13 @@ function cmd_prune() {
 
 # ----- Main Script Execution -----
 function show_help() {
-  echo "Usage: bash whl.sh [COMMAND] [MODE]"
+  echo "Usage: bash whl.sh [OPTIONS] [COMMAND] [MODE]"
+  echo ""
+  echo "Options:"
+  echo "  -n, --name NAME    Specify container name (default: apollo_{dev|test}_{USER})"
+  echo "  -i, --image IMAGE  Specify Docker image (skip auto-selection)"
+  echo "  --os VERSION       Specify OS version (default: auto-detect, fallback: 22.04)"
+  echo "  -h, --help         Show this help message"
   echo ""
   echo "Commands:"
   echo "  start      Start container (skips if running, restarts if stopped)"
@@ -256,7 +403,13 @@ function show_help() {
   echo ""
   echo "Modes:"
   echo "  dev        Standard development mode (Host net, Privileged)"
-  echo "  test    Isolated test mode (Bridge net, Dynamic ports)"
+  echo "  test       Isolated test mode (Bridge net, Dynamic ports)"
+  echo ""
+  echo "Examples:"
+  echo "  bash whl.sh enter                    # Enter dev container (auto-select image)"
+  echo "  bash whl.sh -n my_container enter    # Enter container with custom name"
+  echo "  bash whl.sh -i myimage:latest start  # Start with custom image"
+  echo "  bash whl.sh --os 20.04 enter dev     # Enter with Ubuntu 20.04 image"
 }
 
 # Simple routing
