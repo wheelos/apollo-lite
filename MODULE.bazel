@@ -78,12 +78,13 @@ single_version_override(
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "dreamview_frontend_assets",
-    urls = [
-      "https://dl.wheelos.cn/release/dreamview/dreamview-frontend-5.5.0.tar.gz"
-    ],
     sha256 = "0fca6468d79b8140b5162b867daa63040c872ea1f7d4d42133d518db38e3d953",
+    urls = [
+        "https://dl.wheelos.cn/release/dreamview/dreamview-frontend-5.5.0.tar.gz",
+    ],
 )
 
 bazel_dep(name = "googletest", version = "1.17.0", repo_name = "com_google_googletest")
@@ -103,3 +104,4 @@ bazel_dep(name = "pcl", version = "1.15.0.bcr.2", repo_name = "local_config_pcl"
 bazel_dep(name = "sse2neon", version = "1.8.0")
 bazel_dep(name = "behaviortree_cpp", version = "4.7.0.bcr.2")
 bazel_dep(name = "inno-lidar-sdk", version = "3.103.4")
+bazel_dep(name = "hesai-lidar-sdk", version = "2.0.11")
