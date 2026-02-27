@@ -18,13 +18,14 @@ Optional (generation):
   --use_hdmap=true|false                        (default: false)
   --use_tracking_info=true|false                (default: false)
   --min_life_time=FLOAT                         (default: -1.0)
-  --log_dir=DIR                                 (default: RESULT_DIR/logs)
+  --log_dir=DIR                                 (default: RESULT_DIR/logs; script logs only, not passed to binaries)
   --tag=NAME                                    (default: timestamp)
-  --no_build                                    (skip bazel build)
+  --offline_bin=PATH                            (default: bazel-bin/modules/perception/lidar/tools/offline_lidar_obstacle_perception)
+  --benchmark_bin=PATH                          (default: bazel-bin/modules/perception/tool/benchmark/lidar/lidar_benchmark)
 
 Optional (evaluation):
   --gt_dir=DIR                                  (if set, run evaluator)
-  --reserve=STRING                              (forwarded to evaluator, e.g. "JACCARD=0.9;RANGE=distance")
+  --reserve=STRING                              (forwarded to evaluator, format: "KEY:VALUE|KEY:VALUE", e.g. "JACCARD:0.9|RANGE:distance")
 
 Examples:
   # 1) Generate result txts (CNNSEG RTNet / TensorRT path decided by pipeline config + model_type)
@@ -60,11 +61,13 @@ min_life_time="-1.0"
 lidar_detection_config_file=""
 lidar_tracking_config_file=""
 reserve=""
-do_build="true"
 tag=""
 log_dir=""
+offline_bin=""
+benchmark_bin=""
 
-for arg in "$@"; do
+while [[ $# -gt 0 ]]; do
+  arg="$1"
   case "${arg}" in
     --help|-h) usage; exit 0 ;;
     --pcd_dir=*) pcd_dir="${arg#*=}" ;;
@@ -81,13 +84,15 @@ for arg in "$@"; do
     --reserve=*) reserve="${arg#*=}" ;;
     --tag=*) tag="${arg#*=}" ;;
     --log_dir=*) log_dir="${arg#*=}" ;;
-    --no_build) do_build="false" ;;
+    --offline_bin=*) offline_bin="${arg#*=}" ;;
+    --benchmark_bin=*) benchmark_bin="${arg#*=}" ;;
     *)
       echo "Unknown arg: ${arg}" 1>&2
       usage
       exit 2
       ;;
   esac
+  shift
 done
 
 if [[ -z "${pcd_dir}" || -z "${result_dir}" || -z "${lidar_detection_config_file}" || -z "${lidar_tracking_config_file}" ]]; then
@@ -110,26 +115,41 @@ if [[ -z "${pose_dir}" ]]; then
   enable_tracking="false"
 fi
 
-offline_target="//modules/perception/lidar/tools:offline_lidar_obstacle_perception"
-benchmark_target="//modules/perception/tool/benchmark/lidar:lidar_benchmark"
+if [[ -z "${offline_bin}" ]]; then
+  offline_bin="${ROOT}/bazel-bin/modules/perception/lidar/tools/offline_lidar_obstacle_perception"
+fi
+if [[ -z "${benchmark_bin}" ]]; then
+  benchmark_bin="${ROOT}/bazel-bin/modules/perception/tool/benchmark/lidar/lidar_benchmark"
+fi
 
-if [[ "${do_build}" == "true" ]]; then
-  bazel build "${offline_target}" "${benchmark_target}"
+if [[ ! -x "${offline_bin}" ]]; then
+  echo "Missing offline binary: ${offline_bin}" 1>&2
+  echo "Build it first (example): bazel build //modules/perception/lidar/tools:offline_lidar_obstacle_perception" 1>&2
+  exit 5
+fi
+if [[ ! -x "${benchmark_bin}" ]]; then
+  echo "Missing benchmark binary: ${benchmark_bin}" 1>&2
+  echo "Build it first (example): bazel build //modules/perception/tool/benchmark/lidar:lidar_benchmark" 1>&2
+  exit 6
 fi
 
 echo "[1/2] Generate results -> ${result_dir}"
-bazel run "${offline_target}" -- \
-  --pcd_path="${pcd_dir}" \
-  --pose_path="${pose_dir}" \
-  --output_path="${result_dir}" \
-  --sensor_name="${sensor_name}" \
-  --lidar_detection_config_file="${lidar_detection_config_file}" \
-  --lidar_tracking_config_file="${lidar_tracking_config_file}" \
-  --enable_tracking="${enable_tracking}" \
-  --use_hdmap="${use_hdmap}" \
-  --use_tracking_info="${use_tracking_info}" \
-  --min_life_time="${min_life_time}" \
-  --log_dir="${log_dir}" \
+offline_args=(
+  "--pcd_path=${pcd_dir}"
+  "--pose_path=${pose_dir}"
+  "--output_path=${result_dir}"
+  "--sensor_name=${sensor_name}"
+  "--lidar_detection_config_file=${lidar_detection_config_file}"
+  "--lidar_tracking_config_file=${lidar_tracking_config_file}"
+  "--enable_tracking=${enable_tracking}"
+  "--use_hdmap=${use_hdmap}"
+  "--use_tracking_info=${use_tracking_info}"
+  "--min_life_time=${min_life_time}"
+)
+
+# NOTE: Do NOT pass a standalone `--` when running the binary directly.
+# gflags treats it as "end of flags", which would make all flags below ignored.
+"${offline_bin}" "${offline_args[@]}" \
   2>&1 | tee "${log_dir}/offline_lidar_obstacle_perception.${tag}.log"
 
 if [[ -z "${gt_dir}" ]]; then
@@ -185,24 +205,18 @@ if [[ "${missing}" -ne 0 ]]; then
 fi
 
 eval_log="${log_dir}/lidar_benchmark.${tag}.log"
+eval_args=(
+  "--cloud=${pcd_list}"
+  "--result=${result_list}"
+  "--groundtruth=${gt_list}"
+  "--is_folder=false"
+)
 if [[ -n "${reserve}" ]]; then
-  bazel run "${benchmark_target}" -- \
-    --cloud="${pcd_list}" \
-    --result="${result_list}" \
-    --groundtruth="${gt_list}" \
-    --is_folder=false \
-    --reserve="${reserve}" \
-    2>&1 | tee "${eval_log}"
-else
-  bazel run "${benchmark_target}" -- \
-    --cloud="${pcd_list}" \
-    --result="${result_list}" \
-    --groundtruth="${gt_list}" \
-    --is_folder=false \
-    2>&1 | tee "${eval_log}"
+  eval_args+=("--reserve=${reserve}")
 fi
+
+"${benchmark_bin}" "${eval_args[@]}" 2>&1 | tee "${eval_log}"
 
 echo "Done. Logs:"
 echo "  Offline: ${log_dir}/offline_lidar_obstacle_perception.${tag}.log"
 echo "  Eval   : ${eval_log}"
-

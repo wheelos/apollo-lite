@@ -14,13 +14,15 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "absl/strings/str_cat.h"
 #include "Eigen/Dense"
+#include "absl/strings/str_cat.h"
 #include "gflags/gflags.h"
 
+#include "modules/perception/pipeline/proto/pipeline_config.pb.h"
+
 #include "cyber/common/file.h"
-#include "modules/perception/base/object_types.h"
 #include "modules/perception/base/object.h"
+#include "modules/perception/base/object_types.h"
 #include "modules/perception/base/point_cloud.h"
 #include "modules/perception/common/io/io_util.h"
 #include "modules/perception/common/perception_gflags.h"
@@ -29,13 +31,10 @@
 #include "modules/perception/lib/config_manager/config_manager.h"
 #include "modules/perception/lidar/app/lidar_obstacle_detection.h"
 #include "modules/perception/lidar/app/lidar_obstacle_tracking.h"
-#include "modules/perception/lidar/common/lidar_frame_pool.h"
 #include "modules/perception/lidar/common/lidar_frame.h"
+#include "modules/perception/lidar/common/lidar_frame_pool.h"
 #include "modules/perception/lidar/common/lidar_log.h"
 #include "modules/perception/lidar/common/pcl_util.h"
-
-#include "modules/perception/pipeline/proto/pipeline_config.pb.h"
-
 
 DEFINE_bool(enable_tracking, false, "option to enable tracking");
 DEFINE_bool(use_hdmap, false, "option to enable using hdmap");
@@ -69,13 +68,14 @@ class OfflineLidarObstaclePerception {
     }
     // 2. Detection
     lidar_detection_.reset(new LidarObstacleDetection);
-    ACHECK(cyber::common::GetProtoFromFile(
-              FLAGS_lidar_detection_config_file, &lidar_detection_config_));
+    AERROR << FLAGS_lidar_detection_config_file;
+    ACHECK(cyber::common::GetProtoFromFile(FLAGS_lidar_detection_config_file,
+                                           &lidar_detection_config_));
     ACHECK(lidar_detection_->Init(lidar_detection_config_));
     // 3. Tracking
     lidar_tracking_.reset(new LidarObstacleTracking);
-    ACHECK(cyber::common::GetProtoFromFile(
-              FLAGS_lidar_tracking_config_file, &lidar_tracking_config_));
+    ACHECK(cyber::common::GetProtoFromFile(FLAGS_lidar_tracking_config_file,
+                                           &lidar_tracking_config_));
     if (!lidar_tracking_->Init(lidar_tracking_config_)) {
       AINFO << "Failed to init LidarObstacleTracking.";
       return false;
@@ -111,21 +111,21 @@ class OfflineLidarObstaclePerception {
     for (size_t i = 0; i < pcd_file_names.size(); ++i) {
       AINFO << "***************** Frame " << i << " ******************";
       AINFO << pcd_file_names[i];
-      const std::string file_name = GetFileName(pcd_file_names[i]);
+      const std::string file_stem = GetFileName(pcd_file_names[i], true);
       frame_ = LidarFramePool::Instance().Get();
       frame_->sensor_info = sensor_info_;
-      frame_->reserve = file_name;
+      frame_->reserve = file_stem;
       if (frame_->cloud == nullptr) {
         frame_->cloud = base::PointFCloudPool::Instance().Get();
       }
-      LoadPCLPCD(pcd_folder + "/" + file_name + ".pcd", frame_->cloud.get());
+      LoadPCLPCD(pcd_file_names[i], frame_->cloud.get());
       AINFO << "Read point cloud from " << pcd_file_names[i]
             << " with cloud size: " << frame_->cloud->size();
       if (pose_folder != "") {
-        std::string pose_file_name = pose_folder + "/" + file_name + ".pose";
+        std::string pose_file_name = pose_folder + "/" + file_stem + ".pose";
         AINFO << "Pose file: " << pose_file_name;
         if (!apollo::cyber::common::PathExists(pose_file_name)) {
-          pose_file_name = pose_folder + "/" + file_name + ".pcd.pose";
+          pose_file_name = pose_folder + "/" + file_stem + ".pcd.pose";
         }
         int idt = 0;
         if (common::ReadPoseFile(pose_file_name, &frame_->lidar2world_pose,
@@ -200,7 +200,7 @@ class OfflineLidarObstaclePerception {
       }
       if (!WriteObjectsForNewBenchmark(
               i, filtered_objects,
-              absl::StrCat(output_path, "/", file_name, ".txt"))) {
+              absl::StrCat(output_path, "/", file_stem, ".txt"))) {
         return false;
       }
     }

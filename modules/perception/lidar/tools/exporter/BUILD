@@ -28,4 +28,14 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "pcd_exporter",
+    srcs = ["pcd_exporter_main.cc"],
+    deps = [
+        "//cyber",
+        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "//modules/perception/lidar/common:pcl_util",
+    ],
+)
+
 cpplint()
