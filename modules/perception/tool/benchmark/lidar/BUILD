@@ -21,7 +21,7 @@ cc_binary(
     ],
     deps = [
         "//modules/perception/tool/benchmark/lidar:benchmark_evaluation",
-        "//third_party:boost",
+        "@boost.program_options",
     ],
 )
 

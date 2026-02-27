@@ -103,10 +103,11 @@ class Frame : protected SensorObjects {
   // 2. calculate points and indices in each gt objects if not exist;
   void build_indices();
 
-  void build_points();
+ void build_points();
 
  private:
-  void build_objects_indices(const pcl::KdTreeFLANN<Point>& point_cloud_kdtree,
+  void build_objects_indices(
+      const pcl::KdTreeFLANN<pcl::PointXYZ>& point_cloud_kdtree,
                              std::vector<ObjectPtr>* objects_out);
 
   void build_objects_points(std::vector<ObjectPtr>* objects_out);

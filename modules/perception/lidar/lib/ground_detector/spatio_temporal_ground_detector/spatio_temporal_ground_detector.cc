@@ -13,245 +13,303 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
-
 #include "modules/perception/lidar/lib/ground_detector/spatio_temporal_ground_detector/spatio_temporal_ground_detector.h"
+
+#include <algorithm>
+#include <limits>
 
 #include "cyber/common/file.h"
 #include "modules/perception/common/point_cloud_processing/common.h"
 #include "modules/perception/lib/config_manager/config_manager.h"
 #include "modules/perception/lidar/common/lidar_log.h"
 #include "modules/perception/lidar/common/lidar_point_label.h"
-#include "modules/perception/pipeline/proto/stage/spatio_temporal_ground_detector_config.pb.h"
 
 namespace apollo {
 namespace perception {
 namespace lidar {
 
+using apollo::cyber::common::GetAbsolutePath;
 using apollo::cyber::common::GetProtoFromFile;
 
-bool SpatioTemporalGroundDetector::Init(
-    const GroundDetectorInitOptions& options) {
-  const lib::ModelConfig* model_config = nullptr;
-  auto config_manager = lib::ConfigManager::Instance();
-  ACHECK(config_manager->GetModelConfig("SpatioTemporalGroundDetector",
-                                        &model_config))
-      << "Failed to get model config: SpatioTemporalGroundDetector";
-
-  const std::string& work_root = config_manager->work_root();
-  std::string root_path;
-  ACHECK(model_config->get_value("root_path", &root_path))
-      << "Failed to get value of root_path.";
-  std::string config_file;
-  config_file = apollo::cyber::common::GetAbsolutePath(work_root, root_path);
-  config_file = apollo::cyber::common::GetAbsolutePath(
-      config_file, "spatio_temporal_ground_detector.conf");
-
-  // get config params
-  SpatioTemporalGroundDetectorConfig config_params;
-  ACHECK(GetProtoFromFile(config_file, &config_params))
-      << "Failed to parse SpatioTemporalGroundDetectorConfig config file.";
-  ground_thres_ = config_params.ground_thres();
-  use_roi_ = config_params.use_roi();
-  use_ground_service_ = config_params.use_ground_service();
-
-  param_ = new common::PlaneFitGroundDetectorParam;
-  param_->roi_region_rad_x = config_params.roi_rad_x();
-  param_->roi_region_rad_y = config_params.roi_rad_y();
-  param_->roi_region_rad_z = config_params.roi_rad_z();
-  param_->nr_grids_coarse = config_params.grid_size();
-  param_->nr_smooth_iter = config_params.nr_smooth_iter();
-
-  pfdetector_ = new common::PlaneFitGroundDetector(*param_);
-  pfdetector_->Init();
-
-  point_indices_temp_.resize(default_point_size_);
-  data_.resize(default_point_size_ * 3);
-  ground_height_signed_.resize(default_point_size_);
-
-  ground_service_content_.Init(
-      config_params.roi_rad_x(), config_params.roi_rad_y(),
-      config_params.grid_size(), config_params.grid_size());
-  return true;
-}
+// =============================================================================
+// Initialization
+// =============================================================================
 
 bool SpatioTemporalGroundDetector::Init(const StageConfig& stage_config) {
   if (!Initialize(stage_config)) {
     return false;
   }
-
-  // get config params
   config_ = stage_config.spatio_temporal_ground_detector_config();
+  return InitInternal(config_);
+}
 
-  ground_thres_ = config_.ground_thres();
-  use_roi_ = config_.use_roi();
-  use_ground_service_ = config_.use_ground_service();
+bool SpatioTemporalGroundDetector::Init(
+    const GroundDetectorInitOptions& options) {
+  auto config_manager = lib::ConfigManager::Instance();
+  const lib::ModelConfig* model_config = nullptr;
+  ACHECK(config_manager->GetModelConfig("SpatioTemporalGroundDetector",
+                                        &model_config));
 
-  param_ = new common::PlaneFitGroundDetectorParam;
-  param_->roi_region_rad_x = config_.roi_rad_x();
-  param_->roi_region_rad_y = config_.roi_rad_y();
-  param_->roi_region_rad_z = config_.roi_rad_z();
-  param_->nr_grids_coarse = config_.grid_size();
-  param_->nr_smooth_iter = config_.nr_smooth_iter();
+  const std::string& work_root = config_manager->work_root();
+  std::string root_path;
+  ACHECK(model_config->get_value("root_path", &root_path));
 
-  pfdetector_ = new common::PlaneFitGroundDetector(*param_);
+  std::string config_file = GetAbsolutePath(work_root, root_path);
+  config_file =
+      GetAbsolutePath(config_file, "spatio_temporal_ground_detector.conf");
+
+  SpatioTemporalGroundDetectorConfig config_params;
+  ACHECK(GetProtoFromFile(config_file, &config_params));
+
+  return InitInternal(config_params);
+}
+
+bool SpatioTemporalGroundDetector::InitInternal(
+    const SpatioTemporalGroundDetectorConfig& config) {
+  // 1. Load Parameters
+  ground_thres_ = config.ground_thres();
+  use_roi_ = config.use_roi();
+  use_ground_service_ = config.use_ground_service();
+  near_range_dist_ = config.near_range_dist();
+  near_range_ground_thres_ = config.near_range_ground_thres();
+  middle_range_dist_ = config.middle_range_dist();
+  middle_range_ground_thres_ = config.middle_range_ground_thres();
+
+  // 2. Setup Algorithm Parameters
+  // Using make_unique for exception safety (though Apollo doesn't use
+  // exceptions much)
+  param_ = std::make_unique<common::PlaneFitGroundDetectorParam>();
+  param_->roi_region_rad_x = config.roi_rad_x();
+  param_->roi_region_rad_y = config.roi_rad_y();
+  param_->roi_region_rad_z = config.roi_rad_z();
+  // Prefer small_grid_size/big_grid_size if provided (10.0 parity).
+  const uint32_t coarse_grid = config.has_small_grid_size()
+                                   ? config.small_grid_size()
+                                   : config.grid_size();
+  param_->nr_grids_coarse = coarse_grid;
+  if (config.has_big_grid_size()) {
+    param_->nr_grids_fine = config.big_grid_size();
+  }
+
+  param_->nr_smooth_iter = config.nr_smooth_iter();
+  param_->sample_region_z_lower = config.sample_region_z_lower();
+  param_->sample_region_z_upper = config.sample_region_z_upper();
+  param_->roi_near_rad = config.roi_near_rad();
+  param_->planefit_orien_threshold = config.planefit_orien_threshold();
+  if (config.has_planefit_dist_thres_near()) {
+    param_->planefit_dist_threshold_near = config.planefit_dist_thres_near();
+  }
+  if (config.has_planefit_dist_thres_far()) {
+    param_->planefit_dist_threshold_far = config.planefit_dist_thres_far();
+  }
+  if (config.has_z_compare_thres()) {
+    param_->planefit_filter_threshold = config.z_compare_thres();
+  }
+  if (config.has_smooth_z_thres()) {
+    param_->candidate_filter_threshold = config.smooth_z_thres();
+  }
+  if (config.has_inliers_min_threshold()) {
+    param_->nr_inliers_min_threshold = config.inliers_min_threshold();
+  }
+
+  // 3. Init Core Detector
+  pfdetector_ = std::make_unique<common::PlaneFitGroundDetector>(*param_);
   pfdetector_->Init();
 
+  // 4. Pre-allocate Memory
+  // 65536 is too small for VLP-128 or Hesai-128, use 256k or adaptive
+  default_point_size_ = 262144;
   point_indices_temp_.resize(default_point_size_);
   data_.resize(default_point_size_ * 3);
   ground_height_signed_.resize(default_point_size_);
 
-  ground_service_content_.Init(
-      config_.roi_rad_x(),
-      config_.roi_rad_y(),
-      config_.grid_size(),
-      config_.grid_size());
-
+  ground_service_content_.Init(config.roi_rad_x(), config.roi_rad_y(),
+                               coarse_grid, coarse_grid);
   return true;
 }
 
+// =============================================================================
+// Processing
+// =============================================================================
+
 bool SpatioTemporalGroundDetector::Process(DataFrame* data_frame) {
-  return true;
+  if (!data_frame || !data_frame->lidar_frame) return false;
+  GroundDetectorOptions options;
+  return Detect(options, data_frame->lidar_frame);
 }
 
 bool SpatioTemporalGroundDetector::Detect(const GroundDetectorOptions& options,
                                           LidarFrame* frame) {
-  // check input
-  if (frame == nullptr) {
-    AERROR << "Input null frame ptr.";
-    return false;
-  }
-  if (frame->cloud.get() == nullptr || frame->world_cloud.get() == nullptr) {
-    AERROR << "Input null frame cloud.";
-    return false;
-  }
-  if (frame->cloud->empty() || frame->world_cloud->empty()) {
-    AERROR << "Input none points.";
+  if (!frame || !frame->cloud || !frame->world_cloud ||
+      frame->world_cloud->empty()) {
+    AWARN << "Input frame invalid for ground detection.";
     return false;
   }
 
-  unsigned int data_id = 0;
-  unsigned int valid_point_num = 0;
-  unsigned int valid_point_num_cur = 0;
-  size_t i = 0;
-  size_t num_points = 0;
-  size_t num_points_all = 0;
-  int index = 0;
-  unsigned int nr_points_element = 3;
-  float z_distance = 0.0f;
+  // 1. Determine Input Size & ROI
+  // Check if ROI indices are actually populated if flag is set
+  bool actual_use_roi = use_roi_ && !frame->roi_indices.indices.empty();
+  const size_t num_points = actual_use_roi ? frame->roi_indices.indices.size()
+                                           : frame->world_cloud->size();
 
-  cloud_center_(0) = frame->lidar2world_pose(0, 3);
-  cloud_center_(1) = frame->lidar2world_pose(1, 3);
-  cloud_center_(2) = frame->lidar2world_pose(2, 3);
+  if (num_points == 0) return true;
 
-  // check output
-  frame->non_ground_indices.indices.clear();
-
-  if (frame->roi_indices.indices.empty()) {
-    use_roi_ = false;
-  }
-
-  if (use_roi_) {
-    num_points = frame->roi_indices.indices.size();
-  } else {
-    num_points = frame->world_cloud->size();
-  }
-
-  ADEBUG << "spatial temporal seg: use roi " << use_roi_ << " num points "
-         << num_points;
-
-  // reallocate memory if points num > the preallocated size
-  num_points_all = num_points;
-
-  if (num_points_all > default_point_size_) {
-    default_point_size_ = num_points * 2;
+  // 2. Auto-Grow Memory
+  if (num_points > default_point_size_) {
+    default_point_size_ = static_cast<size_t>(num_points * 1.2);
     point_indices_temp_.resize(default_point_size_);
     data_.resize(default_point_size_ * 3);
     ground_height_signed_.resize(default_point_size_);
+    AINFO << "SpatioTemporalGroundDetector resized buffer to "
+          << default_point_size_;
   }
 
-  // copy point data, filtering lower points under ground
-  if (use_roi_) {
-    for (i = 0; i < num_points; ++i) {
-      index = frame->roi_indices.indices[i];
-      const auto& pt = frame->world_cloud->at(index);
-      point_indices_temp_[valid_point_num++] = index;
-      data_[data_id++] = static_cast<float>(pt.x - cloud_center_(0));
-      data_[data_id++] = static_cast<float>(pt.y - cloud_center_(1));
-      data_[data_id++] = static_cast<float>(pt.z - cloud_center_(2));
+  // 3. Prepare Center (Translation)
+  // Use translation directly to act as the origin of the "stabilized local
+  // frame"
+  cloud_center_ = frame->lidar2world_pose.translation();
+  const float cx = static_cast<float>(cloud_center_.x());
+  const float cy = static_cast<float>(cloud_center_.y());
+  const float cz = static_cast<float>(cloud_center_.z());
+
+  // 4. Data Filling (Optimized)
+  // Use pointer arithmetic for speed
+  float* xyz_ptr = data_.data();
+  int* idx_ptr = point_indices_temp_.data();
+  unsigned int valid_count = 0;
+
+  if (actual_use_roi) {
+    const auto& indices = frame->roi_indices.indices;
+    // Pipelining optimization: avoid bounds check inside loop
+    const auto* world_pts = &frame->world_cloud->points();
+
+    for (size_t i = 0; i < num_points; ++i) {
+      int idx = indices[i];
+      // Use direct access if possible, or operator[]
+      const auto& pt = (*world_pts)[idx];
+
+      idx_ptr[valid_count] = idx;
+
+      // Unrolling: writing sequentially is cache-friendly
+      *xyz_ptr++ = static_cast<float>(pt.x) - cx;
+      *xyz_ptr++ = static_cast<float>(pt.y) - cy;
+      *xyz_ptr++ = static_cast<float>(pt.z) - cz;
+
+      valid_count++;
     }
   } else {
-    for (i = 0; i < num_points; ++i) {
+    // Process all points
+    for (size_t i = 0; i < num_points; ++i) {
       const auto& pt = frame->world_cloud->at(i);
-      point_indices_temp_[valid_point_num++] = static_cast<int>(i);
-      data_[data_id++] = static_cast<float>(pt.x - cloud_center_(0));
-      data_[data_id++] = static_cast<float>(pt.y - cloud_center_(1));
-      data_[data_id++] = static_cast<float>(pt.z - cloud_center_(2));
+
+      idx_ptr[valid_count] = static_cast<int>(i);
+
+      *xyz_ptr++ = static_cast<float>(pt.x) - cx;
+      *xyz_ptr++ = static_cast<float>(pt.y) - cy;
+      *xyz_ptr++ = static_cast<float>(pt.z) - cz;
+
+      valid_count++;
     }
   }
 
-  valid_point_num_cur = valid_point_num;
+  // 5. Core Algorithm Execution
+  bool success = pfdetector_->Detect(data_.data(), ground_height_signed_.data(),
+                                     valid_count, 3);
 
-  CHECK_EQ(data_id, valid_point_num * 3);
-  base::PointIndices& non_ground_indices = frame->non_ground_indices;
-  ADEBUG << "input of ground detector:" << valid_point_num;
-
-  if (!pfdetector_->Detect(data_.data(), ground_height_signed_.data(),
-                           valid_point_num, nr_points_element)) {
-    ADEBUG << "failed to call ground detector!";
-    non_ground_indices.indices.insert(
-        non_ground_indices.indices.end(), point_indices_temp_.begin(),
-        point_indices_temp_.begin() + valid_point_num);
-    return false;
+  if (!success) {
+    AWARN << "Ground detector failed. Fallback: treat all as non-ground.";
+    frame->non_ground_indices.indices.assign(
+        point_indices_temp_.begin(), point_indices_temp_.begin() + valid_count);
+    return false;  // Or true, depending on system requirements for degradation
   }
 
-  for (i = 0; i < valid_point_num_cur; ++i) {
-    z_distance = ground_height_signed_.data()[i];
-    frame->cloud->mutable_points_height()->at(point_indices_temp_[i]) =
-        z_distance;
-    frame->world_cloud->mutable_points_height()->at(point_indices_temp_[i]) =
-        z_distance;
-    if (common::IAbs(z_distance) > ground_thres_) {
-      non_ground_indices.indices.push_back(point_indices_temp_[i]);
+  // 6. Write Results (Batch Update)
+  frame->non_ground_indices.indices.clear();
+  frame->non_ground_indices.indices.reserve(valid_count);
+
+  // Get raw pointers/accessors to avoid repeated lookups
+  auto& height_local = *frame->cloud->mutable_points_height();
+  auto& height_world = *frame->world_cloud->mutable_points_height();
+  auto& label_local = *frame->cloud->mutable_points_label();
+  auto& label_world = *frame->world_cloud->mutable_points_label();
+
+  const uint8_t ground_label = static_cast<uint8_t>(LidarPointLabel::GROUND);
+
+  for (size_t i = 0; i < valid_count; ++i) {
+    int idx = idx_ptr[i];
+    float h = ground_height_signed_[i];
+
+    // Using operator[] is safe here as idx comes from valid indices
+    height_local[idx] = h;
+    height_world[idx] = h;
+
+    // Treat points above ground as non-ground; do not use abs().
+    // This avoids misclassifying points slightly below the fitted plane.
+    float threshold = ground_thres_;
+    const auto& pt_local = frame->cloud->at(idx);
+    // Use novatel(vehicle) frame longitudinal distance for adaptive
+    // thresholding (closest to 10.0 logic). If extrinsics are identity, this
+    // degenerates to lidar frame.
+    const Eigen::Vector3d pt_novatel =
+        frame->lidar2novatel_extrinsics *
+        Eigen::Vector3d(pt_local.x, pt_local.y, pt_local.z);
+    const float forward_dist = static_cast<float>(pt_novatel.y());
+    if (forward_dist > 0.0f && forward_dist < near_range_dist_) {
+      threshold = near_range_ground_thres_;
+    } else if (forward_dist >= near_range_dist_ &&
+               forward_dist < middle_range_dist_) {
+      threshold = middle_range_ground_thres_;
+    }
+
+    if (h > threshold) {
+      // Important: downstream modules (e.g. CloudMask::AddIndicesOfIndices)
+      // interpret non_ground_indices as "indices-of-indices" into roi_indices
+      // when roi_indices is used. Keep 10.0 semantics:
+      // - when actual_use_roi: store position within roi_indices
+      // - otherwise: store absolute point index in the full cloud
+      frame->non_ground_indices.indices.push_back(
+          actual_use_roi ? static_cast<int>(i) : idx);
     } else {
-      frame->cloud->mutable_points_label()->at(point_indices_temp_[i]) =
-          static_cast<uint8_t>(LidarPointLabel::GROUND);
-      frame->world_cloud->mutable_points_label()->at(point_indices_temp_[i]) =
-          static_cast<uint8_t>(LidarPointLabel::GROUND);
+      label_local[idx] = ground_label;
+      label_world[idx] = ground_label;
     }
   }
-  AINFO << "succeed to call ground detector with non ground points "
-        << non_ground_indices.indices.size();
 
+  // 7. Update Global Service (Optional, for Map/Tracker)
   if (use_ground_service_) {
-    auto ground_service = SceneManager::Instance().Service("GroundService");
-    if (ground_service != nullptr) {
-      ground_service_content_.grid_center_ = cloud_center_;
-      ground_service_content_.grid_.Reset();
-      GroundNode* node_ptr = ground_service_content_.grid_.DataPtr();
-      unsigned int rows = pfdetector_->GetGridDimY();
-      unsigned int cols = pfdetector_->GetGridDimX();
-      unsigned int index = 0;
-      for (unsigned int r = 0; r < rows; ++r) {
-        for (unsigned int c = 0; c < cols; ++c) {
-          const common::GroundPlaneLiDAR* plane =
-              pfdetector_->GetGroundPlane(r, c);
-          if (plane->IsValid()) {
-            index = r * cols + c;
-            GroundNode* node = node_ptr + index;
-            node->params(0) = plane->params[0];
-            node->params(1) = plane->params[1];
-            node->params(2) = plane->params[2];
-            node->params(3) = plane->params[3];
-            node->confidence = 1.0;
-          }
-        }
-      }
-      ground_service->UpdateServiceContent(ground_service_content_);
-    } else {
-      AINFO << "Failed to find ground service and cannot update.";
-    }
+    UpdateGroundService(ground_service_content_);
   }
   return true;
+}
+
+void SpatioTemporalGroundDetector::UpdateGroundService(
+    GroundServiceContent& content) {
+  auto ground_service = SceneManager::Instance().Service("GroundService");
+  if (!ground_service) return;
+
+  content.grid_center_ = cloud_center_;
+  content.grid_.Reset();
+
+  GroundNode* node_base_ptr = content.grid_.DataPtr();
+  unsigned int rows = pfdetector_->GetGridDimY();
+  unsigned int cols = pfdetector_->GetGridDimX();
+
+  // Assuming row-major layout
+  for (unsigned int r = 0; r < rows; ++r) {
+    for (unsigned int c = 0; c < cols; ++c) {
+      const common::GroundPlaneLiDAR* plane = pfdetector_->GetGroundPlane(r, c);
+      if (plane && plane->IsValid()) {
+        GroundNode* node = node_base_ptr + (r * cols + c);
+        // Plane params: [a, b, c, d] -> ax+by+cz+d=0
+        node->params(0) = plane->params[0];
+        node->params(1) = plane->params[1];
+        node->params(2) = plane->params[2];
+        node->params(3) = plane->params[3];
+        node->confidence = 1.0;
+      }
+    }
+  }
+  ground_service->UpdateServiceContent(content);
 }
 
 PERCEPTION_REGISTER_GROUNDDETECTOR(SpatioTemporalGroundDetector);

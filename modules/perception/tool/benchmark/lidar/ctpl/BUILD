@@ -9,6 +9,9 @@ cc_library(
         "ctpl.h",
         "ctpl_stl.h",
     ],
+    deps = [
+        "@boost.lockfree",
+    ],
 )
 
 cpplint()

@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -1254,6 +1255,12 @@ RTNet::RTNet(const std::string &net_file, const std::string &model_file,
   loadWeights(model_file, &weight_map_);
   net_param_.reset(new NetParameter);
   loadNetParams(net_file, net_param_.get());
+  // Use model file directory as cache root by default.
+  const auto pos = model_file.find_last_of('/');
+  model_root_ = (pos == std::string::npos) ? "." : model_file.substr(0, pos);
+  if (model_root_.empty()) {
+    model_root_ = ".";
+  }
 }
 RTNet::RTNet(const std::string &net_file, const std::string &model_file,
              const std::vector<std::string> &outputs,
@@ -1265,6 +1272,12 @@ RTNet::RTNet(const std::string &net_file, const std::string &model_file,
   loadNetParams(net_file, net_param_.get());
   calibrator_ = calibrator;
   is_own_calibrator_ = false;
+  // Use model file directory as cache root by default.
+  const auto pos = model_file.find_last_of('/');
+  model_root_ = (pos == std::string::npos) ? "." : model_file.substr(0, pos);
+  if (model_root_.empty()) {
+    model_root_ = ".";
+  }
 }
 RTNet::RTNet(const std::string &net_file, const std::string &model_file,
              const std::vector<std::string> &outputs,

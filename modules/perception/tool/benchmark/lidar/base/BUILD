@@ -18,6 +18,7 @@ cc_library(
         "//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/tool/benchmark/lidar/util:benchmark_util",
+        "//modules/perception/tool/benchmark/lidar/util:object_util",
     ],
 )
 
