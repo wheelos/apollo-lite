@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2020 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The WheelOS Team. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,28 +19,38 @@
 #include <memory>
 #include <string>
 
-#include "modules/drivers/lidar/proto/config.pb.h"
+#include <hesai/hesai_lidar_sdk.hpp>
+
+#include "modules/drivers/lidar/hesai/proto/hesai_config.pb.h"
 
 #include "cyber/cyber.h"
-#include "modules/drivers/lidar/hesai/driver/driver.h"
-#include "modules/drivers/lidar/hesai/parser/parser_factory.h"
+#include "modules/drivers/lidar/common/lidar_component_base.h"
 
 namespace apollo {
 namespace drivers {
-namespace hesai {
+namespace lidar {
 
-class HesaiComponent : public ::apollo::cyber::Component<> {
+class HesaiComponent : public LidarComponentBase<HesaiUdpFrame> {
  public:
-  ~HesaiComponent() {}
+  virtual ~HesaiComponent() {}
   bool Init() override;
+  void ReadScanCallback(
+      const std::shared_ptr<HesaiUdpFrame>& scan_message) override;
+
+  // Used to publish point clouds through 'ros_send_point_cloud_topic'
+  void SendPointCloud(const LidarDecodedFrame<LidarPointXYZIRT>& msg);
+  // Used to publish the original pcake through 'ros_send_packet_topic'
+  void SendPacket(const UdpFrame_t& hesai_raw_msg, double);
 
  private:
-  std::shared_ptr<HesaiDriver> driver_;
-  Config hesai_conf_;
+  HesaiConfig conf_;
+  std::shared_ptr<HesaiLidarSdk<LidarPointXYZIRT>> driver_ptr_;
+
+  int convert_threads_num_ = 1;
 };
 
 CYBER_REGISTER_COMPONENT(HesaiComponent)
 
-}  // namespace hesai
+}  // namespace lidar
 }  // namespace drivers
 }  // namespace apollo

@@ -15,7 +15,6 @@ install(
         "liblidar_driver_component.so",
     ],
     deps = [
-        "//modules/drivers/lidar/hesai:install",
         "//modules/drivers/lidar/velodyne:install",
     ],
 )

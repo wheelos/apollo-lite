@@ -1,0 +1,18 @@
+config_base {
+  scan_channel: "/apollo/sensor/hesai/AT128P/Scan"
+  point_cloud_channel: "/apollo/sensor/hesai/AT128P/PointCloud2"
+  frame_id: "hesai_AT128P"
+
+  # sample ONLINE_LIDAR, RAW_PACKET
+  source_type: RAW_PACKET
+}
+
+udp_port: 2368
+ptc_port: 9347
+device_ip: "192.168.1.201"
+host_ip: "0.0.0.0"
+correction_file_path: "modules/drivers/lidar/hesai/correction/angle_correction/AT128P_AngleCalibration.dat"
+source_type: 3 # The type of data source, 1: real-time lidar connection, 2: pcap, 3: from apollo record
+pcap_path: "/apollo/data/hesai-at128p.pcap"
+frame_start_azimuth: -1
+convert_thread_nums: 2
