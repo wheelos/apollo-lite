@@ -3,7 +3,8 @@ syntax = "proto2";
 package apollo.perception.lidar;
 
 message SpatioTemporalGroundDetectorConfig {
-  optional uint32 grid_size = 1 [default = 16];
+  // Coarse grid size used by PlaneFitGroundDetector.
+  optional uint32 grid_size = 1 [default = 32];
   optional float ground_thres = 2 [default = 0.25];
   optional float roi_rad_x = 3 [default = 120.0];
   optional float roi_rad_y = 4 [default = 120.0];
@@ -11,4 +12,29 @@ message SpatioTemporalGroundDetectorConfig {
   optional uint32 nr_smooth_iter = 6 [default = 5];
   optional bool use_roi = 7 [default = true];
   optional bool use_ground_service = 8 [default = true];
+  // Sample region in stabilized local frame (relative to sensor height).
+  // Ground points are typically below the sensor, so restrict the band to
+  // reduce non-ground contamination.
+  optional float sample_region_z_lower = 9 [default = -3.0];
+  optional float sample_region_z_upper = 10 [default = -1.0];
+  // Near range radius used by the plane fit ground detector.
+  optional float roi_near_rad = 11 [default = 32.0];
+  // Orientation threshold is compared against GetDegreeNormalToZ(), unit: degree.
+  optional float planefit_orien_threshold = 12 [default = 5.0];
+
+  // Optional extended parameters (10.0 parity / closer behavior).
+  // Use these when you need to tune behavior without code changes.
+  optional uint32 big_grid_size = 13 [default = 256];
+  optional uint32 small_grid_size = 14 [default = 32];
+  optional float z_compare_thres = 15 [default = 0.1];
+  optional float smooth_z_thres = 16 [default = 1.0];
+  optional float planefit_dist_thres_near = 17 [default = 0.10];
+  optional float planefit_dist_thres_far = 18 [default = 0.20];
+  optional uint32 inliers_min_threshold = 19 [default = 6];
+
+  // Adaptive thresholding by range (stability tuning).
+  optional float near_range_dist = 20 [default = 10.0];
+  optional float near_range_ground_thres = 21 [default = 0.25];
+  optional float middle_range_dist = 22 [default = 20.0];
+  optional float middle_range_ground_thres = 23 [default = 0.25];
 }
