@@ -290,9 +290,15 @@ function get_cmd() {
     mode_file="${DOCKER_SERVICE_DIR}/docker-compose.test.yml"
   fi
 
+  # Generate unique project name based on user and project directory
+  # This ensures container isolation between different users and projects
+  local project_hash
+  project_hash=$(echo "${PROJECT_ROOT}" | md5sum | cut -c1-8)
+  local project_name="apollo_${USER}_${project_hash}"
+
   local compose_cmd
   compose_cmd="$(get_compose_cmd)"
-  echo "${compose_cmd} --project-directory ${DOCKER_DIR} --env-file ${DOCKER_DIR}/.env -f ${base_file} -f ${mode_file}"
+  echo "${compose_cmd} --project-name ${project_name} --project-directory ${DOCKER_DIR} --env-file ${DOCKER_DIR}/.env -f ${base_file} -f ${mode_file}"
 }
 
 function validate_mode() {
