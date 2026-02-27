@@ -24,59 +24,59 @@ DREAMVIEW_PORT=$(calculate_dreamview_port)
 # ----- OS Detection -----
 # Detect Ubuntu version, fallback to 22.04 for non-Ubuntu or detection failure
 function detect_os_version() {
-    local os_version="${OS:-}"
+  local os_version="${OS:-}"
 
-    # If OS is already set via environment or command line, use it
-    if [[ -n "${os_version}" ]]; then
-        echo "${os_version}"
-        return
+  # If OS is already set via environment or command line, use it
+  if [[ -n "${os_version}" ]]; then
+    echo "${os_version}"
+    return
+  fi
+
+  # Try to detect Ubuntu version
+  if [[ -f /etc/os-release ]]; then
+    local os_id=""
+    local version_id=""
+    # shellcheck source=/dev/null
+    source /etc/os-release 2>/dev/null  || true
+    os_id="${ID:-}"
+    version_id="${VERSION_ID:-}"
+
+    if [[ "${os_id}" == "ubuntu" && -n "${version_id}" ]]; then
+      # Extract major version (e.g., "22.04" -> "22.04")
+      echo "${version_id}"
+      return
     fi
 
-    # Try to detect Ubuntu version
-    if [[ -f /etc/os-release ]]; then
-        local os_id=""
-        local version_id=""
-        # shellcheck source=/dev/null
-        source /etc/os-release 2>/dev/null || true
-        os_id="${ID:-}"
-        version_id="${VERSION_ID:-}"
-
-        if [[ "${os_id}" == "ubuntu" && -n "${version_id}" ]]; then
-            # Extract major version (e.g., "22.04" -> "22.04")
-            echo "${version_id}"
-            return
-        fi
-
-        if [[ "${os_id}" != "ubuntu" ]]; then
-            echo ">>> NOTICE: Non-Ubuntu system detected (${os_id:-unknown}), falling back to 22.04" >&2
-        fi
-    else
-        echo ">>> NOTICE: Cannot detect OS version (/etc/os-release not found), falling back to 22.04" >&2
+    if [[ "${os_id}" != "ubuntu" ]]; then
+      echo ">>> NOTICE: Non-Ubuntu system detected (${os_id:-unknown}), falling back to 22.04" >&2
     fi
+  else
+    echo ">>> NOTICE: Cannot detect OS version (/etc/os-release not found), falling back to 22.04" >&2
+  fi
 
-    # Fallback to 22.04
-    echo "22.04"
+  # Fallback to 22.04
+  echo "22.04"
 }
 
 detect_timezone() {
-    if command -v timedatectl 2>&1 >/dev/null; then
-        # Use timedatectl if available (systemd based systems)
-        timedatectl | grep "Time zone" | awk '{print $3}'
-    elif [[ -f /etc/timezone ]]; then
-        # Fallback to /etc/timezone file if it exists
-        cat /etc/timezone
-    elif [[ -L /etc/localtime ]]; then
-        # Fallback to /etc/localtime symlink if it exists
-        readlink -f /etc/localtime | sed 's|.*/zoneinfo/||'
-    else
-        # Fallback to date command for other systems
-        local tzoffset="$(date +"%z")"
-        local tzoffset_sign="${tzoffset:0:1}"
-        local tzoffset_sign_r=$(echo "${tzoffset_sign}" | sed 's/+/@/g; s/-/+/g; s/@/-/g')
-        local tzoffset_hours=$((10#${tzoffset:1:2}))
-        timezone="Etc/GMT${tzoffset_sign_r}${tzoffset_hours}"
-        echo "${timezone}"
-    fi
+  if command -v timedatectl 2>&1 >/dev/null; then
+    # Use timedatectl if available (systemd based systems)
+    timedatectl | grep "Time zone" | awk '{print $3}'
+  elif [[ -f /etc/timezone ]]; then
+    # Fallback to /etc/timezone file if it exists
+    cat /etc/timezone
+  elif [[ -L /etc/localtime ]]; then
+    # Fallback to /etc/localtime symlink if it exists
+    readlink -f /etc/localtime | sed 's|.*/zoneinfo/||'
+  else
+    # Fallback to date command for other systems
+    local tzoffset="$(date +"%z")"
+    local tzoffset_sign="${tzoffset:0:1}"
+    local tzoffset_sign_r=$(echo "${tzoffset_sign}" | sed 's/+/@/g; s/-/+/g; s/@/-/g')
+    local tzoffset_hours=$((10#${tzoffset:1:2}))
+    timezone="Etc/GMT${tzoffset_sign_r}${tzoffset_hours}"
+    echo "${timezone}"
+  fi
 }
 
 # ----- Command Line Arguments -----
@@ -84,46 +84,46 @@ CUSTOM_CONTAINER_NAME=""
 CUSTOM_IMAGE=""
 
 function parse_args() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -n|--name)
-                if [[ -z "${2:-}" || "${2}" == -* ]]; then
-                    echo ">>> ERROR: --name requires a container name argument"
-                    exit 2
-                fi
-                CUSTOM_CONTAINER_NAME="$2"
-                shift 2
-                ;;
-            -i|--image)
-                if [[ -z "${2:-}" || "${2}" == -* ]]; then
-                    echo ">>> ERROR: --image requires an image name argument"
-                    exit 2
-                fi
-                CUSTOM_IMAGE="$2"
-                shift 2
-                ;;
-            --os)
-                if [[ -z "${2:-}" || "${2}" == -* ]]; then
-                    echo ">>> ERROR: --os requires an OS version argument"
-                    exit 2
-                fi
-                OS="$2"
-                shift 2
-                ;;
-            enter|start|stop|status|update|prune|help|--help|-h)
-                # These are commands, stop parsing options
-                break
-                ;;
-            dev|test)
-                # These are modes, stop parsing options
-                break
-                ;;
-            *)
-                # Unknown option or positional argument
-                break
-                ;;
-        esac
-    done
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -n | --name)
+        if [[ -z "${2:-}" || "${2}" == -* ]]; then
+          echo ">>> ERROR: --name requires a container name argument"
+          exit 2
+        fi
+        CUSTOM_CONTAINER_NAME="$2"
+        shift 2
+        ;;
+      -i | --image)
+        if [[ -z "${2:-}" || "${2}" == -* ]]; then
+          echo ">>> ERROR: --image requires an image name argument"
+          exit 2
+        fi
+        CUSTOM_IMAGE="$2"
+        shift 2
+        ;;
+      --os)
+        if [[ -z "${2:-}" || "${2}" == -* ]]; then
+          echo ">>> ERROR: --os requires an OS version argument"
+          exit 2
+        fi
+        OS="$2"
+        shift 2
+        ;;
+      enter | start | stop | status | update | prune | help | --help | -h)
+        # These are commands, stop parsing options
+        break
+        ;;
+      dev | test)
+        # These are modes, stop parsing options
+        break
+        ;;
+      *)
+        # Unknown option or positional argument
+        break
+        ;;
+    esac
+  done
 }
 
 # Parse options before the command
@@ -132,21 +132,21 @@ parse_args "$@"
 # Shift parsed options, keep remaining args for command routing
 remaining_args=()
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -n|--name)
-            shift 2
-            ;;
-        -i|--image)
-            shift 2
-            ;;
-        --os)
-            shift 2
-            ;;
-        *)
-            remaining_args+=("$1")
-            shift
-            ;;
-    esac
+  case "$1" in
+    -n | --name)
+      shift 2
+      ;;
+    -i | --image)
+      shift 2
+      ;;
+    --os)
+      shift 2
+      ;;
+    *)
+      remaining_args+=("$1")
+      shift
+      ;;
+  esac
 done
 set -- "${remaining_args[@]}"
 
@@ -290,9 +290,15 @@ function get_cmd() {
     mode_file="${DOCKER_SERVICE_DIR}/docker-compose.test.yml"
   fi
 
+  # Generate unique project name based on user and project directory
+  # This ensures container isolation between different users and projects
+  local project_hash
+  project_hash=$(echo "${PROJECT_ROOT}" | md5sum | cut -c1-8)
+  local project_name="apollo_${USER}_${project_hash}"
+
   local compose_cmd
   compose_cmd="$(get_compose_cmd)"
-  echo "${compose_cmd} --project-directory ${DOCKER_DIR} --env-file ${DOCKER_DIR}/.env -f ${base_file} -f ${mode_file}"
+  echo "${compose_cmd} --project-name ${project_name} --project-directory ${DOCKER_DIR} --env-file ${DOCKER_DIR}/.env -f ${base_file} -f ${mode_file}"
 }
 
 function validate_mode() {
