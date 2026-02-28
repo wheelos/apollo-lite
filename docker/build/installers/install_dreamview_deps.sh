@@ -33,6 +33,14 @@ bash ${CURR_DIR}/install_node.sh "${GEOLOC}"
 info "Installing yarn ..."
 bash ${CURR_DIR}/install_yarn.sh
 
+if [[ "${GEOLOC}" == "cn" ]]; then
+  echo "📍 China region, switching mirror source to Taobao (npm mirror)"
+  yarn config set registry https://registry.npmmirror.com/
+  npm config set registry https://registry.npmmirror.com/
+fi
+echo "▼ Yarn registry"
+yarn config get registry
+
 # Clean up cache to reduce layer size.
-apt-get clean && \
+apt-get clean &&
     rm -rf /var/lib/apt/lists/*

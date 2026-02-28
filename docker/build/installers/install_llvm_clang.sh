@@ -28,7 +28,7 @@ apt_get_update_and_install \
     clang-format
 
 # Clean up cache to reduce layer size.
-apt-get clean && \
+apt-get clean &&
     rm -rf /var/lib/apt/lists/*
 
 # Install from source

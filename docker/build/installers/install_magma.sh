@@ -20,7 +20,7 @@ set -e
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
-if ldconfig -p | grep -q magma ; then
+if ldconfig -p | grep -q magma; then
     warning "Magma already installed, re-installation skipped."
     exit 0
 fi
@@ -30,15 +30,15 @@ fi
 
 GPU_ARCHS=
 function determine_gpu_targets() {
-    IFS=' ' read -r -a sms <<< "${SUPPORTED_NVIDIA_SMS}"
+    IFS=' ' read -r -a sms <<<"${SUPPORTED_NVIDIA_SMS}"
     local archs=
     for sm in "${sms[@]}"; do
         if [[ -z "${archs}" ]]; then
             archs="sm_${sm//./}"
-        else
+    else
             archs+=" sm_${sm//./}"
-        fi
-    done
+    fi
+  done
     GPU_ARCHS="${archs}"
 }
 determine_gpu_targets
@@ -54,10 +54,10 @@ if [[ "${INSTALL_MODE}" == "download" ]]; then
     if [[ "${TARGET_ARCH}" == "x86_64" ]]; then
         CHECKSUM="546f7739109ba6cf93696882d8b18c0e35e68e0c8531ce9f9ca8fa345a1f227c"
         PKG_NAME="magma-${VERSION}-cu111-x86_64.tar.gz"
-    else # AArch64
+  else   # AArch64
         CHECKSUM="95b9cc9a42e05af3572fe22210230bdbeec023c9481eaeae1f9de051d1171893"
         PKG_NAME="magma-${VERSION}-cu102-aarch64.tar.gz"
-    fi
+  fi
     DOWNLOAD_LINK="https://apollo-system.cdn.bcebos.com/archive/6.0/${PKG_NAME}"
     download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
     tar xzf ${PKG_NAME}

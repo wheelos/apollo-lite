@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ###############################################################################
-# Copyright 2018 The Apollo Authors. All Rights Reserved.
+# Copyright 2026 The WheelOS Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,20 +16,15 @@
 # limitations under the License.
 ###############################################################################
 
-set -euo pipefail
-
-geo="${1:-us}"
+# Fail on first error.
+set -e
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./installer_base.sh
 
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-echo "✅ Node.js installation completed:"
-node -v
-npm -v
+apt_get_update_and_install \
+    liblz4-dev
 
 # Clean up cache to reduce layer size.
-apt-get clean && \
+apt-get clean &&
     rm -rf /var/lib/apt/lists/*
