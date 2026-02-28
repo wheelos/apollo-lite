@@ -11,6 +11,8 @@ cc_library(
        "//modules/perception/pipeline:data_frame",
        "//modules/perception/pipeline:plugin",
        "//modules/perception/pipeline/proto/plugin:resize_and_normalize_config_cc_proto",
+       "@opencv//:imgcodecs",
+       "@opencv//:imgproc",
     ],
 )
 

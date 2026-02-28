@@ -19,7 +19,8 @@
 #include <memory>
 #include <vector>
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include "absl/strings/str_split.h"
 #include "pcl/io/pcd_io.h"

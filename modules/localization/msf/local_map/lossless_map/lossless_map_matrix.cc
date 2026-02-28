@@ -16,6 +16,8 @@
 
 #include "modules/localization/msf/local_map/lossless_map/lossless_map_matrix.h"
 
+#include <iostream>
+
 namespace apollo {
 namespace localization {
 namespace msf {

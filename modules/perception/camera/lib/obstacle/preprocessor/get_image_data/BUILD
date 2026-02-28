@@ -11,6 +11,7 @@ cc_library(
         "//modules/perception/pipeline:data_frame",
         "//modules/perception/pipeline:plugin",
         "//modules/perception/pipeline/proto/plugin:get_image_data_config_cc_proto",
+        "@opencv//:imgcodecs",
     ],
 )
 

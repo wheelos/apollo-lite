@@ -24,7 +24,8 @@
 #include <tuple>
 #include <vector>
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include "Eigen/Core"
 
 #include "modules/perception/lidar/lib/detector/ncut_segmentation/common/flood_fill.h"

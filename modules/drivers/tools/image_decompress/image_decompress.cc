@@ -18,7 +18,8 @@
 
 #include <vector>
 
-#include "opencv2/opencv.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
 
 namespace apollo {
 namespace image_decompress {

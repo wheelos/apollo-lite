@@ -21,7 +21,7 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
-#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"

@@ -58,6 +58,7 @@ cc_library(
         "//modules/perception/inference/utils:inference_util_lib",
         "//modules/perception/pipeline:stage",
         "@boost.algorithm",
+        "@opencv//:imgproc",
     ],
 )
 

@@ -25,6 +25,7 @@ cc_library(
         "//modules/localization/msf/local_pyramid_map/base_map",
         "@boost.filesystem",
         "@opencv//:highgui",
+        "@opencv//:imgproc",
     ],
 )
 

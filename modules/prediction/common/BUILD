@@ -264,6 +264,7 @@ cc_library(
         "//modules/common_msgs/prediction_msgs:feature_cc_proto",
         "@opencv//:highgui",
         "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
     ],
 )
 

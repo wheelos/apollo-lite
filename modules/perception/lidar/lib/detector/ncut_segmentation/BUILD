@@ -15,6 +15,8 @@ cc_library(
         "//modules/perception/lidar/lib/detector/ncut_segmentation/common:lr_classifier",
         "//modules/perception/pipeline/proto/stage:ncut_config_cc_proto",
         "//modules/perception/lidar/lib/detector/ncut_segmentation/proto:ncut_param_cc_proto",
+        "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
     ],
 )
 

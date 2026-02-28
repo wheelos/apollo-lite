@@ -18,7 +18,7 @@
 #include <string>
 #include <memory>
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 #include "modules/perception/pipeline/data_frame.h"
 #include "modules/perception/pipeline/plugin.h"
