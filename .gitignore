@@ -68,6 +68,7 @@ docs/demo_guide/*.record
 
 # Bash Environment
 .dev_bash_hist
+.bash_history
 
 # bazel cache and others
 .cache/

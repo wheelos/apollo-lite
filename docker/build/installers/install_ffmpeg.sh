@@ -45,7 +45,7 @@ install_dependencies() {
     # Removed libnuma-dev as it's often a transitive dependency and should be handled
     # by packages that actually need it (like libipopt-dev).
     apt_get_update_and_install \
-        nasm yasm \
+        nasm yasm libnuma-dev \
         libx264-dev libx265-dev libvpx-dev \
         libfdk-aac-dev libmp3lame-dev libopus-dev \
         libtheora-dev libvorbis-dev \

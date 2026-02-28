@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ###############################################################################
-# Copyright 2020 The Apollo Authors. All Rights Reserved.
+# Copyright 2026 The WheelOS Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,24 +19,11 @@
 # Fail on first error.
 set -e
 
-CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-. ${CURR_DIR}/installer_base.sh
+cd "$(dirname "${BASH_SOURCE[0]}")"
+. ./installer_base.sh
 
-# Dependency:
-# openmpi <- boost <- vtk <- pcl
-# bash ${CURR_DIR}/install_mpi.sh
-# bash ${CURR_DIR}/install_boost.sh
-
-bash ${CURR_DIR}/install_ffmpeg.sh
-
-# Proj was required to install VTK
-bash ${CURR_DIR}/install_proj.sh
-
-# PCL is required by [ Perception Localization Dreamview ]
-# bash ${CURR_DIR}/install_pcl.sh
-
-# OpenCV depends on ffmpeg and vtk
-# bash ${CURR_DIR}/install_opencv.sh
+apt_get_update_and_install \
+    liblz4-dev
 
 # Clean up cache to reduce layer size.
 apt-get clean &&

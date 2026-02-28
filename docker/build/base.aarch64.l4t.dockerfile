@@ -8,15 +8,26 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     # Install prerequisite tools
     apt-get install -y --no-install-recommends ca-certificates curl gnupg2 && \
-    # Add NVIDIA's GPG key securely to a dedicated keyring file
-    curl -fsSL http://l4t-repo.nvidia.com/jetson-ota-internal.key | gpg --dearmor -o /usr/share/keyrings/nvidia-l4t-apt-keyring.gpg && \
-    # Add the L4T repositories for JetPack 6.x (r36.4) and Orin (t234)
-    echo "deb [signed-by=/usr/share/keyrings/nvidia-l4t-apt-keyring.gpg] http://l4t-repo.nvidia.com/common r36.4 main" > /etc/apt/sources.list.d/nvidia-l4t.list && \
-    echo "deb [signed-by=/usr/share/keyrings/nvidia-l4t-apt-keyring.gpg] http://l4t-repo.nvidia.com/t234 r36.4 main" >> /etc/apt/sources.list.d/nvidia-l4t.list && \
-    # Update package list again with the new repositories
-    apt-get update && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# consistent with the host system, for jetson orin, if not, please modify it manually
+ADD https://repo.download.nvidia.com/jetson/jetson-ota-public.asc /etc/apt/trusted.gpg.d/jetson-ota-public.asc
+RUN chmod +r /etc/apt/trusted.gpg.d/jetson-ota-public.asc
+COPY rcfiles/nvidia-jetson-common-r36.4-main.list /etc/apt/sources.list.d/nvidia-jetson-common-r36.4-main.list
+
+# change source list for cn
+COPY rcfiles/sources.list.tsinghua.aarch64.ubuntu.22.04 /etc/apt/sources.list
+
+# Note:
+# The `--mount` option is used to bind mount the local sources.list file into the container during the build process.
+# We can use it to speed up the apt-get update process by using a local mirror.
+# RUN --mount=type=bind,source=rcfiles/sources.list.local.aarch64.ubuntu.22.04,target=/etc/apt/sources.list \
+#     --mount=type=bind,source=rcfiles/wheelos.cn.public.gpg,target=/opt/apollo/rcfiles/wheelos.cn.public.gpg \
+RUN apt-get update && \
     # Install cuDNN runtime and development libraries, avoiding recommended packages
-    apt-get install -y --no-install-recommends libcudnn9 libcudnn9-dev && \
+    apt-get install -y --no-install-recommends \
+        libcudnn9 libcudnn9-dev && \
     # Clean up APT cache and temporary files to reduce image size
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
