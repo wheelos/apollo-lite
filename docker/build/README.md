@@ -5,46 +5,66 @@
 Apollo runs within Docker containers, with images tailored for development and
 deployment. We currently support `x86_64` and `aarch64` architectures.
 
+Build orchestration is now standardized on `docker buildx bake`.
+
+- `x86_64`: based on `nvidia/cuda` official images.
+- `aarch64` (Jetson): based on `nvcr.io/nvidia/l4t-jetpack` (L4T).
+
 **Image Types:**
 
-- **Cyber (Base/Cyber)**: Core CyberRT framework, ideal for CyberRT-focused
-  development.
+- **Base**: Foundational CUDA/ML runtime layer for Apollo docker builds.
 - **Dev**: Full Apollo project with development toolchain, for building and
   running the entire Apollo stack.
 - **Runtime**: Optimized, minimal image for production deployment.
 
 ## Quick Start
 
-Use the `./build_docker.sh` script to build images.
+Use `docker buildx bake` directly, or keep using `./build_docker.sh` as a
+compatibility wrapper around bake.
 
-### 1. Build CyberRT Image
+### 0. Prepare Buildx Builder
 
-Builds the base development environment including CUDA/CuDNN/TensorRT and the
-CyberRT framework.
+```bash
+docker buildx create --name apollo-builder --use --bootstrap || docker buildx use apollo-builder
+```
+
+### 1. Build Base Image
+
+Builds the foundational environment including CUDA/CuDNN/TensorRT and core
+system dependencies.
 
 ```bash
 cd docker/build
 
-# Build x86_64 CyberRT image (default: download pre-built dependencies)
-./build_docker.sh -f cyber.x86_64.dockerfile
+# Build x86_64 Base image
+./build_docker.sh -f base.x86_64.cuda.dockerfile
+
+# Equivalent direct bake command
+docker buildx bake -f docker-bake.hcl base-x86_64-cuda
 
 # For users in mainland China (accelerated mirrors)
-./build_docker.sh -f cyber.x86_64.dockerfile -g cn
+./build_docker.sh -f base.x86_64.cuda.dockerfile -g cn
 
 # Build all dependencies from source (takes longer)
-./build_docker.sh -f dev.x86_64.cpu.dockerfile -m build
+./build_docker.sh -f dev.x86_64.cuda.dockerfile -m build
 ```
 
 ### 2. Build Apollo Dev Image
 
-Builds the full Apollo development image, based on a CyberRT image.
+Builds the full Apollo development image, based on a Base image.
 
 ```bash
 # Build x86_64 Dev image
-./build_docker.sh -f dev.x86_64.dockerfile
+./build_docker.sh -f dev.x86_64.cuda.dockerfile
 
 # Build aarch64 Dev image (ensure qemu-user-static is configured for cross-arch builds)
-./build_docker.sh -f dev.aarch64.dockerfile -m download
+./build_docker.sh -f dev.aarch64.cuda.dockerfile -m download
+
+# Build all base images in one shot
+docker buildx bake -f docker-bake.hcl base
+
+# Build all dev images in one shot
+docker buildx bake -f docker-bake.hcl dev
 ```
 
 ### 3. Build Apollo Runtime Image
@@ -76,13 +96,19 @@ Usage:
     build_docker.sh -f <Dockerfile> [Options]
 
 Options:
-    -f, --dockerfile   Path to the Dockerfile (e.g., 'cyber.x86_64.dockerfile').
+    -f, --dockerfile   Path to the Dockerfile (e.g., 'base.x86_64.cuda.dockerfile').
     -c, --clean        Disable Docker build cache (--no-cache=true).
     -m, --mode         Installation mode: 'download' (default, use pre-built), 'build' (build from source).
     -g, --geo          Enable geo-specific mirrors ('cn' or 'us', default 'us').
     -t, --timestamp    Timestamp of the previous stage image (YYYYMMDD_HHMM).
     --dry              Dry run (print commands without execution).
     -h, --help         Show help message and exit.
+
+  Additional wrapper options:
+
+    --l4t-tag          L4T tag for Jetson base (default: r36.4.0)
+    --push             Push images to registry
+    --no-load          Do not load images into local docker daemon
 ```
 
 ---

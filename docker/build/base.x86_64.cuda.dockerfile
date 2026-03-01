@@ -1,12 +1,13 @@
-ARG BASE_IMAGE=nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
+ARG BASE_IMAGE=nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04
 FROM ${BASE_IMAGE}
 
-ARG TENSORRT_VERSION="8.6.1.6"
-ARG PATCH_SUFFIX="-1+cuda11.8"
+ARG CUDA_TOOLKIT_VERSION="12.6.68"
+ARG CUDNN_VERSION="9.3.0.75"
+ARG TENSORRT_VERSION="10.3.0.30"
+ARG VPI_VERSION="3.2.4"
+ARG VULKAN_VERSION="1.3.204"
 
 LABEL maintainer="WheelOS <developer@wheelos.cn>"
-
-COPY rcfiles/sources.list.tsinghua.x86_64.ubuntu.20.04 /etc/apt/sources.list
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -17,19 +18,23 @@ ENV DEBIAN_FRONTEND=noninteractive
 #     --mount=type=bind,source=rcfiles/wheelos.cn.public.gpg,target=/opt/apollo/rcfiles/wheelos.cn.public.gpg \
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        libnvinfer8="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvinfer-plugin8="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvinfer-vc-plugin8="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvinfer-dev="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvinfer-headers-dev="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvinfer-headers-plugin-dev="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvinfer-plugin-dev="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvonnxparsers8="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvonnxparsers-dev="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvparsers8="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        libnvparsers-dev="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
-        python3-libnvinfer="${TENSORRT_VERSION}${PATCH_SUFFIX}" && \
+        ca-certificates \
+        curl \
+        gnupg2 \
+        libvulkan1 \
+        vulkan-tools && \
+    (apt-get install -y --no-install-recommends nvidia-tensorrt-dev \
+      || apt-get install -y --no-install-recommends tensorrt-dev \
+      || apt-get install -y --no-install-recommends \
+          libnvinfer-dev \
+          libnvinfer-plugin-dev \
+          libnvonnxparsers-dev \
+          libnvparsers-dev) && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+ENV CUDA_TOOLKIT_VERSION=${CUDA_TOOLKIT_VERSION}
+ENV CUDNN_VERSION=${CUDNN_VERSION}
 ENV TENSORRT_VERSION=${TENSORRT_VERSION}
+ENV VPI_VERSION=${VPI_VERSION}
+ENV VULKAN_VERSION=${VULKAN_VERSION}

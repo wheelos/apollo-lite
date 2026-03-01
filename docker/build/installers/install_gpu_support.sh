@@ -19,6 +19,9 @@
 # Fail on first error.
 set -e
 
+: ${INSTALL_MAGMA:=0}
+: ${INSTALL_LIBTORCH:=1}
+
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
@@ -27,12 +30,19 @@ apt_get_update_and_install \
     libatlas-base-dev \
     liblapack-dev
 
-# Note(infra): build magma before mkl
-info "Install Magma ..."
-bash ${CURR_DIR}/install_magma.sh
+if [[ "${INSTALL_MAGMA}" == "1" ]]; then
+    info "Install Magma ..."
+    bash ${CURR_DIR}/install_magma.sh
+else
+    warning "Skip Magma install by default (set INSTALL_MAGMA=1 to enable)."
+fi
 
-info "Install libtorch ..."
-bash ${CURR_DIR}/install_libtorch.sh
+if [[ "${INSTALL_LIBTORCH}" == "1" ]]; then
+    info "Install libtorch ..."
+    bash ${CURR_DIR}/install_libtorch.sh
+else
+    warning "Skip LibTorch install (set INSTALL_LIBTORCH=1 to enable)."
+fi
 
 # openmpi @cuda
 # pcl @cuda

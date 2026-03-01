@@ -26,13 +26,7 @@ if ldconfig -p | grep -q libopencv_core; then
     exit 0
 fi
 
-WORKHORSE="$1"
-if [ -z "${WORKHORSE}" ]; then
-    WORKHORSE="cpu"
-fi
-
-# Note(all): opencv_contrib is not required in cpu mode
-BUILD_CONTRIB="no"
+WORKHORSE="cpu"
 
 # 1) Install OpenCV via apt
 # apt-get -y update && \
@@ -61,13 +55,9 @@ apt_get_update_and_install \
 
 pip3_install numpy
 
-VERSION="4.4.0"
+VERSION="${OPENCV_VERSION:-4.8.0}"
 
-PKG_OCV="opencv-${VERSION}.tar.gz"
-CHECKSUM="bb95acd849e458be7f7024d17968568d1ccd2f0681d47fd60d34ffb4b8c52563"
-DOWNLOAD_LINK="https://github.com/opencv/opencv/archive/${VERSION}.tar.gz"
-download_if_not_cached "${PKG_OCV}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
-tar xzf ${PKG_OCV}
+git clone --depth 1 --branch "${VERSION}" https://github.com/opencv/opencv.git "opencv-${VERSION}"
 
 # https://stackoverflow.com/questions/12427928/configure-and-build-opencv-to-custom-ffmpeg-install
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${SYSROOT_DIR}/lib
@@ -77,32 +67,9 @@ tar xzf ${PKG_OCV}
 # libgtk-3-dev libtbb2 libtbb-dev
 # -DWITH_GTK=ON -DWITH_TBB=ON
 
-GPU_OPTIONS=
-if [ "${WORKHORSE}" = "gpu" ]; then
-    GPU_OPTIONS="-DWITH_CUDA=ON -DWITH_CUFFT=ON -DWITH_CUBLAS=ON -DWITH_CUDNN=ON"
-    GPU_OPTIONS="${GPU_OPTIONS} -DCUDA_PROPAGATE_HOST_FLAGS=OFF"
-    GPU_OPTIONS="${GPU_OPTIONS} -DCUDA_ARCH_BIN=${SUPPORTED_NVIDIA_SMS// /,}"
-    # GPU_OPTIONS="${GPU_OPTIONS} -DWITH_NVCUVID=ON"
-    BUILD_CONTRIB="yes"
-else
-    GPU_OPTIONS="-DWITH_CUDA=OFF"
-fi
+GPU_OPTIONS="-DWITH_CUDA=OFF"
 
-if [ "${BUILD_CONTRIB}" = "yes" ]; then
-    FACE_MODEL_DATA="face_landmark_model.dat"
-    CHECKSUM="eeab592db2861a6c94d592a48456cf59945d31483ce94a6bc4d3a4e318049ba3"
-    DOWNLOAD_LINK="https://raw.githubusercontent.com/opencv/opencv_3rdparty/8afa57abc8229d611c4937165d20e2a2d9fc5a12/${FACE_MODEL_DATA}"
-    download_if_not_cached "${FACE_MODEL_DATA}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
-
-    PKG_CONTRIB="opencv_contrib-${VERSION}.tar.gz"
-    CHECKSUM="a69772f553b32427e09ffbfd0c8d5e5e47f7dab8b3ffc02851ffd7f912b76840"
-    DOWNLOAD_LINK="https://github.com/opencv/opencv_contrib/archive/${VERSION}.tar.gz"
-    download_if_not_cached "${PKG_CONTRIB}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
-    tar xzf ${PKG_CONTRIB}
-
-    sed -i "s|https://raw.githubusercontent.com/opencv/opencv_3rdparty/.*|file://${CURR_DIR}/\"|g" \
-        opencv_contrib-${VERSION}/modules/face/CMakeLists.txt
-fi
+# keep opencv_contrib disabled in docker baseline for smaller and faster builds.
 
 TARGET_ARCH="$(uname -m)"
 
@@ -111,11 +78,7 @@ if [ "${TARGET_ARCH}" = "x86_64" ]; then
     EXTRA_OPTIONS="${EXTRA_OPTIONS} -DCPU_BASELINE=SSE4"
 fi
 
-if [ "${BUILD_CONTRIB}" = "yes" ]; then
-    EXTRA_OPTIONS="${EXTRA_OPTIONS} -DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-${VERSION}/modules"
-else
-    EXTRA_OPTIONS="${EXTRA_OPTIONS} -DBUILD_opencv_world=OFF"
-fi
+EXTRA_OPTIONS="${EXTRA_OPTIONS} -DBUILD_opencv_world=OFF"
 
 # -DBUILD_LIST=core,highgui,improc
 pushd "opencv-${VERSION}"
@@ -168,9 +131,6 @@ ldconfig
 ok "Successfully installed OpenCV ${VERSION}."
 
 rm -rf opencv*
-if [[ "${BUILD_CONTRIB}" == "yes" ]]; then
-    rm -rf ${CURR_DIR}/${FACE_MODEL_DATA}
-fi
 
 if [[ -n "${CLEAN_DEPS}" ]]; then
     apt_get_remove \

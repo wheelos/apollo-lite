@@ -8,7 +8,13 @@ ARG INSTALL_MODE
 ARG LOCAL_HTTP_ADDR
 ARG DEBIAN_FRONTEND=noninteractive
 
+ENV APOLLO_DIST=${APOLLO_DIST} \
+    PATH="/opt/apollo/sysroot/bin:${PATH}"
+
 COPY installers /opt/apollo/installers
+COPY rcfiles /opt/apollo/rcfiles
+
+RUN bash -eux /opt/apollo/installers/install_geo_adjustment.sh ${GEOLOC}
 
 # Note:
 # The `--mount` option is used to bind mount the local sources.list file into the container during the build process.
@@ -22,4 +28,8 @@ RUN bash /opt/apollo/installers/install_modules_base.sh \
     && bash /opt/apollo/installers/install_drivers_deps.sh ${INSTALL_MODE} \
     && bash /opt/apollo/installers/install_dreamview_deps.sh ${GEOLOC} \
     && bash /opt/apollo/installers/install_release_deps.sh \
-    && bash /opt/apollo/installers/post_install.sh ${BUILD_STAGE}
+    && bash /opt/apollo/installers/post_install.sh dev
+
+COPY rcfiles/setup.sh /opt/apollo/neo/
+
+RUN echo "source /opt/apollo/neo/setup.sh" >> /etc/skel/.bashrc
