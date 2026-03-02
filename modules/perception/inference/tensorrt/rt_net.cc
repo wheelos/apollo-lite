@@ -299,9 +299,13 @@ void RTNet::addConcatLayer(const LayerParameter &layer_param,
   ConcatParameter concat = layer_param.concat_param();
   nvinfer1::IConcatenationLayer *concatLayer =
       net->addConcatenation(inputs, nbInputs);
-  // tensorrt ignore the first channel(batch channel), so when load caffe
-  // model axis should -1
-  concatLayer->setAxis(concat.axis() - 1);
+  // Caffe axis is on NCHW. Implicit-batch TensorRT tensors are CHW, so we need
+  // to drop the leading N dimension (axis-1). Explicit-batch tensors keep N.
+  int axis = concat.axis();
+  if (inputs[0]->getDimensions().nbDims == 3) {
+    axis = axis - 1;
+  }
+  concatLayer->setAxis(std::max(axis, 0));
   concatLayer->setName(layer_param.name().c_str());
   CHECK_EQ(nbInputs, layer_param.bottom_size());
 
@@ -379,6 +383,59 @@ void RTNet::addSliceLayer(const LayerParameter &layer_param,
                           TensorMap *tensor_map,
                           TensorModifyMap *tensor_modify_map) {
 #ifdef NV_TENSORRT_MAJOR
+#if NV_TENSORRT_MAJOR >= 10
+  // TRT10+: avoid legacy IPluginV2 Slice plugin (TRT10 builder rejects it).
+  // Implement Caffe Slice via native ISliceLayer(s), one output per slice.
+  const auto slice_param = layer_param.slice_param();
+  const int axis = slice_param.axis();  // Caffe axis on NCHW
+  const nvinfer1::Dims in_dims = inputs[0]->getDimensions();
+  CHECK_GE(axis, 0);
+  CHECK_LT(axis, in_dims.nbDims);
+  CHECK_GT(layer_param.top_size(), 0);
+
+  std::vector<int> boundaries;
+  boundaries.reserve(slice_param.slice_point_size() + 2);
+  boundaries.push_back(0);
+  for (int i = 0; i < slice_param.slice_point_size(); ++i) {
+    boundaries.push_back(slice_param.slice_point(i));
+  }
+  boundaries.push_back(in_dims.d[axis]);
+
+  CHECK_EQ(static_cast<int>(boundaries.size()), layer_param.top_size() + 1)
+      << "Slice top size must be slice_point_size + 1";
+
+  auto insert_tensor = [&](const std::string &top, nvinfer1::ITensor *tensor) {
+    std::string top_name = top;
+    auto it = tensor_modify_map->find(top_name);
+    if (it != tensor_modify_map->end()) {
+      std::string modify_name = top_name + "_" + layer_param.name();
+      top_name = modify_name;
+      it->second = top_name;
+    } else {
+      tensor_modify_map->insert(std::make_pair(top_name, top_name));
+    }
+    tensor_map->insert(std::make_pair(top_name, tensor));
+    tensor->setName(top_name.c_str());
+  };
+
+  for (int i = 0; i < layer_param.top_size(); ++i) {
+    nvinfer1::Dims start = in_dims;
+    nvinfer1::Dims size = in_dims;
+    nvinfer1::Dims stride = in_dims;
+    for (int d = 0; d < in_dims.nbDims; ++d) {
+      start.d[d] = 0;
+      size.d[d] = in_dims.d[d];
+      stride.d[d] = 1;
+    }
+    start.d[axis] = boundaries[i];
+    size.d[axis] = boundaries[i + 1] - boundaries[i];
+
+    auto *sliceLayer = net->addSlice(*inputs[0], start, size, stride);
+    CHECK_NOTNULL(sliceLayer);
+    sliceLayer->setName(absl::StrCat(layer_param.name(), "_", i).c_str());
+    insert_tensor(layer_param.top(i), sliceLayer->getOutput(0));
+  }
+#else
 #if NV_TENSORRT_MAJOR < 8
   CHECK_GT(layer_param.slice_param().axis(), 0);
   std::shared_ptr<SLICEPlugin> slice_plugin;
@@ -434,6 +491,7 @@ void RTNet::addSliceLayer(const LayerParameter &layer_param,
   ConstructMap(layer_param, sliceLayer, tensor_map, tensor_modify_map);
 #endif
 #endif
+#endif  // NV_TENSORRT_MAJOR >= 10
 }
 
 void RTNet::addInnerproductLayer(const LayerParameter &layer_param,
@@ -561,6 +619,20 @@ void RTNet::addSoftmaxLayer(const LayerParameter &layer_param,
                             TensorModifyMap *tensor_modify_map) {
   if (layer_param.has_softmax_param()) {
 #ifdef NV_TENSORRT_MAJOR
+#if NV_TENSORRT_MAJOR >= 10
+    // TRT10+: avoid legacy IPluginV2 Softmax plugin (TRT10 builder rejects it).
+    // Use native ISoftMaxLayer and set the axis bitmask.
+    const int axis = layer_param.softmax_param().axis();
+    nvinfer1::Dims in_dims = inputs[0]->getDimensions();
+    CHECK_GE(axis, 0);
+    CHECK_LT(axis, in_dims.nbDims);
+
+    auto *softmaxLayer = net->addSoftMax(*inputs[0]);
+    CHECK_NOTNULL(softmaxLayer);
+    softmaxLayer->setAxes(1U << static_cast<uint32_t>(axis));
+    softmaxLayer->setName(layer_param.name().c_str());
+    ConstructMap(layer_param, softmaxLayer, tensor_map, tensor_modify_map);
+#else
 #if NV_TENSORRT_MAJOR < 8
     std::shared_ptr<SoftmaxPlugin> softmax_plugin;
     // TODO(All): refactor it
@@ -604,6 +676,7 @@ void RTNet::addSoftmaxLayer(const LayerParameter &layer_param,
     ConstructMap(layer_param, softmaxLayer, tensor_map, tensor_modify_map);
 #endif
 #endif
+#endif  // NV_TENSORRT_MAJOR >= 10
   } else {
     nvinfer1::ISoftMaxLayer *softmaxLayer = net->addSoftMax(*inputs[0]);
     softmaxLayer->setName(layer_param.name().c_str());
@@ -1354,19 +1427,49 @@ void RTNet::init_blob(std::vector<std::string> *names) {
     CHECK_GE(bindingIndex, 0);
     nvinfer1::Dims dims = engine.getBindingDimensions(bindingIndex);
 #endif
-    int c = (dims.nbDims > 0) ? static_cast<int>(dims.d[0]) : 1;
-    int h = (dims.nbDims > 1) ? static_cast<int>(dims.d[1]) : 1;
-    int w = (dims.nbDims > 2) ? static_cast<int>(dims.d[2]) : 1;
-    int count = c * h * w * max_batch_size_;
+    auto safe_dim = [](int dim, int fallback) -> int {
+      return (dim < 0) ? fallback : dim;
+    };
+
+    // TRT7/8 implicit-batch engines typically expose CHW (nbDims==3) and rely
+    // on max_batch_size_. TRT10 explicit-batch engines typically expose NCHW
+    // (nbDims==4) and must allocate including the explicit N.
+    int64_t count = 1;
+    if (dims.nbDims == 4) {
+      const int n = safe_dim(static_cast<int>(dims.d[0]), max_batch_size_);
+      const int c = safe_dim(static_cast<int>(dims.d[1]), 1);
+      const int h = safe_dim(static_cast<int>(dims.d[2]), 1);
+      const int w = safe_dim(static_cast<int>(dims.d[3]), 1);
+      count = static_cast<int64_t>(n) * c * h * w;
+    } else if (dims.nbDims == 3) {
+      const int c = safe_dim(static_cast<int>(dims.d[0]), 1);
+      const int h = safe_dim(static_cast<int>(dims.d[1]), 1);
+      const int w = safe_dim(static_cast<int>(dims.d[2]), 1);
+      count = static_cast<int64_t>(c) * h * w * max_batch_size_;
+    } else if (dims.nbDims == 2) {
+      const int d0 = safe_dim(static_cast<int>(dims.d[0]), 1);
+      const int d1 = safe_dim(static_cast<int>(dims.d[1]), 1);
+      count = static_cast<int64_t>(d0) * d1;
+    } else if (dims.nbDims == 1) {
+      const int d0 = safe_dim(static_cast<int>(dims.d[0]), 1);
+      count = static_cast<int64_t>(d0);
+    } else {
+      AERROR << "Unsupported dims count " << dims.nbDims << " for " << trt_name;
+      continue;
+    }
+
     void *dev_ptr = nullptr;
-    BASE_CUDA_CHECK(cudaMalloc(&dev_ptr, count * sizeof(float)));
-    int idx = static_cast<int>(buffers_.size());
+    BASE_CUDA_CHECK(
+        cudaMalloc(&dev_ptr, static_cast<size_t>(count) * sizeof(float)));
+    const int idx = static_cast<int>(buffers_.size());
 #if NV_TENSORRT_MAJOR >= 10
     buffers_.push_back(dev_ptr);
 #else
     buffers_[bindingIndex] = dev_ptr;
 #endif
+#if NV_TENSORRT_MAJOR >= 10
     tensor_buffer_index_[trt_name] = idx;
+#endif
 
     std::vector<int> shape;
     ACHECK(this->shape(name, &shape));
@@ -1517,6 +1620,7 @@ bool RTNet::Init(const std::map<std::string, std::vector<int>> &shapes) {
     std::stringstream planBuffer;
     planBuffer << planFile.rdbuf();
     std::string plan = planBuffer.str();
+    initLibNvInferPlugins(&rt_gLogger, "");
     auto runtime = nvinfer1::createInferRuntime(rt_gLogger);
     engine = runtime->deserializeCudaEngine(plan.data(), plan.size());
     delete runtime;
@@ -1563,6 +1667,41 @@ bool RTNet::addInput(const TensorDimsMap &tensor_dims_map,
   CHECK_GT(net_param_->layer_size(), 0);
   input_names_.clear();
   for (auto dims_pair : tensor_dims_map) {
+#if NV_TENSORRT_MAJOR >= 10
+    // TRT10+ path uses explicit batch network. Input tensors must be NCHW (4D)
+    // instead of CHW (3D), otherwise convolution layers will fail shape checks.
+    int n = 1;
+    int c = static_cast<int>(dims_pair.second.d[0]);
+    int h = static_cast<int>(dims_pair.second.d[1]);
+    int w = static_cast<int>(dims_pair.second.d[2]);
+    auto it_shape = shapes.find(dims_pair.first);
+    if (it_shape != shapes.end()) {
+      const auto &shape = it_shape->second;
+      if (shape.size() == 4) {
+        n = shape[0];
+        c = shape[1];
+        h = shape[2];
+        w = shape[3];
+      } else if (shape.size() == 3) {
+        c = shape[0];
+        h = shape[1];
+        w = shape[2];
+      } else if (static_cast<int>(shape.size()) ==
+                 dims_pair.second.nbDims + 1) {
+        // Backward compatible: treat as N + (C,H,W)
+        n = shape[0];
+        c = shape[1];
+        h = shape[2];
+        w = shape[3];
+      }
+    }
+    if (n > 0) {
+      max_batch_size_ = std::max(max_batch_size_, n);
+    }
+    nvinfer1::Dims4 input_dims{n, c, h, w};
+    auto data = network_->addInput(dims_pair.first.c_str(),
+                                   nvinfer1::DataType::kFLOAT, input_dims);
+#else
     if (shapes.find(dims_pair.first) != shapes.end()) {
       auto shape = shapes.at(dims_pair.first);
       if (static_cast<int>(shape.size()) == dims_pair.second.nbDims + 1) {
@@ -1574,6 +1713,7 @@ bool RTNet::addInput(const TensorDimsMap &tensor_dims_map,
     }
     auto data = network_->addInput(
         dims_pair.first.c_str(), nvinfer1::DataType::kFLOAT, dims_pair.second);
+#endif
     CHECK_NOTNULL(data);
     data->setName(dims_pair.first.c_str());
     tensor_map->insert(std::make_pair(dims_pair.first, data));
