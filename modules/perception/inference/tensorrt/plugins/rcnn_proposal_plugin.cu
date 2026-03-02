@@ -120,6 +120,10 @@ int32_t RCNNProposalPlugin::enqueue(int32_t batchSize, const void *const *inputs
     effective_batch = explicit_batch_;
   }
 #endif
+  CHECK_EQ(effective_batch, 1)
+      << "RCNNProposalPlugin only supports batch=1 (output dims are hard coded "
+         "to batch=1). Got effective_batch="
+      << effective_batch;
   // cls_score_softmax dims: [num_rois, 4, 1, 1]
   const float *cls_score_softmax = reinterpret_cast<const float *>(inputs[0]);
   // bbox_pred dims: [num_rois, 4 * 4 (num_class * box_dim), 1, 1]

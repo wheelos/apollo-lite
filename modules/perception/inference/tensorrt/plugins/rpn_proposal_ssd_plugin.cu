@@ -123,6 +123,10 @@ int32_t RPNProposalSSDPlugin::enqueue(int32_t batchSize, const void *const *inpu
     effective_batch = explicit_batch_;
   }
 #endif
+  CHECK_EQ(effective_batch, 1)
+      << "RPNProposalSSDPlugin only supports batch=1 (output dims are hard "
+         "coded to batch=1). Got effective_batch="
+      << effective_batch;
 // dimsNCHW: [N, 2 * num_anchor_per_point, H, W]
   const float *rpn_cls_prob_reshape =
       reinterpret_cast<const float *>(inputs[0]);
