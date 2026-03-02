@@ -16,4 +16,4 @@ services:
       - /usr/src:/usr/src:ro
 
     # GPU access (docker compose v2)
-    gpus: all
+    runtime: nvidia
