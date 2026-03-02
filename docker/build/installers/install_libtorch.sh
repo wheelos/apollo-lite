@@ -97,6 +97,8 @@ function install_libtorch_cpp() {
   # aarch64 Strategy: Prioritize pre-compiled wheel, fallback to source build
   # ============================================================================
   elif [ "${TARGET_ARCH}" = "aarch64" ]; then
+    # use 2.6.0 in l4t environment
+    PYTORCH_VERSION="2.6.0"
     info "Executing aarch64 strategy..."
     if ! _install_libtorch_from_wheel_aarch64; then
       warning "Pre-compiled wheel installation failed. Falling back to building from source."
@@ -162,6 +164,14 @@ function _install_libtorch_from_wheel_aarch64() {
       warning "Could not download pre-compiled wheel from ${DOWNLOAD_LINK}."
       popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"; return 1
   fi
+
+  # install deps
+  # TODO(leafyleong): just install runtime deps not dev packages
+  apt_get_update_and_install \
+    libopenblas-dev \
+    libomp-dev \
+    zlib1g-dev \
+    libffi-dev
 
   info "Installing downloaded wheel via pip..."
   if ! pip3 install --no-cache-dir "${PKG_NAME}"; then

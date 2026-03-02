@@ -26,23 +26,31 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 # 1) protobuf for cpp didn't need to be pre-installed into system
 # 2) protobuf for python should be provided for cyber
 
+ARCH="$(uname -m)"
 VERSION="29.0"
 
-PROTOC_NAME="protoc"
-CHECKSUM="c0eb373db646ac4850d34b8dfa40dbfcc3e96530b873dc8209c9a3f17be6a6c5"
-DOWNLOAD_LINK="https://github.com/wheelos/wheel.os/releases/download/v1.0.0/${PROTOC_NAME}"
+# install protoc
+if [[ "${ARCH}" == "aarch64" ]]; then
+    pkg="protoc-${VERSION}-linux-aarch_64.zip"
+    download_link="https://github.com/protocolbuffers/protobuf/releases/download/v${VERSION}/protoc-${VERSION}-linux-aarch_64.zip"
+    checksum="305f1be5ae7b2f39451870b312b45c1e0ba269901c83ba16d85f9f9d1441b348"
+    download_if_not_cached "${pkg}" "${checksum}" "${download_link}"
+    unzip "${pkg}" "bin/protoc" -d /usr/local
+    rm -rf "${pkg}"
+elif [[ "${ARCH}" == "x86_64" ]]; then
+    pkg="protoc-${VERSION}-linux-x86_64.zip"
+    download_link="https://github.com/protocolbuffers/protobuf/releases/download/v${VERSION}/protoc-${VERSION}-linux-x86_64.zip"
+    checksum="3c51065af3b9a606d9e18a1bf628143734ff4b9e69725d6459857430ba7a78df"
+    download_if_not_cached "${pkg}" "${checksum}" "${download_link}"
+    unzip "${pkg}" "bin/protoc" -d /usr/local
+    rm -rf "${pkg}"
+fi
 
-download_if_not_cached "$PROTOC_NAME" "$CHECKSUM" "$DOWNLOAD_LINK"
-sudo cp protoc /usr/local/bin/ && chmod +x /usr/local/bin/protoc
-
+# install protobuf for python
 PKG_NAME="protobuf.tar.gz"
 CHECKSUM="04ab708746c9d8b43f582056b43a3d7ea46c9ae1b05353b35354d9e35063c716"
 DOWNLOAD_LINK="https://github.com/wheelos/wheel.os/releases/download/v1.0.0/${PKG_NAME}"
-
 download_if_not_cached "$PKG_NAME" "$CHECKSUM" "$DOWNLOAD_LINK"
 pip3_install ${PKG_NAME}
-
 ok "Successfully installed protobuf, VERSION=${VERSION}"
-
-# Clean up.
-rm -fr ${PROTOC_NAME} ${PKG_NAME}
+rm -fr ${PKG_NAME}

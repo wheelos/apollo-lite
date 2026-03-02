@@ -85,20 +85,20 @@ ln -s /bin/bash /bin/sh -f
 ##----------------##
 # update-alternatives --install /usr/bin/python python /usr/bin/python3 36
 
-if [[ "${MY_GEO}" == "cn" ]]; then
-    # configure tsinghua's pypi mirror for x86_64 and aarch64
-    PYPI_MIRROR="https://pypi.tuna.tsinghua.edu.cn/simple"
-    pip3_install -i "$PYPI_MIRROR" pip -U
-    python3 -m pip config set global.index-url "$PYPI_MIRROR"
-else
-    pip3_install pip -U
-fi
+# if [[ "${MY_GEO}" == "cn" ]]; then
+#     # configure tsinghua's pypi mirror for x86_64 and aarch64
+#     PYPI_MIRROR="https://pypi.tuna.tsinghua.edu.cn/simple"
+#     pip3_install -i "$PYPI_MIRROR" pip -U
+#     python3 -m pip config set global.index-url "$PYPI_MIRROR"
+# else
+#     pip3_install pip -U
+# fi
 
 pip3_install -U setuptools
 pip3_install -U wheel
 
-# Kick down the ladder
-apt-get -y autoremove python3-pip
+# # Kick down the ladder
+# apt-get -y autoremove python3-pip
 
 # Clean up cache to reduce layer size.
 apt-get clean && \
