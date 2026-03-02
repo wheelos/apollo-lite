@@ -170,9 +170,23 @@ class DFMBPSROIAlignPlugin : public nvinfer1::IPluginV2Ext {
     CHECK_GE(part_height_, 0);
     CHECK_GE(part_width_, 0);
 
+#if NV_TENSORRT_MAJOR >= 10
+    // Explicit-batch network uses NCHW.
+    if (in_dims[0].nbDims == 4) {
+      explicit_batch_ = in_dims[0].d[0];
+      channels_ = in_dims[0].d[1];
+      height_ = in_dims[0].d[2];
+      width_ = in_dims[0].d[3];
+    } else {
+      channels_ = in_dims[0].d[0];
+      height_ = in_dims[0].d[1];
+      width_ = in_dims[0].d[2];
+    }
+#else
     channels_ = in_dims[0].d[0];
     height_ = in_dims[0].d[1];
     width_ = in_dims[0].d[2];
+#endif
     output_dims_ = nvinfer1::Dims4(in_dims[1].d[0], output_channel_,
                                    pooled_height_, pooled_width_);
     output_size_ =
@@ -297,6 +311,9 @@ class DFMBPSROIAlignPlugin : public nvinfer1::IPluginV2Ext {
     p->height_ = height_;
     p->width_ = width_;
     p->output_size_ = output_size_;
+#if NV_TENSORRT_MAJOR >= 10
+    p->explicit_batch_ = explicit_batch_;
+#endif
 
     p->output_dims_ = nvinfer1::Dims4(
         output_size_ / (output_channel_ * pooled_height_ * pooled_width_),
@@ -330,6 +347,10 @@ class DFMBPSROIAlignPlugin : public nvinfer1::IPluginV2Ext {
   int output_size_;
 
   nvinfer1::Dims output_dims_;
+
+#if NV_TENSORRT_MAJOR >= 10
+  int explicit_batch_ = -1;
+#endif
 
   nvinfer1::AsciiChar *plugin_namespace;
   const nvinfer1::AsciiChar *plugin_type = "";

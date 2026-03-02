@@ -152,6 +152,12 @@ int32_t DFMBPSROIAlignPlugin::enqueue(int32_t batchSize, const void *const *inpu
             void *workspace, cudaStream_t stream) noexcept {
 #endif
 #endif
+  int effective_batch = batchSize;
+#if NV_TENSORRT_MAJOR >= 10
+  if (explicit_batch_ > 0) {
+    effective_batch = explicit_batch_;
+  }
+#endif
   const float *bottom_data = reinterpret_cast<const float *>(inputs[0]);
   const float *bottom_rois = reinterpret_cast<const float *>(inputs[1]);
   const float *bottom_trans =
@@ -167,7 +173,7 @@ int32_t DFMBPSROIAlignPlugin::enqueue(int32_t batchSize, const void *const *inpu
   int block_size = (output_size_ - 1) / thread_size_ + 1;
   DFMBPSROIAlignForward<<<block_size, thread_size_, 0, stream>>>(
       output_size_, bottom_data, heat_map_a_, heat_map_b_, pad_ratio_,
-      batchSize, channels_, height_, width_, pooled_height_, pooled_width_,
+      effective_batch, channels_, height_, width_, pooled_height_, pooled_width_,
       bottom_rois, bottom_trans, no_trans_, trans_std_, sample_per_part_,
       output_channel_, group_height_, group_width_, part_height_, part_width_,
       num_classes_, channels_each_class, top_data);

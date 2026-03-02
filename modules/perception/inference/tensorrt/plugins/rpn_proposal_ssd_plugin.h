@@ -127,8 +127,20 @@ class RPNProposalSSDPlugin : public nvinfer1::IPluginV2Ext {
       const StBBoxRegParameter &bbox_reg_param,
       const StDetectionOutputSSDParameter &detection_output_ssd_param,
       nvinfer1::Dims *in_dims) {
+#if NV_TENSORRT_MAJOR >= 10
+    // Explicit-batch network uses NCHW.
+    if (in_dims[0].nbDims == 4) {
+      explicit_batch_ = in_dims[0].d[0];
+      height_ = in_dims[0].d[2];
+      width_ = in_dims[0].d[3];
+    } else {
+      height_ = in_dims[0].d[1];
+      width_ = in_dims[0].d[2];
+    }
+#else
     height_ = in_dims[0].d[1];
     width_ = in_dims[0].d[2];
+#endif
 
     for (int i = 0; i < 4; ++i) {
       bbox_mean_[i] = bbox_reg_param.bbox_mean[i];
@@ -180,7 +192,20 @@ class RPNProposalSSDPlugin : public nvinfer1::IPluginV2Ext {
                            const nvinfer1::Dims *outputDims, int32_t nbOutputs,
                            nvinfer1::DataType type,
                            nvinfer1::PluginFormat format,
-                           int32_t maxBatchSize) noexcept override {}
+                           int32_t maxBatchSize) noexcept override {
+#if NV_TENSORRT_MAJOR >= 10
+    if (nbInputs > 0) {
+      if (inputDims[0].nbDims == 4) {
+        explicit_batch_ = inputDims[0].d[0];
+        height_ = inputDims[0].d[2];
+        width_ = inputDims[0].d[3];
+      } else {
+        height_ = inputDims[0].d[1];
+        width_ = inputDims[0].d[2];
+      }
+    }
+#endif
+  }
 
   size_t getWorkspaceSize(int32_t maxBatchSize) const noexcept override {
     return 0;
@@ -245,6 +270,9 @@ class RPNProposalSSDPlugin : public nvinfer1::IPluginV2Ext {
     p->num_anchor_per_point_ = num_anchor_per_point_;
     p->top_n_ = top_n_;
     p->out_rois_num_ = out_rois_num_;
+#if NV_TENSORRT_MAJOR >= 10
+    p->explicit_batch_ = explicit_batch_;
+#endif
 
     p->anchor_heights_ = new float[num_anchor_per_point_]();
     p->anchor_widths_ = new float[num_anchor_per_point_]();
@@ -302,6 +330,9 @@ class RPNProposalSSDPlugin : public nvinfer1::IPluginV2Ext {
 
   float *anchor_heights_;
   float *anchor_widths_;
+#if NV_TENSORRT_MAJOR >= 10
+  int explicit_batch_ = -1;
+#endif
   nvinfer1::AsciiChar *plugin_namespace;
   const nvinfer1::AsciiChar *plugin_type = "";
   const nvinfer1::AsciiChar *plugin_version = "";

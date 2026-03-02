@@ -114,6 +114,12 @@ int32_t RCNNProposalPlugin::enqueue(int32_t batchSize, const void *const *inputs
   void *workspace, cudaStream_t stream) noexcept {
 #endif
 #endif
+  int effective_batch = batchSize;
+#if NV_TENSORRT_MAJOR >= 10
+  if (explicit_batch_ > 0) {
+    effective_batch = explicit_batch_;
+  }
+#endif
   // cls_score_softmax dims: [num_rois, 4, 1, 1]
   const float *cls_score_softmax = reinterpret_cast<const float *>(inputs[0]);
   // bbox_pred dims: [num_rois, 4 * 4 (num_class * box_dim), 1, 1]
@@ -128,7 +134,7 @@ int32_t RCNNProposalPlugin::enqueue(int32_t batchSize, const void *const *inputs
 
   int cls_score_softmax_size = num_rois_ * 4;
   int bbox_pred_size = num_rois_ * 4 * 4;
-  int output_size = batchSize * top_n_ * out_channel_;
+  int output_size = effective_batch * top_n_ * out_channel_;
 
   // Using thrust::fill might cause crash
   float *init_result_boxes = new float[output_size]();
@@ -137,9 +143,9 @@ int32_t RCNNProposalPlugin::enqueue(int32_t batchSize, const void *const *inputs
                                   output_size * sizeof(float),
                                   cudaMemcpyHostToDevice, stream));
 
-  float *host_im_info = new float[batchSize * 6]();
+  float *host_im_info = new float[effective_batch * 6]();
   BASE_CUDA_CHECK(cudaMemcpyAsync(host_im_info, im_info,
-                                  batchSize * 6 * sizeof(float),
+                                  effective_batch * 6 * sizeof(float),
                                   cudaMemcpyDeviceToHost, stream));
   float origin_height = host_im_info[0];
   float origin_width = host_im_info[1];
@@ -219,18 +225,18 @@ int32_t RCNNProposalPlugin::enqueue(int32_t batchSize, const void *const *inputs
   }
 
   // Separate data by batch_id
-  int *batch_rois_nums = new int[batchSize]();
+  int *batch_rois_nums = new int[effective_batch]();
   int *dev_batch_rois_nums;
   BASE_CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&dev_batch_rois_nums),
-                             batchSize * sizeof(int)));
+                             effective_batch * sizeof(int)));
   BASE_CUDA_CHECK(
-      cudaMemsetAsync(dev_batch_rois_nums, 0, batchSize * sizeof(int), stream));
+      cudaMemsetAsync(dev_batch_rois_nums, 0, effective_batch * sizeof(int), stream));
   nthreads = num_rois_;
   block_size = DIVUP(nthreads, thread_size_);
   get_rois_nums_kernel<<<block_size, thread_size_, 0, stream>>>(
       nthreads, rois, dev_batch_rois_nums);
   BASE_CUDA_CHECK(cudaMemcpyAsync(batch_rois_nums, dev_batch_rois_nums,
-                                  batchSize * sizeof(int),
+                                  effective_batch * sizeof(int),
                                   cudaMemcpyDeviceToHost, stream));
 
   float *max_bbox, *max_score, *max_all_probs;
@@ -273,7 +279,7 @@ int32_t RCNNProposalPlugin::enqueue(int32_t batchSize, const void *const *inputs
 
   int cur_ptr = 0;
   acc_box_num_ = 0;
-  for (int batch_id = 0; batch_id < batchSize; ++batch_id) {
+  for (int batch_id = 0; batch_id < effective_batch; ++batch_id) {
     // TODO(chenjiahao): replace 300 with input dims
     cur_ptr = batch_id * 300;
     BASE_CUDA_CHECK(cudaMemsetAsync(
