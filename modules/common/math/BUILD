@@ -264,6 +264,7 @@ cc_library(
         "@eigen",
     ],
     alwayslink = True,
+    visibility = ["//visibility:public"],
 )
 
 cc_library(

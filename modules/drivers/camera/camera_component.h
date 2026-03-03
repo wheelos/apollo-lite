@@ -19,54 +19,44 @@
 #include <atomic>
 #include <future>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/drivers/camera/proto/config.pb.h"
 
 #include "cyber/cyber.h"
+#include "modules/common/util/rate_limiter.h"
 #include "modules/drivers/camera/backend/camera_device.h"
 
 namespace apollo {
 namespace drivers {
 namespace camera {
 
-/**
- * @class CameraComponent
- * @brief Apollo Cyber RT component for camera device management and image
- * publishing.
- *
- * This component initializes a CameraDevice, continuously polls for images,
- * processes them, and publishes them as protobuf messages to a Cyber RT
- * channel.
- */
 class CameraComponent : public apollo::cyber::Component<> {
  public:
   bool Init() override;
   ~CameraComponent();
 
  private:
-  // Main execution loop for image polling and publishing
   void Run();
 
-  std::shared_ptr<apollo::cyber::Writer<apollo::drivers::Image>>
-      writer_;  ///< Cyber RT writer for image messages
-  std::unique_ptr<CameraDevice> camera_device_;    ///< Camera device interface
-  std::shared_ptr<config::Config> camera_config_;  ///< Camera configuration
-  std::vector<std::shared_ptr<apollo::drivers::Image>>
-      pb_image_buffer_;  ///< Circular buffer for protobuf image messages
+  std::shared_ptr<apollo::cyber::Writer<apollo::drivers::Image>> writer_;
+  std::unique_ptr<CameraDevice> camera_device_;
+  std::shared_ptr<config::Config> camera_config_;
 
-  uint32_t device_wait_ms_;  ///< Delay in milliseconds after poll failure
-  int index_ = 0;            ///< Current index in the circular buffer
-  int buffer_size_ = 3;      ///< Size of the circular buffer
+  // 增加 Buffer 数量以防止追尾，建议 6-10 帧
+  static const int kBufferSize = 6;
+  std::vector<std::shared_ptr<apollo::drivers::Image>> pb_image_buffer_;
 
-  static constexpr int32_t kMaxImageSize =
-      20 * 1024 * 1024;  ///< Maximum allowed image size in bytes (20 MB)
+  uint32_t device_wait_ms_;
+  int index_ = 0;
 
-  std::future<void>
-      async_result_;  ///< Future object for managing the async run() thread
-  std::atomic<bool> running_ = {
-      false};  ///< Atomic flag to control the run() loop's state
+  static constexpr int32_t kMaxImageSize = 20 * 1024 * 1024;  // 20MB
+
+  std::future<void> async_result_;
+  std::atomic<bool> running_ = {false};
+  std::unique_ptr<apollo::cyber::common::TokenBucket> rate_limiter_;
 };
 
 CYBER_REGISTER_COMPONENT(CameraComponent)

@@ -175,8 +175,13 @@ void RslidarComponent::ProcessCloud() {
       point->set_y(p.y);
       point->set_z(p.z);
       point->set_intensity(static_cast<uint32_t>(p.intensity));
-      point->set_timestamp(
-          GetNanosecondTimestampFromSecondTimestamp(p.timestamp));
+      if (conf_.has_timestamp_offset()) {
+        point->set_timestamp(GetNanosecondTimestampFromSecondTimestamp(
+            p.timestamp + conf_.timestamp_offset()));
+      } else {
+        point->set_timestamp(
+            GetNanosecondTimestampFromSecondTimestamp(p.timestamp));
+      }
     }
 
     this->PreparePointsMsg(*apollo_pc);

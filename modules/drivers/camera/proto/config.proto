@@ -51,7 +51,13 @@ message Config {
   message CompressConfig {
     optional string output_channel = 1;
     optional uint32 image_pool_size = 2 [default = 20];
+    optional double resize_ratio = 3 [default = 1.0];
   }
   optional CompressConfig compress_conf = 27;
   optional bool hardware_trigger = 28 [default = true];
+  optional double publish_rate = 29;
+  // Swap U and V channels during YUV to RGB conversion.
+  // Use this when V4L2 reports one format (e.g., YUYV) but camera actually
+  // outputs another (e.g., YVYU where U and V are swapped).
+  optional bool swap_uv_channels = 30 [default = false];
 }
