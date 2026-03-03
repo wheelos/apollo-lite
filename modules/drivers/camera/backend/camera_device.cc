@@ -1,6 +1,7 @@
 #include "modules/drivers/camera/backend/camera_device.h"
 
 #include <chrono>
+#include <iomanip>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -23,7 +24,9 @@ namespace {
 
 const std::map<std::string, uint32_t> PIXEL_FORMAT_MAP = {
     {"yuyv", V4L2_PIX_FMT_YUYV},
+    {"yvyu", V4L2_PIX_FMT_YVYU},
     {"uyvy", V4L2_PIX_FMT_UYVY},
+    {"vyuy", V4L2_PIX_FMT_VYUY},
     {"mjpeg", V4L2_PIX_FMT_MJPEG},
     {"rgb24", V4L2_PIX_FMT_RGB24},
     // Adding yuvmono10. Assuming it maps to V4L2_PIX_FMT_Y10.
@@ -122,14 +125,30 @@ bool CameraDevice::Init() {
     // device.
     config_->set_width(device_->GetWidth());
     config_->set_height(device_->GetHeight());
-    // Note: V4L2Device should ideally provide actual pixel format and frame
-    // rate as well. For this example, we assume get_width/get_height are
-    // sufficient for processor creation.
+
+    // Get the actual pixel format returned by V4L2 driver
+    uint32_t actual_pixel_format = device_->GetPixelFormat();
+    // Convert fourcc to string for logging
+    char fourcc[5] = {0};
+    fourcc[0] = actual_pixel_format & 0xFF;
+    fourcc[1] = (actual_pixel_format >> 8) & 0xFF;
+    fourcc[2] = (actual_pixel_format >> 16) & 0xFF;
+    fourcc[3] = (actual_pixel_format >> 24) & 0xFF;
+    AINFO << "V4L2 driver returned actual pixel format: " << fourcc << " (0x"
+          << std::hex << actual_pixel_format << std::dec << ")";
+
+    // Warn if requested format differs from actual format
+    if (actual_pixel_format != pixel_format_v4l2) {
+      AWARN << "Requested pixel format " << config_->pixel_format() << " (0x"
+            << std::hex << pixel_format_v4l2 << std::dec << ") but got "
+            << fourcc << " (0x" << std::hex << actual_pixel_format << std::dec
+            << ")";
+    }
 
     // 4. Create ImageProcessor based on actual device capabilities and desired
     // output
     processor_.reset();
-    if (pixel_format_v4l2 == V4L2_PIX_FMT_MJPEG) {
+    if (actual_pixel_format == V4L2_PIX_FMT_MJPEG) {
       processor_ =
           std::make_unique<MjpegProcessor>(config_->width(), config_->height());
     } else {
@@ -143,9 +162,34 @@ bool CameraDevice::Init() {
         AINFO << "YuvProcessor will output YUYV passthrough.";
       }
 
-      // Determine if input YUV is UYVY for conversion
-      bool is_uyvy = (pixel_format_v4l2 == V4L2_PIX_FMT_UYVY);
-      processor_ = std::make_unique<YuvProcessor>(output_format, is_uyvy);
+      // Determine the YUV format variant based on actual pixel format
+      YuvProcessor::YuvFormat yuv_format = YuvProcessor::YuvFormat::YUYV;
+      const char* format_name = "YUYV";
+      if (actual_pixel_format == V4L2_PIX_FMT_YUYV) {
+        yuv_format = YuvProcessor::YuvFormat::YUYV;
+        format_name = "YUYV";
+      } else if (actual_pixel_format == V4L2_PIX_FMT_YVYU) {
+        yuv_format = YuvProcessor::YuvFormat::YVYU;
+        format_name = "YVYU";
+      } else if (actual_pixel_format == V4L2_PIX_FMT_UYVY) {
+        yuv_format = YuvProcessor::YuvFormat::UYVY;
+        format_name = "UYVY";
+      } else if (actual_pixel_format == V4L2_PIX_FMT_VYUY) {
+        yuv_format = YuvProcessor::YuvFormat::VYUY;
+        format_name = "VYUY";
+      }
+      AINFO << "YuvProcessor input format: " << format_name;
+
+      // Check if UV channel swapping is requested
+      bool swap_uv =
+          config_->has_swap_uv_channels() && config_->swap_uv_channels();
+      if (swap_uv) {
+        AINFO << "UV channel swapping enabled - treating " << format_name
+              << " as UV-swapped";
+      }
+
+      processor_ =
+          std::make_unique<YuvProcessor>(output_format, yuv_format, swap_uv);
     }
 
     // 5. Set all camera parameters (brightness, exposure, etc.)
@@ -324,7 +368,7 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
                                    1e9);  // Convert ns to seconds
     pb_image->set_frame_id(config_->frame_id());
     pb_image->set_encoding(config_->output_type() == OutputType::RGB
-                               ? "bgr8"
+                               ? "rgb8"
                                : "yuyv");  // Set encoding string
     pb_image->set_width(config_->width());
     pb_image->set_height(config_->height());

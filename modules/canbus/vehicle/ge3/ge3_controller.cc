@@ -393,6 +393,7 @@ Chassis Ge3Controller::chassis() {
 void Ge3Controller::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  can_sender_->Update();
   // In emergency case, the hazard lamp should be on
   pc_bcm_201_->set_pc_hazardlampreq(Pc_bcm_201::PC_HAZARDLAMPREQ_REQ);
   set_chassis_error_code(Chassis::CHASSIS_ERROR);

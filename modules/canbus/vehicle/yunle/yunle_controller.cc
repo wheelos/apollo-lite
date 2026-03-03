@@ -301,6 +301,7 @@ Chassis YunleController::chassis() {
 void YunleController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  can_sender_->Update();
 }
 
 ErrorCode YunleController::EnableAutoMode() {

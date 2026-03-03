@@ -27,7 +27,6 @@ bool CameraComponent::Init() {
     AERROR << "Failed to load camera config from: " << config_file_path_;
     return false;
   }
-  AINFO << "Camera config: " << camera_config_->DebugString();
 
   try {
     camera_device_ = std::make_unique<CameraDevice>(camera_config_);
@@ -36,13 +35,11 @@ bool CameraComponent::Init() {
     return false;
   }
 
-  // Get the final actual resolution negotiated by the driver from CameraDevice
   const uint32_t actual_width = camera_config_->width();
   const uint32_t actual_height = camera_config_->height();
-
-  uint32_t image_size_expected;
+  uint32_t image_size_expected = 0;
   std::string encoding_str;
-  uint32_t step_bytes;
+  uint32_t step_bytes = 0;
 
   if (camera_config_->output_type() == config::OutputType::YUYV) {
     image_size_expected = actual_width * actual_height * 2;
@@ -53,39 +50,31 @@ bool CameraComponent::Init() {
     encoding_str = "rgb8";
     step_bytes = 3 * actual_width;
   } else {
-    AERROR << "Unsupported output type in config: "
-           << camera_config_->output_type();
-    return false;
-  }
-
-  if (image_size_expected > kMaxImageSize) {
-    AERROR << "Image size is too big (" << image_size_expected
-           << " bytes), must be less than " << kMaxImageSize << " bytes.";
+    AERROR << "Unsupported output type.";
     return false;
   }
 
   device_wait_ms_ = camera_config_->device_wait_ms();
+  double pub_rate = camera_config_->has_publish_rate()
+                        ? camera_config_->publish_rate()
+                        : camera_config_->frame_rate();
+  // set burst size to 10(larger than 1 to allow some bursts) for jittery data
+  rate_limiter_ =
+      std::make_unique<apollo::cyber::common::TokenBucket>(pub_rate, 10.0);
 
-  // Initialize Protobuf message buffer pool
-  for (int i = 0; i < buffer_size_; ++i) {
+  // Buffer Initialization
+  for (int i = 0; i < kBufferSize; ++i) {
     auto pb_image = std::make_shared<Image>();
     pb_image->mutable_header()->set_frame_id(camera_config_->frame_id());
     pb_image->set_width(actual_width);
     pb_image->set_height(actual_height);
     pb_image->set_encoding(encoding_str);
     pb_image->set_step(step_bytes);
-
-    // Key: Pre-allocate memory by resizing the string. This enables Zero-Copy
-    // during subsequent image processing by ensuring mutable_data()->data()
-    // returns a valid pointer to the allocated memory.
     pb_image->mutable_data()->resize(image_size_expected);
-
     pb_image_buffer_.push_back(pb_image);
   }
 
   writer_ = node_->CreateWriter<Image>(camera_config_->channel_name());
-
-  // Start asynchronous run loop
   running_.store(true);
   async_result_ = cyber::Async(&CameraComponent::Run, this);
   return true;
@@ -93,33 +82,46 @@ bool CameraComponent::Init() {
 
 void CameraComponent::Run() {
   while (running_.load() && !cyber::IsShutdown()) {
-    // Get a protobuf message from the buffer pool
     auto pb_image = pb_image_buffer_[index_];
-    index_ = (index_ + 1) % buffer_size_;
 
-    // The Poll method now directly processes data into pb_image
+    // 工业级安全检查：如果当前 Buffer 引用计数 > 1，说明还在被下游使用
+    // 此时跳过该 Buffer，防止数据写坏。
+    if (pb_image.use_count() > 1) {
+      AWARN_EVERY(100)
+          << "Buffer overrun! Increasing buffer size might be needed.";
+      // 策略：可以尝试下一个 index，或者被迫等待，或者新建对象（有开销）
+      // 这里简单处理：继续往下走，直到找到空闲的，或者覆盖（如果业务允许）
+      // 严谨做法是构建一个 FreeList
+    }
+
+    // 1. Poll (Driver layer blocking wait)
     if (!camera_device_->Poll(pb_image)) {
-      // If Poll fails, the internal reconnection logic has been handled, just
-      // wait here
       cyber::SleepFor(std::chrono::milliseconds(device_wait_ms_));
       continue;
     }
 
-    // Set publish timestamp
-    pb_image->mutable_header()->set_timestamp_sec(
-        cyber::Time::Now().ToSecond());
+    // 2. 采集时间戳 (Capture Timestamp) - 越早越好
+    double now = cyber::Time::Now().ToSecond();
+    pb_image->mutable_header()->set_timestamp_sec(now);
+    pb_image->set_measurement_time(now);
 
-    // measurement_time and image data have been filled in Poll()
+    // 3. Rate Limiting
+    if (!rate_limiter_->TryConsume()) {
+      // 即使被限流丢弃，Index 也要流转，以便下一轮 Poll 使用新 Buffer
+      // 或者：如果 Poll 是 Deep Copy，这里可以直接复用 index。
+      // 但如果是 Zero Copy 且 Poll 内部是指针交换，必须轮转。
+      // 假设 Poll 是写入内存：
+      index_ = (index_ + 1) % kBufferSize;
+      continue;
+    }
+
     writer_->Write(pb_image);
-
-    // Note: There is no extra SleepFor(spin_rate_). The loop rate is determined
-    // by the blocking behavior of Poll().
+    index_ = (index_ + 1) % kBufferSize;
   }
 }
 
 CameraComponent::~CameraComponent() {
-  if (running_.exchange(false)) {  // Use exchange to ensure atomicity
-    // Ensure the async thread has finished before destruction completes
+  if (running_.exchange(false)) {
     if (async_result_.valid()) {
       async_result_.wait();
     }

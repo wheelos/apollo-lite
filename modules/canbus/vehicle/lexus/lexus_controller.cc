@@ -307,6 +307,7 @@ Chassis LexusController::chassis() {
 void LexusController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
+  can_sender_->Update();
 }
 
 ErrorCode LexusController::EnableAutoMode() {
