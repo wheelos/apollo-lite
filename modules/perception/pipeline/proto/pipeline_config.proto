@@ -23,6 +23,7 @@ import "modules/perception/pipeline/proto/stage/camera_detection_postprocessor_c
 import "modules/perception/pipeline/proto/stage/camera_detection_preprocessor_config.proto";
 import "modules/perception/pipeline/proto/stage/camera_detector_config.proto";
 import "modules/perception/pipeline/proto/stage/center_point_detection_config.proto";
+import "modules/perception/pipeline/proto/stage/center_point_trt_detection_config.proto";
 import "modules/perception/pipeline/proto/stage/cnnseg_config.proto";
 import "modules/perception/pipeline/proto/stage/darkSCNN_postprocessor.proto";
 import "modules/perception/pipeline/proto/stage/darkSCNN.proto";
@@ -144,6 +145,7 @@ enum StageType {
   // radar detectors
   CONTI_ARS_DETECTOR = 34;
   GRAPH_SEGMENTATION = 35;
+  CENTER_POINT_TRT_DETECTION = 36;
 
   // post processors
   // camera post processors
@@ -211,6 +213,7 @@ message StageConfig {
     lidar.CenterPointDetectionConfig center_point_detection_config = 25;
     lidar.MaskPillarsDetectionConfig mask_pillars_detection_config = 26;
     lidar.GraphSegmentationConfig graph_segmentation_config = 27;
+    lidar.CenterPointTRTDetectionConfig center_point_trt_detection_config = 28;
 
     camera.TrafficLightDetectionConfig traffic_light_detection_config = 50;
     camera.TrafficLightRecognitionConfig traffic_light_recognition_config = 51;
