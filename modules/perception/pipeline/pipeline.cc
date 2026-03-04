@@ -19,8 +19,10 @@
 #include "cyber/time/clock.h"
 #include "modules/common/util/map_util.h"
 #include "modules/perception/camera/lib/obstacle/camera_detection_postprocessor/camera_detection_postprocessor.h"
-// #include "modules/perception/camera/lib/obstacle/detector/bev_detection/bev_obstacle_detector.h"
-// #include "modules/perception/camera/lib/obstacle/detector/caddn/caddn_obstacle_detector.h"
+// #include
+// "modules/perception/camera/lib/obstacle/detector/bev_detection/bev_obstacle_detector.h"
+// #include
+// "modules/perception/camera/lib/obstacle/detector/caddn/caddn_obstacle_detector.h"
 #include "modules/perception/camera/lib/obstacle/detector/smoke/smoke_obstacle_detector.h"
 #include "modules/perception/camera/lib/obstacle/detector/yolo/yolo_obstacle_detector.h"
 #include "modules/perception/camera/lib/obstacle/postprocessor/location_refiner/location_refiner_obstacle_postprocessor.h"
@@ -35,7 +37,9 @@
 #include "modules/perception/fusion/lib/fusion_system/probabilistic_fusion/probabilistic_fusion.h"
 #include "modules/perception/fusion/lib/gatekeeper/collect_fused_object.h"
 #include "modules/perception/lidar/lib/classifier/fused_classifier/fused_classifier.h"
-// #include "modules/perception/lidar/lib/detector/center_point_detection/center_point_detection.h"
+// #include
+// "modules/perception/lidar/lib/detector/center_point_detection/center_point_detection.h"
+#include "modules/perception/lidar/lib/detector/center_point_trt/center_point_trt.h"
 #include "modules/perception/lidar/lib/detector/cnn_segmentation/cnn_segmentation.h"
 #include "modules/perception/lidar/lib/detector/graph_segmentation/graph_segmentation.h"
 #include "modules/perception/lidar/lib/detector/mask_pillars_detection/mask_pillars_detection.h"

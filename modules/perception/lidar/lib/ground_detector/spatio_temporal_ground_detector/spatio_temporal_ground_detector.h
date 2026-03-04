@@ -20,9 +20,12 @@
 #include <string>
 #include <vector>
 
+#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/perception/pipeline/proto/stage/spatio_temporal_ground_detector_config.pb.h"
 
+#include "cyber/cyber.h"
 #include "modules/perception/common/i_lib/pc/i_ground.h"
+#include "modules/perception/lidar/common/lidar_frame.h"
 #include "modules/perception/lidar/lib/interface/base_ground_detector.h"
 #include "modules/perception/lidar/lib/scene_manager/ground_service/ground_service.h"
 #include "modules/perception/lidar/lib/scene_manager/scene_manager.h"
@@ -56,6 +59,9 @@ class SpatioTemporalGroundDetector : public BaseGroundDetector {
   // Tracker)
   void UpdateGroundService(GroundServiceContent& content);
 
+  void PublishDebugCloud(const LidarFrame& frame,
+                         const std::vector<int>& ground_indices);
+
   // Internal init logic to share between two Init overrides
   bool InitInternal(const SpatioTemporalGroundDetectorConfig& config);
 
@@ -79,6 +85,13 @@ class SpatioTemporalGroundDetector : public BaseGroundDetector {
   size_t default_point_size_ = 320000;
   Eigen::Vector3d cloud_center_ = Eigen::Vector3d::Zero();
   GroundServiceContent ground_service_content_;
+
+  bool publish_debug_cloud_ = false;
+  std::string debug_cloud_channel_;
+  std::shared_ptr<apollo::cyber::Node> node_;
+  std::shared_ptr<apollo::cyber::Writer<apollo::drivers::PointCloud>>
+      debug_writer_ = nullptr;
+  uint32_t debug_seq_num_ = 0;
 
   SpatioTemporalGroundDetectorConfig config_;
 };

@@ -37,4 +37,8 @@ message SpatioTemporalGroundDetectorConfig {
   optional float near_range_ground_thres = 21 [default = 0.25];
   optional float middle_range_dist = 22 [default = 20.0];
   optional float middle_range_ground_thres = 23 [default = 0.25];
+
+  optional bool enable_debug_non_ground_cloud = 24 [default = false];
+  optional string debug_cloud_channel = 25
+      [default = "/apollo/sensor/perception/nonground/PointCloud2"];
 }

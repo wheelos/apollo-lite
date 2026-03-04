@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
+
 #include "modules/perception/lidar/lib/ground_detector/spatio_temporal_ground_detector/spatio_temporal_ground_detector.h"
 
 #include <algorithm>
 #include <limits>
+#include <memory>
 
 #include "cyber/common/file.h"
 #include "modules/perception/common/point_cloud_processing/common.h"
@@ -75,6 +77,16 @@ bool SpatioTemporalGroundDetector::InitInternal(
   middle_range_dist_ = config.middle_range_dist();
   middle_range_ground_thres_ = config.middle_range_ground_thres();
 
+  publish_debug_cloud_ = config.enable_debug_non_ground_cloud();
+  debug_cloud_channel_ = config.debug_cloud_channel();
+  if (publish_debug_cloud_) {
+    node_ = cyber::CreateNode("spatio_temporal_ground_detector");
+    debug_writer_ =
+        node_->CreateWriter<apollo::drivers::PointCloud>(debug_cloud_channel_);
+    AINFO << "SpatioTemporalGroundDetector: publishing non-ground cloud on "
+          << debug_cloud_channel_;
+  }
+
   // 2. Setup Algorithm Parameters
   // Using make_unique for exception safety (though Apollo doesn't use
   // exceptions much)
@@ -126,6 +138,51 @@ bool SpatioTemporalGroundDetector::InitInternal(
   ground_service_content_.Init(config.roi_rad_x(), config.roi_rad_y(),
                                coarse_grid, coarse_grid);
   return true;
+}
+
+void SpatioTemporalGroundDetector::PublishDebugCloud(
+    const LidarFrame& frame, const std::vector<int>& non_ground_indices) {
+  if (!publish_debug_cloud_ || debug_writer_ == nullptr) {
+    return;
+  }
+  if (frame.cloud == nullptr) {
+    return;
+  }
+
+  auto msg = std::make_shared<apollo::drivers::PointCloud>();
+  auto* header = msg->mutable_header();
+  header->set_timestamp_sec(frame.timestamp);
+  header->set_module_name(name_);
+  header->set_sequence_num(++debug_seq_num_);
+  header->set_frame_id(frame.sensor_info.frame_id);
+
+  msg->set_frame_id(frame.sensor_info.frame_id);
+  msg->set_measurement_time(frame.timestamp);
+  msg->set_is_dense(false);
+  msg->set_height(1);
+  msg->set_width(static_cast<uint32_t>(non_ground_indices.size()));
+
+  const uint64_t ts =
+      static_cast<uint64_t>(frame.timestamp * 1e9);  // seconds -> ns
+  msg->mutable_point()->Reserve(non_ground_indices.size());
+
+  const auto& points = frame.cloud->points();
+  for (int idx : non_ground_indices) {
+    if (idx < 0 || static_cast<size_t>(idx) >= points.size()) {
+      continue;
+    }
+    const auto& pt = points[static_cast<size_t>(idx)];
+    auto* proto_pt = msg->add_point();
+    proto_pt->set_x(pt.x);
+    proto_pt->set_y(pt.y);
+    proto_pt->set_z(pt.z);
+    if (pt.intensity > 0.0f) {
+      proto_pt->set_intensity(static_cast<uint32_t>(pt.intensity));
+    }
+    proto_pt->set_timestamp(ts);
+  }
+
+  debug_writer_->Write(msg);
 }
 
 // =============================================================================
@@ -227,6 +284,11 @@ bool SpatioTemporalGroundDetector::Detect(const GroundDetectorOptions& options,
   frame->non_ground_indices.indices.clear();
   frame->non_ground_indices.indices.reserve(valid_count);
 
+  std::vector<int> non_ground_indices;
+  if (publish_debug_cloud_) {
+    non_ground_indices.reserve(valid_count);
+  }
+
   // Get raw pointers/accessors to avoid repeated lookups
   auto& height_local = *frame->cloud->mutable_points_height();
   auto& height_world = *frame->world_cloud->mutable_points_height();
@@ -269,10 +331,17 @@ bool SpatioTemporalGroundDetector::Detect(const GroundDetectorOptions& options,
       // - otherwise: store absolute point index in the full cloud
       frame->non_ground_indices.indices.push_back(
           actual_use_roi ? static_cast<int>(i) : idx);
+      if (publish_debug_cloud_) {
+        non_ground_indices.push_back(idx);
+      }
     } else {
       label_local[idx] = ground_label;
       label_world[idx] = ground_label;
     }
+  }
+
+  if (publish_debug_cloud_) {
+    PublishDebugCloud(*frame, non_ground_indices);
   }
 
   // 7. Update Global Service (Optional, for Map/Tracker)
