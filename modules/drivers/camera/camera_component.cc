@@ -82,41 +82,40 @@ bool CameraComponent::Init() {
 
 void CameraComponent::Run() {
   while (running_.load() && !cyber::IsShutdown()) {
-    auto pb_image = pb_image_buffer_[index_];
-
-    // 工业级安全检查：如果当前 Buffer 引用计数 > 1，说明还在被下游使用
-    // 此时跳过该 Buffer，防止数据写坏。
-    if (pb_image.use_count() > 1) {
-      AWARN_EVERY(100)
-          << "Buffer overrun! Increasing buffer size might be needed.";
-      // 策略：可以尝试下一个 index，或者被迫等待，或者新建对象（有开销）
-      // 这里简单处理：继续往下走，直到找到空闲的，或者覆盖（如果业务允许）
-      // 严谨做法是构建一个 FreeList
+    int selected_index = index_;
+    int probe_count = 0;
+    while (probe_count < kBufferSize &&
+           pb_image_buffer_[selected_index].use_count() > 1) {
+      selected_index = (selected_index + 1) % kBufferSize;
+      ++probe_count;
     }
 
-    // 1. Poll (Driver layer blocking wait)
+    if (probe_count == kBufferSize) {
+      AWARN_EVERY(100)
+          << "All camera buffers are busy, dropping this cycle.";
+      cyber::SleepFor(std::chrono::milliseconds(1));
+      continue;
+    }
+
+    auto pb_image = pb_image_buffer_[selected_index];
+
+    // 1) Poll from camera device (blocking wait in driver layer)
     if (!camera_device_->Poll(pb_image)) {
       cyber::SleepFor(std::chrono::milliseconds(device_wait_ms_));
       continue;
     }
 
-    // 2. 采集时间戳 (Capture Timestamp) - 越早越好
-    double now = cyber::Time::Now().ToSecond();
-    pb_image->mutable_header()->set_timestamp_sec(now);
-    pb_image->set_measurement_time(now);
+    // 2) Keep header timestamp aligned with the capture timestamp set by device.
+    pb_image->mutable_header()->set_timestamp_sec(pb_image->measurement_time());
 
-    // 3. Rate Limiting
+    // 3) Rate limiting
     if (!rate_limiter_->TryConsume()) {
-      // 即使被限流丢弃，Index 也要流转，以便下一轮 Poll 使用新 Buffer
-      // 或者：如果 Poll 是 Deep Copy，这里可以直接复用 index。
-      // 但如果是 Zero Copy 且 Poll 内部是指针交换，必须轮转。
-      // 假设 Poll 是写入内存：
-      index_ = (index_ + 1) % kBufferSize;
+      index_ = (selected_index + 1) % kBufferSize;
       continue;
     }
 
     writer_->Write(pb_image);
-    index_ = (index_ + 1) % kBufferSize;
+    index_ = (selected_index + 1) % kBufferSize;
   }
 }
 

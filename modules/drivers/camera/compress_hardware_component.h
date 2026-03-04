@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 #include <cuda_runtime.h>
 #include <nvjpeg.h>
@@ -25,6 +27,7 @@ using apollo::drivers::camera::config::Config;
 
 class HardwareCompressComponent : public cyber::Component<Image> {
  public:
+  HardwareCompressComponent() = default;
   ~HardwareCompressComponent();
 
   bool Init() override;
@@ -32,19 +35,29 @@ class HardwareCompressComponent : public cyber::Component<Image> {
   bool Proc(const std::shared_ptr<Image>& image) override;
 
  private:
+  bool EnsureDeviceInputCapacity(size_t bytes);
+  bool InitializeNvjpeg();
+  void ReleaseNvjpeg() noexcept;
+
   Config config_;
   std::shared_ptr<CCObjectPool<CompressedImage>> image_pool_;
   std::shared_ptr<Writer<CompressedImage>> writer_;
 
-  nvjpegHandle_t nvjpeg_handle_;
-  nvjpegEncoderState_t nvjpeg_state_;
-  nvjpegEncoderParams_t nvjpeg_params_;
-  cudaStream_t stream_;
+  nvjpegHandle_t nvjpeg_handle_ = nullptr;
+  nvjpegEncoderState_t nvjpeg_state_ = nullptr;
+  nvjpegEncoderParams_t nvjpeg_params_ = nullptr;
+  cudaStream_t stream_ = nullptr;
   std::mutex mutex_;
 
-  // GPU 内存指针
+  // Reused GPU input staging buffer for NVJPEG RGBI input.
   void* dev_input_buffer_ = nullptr;
   size_t dev_input_size_ = 0;
+
+  // Reused host buffer for encoded bitstream to reduce reallocations.
+  std::vector<uint8_t> host_bitstream_buffer_;
+  size_t host_bitstream_reserve_bytes_ = 0;
+
+  bool nvjpeg_ready_ = false;
 };
 
 CYBER_REGISTER_COMPONENT(HardwareCompressComponent)

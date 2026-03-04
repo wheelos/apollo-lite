@@ -41,15 +41,13 @@ bool CompressComponent::Init() {
     return false;
   }
 
-  // 1. 预分配内存 (关键)
-  // 假设 1080P RGB 图片约为 6MB，压缩后通常 < 1MB。预留 2MB 足够，避免
-  // realloc。
-  compressed_buffer_.reserve(2 * 1024 * 1024);
+  // Reserve a reusable compression buffer capacity for typical 1080p frames.
+  compressed_buffer_reserve_bytes_ = 2 * 1024 * 1024;
 
-  // 2. 设置压缩参数
+  // JPEG quality tuned for throughput/size balance.
   compress_params_ = {
-      cv::IMWRITE_JPEG_QUALITY, 80,  // 工业实践：95太高，80肉眼难辨但体积减半
-      cv::IMWRITE_JPEG_OPTIMIZE, 1   // 启用 Huffman 优化 (如果 OpenCV 版本支持)
+      cv::IMWRITE_JPEG_QUALITY, 80,
+      cv::IMWRITE_JPEG_OPTIMIZE, 1,
   };
 
   writer_ = node_->CreateWriter<CompressedImage>(
@@ -58,56 +56,71 @@ bool CompressComponent::Init() {
 }
 
 bool CompressComponent::Proc(const std::shared_ptr<Image>& image) {
-  // 1. Wrap raw data
-  cv::Mat raw_mat(image->height(), image->width(), CV_8UC3,
-                  const_cast<char*>(image->data().data()), image->step());
-
-  // 2. Decide resize and color conversion
-  // 不要修改原始 const image 的数据
-  bool need_resize = (config_.compress_conf().resize_ratio() < 1.0);
-  bool need_cvt_color =
-      (config_.output_type() ==
-       config::OutputType::RGB);  // Assuming we need BGR for JPEG
-
-  cv::Mat processing_mat;  // 局部变量，线程安全
-
-  if (need_resize) {
-    double scale = config_.compress_conf().resize_ratio();
-    // Resize 会创建新内存，所以 processing_mat 现在是独立的
-    cv::resize(raw_mat, processing_mat, cv::Size(), scale, scale);
-
-    if (need_cvt_color) {
-      // 在独立内存上做颜色转换，安全
-      cv::cvtColor(processing_mat, processing_mat, cv::COLOR_RGB2BGR);
-    }
-  } else {
-    // 没有 Resize
-    if (need_cvt_color) {
-      // 必须 Clone！因为不能修改 raw_mat
-      cv::cvtColor(raw_mat, processing_mat, cv::COLOR_RGB2BGR);
-    } else {
-      // 既不 resize 也不变色，直接引用原图
-      processing_mat = raw_mat;
-    }
+  if (!image) {
+    AERROR << "Input image is null";
+    return false;
   }
 
-  // 3. Compress
-  try {
-    // 使用线程局部存储 (Thread Local Storage) 或者 互斥锁保护成员变量 buffer
-    std::lock_guard<std::mutex> lock(mutex_);
+  const double resize_ratio = config_.compress_conf().resize_ratio();
+  const bool need_resize = resize_ratio > 0.0 && resize_ratio < 1.0;
+  const std::string& encoding = image->encoding();
 
-    compressed_buffer_.clear();
-    if (!cv::imencode(".jpg", processing_mat, compressed_buffer_,
+  cv::Mat image_view;
+  cv::Mat resized_mat;
+  cv::Mat bgr_mat;
+
+  if (encoding == "yuyv") {
+    image_view = cv::Mat(image->height(), image->width(), CV_8UC2,
+                         const_cast<char*>(image->data().data()),
+                         image->step());
+    const cv::Mat* src = &image_view;
+    if (need_resize) {
+      cv::resize(image_view, resized_mat, cv::Size(), resize_ratio,
+                 resize_ratio);
+      src = &resized_mat;
+    }
+    cv::cvtColor(*src, bgr_mat, cv::COLOR_YUV2BGR_YUYV);
+  } else if (encoding == "rgb8" || encoding == "bgr8") {
+    image_view = cv::Mat(image->height(), image->width(), CV_8UC3,
+                         const_cast<char*>(image->data().data()),
+                         image->step());
+    const cv::Mat* src = &image_view;
+    if (need_resize) {
+      cv::resize(image_view, resized_mat, cv::Size(), resize_ratio,
+                 resize_ratio);
+      src = &resized_mat;
+    }
+    if (encoding == "rgb8") {
+      cv::cvtColor(*src, bgr_mat, cv::COLOR_RGB2BGR);
+    } else {
+      bgr_mat = *src;
+    }
+  } else {
+    AERROR << "Unsupported image encoding for compression: " << encoding;
+    return false;
+  }
+
+  thread_local std::vector<uint8_t> compressed_buffer;
+  if (compressed_buffer.capacity() < compressed_buffer_reserve_bytes_) {
+    compressed_buffer.reserve(compressed_buffer_reserve_bytes_);
+  }
+
+  try {
+    compressed_buffer.clear();
+    if (!cv::imencode(".jpg", bgr_mat, compressed_buffer,
                       compress_params_)) {
       AERROR << "JPEG compression failed";
       return false;
     }
 
-    // 4. Publish
     auto out_msg = image_pool_->GetObject();
+    if (!out_msg) {
+      AERROR << "Compressed image pool is exhausted";
+      return false;
+    }
     out_msg->mutable_header()->CopyFrom(image->header());
     out_msg->set_format("jpeg");
-    out_msg->set_data(compressed_buffer_.data(), compressed_buffer_.size());
+    out_msg->set_data(compressed_buffer.data(), compressed_buffer.size());
     writer_->Write(out_msg);
 
   } catch (const cv::Exception& e) {

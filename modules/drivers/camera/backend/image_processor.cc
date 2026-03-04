@@ -114,12 +114,7 @@ void YuvProcessor::ConvertYUYVToRGB(const uint8_t* src, int width, int height,
     effective_format = YuvFormat::YUYV;
   }
 
-  if (opencv_yuyv_temp_buffer_.size() < yuyv_len) {
-    opencv_yuyv_temp_buffer_.resize(yuyv_len);
-  }
-  std::memcpy(opencv_yuyv_temp_buffer_.data(), convert_src, yuyv_len);
-
-  cv::Mat yuyv_mat(height, width, CV_8UC2, opencv_yuyv_temp_buffer_.data());
+  cv::Mat yuyv_mat(height, width, CV_8UC2, const_cast<uint8_t*>(convert_src));
   cv::Mat rgb_mat(height, width, CV_8UC3, dst_rgb);
 
   // Select the correct OpenCV conversion based on YUV format
@@ -145,11 +140,16 @@ void YuvProcessor::ConvertYUYVToRGB(const uint8_t* src, int width, int height,
   cv::cvtColor(yuyv_mat, rgb_mat, cv_code);
 }
 
-void YuvProcessor::Process(const void* src, size_t len,
+bool YuvProcessor::Process(const void* src, size_t len,
                            std::shared_ptr<Image> dest_pb) {
+  if (dest_pb == nullptr) {
+    AERROR << "YuvProcessor: destination image is null";
+    return false;
+  }
+
   if (src == nullptr || len == 0) {
-    AERROR << "YuvProcessor: received empty or null image data.";
-    return;
+    AERROR << "YuvProcessor: source buffer is invalid";
+    return false;
   }
 
   const uint8_t* yuv_data_ptr = static_cast<const uint8_t*>(src);
@@ -199,7 +199,7 @@ void YuvProcessor::Process(const void* src, size_t len,
   int height = dest_pb->height();
   if (width <= 0 || height <= 0) {
     AERROR << "YuvProcessor: invalid image size " << width << "x" << height;
-    throw std::invalid_argument("Invalid width/height");
+    return false;
   }
 
   if (output_format_ == OutputFormat::YUYV) {
@@ -220,8 +220,10 @@ void YuvProcessor::Process(const void* src, size_t len,
   } else {
     AERROR << "YuvProcessor: unsupported output format "
            << static_cast<int>(output_format_);
-    throw std::runtime_error("Unsupported output format");
+    return false;
   }
+
+  return true;
 }
 
 // --- MjpegProcessor Implementation ---
@@ -369,11 +371,11 @@ bool MjpegProcessor::ConvertToRGB(ImagePtr dest_pb) {
   // av_image_fill_arrays is a utility to set data pointers and linesizes for an
   // AVFrame. We are essentially making frame_rgb_ a "wrapper" around dest_pb's
   // data.
-  int ret = av_image_fill_arrays(
-      frame_rgb_->data, frame_rgb_->linesize,
-      reinterpret_cast<uint8_t*>(
-          dest_pb->mutable_data()),           // Get raw pointer to vector data
-      AV_PIX_FMT_RGB24, width_, height_, 1);  // Align by 1
+  auto* output_buffer = dest_pb->mutable_data();
+  int ret =
+      av_image_fill_arrays(frame_rgb_->data, frame_rgb_->linesize,
+                           reinterpret_cast<uint8_t*>(&(*output_buffer)[0]),
+                           AV_PIX_FMT_RGB24, width_, height_, 1);
 
   if (ret < 0) {
     AERROR << "MjpegProcessor: Failed to fill RGB frame arrays: "
@@ -388,13 +390,18 @@ bool MjpegProcessor::ConvertToRGB(ImagePtr dest_pb) {
   return true;
 }
 
-void MjpegProcessor::Process(const void* src, size_t len,
+bool MjpegProcessor::Process(const void* src, size_t len,
                              std::shared_ptr<Image> dest_pb) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (!dest_pb) {
     AERROR << "MjpegProcessor: Destination Image pointer is null.";
-    return;  // Early exit
+    return false;
+  }
+
+  if (src == nullptr || len == 0) {
+    AERROR << "MjpegProcessor: Source MJPEG buffer is invalid.";
+    return false;
   }
 
   // Check if the underlying data buffer in dest_pb is empty.
@@ -402,19 +409,22 @@ void MjpegProcessor::Process(const void* src, size_t len,
   if (dest_pb->data().empty()) {
     AERROR
         << "MjpegProcessor: Destination Image's internal data buffer is empty.";
-    return;  // Early exit
+    return false;
   }
 
   // Decode the MJPEG packet from the external (Protobuf) memory
   if (!DecodePacket(static_cast<const uint8_t*>(src), static_cast<int>(len))) {
     AERROR << "MjpegProcessor: Failed to decode packet.";
-    return;
+    return false;
   }
 
   // Convert the decoded frame (frame_camera_) to RGB and store in dest_pb
   if (!ConvertToRGB(dest_pb)) {
     AERROR << "MjpegProcessor: Failed to convert to RGB.";
+    return false;
   }
+
+  return true;
 }
 
 }  // namespace camera
