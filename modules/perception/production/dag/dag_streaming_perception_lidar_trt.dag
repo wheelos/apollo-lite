@@ -5,7 +5,7 @@ module_config {
     class_name : "LidarDetectionComponent"
     config {
       name: "Velodyne128Detection"
-      config_file_path: "/apollo/modules/perception/production/conf/perception/lidar/velodyne128_detection_conf.pb.txt"
+      config_file_path: "/apollo/modules/perception/production/conf/perception/lidar/center_point_trt_detection_conf.pb.txt"
       flag_file_path: "/apollo/modules/perception/production/conf/perception/perception_common.flag"
       readers {
         channel: "/apollo/sensor/velodyne64/compensator/PointCloud2"

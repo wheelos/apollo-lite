@@ -170,6 +170,9 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     // case StageType::CENTER_POINT_DETECTION:
     //   stage_ptr.reset(new lidar::CenterPointDetection());
     //   break;
+    case StageType::CENTER_POINT_TRT_DETECTION:
+      stage_ptr.reset(new lidar::CenterPointTRT());
+      break;
     case StageType::OBJECT_BUILDER:
       stage_ptr.reset(new lidar::ObjectBuilder());
       break;
