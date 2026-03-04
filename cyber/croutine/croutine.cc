@@ -42,6 +42,10 @@ void CRoutineEntry(void *arg) {
 }
 }  // namespace
 
+CRoutine *CRoutine::GetCurrentRoutine() { return current_routine_; }
+
+char **CRoutine::GetMainStack() { return &main_stack_; }
+
 CRoutine::CRoutine(const std::function<void()> &func) : func_(func) {
   std::call_once(pool_init_flag, [&]() {
     uint32_t routine_num = common::GlobalData::Instance()->ComponentNums();
