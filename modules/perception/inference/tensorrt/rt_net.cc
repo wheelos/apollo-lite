@@ -1470,6 +1470,7 @@ void RTNet::init_blob(std::vector<std::string> *names) {
 #if NV_TENSORRT_MAJOR >= 10
     tensor_buffer_index_[trt_name] = idx;
 #endif
+    (void)idx;
 
     std::vector<int> shape;
     ACHECK(this->shape(name, &shape));
