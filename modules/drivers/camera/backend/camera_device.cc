@@ -6,6 +6,7 @@
 #include <optional>
 #include <sstream>
 #include <stdexcept>
+#include <system_error>
 #include <thread>
 
 #include <linux/videodev2.h>
@@ -287,6 +288,35 @@ void CameraDevice::SetCameraParameters() {
 }
 
 bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
+  if (pb_image == nullptr) {
+    AERROR << "Camera poll received a null output image pointer.";
+    return false;
+  }
+
+  if (device_ == nullptr || processor_ == nullptr) {
+    AERROR << "Camera " << config_->camera_dev()
+           << " is missing device or processor instance.";
+    state_ = State::RECONNECTING;
+    return false;
+  }
+
+  V4L2Buffer v4l2_buf{};
+  bool has_dequeued_buffer = false;
+  auto queue_buffer_if_needed = [&]() {
+    if (!has_dequeued_buffer) {
+      return;
+    }
+    try {
+      device_->QueueBuffer(v4l2_buf.index);
+    } catch (const std::exception& queue_error) {
+      AERROR << "Failed to queue V4L2 buffer index " << v4l2_buf.index
+             << " on " << config_->camera_dev() << ": "
+             << queue_error.what();
+      state_ = State::RECONNECTING;
+    }
+    has_dequeued_buffer = false;
+  };
+
   // If in reconnecting state, attempt to reconnect first
   if (state_ == State::RECONNECTING) {
     Reconnect();
@@ -310,6 +340,9 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     int ready = device_->WaitForData(2, 0);  // (seconds, microseconds)
 
     if (ready < 0) {  // An error occurred during select()
+      if (ready == -2) {  // select() interrupted by signal
+        return false;
+      }
       AERROR << "select() on " << config_->camera_dev()
              << " failed with error: " << strerror(errno)
              << ". Triggering reconnect.";
@@ -318,8 +351,9 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     }
     if (ready == 0) {  // Timeout: no data ready within the specified time
       select_timeout_count_++;
-      AWARN << "select() timeout on " << config_->camera_dev()
-            << ". Consecutive timeout count: " << select_timeout_count_;
+      AWARN_EVERY(100) << "select() timeout on " << config_->camera_dev()
+                       << ". Consecutive timeout count: "
+                       << select_timeout_count_;
       // If consecutive timeouts exceed a threshold, consider the device
       // unresponsive. Threshold can be tuned based on application needs
       if (select_timeout_count_ >= 3) {
@@ -334,7 +368,8 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     select_timeout_count_ = 0;
 
     // 2. Dequeue a buffer from the V4L2 device
-    V4L2Buffer v4l2_buf = device_->DequeueBuffer();
+    v4l2_buf = device_->DequeueBuffer();
+    has_dequeued_buffer = true;
 
     // 3. Get and validate timestamp
     uint64_t current_ts_ns = GetMonotonicTimestamp(v4l2_buf);
@@ -349,7 +384,7 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
         AINFO << "Dropping frame from " << config_->camera_dev()
               << " due to small interval (" << interval << " ns)."
               << " Expected min: " << frame_drop_interval_ns_ << " ns.";
-        device_->QueueBuffer(v4l2_buf.index);
+        queue_buffer_if_needed();
         return false;  // Frame dropped
       }
 
@@ -379,15 +414,33 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
 
     // 6. Process image data (decode/convert) using the image processor
     // Processor will write directly into pb_image->mutable_data()->data()
-    processor_->Process(v4l2_buf.start, v4l2_buf.length, pb_image);
+    if (!processor_->Process(v4l2_buf.start, v4l2_buf.length, pb_image)) {
+      AWARN_EVERY(50) << "Image processing failed on "
+                      << config_->camera_dev() << ", dropping frame.";
+      queue_buffer_if_needed();
+      return false;
+    }
 
     // 7. Enqueue the buffer back to the V4L2 device for reuse
-    device_->QueueBuffer(v4l2_buf.index);
+    queue_buffer_if_needed();
 
     // Image successfully processed and ready
     return true;
 
+  } catch (const std::system_error& e) {
+    queue_buffer_if_needed();
+    // EAGAIN/EINTR can happen transiently with non-blocking dequeue/read.
+    if (e.code().value() == EAGAIN || e.code().value() == EINTR) {
+      AWARN_EVERY(100) << "Transient V4L2 dequeue/read error on "
+                       << config_->camera_dev() << ": " << e.what();
+      return false;
+    }
+    AERROR << "Polling failed with system error on " << config_->camera_dev()
+           << ": " << e.what();
+    state_ = State::RECONNECTING;
+    return false;
   } catch (const std::exception& e) {
+    queue_buffer_if_needed();
     AERROR << "Polling failed with exception on " << config_->camera_dev()
            << ": " << e.what();
     // In case of any exception during poll, assume device is in a bad state and
@@ -436,8 +489,9 @@ void CameraDevice::Reconnect() {
 
   // Exponential backoff retry logic: 1s, 2s, 4s, ..., capped at 30s.
   // This prevents hammering the system/device on rapid consecutive failures.
-  uint64_t wait_ms =
-      std::min(1000ULL * (1ULL << reconnect_attempts_), 30000ULL);
+  constexpr uint32_t kMaxBackoffShift = 5;  // 32 seconds upper bound
+  uint32_t capped_attempts = std::min(reconnect_attempts_, kMaxBackoffShift);
+  uint64_t wait_ms = std::min(1000ULL * (1ULL << capped_attempts), 30000ULL);
   AINFO << "Waiting for " << wait_ms
         << " ms before next reconnection attempt for " << config_->camera_dev();
   std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));

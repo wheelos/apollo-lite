@@ -45,14 +45,12 @@ class CameraComponent : public apollo::cyber::Component<> {
   std::unique_ptr<CameraDevice> camera_device_;
   std::shared_ptr<config::Config> camera_config_;
 
-  // 增加 Buffer 数量以防止追尾，建议 6-10 帧
-  static const int kBufferSize = 6;
+  // Increase the ring size to reduce overwrite risk when downstream is slow.
+  static const int kBufferSize = 20;
   std::vector<std::shared_ptr<apollo::drivers::Image>> pb_image_buffer_;
 
   uint32_t device_wait_ms_;
   int index_ = 0;
-
-  static constexpr int32_t kMaxImageSize = 20 * 1024 * 1024;  // 20MB
 
   std::future<void> async_result_;
   std::atomic<bool> running_ = {false};

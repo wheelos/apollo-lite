@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <mutex>
 
@@ -48,13 +49,8 @@ class CompressComponent : public Component<Image> {
   Config config_;
   std::shared_ptr<CCObjectPool<CompressedImage>> image_pool_;
   std::shared_ptr<Writer<CompressedImage>> writer_;
-  std::mutex mutex_;
-
-  // 预分配的 Buffer，成员变量复用
-  std::vector<uint8_t> compressed_buffer_;
   std::vector<int> compress_params_;
-  // 临时 Mat，避免反复构造
-  cv::Mat resize_mat_;
+  size_t compressed_buffer_reserve_bytes_ = 0;
 };
 
 CYBER_REGISTER_COMPONENT(CompressComponent)

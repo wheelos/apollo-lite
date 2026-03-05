@@ -41,7 +41,7 @@ class ImageProcessor {
    *                The message's data buffer must be pre-allocated to the
    * correct size.
    */
-  virtual void Process(const void* src, size_t len, ImagePtr dest_pb) = 0;
+  virtual bool Process(const void* src, size_t len, ImagePtr dest_pb) = 0;
 };
 
 /**
@@ -68,7 +68,7 @@ class YuvProcessor : public ImageProcessor {
    * If output_format is YUYV, it's a direct copy. If RGB, performs color
    * conversion.
    */
-  void Process(const void* src, size_t len, ImagePtr dest_pb) override;
+  bool Process(const void* src, size_t len, ImagePtr dest_pb) override;
 
  private:
   /**
@@ -90,7 +90,6 @@ class YuvProcessor : public ImageProcessor {
   bool swap_uv_;          ///< If true, swap U and V channels
   std::vector<uint8_t>
       yuyv_buffer_;  ///< Buffer for UYVY/VYUY to YUYV conversion
-  std::vector<uint8_t> opencv_yuyv_temp_buffer_;
 };
 
 /**
@@ -113,7 +112,7 @@ class MjpegProcessor : public ImageProcessor {
    * @brief Decodes an MJPEG frame and writes the RGB data to the protobuf Image
    * message.
    */
-  void Process(const void* src, size_t len, ImagePtr dest_pb) override;
+  bool Process(const void* src, size_t len, ImagePtr dest_pb) override;
 
  private:
   void InitDecoder();
