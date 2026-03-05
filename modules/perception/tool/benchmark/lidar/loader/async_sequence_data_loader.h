@@ -21,6 +21,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+
 #include "modules/perception/tool/benchmark/lidar/ctpl/ctpl.h"
 #include "modules/perception/tool/benchmark/lidar/loader/sequence_data_loader.h"
 
@@ -125,7 +126,7 @@ bool AsyncSequenceDataLoader<DataType>::query_next(
     load_success = iter->second->load_success;
   }
   // prefetch next data
-  for (int i = _idx + 1;
+  for (size_t i = _idx + 1;
        i <= std::min(static_cast<std::size_t>(_idx) + _prefetch_data_size,
                      _filenames[0].size() - 1);
        ++i) {

@@ -21,7 +21,6 @@
 
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/opencv.hpp"
 
 namespace apollo {
 namespace drivers {

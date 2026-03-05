@@ -44,6 +44,7 @@ cc_library(
         "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
         "@civetweb//:civetserver",
         "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
     ],
 )
 

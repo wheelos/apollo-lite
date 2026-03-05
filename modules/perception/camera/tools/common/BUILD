@@ -31,6 +31,7 @@ cc_library(
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/common/io:io_util",
+        "@opencv//:imgcodecs",
         "@opencv//:imgproc",
     ],
 )
@@ -42,6 +43,7 @@ cc_library(
     deps = [
         ":util",
         "//modules/perception/camera/common",
+        "@opencv//:imgcodecs",
         "@opencv//:imgproc",
     ],
 )

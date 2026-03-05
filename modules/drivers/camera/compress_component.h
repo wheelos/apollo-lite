@@ -17,9 +17,10 @@
 #pragma once
 
 #include <memory>
-
-#include <opencv2/opencv.hpp>
 #include <mutex>
+
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/drivers/camera/proto/config.pb.h"
@@ -34,8 +35,8 @@ namespace camera {
 using apollo::cyber::Component;
 using apollo::cyber::Writer;
 using apollo::cyber::base::CCObjectPool;
-using apollo::drivers::Image;
 using apollo::drivers::CompressedImage;
+using apollo::drivers::Image;
 using apollo::drivers::camera::config::Config;
 
 class CompressComponent : public Component<Image> {

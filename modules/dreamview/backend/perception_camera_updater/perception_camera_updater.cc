@@ -20,7 +20,8 @@
 #include <string>
 #include <vector>
 
-#include "opencv2/opencv.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
 
 #include "modules/common_msgs/basic_msgs/geometry.pb.h"
 #include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"

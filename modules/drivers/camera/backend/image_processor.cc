@@ -147,6 +147,11 @@ void YuvProcessor::ConvertYUYVToRGB(const uint8_t* src, int width, int height,
 
 void YuvProcessor::Process(const void* src, size_t len,
                            std::shared_ptr<Image> dest_pb) {
+  if (src == nullptr || len == 0) {
+    AERROR << "YuvProcessor: received empty or null image data.";
+    return;
+  }
+
   const uint8_t* yuv_data_ptr = static_cast<const uint8_t*>(src);
 
   // Determine the effective format (account for UV swapping)

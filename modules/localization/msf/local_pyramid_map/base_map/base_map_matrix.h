@@ -17,7 +17,7 @@
 
 #include <cassert>
 #include <vector>
-#include "opencv2/opencv.hpp"
+#include "opencv2/imgcodecs.hpp"
 
 #include "modules/localization/msf/local_pyramid_map/base_map/base_map_fwd.h"
 

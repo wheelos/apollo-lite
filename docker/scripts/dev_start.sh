@@ -54,6 +54,7 @@ CALIBRATION_DIR="${APOLLO_ROOT_DIR}/modules/calibration/data"
 
 # --- Constants: Host Environment ---
 SUPPORTED_ARCHS=(x86_64 aarch64)
+RELEASE_TARGET="$(lsb_release -sr)"
 TARGET_ARCH="$(uname -m)"
 TIMEZONE_CN=(
     "+0800"
@@ -72,7 +73,8 @@ DOCKER_MEMORY="${DOCKER_MEMORY:-8g}"
 DOCKER_IMAGE_REPO=${DOCKER_IMAGE_REPO:="wheelos/apollo"}
 DOCKER_IMAGE_TAG_X86_64=${DOCKER_IMAGE_TAG_X86_64:="dev-x86_64-20.04-20250713_1555"}
 DOCKER_IMAGE_TAG_X86_64_TESTING=${DOCKER_IMAGE_TAG_X86_64_TESTING:="dev-x86_64-20.04-20250710_2109"}
-DOCKER_IMAGE_TAG_AARCH64=${DOCKER_IMAGE_TAG_AARCH64:="dev-aarch64-20.04-20250714_2123"}
+[[ "$RELEASE_TARGET" == "20.04" ]] && DOCKER_IMAGE_TAG_AARCH64=${DOCKER_IMAGE_TAG_AARCH64:="dev-aarch64-20.04-20250714_2123"}
+[[ "$RELEASE_TARGET" == "22.04" ]] && DOCKER_IMAGE_TAG_AARCH64=${DOCKER_IMAGE_TAG_AARCH64:="dev-aarch64-22.04-20251109_1137"}
 
 # --- Script Global Variables (Modified by arguments/logic) ---
 DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:=""} # Default empty
@@ -609,11 +611,11 @@ function main() {
     ok "To login into the container, please run:"
     ok "  bash docker/scripts/dev_into.sh"
 
-    warning "--- Next Steps (Run INSIDE the Container) ---"
-    info "This host script ONLY launched the container."
-    info "ALL further environment setup (installing tools, downloading models, downloading map data) MUST be done *INSIDE* the container."
-    info "After logging in, locate and run the necessary setup scripts within the /apollo directory or as provided by your Apollo distribution."
-    info "You will need to handle persistent storage for models/maps yourself (e.g., by manually mounting volumes/bind mounts to specific data paths like /opt/apollo/data/models and /apollo/modules/map/data when starting the container, or by configuring internal download scripts to use specific locations)."
+    warning "--- Next Steps ---"
+    info "This host script only launched the container."
+    info "All further resources (models, maps) must be downloaded inside the container."
+    info "Use whl-hub (install via `pip install whl-hub`) to manage models/maps."
+    info "See resource management at: https://github.com/wheelos/apollo-lite/issues/1"
     ok "Enjoy!"
 }
 

@@ -18,6 +18,7 @@ cc_library(
         "//modules/perception/lib/registerer",
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:darkSCNN_cc_proto",
+        "@opencv//:imgcodecs",
     ],
     alwayslink = True,
 )

@@ -1,5 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -50,7 +51,6 @@ cc_library(
         ":syncedmem",
         "//cyber",
         "@com_google_absl//absl/strings",
-        "@local_config_cuda//cuda:cuda_headers",
     ],
 )
 
@@ -62,7 +62,6 @@ cc_test(
         ":blob",
         "//modules/perception/base/test:test_helper",
         "@com_google_googletest//:gtest_main",
-        "@local_config_cuda//cuda:cudart",
     ],
 )
 
@@ -81,11 +80,11 @@ cc_test(
     name = "box_test",
     size = "small",
     srcs = ["box_test.cc"],
+    linkstatic = True,
     deps = [
         ":box",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -112,8 +111,10 @@ cc_library(
     name = "common",
     hdrs = ["common.h"],
     deps = [
-        "@local_config_cuda//cuda:cudart",
-    ],
+    ] + if_gpu([
+        "@cuda//:cublas",
+        "@cuda//:cuda_runtime",
+    ]),
 )
 
 cc_test(
@@ -123,7 +124,6 @@ cc_test(
     deps = [
         ":common",
         "@com_google_googletest//:gtest_main",
-        "@local_config_cuda//cuda:cuda_headers",
     ],
 )
 
@@ -178,11 +178,11 @@ cc_library(
 cc_test(
     name = "image_test",
     size = "small",
+    linkstatic = True,
     deps = [
         ":image",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -217,6 +217,7 @@ cc_library(
     deps = [
         ":box",
         ":point_cloud",
+        "//modules/common/util",
         "//modules/common_msgs/basic_msgs:error_code_cc_proto",
         "//modules/common_msgs/basic_msgs:geometry_cc_proto",
         "//modules/common_msgs/basic_msgs:header_cc_proto",
@@ -228,7 +229,6 @@ cc_library(
         "//modules/common_msgs/prediction_msgs:feature_cc_proto",
         "//modules/common_msgs/prediction_msgs:lane_graph_cc_proto",
         "//modules/common_msgs/prediction_msgs:prediction_point_cc_proto",
-        "//modules/common/util",
         "@boost.circular_buffer",
         "@eigen",
     ],
@@ -368,7 +368,6 @@ cc_library(
     deps = [
         ":common",
         "//cyber",
-        "@local_config_cuda//cuda:cuda_headers",
     ],
 )
 
@@ -380,7 +379,6 @@ cc_test(
         ":syncedmem",
         "//modules/perception/base/test:test_helper",
         "@com_google_googletest//:gtest_main",
-        "@local_config_cuda//cuda:cudart",
     ],
 )
 

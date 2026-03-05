@@ -55,6 +55,7 @@ proto_library(
         "//modules/perception/pipeline/proto/stage:camera_detection_preprocessor_config_proto",
         "//modules/perception/pipeline/proto/stage:camera_detector_config_proto",
         "//modules/perception/pipeline/proto/stage:center_point_detection_config_proto",
+        "//modules/perception/pipeline/proto/stage:center_point_trt_detection_config_proto",
         "//modules/perception/pipeline/proto/stage:cnnseg_config_proto",
         "//modules/perception/pipeline/proto/stage:darkSCNN_postprocessor_proto",
         "//modules/perception/pipeline/proto/stage:darkSCNN_proto",

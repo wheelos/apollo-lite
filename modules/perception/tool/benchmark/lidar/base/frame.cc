@@ -206,8 +206,20 @@ void Frame::build_indices() {
   if (objects_has_indices && gt_objects_has_indices) {
     return;
   }
-  pcl::KdTreeFLANN<Point> point_cloud_kdtree;
-  point_cloud_kdtree.setInputCloud(_point_cloud);
+  // Use a standard PCL point type for kdtree to avoid requiring explicit PCL
+  // template instantiations for our custom PointXYZIL type.
+  pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud_xyz(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  point_cloud_xyz->points.resize(_point_cloud->size());
+  for (std::size_t i = 0; i < _point_cloud->size(); ++i) {
+    const auto& pt = _point_cloud->at(i);
+    point_cloud_xyz->points[i].x = pt.x;
+    point_cloud_xyz->points[i].y = pt.y;
+    point_cloud_xyz->points[i].z = pt.z;
+  }
+
+  pcl::KdTreeFLANN<pcl::PointXYZ> point_cloud_kdtree;
+  point_cloud_kdtree.setInputCloud(point_cloud_xyz);
   // Step I: build result objects' indices
   if (!objects_has_indices) {
     build_objects_indices(point_cloud_kdtree, &objects);
@@ -241,7 +253,7 @@ void Frame::build_points() {
 }
 
 void Frame::build_objects_indices(
-    const pcl::KdTreeFLANN<Point>& point_cloud_kdtree,
+    const pcl::KdTreeFLANN<pcl::PointXYZ>& point_cloud_kdtree,
     std::vector<ObjectPtr>* objects_out) {
   std::vector<int> k_indices;
   std::vector<float> k_sqrt_dist;
@@ -251,15 +263,16 @@ void Frame::build_objects_indices(
     objects_out->at(i)->indices->indices.resize(pts_num);
     for (int j = 0; j < pts_num; ++j) {
       const Point& pt = objects_out->at(i)->cloud->points[j];
-      Point query_pt;
+      pcl::PointXYZ query_pt;
       query_pt.x = pt.x;
       query_pt.y = pt.y;
       query_pt.z = pt.z;
       k_indices.resize(1);
       k_sqrt_dist.resize(1);
-      point_cloud_kdtree.nearestKSearch(query_pt, 1, k_indices, k_sqrt_dist);
-      int query_indice = k_indices[0];
-      objects_out->at(i)->indices->indices[j] = query_indice;
+      const int found =
+          point_cloud_kdtree.nearestKSearch(query_pt, 1, k_indices, k_sqrt_dist);
+      objects_out->at(i)->indices->indices[j] =
+          (found > 0) ? k_indices[0] : 0;
     }
   }
 }

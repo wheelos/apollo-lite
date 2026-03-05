@@ -132,10 +132,6 @@ inline void CRoutine::Yield() {
   SwapContext(GetCurrentRoutine()->GetStack(), GetMainStack());
 }
 
-inline CRoutine *CRoutine::GetCurrentRoutine() { return current_routine_; }
-
-inline char **CRoutine::GetMainStack() { return &main_stack_; }
-
 inline RoutineContext *CRoutine::GetContext() { return context_.get(); }
 
 inline char **CRoutine::GetStack() { return &(context_->sp); }

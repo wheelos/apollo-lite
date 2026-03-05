@@ -1,5 +1,5 @@
-load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -12,7 +12,7 @@ cc_library(
     deps = [
         "//modules/perception/common:perception_gflags",
         "//modules/perception/inference:inference_lib",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )

@@ -44,7 +44,7 @@ apt_get_update_and_install \
 DEST_DIR="/usr/local/fast-rtps"
 
 if [[ "${INSTALL_MODE}" == "build" ]]; then
-    git clone --single-branch --branch release/1.5.0 --depth 1 https://github.com/eProsima/Fast-RTPS.git
+    git clone --single-branch --branch v1.5.0 --depth 1 https://github.com/eProsima/Fast-RTPS.git
     pushd Fast-RTPS
         git submodule update --init
         patch -p1 < ../FastRTPS_1.5.0.patch

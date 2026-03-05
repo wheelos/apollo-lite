@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -11,7 +11,7 @@ cuda_library(
     deps = [
         "//cyber",
         "@boost.thread",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -33,8 +33,8 @@ cuda_library(
     deps = [
         "//cyber",
         "//modules/perception/base",
+        "@cuda//:cuda_runtime",
         "@eigen",
-        "@local_config_cuda//cuda:cudart",
     ],
 )
 
@@ -66,8 +66,8 @@ cuda_library(
         "//cyber",
         "//modules/perception/base:blob",
         "//modules/perception/base:image",
-        "@local_config_cuda//cuda:cublas",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cublas",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -92,7 +92,7 @@ cuda_library(
         "//cyber",
         "//modules/perception/base:blob",
         "//modules/perception/base:image",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -114,11 +114,11 @@ cc_test(
     data = [
         "//modules/perception/inference:inference_test_data",
     ],
+    linkstatic = True,
     deps = [
         ":inference_util_lib",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -139,11 +139,11 @@ cc_test(
     data = [
         "//modules/perception/inference:inference_test_data",
     ],
+    linkstatic = True,
     deps = [
         ":inference_binary_data_lib",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

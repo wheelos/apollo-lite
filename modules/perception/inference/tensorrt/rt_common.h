@@ -18,7 +18,7 @@
 #include <NvInferVersion.h>
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR == 8
+#if NV_TENSORRT_MAJOR >= 8
 #include "modules/perception/inference/tensorrt/rt_legacy.h"
 #endif
 #endif
@@ -26,24 +26,7 @@
 #include <string>
 #include <vector>
 
-#include "NvCaffeParser.h"
 #include "NvInfer.h"
-#if GPU_PLATFORM == NVIDIA
-#include <cudnn.h>
-#elif GPU_PLATFORM == AMD
-#include <miopen/miopen.h>
-#define CUDNN_DATA_FLOAT miopenFloat
-#define CUDNN_SOFTMAX_ACCURATE MIOPEN_SOFTMAX_ACCURATE
-#define CUDNN_SOFTMAX_MODE_CHANNEL MIOPEN_SOFTMAX_MODE_CHANNEL
-#define cudnnCreate miopenCreate
-#define cudnnCreateTensorDescriptor miopenCreateTensorDescriptor
-#define cudnnDestroy miopenDestroy
-#define cudnnDestroyTensorDescriptor miopenDestroyTensorDescriptor
-#define cudnnHandle_t miopenHandle_t
-#define cudnnSetStream miopenSetStream
-#define cudnnSetTensor4dDescriptorEx miopenSet4dTensorDescriptorEx
-#define cudnnTensorDescriptor_t miopenTensorDescriptor_t
-#endif
 
 #include "modules/perception/proto/rt.pb.h"
 
@@ -58,8 +41,9 @@ typedef std::map<std::string, std::vector<nvinfer1::Weights>> WeightMap;
 typedef std::map<std::string, nvinfer1::ITensor *> TensorMap;
 typedef std::map<std::string, nvinfer1::DimsCHW> TensorDimsMap;
 
-nvinfer1::DimsCHW ReshapeDims(const nvinfer1::DimsCHW &dims,
-                              const nvinfer1::DimsCHW &inputDims);
+nvinfer1::Dims ReshapeDims(const nvinfer1::Dims &dims,
+                           const nvinfer1::Dims &inputDims);
+
 void ParseNetParam(const NetParameter &net_param,
                    TensorDimsMap *tensor_dims_map,
                    std::map<std::string, std::string> *tensor_modify_map,

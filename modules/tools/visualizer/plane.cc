@@ -38,8 +38,7 @@ bool Plane::FillVertexBuffer(GLfloat* pBuffer) {
   GLenum fmt = texture_->texture_format();
   GLint internal_fmt = (fmt == GL_RGBA) ? GL_RGBA : GL_RGB;
   glTexImage2D(GL_TEXTURE_2D, 0, internal_fmt, texture_->width(),
-               texture_->height(), 0, fmt, GL_UNSIGNED_BYTE,
-               texture_->data());
+               texture_->height(), 0, fmt, GL_UNSIGNED_BYTE, texture_->data());
 
   glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -47,20 +46,20 @@ bool Plane::FillVertexBuffer(GLfloat* pBuffer) {
 
   // Two CCW triangles forming a full-screen quad
   // Triangle 0: BL, BR, TR
-  pBuffer[0] = -1.0f;   // BL.x
-  pBuffer[1] = -1.0f;   // BL.y
-  pBuffer[2] = 0.0f;    // BL.u
-  pBuffer[3] = 0.0f;    // BL.v
+  pBuffer[0] = -1.0f;  // BL.x
+  pBuffer[1] = -1.0f;  // BL.y
+  pBuffer[2] = 0.0f;   // BL.u
+  pBuffer[3] = 0.0f;   // BL.v
 
-  pBuffer[4] = 1.0f;    // BR.x
-  pBuffer[5] = -1.0f;   // BR.y
-  pBuffer[6] = 1.0f;    // BR.u
-  pBuffer[7] = 0.0f;    // BR.v
+  pBuffer[4] = 1.0f;   // BR.x
+  pBuffer[5] = -1.0f;  // BR.y
+  pBuffer[6] = 1.0f;   // BR.u
+  pBuffer[7] = 0.0f;   // BR.v
 
-  pBuffer[8] = 1.0f;    // TR.x
-  pBuffer[9] = 1.0f;    // TR.y
-  pBuffer[10] = 1.0f;   // TR.u
-  pBuffer[11] = 1.0f;   // TR.v
+  pBuffer[8] = 1.0f;   // TR.x
+  pBuffer[9] = 1.0f;   // TR.y
+  pBuffer[10] = 1.0f;  // TR.u
+  pBuffer[11] = 1.0f;  // TR.v
 
   // Triangle 1: BL, TR, TL
   pBuffer[12] = -1.0f;  // BL.x
@@ -68,10 +67,10 @@ bool Plane::FillVertexBuffer(GLfloat* pBuffer) {
   pBuffer[14] = 0.0f;   // BL.u
   pBuffer[15] = 0.0f;   // BL.v
 
-  pBuffer[16] = 1.0f;   // TR.x
-  pBuffer[17] = 1.0f;   // TR.y
-  pBuffer[18] = 1.0f;   // TR.u
-  pBuffer[19] = 1.0f;   // TR.v
+  pBuffer[16] = 1.0f;  // TR.x
+  pBuffer[17] = 1.0f;  // TR.y
+  pBuffer[18] = 1.0f;  // TR.u
+  pBuffer[19] = 1.0f;  // TR.v
 
   pBuffer[20] = -1.0f;  // TL.x
   pBuffer[21] = 1.0f;   // TL.y
@@ -148,4 +147,3 @@ void Plane::SetupExtraUniforms(void) {
     shader_program_->setUniformValue("texture", 0);
   }
 }
-

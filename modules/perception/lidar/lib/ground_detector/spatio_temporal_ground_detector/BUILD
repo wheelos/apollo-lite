@@ -10,6 +10,7 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/perception/base",
+        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/perception/lib/registerer",
         "@eigen",
         #"//modules/perception/lib/io:protobuf_util",

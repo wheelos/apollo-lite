@@ -29,7 +29,7 @@ namespace perception {
 namespace inference {
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 class SLICEPlugin : public nvinfer1::IPlugin {
  public:
   SLICEPlugin(const StSliceParameter &param, const nvinfer1::Dims &in_dims) {

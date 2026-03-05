@@ -21,6 +21,7 @@ cc_library(
         "//modules/common_msgs/transform_msgs:transform_cc_proto",
         "@eigen",
         "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
     ],
 )
 

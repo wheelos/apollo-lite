@@ -87,6 +87,8 @@ cc_library(
         "//modules/perception/pipeline/proto:traffic_light_config_cc_proto",
         "@eigen",
         "@opencv//:highgui",
+        "@opencv//:imgproc",
+        "@opencv//:imgcodecs",
         "@boost.circular_buffer",
         "@boost.algorithm",
         "@boost.format",

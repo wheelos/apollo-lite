@@ -20,36 +20,47 @@
 
 #include <utility>
 
-#ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR == 8
-#include "modules/perception/inference/tensorrt/rt_legacy.h"
-#endif
-#endif
-
 #include "absl/strings/str_cat.h"
+
+#include "cyber/common/log.h"
 
 namespace apollo {
 namespace perception {
 namespace inference {
 
-nvinfer1::DimsCHW ReshapeDims(const nvinfer1::DimsCHW &dims,
-                              const nvinfer1::DimsCHW &inputDims) {
-  nvinfer1::DimsCHW outDims = inputDims;
-  int count = inputDims.d[0] * inputDims.d[1] * inputDims.d[2];
-  int constant = 1;
-  int axis_inference = -1;
+nvinfer1::Dims ReshapeDims(const nvinfer1::Dims &dims,
+                           const nvinfer1::Dims &inputDims) {
+  nvinfer1::Dims outDims = inputDims;
+
+  int64_t count = 1;
   for (int i = 0; i < inputDims.nbDims; ++i) {
+    count *= inputDims.d[i];
+  }
+
+  int64_t constant = 1;
+  int axis_inference = -1;
+
+  for (int i = 0; i < dims.nbDims; ++i) {
     if (dims.d[i] == 0) {
       outDims.d[i] = inputDims.d[i];
       constant *= outDims.d[i];
     } else if (dims.d[i] > 0) {
-      constant *= dims.d[i];
+      outDims.d[i] = dims.d[i];
+      constant *= outDims.d[i];
     } else if (dims.d[i] == -1) {
-      CHECK_EQ(axis_inference, -1);
-      outDims.d[i] = count / constant;
+      CHECK_EQ(axis_inference, -1) << "Only one dimension can be inferred (-1)";
       axis_inference = i;
     }
   }
+
+  if (axis_inference != -1) {
+    CHECK_GT(constant, 0)
+        << "Constant product must be positive to avoid division by zero";
+
+    using DType = std::decay<decltype(outDims.d[0])>::type;
+    outDims.d[axis_inference] = static_cast<DType>(count / constant);
+  }
+
   return outDims;
 }
 

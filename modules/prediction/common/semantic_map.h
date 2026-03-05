@@ -19,7 +19,9 @@
 #include <future>
 #include <unordered_map>
 
-#include "opencv2/opencv.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
 
 #include "cyber/common/macros.h"
 #include "modules/common_msgs/prediction_msgs/feature.pb.h"

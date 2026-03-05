@@ -13,19 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
+#include "modules/perception/inference/tensorrt/rt_net.h"
+
 #include <NvInferPlugin.h>
+#include <NvInferRuntime.h>
 #include <NvInferRuntimeCommon.h>
 #include <NvInferVersion.h>
-
-#ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR == 8
-#include "modules/perception/inference/tensorrt/rt_legacy.h"
-#endif
-#endif
 #include <sys/stat.h>
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -46,7 +44,6 @@
 #include "modules/perception/inference/tensorrt/plugins/slice_plugin.h"
 #include "modules/perception/inference/tensorrt/plugins/softmax_plugin.h"
 #include "modules/perception/inference/tensorrt/rt_common.h"
-#include "modules/perception/inference/tensorrt/rt_net.h"
 
 class RTLogger : public nvinfer1::ILogger {
   void log(Severity severity, const char *msg) noexcept override {
@@ -117,8 +114,14 @@ void RTNet::addConvLayer(const LayerParameter &layer_param,
 
   auto inTensor = inputs[0];
   auto convLayer =
+#if NV_TENSORRT_MAJOR >= 10
+      net->addConvolutionNd(*inTensor, nbOutputs,
+                            nvinfer1::DimsHW{kernelH, kernelW}, wt,
+                            bias_weight);
+#else
       net->addConvolution(*inTensor, nbOutputs,
                           nvinfer1::DimsHW{kernelH, kernelW}, wt, bias_weight);
+#endif
 
   if (convLayer) {
     int strideH = p.has_stride_h()      ? p.stride_h()
@@ -140,10 +143,17 @@ void RTNet::addConvLayer(const LayerParameter &layer_param,
                     : p.dilation_size() > 0 ? p.dilation(0)
                                             : 1;
 
+#if NV_TENSORRT_MAJOR >= 10
+    // TODO(all):  whether caffe padding mode could affect other shape or value
+    convLayer->setStrideNd(nvinfer1::DimsHW{strideH, strideW});
+    convLayer->setPaddingNd(nvinfer1::DimsHW{padH, padW});
+    convLayer->setDilationNd(nvinfer1::DimsHW{dilationH, dilationW});
+#else
     convLayer->setStride(nvinfer1::DimsHW{strideH, strideW});
     convLayer->setPadding(nvinfer1::DimsHW{padH, padW});
     convLayer->setPaddingMode(nvinfer1::PaddingMode::kCAFFE_ROUND_DOWN);
     convLayer->setDilation(nvinfer1::DimsHW{dilationH, dilationW});
+#endif
 
     convLayer->setNbGroups(G);
   }
@@ -190,21 +200,42 @@ void RTNet::addDeconvLayer(const LayerParameter &layer_param,
   ParserConvParam(conv, &param);
   nvinfer1::IDeconvolutionLayer *deconvLayer = nullptr;
   if ((*weight_map)[layer_param.name().c_str()].size() == 2) {
+#if NV_TENSORRT_MAJOR >= 10
+    deconvLayer = net->addDeconvolutionNd(
+        *inputs[0], conv.num_output(),
+        nvinfer1::DimsHW{param.kernel_h, param.kernel_w},
+        (*weight_map)[layer_param.name().c_str()][0],
+        (*weight_map)[layer_param.name().c_str()][1]);
+#else
     deconvLayer =
         net->addDeconvolution(*inputs[0], conv.num_output(),
                               nvinfer1::DimsHW{param.kernel_h, param.kernel_w},
                               (*weight_map)[layer_param.name().c_str()][0],
                               (*weight_map)[layer_param.name().c_str()][1]);
+#endif
   } else {
     nvinfer1::Weights bias_weight{nvinfer1::DataType::kFLOAT, nullptr, 0};
+#if NV_TENSORRT_MAJOR >= 10
+    deconvLayer = net->addDeconvolutionNd(
+        *inputs[0], conv.num_output(),
+        nvinfer1::DimsHW{param.kernel_h, param.kernel_w},
+        (*weight_map)[layer_param.name().c_str()][0], bias_weight);
+#else
     deconvLayer = net->addDeconvolution(
         *inputs[0], conv.num_output(),
         nvinfer1::DimsHW{param.kernel_h, param.kernel_w},
         (*weight_map)[layer_param.name().c_str()][0], bias_weight);
+#endif
   }
+#if NV_TENSORRT_MAJOR >= 10
+  // TODO(all):  whether caffe padding mode could affect other shape or value
+  deconvLayer->setStrideNd(nvinfer1::DimsHW{param.stride_h, param.stride_w});
+  deconvLayer->setPaddingNd(nvinfer1::DimsHW{param.padding_h, param.padding_w});
+#else
   deconvLayer->setStride(nvinfer1::DimsHW{param.stride_h, param.stride_w});
   deconvLayer->setPadding(nvinfer1::DimsHW{param.padding_h, param.padding_w});
   deconvLayer->setPaddingMode(nvinfer1::PaddingMode::kCAFFE_ROUND_DOWN);
+#endif
   deconvLayer->setNbGroups(conv.group());
 
   deconvLayer->setName(layer_param.name().c_str());
@@ -235,7 +266,7 @@ void RTNet::addActiveLayer(const LayerParameter &layer_param,
     relu_param.engine = static_cast<int32_t>(layer_param.relu_param().engine());
     relu_plugin.reset(new ReLUPlugin(relu_param, inputs[0]->getDimensions()));
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
     nvinfer1::IPluginLayer *ReLU_Layer =
         net->addPlugin(inputs, nbInputs, *relu_plugin);
 #else
@@ -268,9 +299,13 @@ void RTNet::addConcatLayer(const LayerParameter &layer_param,
   ConcatParameter concat = layer_param.concat_param();
   nvinfer1::IConcatenationLayer *concatLayer =
       net->addConcatenation(inputs, nbInputs);
-  // tensorrt ignore the first channel(batch channel), so when load caffe
-  // model axis should -1
-  concatLayer->setAxis(concat.axis() - 1);
+  // Caffe axis is on NCHW. Implicit-batch TensorRT tensors are CHW, so we need
+  // to drop the leading N dimension (axis-1). Explicit-batch tensors keep N.
+  int axis = concat.axis();
+  if (inputs[0]->getDimensions().nbDims == 3) {
+    axis = axis - 1;
+  }
+  concatLayer->setAxis(std::max(axis, 0));
   concatLayer->setName(layer_param.name().c_str());
   CHECK_EQ(nbInputs, layer_param.bottom_size());
 
@@ -298,6 +333,21 @@ void RTNet::addPoolingLayer(const LayerParameter &layer_param,
       (pool.pool() == PoolingParameter_PoolMethod_MAX)
           ? nvinfer1::PoolingType::kMAX
           : nvinfer1::PoolingType::kAVERAGE;
+  ACHECK(modify_pool_param(&pool));
+  nvinfer1::IPoolingLayer *poolLayer = nullptr;
+#if NV_TENSORRT_MAJOR >= 10
+  // TRT10 removes Caffe round padding; use default behavior.
+  // TODO(all):  whether caffe padding mode could affect other shape or value
+  poolLayer =
+      net->addPoolingNd(*inputs[0], pool_type,
+                        nvinfer1::DimsHW{static_cast<int>(pool.kernel_h()),
+                                         static_cast<int>(pool.kernel_w())});
+  poolLayer->setStrideNd(nvinfer1::DimsHW{static_cast<int>(pool.stride_h()),
+                                          static_cast<int>(pool.stride_w())});
+  poolLayer->setPaddingNd(nvinfer1::DimsHW{static_cast<int>(pool.pad_h()),
+                                           static_cast<int>(pool.pad_w())});
+#else
+  // keep padding mode on TRT 7, 8
   nvinfer1::PaddingMode padding_mode = nvinfer1::PaddingMode::kCAFFE_ROUND_UP;
   if (pool.has_round_mode()) {
     switch (static_cast<int>(pool.round_mode())) {
@@ -311,15 +361,16 @@ void RTNet::addPoolingLayer(const LayerParameter &layer_param,
         padding_mode = nvinfer1::PaddingMode::kCAFFE_ROUND_UP;
     }
   }
-  ACHECK(modify_pool_param(&pool));
-  nvinfer1::IPoolingLayer *poolLayer = net->addPooling(
-      *inputs[0], pool_type,
-      {static_cast<int>(pool.kernel_h()), static_cast<int>(pool.kernel_w())});
+  poolLayer =
+      net->addPooling(*inputs[0], pool_type,
+                      nvinfer1::DimsHW{static_cast<int>(pool.kernel_h()),
+                                       static_cast<int>(pool.kernel_w())});
   poolLayer->setStride(nvinfer1::DimsHW{static_cast<int>(pool.stride_h()),
                                         static_cast<int>(pool.stride_w())});
   poolLayer->setPadding(nvinfer1::DimsHW{static_cast<int>(pool.pad_h()),
                                          static_cast<int>(pool.pad_w())});
   poolLayer->setPaddingMode(padding_mode);
+#endif
   // unlike other frameworks, caffe use inclusive counting for padded averaging
   poolLayer->setAverageCountExcludesPadding(false);
   poolLayer->setName(layer_param.name().c_str());
@@ -332,7 +383,60 @@ void RTNet::addSliceLayer(const LayerParameter &layer_param,
                           TensorMap *tensor_map,
                           TensorModifyMap *tensor_modify_map) {
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR >= 10
+  // TRT10+: avoid legacy IPluginV2 Slice plugin (TRT10 builder rejects it).
+  // Implement Caffe Slice via native ISliceLayer(s), one output per slice.
+  const auto slice_param = layer_param.slice_param();
+  const int axis = slice_param.axis();  // Caffe axis on NCHW
+  const nvinfer1::Dims in_dims = inputs[0]->getDimensions();
+  CHECK_GE(axis, 0);
+  CHECK_LT(axis, in_dims.nbDims);
+  CHECK_GT(layer_param.top_size(), 0);
+
+  std::vector<int> boundaries;
+  boundaries.reserve(slice_param.slice_point_size() + 2);
+  boundaries.push_back(0);
+  for (int i = 0; i < slice_param.slice_point_size(); ++i) {
+    boundaries.push_back(slice_param.slice_point(i));
+  }
+  boundaries.push_back(in_dims.d[axis]);
+
+  CHECK_EQ(static_cast<int>(boundaries.size()), layer_param.top_size() + 1)
+      << "Slice top size must be slice_point_size + 1";
+
+  auto insert_tensor = [&](const std::string &top, nvinfer1::ITensor *tensor) {
+    std::string top_name = top;
+    auto it = tensor_modify_map->find(top_name);
+    if (it != tensor_modify_map->end()) {
+      std::string modify_name = top_name + "_" + layer_param.name();
+      top_name = modify_name;
+      it->second = top_name;
+    } else {
+      tensor_modify_map->insert(std::make_pair(top_name, top_name));
+    }
+    tensor_map->insert(std::make_pair(top_name, tensor));
+    tensor->setName(top_name.c_str());
+  };
+
+  for (int i = 0; i < layer_param.top_size(); ++i) {
+    nvinfer1::Dims start = in_dims;
+    nvinfer1::Dims size = in_dims;
+    nvinfer1::Dims stride = in_dims;
+    for (int d = 0; d < in_dims.nbDims; ++d) {
+      start.d[d] = 0;
+      size.d[d] = in_dims.d[d];
+      stride.d[d] = 1;
+    }
+    start.d[axis] = boundaries[i];
+    size.d[axis] = boundaries[i + 1] - boundaries[i];
+
+    auto *sliceLayer = net->addSlice(*inputs[0], start, size, stride);
+    CHECK_NOTNULL(sliceLayer);
+    sliceLayer->setName(absl::StrCat(layer_param.name(), "_", i).c_str());
+    insert_tensor(layer_param.top(i), sliceLayer->getOutput(0));
+  }
+#else
+#if NV_TENSORRT_MAJOR < 8
   CHECK_GT(layer_param.slice_param().axis(), 0);
   std::shared_ptr<SLICEPlugin> slice_plugin;
 
@@ -387,6 +491,7 @@ void RTNet::addSliceLayer(const LayerParameter &layer_param,
   ConstructMap(layer_param, sliceLayer, tensor_map, tensor_modify_map);
 #endif
 #endif
+#endif  // NV_TENSORRT_MAJOR >= 10
 }
 
 void RTNet::addInnerproductLayer(const LayerParameter &layer_param,
@@ -400,11 +505,64 @@ void RTNet::addInnerproductLayer(const LayerParameter &layer_param,
   if ((*weight_map)[layer_param.name().c_str()].size() == 2) {
     bias = (*weight_map)[layer_param.name().c_str()][1];
   }
+#if NV_TENSORRT_MAJOR >= 10
+  // Implement FC as MatMul + bias for TRT10
+  int C = getCHW(inputs[0]->getDimensions()).c();
+  int H = getCHW(inputs[0]->getDimensions()).h();
+  int W = getCHW(inputs[0]->getDimensions()).w();
+  int K = C * H * W;
+
+  // Flatten input to [K, 1]
+  nvinfer1::Dims in_reshape;
+  in_reshape.nbDims = 2;
+  in_reshape.d[0] = K;
+  in_reshape.d[1] = 1;
+  auto shp = net->addShuffle(*inputs[0]);
+  shp->setReshapeDimensions(in_reshape);
+
+  // Constant weights [M, K]
+  nvinfer1::Dims w_dims;
+  w_dims.nbDims = 2;
+  w_dims.d[0] = fc.num_output();
+  w_dims.d[1] = K;
+  auto w_const =
+      net->addConstant(w_dims, (*weight_map)[layer_param.name().c_str()][0]);
+
+  // MatMul: [M,K] x [K,1] -> [M,1]
+  auto mm = net->addMatrixMultiply(
+      *w_const->getOutput(0), nvinfer1::MatrixOperation::kNONE,
+      *shp->getOutput(0), nvinfer1::MatrixOperation::kNONE);
+
+  nvinfer1::ITensor *out = mm->getOutput(0);
+  // Add bias if any
+  if (bias.values != nullptr && bias.count > 0) {
+    nvinfer1::Dims b_dims;
+    b_dims.nbDims = 2;
+    b_dims.d[0] = fc.num_output();
+    b_dims.d[1] = 1;
+    auto b_const = net->addConstant(b_dims, bias);
+    auto add = net->addElementWise(*out, *b_const->getOutput(0),
+                                   nvinfer1::ElementWiseOperation::kSUM);
+    out = add->getOutput(0);
+  }
+
+  // Reshape to CHW [M,1,1]
+  nvinfer1::Dims reshape_chw;
+  reshape_chw.nbDims = 3;
+  reshape_chw.d[0] = fc.num_output();
+  reshape_chw.d[1] = 1;
+  reshape_chw.d[2] = 1;
+  auto shp2 = net->addShuffle(*out);
+  shp2->setReshapeDimensions(reshape_chw);
+  shp2->setName(layer_param.name().c_str());
+  ConstructMap(layer_param, shp2, tensor_map, tensor_modify_map);
+#else
   nvinfer1::IFullyConnectedLayer *fcLayer = net->addFullyConnected(
       *inputs[0], fc.num_output(), (*weight_map)[layer_param.name().c_str()][0],
       bias);
   fcLayer->setName(layer_param.name().c_str());
   ConstructMap(layer_param, fcLayer, tensor_map, tensor_modify_map);
+#endif
 }
 
 void RTNet::addScaleLayer(const LayerParameter &layer_param,
@@ -461,7 +619,21 @@ void RTNet::addSoftmaxLayer(const LayerParameter &layer_param,
                             TensorModifyMap *tensor_modify_map) {
   if (layer_param.has_softmax_param()) {
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR >= 10
+    // TRT10+: avoid legacy IPluginV2 Softmax plugin (TRT10 builder rejects it).
+    // Use native ISoftMaxLayer and set the axis bitmask.
+    const int axis = layer_param.softmax_param().axis();
+    nvinfer1::Dims in_dims = inputs[0]->getDimensions();
+    CHECK_GE(axis, 0);
+    CHECK_LT(axis, in_dims.nbDims);
+
+    auto *softmaxLayer = net->addSoftMax(*inputs[0]);
+    CHECK_NOTNULL(softmaxLayer);
+    softmaxLayer->setAxes(1U << static_cast<uint32_t>(axis));
+    softmaxLayer->setName(layer_param.name().c_str());
+    ConstructMap(layer_param, softmaxLayer, tensor_map, tensor_modify_map);
+#else
+#if NV_TENSORRT_MAJOR < 8
     std::shared_ptr<SoftmaxPlugin> softmax_plugin;
     // TODO(All): refactor it
     // convert proto message to pure struct to avoid adding protobuf as
@@ -469,7 +641,7 @@ void RTNet::addSoftmaxLayer(const LayerParameter &layer_param,
     StSoftmaxParameter softmax_param;
     softmax_param.engine =
         static_cast<int32_t>(layer_param.softmax_param().engine());
-    sofmax_param.axis = layer_param.softmax_param().axis();
+    softmax_param.axis = layer_param.softmax_param().axis();
     softmax_plugin.reset(
         new SoftmaxPlugin(softmax_param, inputs[0]->getDimensions()));
     softmax_plugins_.push_back(softmax_plugin);
@@ -504,6 +676,7 @@ void RTNet::addSoftmaxLayer(const LayerParameter &layer_param,
     ConstructMap(layer_param, softmaxLayer, tensor_map, tensor_modify_map);
 #endif
 #endif
+#endif  // NV_TENSORRT_MAJOR >= 10
   } else {
     nvinfer1::ISoftMaxLayer *softmaxLayer = net->addSoftMax(*inputs[0]);
     softmaxLayer->setName(layer_param.name().c_str());
@@ -546,7 +719,7 @@ void RTNet::addArgmaxLayer(const LayerParameter &layer_param,
       new ArgMax1Plugin(argmax_param, inputs[0]->getDimensions()));
   argmax_plugins_.push_back(argmax_plugin);
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
   nvinfer1::IPluginLayer *argmaxLayer =
       net->addPlugin(inputs, nbInputs, *argmax_plugin);
 #else
@@ -604,8 +777,12 @@ void RTNet::addPaddingLayer(const LayerParameter &layer_param,
                             layer_param.padding_param().pad_l());
   nvinfer1::DimsHW post_dims(layer_param.padding_param().pad_b(),
                              layer_param.padding_param().pad_r());
-  nvinfer1::IPaddingLayer *padding_layer =
-      net->addPadding(*inputs[0], pre_dims, post_dims);
+  nvinfer1::IPaddingLayer *padding_layer = nullptr;
+#if NV_TENSORRT_MAJOR >= 10
+  padding_layer = net->addPaddingNd(*inputs[0], pre_dims, post_dims);
+#else
+  padding_layer = net->addPadding(*inputs[0], pre_dims, post_dims);
+#endif
   padding_layer->setName(layer_param.name().c_str());
   ConstructMap(layer_param, padding_layer, tensor_map, tensor_modify_map);
 }
@@ -653,7 +830,7 @@ void RTNet::addDFMBPSROIAlignLayer(const LayerParameter &layer_param,
       new DFMBPSROIAlignPlugin(dfmb_psroi_pooling_param, input_dims, nbInputs));
   dfmb_psroi_align_plugins_.push_back(dfmb_psroi_align_plugin);
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
   nvinfer1::IPluginLayer *dfmb_psroi_align_layer =
       net->addPlugin(inputs, nbInputs, *dfmb_psroi_align_plugin);
 #else
@@ -821,7 +998,7 @@ void RTNet::addRCNNProposalLayer(const LayerParameter &layer_param,
       bbox_reg_param, detection_output_ssd_param, input_dims));
   rcnn_proposal_plugins_.push_back(rcnn_proposal_plugin);
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
   nvinfer1::IPluginLayer *rcnn_proposal_layer =
       net->addPlugin(inputs, nbInputs, *rcnn_proposal_plugin);
 #else
@@ -989,7 +1166,7 @@ void RTNet::addRPNProposalSSDLayer(const LayerParameter &layer_param,
       bbox_reg_param, detection_output_ssd_param, input_dims));
   rpn_proposal_ssd_plugins_.push_back(rpn_proposal_ssd_plugin);
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
   nvinfer1::IPluginLayer *rpn_proposal_ssd_layer =
       net->addPlugin(inputs, nbInputs, *rpn_proposal_ssd_plugin);
 #else
@@ -1151,6 +1328,12 @@ RTNet::RTNet(const std::string &net_file, const std::string &model_file,
   loadWeights(model_file, &weight_map_);
   net_param_.reset(new NetParameter);
   loadNetParams(net_file, net_param_.get());
+  // Use model file directory as cache root by default.
+  const auto pos = model_file.find_last_of('/');
+  model_root_ = (pos == std::string::npos) ? "." : model_file.substr(0, pos);
+  if (model_root_.empty()) {
+    model_root_ = ".";
+  }
 }
 RTNet::RTNet(const std::string &net_file, const std::string &model_file,
              const std::vector<std::string> &outputs,
@@ -1162,6 +1345,12 @@ RTNet::RTNet(const std::string &net_file, const std::string &model_file,
   loadNetParams(net_file, net_param_.get());
   calibrator_ = calibrator;
   is_own_calibrator_ = false;
+  // Use model file directory as cache root by default.
+  const auto pos = model_file.find_last_of('/');
+  model_root_ = (pos == std::string::npos) ? "." : model_file.substr(0, pos);
+  if (model_root_.empty()) {
+    model_root_ = ".";
+  }
 }
 RTNet::RTNet(const std::string &net_file, const std::string &model_file,
              const std::vector<std::string> &outputs,
@@ -1179,41 +1368,114 @@ RTNet::RTNet(const std::string &net_file, const std::string &model_file,
 }
 
 bool RTNet::shape(const std::string &name, std::vector<int> *res) {
-  auto engine = &(context_->getEngine());
-  if (tensor_modify_map_.find(name) == tensor_modify_map_.end()) {
-    AINFO << "can't get the shape of " << name;
-    return false;
+  auto &engine = context_->getEngine();
+  std::string trt_name = name;
+  auto it = tensor_modify_map_.find(name);
+  if (it != tensor_modify_map_.end()) {
+    trt_name = it->second;
   }
-  int bindingIndex = engine->getBindingIndex(tensor_modify_map_[name].c_str());
-  if (bindingIndex > static_cast<int>(buffers_.size())) {
-    return false;
-  }
-  nvinfer1::DimsCHW dims = static_cast<nvinfer1::DimsCHW &&>(
-      engine->getBindingDimensions(bindingIndex));
+
+#if NV_TENSORRT_MAJOR >= 10
+  nvinfer1::Dims dims = engine.getTensorShape(trt_name.c_str());
+#else
+  int bindingIndex = engine.getBindingIndex(trt_name.c_str());
+  if (bindingIndex < 0) return false;
+  nvinfer1::Dims dims = engine.getBindingDimensions(bindingIndex);
+#endif
+
   res->resize(4);
-  (*res)[0] = max_batch_size_;
-  (*res)[1] = dims.c();
-  (*res)[2] = dims.h();
-  (*res)[3] = dims.w();
+
+  // Batch (nbDims is 4)
+  if (dims.nbDims == 4) {
+    (*res)[0] = static_cast<int>(dims.d[0]);  // N
+    (*res)[1] = static_cast<int>(dims.d[1]);  // C
+    (*res)[2] = static_cast<int>(dims.d[2]);  // H
+    (*res)[3] = static_cast<int>(dims.d[3]);  // W
+
+    // Check: if explicit Batch dynamic range does not match max_batch_size_,
+    // warn
+    if ((*res)[0] == -1) {  // Dynamic dimension
+      (*res)[0] = max_batch_size_;
+    }
+  }
+  // Handle implicit Batch or special case (nbDims is 3)
+  else if (dims.nbDims == 3) {
+    (*res)[0] = max_batch_size_;              // N (externally provided)
+    (*res)[1] = static_cast<int>(dims.d[0]);  // C
+    (*res)[2] = static_cast<int>(dims.d[1]);  // H
+    (*res)[3] = static_cast<int>(dims.d[2]);  // W
+  } else {
+    AERROR << "Unsupported dims count " << dims.nbDims << " for " << trt_name;
+    return false;
+  }
+
   return true;
 }
-void RTNet::init_blob(std::vector<std::string> *names) {
-  auto engine = &(context_->getEngine());
 
-  for (auto name : *names) {
-    int bindingIndex =
-        engine->getBindingIndex(tensor_modify_map_[name].c_str());
-    CHECK_LT(static_cast<size_t>(bindingIndex), buffers_.size());
+void RTNet::init_blob(std::vector<std::string> *names) {
+  auto &engine = context_->getEngine();
+  for (auto &name : *names) {
+    std::string trt_name = name;
+    auto it = tensor_modify_map_.find(name);
+    if (it != tensor_modify_map_.end()) {
+      trt_name = it->second;
+    }
+#if NV_TENSORRT_MAJOR >= 10
+    nvinfer1::Dims dims = engine.getTensorShape(trt_name.c_str());
+#else
+    int bindingIndex = engine.getBindingIndex(trt_name.c_str());
     CHECK_GE(bindingIndex, 0);
-    nvinfer1::DimsCHW dims = static_cast<nvinfer1::DimsCHW &&>(
-        engine->getBindingDimensions(bindingIndex));
-    int count = dims.c() * dims.h() * dims.w() * max_batch_size_;
-    cudaMalloc(&buffers_[bindingIndex], count * sizeof(float));
+    nvinfer1::Dims dims = engine.getBindingDimensions(bindingIndex);
+#endif
+    auto safe_dim = [](int dim, int fallback) -> int {
+      return (dim < 0) ? fallback : dim;
+    };
+
+    // TRT7/8 implicit-batch engines typically expose CHW (nbDims==3) and rely
+    // on max_batch_size_. TRT10 explicit-batch engines typically expose NCHW
+    // (nbDims==4) and must allocate including the explicit N.
+    int64_t count = 1;
+    if (dims.nbDims == 4) {
+      const int n = safe_dim(static_cast<int>(dims.d[0]), max_batch_size_);
+      const int c = safe_dim(static_cast<int>(dims.d[1]), 1);
+      const int h = safe_dim(static_cast<int>(dims.d[2]), 1);
+      const int w = safe_dim(static_cast<int>(dims.d[3]), 1);
+      count = static_cast<int64_t>(n) * c * h * w;
+    } else if (dims.nbDims == 3) {
+      const int c = safe_dim(static_cast<int>(dims.d[0]), 1);
+      const int h = safe_dim(static_cast<int>(dims.d[1]), 1);
+      const int w = safe_dim(static_cast<int>(dims.d[2]), 1);
+      count = static_cast<int64_t>(c) * h * w * max_batch_size_;
+    } else if (dims.nbDims == 2) {
+      const int d0 = safe_dim(static_cast<int>(dims.d[0]), 1);
+      const int d1 = safe_dim(static_cast<int>(dims.d[1]), 1);
+      count = static_cast<int64_t>(d0) * d1;
+    } else if (dims.nbDims == 1) {
+      const int d0 = safe_dim(static_cast<int>(dims.d[0]), 1);
+      count = static_cast<int64_t>(d0);
+    } else {
+      AERROR << "Unsupported dims count " << dims.nbDims << " for " << trt_name;
+      continue;
+    }
+
+    void *dev_ptr = nullptr;
+    BASE_CUDA_CHECK(
+        cudaMalloc(&dev_ptr, static_cast<size_t>(count) * sizeof(float)));
+    const int idx = static_cast<int>(buffers_.size());
+#if NV_TENSORRT_MAJOR >= 10
+    buffers_.push_back(dev_ptr);
+#else
+    buffers_[bindingIndex] = dev_ptr;
+#endif
+#if NV_TENSORRT_MAJOR >= 10
+    tensor_buffer_index_[trt_name] = idx;
+#endif
+    (void)idx;
+
     std::vector<int> shape;
     ACHECK(this->shape(name, &shape));
-    std::shared_ptr<apollo::perception::base::Blob<float>> blob;
-    blob.reset(new apollo::perception::base::Blob<float>(shape));
-    blob->set_gpu_data(reinterpret_cast<float *>(buffers_[bindingIndex]));
+    auto blob = std::make_shared<apollo::perception::base::Blob<float>>(shape);
+    blob->set_gpu_data(reinterpret_cast<float *>(dev_ptr));
     blobs_.insert(std::make_pair(name, blob));
   }
 }
@@ -1244,7 +1506,7 @@ bool RTNet::Init(const std::map<std::string, std::vector<int>> &shapes) {
   bool int8_mode = checkInt8(prop.name, calibrator_);
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
   network_ = builder_->createNetwork();
 
   parse_with_api(shapes);
@@ -1257,7 +1519,8 @@ bool RTNet::Init(const std::map<std::string, std::vector<int>> &shapes) {
   builder_->setDebugSync(true);
 
   nvinfer1::ICudaEngine *engine = builder_->buildCudaEngine(*network_);
-#else
+#endif
+#if NV_TENSORRT_MAJOR == 8
   network_ = builder_->createNetworkV2(0U);
   parse_with_api(shapes);
   builder_config_ = builder_->createBuilderConfig();
@@ -1280,7 +1543,6 @@ bool RTNet::Init(const std::map<std::string, std::vector<int>> &shapes) {
     if (engine->serialize()) {
       nvinfer1::IHostMemory *serialized_model(engine->serialize());
       std::ofstream f(trt_cache_path, std::ios::binary);
-
       f.write(reinterpret_cast<char *>(serialized_model->data()),
               serialized_model->size());
       serialized_model->destroy();
@@ -1301,15 +1563,84 @@ bool RTNet::Init(const std::map<std::string, std::vector<int>> &shapes) {
     planBuffer << planFile.rdbuf();
     std::string plan = planBuffer.str();
     nvinfer1::IRuntime *runtime = nvinfer1::createInferRuntime(rt_gLogger);
-
     engine = runtime->deserializeCudaEngine(
         static_cast<const void *>(plan.data()), plan.size(), nullptr);
     runtime->destroy();
   }
 #endif
+#if NV_TENSORRT_MAJOR > 8
+  // TensorRT 10 path: explicit batch + serialized build
+  // Network creation
+  const auto explicit_batch =
+      (1U << static_cast<uint32_t>(
+           nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH));
+  network_ = builder_->createNetworkV2(explicit_batch);
+  builder_config_ = builder_->createBuilderConfig();
+  builder_config_->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
+                                      static_cast<size_t>(workspaceSize_));
+  if (int8_mode && calibrator_ != nullptr) {
+    builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
+    builder_config_->setInt8Calibrator(calibrator_);
+  }
+
+  // parse and build network layers
+  parse_with_api(shapes);
+
+  nvinfer1::ICudaEngine *engine = nullptr;
+  std::string trt_cache_path = model_root_ + "/TRTengine.cache";
+  if (!LoadCache(trt_cache_path)) {
+    auto plan = builder_->buildSerializedNetwork(*network_, *builder_config_);
+    if (!plan) {
+      AERROR << "Failed to build serialized network";
+      return false;
+    }
+    // Save plan
+    {
+      std::ofstream f(trt_cache_path, std::ios::binary);
+      f.write(reinterpret_cast<const char *>(plan->data()), plan->size());
+      AINFO << "Saved serialized model file to " << trt_cache_path;
+    }
+    initLibNvInferPlugins(&rt_gLogger, "");
+    auto runtime = nvinfer1::createInferRuntime(rt_gLogger);
+    engine = runtime->deserializeCudaEngine(plan->data(), plan->size());
+    delete runtime;
+    delete plan;
+    delete builder_config_;
+    builder_config_ = nullptr;
+    delete network_;
+    network_ = nullptr;
+    delete builder_;
+    builder_ = nullptr;
+  } else {
+    AINFO << "Loading TensorRT engine from serialized model file...";
+    std::ifstream planFile(trt_cache_path, std::ios::binary);
+    if (!planFile.is_open()) {
+      AERROR << "Could not open serialized model";
+      return false;
+    }
+    std::stringstream planBuffer;
+    planBuffer << planFile.rdbuf();
+    std::string plan = planBuffer.str();
+    initLibNvInferPlugins(&rt_gLogger, "");
+    auto runtime = nvinfer1::createInferRuntime(rt_gLogger);
+    engine = runtime->deserializeCudaEngine(plan.data(), plan.size());
+    delete runtime;
+    delete builder_config_;
+    builder_config_ = nullptr;
+    delete network_;
+    network_ = nullptr;
+    delete builder_;
+    builder_ = nullptr;
+  }
+#endif
 #endif
   context_ = engine->createExecutionContext();
+#if NV_TENSORRT_MAJOR < 10
   buffers_.resize(input_names_.size() + output_names_.size());
+#else
+  buffers_.clear();
+  tensor_buffer_index_.clear();
+#endif
   init_blob(&input_names_);
   init_blob(&output_names_);
   AINFO << "engine init success";
@@ -1337,6 +1668,41 @@ bool RTNet::addInput(const TensorDimsMap &tensor_dims_map,
   CHECK_GT(net_param_->layer_size(), 0);
   input_names_.clear();
   for (auto dims_pair : tensor_dims_map) {
+#if NV_TENSORRT_MAJOR >= 10
+    // TRT10+ path uses explicit batch network. Input tensors must be NCHW (4D)
+    // instead of CHW (3D), otherwise convolution layers will fail shape checks.
+    int n = 1;
+    int c = static_cast<int>(dims_pair.second.d[0]);
+    int h = static_cast<int>(dims_pair.second.d[1]);
+    int w = static_cast<int>(dims_pair.second.d[2]);
+    auto it_shape = shapes.find(dims_pair.first);
+    if (it_shape != shapes.end()) {
+      const auto &shape = it_shape->second;
+      if (shape.size() == 4) {
+        n = shape[0];
+        c = shape[1];
+        h = shape[2];
+        w = shape[3];
+      } else if (shape.size() == 3) {
+        c = shape[0];
+        h = shape[1];
+        w = shape[2];
+      } else if (static_cast<int>(shape.size()) ==
+                 dims_pair.second.nbDims + 1) {
+        // Backward compatible: treat as N + (C,H,W)
+        n = shape[0];
+        c = shape[1];
+        h = shape[2];
+        w = shape[3];
+      }
+    }
+    if (n > 0) {
+      max_batch_size_ = std::max(max_batch_size_, n);
+    }
+    nvinfer1::Dims4 input_dims{n, c, h, w};
+    auto data = network_->addInput(dims_pair.first.c_str(),
+                                   nvinfer1::DataType::kFLOAT, input_dims);
+#else
     if (shapes.find(dims_pair.first) != shapes.end()) {
       auto shape = shapes.at(dims_pair.first);
       if (static_cast<int>(shape.size()) == dims_pair.second.nbDims + 1) {
@@ -1348,6 +1714,7 @@ bool RTNet::addInput(const TensorDimsMap &tensor_dims_map,
     }
     auto data = network_->addInput(
         dims_pair.first.c_str(), nvinfer1::DataType::kFLOAT, dims_pair.second);
+#endif
     CHECK_NOTNULL(data);
     data->setName(dims_pair.first.c_str());
     tensor_map->insert(std::make_pair(dims_pair.first, data));
@@ -1395,13 +1762,17 @@ RTNet::~RTNet() {
   }
   if (gpu_id_ >= 0) {
     BASE_CUDA_CHECK(cudaStreamDestroy(stream_));
+#if NV_TENSORRT_MAJOR >= 10
+// network_ and builder_config_ were deleted after build.
+#else
     network_->destroy();
-#ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
     builder_config_->destroy();
 #endif
-#endif
+#if NV_TENSORRT_MAJOR >= 10
+    delete context_;
+#else
     context_->destroy();
+#endif
     for (auto buf : buffers_) {
       cudaFree(buf);
     }
@@ -1429,7 +1800,51 @@ void RTNet::Infer() {
       blob->gpu_data();
     }
   }
-  context_->enqueue(max_batch_size_, &buffers_[0], stream_, nullptr);
+#if NV_TENSORRT_MAJOR >= 10
+  auto bind_tensors = [&](const std::vector<std::string> &names,
+                          const char *type_label) {
+    for (const auto &name : names) {
+      std::string trt_name = name;
+
+      // 1. Unified Application Name Mapping
+      auto itmap = tensor_modify_map_.find(name);
+      if (itmap != tensor_modify_map_.end()) {
+        trt_name = itmap->second;
+      }
+
+      // 2. Find Buffer Index
+      auto it = tensor_buffer_index_.find(trt_name);
+      if (it == tensor_buffer_index_.end()) {
+        // 3. Report error and return immediately, do not continue
+        AERROR << "TensorRT 10: Cannot find buffer index for " << type_label
+               << " tensor: " << trt_name << " (original name: " << name << ")";
+        return false;
+      }
+
+      // 4. Set tensor address
+      if (!context_->setTensorAddress(trt_name.c_str(), buffers_[it->second])) {
+        AERROR << "TensorRT 10: Failed to set address for tensor: " << trt_name;
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (!bind_tensors(input_names_, "input") ||
+      !bind_tensors(output_names_, "output")) {
+    return;
+  }
+
+  if (!context_->enqueueV3(stream_)) {
+    AERROR << "TensorRT 10: Failed to enqueue V3";
+    return;
+  }
+#else
+  if (!context_->enqueue(max_batch_size_, &buffers_[0], stream_, nullptr)) {
+    AERROR << "TensorRT < 10: Failed to enqueue";
+    return;
+  }
+#endif
   BASE_CUDA_CHECK(cudaStreamSynchronize(stream_));
 
   for (auto name : output_names_) {
@@ -1439,6 +1854,7 @@ void RTNet::Infer() {
     }
   }
 }
+
 std::shared_ptr<apollo::perception::base::Blob<float>> RTNet::get_blob(
     const std::string &name) {
   auto iter = blobs_.find(name);

@@ -15,6 +15,28 @@ if ! id -u "$USER_NAME" >/dev/null 2>&1; then
     echo "$USER_NAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 fi
 
+# user add to video group on aarch64
+if [[ -e "/dev/nvmap" ]]; then
+    NVMAP_GID="$(stat -c '%g' /dev/nvmap 2>/dev/null || true)"
+    if [[ -n "${NVMAP_GID}" ]]; then
+        NVMAP_GROUP_NAME="$(getent group "${NVMAP_GID}" | cut -d: -f1 || true)"
+        if [[ -z "${NVMAP_GROUP_NAME}" ]]; then
+            # Prefer the conventional name when available.
+            if ! getent group video >/dev/null; then
+                groupadd -g "${NVMAP_GID}" video 2>/dev/null || true
+            fi
+            NVMAP_GROUP_NAME="$(getent group "${NVMAP_GID}" | cut -d: -f1 || true)"
+            if [[ -z "${NVMAP_GROUP_NAME}" ]]; then
+                groupadd -g "${NVMAP_GID}" nvmap 2>/dev/null || true
+                NVMAP_GROUP_NAME="$(getent group "${NVMAP_GID}" | cut -d: -f1 || true)"
+            fi
+        fi
+        if [[ -n "${NVMAP_GROUP_NAME}" ]]; then
+            usermod -aG "${NVMAP_GROUP_NAME}" "${USER_NAME}" 2>/dev/null || true
+        fi
+    fi
+fi
+
 # 2. Correct critical directory permissions
 chown "$USER_NAME":"$USER_NAME" /apollo
 [ -d "/var/cache/bazel" ] && chown -R "$USER_NAME":"$USER_NAME" /var/cache/bazel
