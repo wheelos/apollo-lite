@@ -612,8 +612,17 @@ configure_ptp() {
   if systemctl is-active --quiet ptp4l; then
     success "PTP E2E is ACTIVE."
   else
+    # some platform may failed to start ptp server
     error "PTP failed to start. Check 'journalctl -u ptp4l'."
-    return 1
+    read -r -p "Should Apollo be setup without time synchronization?(y/N): " response
+     case "$response" in
+        [yY][eE][sS]|[yY])
+          return 0
+          ;;
+         *)
+          return 1
+          ;;
+     esac
   fi
 }
 
@@ -677,7 +686,16 @@ setup_host_machine() {
 
   if ! setup_jetson_performance; then
     error "Failed to configure Jetson performance."
-    return 1
+    # some platform may fail to start jetson_performance service
+    read -r -p "Should Apollo be setup without jetson_performance service?(y/N): " response
+    case "$response" in
+      [yY][eE][sS]|[yY])
+        return 0
+        ;;
+        *)
+        return 1
+        ;;
+      esac
   fi
 
   if ! configure_headless_mode; then

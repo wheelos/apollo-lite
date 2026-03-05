@@ -163,19 +163,41 @@ SYSTEM_TZ="$(detect_timezone)"
 # Call the container selection script
 source "${DOCKER_DIR}/scripts/container_selection.sh"
 
-function detect_gpu_use() {
-  if [[ "${ARCH}" == "aarch64" ]]; then
-    if lsmod | grep -q "^nvgpu"; then
-      echo "true"
-    else
-      echo "false"
-    fi
+function gpu_available() {
+  local host_arch="$(uname -m)"
+  if [[ "${host_arch}" == "aarch64" ]]; then
+      # for standard arm or jetson with jetpack 6.2+
+      if [[ -x "$(command -v nvidia-smi)" ]]; then
+          return 0
+      fi
+      # for jetson with jetpack 5.x or lower
+      if lsmod | grep -q "^nvgpu"; then
+          return 0
+      fi
+      echo "No GPU device found. CPU will be used."
+      return 1
+  elif [[ "${host_arch}" == "x86_64" ]]; then
+      if [[ ! -x "$(command -v nvidia-smi)" ]]; then
+          echo "No nvidia-smi found. CPU will be used."
+          return 1
+      fi
+      if ! nvidia-smi -L &>/dev/null; then
+          echo "No GPU device found or driver error. CPU will be used."
+          return 1
+      else
+          return 0
+      fi
   else
-    if command -v nvidia-smi >/dev/null  2>&1 && nvidia-smi >/dev/null  2>&1; then
-      echo "true"
-    else
-      echo "false"
-    fi
+      echo ">>> Error: Unsupported CPU architecture: ${host_arch}" >&2
+      return 1
+  fi
+}
+
+function detect_gpu_use() {
+  if gpu_available; then
+     echo "true"
+  else
+     echo "false"
   fi
 }
 
@@ -195,10 +217,11 @@ function verify_gpu_ready() {
     return 0
   fi
 
-  if ! command -v nvidia-smi >/dev/null  2>&1; then
-    echo ">>> ERROR: GPU requested but 'nvidia-smi' is not available on host."
-    exit 1
-  fi
+  # no need to check gpu on this function(already checked above)
+  # if ! command -v nvidia-smi >/dev/null  2>&1; then
+  #   echo ">>> ERROR: GPU requested but 'nvidia-smi' is not available on host."
+  #   exit 1
+  # fi
 
   local docker_info_output
   if ! docker_info_output="$(docker info --format '{{json .Runtimes}}' 2>/dev/null)"; then
