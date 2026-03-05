@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -51,7 +51,7 @@ cc_library(
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/vanjeelidar/proto:vanjeelidar_cc_proto",
         "//modules/drivers/lidar/vanjeelidar/proto:vanjeelidar_config_cc_proto",
-        "@vanjee_driver",
+        "@vanjee-lidar-sdk//:vanjee_driver",
     ],
     alwayslink = True,
 )
