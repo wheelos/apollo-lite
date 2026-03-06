@@ -18,6 +18,9 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/mk_mini/proto/mk_mini.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,17 +34,35 @@ Ultrasonic2fb18c4e9ef::Ultrasonic2fb18c4e9ef() {}
 const int32_t Ultrasonic2fb18c4e9ef::ID = 0x98c4e9ef;
 
 void Ultrasonic2fb18c4e9ef::Parse(const std::uint8_t* bytes, int32_t length,
-                         ChassisDetail* chassis) const {
-  chassis->mutable_mk_mini()->mutable_ultrasonic_2_fb_18c4e9ef()->set_ultrasonic_fb_02_check_bcc(ultrasonic_fb_02_check_bcc(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ultrasonic_2_fb_18c4e9ef()->set_ultrasonic_fb_02_alive_cnt(ultrasonic_fb_02_alive_cnt(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ultrasonic_2_fb_18c4e9ef()->set_ultrasonic_fb_08(ultrasonic_fb_08(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ultrasonic_2_fb_18c4e9ef()->set_ultrasonic_fb_07(ultrasonic_fb_07(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ultrasonic_2_fb_18c4e9ef()->set_ultrasonic_fb_06(ultrasonic_fb_06(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ultrasonic_2_fb_18c4e9ef()->set_ultrasonic_fb_05(ultrasonic_fb_05(bytes, length));
+                                  ChassisDetail* chassis) const {
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ultrasonic_2_fb_18c4e9ef()
+      ->set_ultrasonic_fb_02_check_bcc(
+          ultrasonic_fb_02_check_bcc(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ultrasonic_2_fb_18c4e9ef()
+      ->set_ultrasonic_fb_02_alive_cnt(
+          ultrasonic_fb_02_alive_cnt(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ultrasonic_2_fb_18c4e9ef()
+      ->set_ultrasonic_fb_08(ultrasonic_fb_08(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ultrasonic_2_fb_18c4e9ef()
+      ->set_ultrasonic_fb_07(ultrasonic_fb_07(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ultrasonic_2_fb_18c4e9ef()
+      ->set_ultrasonic_fb_06(ultrasonic_fb_06(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ultrasonic_2_fb_18c4e9ef()
+      ->set_ultrasonic_fb_05(ultrasonic_fb_05(bytes, length));
 }
 
-// config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name': 'ultrasonic_fb_02_check_bcc', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
-int Ultrasonic2fb18c4e9ef::ultrasonic_fb_02_check_bcc(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name':
+// 'ultrasonic_fb_02_check_bcc', 'offset': 0.0, 'order': 'intel',
+// 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type':
+// 'int'}
+int Ultrasonic2fb18c4e9ef::ultrasonic_fb_02_check_bcc(const std::uint8_t* bytes,
+                                                      int32_t length) const {
   Byte t0(bytes + 7);
   int32_t x = t0.get_byte(0, 8);
 
@@ -49,8 +70,12 @@ int Ultrasonic2fb18c4e9ef::ultrasonic_fb_02_check_bcc(const std::uint8_t* bytes,
   return ret;
 }
 
-// config detail: {'bit': 52, 'is_signed_var': False, 'len': 4, 'name': 'ultrasonic_fb_02_alive_cnt', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
-int Ultrasonic2fb18c4e9ef::ultrasonic_fb_02_alive_cnt(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 52, 'is_signed_var': False, 'len': 4, 'name':
+// 'ultrasonic_fb_02_alive_cnt', 'offset': 0.0, 'order': 'intel',
+// 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type':
+// 'int'}
+int Ultrasonic2fb18c4e9ef::ultrasonic_fb_02_alive_cnt(const std::uint8_t* bytes,
+                                                      int32_t length) const {
   Byte t0(bytes + 6);
   int32_t x = t0.get_byte(4, 4);
 
@@ -58,8 +83,11 @@ int Ultrasonic2fb18c4e9ef::ultrasonic_fb_02_alive_cnt(const std::uint8_t* bytes,
   return ret;
 }
 
-// config detail: {'bit': 36, 'is_signed_var': False, 'len': 12, 'name': 'ultrasonic_fb_08', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
-int Ultrasonic2fb18c4e9ef::ultrasonic_fb_08(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 36, 'is_signed_var': False, 'len': 12, 'name':
+// 'ultrasonic_fb_08', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
+int Ultrasonic2fb18c4e9ef::ultrasonic_fb_08(const std::uint8_t* bytes,
+                                            int32_t length) const {
   Byte t0(bytes + 5);
   int32_t x = t0.get_byte(0, 8);
 
@@ -72,8 +100,11 @@ int Ultrasonic2fb18c4e9ef::ultrasonic_fb_08(const std::uint8_t* bytes, int32_t l
   return ret;
 }
 
-// config detail: {'bit': 24, 'is_signed_var': False, 'len': 12, 'name': 'ultrasonic_fb_07', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
-int Ultrasonic2fb18c4e9ef::ultrasonic_fb_07(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 24, 'is_signed_var': False, 'len': 12, 'name':
+// 'ultrasonic_fb_07', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
+int Ultrasonic2fb18c4e9ef::ultrasonic_fb_07(const std::uint8_t* bytes,
+                                            int32_t length) const {
   Byte t0(bytes + 4);
   int32_t x = t0.get_byte(0, 4);
 
@@ -86,8 +117,11 @@ int Ultrasonic2fb18c4e9ef::ultrasonic_fb_07(const std::uint8_t* bytes, int32_t l
   return ret;
 }
 
-// config detail: {'bit': 12, 'is_signed_var': False, 'len': 12, 'name': 'ultrasonic_fb_06', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
-int Ultrasonic2fb18c4e9ef::ultrasonic_fb_06(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 12, 'is_signed_var': False, 'len': 12, 'name':
+// 'ultrasonic_fb_06', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
+int Ultrasonic2fb18c4e9ef::ultrasonic_fb_06(const std::uint8_t* bytes,
+                                            int32_t length) const {
   Byte t0(bytes + 2);
   int32_t x = t0.get_byte(0, 8);
 
@@ -100,8 +134,11 @@ int Ultrasonic2fb18c4e9ef::ultrasonic_fb_06(const std::uint8_t* bytes, int32_t l
   return ret;
 }
 
-// config detail: {'bit': 0, 'is_signed_var': False, 'len': 12, 'name': 'ultrasonic_fb_05', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
-int Ultrasonic2fb18c4e9ef::ultrasonic_fb_05(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 0, 'is_signed_var': False, 'len': 12, 'name':
+// 'ultrasonic_fb_05', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
+int Ultrasonic2fb18c4e9ef::ultrasonic_fb_05(const std::uint8_t* bytes,
+                                            int32_t length) const {
   Byte t0(bytes + 1);
   int32_t x = t0.get_byte(0, 4);
 

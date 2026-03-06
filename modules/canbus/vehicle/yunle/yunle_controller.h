@@ -35,7 +35,7 @@ namespace yunle {
 
 class YunleController final : public VehicleController {
  public:
-  explicit YunleController() {};
+  explicit YunleController(){};
 
   virtual ~YunleController();
 

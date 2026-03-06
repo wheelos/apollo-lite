@@ -7,6 +7,7 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "transit_vehicle_factory",
+    alwayslink = True,
     srcs = ["transit_vehicle_factory.cc"],
     hdrs = ["transit_vehicle_factory.h"],
     copts = CANBUS_COPTS,
@@ -14,6 +15,7 @@ cc_library(
         ":transit_controller",
         ":transit_message_manager",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 
@@ -24,6 +26,7 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/transit/protocol:canbus_transit_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",

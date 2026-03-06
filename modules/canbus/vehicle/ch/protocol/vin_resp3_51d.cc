@@ -20,6 +20,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -34,8 +35,9 @@ const int32_t Vinresp351d::ID = 0x51D;
 
 void Vinresp351d::Parse(const std::uint8_t* bytes, int32_t length,
                         ChassisDetail* chassis) const {
-  chassis->mutable_ch()->mutable_vin_resp3_51d()->set_vin17(
-      vin17(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_vin_resp3_51d()
+      ->set_vin17(vin17(bytes, length));
 }
 
 // config detail: {'bit': 0, 'description': 'VIN Response', 'is_signed_var':

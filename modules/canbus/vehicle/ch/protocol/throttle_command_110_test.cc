@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/throttle_command_110.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

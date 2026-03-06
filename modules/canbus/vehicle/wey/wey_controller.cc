@@ -15,10 +15,14 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/wey_controller.h"
+
+#include "modules/canbus/vehicle/wey/proto/wey.pb.h"
+#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
+
 #include "cyber/time/time.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/canbus/vehicle/wey/wey_message_manager.h"
-#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
 #include "modules/drivers/canbus/can_comm/can_sender.h"
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
@@ -158,11 +162,14 @@ Chassis WeyController::chassis() {
   // 3
   chassis_.set_engine_started(true);
   // if there is not wey, no chassis detail can be retrieved and return
-  if (!chassis_detail.has_wey()) {
+  if (!::apollo::canbus::HasChassisExtension<::apollo::canbus::Wey>(
+          chassis_detail)) {
     AERROR << "NO WEY chassis information!";
     return chassis_;
   }
-  Wey wey = chassis_detail.wey();
+  Wey wey =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail);
 
   // 4 engine_rpm
   if (wey.has_fbs3_237() && wey.fbs3_237().has_engspd()) {
@@ -410,7 +417,6 @@ Chassis WeyController::chassis() {
 void WeyController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
-  can_sender_->Update();
 }
 
 ErrorCode WeyController::EnableAutoMode() {
@@ -664,12 +670,15 @@ void WeyController::ResetProtocol() { message_manager_->ResetSendMessages(); }
 bool WeyController::CheckChassisError() {
   ChassisDetail chassis_detail;
   message_manager_->GetSensorData(&chassis_detail);
-  if (!chassis_detail.has_wey()) {
+  if (!::apollo::canbus::HasChassisExtension<::apollo::canbus::Wey>(
+          chassis_detail)) {
     AERROR_EVERY(100) << "ChassisDetail has NO wey vehicle info."
                       << chassis_detail.DebugString();
     return false;
   }
-  Wey wey = chassis_detail.wey();
+  Wey wey =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail);
   // check steer error
   if (wey.has_fail_241()) {
     if (wey.fail_241().epsfail() == Fail_241::EPSFAIL_FAULT) {

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,20 +33,21 @@ const int32_t Vehiclestatefeedbackc1::ID = 0xC1;
 
 void Vehiclestatefeedbackc1::Parse(const std::uint8_t* bytes, int32_t length,
                                    ChassisDetail* chassis) const {
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_vehicle_state_feedback_c1()
       ->set_parking_actual(parking_actual(bytes, length));
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_vehicle_state_feedback_c1()
       ->set_brake_torque_feedback(brake_torque_feedback(bytes, length));
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_vehicle_state_feedback_c1()
       ->set_gear_state_actual(gear_state_actual(bytes, length));
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_vehicle_state_feedback_c1()
       ->set_steering_actual(steering_actual(bytes, length));
-  chassis->mutable_zhongyun()->mutable_vehicle_state_feedback_c1()->set_speed(
-      speed(bytes, length) / 3.6);
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
+      ->mutable_vehicle_state_feedback_c1()
+      ->set_speed(speed(bytes, length) / 3.6);
 }
 
 // config detail: {'name': 'parking_actual', 'enum': {0:

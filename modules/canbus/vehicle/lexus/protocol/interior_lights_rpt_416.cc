@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,29 +33,30 @@ const int32_t Interiorlightsrpt416::ID = 0x416;
 
 void Interiorlightsrpt416::Parse(const std::uint8_t* bytes, int32_t length,
                                  ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_interior_lights_rpt_416()
       ->set_dim_level_is_valid(dim_level_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_interior_lights_rpt_416()
       ->set_mood_lights_on_is_valid(mood_lights_on_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_interior_lights_rpt_416()
       ->set_rear_dome_lights_on_is_valid(
           rear_dome_lights_on_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_interior_lights_rpt_416()
       ->set_front_dome_lights_on_is_valid(
           front_dome_lights_on_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_interior_lights_rpt_416()->set_dim_level(
-      dim_level(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_interior_lights_rpt_416()
+      ->set_dim_level(dim_level(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_interior_lights_rpt_416()
       ->set_mood_lights_on(mood_lights_on(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_interior_lights_rpt_416()
       ->set_rear_dome_lights_on(rear_dome_lights_on(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_interior_lights_rpt_416()
       ->set_front_dome_lights_on(front_dome_lights_on(bytes, length));
 }

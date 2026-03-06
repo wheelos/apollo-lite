@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/zhongyun/protocol/gear_control_a1.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

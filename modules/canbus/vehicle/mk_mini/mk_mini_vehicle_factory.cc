@@ -19,10 +19,14 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/mk_mini/mk_mini_controller.h"
 #include "modules/canbus/vehicle/mk_mini/mk_mini_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
 namespace canbus {
+
+REGISTER_PLUGIN_BY_KEY(AbstractVehicleFactory, Mk_miniVehicleFactory,
+                       apollo::common::MK_MINI);
 
 std::unique_ptr<VehicleController>
 Mk_miniVehicleFactory::CreateVehicleController() {

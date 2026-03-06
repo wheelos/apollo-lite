@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,10 +33,12 @@ const int32_t Vehspecificrpt1412::ID = 0x412;
 
 void Vehspecificrpt1412::Parse(const std::uint8_t* bytes, int32_t length,
                                ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_veh_specific_rpt_1_412()->set_shift_pos_2(
-      shift_pos_2(bytes, length));
-  chassis->mutable_lexus()->mutable_veh_specific_rpt_1_412()->set_shift_pos_1(
-      shift_pos_1(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_veh_specific_rpt_1_412()
+      ->set_shift_pos_2(shift_pos_2(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_veh_specific_rpt_1_412()
+      ->set_shift_pos_1(shift_pos_1(bytes, length));
 }
 
 // config detail: {'name': 'shift_pos_2', 'offset': 0.0, 'precision': 1.0,

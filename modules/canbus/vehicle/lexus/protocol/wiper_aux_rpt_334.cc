@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,36 +33,42 @@ const int32_t Wiperauxrpt334::ID = 0x334;
 
 void Wiperauxrpt334::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_wiper_aux_rpt_334()
       ->set_spray_empty_is_valid(spray_empty_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_wiper_aux_rpt_334()->set_spray_empty(
-      spray_empty(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_wiper_aux_rpt_334()
+      ->set_spray_empty(spray_empty(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_wiper_aux_rpt_334()
       ->set_spray_near_empty_is_valid(spray_near_empty_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_wiper_aux_rpt_334()->set_spray_near_empty(
-      spray_near_empty(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_wiper_aux_rpt_334()
+      ->set_spray_near_empty(spray_near_empty(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_wiper_aux_rpt_334()
       ->set_rear_spraying_is_valid(rear_spraying_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_wiper_aux_rpt_334()->set_rear_spraying(
-      rear_spraying(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_wiper_aux_rpt_334()
+      ->set_rear_spraying(rear_spraying(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_wiper_aux_rpt_334()
       ->set_rear_wiping_is_valid(rear_wiping_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_wiper_aux_rpt_334()->set_rear_wiping(
-      rear_wiping(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_wiper_aux_rpt_334()
+      ->set_rear_wiping(rear_wiping(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_wiper_aux_rpt_334()
       ->set_front_spraying_is_valid(front_spraying_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_wiper_aux_rpt_334()->set_front_spraying(
-      front_spraying(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_wiper_aux_rpt_334()
+      ->set_front_spraying(front_spraying(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_wiper_aux_rpt_334()
       ->set_front_wiping_is_valid(front_wiping_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_wiper_aux_rpt_334()->set_front_wiping(
-      front_wiping(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_wiper_aux_rpt_334()
+      ->set_front_wiping(front_wiping(bytes, length));
 }
 
 // config detail: {'name': 'spray_empty_is_valid', 'offset': 0.0,

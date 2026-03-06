@@ -16,9 +16,11 @@
 
 #include "modules/canbus/vehicle/neolix_edu/protocol/aeb_systemstate_11.h"
 
+#include "gtest/gtest.h"
+
 #include "glog/logging.h"
 
-#include "gtest/gtest.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
 namespace apollo {
@@ -45,18 +47,66 @@ TEST_F(Aebsystemstate11Test, reset) {
   EXPECT_EQ(data[6], 0b01010011);
   EXPECT_EQ(data[7], 0b01010100);
 
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().aeb_state(), 3);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().aeb_brakestate(), true);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().faultrank(), 2);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().currenttemperature(), 59);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().pas_f1_stop(), false);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().pas_f2_stop(), false);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().pas_f3_stop(), true);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().pas_f4_stop(), false);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().pas_b1_stop(), false);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().pas_b2_stop(), true);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().pas_b3_stop(), true);
-  EXPECT_EQ(cd.neolix_edu().aeb_systemstate_11().pas_b4_stop(), false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .aeb_state(),
+            3);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .aeb_brakestate(),
+            true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .faultrank(),
+            2);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .currenttemperature(),
+            59);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .pas_f1_stop(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .pas_f2_stop(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .pas_f3_stop(),
+            true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .pas_f4_stop(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .pas_b1_stop(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .pas_b2_stop(),
+            true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .pas_b3_stop(),
+            true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_systemstate_11()
+                .pas_b4_stop(),
+            false);
 }
 
 }  // namespace neolix_edu

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,22 +33,30 @@ const int32_t Vinresp1391::ID = 0x391;
 
 void Vinresp1391::Parse(const std::uint8_t* bytes, int32_t length,
                         ChassisDetail* chassis) const {
-  chassis->mutable_wey()->mutable_vin_resp1_391()->set_vin07(
-      vin07(bytes, length));
-  chassis->mutable_wey()->mutable_vin_resp1_391()->set_vin06(
-      vin06(bytes, length));
-  chassis->mutable_wey()->mutable_vin_resp1_391()->set_vin05(
-      vin05(bytes, length));
-  chassis->mutable_wey()->mutable_vin_resp1_391()->set_vin04(
-      vin04(bytes, length));
-  chassis->mutable_wey()->mutable_vin_resp1_391()->set_vin03(
-      vin03(bytes, length));
-  chassis->mutable_wey()->mutable_vin_resp1_391()->set_vin02(
-      vin02(bytes, length));
-  chassis->mutable_wey()->mutable_vin_resp1_391()->set_vin00(
-      vin00(bytes, length));
-  chassis->mutable_wey()->mutable_vin_resp1_391()->set_vin01(
-      vin01(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_vin_resp1_391()
+      ->set_vin07(vin07(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_vin_resp1_391()
+      ->set_vin06(vin06(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_vin_resp1_391()
+      ->set_vin05(vin05(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_vin_resp1_391()
+      ->set_vin04(vin04(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_vin_resp1_391()
+      ->set_vin03(vin03(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_vin_resp1_391()
+      ->set_vin02(vin02(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_vin_resp1_391()
+      ->set_vin00(vin00(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_vin_resp1_391()
+      ->set_vin01(vin01(bytes, length));
 }
 
 // config detail: {'name': 'vin07', 'offset': 0.0, 'precision': 1.0, 'len': 8,

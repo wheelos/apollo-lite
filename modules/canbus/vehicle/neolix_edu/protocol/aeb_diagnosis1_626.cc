@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,10 +33,10 @@ const int32_t Aebdiagnosis1626::ID = 0x626;
 
 void Aebdiagnosis1626::Parse(const std::uint8_t* bytes, int32_t length,
                              ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_diagnosis1_626()
       ->set_aeb_softwareversion(aeb_softwareversion(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_diagnosis1_626()
       ->set_aeb_hardwareversion(aeb_hardwareversion(bytes, length));
 }

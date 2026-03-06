@@ -19,10 +19,14 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/ch/ch_controller.h"
 #include "modules/canbus/vehicle/ch/ch_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
 namespace canbus {
+
+REGISTER_PLUGIN_BY_KEY(AbstractVehicleFactory, ChVehicleFactory,
+                       apollo::common::CH);
 
 std::unique_ptr<VehicleController> ChVehicleFactory::CreateVehicleController() {
   return std::unique_ptr<VehicleController>(new ch::ChController());

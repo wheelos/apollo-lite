@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,21 +33,28 @@ const int32_t Fbs2240::ID = 0x240;
 
 void Fbs2240::Parse(const std::uint8_t* bytes, int32_t length,
                     ChassisDetail* chassis) const {
-  chassis->mutable_wey()->mutable_fbs2_240()->set_flwheeldirection(
-      flwheeldirection(bytes, length));
-  chassis->mutable_wey()->mutable_fbs2_240()->set_frwheelspd(
-      frwheelspd(bytes, length));
-  chassis->mutable_wey()->mutable_fbs2_240()->set_rlwheeldrivedirection(
-      rlwheeldrivedirection(bytes, length));
-  chassis->mutable_wey()->mutable_fbs2_240()->set_rlwheelspd(
-      rlwheelspd(bytes, length));
-  chassis->mutable_wey()->mutable_fbs2_240()->set_rrwheeldirection(
-      rrwheeldirection(bytes, length));
-  chassis->mutable_wey()->mutable_fbs2_240()->set_rrwheelspd(
-      rrwheelspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs2_240()
+      ->set_flwheeldirection(flwheeldirection(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs2_240()
+      ->set_frwheelspd(frwheelspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs2_240()
+      ->set_rlwheeldrivedirection(rlwheeldrivedirection(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs2_240()
+      ->set_rlwheelspd(rlwheelspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs2_240()
+      ->set_rrwheeldirection(rrwheeldirection(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs2_240()
+      ->set_rrwheelspd(rrwheelspd(bytes, length));
   // change km/h to m/s
-  chassis->mutable_wey()->mutable_fbs2_240()->set_vehiclespd(
-      vehiclespd(bytes, length) / 3.6);
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs2_240()
+      ->set_vehiclespd(vehiclespd(bytes, length) / 3.6);
 }
 
 // config detail: {'description': 'Front left wheel Moving direction',

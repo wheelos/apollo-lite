@@ -16,7 +16,9 @@
 
 #pragma once
 
+#include "modules/canbus/vehicle/devkit/proto/devkit.pb.h"
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 namespace apollo {
@@ -56,7 +58,7 @@ class Bmsreport512 : public ::apollo::drivers::canbus::ProtocolData<
   // 'offset': -40, 'order': 'motorola', 'physical_range': '[-40|215]',
   // 'physical_unit': 'C', 'precision': 1.0, 'type': 'int'}
   int battery_inside_temperature(const std::uint8_t* bytes,
-                                    const int32_t length) const;
+                                 const int32_t length) const;
 
   // config detail: {'description': 'Battery Below Low temp fault', 'enum':
   // {0: 'BATTERY_FLT_LOW_TEMP_NO_FAULT', 1:

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,38 +33,38 @@ const int32_t Vcubrakereport47::ID = 0x47;
 
 void Vcubrakereport47::Parse(const std::uint8_t* bytes, int32_t length,
                              ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_brake_enable_resp(brake_enable_resp(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_control_mode_resp(control_mode_resp(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_vcu_real_brake_valid(vcu_real_brake_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_vcu_real_brake(vcu_real_brake(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_vcu_real_parking_status(vcu_real_parking_status(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_vcu_real_parking_valid(vcu_real_parking_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_rampauxiliaryindication(rampauxiliaryindication(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_vehicleslope(vehicleslope(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_vcu_brakerept_alivecounter(
           vcu_brakerept_alivecounter(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_vcu_brakerept_checksum(vcu_brakerept_checksum(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_brake_report_47()
       ->set_vcu_ehb_brake_state(vcu_ehb_brake_state(bytes, length));
 

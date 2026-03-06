@@ -16,6 +16,7 @@
 
 #include "modules/canbus/vehicle/devkit/protocol/gear_command_103.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {
@@ -31,12 +32,15 @@ Gearcommand103::Gearcommand103() { Reset(); }
 
 void Gearcommand103::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_devkit()->mutable_gear_command_103()->set_gear_target(
-      gear_target(bytes, length));
-  chassis->mutable_devkit()->mutable_gear_command_103()->set_gear_en_ctrl(
-      gear_en_ctrl(bytes, length));
-  chassis->mutable_devkit()->mutable_gear_command_103()->set_checksum_103(
-      checksum_103(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_gear_command_103()
+      ->set_gear_target(gear_target(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_gear_command_103()
+      ->set_gear_en_ctrl(gear_en_ctrl(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_gear_command_103()
+      ->set_checksum_103(checksum_103(bytes, length));
 }
 
 uint32_t Gearcommand103::GetPeriod() const {
@@ -134,7 +138,7 @@ Gear_command_103::Gear_en_ctrlType Gearcommand103::gear_en_ctrl(
 }
 
 int Gearcommand103::checksum_103(const std::uint8_t* bytes,
-                                     int32_t length) const {
+                                 int32_t length) const {
   Byte t0(bytes + 7);
   int32_t x = t0.get_byte(0, 8);
 

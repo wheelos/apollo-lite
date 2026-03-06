@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,21 +33,21 @@ const int32_t Llcmotionfeedback221::ID = 0x21;
 
 void Llcmotionfeedback221::Parse(const std::uint8_t* bytes, int32_t length,
                                  ChassisDetail* chassis) const {
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback2_21()
       ->set_llc_fbk_vehiclespeed(llc_fbk_vehiclespeed(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback2_21()
       ->set_llc_motionfeedback2_counter(
           llc_motionfeedback2_counter(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback2_21()
       ->set_llc_motionfeedback2_checksum(
           llc_motionfeedback2_checksum(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback2_21()
       ->set_llc_fbk_steeringrate(llc_fbk_steeringrate(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback2_21()
       ->set_llc_fbk_steeringangle(llc_fbk_steeringangle(bytes, length));
 }

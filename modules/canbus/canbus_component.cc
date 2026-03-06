@@ -58,7 +58,6 @@ bool CanbusComponent::Init() {
   AINFO << "Can client is successfully created.";
 
   VehicleFactory vehicle_factory;
-  vehicle_factory.RegisterVehicleFactory();
   auto vehicle_object =
       vehicle_factory.CreateVehicle(canbus_conf_.vehicle_parameter());
   if (!vehicle_object) {
@@ -117,14 +116,14 @@ bool CanbusComponent::Init() {
   if (FLAGS_receive_guardian) {
     guardian_cmd_reader_ = node_->CreateReader<GuardianCommand>(
         guardian_cmd_reader_config,
-        [this](const std::shared_ptr<GuardianCommand> &cmd) {
+        [this](const std::shared_ptr<GuardianCommand>& cmd) {
           ADEBUG << "Received guardian data: run canbus callback.";
           OnGuardianCommand(*cmd);
         });
   } else {
     control_command_reader_ = node_->CreateReader<ControlCommand>(
         control_cmd_reader_config,
-        [this](const std::shared_ptr<ControlCommand> &cmd) {
+        [this](const std::shared_ptr<ControlCommand>& cmd) {
           ADEBUG << "Received control data: run canbus callback.";
           OnControlCommand(*cmd);
         });
@@ -196,7 +195,7 @@ bool CanbusComponent::Proc() {
   return true;
 }
 
-void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
+void CanbusComponent::OnControlCommand(const ControlCommand& control_command) {
   int64_t current_timestamp = Time::Now().ToMicrosecond();
   // if command coming too soon, just ignore it.
   if (current_timestamp - last_timestamp_ < FLAGS_min_cmd_interval * 1000) {
@@ -224,11 +223,11 @@ void CanbusComponent::OnControlCommand(const ControlCommand &control_command) {
 }
 
 void CanbusComponent::OnGuardianCommand(
-    const GuardianCommand &guardian_command) {
+    const GuardianCommand& guardian_command) {
   OnControlCommand(guardian_command.control_command());
 }
 
-common::Status CanbusComponent::OnError(const std::string &error_msg) {
+common::Status CanbusComponent::OnError(const std::string& error_msg) {
   monitor_logger_buffer_.ERROR(error_msg);
   return ::apollo::common::Status(ErrorCode::CANBUS_ERROR, error_msg);
 }

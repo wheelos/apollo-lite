@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace devkit {
@@ -42,18 +44,78 @@ TEST_F(Vcureport505Test, General) {
   EXPECT_EQ(data[6], 0b00000100);
   EXPECT_EQ(data[7], 0b00000101);
 
-  EXPECT_EQ(cd.devkit().vcu_report_505().steer_mode_sts(), 1);
-  EXPECT_EQ(cd.devkit().vcu_report_505().brake_light_actual(), 0);
-  EXPECT_EQ(cd.devkit().vcu_report_505().acc(), 1.12);
-  EXPECT_EQ(cd.devkit().vcu_report_505().speed(), 0.258);
-  EXPECT_EQ(cd.devkit().vcu_report_505().aeb_brake_state(), 1);
-  EXPECT_EQ(cd.devkit().vcu_report_505().frontcrash_state(), 0);
-  EXPECT_EQ(cd.devkit().vcu_report_505().backcrash_state(), 0);
-  EXPECT_EQ(cd.devkit().vcu_report_505().vehicle_mode_state(), 1);
-  EXPECT_EQ(cd.devkit().vcu_report_505().drive_mode_sts(), 1);
-  EXPECT_EQ(cd.devkit().vcu_report_505().chassis_errcode(), 3);
-  EXPECT_EQ(cd.devkit().vcu_report_505().turn_light_actual(), 1);
-  EXPECT_EQ(cd.devkit().vcu_report_505().aeb_mode(), 1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .steer_mode_sts(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .brake_light_actual(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .acc(),
+      1.12);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .speed(),
+      0.258);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .aeb_brake_state(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .frontcrash_state(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .backcrash_state(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .vehicle_mode_state(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .drive_mode_sts(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .chassis_errcode(),
+      3);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .turn_light_actual(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .vcu_report_505()
+          .aeb_mode(),
+      1);
 }
 
 }  // namespace devkit

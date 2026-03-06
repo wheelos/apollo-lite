@@ -19,10 +19,14 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/transit/transit_controller.h"
 #include "modules/canbus/vehicle/transit/transit_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
 namespace canbus {
+
+REGISTER_PLUGIN_BY_KEY(AbstractVehicleFactory, TransitVehicleFactory,
+                       apollo::common::TRANSIT);
 
 std::unique_ptr<VehicleController>
 TransitVehicleFactory::CreateVehicleController() {

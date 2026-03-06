@@ -16,6 +16,7 @@
 
 #include "modules/canbus/vehicle/devkit/protocol/brake_command_101.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {
@@ -36,18 +37,22 @@ uint32_t Brakecommand101::GetPeriod() const {
 }
 
 void Brakecommand101::Parse(const std::uint8_t* bytes, int32_t length,
-                               ChassisDetail* chassis) const {
-  chassis->mutable_devkit()->mutable_brake_command_101()->set_brake_en_ctrl(
-      brake_en_ctrl(bytes, length));
-  chassis->mutable_devkit()->mutable_brake_command_101()->set_aeb_en_ctrl(
-      aeb_en_ctrl(bytes, length));
-  chassis->mutable_devkit()->mutable_brake_command_101()->set_brake_dec(
-      brake_dec(bytes, length));
-  chassis->mutable_devkit()
+                            ChassisDetail* chassis) const {
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_brake_command_101()
+      ->set_brake_en_ctrl(brake_en_ctrl(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_brake_command_101()
+      ->set_aeb_en_ctrl(aeb_en_ctrl(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_brake_command_101()
+      ->set_brake_dec(brake_dec(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_brake_command_101()
       ->set_brake_pedal_target(brake_pedal_target(bytes, length));
-  chassis->mutable_devkit()->mutable_brake_command_101()->set_checksum_101(
-      checksum_101(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_brake_command_101()
+      ->set_checksum_101(checksum_101(bytes, length));
 }
 
 void Brakecommand101::UpdateData(uint8_t* data) {

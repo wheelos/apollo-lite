@@ -5,12 +5,14 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "wey_vehicle_factory",
+    alwayslink = True,
     srcs = ["wey_vehicle_factory.cc"],
     hdrs = ["wey_vehicle_factory.h"],
     deps = [
         ":wey_controller",
         ":wey_message_manager",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 

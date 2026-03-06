@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/zhongyun/protocol/vehicle_state_feedback_2_c4.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,7 +36,9 @@ TEST_F(Vehiclestatefeedback2c4Test, reset) {
   uint8_t bytes[8] = {0x88, 0x44, 0x22, 0x11, 0x11, 0x12, 0x13, 0x14};
 
   feedback_.Parse(bytes, length, &cd);
-  auto &feedbackinfo = cd.zhongyun().vehicle_state_feedback_2_c4();
+  auto& feedbackinfo = ::apollo::canbus::GetChassisExtensionOrDefault<
+                           ::apollo::canbus::Zhongyun>(cd)
+                           .vehicle_state_feedback_2_c4();
   EXPECT_DOUBLE_EQ(feedbackinfo.motor_speed(), 17544);
   EXPECT_DOUBLE_EQ(feedbackinfo.driven_torque_feedback(), 219.3);
 }

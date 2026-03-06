@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/steer_status__512.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -41,11 +44,26 @@ TEST_F(Steerstatus512Test, General) {
   EXPECT_EQ(data[6], 0b00010011);
   EXPECT_EQ(data[7], 0b00010100);
 
-  EXPECT_EQ(cd.ch().steer_status__512().steer_angle_en_sts(), 1);
-  EXPECT_DOUBLE_EQ(cd.ch().steer_status__512().steer_angle_sts(),
-                   0.77000000000000002);
-  EXPECT_EQ(cd.ch().steer_status__512().steer_err(), 1);
-  EXPECT_EQ(cd.ch().steer_status__512().sensor_err(), 0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .steer_status__512()
+          .steer_angle_en_sts(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .steer_status__512()
+          .steer_angle_sts(),
+      0.77000000000000002);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .steer_status__512()
+          .steer_err(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .steer_status__512()
+          .sensor_err(),
+      0);
 }
 
 }  // namespace ch

@@ -19,10 +19,14 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/lincoln/lincoln_controller.h"
 #include "modules/canbus/vehicle/lincoln/lincoln_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
 namespace canbus {
+
+REGISTER_PLUGIN_BY_KEY(AbstractVehicleFactory, LincolnVehicleFactory,
+                       apollo::common::LINCOLN_MKZ);
 
 std::unique_ptr<VehicleController>
 LincolnVehicleFactory::CreateVehicleController() {

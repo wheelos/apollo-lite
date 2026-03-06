@@ -41,11 +41,11 @@ void Vehiclemodecommand116::UpdateData(uint8_t* data) {
 
 void Vehiclemodecommand116::Reset() {
   // TODO(All) :  you should check this manually
-  vin_req_cmd_ = Vehicle_mode_command_116::VIN_REQ_CMD_VIN_REQ_DISABLE;
+  vin_req_cmd_ = 0;  // VIN_REQ_CMD_VIN_REQ_DISABLE
 }
 
 Vehiclemodecommand116* Vehiclemodecommand116::set_vin_req_cmd(
-    Vehicle_mode_command_116::Vin_req_cmdType vin_req_cmd) {
+    uint8_t vin_req_cmd) {
   vin_req_cmd_ = vin_req_cmd;
   return this;
 }
@@ -55,8 +55,8 @@ Vehiclemodecommand116* Vehiclemodecommand116::set_vin_req_cmd(
 // 'is_signed_var': False, 'len': 1, 'name': 'VIN_REQ_CMD', 'offset': 0.0,
 // 'order': 'intel', 'physical_range': '[0|1]', 'physical_unit': '',
 // 'precision': 1.0, 'type': 'enum'}
-void Vehiclemodecommand116::set_p_vin_req_cmd(
-    uint8_t* data, Vehicle_mode_command_116::Vin_req_cmdType vin_req_cmd) {
+void Vehiclemodecommand116::set_p_vin_req_cmd(uint8_t* data,
+                                              uint8_t vin_req_cmd) {
   int x = vin_req_cmd;
 
   Byte to_set(data + 0);

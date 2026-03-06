@@ -16,6 +16,7 @@
 
 #include "modules/canbus/vehicle/devkit/protocol/vehicle_mode_command_105.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {
@@ -36,19 +37,20 @@ uint32_t Vehiclemodecommand105::GetPeriod() const {
 }
 
 void Vehiclemodecommand105::Parse(const std::uint8_t* bytes, int32_t length,
-                           ChassisDetail* chassis) const {
-  chassis->mutable_devkit()
+                                  ChassisDetail* chassis) const {
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_vehicle_mode_command_105()
       ->set_turn_light_ctrl(turn_light_ctrl(bytes, length));
-  chassis->mutable_devkit()->mutable_vehicle_mode_command_105()->set_vin_req(
-      vin_req(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vehicle_mode_command_105()
+      ->set_vin_req(vin_req(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_vehicle_mode_command_105()
       ->set_drive_mode_ctrl(drive_mode_ctrl(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_vehicle_mode_command_105()
       ->set_steer_mode_ctrl(steer_mode_ctrl(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_vehicle_mode_command_105()
       ->set_checksum_105(checksum_105(bytes, length));
 }
@@ -215,7 +217,7 @@ Vehiclemodecommand105::steer_mode_ctrl(const std::uint8_t* bytes,
 }
 
 int Vehiclemodecommand105::checksum_105(const std::uint8_t* bytes,
-                                 int32_t length) const {
+                                        int32_t length) const {
   Byte t0(bytes + 7);
   int32_t x = t0.get_byte(0, 8);
 

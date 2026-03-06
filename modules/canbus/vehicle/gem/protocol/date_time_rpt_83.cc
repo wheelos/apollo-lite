@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,18 +33,24 @@ const int32_t Datetimerpt83::ID = 0x83;
 
 void Datetimerpt83::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_gem()->mutable_date_time_rpt_83()->set_time_second(
-      time_second(bytes, length));
-  chassis->mutable_gem()->mutable_date_time_rpt_83()->set_time_minute(
-      time_minute(bytes, length));
-  chassis->mutable_gem()->mutable_date_time_rpt_83()->set_time_hour(
-      time_hour(bytes, length));
-  chassis->mutable_gem()->mutable_date_time_rpt_83()->set_date_day(
-      date_day(bytes, length));
-  chassis->mutable_gem()->mutable_date_time_rpt_83()->set_date_month(
-      date_month(bytes, length));
-  chassis->mutable_gem()->mutable_date_time_rpt_83()->set_date_year(
-      date_year(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_date_time_rpt_83()
+      ->set_time_second(time_second(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_date_time_rpt_83()
+      ->set_time_minute(time_minute(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_date_time_rpt_83()
+      ->set_time_hour(time_hour(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_date_time_rpt_83()
+      ->set_date_day(date_day(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_date_time_rpt_83()
+      ->set_date_month(date_month(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_date_time_rpt_83()
+      ->set_date_year(date_year(bytes, length));
 }
 
 // config detail: {'name': 'time_second', 'offset': 0.0, 'precision': 1.0,

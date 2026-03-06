@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/ecu_status_1_515.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,34 +33,48 @@ const int32_t Ecustatus1515::ID = 0x515;
 
 void Ecustatus1515::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_mcu_err(
-      chassis_mcu_err(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_mcu_can(
-      chassis_mcu_can(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_hw_lost(
-      chassis_hw_lost(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_eps_err(
-      chassis_eps_err(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_eps_can(
-      chassis_eps_can(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_ehb_err(
-      chassis_ehb_err(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_ehb_can(
-      chassis_ehb_can(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_bms_can(
-      chassis_bms_can(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_speed(
-      speed(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_acc_speed(
-      acc_speed(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_ctrl_sts(
-      ctrl_sts(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_sts(
-      chassis_sts(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_err(
-      chassis_err(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_1_515()->set_chassis_ads_err(
-      chassis_ads_err(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_mcu_err(chassis_mcu_err(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_mcu_can(chassis_mcu_can(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_hw_lost(chassis_hw_lost(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_eps_err(chassis_eps_err(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_eps_can(chassis_eps_can(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_ehb_err(chassis_ehb_err(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_ehb_can(chassis_ehb_can(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_bms_can(chassis_bms_can(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_speed(speed(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_acc_speed(acc_speed(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_ctrl_sts(ctrl_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_sts(chassis_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_err(chassis_err(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_1_515()
+      ->set_chassis_ads_err(chassis_ads_err(bytes, length));
 }
 
 // config detail: {'bit': 0, 'description': 'Current speed (Steering status)',

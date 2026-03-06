@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,32 +33,32 @@ const int32_t Vcudrivereport52::ID = 0x52;
 
 void Vcudrivereport52::Parse(const std::uint8_t* bytes, int32_t length,
                              ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_drive_report_52()
       ->set_drive_enable_resp(drive_enable_resp(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_drive_report_52()
       ->set_control_mode_resp(control_mode_resp(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_drive_report_52()
       ->set_vcu_real_shift(vcu_real_shift(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_drive_report_52()
       ->set_vcu_real_shift_valid(vcu_real_shift_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_drive_report_52()
       ->set_vcu_real_torque_valid(vcu_real_torque_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_drive_report_52()
       ->set_vcu_real_torque(vcu_real_torque(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_drive_report_52()
       ->set_vcu_limitedtorquemode(vcu_limitedtorquemode(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_drive_report_52()
       ->set_vcu_driverept_alivecounter(
           vcu_driverept_alivecounter(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_drive_report_52()
       ->set_vcu_driverept_checksum(vcu_driverept_checksum(bytes, length));
 

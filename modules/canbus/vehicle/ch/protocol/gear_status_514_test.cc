@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/gear_status_514.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -41,7 +44,11 @@ TEST_F(Gearstatus514Test, General) {
   EXPECT_EQ(data[6], 0b00010011);
   EXPECT_EQ(data[7], 0b00010100);
 
-  EXPECT_EQ(cd.ch().gear_status_514().gear_sts(), 1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .gear_status_514()
+          .gear_sts(),
+      1);
 }
 
 }  // namespace ch

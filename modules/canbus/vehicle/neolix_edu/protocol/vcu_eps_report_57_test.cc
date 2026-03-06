@@ -16,9 +16,11 @@
 
 #include "modules/canbus/vehicle/neolix_edu/protocol/vcu_eps_report_57.h"
 
+#include "gtest/gtest.h"
+
 #include "glog/logging.h"
 
-#include "gtest/gtest.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
 namespace apollo {
@@ -45,14 +47,41 @@ TEST_F(Vcuepsreport57Test, reset) {
   EXPECT_EQ(data[6], 0b00000000);
   EXPECT_EQ(data[7], 0b00000000);
 
-  EXPECT_EQ(cd.neolix_edu().vcu_eps_report_57().drive_enable_resp(), false);
-  EXPECT_EQ(cd.neolix_edu().vcu_eps_report_57().control_mode_resp(), 0);
-  EXPECT_EQ(cd.neolix_edu().vcu_eps_report_57().vcu_eps_report(), false);
-  EXPECT_EQ(cd.neolix_edu().vcu_eps_report_57().vcu_real_angle(), 2048);
-  EXPECT_EQ(cd.neolix_edu().vcu_eps_report_57().vcu_real_angle_valid(), false);
-  EXPECT_EQ(cd.neolix_edu().vcu_eps_report_57().vcu_target_angle_valid(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_eps_report_57()
+                .drive_enable_resp(),
             false);
-  EXPECT_EQ(cd.neolix_edu().vcu_eps_report_57().vcu_target_angle(), -512);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_eps_report_57()
+                .control_mode_resp(),
+            0);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_eps_report_57()
+                .vcu_eps_report(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_eps_report_57()
+                .vcu_real_angle(),
+            2048);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_eps_report_57()
+                .vcu_real_angle_valid(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_eps_report_57()
+                .vcu_target_angle_valid(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_eps_report_57()
+                .vcu_target_angle(),
+            -512);
 }
 
 }  // namespace neolix_edu

@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/control_command_115.h"
+
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {

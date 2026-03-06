@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/gear_command_114.h"
+
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,22 +33,30 @@ const int32_t Ecustatus4518::ID = 0x518;
 
 void Ecustatus4518::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_ch()->mutable_ecu_status_4_518()->set_ultrasound_dist_9(
-      ultrasound_dist_9(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_4_518()->set_ultrasound_dist_10(
-      ultrasound_dist_10(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_4_518()->set_ultrasound_dist_11(
-      ultrasound_dist_11(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_4_518()->set_ultrasound_dist_12(
-      ultrasound_dist_12(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_4_518()->set_ultrasound_dist_13(
-      ultrasound_dist_13(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_4_518()->set_ultrasound_dist_14(
-      ultrasound_dist_14(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_4_518()->set_ultrasound_dist_15(
-      ultrasound_dist_15(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_4_518()->set_ultrasound_dist_16(
-      ultrasound_dist_16(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_4_518()
+      ->set_ultrasound_dist_9(ultrasound_dist_9(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_4_518()
+      ->set_ultrasound_dist_10(ultrasound_dist_10(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_4_518()
+      ->set_ultrasound_dist_11(ultrasound_dist_11(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_4_518()
+      ->set_ultrasound_dist_12(ultrasound_dist_12(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_4_518()
+      ->set_ultrasound_dist_13(ultrasound_dist_13(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_4_518()
+      ->set_ultrasound_dist_14(ultrasound_dist_14(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_4_518()
+      ->set_ultrasound_dist_15(ultrasound_dist_15(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_4_518()
+      ->set_ultrasound_dist_16(ultrasound_dist_16(bytes, length));
 }
 
 // config detail: {'bit': 0, 'description': 'Ultrasonic detection distance 9

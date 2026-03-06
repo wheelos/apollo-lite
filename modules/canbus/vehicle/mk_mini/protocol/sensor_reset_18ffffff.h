@@ -25,7 +25,7 @@ namespace canbus {
 namespace mk_mini {
 
 class Sensorreset18ffffff : public ::apollo::drivers::canbus::ProtocolData<
-                    ::apollo::canbus::ChassisDetail> {
+                                ::apollo::canbus::ChassisDetail> {
  public:
   static const int32_t ID;
 
@@ -34,30 +34,41 @@ class Sensorreset18ffffff : public ::apollo::drivers::canbus::ProtocolData<
   uint32_t GetPeriod() const override;
 
   void Parse(const std::uint8_t* bytes, int32_t length,
-                     ChassisDetail* chassis) const override;
+             ChassisDetail* chassis) const override;
 
   void UpdateData(uint8_t* data) override;
 
   void Reset() override;
 
-  // config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name': 'Close_candiag', 'offset': 0.0, 'order': 'intel', 'physical_range': '[-128|127]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
+  // config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name':
+  // 'Close_candiag', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[-128|127]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
   Sensorreset18ffffff* set_close_candiag(int close_candiag);
 
-  // config detail: {'bit': 8, 'is_signed_var': False, 'len': 1, 'name': 'Brake_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
+  // config detail: {'bit': 8, 'is_signed_var': False, 'len': 1, 'name':
+  // 'Brake_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]',
+  // 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
   Sensorreset18ffffff* set_brake_reset(bool brake_reset);
 
-  // config detail: {'bit': 0, 'is_signed_var': False, 'len': 1, 'name': 'steer_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
+  // config detail: {'bit': 0, 'is_signed_var': False, 'len': 1, 'name':
+  // 'steer_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]',
+  // 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
   Sensorreset18ffffff* set_steer_reset(bool steer_reset);
 
  private:
-
-  // config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name': 'Close_candiag', 'offset': 0.0, 'order': 'intel', 'physical_range': '[-128|127]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
+  // config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name':
+  // 'Close_candiag', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[-128|127]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
   void set_p_close_candiag(uint8_t* data, int close_candiag);
 
-  // config detail: {'bit': 8, 'is_signed_var': False, 'len': 1, 'name': 'Brake_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
+  // config detail: {'bit': 8, 'is_signed_var': False, 'len': 1, 'name':
+  // 'Brake_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]',
+  // 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
   void set_p_brake_reset(uint8_t* data, bool brake_reset);
 
-  // config detail: {'bit': 0, 'is_signed_var': False, 'len': 1, 'name': 'steer_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
+  // config detail: {'bit': 0, 'is_signed_var': False, 'len': 1, 'name':
+  // 'steer_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]',
+  // 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
   void set_p_steer_reset(uint8_t* data, bool steer_reset);
 
   int close_candiag(const std::uint8_t* bytes, const int32_t length) const;
@@ -75,5 +86,3 @@ class Sensorreset18ffffff : public ::apollo::drivers::canbus::ProtocolData<
 }  // namespace mk_mini
 }  // namespace canbus
 }  // namespace apollo
-
-

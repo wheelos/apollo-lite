@@ -16,6 +16,7 @@
 
 #include "modules/canbus/vehicle/yunle/protocol/scu_tq_123.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {
@@ -36,14 +37,18 @@ uint32_t Scutq123::GetPeriod() const {
 
 void Scutq123::Parse(const std::uint8_t* bytes, int32_t length,
                      ChassisDetail* chassis) const {
-  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_rear_r(
-      torque_cmd_rear_r(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_rear_l(
-      torque_cmd_rear_l(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_forward_r(
-      torque_cmd_forward_r(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_tq_123()->set_torque_cmd_forward_l(
-      torque_cmd_forward_l(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_tq_123()
+      ->set_torque_cmd_rear_r(torque_cmd_rear_r(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_tq_123()
+      ->set_torque_cmd_rear_l(torque_cmd_rear_l(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_tq_123()
+      ->set_torque_cmd_forward_r(torque_cmd_forward_r(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_tq_123()
+      ->set_torque_cmd_forward_l(torque_cmd_forward_l(bytes, length));
 }
 
 void Scutq123::UpdateData(uint8_t* data) {

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,30 +33,42 @@ const int32_t Vcureport505::ID = 0x505;
 
 void Vcureport505::Parse(const std::uint8_t* bytes, int32_t length,
                          ChassisDetail* chassis) const {
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_steer_mode_sts(
-      steer_mode_sts(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_brake_light_actual(
-      brake_light_actual(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_acc(
-      acc(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_speed(
-      speed(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_aeb_brake_state(
-      aeb_brake_state(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_frontcrash_state(
-      frontcrash_state(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_backcrash_state(
-      backcrash_state(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_vehicle_mode_state(
-      vehicle_mode_state(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_drive_mode_sts(
-      drive_mode_sts(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_chassis_errcode(
-      chassis_errcode(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_turn_light_actual(
-      turn_light_actual(bytes, length));
-  chassis->mutable_devkit()->mutable_vcu_report_505()->set_aeb_mode(
-      aeb_mode(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_steer_mode_sts(steer_mode_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_brake_light_actual(brake_light_actual(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_acc(acc(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_speed(speed(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_aeb_brake_state(aeb_brake_state(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_frontcrash_state(frontcrash_state(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_backcrash_state(backcrash_state(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_vehicle_mode_state(vehicle_mode_state(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_drive_mode_sts(drive_mode_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_chassis_errcode(chassis_errcode(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_turn_light_actual(turn_light_actual(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_vcu_report_505()
+      ->set_aeb_mode(aeb_mode(bytes, length));
 }
 
 // config detail: {'bit': 10, 'enum': {0: 'STEER_MODE_STS_STANDARD_STEER_MODE',

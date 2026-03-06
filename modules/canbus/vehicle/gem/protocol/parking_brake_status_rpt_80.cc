@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,7 +33,7 @@ const int32_t Parkingbrakestatusrpt80::ID = 0x80;
 
 void Parkingbrakestatusrpt80::Parse(const std::uint8_t* bytes, int32_t length,
                                     ChassisDetail* chassis) const {
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_parking_brake_status_rpt_80()
       ->set_parking_brake_enabled(parking_brake_enabled(bytes, length));
 }

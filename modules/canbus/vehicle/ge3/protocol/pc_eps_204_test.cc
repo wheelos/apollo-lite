@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/pc_eps_204.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/ge3/proto/ge3.pb.h"
 
 namespace apollo {
 namespace canbus {

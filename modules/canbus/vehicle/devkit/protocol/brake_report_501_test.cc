@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace devkit {
@@ -42,10 +44,30 @@ TEST_F(Brakereport501Test, General) {
   EXPECT_EQ(data[6], 0b00000000);
   EXPECT_EQ(data[7], 0b00000001);
 
-  EXPECT_EQ(cd.devkit().brake_report_501().brake_pedal_actual(), 85);
-  EXPECT_EQ(cd.devkit().brake_report_501().brake_flt2(), 1);
-  EXPECT_EQ(cd.devkit().brake_report_501().brake_flt1(), 0);
-  EXPECT_EQ(cd.devkit().brake_report_501().brake_en_state(), 1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .brake_report_501()
+          .brake_pedal_actual(),
+      85);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .brake_report_501()
+          .brake_flt2(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .brake_report_501()
+          .brake_flt1(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .brake_report_501()
+          .brake_en_state(),
+      1);
 }
 
 }  // namespace devkit

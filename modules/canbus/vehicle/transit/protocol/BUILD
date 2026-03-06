@@ -20,6 +20,7 @@ cc_library(
         ":llc_motionfeedback2_21",
         ":llc_vehiclelimits_24",
         ":llc_vehiclestatus_25",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
     ],
 )
 
@@ -30,6 +31,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -54,6 +57,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -78,6 +83,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -102,6 +109,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -126,6 +135,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -150,6 +161,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -174,6 +187,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -198,6 +213,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -222,6 +239,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -246,6 +265,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -270,6 +291,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
@@ -294,6 +317,8 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle:chassis_extension_tools",
+        "//modules/canbus/vehicle/transit/proto:transit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",

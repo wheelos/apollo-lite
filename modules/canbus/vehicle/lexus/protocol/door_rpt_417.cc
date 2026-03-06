@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,39 +33,50 @@ const int32_t Doorrpt417::ID = 0x417;
 
 void Doorrpt417::Parse(const std::uint8_t* bytes, int32_t length,
                        ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_fuel_door_open_is_valid(
-      fuel_door_open_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_trunk_open_is_valid(
-      trunk_open_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_hood_open_is_valid(
-      hood_open_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_fuel_door_open_is_valid(fuel_door_open_is_valid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_trunk_open_is_valid(trunk_open_is_valid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_hood_open_is_valid(hood_open_is_valid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_door_rpt_417()
       ->set_rear_pass_door_open_is_valid(
           rear_pass_door_open_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_door_rpt_417()
       ->set_rear_driver_door_open_is_valid(
           rear_driver_door_open_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_pass_door_open_is_valid(
-      pass_door_open_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_pass_door_open_is_valid(pass_door_open_is_valid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_door_rpt_417()
       ->set_driver_door_open_is_valid(driver_door_open_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_fuel_door_open(
-      fuel_door_open(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_trunk_open(
-      trunk_open(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_hood_open(
-      hood_open(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_rear_pass_door_open(
-      rear_pass_door_open(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_rear_driver_door_open(
-      rear_driver_door_open(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_pass_door_open(
-      pass_door_open(bytes, length));
-  chassis->mutable_lexus()->mutable_door_rpt_417()->set_driver_door_open(
-      driver_door_open(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_fuel_door_open(fuel_door_open(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_trunk_open(trunk_open(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_hood_open(hood_open(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_rear_pass_door_open(rear_pass_door_open(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_rear_driver_door_open(rear_driver_door_open(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_pass_door_open(pass_door_open(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_door_rpt_417()
+      ->set_driver_door_open(driver_door_open(bytes, length));
 }
 
 // config detail: {'name': 'fuel_door_open_is_valid', 'offset': 0.0,

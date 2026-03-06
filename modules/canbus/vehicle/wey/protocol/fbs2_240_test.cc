@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/protocol/fbs2_240.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,12 +36,42 @@ TEST_F(Fbs2240Test, reset) {
   uint8_t bytes[8] = {0x88, 0x44, 0x22, 0x11, 0x11, 0x12, 0x13, 0x14};
 
   fbs2.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fbs2_240().flwheeldirection(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fbs2_240().frwheelspd(), 245.25);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fbs2_240().rlwheeldrivedirection(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fbs2_240().rlwheelspd(), 61.3125);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fbs2_240().rrwheeldirection(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fbs2_240().rrwheelspd(), 30.7125);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fbs2_240()
+          .flwheeldirection(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fbs2_240()
+          .frwheelspd(),
+      245.25);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fbs2_240()
+          .rlwheeldrivedirection(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fbs2_240()
+          .rlwheelspd(),
+      61.3125);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fbs2_240()
+          .rrwheeldirection(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fbs2_240()
+          .rrwheelspd(),
+      30.7125);
 }
 
 }  // namespace wey

@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/protocol/ads_req_vin_390.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

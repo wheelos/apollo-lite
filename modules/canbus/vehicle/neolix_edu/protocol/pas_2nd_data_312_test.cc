@@ -16,9 +16,11 @@
 
 #include "modules/canbus/vehicle/neolix_edu/protocol/pas_2nd_data_312.h"
 
+#include "gtest/gtest.h"
+
 #include "glog/logging.h"
 
-#include "gtest/gtest.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
 namespace apollo {
@@ -45,14 +47,46 @@ TEST_F(Pas2nddata312Test, reset) {
   EXPECT_EQ(data[6], 0b01010011);
   EXPECT_EQ(data[7], 0b01010100);
 
-  EXPECT_EQ(cd.neolix_edu().pas_2nd_data_312().pas_b1_status(), true);
-  EXPECT_EQ(cd.neolix_edu().pas_2nd_data_312().pas_b2_status(), true);
-  EXPECT_EQ(cd.neolix_edu().pas_2nd_data_312().pas_b3_status(), true);
-  EXPECT_EQ(cd.neolix_edu().pas_2nd_data_312().pas_b4_status(), false);
-  EXPECT_EQ(cd.neolix_edu().pas_2nd_data_312().pasdistance1(), 196);
-  EXPECT_EQ(cd.neolix_edu().pas_2nd_data_312().pasdistance2(), 198);
-  EXPECT_EQ(cd.neolix_edu().pas_2nd_data_312().pasdistance3(), 200);
-  EXPECT_EQ(cd.neolix_edu().pas_2nd_data_312().pasdistance4(), 162);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .pas_2nd_data_312()
+                .pas_b1_status(),
+            true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .pas_2nd_data_312()
+                .pas_b2_status(),
+            true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .pas_2nd_data_312()
+                .pas_b3_status(),
+            true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .pas_2nd_data_312()
+                .pas_b4_status(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .pas_2nd_data_312()
+                .pasdistance1(),
+            196);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .pas_2nd_data_312()
+                .pasdistance2(),
+            198);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .pas_2nd_data_312()
+                .pasdistance3(),
+            200);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .pas_2nd_data_312()
+                .pasdistance4(),
+            162);
 }
 
 }  // namespace neolix_edu

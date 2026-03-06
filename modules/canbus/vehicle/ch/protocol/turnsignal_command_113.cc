@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/turnsignal_command_113.h"
+
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {

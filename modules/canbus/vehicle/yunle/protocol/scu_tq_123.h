@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "modules/canbus/vehicle/yunle/proto/yunle.pb.h"
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
 
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
@@ -25,7 +26,7 @@ namespace canbus {
 namespace yunle {
 
 class Scutq123 : public ::apollo::drivers::canbus::ProtocolData<
-                    ::apollo::canbus::ChassisDetail> {
+                     ::apollo::canbus::ChassisDetail> {
  public:
   static const int32_t ID;
 
@@ -34,45 +35,72 @@ class Scutq123 : public ::apollo::drivers::canbus::ProtocolData<
   uint32_t GetPeriod() const override;
 
   void Parse(const std::uint8_t* bytes, int32_t length,
-                     ChassisDetail* chassis) const override;
+             ChassisDetail* chassis) const override;
 
   void UpdateData(uint8_t* data) override;
 
   void Reset() override;
 
-  // config detail: {'bit': 48, 'description': 'Torque available calculated by inverterTorque available calculated by inverter', 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Rear_R', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 48, 'description': 'Torque available calculated by
+  // inverterTorque available calculated by inverter', 'is_signed_var': True,
+  // 'len': 16, 'name': 'Torque_cmd_Rear_R', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type':
+  // 'double'}
   Scutq123* set_torque_cmd_rear_r(double torque_cmd_rear_r);
 
-  // config detail: {'bit': 32, 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Rear_L', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 32, 'is_signed_var': True, 'len': 16, 'name':
+  // 'Torque_cmd_Rear_L', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
   Scutq123* set_torque_cmd_rear_l(double torque_cmd_rear_l);
 
-  // config detail: {'bit': 16, 'description': 'Torque available calculated by inverterTorque available calculated by inverter', 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Forward_R', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 16, 'description': 'Torque available calculated by
+  // inverterTorque available calculated by inverter', 'is_signed_var': True,
+  // 'len': 16, 'name': 'Torque_cmd_Forward_R', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type':
+  // 'double'}
   Scutq123* set_torque_cmd_forward_r(double torque_cmd_forward_r);
 
-  // config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Forward_L', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name':
+  // 'Torque_cmd_Forward_L', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
   Scutq123* set_torque_cmd_forward_l(double torque_cmd_forward_l);
 
  private:
-
-  // config detail: {'bit': 48, 'description': 'Torque available calculated by inverterTorque available calculated by inverter', 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Rear_R', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 48, 'description': 'Torque available calculated by
+  // inverterTorque available calculated by inverter', 'is_signed_var': True,
+  // 'len': 16, 'name': 'Torque_cmd_Rear_R', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type':
+  // 'double'}
   void set_p_torque_cmd_rear_r(uint8_t* data, double torque_cmd_rear_r);
 
-  // config detail: {'bit': 32, 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Rear_L', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 32, 'is_signed_var': True, 'len': 16, 'name':
+  // 'Torque_cmd_Rear_L', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
   void set_p_torque_cmd_rear_l(uint8_t* data, double torque_cmd_rear_l);
 
-  // config detail: {'bit': 16, 'description': 'Torque available calculated by inverterTorque available calculated by inverter', 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Forward_R', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 16, 'description': 'Torque available calculated by
+  // inverterTorque available calculated by inverter', 'is_signed_var': True,
+  // 'len': 16, 'name': 'Torque_cmd_Forward_R', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type':
+  // 'double'}
   void set_p_torque_cmd_forward_r(uint8_t* data, double torque_cmd_forward_r);
 
-  // config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name': 'Torque_cmd_Forward_L', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name':
+  // 'Torque_cmd_Forward_L', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': 'Nm', 'precision': 0.1, 'type': 'double'}
   void set_p_torque_cmd_forward_l(uint8_t* data, double torque_cmd_forward_l);
 
-  double torque_cmd_rear_r(const std::uint8_t* bytes, const int32_t length) const;
+  double torque_cmd_rear_r(const std::uint8_t* bytes,
+                           const int32_t length) const;
 
-  double torque_cmd_rear_l(const std::uint8_t* bytes, const int32_t length) const;
+  double torque_cmd_rear_l(const std::uint8_t* bytes,
+                           const int32_t length) const;
 
-  double torque_cmd_forward_r(const std::uint8_t* bytes, const int32_t length) const;
+  double torque_cmd_forward_r(const std::uint8_t* bytes,
+                              const int32_t length) const;
 
-  double torque_cmd_forward_l(const std::uint8_t* bytes, const int32_t length) const;
+  double torque_cmd_forward_l(const std::uint8_t* bytes,
+                              const int32_t length) const;
 
  private:
   double torque_cmd_rear_r_;
@@ -84,5 +112,3 @@ class Scutq123 : public ::apollo::drivers::canbus::ProtocolData<
 }  // namespace yunle
 }  // namespace canbus
 }  // namespace apollo
-
-

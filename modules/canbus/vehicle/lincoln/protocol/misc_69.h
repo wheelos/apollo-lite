@@ -22,6 +22,7 @@
 #pragma once
 
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 /**
@@ -49,8 +50,8 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param timestamp the timestamp of input data
    * @param chassis_detail the parsed chassis_detail
    */
-  virtual void Parse(const std::uint8_t *bytes, int32_t length,
-                     ChassisDetail *chassis_detail) const;
+  virtual void Parse(const std::uint8_t* bytes, int32_t length,
+                     ChassisDetail* chassis_detail) const;
 
   /**
    * @brief calculate the turn signal status based on byte array.
@@ -61,7 +62,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of turn signal status
    */
-  int32_t turn_signal_status(const std::uint8_t *bytes, int32_t length) const;
+  int32_t turn_signal_status(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief calculate the high beam status based on byte array.
@@ -72,7 +73,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of high beam status
    */
-  int32_t high_beam_status(const std::uint8_t *bytes, int32_t length) const;
+  int32_t high_beam_status(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief calculate the wiper status based on byte array.
@@ -83,7 +84,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of wiper status
    */
-  int32_t wiper_status(const std::uint8_t *bytes, int32_t length) const;
+  int32_t wiper_status(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief calculate the ambient light status based on byte array.
@@ -94,7 +95,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of ambient light
    */
-  int32_t ambient_light_status(const std::uint8_t *bytes, int32_t length) const;
+  int32_t ambient_light_status(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check acc on pressed bit based on byte array.
@@ -105,7 +106,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of acc on pressed bit
    */
-  bool is_acc_on_pressed(const std::uint8_t *bytes, int32_t length) const;
+  bool is_acc_on_pressed(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check acc off pressed bit based on byte array.
@@ -116,7 +117,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of acc off pressed bit
    */
-  bool is_acc_off_pressed(const std::uint8_t *bytes, int32_t length) const;
+  bool is_acc_off_pressed(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check acc resume pressed bit based on byte array.
@@ -127,7 +128,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of acc resume pressed bit
    */
-  bool is_acc_resume_pressed(const std::uint8_t *bytes, int32_t length) const;
+  bool is_acc_resume_pressed(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check acc cancel pressed bit based on byte array.
@@ -138,7 +139,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of acc cancel pressed bit
    */
-  bool is_acc_cancel_pressed(const std::uint8_t *bytes, int32_t length) const;
+  bool is_acc_cancel_pressed(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check acc on or off pressed bit based on byte array.
@@ -149,7 +150,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of acc on or off pressed bit
    */
-  bool is_acc_on_or_off_pressed(const std::uint8_t *bytes,
+  bool is_acc_on_or_off_pressed(const std::uint8_t* bytes,
                                 int32_t length) const;
 
   /**
@@ -161,7 +162,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of acc resume or cancel pressed bit
    */
-  bool is_acc_resume_or_cancel_pressed(const std::uint8_t *bytes,
+  bool is_acc_resume_or_cancel_pressed(const std::uint8_t* bytes,
                                        int32_t length) const;
 
   /**
@@ -173,7 +174,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of acc increment set speed pressed bit
    */
-  bool is_acc_increment_set_speed_pressed(const std::uint8_t *bytes,
+  bool is_acc_increment_set_speed_pressed(const std::uint8_t* bytes,
                                           int32_t length) const;
 
   /**
@@ -185,7 +186,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of acc decrement set speed pressed bit
    */
-  bool is_acc_decrement_set_speed_pressed(const std::uint8_t *bytes,
+  bool is_acc_decrement_set_speed_pressed(const std::uint8_t* bytes,
                                           int32_t length) const;
 
   /**
@@ -198,7 +199,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of acc increment following gap pressed bit
    */
-  bool is_acc_increment_following_gap_pressed(const std::uint8_t *bytes,
+  bool is_acc_increment_following_gap_pressed(const std::uint8_t* bytes,
                                               int32_t length) const;
 
   /**
@@ -211,7 +212,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of acc decrement following gap pressed bit
    */
-  bool is_acc_decrement_following_gap_pressed(const std::uint8_t *bytes,
+  bool is_acc_decrement_following_gap_pressed(const std::uint8_t* bytes,
                                               int32_t length) const;
 
   /**
@@ -223,7 +224,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of lka on or off pressed bit
    */
-  bool is_lka_on_or_off_pressed(const std::uint8_t *bytes,
+  bool is_lka_on_or_off_pressed(const std::uint8_t* bytes,
                                 int32_t length) const;
 
   /**
@@ -235,7 +236,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of canbus fault bit
    */
-  bool is_canbus_fault(const std::uint8_t *bytes, int32_t length) const;
+  bool is_canbus_fault(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the driver door open bit based on byte array.
@@ -246,7 +247,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of driver door open bit
    */
-  bool is_driver_door_open(const std::uint8_t *bytes, int32_t length) const;
+  bool is_driver_door_open(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the passenger door open bit based on byte array.
@@ -257,7 +258,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of passenger door open bit
    */
-  bool is_passenger_door_open(const std::uint8_t *bytes, int32_t length) const;
+  bool is_passenger_door_open(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the passenger door open bit based on byte array.
@@ -268,7 +269,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of rear left door open bit
    */
-  bool is_rear_left_door_open(const std::uint8_t *bytes, int32_t length) const;
+  bool is_rear_left_door_open(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the rear right door open bit based on byte array.
@@ -279,7 +280,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of rear right door open bit
    */
-  bool is_rear_right_door_open(const std::uint8_t *bytes, int32_t length) const;
+  bool is_rear_right_door_open(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the hood open bit based on byte array.
@@ -290,7 +291,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of hood open bit
    */
-  bool is_hood_open(const std::uint8_t *bytes, int32_t length) const;
+  bool is_hood_open(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the trunk open bit based on byte array.
@@ -301,7 +302,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of trunk open bit
    */
-  bool is_trunk_open(const std::uint8_t *bytes, int32_t length) const;
+  bool is_trunk_open(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the passenger detected bit based on byte array.
@@ -312,7 +313,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of passenger detected bit
    */
-  bool is_passenger_detected(const std::uint8_t *bytes, int32_t length) const;
+  bool is_passenger_detected(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the passenger airbag enabled bit based on byte array.
@@ -323,7 +324,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of passenger airbag enabled bit
    */
-  bool is_passenger_airbag_enabled(const std::uint8_t *bytes,
+  bool is_passenger_airbag_enabled(const std::uint8_t* bytes,
                                    int32_t length) const;
 
   /**
@@ -335,7 +336,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of driver belt buckled bit
    */
-  bool is_driver_belt_buckled(const std::uint8_t *bytes, int32_t length) const;
+  bool is_driver_belt_buckled(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the passenger belt buckled bit based on byte array.
@@ -346,7 +347,7 @@ class Misc69 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of passenger belt buckled bit
    */
-  bool is_passenger_belt_buckled(const std::uint8_t *bytes,
+  bool is_passenger_belt_buckled(const std::uint8_t* bytes,
                                  int32_t length) const;
 };
 

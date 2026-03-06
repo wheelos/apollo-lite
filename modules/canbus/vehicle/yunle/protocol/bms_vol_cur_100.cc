@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,12 +33,19 @@ const int32_t Bmsvolcur100::ID = 0x100;
 
 void Bmsvolcur100::Parse(const std::uint8_t* bytes, int32_t length,
                          ChassisDetail* chassis) const {
-  chassis->mutable_yunle()->mutable_bms_vol_cur_100()->set_total_voltage(total_voltage(bytes, length));
-  chassis->mutable_yunle()->mutable_bms_vol_cur_100()->set_soc_current(soc_current(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_bms_vol_cur_100()
+      ->set_total_voltage(total_voltage(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_bms_vol_cur_100()
+      ->set_soc_current(soc_current(bytes, length));
 }
 
-// config detail: {'bit': 7, 'is_signed_var': False, 'len': 16, 'name': 'total_voltage', 'offset': 0.0, 'order': 'motorola', 'physical_range': '[0|100]', 'physical_unit': '', 'precision': 0.01, 'type': 'double'}
-double Bmsvolcur100::total_voltage(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 7, 'is_signed_var': False, 'len': 16, 'name':
+// 'total_voltage', 'offset': 0.0, 'order': 'motorola', 'physical_range':
+// '[0|100]', 'physical_unit': '', 'precision': 0.01, 'type': 'double'}
+double Bmsvolcur100::total_voltage(const std::uint8_t* bytes,
+                                   int32_t length) const {
   Byte t0(bytes + 0);
   int32_t x = t0.get_byte(0, 8);
 
@@ -50,8 +58,11 @@ double Bmsvolcur100::total_voltage(const std::uint8_t* bytes, int32_t length) co
   return ret;
 }
 
-// config detail: {'bit': 23, 'is_signed_var': True, 'len': 16, 'name': 'soc_current', 'offset': 0.0, 'order': 'motorola', 'physical_range': '[-100|100]', 'physical_unit': 'A', 'precision': 0.01, 'type': 'double'}
-double Bmsvolcur100::soc_current(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 23, 'is_signed_var': True, 'len': 16, 'name':
+// 'soc_current', 'offset': 0.0, 'order': 'motorola', 'physical_range':
+// '[-100|100]', 'physical_unit': 'A', 'precision': 0.01, 'type': 'double'}
+double Bmsvolcur100::soc_current(const std::uint8_t* bytes,
+                                 int32_t length) const {
   Byte t0(bytes + 2);
   int32_t x = t0.get_byte(0, 8);
 

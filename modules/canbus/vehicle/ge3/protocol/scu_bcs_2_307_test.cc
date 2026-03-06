@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_bcs_2_307.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,15 +36,36 @@ TEST_F(Scubcs2307Test, reset) {
   uint8_t bytes[8] = {0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14};
 
   scubcs2307.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_2_307().bcs_vehspdvd(), 0);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_2_307().bcs_yawrate(),
-                   -1.573735);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_2_307().bcs_vehspd(),
-                   8.53125);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_2_307().bcs_vehlongaccel(),
-                   -20.290904);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_2_307().bcs_vehlataccel(),
-                   -21.158968);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_2_307()
+          .bcs_vehspdvd(),
+      0);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_2_307()
+          .bcs_yawrate(),
+      -1.573735);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_2_307()
+          .bcs_vehspd(),
+      8.53125);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_2_307()
+          .bcs_vehlongaccel(),
+      -20.290904);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_2_307()
+          .bcs_vehlataccel(),
+      -21.158968);  //
 }
 
 }  // namespace ge3

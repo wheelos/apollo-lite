@@ -20,6 +20,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -34,22 +35,30 @@ const int32_t Vinresp151b::ID = 0x51B;
 
 void Vinresp151b::Parse(const std::uint8_t* bytes, int32_t length,
                         ChassisDetail* chassis) const {
-  chassis->mutable_ch()->mutable_vin_resp1_51b()->set_vin08(
-      vin08(bytes, length));
-  chassis->mutable_ch()->mutable_vin_resp1_51b()->set_vin07(
-      vin07(bytes, length));
-  chassis->mutable_ch()->mutable_vin_resp1_51b()->set_vin06(
-      vin06(bytes, length));
-  chassis->mutable_ch()->mutable_vin_resp1_51b()->set_vin05(
-      vin05(bytes, length));
-  chassis->mutable_ch()->mutable_vin_resp1_51b()->set_vin04(
-      vin04(bytes, length));
-  chassis->mutable_ch()->mutable_vin_resp1_51b()->set_vin03(
-      vin03(bytes, length));
-  chassis->mutable_ch()->mutable_vin_resp1_51b()->set_vin02(
-      vin02(bytes, length));
-  chassis->mutable_ch()->mutable_vin_resp1_51b()->set_vin01(
-      vin01(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_vin_resp1_51b()
+      ->set_vin08(vin08(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_vin_resp1_51b()
+      ->set_vin07(vin07(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_vin_resp1_51b()
+      ->set_vin06(vin06(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_vin_resp1_51b()
+      ->set_vin05(vin05(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_vin_resp1_51b()
+      ->set_vin04(vin04(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_vin_resp1_51b()
+      ->set_vin03(vin03(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_vin_resp1_51b()
+      ->set_vin02(vin02(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_vin_resp1_51b()
+      ->set_vin01(vin01(bytes, length));
 }
 
 // config detail: {'bit': 56, 'description': 'VIN Response', 'is_signed_var':

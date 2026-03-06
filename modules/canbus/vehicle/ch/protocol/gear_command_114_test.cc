@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/gear_command_114.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

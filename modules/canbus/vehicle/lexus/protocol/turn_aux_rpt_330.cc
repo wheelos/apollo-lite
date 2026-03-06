@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,18 +33,18 @@ const int32_t Turnauxrpt330::ID = 0x330;
 
 void Turnauxrpt330::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_turn_aux_rpt_330()
       ->set_pass_blinker_bulb_on_is_valid(
           pass_blinker_bulb_on_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_turn_aux_rpt_330()
       ->set_pass_blinker_bulb_on(pass_blinker_bulb_on(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_turn_aux_rpt_330()
       ->set_driver_blinker_bulb_on_is_valid(
           driver_blinker_bulb_on_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_turn_aux_rpt_330()
       ->set_driver_blinker_bulb_on(driver_blinker_bulb_on(bytes, length));
 }

@@ -15,10 +15,12 @@ limitations under the License.
 
 #include "modules/canbus/vehicle/zhongyun/zhongyun_controller.h"
 
+#include "modules/canbus/vehicle/zhongyun/proto/zhongyun.pb.h"
 #include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/canbus/vehicle/zhongyun/zhongyun_message_manager.h"
 #include "modules/drivers/canbus/can_comm/can_sender.h"
@@ -159,11 +161,13 @@ Chassis ZhongyunController::chassis() {
   // 3
   chassis_.set_engine_started(true);
   // if there is not zhongyun, no chassis detail can be retrieved and return
-  if (!chassis_detail.has_zhongyun()) {
+  if (!::apollo::canbus::HasChassisExtension<::apollo::canbus::Zhongyun>(
+          chassis_detail)) {
     AERROR << "NO ZHONGYUN chassis information!";
     return chassis_;
   }
-  Zhongyun zhy = chassis_detail.zhongyun();
+  Zhongyun zhy = ::apollo::canbus::GetChassisExtensionOrDefault<
+      ::apollo::canbus::Zhongyun>(chassis_detail);
 
   // 4 engine_rpm
   if (zhy.has_vehicle_state_feedback_2_c4() &&
@@ -261,7 +265,6 @@ Chassis ZhongyunController::chassis() {
 void ZhongyunController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
-  can_sender_->Update();
 }
 
 ErrorCode ZhongyunController::EnableAutoMode() {
@@ -512,12 +515,14 @@ void ZhongyunController::ResetProtocol() {
 bool ZhongyunController::CheckChassisError() {
   ChassisDetail chassis_detail;
   message_manager_->GetSensorData(&chassis_detail);
-  if (!chassis_detail.has_zhongyun()) {
+  if (!::apollo::canbus::HasChassisExtension<::apollo::canbus::Zhongyun>(
+          chassis_detail)) {
     AERROR_EVERY(100) << "ChassisDetail has NO zhongyun vehicle info."
                       << chassis_detail.DebugString();
     return false;
   }
-  Zhongyun zhy = chassis_detail.zhongyun();
+  Zhongyun zhy = ::apollo::canbus::GetChassisExtensionOrDefault<
+      ::apollo::canbus::Zhongyun>(chassis_detail);
   // check steer error
   if (zhy.has_error_state_e1() &&
       zhy.error_state_e1().has_steering_error_code()) {

@@ -16,10 +16,12 @@
 
 #include "modules/canbus/vehicle/neolix_edu/neolix_edu_controller.h"
 
+#include "modules/canbus/vehicle/neolix_edu/proto/neolix_edu.pb.h"
 #include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/canbus/vehicle/neolix_edu/neolix_edu_message_manager.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/drivers/canbus/can_comm/can_sender.h"
@@ -165,79 +167,146 @@ Chassis Neolix_eduController::chassis() {
   chassis_.set_engine_started(true);
 
   // 3 speed_mps
-  if (chassis_detail.neolix_edu().has_aeb_frontwheelspeed_353() &&
-      chassis_detail.neolix_edu().has_aeb_rearwheelspeed_354()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .has_aeb_frontwheelspeed_353() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .has_aeb_rearwheelspeed_354()) {
     auto wheelspeed = chassis_.mutable_wheel_speed();
     wheelspeed->set_wheel_spd_fl(
-        chassis_detail.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fl());
+        ::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
+            .aeb_frontwheelspeed_353()
+            .wheelspeed_fl());
     wheelspeed->set_wheel_spd_fr(
-        chassis_detail.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fr());
+        ::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
+            .aeb_frontwheelspeed_353()
+            .wheelspeed_fr());
     wheelspeed->set_wheel_spd_rl(
-        chassis_detail.neolix_edu().aeb_rearwheelspeed_354().wheelspeed_rl());
+        ::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
+            .aeb_rearwheelspeed_354()
+            .wheelspeed_rl());
     wheelspeed->set_wheel_spd_rr(
-        chassis_detail.neolix_edu().aeb_rearwheelspeed_354().wheelspeed_rr());
-    chassis_.set_speed_mps(
-        (chassis_detail.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fl() +
-         chassis_detail.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fr() +
-         chassis_detail.neolix_edu().aeb_rearwheelspeed_354().wheelspeed_rl() +
-         chassis_detail.neolix_edu().aeb_rearwheelspeed_354().wheelspeed_rr()) /
-        4 / 3.6);
+        ::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
+            .aeb_rearwheelspeed_354()
+            .wheelspeed_rr());
+    chassis_.set_speed_mps((::apollo::canbus::GetChassisExtensionOrDefault<
+                                ::apollo::canbus::Neolix_edu>(chassis_detail)
+                                .aeb_frontwheelspeed_353()
+                                .wheelspeed_fl() +
+                            ::apollo::canbus::GetChassisExtensionOrDefault<
+                                ::apollo::canbus::Neolix_edu>(chassis_detail)
+                                .aeb_frontwheelspeed_353()
+                                .wheelspeed_fr() +
+                            ::apollo::canbus::GetChassisExtensionOrDefault<
+                                ::apollo::canbus::Neolix_edu>(chassis_detail)
+                                .aeb_rearwheelspeed_354()
+                                .wheelspeed_rl() +
+                            ::apollo::canbus::GetChassisExtensionOrDefault<
+                                ::apollo::canbus::Neolix_edu>(chassis_detail)
+                                .aeb_rearwheelspeed_354()
+                                .wheelspeed_rr()) /
+                           4 / 3.6);
   } else {
     chassis_.set_speed_mps(0);
   }
   // 4 SOC
-  if (chassis_detail.neolix_edu().has_vcu_vehicle_status_report_101() &&
-      chassis_detail.neolix_edu()
+  if (::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .has_vcu_vehicle_status_report_101() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
           .vcu_vehicle_status_report_101()
           .has_vcu_display_soc()) {
-    chassis_.set_battery_soc_percentage(chassis_detail.neolix_edu()
-                                            .vcu_vehicle_status_report_101()
-                                            .vcu_display_soc());
+    chassis_.set_battery_soc_percentage(
+        ::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
+            .vcu_vehicle_status_report_101()
+            .vcu_display_soc());
   } else {
     chassis_.set_battery_soc_percentage(0);
   }
   // 5 steering
-  if (chassis_detail.neolix_edu().has_vcu_eps_report_57() &&
-      chassis_detail.neolix_edu().vcu_eps_report_57().has_vcu_real_angle()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .has_vcu_eps_report_57() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .vcu_eps_report_57()
+          .has_vcu_real_angle()) {
     chassis_.set_steering_percentage(static_cast<float>(
-        chassis_detail.neolix_edu().vcu_eps_report_57().vcu_real_angle() * 100 /
-        vehicle_params_.max_steer_angle() * M_PI / 180));
+        ::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
+            .vcu_eps_report_57()
+            .vcu_real_angle() *
+        100 / vehicle_params_.max_steer_angle() * M_PI / 180));
   } else {
     chassis_.set_steering_percentage(0);
   }
 
   // 6 throttle
-  if (chassis_detail.neolix_edu().has_vcu_drive_report_52() &&
-      chassis_detail.neolix_edu().vcu_drive_report_52().has_vcu_real_torque()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .has_vcu_drive_report_52() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .vcu_drive_report_52()
+          .has_vcu_real_torque()) {
     chassis_.set_throttle_percentage(
-        chassis_detail.neolix_edu().vcu_drive_report_52().vcu_real_torque() *
+        ::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
+            .vcu_drive_report_52()
+            .vcu_real_torque() *
         2);
   } else {
     chassis_.set_throttle_percentage(0);
   }
 
   // 7 brake
-  if (chassis_detail.neolix_edu().has_vcu_brake_report_47() &&
-      chassis_detail.neolix_edu().vcu_brake_report_47().has_vcu_real_brake()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .has_vcu_brake_report_47() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .vcu_brake_report_47()
+          .has_vcu_real_brake()) {
     chassis_.set_brake_percentage(
-        chassis_detail.neolix_edu().vcu_brake_report_47().vcu_real_brake());
+        ::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
+            .vcu_brake_report_47()
+            .vcu_real_brake());
   } else {
     chassis_.set_brake_percentage(0);
   }
   // 8 gear
-  if (chassis_detail.neolix_edu().has_vcu_drive_report_52() &&
-      chassis_detail.neolix_edu().vcu_drive_report_52().has_vcu_real_shift()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .has_vcu_drive_report_52() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .vcu_drive_report_52()
+          .has_vcu_real_shift()) {
     chassis_.set_gear_location(
-        (apollo::canbus::Chassis_GearPosition)chassis_detail.neolix_edu()
-            .vcu_drive_report_52()
-            .vcu_real_shift());
+        (apollo::canbus::Chassis_GearPosition)::apollo::canbus::
+            GetChassisExtensionOrDefault<::apollo::canbus::Neolix_edu>(
+                chassis_detail)
+                .vcu_drive_report_52()
+                .vcu_real_shift());
   }
   // 9 epb
-  if (chassis_detail.neolix_edu().has_vcu_brake_report_47() &&
-      chassis_detail.neolix_edu()
+  if (::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .has_vcu_brake_report_47() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
           .vcu_brake_report_47()
           .has_vcu_real_parking_status()) {
-    if (chassis_detail.neolix_edu()
+    if (::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
             .vcu_brake_report_47()
             .vcu_real_parking_status() == 1) {
       chassis_.set_parking_brake(true);
@@ -263,11 +332,15 @@ Chassis Neolix_eduController::chassis() {
   }
 
   // 11 bumper event
-  if (chassis_detail.neolix_edu().has_vcu_brake_report_47() &&
-      chassis_detail.neolix_edu()
+  if (::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
+          .has_vcu_brake_report_47() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<
+          ::apollo::canbus::Neolix_edu>(chassis_detail)
           .vcu_brake_report_47()
           .has_vcu_ehb_brake_state()) {
-    if (chassis_detail.neolix_edu()
+    if (::apollo::canbus::GetChassisExtensionOrDefault<
+            ::apollo::canbus::Neolix_edu>(chassis_detail)
             .vcu_brake_report_47()
             .vcu_ehb_brake_state() ==
         Vcu_brake_report_47::VCU_EHB_BUMPER_BRAKE) {
@@ -290,7 +363,6 @@ bool Neolix_eduController::VerifyID() { return true; }
 void Neolix_eduController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
-  can_sender_->Update();
 }
 
 ErrorCode Neolix_eduController::EnableAutoMode() {

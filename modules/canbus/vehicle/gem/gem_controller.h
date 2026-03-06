@@ -19,14 +19,13 @@
 #include <memory>
 #include <thread>
 
-#include "cyber/common/macros.h"
-
 #include "modules/canbus/proto/canbus_conf.pb.h"
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
 #include "modules/common_msgs/basic_msgs/error_code.pb.h"
+#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
 
+#include "cyber/common/macros.h"
 #include "modules/canbus/vehicle/gem/protocol/accel_cmd_67.h"
 #include "modules/canbus/vehicle/gem/protocol/brake_cmd_6b.h"
 #include "modules/canbus/vehicle/gem/protocol/global_cmd_69.h"

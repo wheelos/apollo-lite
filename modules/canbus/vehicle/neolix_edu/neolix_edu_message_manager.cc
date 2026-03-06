@@ -21,7 +21,6 @@
 #include "modules/canbus/vehicle/neolix_edu/protocol/ads_drive_command_50.h"
 #include "modules/canbus/vehicle/neolix_edu/protocol/ads_eps_command_56.h"
 #include "modules/canbus/vehicle/neolix_edu/protocol/ads_light_horn_command_310.h"
-
 #include "modules/canbus/vehicle/neolix_edu/protocol/aeb_diagnosis1_626.h"
 #include "modules/canbus/vehicle/neolix_edu/protocol/aeb_diagresp_718.h"
 #include "modules/canbus/vehicle/neolix_edu/protocol/aeb_frontwheelspeed_353.h"

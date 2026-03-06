@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,31 +33,31 @@ const int32_t Vcupowerstatus214::ID = 0x214;
 
 void Vcupowerstatus214::Parse(const std::uint8_t* bytes, int32_t length,
                               ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_powerstatus_214()
       ->set_vcu_powermode(vcu_powermode(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_powerstatus_214()
       ->set_vcu_powermodevalid(vcu_powermodevalid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_powerstatus_214()
       ->set_replacebatterystateindication(
           replacebatterystateindication(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_powerstatus_214()
       ->set_forbidden_aeb_signal(forbidden_aeb_signal(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_powerstatus_214()
       ->set_bcu_chargedischargecurrent(
           bcu_chargedischargecurrent(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_powerstatus_214()
       ->set_bcu_batt_internalvoltage(bcu_batt_internalvoltage(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_powerstatus_214()
       ->set_vcu_driverinfo_alivecounter(
           vcu_driverinfo_alivecounter(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_powerstatus_214()
       ->set_vcu_driverinfo_checksum(vcu_driverinfo_checksum(bytes, length));
 }

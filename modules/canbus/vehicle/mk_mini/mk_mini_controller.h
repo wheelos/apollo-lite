@@ -35,7 +35,7 @@ namespace mk_mini {
 
 class Mk_miniController final : public VehicleController {
  public:
-  explicit Mk_miniController() {};
+  explicit Mk_miniController(){};
 
   virtual ~Mk_miniController();
 

@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_1_301.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,13 +33,18 @@ const int32_t Scu1301::ID = 0x301;
 
 void Scu1301::Parse(const std::uint8_t* bytes, int32_t length,
                     ChassisDetail* chassis) const {
-  chassis->mutable_ge3()->mutable_scu_1_301()->set_vin16(vin16(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_1_301()->set_scu_stopbutst(
-      scu_stopbutst(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_1_301()->set_scu_drvmode(
-      scu_drvmode(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_1_301()->set_scu_faultst(
-      scu_faultst(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_1_301()
+      ->set_vin16(vin16(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_1_301()
+      ->set_scu_stopbutst(scu_stopbutst(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_1_301()
+      ->set_scu_drvmode(scu_drvmode(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_1_301()
+      ->set_scu_faultst(scu_faultst(bytes, length));
 }
 
 // config detail: {'description': 'VIN string character 16', 'offset': 0.0,

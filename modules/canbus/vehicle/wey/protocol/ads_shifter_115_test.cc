@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/protocol/ads_shifter_115.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

@@ -23,6 +23,7 @@
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
 #include "modules/canbus/vehicle/ch/ch_message_manager.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/drivers/canbus/can_comm/can_sender.h"
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
@@ -174,10 +175,18 @@ Chassis ChController::chassis() {
   // 4 engine rpm ch has no engine rpm
   // chassis_.set_engine_rpm(0);
   // 5 ch has no wheel spd.
-  if (chassis_detail.ch().has_ecu_status_1_515() &&
-      chassis_detail.ch().ecu_status_1_515().has_speed()) {
-    chassis_.set_speed_mps(
-        static_cast<float>(chassis_detail.ch().ecu_status_1_515().speed()));
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_ecu_status_1_515() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .ecu_status_1_515()
+          .has_speed()) {
+    chassis_.set_speed_mps(static_cast<float>(
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .ecu_status_1_515()
+            .speed()));
   } else {
     chassis_.set_speed_mps(0);
   }
@@ -187,40 +196,69 @@ Chassis ChController::chassis() {
   // 7 ch has no fuel. do not set;
   // chassis_.set_fuel_range_m(0);
   // 8 throttle
-  if (chassis_detail.ch().has_throttle_status__510() &&
-      chassis_detail.ch().throttle_status__510().has_throttle_pedal_sts()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_throttle_status__510() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .throttle_status__510()
+          .has_throttle_pedal_sts()) {
     chassis_.set_throttle_percentage(static_cast<float>(
-        chassis_detail.ch().throttle_status__510().throttle_pedal_sts()));
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .throttle_status__510()
+            .throttle_pedal_sts()));
   } else {
     chassis_.set_throttle_percentage(0);
   }
   // 9 brake
-  if (chassis_detail.ch().has_brake_status__511() &&
-      chassis_detail.ch().brake_status__511().has_brake_pedal_sts()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_brake_status__511() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .brake_status__511()
+          .has_brake_pedal_sts()) {
     chassis_.set_brake_percentage(static_cast<float>(
-        chassis_detail.ch().brake_status__511().brake_pedal_sts()));
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .brake_status__511()
+            .brake_pedal_sts()));
   } else {
     chassis_.set_brake_percentage(0);
   }
   // 10 gear
-  if (chassis_detail.ch().has_gear_status_514() &&
-      chassis_detail.ch().gear_status_514().has_gear_sts()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_gear_status_514() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .gear_status_514()
+          .has_gear_sts()) {
     Chassis::GearPosition gear_pos = Chassis::GEAR_INVALID;
 
-    if (chassis_detail.ch().gear_status_514().gear_sts() ==
-        Gear_status_514::GEAR_STS_NEUTRAL) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .gear_status_514()
+            .gear_sts() == Gear_status_514::GEAR_STS_NEUTRAL) {
       gear_pos = Chassis::GEAR_NEUTRAL;
     }
-    if (chassis_detail.ch().gear_status_514().gear_sts() ==
-        Gear_status_514::GEAR_STS_REVERSE) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .gear_status_514()
+            .gear_sts() == Gear_status_514::GEAR_STS_REVERSE) {
       gear_pos = Chassis::GEAR_REVERSE;
     }
-    if (chassis_detail.ch().gear_status_514().gear_sts() ==
-        Gear_status_514::GEAR_STS_DRIVE) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .gear_status_514()
+            .gear_sts() == Gear_status_514::GEAR_STS_DRIVE) {
       gear_pos = Chassis::GEAR_DRIVE;
     }
-    if (chassis_detail.ch().gear_status_514().gear_sts() ==
-        Gear_status_514::GEAR_STS_PARK) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .gear_status_514()
+            .gear_sts() == Gear_status_514::GEAR_STS_PARK) {
       gear_pos = Chassis::GEAR_PARKING;
     }
 
@@ -229,19 +267,35 @@ Chassis ChController::chassis() {
     chassis_.set_gear_location(Chassis::GEAR_NONE);
   }
   // 11 steering
-  if (chassis_detail.ch().has_steer_status__512() &&
-      chassis_detail.ch().steer_status__512().has_steer_angle_sts()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_steer_status__512() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .steer_status__512()
+          .has_steer_angle_sts()) {
     chassis_.set_steering_percentage(static_cast<float>(
-        chassis_detail.ch().steer_status__512().steer_angle_sts() * 100.0 /
-        vehicle_params_.max_steer_angle()));
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .steer_status__512()
+            .steer_angle_sts() *
+        100.0 / vehicle_params_.max_steer_angle()));
   } else {
     chassis_.set_steering_percentage(0);
   }
   // 12 battery soc
-  if (chassis_detail.ch().has_ecu_status_2_516() &&
-      chassis_detail.ch().ecu_status_2_516().has_battery_soc()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_ecu_status_2_516() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .ecu_status_2_516()
+          .has_battery_soc()) {
     chassis_.set_battery_soc_percentage(
-        chassis_detail.ch().ecu_status_2_516().battery_soc());
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .ecu_status_2_516()
+            .battery_soc());
   }
   // 13
   if (chassis_detail.has_surround()) {
@@ -264,8 +318,13 @@ Chassis ChController::chassis() {
   // vin set 17 bits, like LSBN1234567890123 is prased as
   // vin17(L),vin16(S),vin15(B),.....,vin03(1)vin02(2),vin01(3)
   std::string vin = "";
-  if (chassis_detail.ch().has_vin_resp1_51b()) {
-    Vin_resp1_51b vin_51b = chassis_detail.ch().vin_resp1_51b();
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_vin_resp1_51b()) {
+    Vin_resp1_51b vin_51b =
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .vin_resp1_51b();
     vin += vin_51b.vin01();
     vin += vin_51b.vin02();
     vin += vin_51b.vin03();
@@ -275,8 +334,13 @@ Chassis ChController::chassis() {
     vin += vin_51b.vin07();
     vin += vin_51b.vin08();
   }
-  if (chassis_detail.ch().has_vin_resp2_51c()) {
-    Vin_resp2_51c vin_51c = chassis_detail.ch().vin_resp2_51c();
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_vin_resp2_51c()) {
+    Vin_resp2_51c vin_51c =
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .vin_resp2_51c();
     vin += vin_51c.vin09();
     vin += vin_51c.vin10();
     vin += vin_51c.vin11();
@@ -286,17 +350,30 @@ Chassis ChController::chassis() {
     vin += vin_51c.vin15();
     vin += vin_51c.vin16();
   }
-  if (chassis_detail.ch().has_vin_resp3_51d()) {
-    Vin_resp3_51d vin_51d = chassis_detail.ch().vin_resp3_51d();
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_vin_resp3_51d()) {
+    Vin_resp3_51d vin_51d =
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .vin_resp3_51d();
     vin += vin_51d.vin17();
   }
   std::reverse(vin.begin(), vin.end());
   chassis_.mutable_vehicle_id()->set_vin(vin);
 
   // 16 front bumper event
-  if (chassis_detail.ch().has_brake_status__511() &&
-      chassis_detail.ch().brake_status__511().has_front_bump_env()) {
-    if (chassis_detail.ch().brake_status__511().front_bump_env() ==
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_brake_status__511() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .brake_status__511()
+          .has_front_bump_env()) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .brake_status__511()
+            .front_bump_env() ==
         Brake_status__511::FRONT_BUMP_ENV_FRONT_BUMPER_ENV) {
       chassis_.set_front_bumper_event(Chassis::BUMPER_PRESSED);
     } else {
@@ -306,9 +383,17 @@ Chassis ChController::chassis() {
     chassis_.set_front_bumper_event(Chassis::BUMPER_INVALID);
   }
   // 17 back bumper event
-  if (chassis_detail.ch().has_brake_status__511() &&
-      chassis_detail.ch().brake_status__511().has_back_bump_env()) {
-    if (chassis_detail.ch().brake_status__511().back_bump_env() ==
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .has_brake_status__511() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+          chassis_detail)
+          .brake_status__511()
+          .has_back_bump_env()) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+            chassis_detail)
+            .brake_status__511()
+            .back_bump_env() ==
         Brake_status__511::BACK_BUMP_ENV_BACK_BUMPER_ENV) {
       chassis_.set_back_bumper_event(Chassis::BUMPER_PRESSED);
     } else {
@@ -324,7 +409,6 @@ Chassis ChController::chassis() {
 void ChController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
-  can_sender_->Update();
 }
 
 ErrorCode ChController::EnableAutoMode() {
@@ -548,12 +632,14 @@ void ChController::ResetProtocol() { message_manager_->ResetSendMessages(); }
 bool ChController::CheckChassisError() {
   ChassisDetail chassis_detail;
   message_manager_->GetSensorData(&chassis_detail);
-  if (!chassis_detail.has_ch()) {
+  if (!::apollo::canbus::HasChassisExtension<::apollo::canbus::Ch>(
+          chassis_detail)) {
     AERROR_EVERY(100) << "ChassisDetail has NO ch vehicle info."
                       << chassis_detail.DebugString();
     return false;
   }
-  Ch ch = chassis_detail.ch();
+  Ch ch = ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(
+      chassis_detail);
   // steer motor fault
   if (ch.has_steer_status__512()) {
     if (Steer_status__512::STEER_ERR_STEER_MOTOR_ERR ==

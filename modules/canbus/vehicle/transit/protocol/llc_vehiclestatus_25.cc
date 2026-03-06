@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,7 +33,7 @@ const int32_t Llcvehiclestatus25::ID = 0x25;
 
 void Llcvehiclestatus25::Parse(const std::uint8_t* bytes, int32_t length,
                                ChassisDetail* chassis) const {
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_vehiclestatus_25()
       ->set_llc_fbk_12voltage(llc_fbk_12voltage(bytes, length));
 }

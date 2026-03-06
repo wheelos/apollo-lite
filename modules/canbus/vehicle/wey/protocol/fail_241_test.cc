@@ -15,7 +15,12 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/protocol/fail_241.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/wey/proto/wey.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,11 +38,36 @@ TEST_F(Fail241Test, reset) {
   uint8_t bytes[8] = {0x88, 0x44, 0x22, 0x11, 0x95, 0x12, 0x13, 0x14};
 
   fail1.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fail_241().engfail(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fail_241().espfail(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fail_241().epbfail(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fail_241().shiftfail(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fail_241().epsfail(), 1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fail_241()
+          .engfail(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fail_241()
+          .espfail(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fail_241()
+          .epbfail(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fail_241()
+          .shiftfail(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fail_241()
+          .epsfail(),
+      1);
 }
 
 }  // namespace wey
