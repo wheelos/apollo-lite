@@ -227,6 +227,7 @@ def setup_python_non_interactively(environ_cp):
     """Setup python related env variables non-interactively."""
     # Get PYTHON_BIN_PATH, default is the current running python.
     python_bin_path = sys.executable
+    print('python_bin_path:', python_bin_path)
     if not os.path.exists(python_bin_path):
         print("Invalid python path: {} cannot be found.".format(python_bin_path))
         sys.exit(1)
@@ -832,6 +833,7 @@ def set_other_cuda_vars(environ_cp):
 
 def validate_cuda_config(environ_cp):
     """Run find_cuda_config.py and return cuda_toolkit_path, or None."""
+    python_bin_path = sys.executable
 
     # Primary check: Only for CUDA, which is essential.
     base_cuda_libraries = ["cuda"]
@@ -846,7 +848,7 @@ def validate_cuda_config(environ_cp):
 
     # Find essential libraries (without cuDNN)
     proc = subprocess.Popen(
-        ["python", find_cuda_script] + base_cuda_libraries,
+        [python_bin_path, find_cuda_script] + base_cuda_libraries,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,  # Capture stderr to check for cudnn errors later
         env=environ_cp,
@@ -868,7 +870,7 @@ def validate_cuda_config(environ_cp):
     # Second, Optional Attempt: Try to find cuDNN as well
     all_cuda_libraries = base_cuda_libraries + ["cudnn"]
     proc_with_cudnn = subprocess.Popen(
-        ["python", find_cuda_script] + all_cuda_libraries,
+        [python_bin_path, find_cuda_script] + all_cuda_libraries,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=environ_cp,
