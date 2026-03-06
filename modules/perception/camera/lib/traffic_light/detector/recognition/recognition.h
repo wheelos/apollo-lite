@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2018 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
@@ -13,17 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
+
 #pragma once
 
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "modules/perception/pipeline/proto/stage/recognition.pb.h"
+
 #include "cyber/common/macros.h"
 #include "modules/perception/camera/lib/interface/base_traffic_light_detector.h"
 #include "modules/perception/camera/lib/traffic_light/detector/recognition/classify.h"
+#include "modules/perception/camera/lib/traffic_light/detector/recognition/efficient_net_recognizer.h"
 #include "modules/perception/inference/inference.h"
-#include "modules/perception/pipeline/proto/stage/recognition.pb.h"
 #include "modules/perception/pipeline/stage.h"
 
 namespace apollo {
@@ -57,6 +60,8 @@ class TrafficLightRecognition final : public BaseTrafficLightDetector {
   std::shared_ptr<ClassifyBySimple> classify_vertical_;
   std::shared_ptr<ClassifyBySimple> classify_quadrate_;
   std::shared_ptr<ClassifyBySimple> classify_horizontal_;
+  TrafficLightRecognitionBackend recognizer_type_ = TL_RECOGNITION_CAFFE;
+  std::unique_ptr<TrafficLightEfficientNetRecognizer> efficient_net_;
 
   TrafficLightRecognitionConfig recognize_param_;
   std::string recognition_root_dir;

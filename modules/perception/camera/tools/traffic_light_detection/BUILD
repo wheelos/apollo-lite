@@ -16,4 +16,18 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "ultralytics_detector_tool",
+    srcs = ["ultralytics_detector_tool.cc"],
+    deps = [
+        "//cyber",
+        "//modules/perception/camera/common",
+        "//modules/perception/camera/lib/traffic_light/detector/detection:detection",
+        "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
+        "@com_github_gflags_gflags//:gflags",
+        "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
+    ],
+)
+
 cpplint()

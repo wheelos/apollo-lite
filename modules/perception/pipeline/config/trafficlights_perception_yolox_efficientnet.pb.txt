@@ -1,0 +1,95 @@
+stage_type: TRAFFIC_LIGHT_DETECTION
+stage_type: TRAFFIC_LIGHT_RECOGNITION
+stage_type: SEMANTIC_REVISER
+
+stage_config: {
+  stage_type: TRAFFIC_LIGHT_DETECTION
+  enabled: true
+
+  traffic_light_detection_config: {
+    detector_type: TL_DETECTION_YOLOX
+    gpu_id: 0
+    max_batch_size: 3
+
+    # crop params (shared with caffe detector)
+    min_crop_size: 400
+    crop_method: 0
+    crop_scale: 2.5
+
+    yolox_config: {
+      model_root_dir: "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_detection/tl_detection_yolox"
+      onnx_file: "yolox.onnx"
+      enable_fp16: true
+
+      input_name: "images"
+      output_bbox_name: "bbox"
+      output_conf_name: "conf"
+      output_cls_name: "cls"
+
+      resize_image_height: 384
+      resize_image_width: 384
+      cls_threshold: 0.24
+      pad_value: 114
+
+      # Optional; if not provided, defaults will be used.
+      blobs { name: "images" shape: 3 shape: 3 shape: 384 shape: 384 }
+      blobs { name: "bbox" shape: 3 shape: 3024 shape: 4 }
+      blobs { name: "conf" shape: 3 shape: 3024 }
+      blobs { name: "cls" shape: 3 shape: 3024 }
+    }
+  }
+}
+
+stage_config: {
+  stage_type: TRAFFIC_LIGHT_RECOGNITION
+  enabled: true
+
+  traffic_light_recognition_config: {
+    recognizer_type: TL_RECOGNITION_EFFICIENT_NET
+
+    efficient_net: {
+      model_root_dir: "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_recognition/efficient_net"
+      onnx_file: "efficient_net.onnx"
+      enable_fp16: true
+      gpu_id: 0
+
+      input_name: "inputs"
+      output_cls_name: "outputs_cls"
+      output_status_name: "outputs_status"
+
+      classify_threshold: 0.5
+      classify_resize_width: 96
+      classify_resize_height: 96
+      scale: 0.00392157
+      mean_b: 0
+      mean_g: 0
+      mean_r: 0
+      is_bgr: true
+      max_batch_size: 3
+
+      # Optional; if not provided, defaults will be used.
+      blobs { name: "inputs" shape: 3 shape: 3 shape: 96 shape: 96 }
+      blobs { name: "outputs_cls" shape: 3 shape: 4 }
+      blobs { name: "outputs_status" shape: 3 shape: 1 }
+    }
+  }
+}
+
+stage_config: {
+  stage_type: SEMANTIC_REVISER
+  enabled: true
+
+  semantic_reviser_config: {
+    revise_time_second: 1.5
+    blink_threshold_second: 0.55
+    hysteretic_threshold_count: 1
+    traffic_light_semantic_root_dir: "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_tracker"
+  }
+}
+
+traffic_light_config: {
+  trafficlights_perception_config: {
+    gpu_id: 0
+  }
+}
+

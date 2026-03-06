@@ -1,14 +1,14 @@
 /******************************************************************************
  * Copyright 2018 The Apollo Authors. All Rights Reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an AS IS BASIS,
+ * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -19,14 +19,17 @@
 #include <string>
 #include <vector>
 
+#include "modules/perception/pipeline/proto/stage/detection.pb.h"
+
 #include "cyber/common/macros.h"
 #include "modules/perception/base/blob.h"
 #include "modules/perception/base/image_8u.h"
 #include "modules/perception/camera/lib/interface/base_traffic_light_detector.h"
 #include "modules/perception/camera/lib/traffic_light/detector/detection/cropbox.h"
 #include "modules/perception/camera/lib/traffic_light/detector/detection/select.h"
+#include "modules/perception/camera/lib/traffic_light/detector/detection/ultralytics_detector.h"
+#include "modules/perception/camera/lib/traffic_light/detector/detection/yolox_detector.h"
 #include "modules/perception/inference/inference.h"
-#include "modules/perception/pipeline/proto/stage/detection.pb.h"
 #include "modules/perception/pipeline/stage.h"
 
 namespace apollo {
@@ -59,9 +62,9 @@ class TrafficLightDetection : public BaseTrafficLightDetector {
     return detected_bboxes_;
   }
 
-  bool Init(const StageConfig& stage_config) override;
+  bool Init(const StageConfig &stage_config) override;
 
-  bool Process(DataFrame* data_frame) override;
+  bool Process(DataFrame *data_frame) override;
 
   bool IsEnabled() const override { return enable_; }
 
@@ -70,6 +73,9 @@ class TrafficLightDetection : public BaseTrafficLightDetector {
  private:
   TrafficLightDetectionConfig detection_param_;
   std::string detection_root_dir;
+  TrafficLightDetectionBackend detector_type_ = TL_DETECTION_CAFFE;
+  std::unique_ptr<TrafficLightYoloxDetector> yolox_detector_;
+  std::unique_ptr<TrafficLightUltralyticsDetector> ultralytics_detector_;
 
   DataProvider::ImageOptions data_provider_image_option_;
   std::shared_ptr<inference::Inference> rt_net_ = nullptr;

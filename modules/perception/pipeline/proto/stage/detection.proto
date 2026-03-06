@@ -2,6 +2,70 @@ syntax = "proto2";
 
 package apollo.perception.camera;
 
+enum TrafficLightDetectionBackend {
+  TL_DETECTION_CAFFE = 0;
+  TL_DETECTION_YOLOX = 1;
+  TL_DETECTION_ULTRALYTICS_COLOR = 2;
+}
+
+message TLDetectionModelBlob {
+  optional string name = 1;
+  repeated int32 shape = 2;
+}
+
+message YoloxTrafficLightDetectionConfig {
+  // Model files
+  optional string model_root_dir = 1;
+  optional string onnx_file = 2;
+  optional bool enable_fp16 = 3 [default = true];
+
+  // Tensor shapes used to initialize MultiBatchInference blobs.
+  // It should include both inputs and outputs.
+  repeated TLDetectionModelBlob blobs = 10;
+
+  // Blob names (must match ONNX)
+  optional string input_name = 11 [default = "images"];
+  optional string output_bbox_name = 12 [default = "bbox"];
+  optional string output_conf_name = 13 [default = "conf"];
+  optional string output_cls_name = 14 [default = "cls"];
+
+  // Preprocess & postprocess params
+  optional int32 resize_image_height = 20 [default = 384];
+  optional int32 resize_image_width = 21 [default = 384];
+  optional float cls_threshold = 22 [default = 0.24];
+  optional int32 pad_value = 23 [default = 114];
+
+  // NMS thresholds (kept consistent with Apollo 10.x YOLOX implementation)
+  optional float overlap_nms_threshold = 30 [default = 0.7];
+  optional float iou_nms_threshold = 31 [default = 0.7];
+}
+
+message UltralyticsTrafficLightDetectionConfig {
+  optional string model_root_dir = 1;
+  optional string onnx_file = 2;
+  optional bool enable_fp16 = 3 [default = true];
+
+  repeated TLDetectionModelBlob blobs = 10;
+
+  optional string input_name = 11 [default = "images"];
+  optional string output_name = 12 [default = "output0"];
+
+  optional int32 resize_image_height = 20 [default = 640];
+  optional int32 resize_image_width = 21 [default = 640];
+  optional float conf_threshold = 22 [default = 0.25];
+  optional float iou_nms_threshold = 23 [default = 0.45];
+  optional int32 pad_value = 24 [default = 114];
+  optional float scale = 25 [default = 0.00392157];
+  optional bool is_bgr = 26 [default = false];
+  optional int32 num_classes = 27 [default = 3];
+  optional int32 num_predictions = 28 [default = 8400];
+  optional int32 green_class_id = 29 [default = 0];
+  optional int32 red_class_id = 30 [default = 1];
+  optional int32 yellow_class_id = 31 [default = 2];
+  optional float projection_distance_weight = 32 [default = 0.15];
+  optional float min_box_area = 33 [default = 10.0];
+}
+
 message TrafficLightDetectionConfig {
   optional int32 min_crop_size = 1 [default = 270];
   optional int32 crop_method = 2 [default = 0];
@@ -21,4 +85,10 @@ message TrafficLightDetectionConfig {
   optional string traffic_light_detection_root_dir = 16
       [default = "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_detection"];
   optional int32 gpu_id = 17 [default = 0];
+
+  // Backend selection
+  optional TrafficLightDetectionBackend detector_type = 18
+      [default = TL_DETECTION_CAFFE];
+  optional YoloxTrafficLightDetectionConfig yolox_config = 19;
+  optional UltralyticsTrafficLightDetectionConfig ultralytics_config = 20;
 }

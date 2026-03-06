@@ -5,8 +5,16 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "detection",
-    srcs = ["detection.cc"],
-    hdrs = ["detection.h"],
+    srcs = [
+        "detection.cc",
+        "ultralytics_detector.cc",
+        "yolox_detector.cc",
+    ],
+    hdrs = [
+        "detection.h",
+        "ultralytics_detector.h",
+        "yolox_detector.h",
+    ],
     deps = [
         ":cropbox",
         ":select",
@@ -14,8 +22,10 @@ cc_library(
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
+        "//modules/perception/common/graph:hungarian_optimizer",
         "//modules/perception/inference:inference_factory",
         "//modules/perception/inference:inference_lib",
+        "//modules/perception/inference/onnx_multi_batch:onnx_multi_batch_infer",
         "//modules/perception/inference/utils:inference_resize_lib",
         "//modules/perception/inference/utils:inference_util_lib",
         "//modules/perception/pipeline:stage",
