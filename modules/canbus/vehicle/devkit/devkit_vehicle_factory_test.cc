@@ -17,6 +17,7 @@
 #include "modules/canbus/vehicle/devkit/devkit_vehicle_factory.h"
 
 #include "gtest/gtest.h"
+
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
 
 namespace apollo {

@@ -7,6 +7,7 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "gem_vehicle_factory",
+    alwayslink = True,
     srcs = ["gem_vehicle_factory.cc"],
     hdrs = ["gem_vehicle_factory.h"],
     copts = CANBUS_COPTS,
@@ -16,6 +17,7 @@ cc_library(
         "//modules/canbus/proto:canbus_conf_cc_proto",
         "//modules/canbus/proto:vehicle_parameter_cc_proto",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 
@@ -36,6 +38,7 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle/gem/proto:gem_cc_proto",
         "//modules/canbus/vehicle/gem/protocol:canbus_gem_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
@@ -60,6 +63,7 @@ cc_library(
     deps = [
         ":gem_message_manager",
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/canbus/vehicle/gem/proto:gem_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/gem/protocol:canbus_gem_protocol",
         "//modules/drivers/canbus/can_comm:can_sender",

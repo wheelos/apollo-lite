@@ -16,6 +16,7 @@
 
 #include "modules/canbus/vehicle/devkit/protocol/park_command_104.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {
@@ -37,12 +38,15 @@ uint32_t Parkcommand104::GetPeriod() const {
 
 void Parkcommand104::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_devkit()->mutable_park_command_104()->set_park_target(
-      park_target(bytes, length));
-  chassis->mutable_devkit()->mutable_park_command_104()->set_park_en_ctrl(
-      park_en_ctrl(bytes, length));
-  chassis->mutable_devkit()->mutable_park_command_104()->set_checksum_104(
-      checksum_104(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_park_command_104()
+      ->set_park_target(park_target(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_park_command_104()
+      ->set_park_en_ctrl(park_en_ctrl(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_park_command_104()
+      ->set_checksum_104(checksum_104(bytes, length));
 }
 
 void Parkcommand104::UpdateData(uint8_t* data) {
@@ -133,7 +137,7 @@ Park_command_104::Park_en_ctrlType Parkcommand104::park_en_ctrl(
 }
 
 int Parkcommand104::checksum_104(const std::uint8_t* bytes,
-                                     int32_t length) const {
+                                 int32_t length) const {
   Byte t0(bytes + 7);
   int32_t x = t0.get_byte(0, 8);
 

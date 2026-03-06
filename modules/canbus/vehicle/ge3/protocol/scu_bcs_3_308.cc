@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_bcs_3_308.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,38 +33,54 @@ const int32_t Scubcs3308::ID = 0x308;
 
 void Scubcs3308::Parse(const std::uint8_t* bytes, int32_t length,
                        ChassisDetail* chassis) const {
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_rrwheelspdvd(
-      bcs_rrwheelspdvd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_rrwheeldirectionvd(
-      bcs_rrwheeldirectionvd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_rlwheelspdvd(
-      bcs_rlwheelspdvd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_rlwheeldirectionvd(
-      bcs_rlwheeldirectionvd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_frwheelspdvd(
-      bcs_frwheelspdvd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_frwheeldirectionvd(
-      bcs_frwheeldirectionvd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_flwheelspdvd(
-      bcs_flwheelspdvd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_flwheeldirectionvd(
-      bcs_flwheeldirectionvd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_rrwheelspd(
-      bcs_rrwheelspd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_rrwheeldirection(
-      bcs_rrwheeldirection(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_rlwheelspd(
-      bcs_rlwheelspd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_rlwheeldirection(
-      bcs_rlwheeldirection(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_frwheelspd(
-      bcs_frwheelspd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_frwheeldirection(
-      bcs_frwheeldirection(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_flwheelspd(
-      bcs_flwheelspd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_3_308()->set_bcs_flwheeldirection(
-      bcs_flwheeldirection(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_rrwheelspdvd(bcs_rrwheelspdvd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_rrwheeldirectionvd(bcs_rrwheeldirectionvd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_rlwheelspdvd(bcs_rlwheelspdvd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_rlwheeldirectionvd(bcs_rlwheeldirectionvd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_frwheelspdvd(bcs_frwheelspdvd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_frwheeldirectionvd(bcs_frwheeldirectionvd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_flwheelspdvd(bcs_flwheelspdvd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_flwheeldirectionvd(bcs_flwheeldirectionvd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_rrwheelspd(bcs_rrwheelspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_rrwheeldirection(bcs_rrwheeldirection(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_rlwheelspd(bcs_rlwheelspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_rlwheeldirection(bcs_rlwheeldirection(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_frwheelspd(bcs_frwheelspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_frwheeldirection(bcs_frwheeldirection(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_flwheelspd(bcs_flwheelspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_3_308()
+      ->set_bcs_flwheeldirection(bcs_flwheeldirection(bytes, length));
 }
 
 // config detail: {'description': 'Rear right wheel speed valid data', 'enum':

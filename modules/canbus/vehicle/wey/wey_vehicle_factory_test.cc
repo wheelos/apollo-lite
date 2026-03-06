@@ -15,7 +15,9 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/wey_vehicle_factory.h"
+
 #include "gtest/gtest.h"
+
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
 
 namespace apollo {

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,10 +33,12 @@ const int32_t Brakemotorrpt1401::ID = 0x401;
 
 void Brakemotorrpt1401::Parse(const std::uint8_t* bytes, int32_t length,
                               ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_brake_motor_rpt_1_401()->set_motor_current(
-      motor_current(bytes, length));
-  chassis->mutable_lexus()->mutable_brake_motor_rpt_1_401()->set_shaft_position(
-      shaft_position(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_brake_motor_rpt_1_401()
+      ->set_motor_current(motor_current(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_brake_motor_rpt_1_401()
+      ->set_shaft_position(shaft_position(bytes, length));
 }
 
 // config detail: {'name': 'motor_current', 'offset': 0.0, 'precision': 0.001,

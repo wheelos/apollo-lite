@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/transit/protocol/llc_vehiclestatus_25.h"
+
 #include "gtest/gtest.h"
 
 #include "modules/drivers/canbus/common/byte.h"

@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/throttle_status__510.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,15 +33,18 @@ const int32_t Throttlestatus510::ID = 0x510;
 
 void Throttlestatus510::Parse(const std::uint8_t* bytes, int32_t length,
                               ChassisDetail* chassis) const {
-  chassis->mutable_ch()
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
       ->mutable_throttle_status__510()
       ->set_throttle_pedal_en_sts(throttle_pedal_en_sts(bytes, length));
-  chassis->mutable_ch()->mutable_throttle_status__510()->set_throttle_pedal_sts(
-      throttle_pedal_sts(bytes, length));
-  chassis->mutable_ch()->mutable_throttle_status__510()->set_drive_motor_err(
-      drive_motor_err(bytes, length));
-  chassis->mutable_ch()->mutable_throttle_status__510()->set_battery_bms_err(
-      battery_bms_err(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_throttle_status__510()
+      ->set_throttle_pedal_sts(throttle_pedal_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_throttle_status__510()
+      ->set_drive_motor_err(drive_motor_err(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_throttle_status__510()
+      ->set_battery_bms_err(battery_bms_err(bytes, length));
   chassis->mutable_check_response()->set_is_vcu_online(
       throttle_pedal_en_sts(bytes, length) == 1);
 }

@@ -22,6 +22,7 @@
 #pragma once
 
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 /**
@@ -52,7 +53,7 @@ class Gear66 : public ::apollo::drivers::canbus::ProtocolData<
    * @brief update the data
    * @param data a pointer to the data to be updated
    */
-  virtual void UpdateData(uint8_t *data);
+  virtual void UpdateData(uint8_t* data);
 
   /**
    * @brief reset the private variables
@@ -63,37 +64,37 @@ class Gear66 : public ::apollo::drivers::canbus::ProtocolData<
    * @brief set gear to none
    * @return a this pointer to the instance itself
    */
-  Gear66 *set_gear_none();
+  Gear66* set_gear_none();
 
   /**
    * @brief set gear to park
    * @return a this pointer to the instance itself
    */
-  Gear66 *set_gear_park();
+  Gear66* set_gear_park();
 
   /**
    * @brief set gear to reverse
    * @return a this pointer to the instance itself
    */
-  Gear66 *set_gear_reverse();
+  Gear66* set_gear_reverse();
 
   /**
    * @brief set gear to neutral
    * @return a this pointer to the instance itself
    */
-  Gear66 *set_gear_neutral();
+  Gear66* set_gear_neutral();
 
   /**
    * @brief set gear to drive
    * @return a this pointer to the instance itself
    */
-  Gear66 *set_gear_drive();
+  Gear66* set_gear_drive();
 
   /**
    * @brief set gear to low
    * @return a this pointer to the instance itself
    */
-  Gear66 *set_gear_low();
+  Gear66* set_gear_low();
 
  private:
   /**
@@ -102,7 +103,7 @@ class Gear66 : public ::apollo::drivers::canbus::ProtocolData<
    * 'f_type': 'value', 'is_signed_var': False, 'physical_range': '[0|0]',
    * 'bit': 0, 'type': 'int', 'order': 'intel', 'physical_unit': '""'}
    */
-  void set_gear_p(uint8_t *data, int32_t gear);
+  void set_gear_p(uint8_t* data, int32_t gear);
 
   /**
    * @brief set clear driver override position
@@ -110,7 +111,7 @@ class Gear66 : public ::apollo::drivers::canbus::ProtocolData<
    * 'f_type': 'valid', 'is_signed_var': False, 'physical_range': '[0|0]',
    * 'bit': 7, 'type': 'bool', 'order': 'intel', 'physical_unit': '""'}
    */
-  void set_clear_driver_override_flag_p(uint8_t *bytes);
+  void set_clear_driver_override_flag_p(uint8_t* bytes);
 
  private:
   int32_t gear_ = 0;

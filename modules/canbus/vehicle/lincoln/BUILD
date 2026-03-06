@@ -7,6 +7,7 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "lincoln_vehicle_factory",
+    alwayslink = True,
     srcs = ["lincoln_vehicle_factory.cc"],
     hdrs = ["lincoln_vehicle_factory.h"],
     copts = CANBUS_COPTS,
@@ -14,6 +15,7 @@ cc_library(
         ":lincoln_controller",
         ":lincoln_message_manager",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 

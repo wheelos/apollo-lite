@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/ecu_status_3_517.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -41,14 +44,46 @@ TEST_F(Ecustatus3517Test, General) {
   EXPECT_EQ(data[6], 0b00010011);
   EXPECT_EQ(data[7], 0b00010100);
 
-  EXPECT_EQ(cd.ch().ecu_status_3_517().ultrasound_dist_1(), 2);
-  EXPECT_EQ(cd.ch().ecu_status_3_517().ultrasound_dist_2(), 4);
-  EXPECT_EQ(cd.ch().ecu_status_3_517().ultrasound_dist_3(), 6);
-  EXPECT_EQ(cd.ch().ecu_status_3_517().ultrasound_dist_4(), 8);
-  EXPECT_EQ(cd.ch().ecu_status_3_517().ultrasound_dist_5(), 2);
-  EXPECT_EQ(cd.ch().ecu_status_3_517().ultrasound_dist_6(), 36);
-  EXPECT_EQ(cd.ch().ecu_status_3_517().ultrasound_dist_7(), 38);
-  EXPECT_EQ(cd.ch().ecu_status_3_517().ultrasound_dist_8(), 40);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_3_517()
+          .ultrasound_dist_1(),
+      2);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_3_517()
+          .ultrasound_dist_2(),
+      4);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_3_517()
+          .ultrasound_dist_3(),
+      6);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_3_517()
+          .ultrasound_dist_4(),
+      8);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_3_517()
+          .ultrasound_dist_5(),
+      2);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_3_517()
+          .ultrasound_dist_6(),
+      36);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_3_517()
+          .ultrasound_dist_7(),
+      38);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_3_517()
+          .ultrasound_dist_8(),
+      40);
 }
 
 }  // namespace ch

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,8 +33,9 @@ const int32_t Vehdynamicsrpt413::ID = 0x413;
 
 void Vehdynamicsrpt413::Parse(const std::uint8_t* bytes, int32_t length,
                               ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_veh_dynamics_rpt_413()->set_veh_g_forces(
-      veh_g_forces(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_veh_dynamics_rpt_413()
+      ->set_veh_g_forces(veh_g_forces(bytes, length));
 }
 
 // config detail: {'name': 'veh_g_forces', 'offset': 0.0, 'precision': 0.001,

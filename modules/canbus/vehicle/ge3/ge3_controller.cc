@@ -14,10 +14,13 @@ limitations under the License.
 ==============================================================================*/
 
 #include "modules/canbus/vehicle/ge3/ge3_controller.h"
+
+#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
+
 #include "cyber/time/time.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/canbus/vehicle/ge3/ge3_message_manager.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
-#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
 #include "modules/drivers/canbus/can_comm/can_sender.h"
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
@@ -158,11 +161,14 @@ Chassis Ge3Controller::chassis() {
   chassis_.set_engine_started(true);
 
   // check if there is not ge3, no chassis detail can be retrieved and return
-  if (!chassis_detail.has_ge3()) {
+  if (!::apollo::canbus::HasChassisExtension<::apollo::canbus::Ge3>(
+          chassis_detail)) {
     AERROR << "NO GE3 chassis information!";
     return chassis_;
   }
-  Ge3 ge3 = chassis_detail.ge3();
+  Ge3 ge3 =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail);
   // 5
   if (ge3.has_scu_bcs_3_308()) {
     Scu_bcs_3_308 scu_bcs_3_308 = ge3.scu_bcs_3_308();
@@ -393,7 +399,6 @@ Chassis Ge3Controller::chassis() {
 void Ge3Controller::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
-  can_sender_->Update();
   // In emergency case, the hazard lamp should be on
   pc_bcm_201_->set_pc_hazardlampreq(Pc_bcm_201::PC_HAZARDLAMPREQ_REQ);
   set_chassis_error_code(Chassis::CHASSIS_ERROR);
@@ -655,12 +660,15 @@ void Ge3Controller::ResetProtocol() { message_manager_->ResetSendMessages(); }
 bool Ge3Controller::CheckChassisError() {
   ChassisDetail chassis_detail;
   message_manager_->GetSensorData(&chassis_detail);
-  if (!chassis_detail.has_ge3()) {
+  if (!::apollo::canbus::HasChassisExtension<::apollo::canbus::Ge3>(
+          chassis_detail)) {
     AERROR_EVERY(100) << "ChassisDetail has NO ge3 vehicle info."
                       << chassis_detail.DebugString();
     return false;
   }
-  Ge3 ge3 = chassis_detail.ge3();
+  Ge3 ge3 =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail);
   // check steer error
   if (ge3.has_scu_eps_311()) {
     if (Scu_eps_311::EPS_FAULTST_FAULT == ge3.scu_eps_311().eps_faultst()) {

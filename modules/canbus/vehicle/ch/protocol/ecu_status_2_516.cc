@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/ecu_status_2_516.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,18 +33,24 @@ const int32_t Ecustatus2516::ID = 0x516;
 
 void Ecustatus2516::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_ch()->mutable_ecu_status_2_516()->set_battery_soc(
-      battery_soc(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_2_516()->set_battery_capacity(
-      battery_capacity(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_2_516()->set_battery_voltage(
-      battery_voltage(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_2_516()->set_battery_current(
-      battery_current(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_2_516()->set_battery_temperature(
-      battery_temperature(bytes, length));
-  chassis->mutable_ch()->mutable_ecu_status_2_516()->set_is_battery_soc_low(
-      battery_soc(bytes, length) <= 15);
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_2_516()
+      ->set_battery_soc(battery_soc(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_2_516()
+      ->set_battery_capacity(battery_capacity(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_2_516()
+      ->set_battery_voltage(battery_voltage(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_2_516()
+      ->set_battery_current(battery_current(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_2_516()
+      ->set_battery_temperature(battery_temperature(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_ecu_status_2_516()
+      ->set_is_battery_soc_low(battery_soc(bytes, length) <= 15);
 }
 
 // config detail: {'bit': 0, 'description': 'Percentage of battery remaining

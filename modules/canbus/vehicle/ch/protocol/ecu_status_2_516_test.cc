@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/ecu_status_2_516.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -41,12 +44,31 @@ TEST_F(Ecustatus2516Test, General) {
   EXPECT_EQ(data[6], 0b00010011);
   EXPECT_EQ(data[7], 0b00010100);
 
-  EXPECT_EQ(cd.ch().ecu_status_2_516().battery_soc(), 1);
-  EXPECT_EQ(cd.ch().ecu_status_2_516().battery_capacity(), 2);
-  EXPECT_DOUBLE_EQ(cd.ch().ecu_status_2_516().battery_voltage(), 102.7);
-  EXPECT_DOUBLE_EQ(cd.ch().ecu_status_2_516().battery_current(),
-                   460.90000000000003);
-  EXPECT_EQ(cd.ch().ecu_status_2_516().battery_temperature(), 5139);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_2_516()
+          .battery_soc(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_2_516()
+          .battery_capacity(),
+      2);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_2_516()
+          .battery_voltage(),
+      102.7);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_2_516()
+          .battery_current(),
+      460.90000000000003);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_2_516()
+          .battery_temperature(),
+      5139);
 }
 
 }  // namespace ch

@@ -16,9 +16,11 @@
 
 #include "modules/canbus/vehicle/neolix_edu/protocol/vcu_drive_report_52.h"
 
+#include "gtest/gtest.h"
+
 #include "glog/logging.h"
 
-#include "gtest/gtest.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
 namespace apollo {
@@ -45,15 +47,40 @@ TEST_F(Vcudrivereport52Test, reset) {
   EXPECT_EQ(data[6], 0b00000000);
   EXPECT_EQ(data[7], 0b00000000);
 
-  EXPECT_EQ(cd.neolix_edu().vcu_drive_report_52().drive_enable_resp(), false);
-  EXPECT_EQ(cd.neolix_edu().vcu_drive_report_52().control_mode_resp(), 0);
-  EXPECT_EQ(cd.neolix_edu().vcu_drive_report_52().vcu_real_shift(), 0);
-  EXPECT_EQ(cd.neolix_edu().vcu_drive_report_52().vcu_real_shift_valid(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_drive_report_52()
+                .drive_enable_resp(),
             false);
-  EXPECT_EQ(cd.neolix_edu().vcu_drive_report_52().vcu_real_torque_valid(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_drive_report_52()
+                .control_mode_resp(),
+            0);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_drive_report_52()
+                .vcu_real_shift(),
+            0);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_drive_report_52()
+                .vcu_real_shift_valid(),
             false);
-  EXPECT_EQ(cd.neolix_edu().vcu_drive_report_52().vcu_real_torque(), -665);
-  EXPECT_EQ(cd.neolix_edu().vcu_drive_report_52().vcu_limitedtorquemode(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_drive_report_52()
+                .vcu_real_torque_valid(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_drive_report_52()
+                .vcu_real_torque(),
+            -665);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_drive_report_52()
+                .vcu_limitedtorquemode(),
             false);
 }
 

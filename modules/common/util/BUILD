@@ -314,3 +314,8 @@ cc_test(
 )
 
 cpplint()
+
+cc_library(
+    name = "registry",
+    hdrs = ["registry.h"],
+)

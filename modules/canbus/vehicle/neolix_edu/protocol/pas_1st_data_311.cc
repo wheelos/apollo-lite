@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,22 +33,30 @@ const int32_t Pas1stdata311::ID = 0x311;
 
 void Pas1stdata311::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()->mutable_pas_1st_data_311()->set_pasdistance4(
-      pasdistance4(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_pas_1st_data_311()->set_pasdistance3(
-      pasdistance3(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_pas_1st_data_311()->set_pas_f1_status(
-      pas_f1_status(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_pas_1st_data_311()->set_pas_f2_status(
-      pas_f2_status(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_pas_1st_data_311()->set_pas_f3_status(
-      pas_f3_status(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_pas_1st_data_311()->set_pas_f4_status(
-      pas_f4_status(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_pas_1st_data_311()->set_pasdistance2(
-      pasdistance2(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_pas_1st_data_311()->set_pasdistance1(
-      pasdistance1(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_pas_1st_data_311()
+      ->set_pasdistance4(pasdistance4(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_pas_1st_data_311()
+      ->set_pasdistance3(pasdistance3(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_pas_1st_data_311()
+      ->set_pas_f1_status(pas_f1_status(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_pas_1st_data_311()
+      ->set_pas_f2_status(pas_f2_status(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_pas_1st_data_311()
+      ->set_pas_f3_status(pas_f3_status(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_pas_1st_data_311()
+      ->set_pas_f4_status(pas_f4_status(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_pas_1st_data_311()
+      ->set_pasdistance2(pasdistance2(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_pas_1st_data_311()
+      ->set_pasdistance1(pasdistance1(bytes, length));
 }
 
 // config detail: {'description': 'phy=int*2;0xFF:no obstacle', 'offset': 0.0,

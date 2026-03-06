@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_bcm_304.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,19 +36,78 @@ TEST_F(Scubcm304Test, reset) {
   uint8_t bytes[8] = {0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14};
 
   scubcm304.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_vehreversest(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_rightturnlampst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_rearfoglampst(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_parkinglampst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_lowbeamst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_leftturnlampst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_keyst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_hornst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_highbeamst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_hazardlampst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_frontfoglampst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcm_304().bcm_brakelightswitchst(),
-                   0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_vehreversest(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_rightturnlampst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_rearfoglampst(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_parkinglampst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_lowbeamst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_leftturnlampst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_keyst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_hornst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_highbeamst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_hazardlampst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_frontfoglampst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcm_304()
+          .bcm_brakelightswitchst(),
+      0);
 }
 
 }  // namespace ge3

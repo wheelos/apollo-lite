@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,28 +33,28 @@ const int32_t Aebrearwheelspeed354::ID = 0x354;
 
 void Aebrearwheelspeed354::Parse(const std::uint8_t* bytes, int32_t length,
                                  ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_rearwheelspeed_354()
       ->set_wheelspeed_rl_valid(wheelspeed_rl_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_rearwheelspeed_354()
       ->set_wheelspeed_rl(wheelspeed_rl(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_rearwheelspeed_354()
       ->set_wheelspeed_rr_valid(wheelspeed_rr_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_rearwheelspeed_354()
       ->set_wheelspeed_rr(wheelspeed_rr(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_rearwheelspeed_354()
       ->set_wheelspeed_rl_direct(wheelspeed_rl_direct(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_rearwheelspeed_354()
       ->set_wheelspeed_rr_direct(wheelspeed_rr_direct(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_rearwheelspeed_354()
       ->set_alivecounter_rear(alivecounter_rear(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_rearwheelspeed_354()
       ->set_checksum_rear(checksum_rear(bytes, length));
 }

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,21 +33,24 @@ const int32_t Accelauxrpt300::ID = 0x300;
 
 void Accelauxrpt300::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_accel_aux_rpt_300()
       ->set_user_interaction_is_valid(user_interaction_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_accel_aux_rpt_300()->set_user_interaction(
-      user_interaction(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_accel_aux_rpt_300()
+      ->set_user_interaction(user_interaction(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_accel_aux_rpt_300()
       ->set_raw_pedal_force_is_valid(raw_pedal_force_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_accel_aux_rpt_300()->set_raw_pedal_force(
-      raw_pedal_force(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_accel_aux_rpt_300()
+      ->set_raw_pedal_force(raw_pedal_force(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_accel_aux_rpt_300()
       ->set_raw_pedal_pos_is_valid(raw_pedal_pos_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_accel_aux_rpt_300()->set_raw_pedal_pos(
-      raw_pedal_pos(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_accel_aux_rpt_300()
+      ->set_raw_pedal_pos(raw_pedal_pos(bytes, length));
 }
 
 // config detail: {'name': 'user_interaction_is_valid', 'offset': 0.0,

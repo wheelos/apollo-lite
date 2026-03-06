@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace gem {
@@ -34,7 +36,12 @@ TEST_F(YawRatePrt81Test, reset) {
   uint8_t bytes[8] = {0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14};
 
   yaw_rate.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().yaw_rate_rpt_81().yaw_rate(), 2.58);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .yaw_rate_rpt_81()
+          .yaw_rate(),
+      2.58);
 }
 
 }  // namespace gem

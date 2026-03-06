@@ -16,9 +16,11 @@
 
 #include "modules/canbus/vehicle/neolix_edu/protocol/vcu_brake_report_47.h"
 
+#include "gtest/gtest.h"
+
 #include "glog/logging.h"
 
-#include "gtest/gtest.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
 namespace apollo {
@@ -45,18 +47,51 @@ TEST_F(Vcubrakereport47Test, reset) {
   EXPECT_EQ(data[6], 0b00000000);
   EXPECT_EQ(data[7], 0b00000000);
 
-  EXPECT_EQ(cd.neolix_edu().vcu_brake_report_47().brake_enable_resp(), false);
-  EXPECT_EQ(cd.neolix_edu().vcu_brake_report_47().control_mode_resp(), 0);
-  EXPECT_EQ(cd.neolix_edu().vcu_brake_report_47().vcu_real_brake_valid(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_brake_report_47()
+                .brake_enable_resp(),
             false);
-  EXPECT_EQ(cd.neolix_edu().vcu_brake_report_47().vcu_real_brake(), 0);
-  EXPECT_EQ(cd.neolix_edu().vcu_brake_report_47().vcu_real_parking_status(), 0);
-  EXPECT_EQ(cd.neolix_edu().vcu_brake_report_47().vcu_real_parking_valid(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_brake_report_47()
+                .control_mode_resp(),
+            0);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_brake_report_47()
+                .vcu_real_brake_valid(),
             false);
-  EXPECT_EQ(cd.neolix_edu().vcu_brake_report_47().rampauxiliaryindication(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_brake_report_47()
+                .vcu_real_brake(),
+            0);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_brake_report_47()
+                .vcu_real_parking_status(),
+            0);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_brake_report_47()
+                .vcu_real_parking_valid(),
             false);
-  EXPECT_EQ(cd.neolix_edu().vcu_brake_report_47().vehicleslope(), 0);
-  EXPECT_EQ(cd.neolix_edu().vcu_brake_report_47().vcu_ehb_brake_state(), 0);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_brake_report_47()
+                .rampauxiliaryindication(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_brake_report_47()
+                .vehicleslope(),
+            0);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_brake_report_47()
+                .vcu_ehb_brake_state(),
+            0);
 }
 
 }  // namespace neolix_edu

@@ -7,6 +7,7 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "ch_vehicle_factory",
+    alwayslink = True,
     srcs = ["ch_vehicle_factory.cc"],
     hdrs = ["ch_vehicle_factory.h"],
     copts = CANBUS_COPTS,
@@ -14,6 +15,7 @@ cc_library(
         ":ch_controller",
         ":ch_message_manager",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 
@@ -44,6 +46,7 @@ cc_library(
         "//modules/canbus/vehicle/ch/protocol:canbus_ch_protocol",
         "//modules/common_msgs/basic_msgs:error_code_cc_proto",
         "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
+        "//modules/canbus/vehicle/ch/proto:ch_cc_proto",
     ],
 )
 

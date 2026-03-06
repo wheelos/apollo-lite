@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,10 +33,10 @@ const int32_t Vehiclestatefeedback2c4::ID = 0xC4;
 
 void Vehiclestatefeedback2c4::Parse(const std::uint8_t* bytes, int32_t length,
                                     ChassisDetail* chassis) const {
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_vehicle_state_feedback_2_c4()
       ->set_motor_speed(motor_speed(bytes, length));
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_vehicle_state_feedback_2_c4()
       ->set_driven_torque_feedback(driven_torque_feedback(bytes, length));
 }

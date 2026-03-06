@@ -16,6 +16,7 @@
 
 #include "modules/canbus/vehicle/ch/protocol/turnsignal_status__513.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,10 +31,12 @@ const int32_t Turnsignalstatus513::ID = 0x513;
 
 void Turnsignalstatus513::Parse(const std::uint8_t* bytes, int32_t length,
                                 ChassisDetail* chassis) const {
-  chassis->mutable_ch()->mutable_turnsignal_status__513()->set_turn_signal_sts(
-      turn_signal_sts(bytes, length));
-  chassis->mutable_ch()->mutable_turnsignal_status__513()->set_low_beam_sts(
-      low_beam_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_turnsignal_status__513()
+      ->set_turn_signal_sts(turn_signal_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_turnsignal_status__513()
+      ->set_low_beam_sts(low_beam_sts(bytes, length));
 }
 
 // config detail: {'bit': 0, 'description': 'Lighting control(Status)', 'enum':

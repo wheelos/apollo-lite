@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,74 +33,108 @@ const int32_t Status310::ID = 0x310;
 
 void Status310::Parse(const std::uint8_t* bytes, int32_t length,
                       ChassisDetail* chassis) const {
-  chassis->mutable_wey()->mutable_status_310()->set_longitudeaccvalid(
-      longitudeaccvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_lateralaccevalid(
-      lateralaccevalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_vehdynyawratevalid(
-      vehdynyawratevalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_flwheelspdvalid(
-      flwheelspdvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_frwheelspdvalid(
-      frwheelspdvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_rlwheelspdvalid(
-      rlwheelspdvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_rrwheelspdvalid(
-      rrwheelspdvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_vehiclespdvalid(
-      vehiclespdvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_longitudedrivingmode(
-      longitudedrivingmode(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_engspdvalid(
-      engspdvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_accepedaloverride(
-      accepedaloverride(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_brakepedalstatus(
-      brakepedalstatus(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_espbrakelightsts(
-      espbrakelightsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_epbswtpositionvalid(
-      epbswtpositionvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_epbsts(
-      epbsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_currentgearvalid(
-      currentgearvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_epstrqsnsrsts(
-      epstrqsnsrsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_eps_interferdetdvalid(
-      eps_interferdetdvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_epshandsdetnsts(
-      epshandsdetnsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_eps_handsdetnstsvalid(
-      eps_handsdetnstsvalid(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_steerwheelanglesign(
-      steerwheelanglesign(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_steerwheelspdsign(
-      steerwheelspdsign(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_driverdoorsts(
-      driverdoorsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_rldoorsts(
-      rldoorsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_passengerdoorsts(
-      passengerdoorsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_rrdoorsts(
-      rrdoorsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_frontfoglmpsts(
-      frontfoglmpsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_rearfoglmpsts(
-      rearfoglmpsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_lowbeamsts(
-      lowbeamsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_highbeamsts(
-      highbeamsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_leftturnlampsts(
-      leftturnlampsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_rightturnlampsts(
-      rightturnlampsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_bcm_availsts(
-      bcm_availsts(bytes, length));
-  chassis->mutable_wey()->mutable_status_310()->set_brakelmpsts(
-      brakelmpsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_longitudeaccvalid(longitudeaccvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_lateralaccevalid(lateralaccevalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_vehdynyawratevalid(vehdynyawratevalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_flwheelspdvalid(flwheelspdvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_frwheelspdvalid(frwheelspdvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_rlwheelspdvalid(rlwheelspdvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_rrwheelspdvalid(rrwheelspdvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_vehiclespdvalid(vehiclespdvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_longitudedrivingmode(longitudedrivingmode(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_engspdvalid(engspdvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_accepedaloverride(accepedaloverride(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_brakepedalstatus(brakepedalstatus(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_espbrakelightsts(espbrakelightsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_epbswtpositionvalid(epbswtpositionvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_epbsts(epbsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_currentgearvalid(currentgearvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_epstrqsnsrsts(epstrqsnsrsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_eps_interferdetdvalid(eps_interferdetdvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_epshandsdetnsts(epshandsdetnsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_eps_handsdetnstsvalid(eps_handsdetnstsvalid(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_steerwheelanglesign(steerwheelanglesign(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_steerwheelspdsign(steerwheelspdsign(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_driverdoorsts(driverdoorsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_rldoorsts(rldoorsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_passengerdoorsts(passengerdoorsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_rrdoorsts(rrdoorsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_frontfoglmpsts(frontfoglmpsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_rearfoglmpsts(rearfoglmpsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_lowbeamsts(lowbeamsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_highbeamsts(highbeamsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_leftturnlampsts(leftturnlampsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_rightturnlampsts(rightturnlampsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_bcm_availsts(bcm_availsts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_status_310()
+      ->set_brakelmpsts(brakelmpsts(bytes, length));
   // Added for response check
   chassis->mutable_check_response()->set_is_esp_online(
       longitudedrivingmode(bytes, length) != 0);

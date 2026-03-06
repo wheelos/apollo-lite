@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,20 +33,27 @@ const int32_t Globalrpt6a::ID = 0x6A;
 
 void Globalrpt6a::Parse(const std::uint8_t* bytes, int32_t length,
                         ChassisDetail* chassis) const {
-  chassis->mutable_gem()->mutable_global_rpt_6a()->set_pacmod_status(
-      pacmod_status(bytes, length));
-  chassis->mutable_gem()->mutable_global_rpt_6a()->set_override_status(
-      override_status(bytes, length));
-  chassis->mutable_gem()->mutable_global_rpt_6a()->set_veh_can_timeout(
-      veh_can_timeout(bytes, length));
-  chassis->mutable_gem()->mutable_global_rpt_6a()->set_str_can_timeout(
-      str_can_timeout(bytes, length));
-  chassis->mutable_gem()->mutable_global_rpt_6a()->set_brk_can_timeout(
-      brk_can_timeout(bytes, length));
-  chassis->mutable_gem()->mutable_global_rpt_6a()->set_usr_can_timeout(
-      usr_can_timeout(bytes, length));
-  chassis->mutable_gem()->mutable_global_rpt_6a()->set_usr_can_read_errors(
-      usr_can_read_errors(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_global_rpt_6a()
+      ->set_pacmod_status(pacmod_status(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_global_rpt_6a()
+      ->set_override_status(override_status(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_global_rpt_6a()
+      ->set_veh_can_timeout(veh_can_timeout(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_global_rpt_6a()
+      ->set_str_can_timeout(str_can_timeout(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_global_rpt_6a()
+      ->set_brk_can_timeout(brk_can_timeout(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_global_rpt_6a()
+      ->set_usr_can_timeout(usr_can_timeout(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_global_rpt_6a()
+      ->set_usr_can_read_errors(usr_can_read_errors(bytes, length));
 }
 
 // config detail: {'name': 'pacmod_status', 'enum': {0:

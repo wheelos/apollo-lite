@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,9 +33,10 @@ const int32_t Vehiclespeedrpt400::ID = 0x400;
 
 void Vehiclespeedrpt400::Parse(const std::uint8_t* bytes, int32_t length,
                                ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_vehicle_speed_rpt_400()->set_vehicle_speed(
-      vehicle_speed(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_vehicle_speed_rpt_400()
+      ->set_vehicle_speed(vehicle_speed(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_vehicle_speed_rpt_400()
       ->set_vehicle_speed_valid(vehicle_speed_valid(bytes, length));
 }

@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_1_301.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,10 +36,30 @@ TEST_F(Scu1301Test, reset) {
   uint8_t bytes[8] = {0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14};
 
   scu1301.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_1_301().vin16(), 2);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_1_301().scu_stopbutst(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_1_301().scu_drvmode(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_1_301().scu_faultst(), 0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_1_301()
+          .vin16(),
+      2);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_1_301()
+          .scu_stopbutst(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_1_301()
+          .scu_drvmode(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_1_301()
+          .scu_faultst(),
+      0);
 }
 
 }  // namespace ge3

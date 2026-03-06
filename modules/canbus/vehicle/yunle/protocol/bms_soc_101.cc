@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,11 +32,15 @@ Bmssoc101::Bmssoc101() {}
 const int32_t Bmssoc101::ID = 0x101;
 
 void Bmssoc101::Parse(const std::uint8_t* bytes, int32_t length,
-                         ChassisDetail* chassis) const {
-  chassis->mutable_yunle()->mutable_bms_soc_101()->set_rsoc(rsoc(bytes, length));
+                      ChassisDetail* chassis) const {
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_bms_soc_101()
+      ->set_rsoc(rsoc(bytes, length));
 }
 
-// config detail: {'bit': 39, 'is_signed_var': True, 'len': 16, 'name': 'rsoc', 'offset': 0.0, 'order': 'motorola', 'physical_range': '[0|0]', 'physical_unit': '%', 'precision': 1.0, 'type': 'int'}
+// config detail: {'bit': 39, 'is_signed_var': True, 'len': 16, 'name': 'rsoc',
+// 'offset': 0.0, 'order': 'motorola', 'physical_range': '[0|0]',
+// 'physical_unit': '%', 'precision': 1.0, 'type': 'int'}
 int Bmssoc101::rsoc(const std::uint8_t* bytes, int32_t length) const {
   Byte t0(bytes + 4);
   int32_t x = t0.get_byte(0, 8);

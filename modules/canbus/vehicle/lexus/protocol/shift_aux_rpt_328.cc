@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,32 +33,33 @@ const int32_t Shiftauxrpt328::ID = 0x328;
 
 void Shiftauxrpt328::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_shift_aux_rpt_328()
       ->set_speed_interlock_active_is_valid(
           speed_interlock_active_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_shift_aux_rpt_328()
       ->set_speed_interlock_active(speed_interlock_active(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_shift_aux_rpt_328()
       ->set_brake_interlock_active_is_valid(
           brake_interlock_active_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_shift_aux_rpt_328()
       ->set_brake_interlock_active(brake_interlock_active(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_shift_aux_rpt_328()
       ->set_stay_in_neutral_mode_is_valid(
           stay_in_neutral_mode_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_shift_aux_rpt_328()
       ->set_stay_in_neutral_mode(stay_in_neutral_mode(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_shift_aux_rpt_328()
       ->set_between_gears_is_valid(between_gears_is_valid(bytes, length));
-  chassis->mutable_lexus()->mutable_shift_aux_rpt_328()->set_between_gears(
-      between_gears(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_shift_aux_rpt_328()
+      ->set_between_gears(between_gears(bytes, length));
 }
 
 // config detail: {'name': 'speed_interlock_active_is_valid', 'offset': 0.0,

@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_vcu_2_313.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,11 +36,30 @@ TEST_F(Scuvcu2313Test, reset) {
   uint8_t bytes[8] = {0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14};
 
   scuvcu2313.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_2_313().vcu_torqposmax(), 228);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_2_313().vcu_torqnegmax(),
-                   -2796);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_2_313().vcu_torqact(), -2928);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_2_313().vcu_engspd(), 258);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_2_313()
+          .vcu_torqposmax(),
+      228);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_2_313()
+          .vcu_torqnegmax(),
+      -2796);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_2_313()
+          .vcu_torqact(),
+      -2928);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_2_313()
+          .vcu_engspd(),
+      258);
 }
 
 }  // namespace ge3

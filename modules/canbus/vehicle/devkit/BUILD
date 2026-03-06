@@ -7,6 +7,7 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "devkit_vehicle_factory",
+    alwayslink = True,
     srcs = [
         "devkit_vehicle_factory.cc",
     ],
@@ -18,6 +19,7 @@ cc_library(
         ":devkit_controller",
         ":devkit_message_manager",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 
@@ -67,6 +69,7 @@ cc_library(
         "//modules/canbus/proto:vehicle_parameter_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/devkit/protocol:canbus_devkit_protocol",
+        "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/common_msgs/basic_msgs:error_code_cc_proto",
         "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
     ],

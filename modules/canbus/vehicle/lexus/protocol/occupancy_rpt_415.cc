@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,44 +33,46 @@ const int32_t Occupancyrpt415::ID = 0x415;
 
 void Occupancyrpt415::Parse(const std::uint8_t* bytes, int32_t length,
                             ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_rear_seatbelt_buckled_is_valid(
           rear_seatbelt_buckled_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_pass_seatbelt_buckled_is_valid(
           pass_seatbelt_buckled_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_driver_seatbelt_buckled_is_valid(
           driver_seatbelt_buckled_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_rear_seat_occupied_is_valid(
           rear_seat_occupied_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_pass_seat_occupied_is_valid(
           pass_seat_occupied_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_driver_seat_occupied_is_valid(
           driver_seat_occupied_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_rear_seatbelt_buckled(rear_seatbelt_buckled(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_pass_seatbelt_buckled(pass_seatbelt_buckled(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_driver_seatbelt_buckled(driver_seatbelt_buckled(bytes, length));
-  chassis->mutable_lexus()->mutable_occupancy_rpt_415()->set_rear_seat_occupied(
-      rear_seat_occupied(bytes, length));
-  chassis->mutable_lexus()->mutable_occupancy_rpt_415()->set_pass_seat_occupied(
-      pass_seat_occupied(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_occupancy_rpt_415()
+      ->set_rear_seat_occupied(rear_seat_occupied(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_occupancy_rpt_415()
+      ->set_pass_seat_occupied(pass_seat_occupied(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_occupancy_rpt_415()
       ->set_driver_seat_occupied(driver_seat_occupied(bytes, length));
 }

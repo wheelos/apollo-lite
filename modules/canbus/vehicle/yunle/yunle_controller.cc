@@ -16,10 +16,12 @@
 
 #include "modules/canbus/vehicle/yunle/yunle_controller.h"
 
+#include "modules/canbus/vehicle/yunle/proto/yunle.pb.h"
 #include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/canbus/vehicle/yunle/protocol/ccu_status_51.h"
 #include "modules/canbus/vehicle/yunle/protocol/waring_level_77.h"
@@ -140,7 +142,9 @@ Chassis YunleController::chassis() {
   // 3
   chassis_.set_engine_started(true);
 
-  const auto yunle = chassis_detail.yunle();
+  const auto yunle =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Yunle>(
+          chassis_detail);
 
   // soc
   if (yunle.has_bms_soc_101()) {
@@ -301,7 +305,6 @@ Chassis YunleController::chassis() {
 void YunleController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
-  can_sender_->Update();
 }
 
 ErrorCode YunleController::EnableAutoMode() {
@@ -562,7 +565,10 @@ bool YunleController::CheckChassisError() {
   int32_t error_cnt = 0;
   int32_t chassis_error_mask = 0;
 
-  auto warnings = chassis_detail.yunle().waring_level_77();
+  auto warnings =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Yunle>(
+          chassis_detail)
+          .waring_level_77();
 
   // in yunle vehicle, level means:
   //  level 0, no warning
@@ -702,7 +708,10 @@ bool YunleController::CheckResponse(const int32_t flags, bool need_wait) {
       return false;
     }
     bool check_ok = true;
-    const auto warnings = chassis_detail.yunle().waring_level_77();
+    const auto warnings =
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Yunle>(
+            chassis_detail)
+            .waring_level_77();
     if (flags & CHECK_RESPONSE_SPEED_UNIT_FLAG) {
       // check if motor and speed in warning level
       is_vcu_online = (!(warnings.mcu_speed_warning() > 1) &&

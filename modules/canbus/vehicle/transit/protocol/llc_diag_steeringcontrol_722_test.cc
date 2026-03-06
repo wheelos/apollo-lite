@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/transit/protocol/llc_diag_steeringcontrol_722.h"
+
 #include "gtest/gtest.h"
 
 #include "modules/drivers/canbus/common/byte.h"

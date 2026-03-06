@@ -22,6 +22,7 @@
 #pragma once
 
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 /**
@@ -49,8 +50,8 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param timestamp the timestamp of input data
    * @param chassis_detail the parsed chassis_detail
    */
-  void Parse(const std::uint8_t *bytes, int32_t length,
-             ChassisDetail *chassis_detail) const override;
+  void Parse(const std::uint8_t* bytes, int32_t length,
+             ChassisDetail* chassis_detail) const override;
 
  private:
   /*
@@ -63,7 +64,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of braking torque request
    */
-  double braking_torque_request(const std::uint8_t *bytes,
+  double braking_torque_request(const std::uint8_t* bytes,
                                 int32_t length) const;
   /*
    * @brief get hill start assist status
@@ -74,7 +75,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of the hill start assist status
    */
-  int32_t hill_start_assist_status(const std::uint8_t *bytes,
+  int32_t hill_start_assist_status(const std::uint8_t* bytes,
                                    int32_t length) const;
   /*
    * @brief check vehicle stationary
@@ -85,7 +86,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the vehicle stationary bit
    */
-  bool is_vehicle_stationary(const std::uint8_t *bytes, int32_t length) const;
+  bool is_vehicle_stationary(const std::uint8_t* bytes, int32_t length) const;
 
   /*
    * @brief get the actual braking torque
@@ -97,7 +98,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of the actual braking torque
    */
-  double braking_torque_actual(const std::uint8_t *bytes, int32_t length) const;
+  double braking_torque_actual(const std::uint8_t* bytes, int32_t length) const;
 
   /*
    * @brief get the hill start assist mode
@@ -108,7 +109,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the mode of hill start assist
    */
-  int32_t hill_start_assist_mode(const std::uint8_t *bytes,
+  int32_t hill_start_assist_mode(const std::uint8_t* bytes,
                                  int32_t length) const;
   /*
    * @brief get the parking brake status
@@ -119,7 +120,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of the parking brake status
    */
-  int32_t parking_brake_status(const std::uint8_t *bytes, int32_t length) const;
+  int32_t parking_brake_status(const std::uint8_t* bytes, int32_t length) const;
 
   /*
    * @brief get the actual wheel torque
@@ -131,7 +132,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of the actual wheel torque
    */
-  double wheel_torque_actual(const std::uint8_t *bytes, int32_t length) const;
+  double wheel_torque_actual(const std::uint8_t* bytes, int32_t length) const;
 
   /*
    * @brief get the acceleration over ground
@@ -143,7 +144,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of the acceleration over ground
    */
-  double acceleration_over_ground(const std::uint8_t *bytes,
+  double acceleration_over_ground(const std::uint8_t* bytes,
                                   int32_t length) const;
 
   /*
@@ -155,7 +156,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the abs active bit
    */
-  bool is_abs_active(const std::uint8_t *bytes, int32_t length) const;
+  bool is_abs_active(const std::uint8_t* bytes, int32_t length) const;
 
   /*
    * @brief abs enabled
@@ -166,7 +167,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the abs enabled bit
    */
-  bool is_abs_enabled(const std::uint8_t *bytes, int32_t length) const;
+  bool is_abs_enabled(const std::uint8_t* bytes, int32_t length) const;
 
   /*
    * @brief check stability control active
@@ -177,7 +178,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the stability control active bit
    */
-  bool is_stability_control_active(const std::uint8_t *bytes,
+  bool is_stability_control_active(const std::uint8_t* bytes,
                                    int32_t length) const;
   /*
    * @brief check stability control enabled bit
@@ -188,7 +189,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the stability control enabled bit
    */
-  bool is_stability_control_enabled(const std::uint8_t *bytes,
+  bool is_stability_control_enabled(const std::uint8_t* bytes,
                                     int32_t length) const;
 
   /*
@@ -200,7 +201,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the traction control active bit
    */
-  bool is_traction_control_active(const std::uint8_t *bytes,
+  bool is_traction_control_active(const std::uint8_t* bytes,
                                   int32_t length) const;
   /*
    * @brief traction control enabled bit
@@ -211,7 +212,7 @@ class Brakeinfo74 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the traction control enabled bit
    */
-  bool is_traction_control_enabled(const std::uint8_t *bytes,
+  bool is_traction_control_enabled(const std::uint8_t* bytes,
                                    int32_t length) const;
 };
 

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,13 +32,20 @@ Sasanglefeedbacke1::Sasanglefeedbacke1() {}
 const int32_t Sasanglefeedbacke1::ID = 0xE1;
 
 void Sasanglefeedbacke1::Parse(const std::uint8_t* bytes, int32_t length,
-                         ChassisDetail* chassis) const {
-  chassis->mutable_yunle()->mutable_sas_angle_feedback_e1()->set_sas_angle_r(sas_angle_r(bytes, length));
-  chassis->mutable_yunle()->mutable_sas_angle_feedback_e1()->set_sas_angle_f(sas_angle_f(bytes, length));
+                               ChassisDetail* chassis) const {
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_sas_angle_feedback_e1()
+      ->set_sas_angle_r(sas_angle_r(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_sas_angle_feedback_e1()
+      ->set_sas_angle_f(sas_angle_f(bytes, length));
 }
 
-// config detail: {'bit': 24, 'is_signed_var': True, 'len': 16, 'name': 'sas_angle_r', 'offset': 0.0, 'order': 'intel', 'physical_range': '[-3276.8|3276.7]', 'physical_unit': '', 'precision': 0.1, 'type': 'double'}
-double Sasanglefeedbacke1::sas_angle_r(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 24, 'is_signed_var': True, 'len': 16, 'name':
+// 'sas_angle_r', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[-3276.8|3276.7]', 'physical_unit': '', 'precision': 0.1, 'type': 'double'}
+double Sasanglefeedbacke1::sas_angle_r(const std::uint8_t* bytes,
+                                       int32_t length) const {
   Byte t0(bytes + 4);
   int32_t x = t0.get_byte(0, 8);
 
@@ -53,8 +61,11 @@ double Sasanglefeedbacke1::sas_angle_r(const std::uint8_t* bytes, int32_t length
   return ret;
 }
 
-// config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name': 'sas_angle_f', 'offset': 0.0, 'order': 'intel', 'physical_range': '[-3276.8|3276.7]', 'physical_unit': '', 'precision': 0.1, 'type': 'double'}
-double Sasanglefeedbacke1::sas_angle_f(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name':
+// 'sas_angle_f', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[-3276.8|3276.7]', 'physical_unit': '', 'precision': 0.1, 'type': 'double'}
+double Sasanglefeedbacke1::sas_angle_f(const std::uint8_t* bytes,
+                                       int32_t length) const {
   Byte t0(bytes + 1);
   int32_t x = t0.get_byte(0, 8);
 

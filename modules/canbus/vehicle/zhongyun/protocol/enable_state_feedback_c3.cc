@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,19 +33,19 @@ const int32_t Enablestatefeedbackc3::ID = 0xC3;
 
 void Enablestatefeedbackc3::Parse(const std::uint8_t* bytes, int32_t length,
                                   ChassisDetail* chassis) const {
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_enable_state_feedback_c3()
       ->set_parking_enable_state(parking_enable_state(bytes, length));
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_enable_state_feedback_c3()
       ->set_steering_enable_state(steering_enable_state(bytes, length));
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_enable_state_feedback_c3()
       ->set_gear_enable_actual(gear_enable_actual(bytes, length));
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_enable_state_feedback_c3()
       ->set_driven_enable_state(driven_enable_state(bytes, length));
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_enable_state_feedback_c3()
       ->set_brake_enable_state(brake_enable_state(bytes, length));
   // Added for response check

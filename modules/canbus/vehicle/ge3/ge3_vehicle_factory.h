@@ -21,7 +21,9 @@
 #pragma once
 
 #include <memory>
+
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
+
 #include "modules/canbus/vehicle/abstract_vehicle_factory.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/drivers/canbus/can_comm/message_manager.h"

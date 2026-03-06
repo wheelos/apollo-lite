@@ -16,9 +16,11 @@
 
 #include "modules/canbus/vehicle/neolix_edu/protocol/aeb_wheelimpulse_355.h"
 
+#include "gtest/gtest.h"
+
 #include "glog/logging.h"
 
-#include "gtest/gtest.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
 namespace apollo {
@@ -45,14 +47,46 @@ TEST_F(Aebwheelimpulse355Test, reset) {
   EXPECT_EQ(data[6], 0b01010011);
   EXPECT_EQ(data[7], 0b01010100);
 
-  EXPECT_EQ(cd.neolix_edu().aeb_wheelimpulse_355().flimpulse(), 413);
-  EXPECT_EQ(cd.neolix_edu().aeb_wheelimpulse_355().flimpulsevalid(), true);
-  EXPECT_EQ(cd.neolix_edu().aeb_wheelimpulse_355().frimpulse(), 76);
-  EXPECT_EQ(cd.neolix_edu().aeb_wheelimpulse_355().frimpulsevalid(), false);
-  EXPECT_EQ(cd.neolix_edu().aeb_wheelimpulse_355().rlimpulse(), 868);
-  EXPECT_EQ(cd.neolix_edu().aeb_wheelimpulse_355().rlimpulsevalid(), false);
-  EXPECT_EQ(cd.neolix_edu().aeb_wheelimpulse_355().rrimpulse(), 650);
-  EXPECT_EQ(cd.neolix_edu().aeb_wheelimpulse_355().rrimpulsevalid(), true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_wheelimpulse_355()
+                .flimpulse(),
+            413);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_wheelimpulse_355()
+                .flimpulsevalid(),
+            true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_wheelimpulse_355()
+                .frimpulse(),
+            76);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_wheelimpulse_355()
+                .frimpulsevalid(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_wheelimpulse_355()
+                .rlimpulse(),
+            868);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_wheelimpulse_355()
+                .rlimpulsevalid(),
+            false);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_wheelimpulse_355()
+                .rrimpulse(),
+            650);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_wheelimpulse_355()
+                .rrimpulsevalid(),
+            true);
 }
 
 }  // namespace neolix_edu

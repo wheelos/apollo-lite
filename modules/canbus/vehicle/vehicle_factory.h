@@ -14,45 +14,21 @@
  * limitations under the License.
  *****************************************************************************/
 
-/**
- * @file
- */
-
 #pragma once
 
 #include <memory>
 
-#include "modules/canbus/vehicle/abstract_vehicle_factory.h"
-#include "modules/common/util/factory.h"
+#include "modules/canbus/proto/vehicle_parameter.pb.h"
 
-/**
- * @namespace apollo::canbus
- * @brief apollo::canbus
- */
+#include "modules/canbus/vehicle/abstract_vehicle_factory.h"
+
 namespace apollo {
 namespace canbus {
 
-/**
- * @class VehicleFactory
- *
- * @brief This class is a factory class that will generate different
- * vehicle factories based on the vehicle brand.
- */
-class VehicleFactory
-    : public common::util::Factory<apollo::common::VehicleBrand,
-                                   AbstractVehicleFactory> {
+class VehicleFactory {
  public:
-  /**
-   * @brief register supported vehicle factories.
-   */
-  void RegisterVehicleFactory();
-
-  /**
-   * @brief Creates an AbstractVehicleFactory object based on vehicle_parameter
-   * @param vehicle_parameter is defined in vehicle_parameter.proto
-   */
   std::unique_ptr<AbstractVehicleFactory> CreateVehicle(
-      const VehicleParameter &vehicle_parameter);
+      const VehicleParameter& vehicle_parameter);
 };
 
 }  // namespace canbus

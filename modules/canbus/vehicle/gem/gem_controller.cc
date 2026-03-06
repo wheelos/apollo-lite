@@ -22,6 +22,7 @@
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/canbus/vehicle/gem/gem_message_manager.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/drivers/canbus/can_comm/can_sender.h"
@@ -170,10 +171,18 @@ Chassis GemController::chassis() {
   chassis_.set_engine_started(true);
 
   // 5
-  if (chassis_detail.gem().has_vehicle_speed_rpt_6f() &&
-      chassis_detail.gem().vehicle_speed_rpt_6f().has_vehicle_speed()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .has_vehicle_speed_rpt_6f() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .vehicle_speed_rpt_6f()
+          .has_vehicle_speed()) {
     chassis_.set_speed_mps(static_cast<float>(
-        chassis_detail.gem().vehicle_speed_rpt_6f().vehicle_speed()));
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+            chassis_detail)
+            .vehicle_speed_rpt_6f()
+            .vehicle_speed()));
   } else {
     chassis_.set_speed_mps(0);
   }
@@ -181,37 +190,64 @@ Chassis GemController::chassis() {
   // 7
   chassis_.set_fuel_range_m(0);
   // 8
-  if (chassis_detail.gem().has_accel_rpt_68() &&
-      chassis_detail.gem().accel_rpt_68().has_output_value()) {
-    chassis_.set_throttle_percentage(
-        static_cast<float>(chassis_detail.gem().accel_rpt_68().output_value()));
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .has_accel_rpt_68() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .accel_rpt_68()
+          .has_output_value()) {
+    chassis_.set_throttle_percentage(static_cast<float>(
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+            chassis_detail)
+            .accel_rpt_68()
+            .output_value()));
   } else {
     chassis_.set_throttle_percentage(0);
   }
   // 9
-  if (chassis_detail.gem().has_brake_rpt_6c() &&
-      chassis_detail.gem().brake_rpt_6c().has_output_value()) {
-    chassis_.set_brake_percentage(
-        static_cast<float>(chassis_detail.gem().brake_rpt_6c().output_value()));
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .has_brake_rpt_6c() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .brake_rpt_6c()
+          .has_output_value()) {
+    chassis_.set_brake_percentage(static_cast<float>(
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+            chassis_detail)
+            .brake_rpt_6c()
+            .output_value()));
   } else {
     chassis_.set_brake_percentage(0);
   }
 
   // 23, previously 10
-  if (chassis_detail.gem().has_shift_rpt_66() &&
-      chassis_detail.gem().shift_rpt_66().has_output_value()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .has_shift_rpt_66() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .shift_rpt_66()
+          .has_output_value()) {
     Chassis::GearPosition gear_pos = Chassis::GEAR_INVALID;
 
-    if (chassis_detail.gem().shift_rpt_66().output_value() ==
-        Shift_rpt_66::OUTPUT_VALUE_NEUTRAL) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+            chassis_detail)
+            .shift_rpt_66()
+            .output_value() == Shift_rpt_66::OUTPUT_VALUE_NEUTRAL) {
       gear_pos = Chassis::GEAR_NEUTRAL;
     }
-    if (chassis_detail.gem().shift_rpt_66().output_value() ==
-        Shift_rpt_66::OUTPUT_VALUE_REVERSE) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+            chassis_detail)
+            .shift_rpt_66()
+            .output_value() == Shift_rpt_66::OUTPUT_VALUE_REVERSE) {
       gear_pos = Chassis::GEAR_REVERSE;
     }
-    if (chassis_detail.gem().shift_rpt_66().output_value() ==
-        Shift_rpt_66::OUTPUT_VALUE_FORWARD) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+            chassis_detail)
+            .shift_rpt_66()
+            .output_value() == Shift_rpt_66::OUTPUT_VALUE_FORWARD) {
       gear_pos = Chassis::GEAR_DRIVE;
     }
 
@@ -222,19 +258,34 @@ Chassis GemController::chassis() {
 
   // 11
   // TODO(QiL) : verify the unit here.
-  if (chassis_detail.gem().has_steering_rpt_1_6e() &&
-      chassis_detail.gem().steering_rpt_1_6e().has_output_value()) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .has_steering_rpt_1_6e() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .steering_rpt_1_6e()
+          .has_output_value()) {
     chassis_.set_steering_percentage(static_cast<float>(
-        chassis_detail.gem().steering_rpt_1_6e().output_value() * 100.0 /
-        vehicle_params_.max_steer_angle()));
+        ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+            chassis_detail)
+            .steering_rpt_1_6e()
+            .output_value() *
+        100.0 / vehicle_params_.max_steer_angle()));
   } else {
     chassis_.set_steering_percentage(0);
   }
 
-  if (chassis_detail.gem().has_global_rpt_6a() &&
-      chassis_detail.gem().global_rpt_6a().has_pacmod_status()) {
-    if (chassis_detail.gem().global_rpt_6a().pacmod_status() ==
-        Global_rpt_6a::PACMOD_STATUS_CONTROL_ENABLED) {
+  if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .has_global_rpt_6a() &&
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .global_rpt_6a()
+          .has_pacmod_status()) {
+    if (::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+            chassis_detail)
+            .global_rpt_6a()
+            .pacmod_status() == Global_rpt_6a::PACMOD_STATUS_CONTROL_ENABLED) {
       chassis_.set_driving_mode(Chassis::COMPLETE_AUTO_DRIVE);
       global_cmd_69_->set_clear_override(
           Global_cmd_69::CLEAR_OVERRIDE_DON_T_CLEAR_ACTIVE_OVERRIDES);
@@ -292,7 +343,6 @@ Chassis GemController::chassis() {
 void GemController::Emergency() {
   set_driving_mode(Chassis::EMERGENCY_MODE);
   ResetProtocol();
-  can_sender_->Update();
   set_chassis_error_code(Chassis::CHASSIS_ERROR);
 }
 

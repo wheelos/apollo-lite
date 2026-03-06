@@ -16,44 +16,58 @@
 
 #pragma once
 
-#include "modules/drivers/canbus/can_comm/protocol_data.h"
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
+#include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 namespace apollo {
 namespace canbus {
 namespace mk_mini {
 
 class Ultrasonic1fb18c4e8ef : public ::apollo::drivers::canbus::ProtocolData<
-                    ::apollo::canbus::ChassisDetail> {
+                                  ::apollo::canbus::ChassisDetail> {
  public:
   static const int32_t ID;
   Ultrasonic1fb18c4e8ef();
   void Parse(const std::uint8_t* bytes, int32_t length,
-                     ChassisDetail* chassis) const override;
+             ChassisDetail* chassis) const override;
 
  private:
+  // config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name':
+  // 'ultrasonic_fb_01_check_bcc', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type':
+  // 'int'}
+  int ultrasonic_fb_01_check_bcc(const std::uint8_t* bytes,
+                                 const int32_t length) const;
 
-  // config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name': 'ultrasonic_fb_01_check_bcc', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
-  int ultrasonic_fb_01_check_bcc(const std::uint8_t* bytes, const int32_t length) const;
+  // config detail: {'bit': 52, 'is_signed_var': False, 'len': 4, 'name':
+  // 'ultrasonic_fb_01_alive_cnt', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type':
+  // 'int'}
+  int ultrasonic_fb_01_alive_cnt(const std::uint8_t* bytes,
+                                 const int32_t length) const;
 
-  // config detail: {'bit': 52, 'is_signed_var': False, 'len': 4, 'name': 'ultrasonic_fb_01_alive_cnt', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
-  int ultrasonic_fb_01_alive_cnt(const std::uint8_t* bytes, const int32_t length) const;
-
-  // config detail: {'bit': 36, 'is_signed_var': False, 'len': 12, 'name': 'ultrasonic_fb_04', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
+  // config detail: {'bit': 36, 'is_signed_var': False, 'len': 12, 'name':
+  // 'ultrasonic_fb_04', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
   int ultrasonic_fb_04(const std::uint8_t* bytes, const int32_t length) const;
 
-  // config detail: {'bit': 24, 'is_signed_var': False, 'len': 12, 'name': 'ultrasonic_fb_03', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
+  // config detail: {'bit': 24, 'is_signed_var': False, 'len': 12, 'name':
+  // 'ultrasonic_fb_03', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
   int ultrasonic_fb_03(const std::uint8_t* bytes, const int32_t length) const;
 
-  // config detail: {'bit': 12, 'is_signed_var': False, 'len': 12, 'name': 'ultrasonic_fb_02', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
+  // config detail: {'bit': 12, 'is_signed_var': False, 'len': 12, 'name':
+  // 'ultrasonic_fb_02', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
   int ultrasonic_fb_02(const std::uint8_t* bytes, const int32_t length) const;
 
-  // config detail: {'bit': 0, 'is_signed_var': False, 'len': 12, 'name': 'ultrasonic_fb_01', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
+  // config detail: {'bit': 0, 'is_signed_var': False, 'len': 12, 'name':
+  // 'ultrasonic_fb_01', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': 'mm', 'precision': 1.0, 'type': 'int'}
   int ultrasonic_fb_01(const std::uint8_t* bytes, const int32_t length) const;
 };
 
 }  // namespace mk_mini
 }  // namespace canbus
 }  // namespace apollo
-
-

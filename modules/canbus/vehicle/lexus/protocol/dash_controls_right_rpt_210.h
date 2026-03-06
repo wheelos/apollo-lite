@@ -16,7 +16,9 @@
 
 #pragma once
 
+#include "modules/canbus/vehicle/lexus/proto/lexus.pb.h"
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 namespace apollo {

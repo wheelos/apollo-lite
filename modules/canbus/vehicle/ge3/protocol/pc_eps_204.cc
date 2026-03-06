@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/pc_eps_204.h"
+
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {

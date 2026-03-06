@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,11 +33,11 @@ const int32_t Detectedobjectrpt411::ID = 0x411;
 
 void Detectedobjectrpt411::Parse(const std::uint8_t* bytes, int32_t length,
                                  ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_detected_object_rpt_411()
       ->set_front_object_distance_high_res(
           front_object_distance_high_res(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_detected_object_rpt_411()
       ->set_front_object_distance_low_res(
           front_object_distance_low_res(bytes, length));

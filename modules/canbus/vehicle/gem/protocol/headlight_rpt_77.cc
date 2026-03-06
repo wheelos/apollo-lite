@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,12 +33,15 @@ const int32_t Headlightrpt77::ID = 0x77;
 
 void Headlightrpt77::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_gem()->mutable_headlight_rpt_77()->set_output_value(
-      output_value(bytes, length));
-  chassis->mutable_gem()->mutable_headlight_rpt_77()->set_manual_input(
-      manual_input(bytes, length));
-  chassis->mutable_gem()->mutable_headlight_rpt_77()->set_commanded_value(
-      commanded_value(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_headlight_rpt_77()
+      ->set_output_value(output_value(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_headlight_rpt_77()
+      ->set_manual_input(manual_input(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_headlight_rpt_77()
+      ->set_commanded_value(commanded_value(bytes, length));
 }
 
 // config detail: {'name': 'output_value', 'enum': {0:

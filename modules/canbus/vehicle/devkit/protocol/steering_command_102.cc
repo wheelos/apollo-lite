@@ -16,6 +16,7 @@
 
 #include "modules/canbus/vehicle/devkit/protocol/steering_command_102.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {
@@ -37,16 +38,18 @@ uint32_t Steeringcommand102::GetPeriod() const {
 
 void Steeringcommand102::Parse(const std::uint8_t* bytes, int32_t length,
                                ChassisDetail* chassis) const {
-  chassis->mutable_devkit()->mutable_steering_command_102()->set_steer_en_ctrl(
-      steer_en_ctrl(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_steering_command_102()
+      ->set_steer_en_ctrl(steer_en_ctrl(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_steering_command_102()
       ->set_steer_angle_target(steer_angle_target(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_steering_command_102()
       ->set_steer_angle_spd_target(steer_angle_spd_target(bytes, length));
-  chassis->mutable_devkit()->mutable_steering_command_102()->set_checksum_102(
-      checksum_102(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_steering_command_102()
+      ->set_checksum_102(checksum_102(bytes, length));
 }
 
 void Steeringcommand102::UpdateData(uint8_t* data) {

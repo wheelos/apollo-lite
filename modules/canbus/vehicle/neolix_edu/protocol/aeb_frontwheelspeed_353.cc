@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,37 +33,37 @@ const int32_t Aebfrontwheelspeed353::ID = 0x353;
 
 void Aebfrontwheelspeed353::Parse(const std::uint8_t* bytes, int32_t length,
                                   ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_vehiclespeedvalid(vehiclespeedvalid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_vehiclespeed(vehiclespeed(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_vehiclerealdirect(vehiclerealdirect(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_wheelspeed_fl_valid(wheelspeed_fl_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_wheelspeed_fl(wheelspeed_fl(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_wheelspeed_fr_valid(wheelspeed_fr_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_wheelspeed_fr(wheelspeed_fr(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_wheelspeed_fl_direct(wheelspeed_fl_direct(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_wheelspeed_fr_direct(wheelspeed_fr_direct(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_alivecounter_front(alivecounter_front(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_frontwheelspeed_353()
       ->set_checksum_front(checksum_front(bytes, length));
 }

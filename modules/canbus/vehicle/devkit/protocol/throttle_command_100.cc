@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -40,18 +41,21 @@ uint32_t Throttlecommand100::GetPeriod() const {
 
 void Throttlecommand100::Parse(const std::uint8_t* bytes, int32_t length,
                                ChassisDetail* chassis) const {
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_throttle_command_100()
       ->set_throttle_en_ctrl(throttle_en_ctrl(bytes, length));
-  chassis->mutable_devkit()->mutable_throttle_command_100()->set_throttle_acc(
-      throttle_acc(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_throttle_command_100()
+      ->set_throttle_acc(throttle_acc(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_throttle_command_100()
       ->set_throttle_pedal_target(throttle_pedal_target(bytes, length));
-  chassis->mutable_devkit()->mutable_throttle_command_100()->set_speed_target(
-      speed_target(bytes, length));
-  chassis->mutable_devkit()->mutable_throttle_command_100()->set_checksum_100(
-      checksum_100(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_throttle_command_100()
+      ->set_speed_target(speed_target(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_throttle_command_100()
+      ->set_checksum_100(checksum_100(bytes, length));
 }
 
 void Throttlecommand100::UpdateData(uint8_t* data) {
@@ -235,7 +239,7 @@ double Throttlecommand100::speed_target(const std::uint8_t* bytes,
 }
 
 int Throttlecommand100::checksum_100(const std::uint8_t* bytes,
-                                        int32_t length) const {
+                                     int32_t length) const {
   Byte t0(bytes + 7);
   int32_t x = t0.get_byte(0, 8);
 

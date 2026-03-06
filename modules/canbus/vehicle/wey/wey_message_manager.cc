@@ -20,7 +20,6 @@ limitations under the License.
 #include "modules/canbus/vehicle/wey/protocol/ads_eps_113.h"
 #include "modules/canbus/vehicle/wey/protocol/ads_req_vin_390.h"
 #include "modules/canbus/vehicle/wey/protocol/ads_shifter_115.h"
-
 #include "modules/canbus/vehicle/wey/protocol/fail_241.h"
 #include "modules/canbus/vehicle/wey/protocol/fbs1_243.h"
 #include "modules/canbus/vehicle/wey/protocol/fbs2_240.h"

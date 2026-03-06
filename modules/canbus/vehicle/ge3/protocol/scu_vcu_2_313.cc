@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_vcu_2_313.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,14 +33,18 @@ const int32_t Scuvcu2313::ID = 0x313;
 
 void Scuvcu2313::Parse(const std::uint8_t* bytes, int32_t length,
                        ChassisDetail* chassis) const {
-  chassis->mutable_ge3()->mutable_scu_vcu_2_313()->set_vcu_torqposmax(
-      vcu_torqposmax(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_vcu_2_313()->set_vcu_torqnegmax(
-      vcu_torqnegmax(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_vcu_2_313()->set_vcu_torqact(
-      vcu_torqact(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_vcu_2_313()->set_vcu_engspd(
-      vcu_engspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_vcu_2_313()
+      ->set_vcu_torqposmax(vcu_torqposmax(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_vcu_2_313()
+      ->set_vcu_torqnegmax(vcu_torqnegmax(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_vcu_2_313()
+      ->set_vcu_torqact(vcu_torqact(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_vcu_2_313()
+      ->set_vcu_engspd(vcu_engspd(bytes, length));
 }
 
 // config detail: {'description': 'Max positive torque', 'offset': 0.0,

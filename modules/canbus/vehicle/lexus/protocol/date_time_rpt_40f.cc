@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,18 +33,24 @@ const int32_t Datetimerpt40f::ID = 0x40F;
 
 void Datetimerpt40f::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_date_time_rpt_40f()->set_time_second(
-      time_second(bytes, length));
-  chassis->mutable_lexus()->mutable_date_time_rpt_40f()->set_time_minute(
-      time_minute(bytes, length));
-  chassis->mutable_lexus()->mutable_date_time_rpt_40f()->set_time_hour(
-      time_hour(bytes, length));
-  chassis->mutable_lexus()->mutable_date_time_rpt_40f()->set_date_day(
-      date_day(bytes, length));
-  chassis->mutable_lexus()->mutable_date_time_rpt_40f()->set_date_month(
-      date_month(bytes, length));
-  chassis->mutable_lexus()->mutable_date_time_rpt_40f()->set_date_year(
-      date_year(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_date_time_rpt_40f()
+      ->set_time_second(time_second(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_date_time_rpt_40f()
+      ->set_time_minute(time_minute(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_date_time_rpt_40f()
+      ->set_time_hour(time_hour(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_date_time_rpt_40f()
+      ->set_date_day(date_day(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_date_time_rpt_40f()
+      ->set_date_month(date_month(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_date_time_rpt_40f()
+      ->set_date_year(date_year(bytes, length));
 }
 
 // config detail: {'name': 'time_second', 'offset': 0.0, 'precision': 1.0,

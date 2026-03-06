@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "modules/canbus/vehicle/ch/proto/ch.pb.h"
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
 
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
@@ -42,8 +43,7 @@ class Vehiclemodecommand116 : public ::apollo::drivers::canbus::ProtocolData<
   // 'is_signed_var': False, 'len': 1, 'name': 'VIN_REQ_CMD', 'offset': 0.0,
   // 'order': 'intel', 'physical_range': '[0|1]', 'physical_unit': '',
   // 'precision': 1.0, 'type': 'enum'}
-  Vehiclemodecommand116* set_vin_req_cmd(
-      Vehicle_mode_command_116::Vin_req_cmdType vin_req_cmd);
+  Vehiclemodecommand116* set_vin_req_cmd(uint8_t vin_req_cmd);
 
  private:
   // config detail: {'bit': 0, 'description': 'Request VIN(Command)', 'enum':
@@ -51,11 +51,10 @@ class Vehiclemodecommand116 : public ::apollo::drivers::canbus::ProtocolData<
   // 'is_signed_var': False, 'len': 1, 'name': 'VIN_REQ_CMD', 'offset': 0.0,
   // 'order': 'intel', 'physical_range': '[0|1]', 'physical_unit': '',
   // 'precision': 1.0, 'type': 'enum'}
-  void set_p_vin_req_cmd(uint8_t* data,
-                         Vehicle_mode_command_116::Vin_req_cmdType vin_req_cmd);
+  void set_p_vin_req_cmd(uint8_t* data, uint8_t vin_req_cmd);
 
  private:
-  Vehicle_mode_command_116::Vin_req_cmdType vin_req_cmd_;
+  uint8_t vin_req_cmd_;
 };
 
 }  // namespace ch

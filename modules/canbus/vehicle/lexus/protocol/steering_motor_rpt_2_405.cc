@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,13 +33,13 @@ const int32_t Steeringmotorrpt2405::ID = 0x405;
 
 void Steeringmotorrpt2405::Parse(const std::uint8_t* bytes, int32_t length,
                                  ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_steering_motor_rpt_2_405()
       ->set_encoder_temperature(encoder_temperature(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_steering_motor_rpt_2_405()
       ->set_motor_temperature(motor_temperature(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_steering_motor_rpt_2_405()
       ->set_angular_speed(angular_speed(bytes, length));
 }

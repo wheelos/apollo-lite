@@ -4,6 +4,7 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "yunle_vehicle_factory",
+    alwayslink = True,
     srcs = [
         "yunle_vehicle_factory.cc",
     ],
@@ -14,6 +15,7 @@ cc_library(
         ":yunle_controller",
         ":yunle_message_manager",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 

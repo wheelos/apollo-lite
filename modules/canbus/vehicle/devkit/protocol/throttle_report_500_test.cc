@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace devkit {
@@ -42,10 +44,30 @@ TEST_F(Throttlereport500Test, General) {
   EXPECT_EQ(data[6], 0b00000100);
   EXPECT_EQ(data[7], 0b00000101);
 
-  EXPECT_EQ(cd.devkit().throttle_report_500().throttle_pedal_actual(), 65);
-  EXPECT_EQ(cd.devkit().throttle_report_500().throttle_flt2(), 1);
-  EXPECT_EQ(cd.devkit().throttle_report_500().throttle_flt1(), 1);
-  EXPECT_EQ(cd.devkit().throttle_report_500().throttle_en_state(), 3);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .throttle_report_500()
+          .throttle_pedal_actual(),
+      65);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .throttle_report_500()
+          .throttle_flt2(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .throttle_report_500()
+          .throttle_flt1(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .throttle_report_500()
+          .throttle_en_state(),
+      3);
 }
 
 }  // namespace devkit
