@@ -64,7 +64,9 @@ fi
 # If AUTO_BOOTSTRAP=true is set (usually for one-click startup in Dev mode)
 if [[ "${AUTO_BOOTSTRAP}" == "true" ]]; then
     echo "[Entrypoint] Auto-starting Dreamview..."
-    nohup bash /apollo/scripts/bootstrap.sh start > /apollo/data/log/bootstrap.log 2>&1 &
+    # run as user
+    # sudo -u ${USER_NAME} bash -c "cd /apollo && source ~/.bashrc && source ~/.bash_aliases && source /apollo/cyber/setup.bash && ./scripts/bootstrap.sh start > /apollo/data/log/bootstrap.log 2>&1"
+    runuser -u ${USER_NAME} -- bash -l -c "cd /apollo && ./scripts/bootstrap.sh start > /apollo/data/log/bootstrap.log 2>&1"
 fi
 
 # 5. Keep running the container
