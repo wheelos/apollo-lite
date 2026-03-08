@@ -13,6 +13,7 @@ cc_library(
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/tasks/deciders:decider_base",
+        "//modules/planning/common/util:common_lib",
     ],
 )
 
@@ -23,8 +24,8 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "//modules/planning/common:reference_line_info",
-        "//modules/planning/common/util:common_lib",
         "//modules/planning/tasks/deciders:decider_base",
+        "//modules/planning/common/util:common_lib",
     ],
 )
 
@@ -38,6 +39,7 @@ cc_library(
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/tasks/deciders:decider_base",
+        "//modules/planning/common/util:common_lib",
     ],
 )
 

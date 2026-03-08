@@ -21,55 +21,12 @@
 #include "modules/planning/scenarios/park/valet_parking/valet_parking_scenario.h"
 
 #include "modules/planning/common/util/common.h"
-#include "modules/planning/scenarios/park/valet_parking/stage_approaching_parking_spot.h"
 #include "modules/planning/scenarios/park/valet_parking/stage_parking.h"
 
 namespace apollo {
 namespace planning {
 namespace scenario {
 namespace valet_parking {
-
-namespace {
-
-bool apollo::planning::util::GetParkingSpotCenterFromRouting(
-    const Frame& frame, apollo::common::math::Vec2d* const parking_center) {
-  const auto& routing_request = frame.local_view().routing->routing_request();
-  if (!routing_request.has_parking_info()) {
-    return false;
-  }
-  const auto& corner_point = routing_request.parking_info().corner_point();
-  if (corner_point.point_size() <= 0) {
-    return false;
-  }
-
-  double center_x = 0.0;
-  double center_y = 0.0;
-  for (const auto& point : corner_point.point()) {
-    center_x += point.x();
-    center_y += point.y();
-  }
-  center_x /= static_cast<double>(corner_point.point_size());
-  center_y /= static_cast<double>(corner_point.point_size());
-  parking_center->set_x(center_x);
-  parking_center->set_y(center_y);
-  return true;
-}
-
-apollo::common::math::Vec2d apollo::planning::util::GetParkingSpotCenterFromMap(
-    const ParkingSpaceInfoConstPtr& target_parking_spot) {
-  const auto& points = target_parking_spot->polygon().points();
-  double center_x = 0.0;
-  double center_y = 0.0;
-  for (const auto& point : points) {
-    center_x += point.x();
-    center_y += point.y();
-  }
-  center_x /= static_cast<double>(points.size());
-  center_y /= static_cast<double>(points.size());
-  return apollo::common::math::Vec2d(center_x, center_y);
-}
-
-}  // namespace
 
 using apollo::common::VehicleState;
 using apollo::common::math::Vec2d;
@@ -101,12 +58,6 @@ void ValetParkingScenario::RegisterStages() {
   if (s_stage_factory_.Empty()) {
     s_stage_factory_.Clear();
   }
-  s_stage_factory_.Register(
-      StageType::VALET_PARKING_APPROACHING_PARKING_SPOT,
-      [](const ScenarioConfig::StageConfig& config,
-         const std::shared_ptr<DependencyInjector>& injector) -> Stage* {
-        return new StageApproachingParkingSpot(config, injector);
-      });
   s_stage_factory_.Register(
       StageType::VALET_PARKING_PARKING,
       [](const ScenarioConfig::StageConfig& config,

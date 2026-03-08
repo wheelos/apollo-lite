@@ -4,33 +4,7 @@ valet_parking_config: {
   max_valid_stop_distance: 1.0
 }
 
-stage_type: VALET_PARKING_APPROACHING_PARKING_SPOT
 stage_type: VALET_PARKING_PARKING
-
-stage_config: {
-  stage_type: VALET_PARKING_APPROACHING_PARKING_SPOT
-  enabled: true
-  task_type: OPEN_SPACE_ROI_DECIDER
-  task_type: OPEN_SPACE_TRAJECTORY_PROVIDER
-  task_type: OPEN_SPACE_TRAJECTORY_PARTITION
-  task_type: OPEN_SPACE_FALLBACK_DECIDER
-  task_config: {
-    task_type: OPEN_SPACE_ROI_DECIDER
-    open_space_roi_decider_config {
-      roi_type: PARK_AND_GO
-      perception_obstacle_buffer: 0.0
-    }
-  }
-  task_config: {
-    task_type: OPEN_SPACE_TRAJECTORY_PROVIDER
-  }
-  task_config: {
-    task_type: OPEN_SPACE_TRAJECTORY_PARTITION
-  }
-  task_config: {
-    task_type: OPEN_SPACE_FALLBACK_DECIDER
-  }
-}
 
 stage_config: {
   stage_type: VALET_PARKING_PARKING

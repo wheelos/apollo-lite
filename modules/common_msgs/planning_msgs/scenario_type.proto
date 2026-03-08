@@ -78,7 +78,6 @@ enum StageType {
     EMERGENCY_STOP_STANDBY = 611;
 
     // valet parking scenario
-    VALET_PARKING_APPROACHING_PARKING_SPOT = 700;
     VALET_PARKING_PARKING = 701;
 
     // turning around scenario
