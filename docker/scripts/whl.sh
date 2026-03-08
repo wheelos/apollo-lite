@@ -114,7 +114,7 @@ function parse_args() {
         # These are commands, stop parsing options
         break
         ;;
-      dev | test)
+      dev | test | prod)
         # These are modes, stop parsing options
         break
         ;;
@@ -261,9 +261,13 @@ fi
 function generate_env() {
   local mode="$1"
   local container_name="apollo_dev_${USER}"
+  local prod_env_file="${DOCKER_DIR}/.env.prod"
+  local prod_env_template="${DOCKER_DIR}/.env.prod.template"
 
   if [[ "${mode}" == "test" ]]; then
     container_name="apollo_test_${USER}"
+  elif [[ "${mode}" == "prod" ]]; then
+    container_name="apollo_prod_${USER}"
   fi
 
   # Override with custom container name if specified
@@ -295,6 +299,22 @@ SERVER_PORT=${DREAMVIEW_PORT}
 # Controlling Entrypoint Behavior
 AUTO_BOOTSTRAP=${AUTO_BOOTSTRAP:-false}
 EOF
+
+  if [[ "${mode}" == "prod" ]]; then
+    if [[ ! -f "${prod_env_file}" && -f "${prod_env_template}" ]]; then
+      cp "${prod_env_template}" "${prod_env_file}"
+      echo ">>> Created ${prod_env_file} from template"
+    fi
+
+    if [[ -f "${prod_env_file}" ]]; then
+      cat "${prod_env_file}" >> "${DOCKER_DIR}/.env"
+      echo ">>> Loaded prod overrides from ${prod_env_file}"
+    else
+      echo ">>> ERROR: Missing prod env file: ${prod_env_file}"
+      echo ">>> Hint: copy ${prod_env_template} to ${prod_env_file} and update values."
+      exit 1
+    fi
+  fi
 }
 
 function get_compose_cmd() {
@@ -311,6 +331,8 @@ function get_cmd() {
   local mode_file="${DOCKER_SERVICE_DIR}/docker-compose.dev.yml"
   if [[ "${mode}" == "test" ]]; then
     mode_file="${DOCKER_SERVICE_DIR}/docker-compose.test.yml"
+  elif [[ "${mode}" == "prod" ]]; then
+    mode_file="${DOCKER_SERVICE_DIR}/docker-compose.prod.yml"
   fi
 
   # Generate unique project name based on user and project directory
@@ -326,8 +348,8 @@ function get_cmd() {
 
 function validate_mode() {
   local mode="$1"
-  if [[ "${mode}" != "dev" && "${mode}" != "test" ]]; then
-    echo ">>> ERROR: Invalid mode '${mode}'. Use 'dev' or 'test'."
+  if [[ "${mode}" != "dev" && "${mode}" != "test" && "${mode}" != "prod" ]]; then
+    echo ">>> ERROR: Invalid mode '${mode}'. Use 'dev', 'test' or 'prod'."
     exit 2
   fi
 }
@@ -395,6 +417,8 @@ function cmd_stop() {
   $(get_cmd "dev") down 2>/dev/null  || true
   generate_env "test"
   $(get_cmd "test") down 2>/dev/null  || true
+  generate_env "prod"
+  $(get_cmd "prod") down 2>/dev/null  || true
   echo ">>> Stopped."
 }
 
@@ -416,10 +440,11 @@ function show_help() {
   echo "Usage: bash whl.sh [OPTIONS] [COMMAND] [MODE]"
   echo ""
   echo "Options:"
-  echo "  -n, --name NAME    Specify container name (default: apollo_{dev|test}_{USER})"
+  echo "  -n, --name NAME    Specify container name (default: apollo_{dev|test|prod}_{USER})"
   echo "  -i, --image IMAGE  Specify Docker image (skip auto-selection)"
   echo "  --os VERSION       Specify OS version (default: auto-detect, fallback: 22.04)"
   echo "  -h, --help         Show this help message"
+  echo "                     (Prod env file: docker/.env.prod; template: docker/.env.prod.template)"
   echo ""
   echo "Commands:"
   echo "  start      Start container (skips if running, restarts if stopped)"
@@ -433,11 +458,13 @@ function show_help() {
   echo "Modes:"
   echo "  dev        Standard development mode (Host net, Privileged)"
   echo "  test       Isolated test mode (Bridge net, Dynamic ports)"
+  echo "  prod       Production mode (Host net, Restart enabled)"
   echo ""
   echo "Examples:"
   echo "  bash whl.sh enter                    # Enter dev container (auto-select image)"
   echo "  bash whl.sh -n my_container enter    # Enter container with custom name"
   echo "  bash whl.sh -i myimage:latest start  # Start with custom image"
+  echo "  bash whl.sh start prod               # Start production container"
   echo "  bash whl.sh --os 20.04 enter dev     # Enter with Ubuntu 20.04 image"
 }
 

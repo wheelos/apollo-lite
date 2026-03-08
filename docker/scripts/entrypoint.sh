@@ -60,6 +60,21 @@ if [ -f "/apollo/cyber/setup.bash" ]; then
     source /apollo/cyber/setup.bash
 fi
 
+if [[ "${APOLLO_RUNTIME_MODE:-}" == "prod" ]]; then
+    PROD_ENV_FILE="${USER_HOME}/.apollo_prod_env"
+    cat > "${PROD_ENV_FILE}" <<EOF
+export GLOG_minloglevel=${GLOG_minloglevel:-1}
+export APOLLO_CONF_PATH=${APOLLO_CONF_PATH:-/apollo/conf}
+EOF
+    chown "${USER_ID}:${GROUP_ID}" "${PROD_ENV_FILE}"
+
+    if ! grep -q 'source ~/.apollo_prod_env' "${USER_HOME}/.bashrc"; then
+        echo "source ~/.apollo_prod_env" >> "${USER_HOME}/.bashrc"
+    fi
+
+    source "${PROD_ENV_FILE}"
+fi
+
 # 4. Business logic branch
 # If AUTO_BOOTSTRAP=true is set (usually for one-click startup in Dev mode)
 if [[ "${AUTO_BOOTSTRAP}" == "true" ]]; then
