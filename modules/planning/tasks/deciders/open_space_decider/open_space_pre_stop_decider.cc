@@ -19,6 +19,7 @@
  **/
 
 #include "modules/planning/tasks/deciders/open_space_decider/open_space_pre_stop_decider.h"
+#include "modules/planning/common/util/common.h"
 
 #include <memory>
 #include <string>
@@ -34,7 +35,7 @@ namespace planning {
 
 namespace {
 
-bool GetParkingSpotCenterFromRouting(
+bool apollo::planning::util::GetParkingSpotCenterFromRouting(
     const Frame& frame, apollo::common::math::Vec2d* parking_spot_center) {
   const auto& routing_request = frame.local_view().routing->routing_request();
   if (!routing_request.has_parking_info()) {
@@ -57,7 +58,7 @@ bool GetParkingSpotCenterFromRouting(
   return true;
 }
 
-apollo::common::math::Vec2d GetParkingSpotCenterFromMap(
+apollo::common::math::Vec2d apollo::planning::util::GetParkingSpotCenterFromMap(
     const apollo::hdmap::ParkingSpaceInfoConstPtr& parking_spot_ptr) {
   const auto& points = parking_spot_ptr->polygon().points();
   double center_x = 0.0;
@@ -161,15 +162,21 @@ bool OpenSpacePreStopDecider::CheckParkingSpotPreStop(
   }
 
   Vec2d parking_spot_center;
-  if (!GetParkingSpotCenterFromRouting(*frame, &parking_spot_center)) {
-    parking_spot_center = GetParkingSpotCenterFromMap(target_parking_spot_ptr);
+  if (!apollo::planning::util::GetParkingSpotCenterFromRouting(*frame, &parking_spot_center)) {
+    parking_spot_center = apollo::planning::util::GetParkingSpotCenterFromMap(target_parking_spot_ptr);
   }
 
   common::PointENU center_point;
   center_point.set_x(parking_spot_center.x());
   center_point.set_y(parking_spot_center.y());
   common::SLPoint center_sl;
-  reference_line_info->reference_line().XYToSL(center_point, &center_sl);
+  if (!reference_line_info->reference_line().XYToSL(center_point, &center_sl)) {
+    AERROR << "Failed to project parking spot center onto reference line "
+           << "when setting pre-stop fence. Parking spot center: ("
+           << parking_spot_center.x() << ", " << parking_spot_center.y()
+           << ")";
+    return false;
+  }
   *target_s = center_sl.s();
   return true;
 }

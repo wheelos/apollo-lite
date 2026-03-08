@@ -40,6 +40,12 @@ int BuildStopDecision(const std::string& stop_wall_id,
                       const std::vector<std::string>& wait_for_obstacles,
                       const std::string& decision_tag, Frame* const frame,
                       ReferenceLineInfo* const reference_line_info);
+
+bool GetParkingSpotCenterFromRouting(
+    const Frame& frame, apollo::common::math::Vec2d* parking_spot_center);
+
+apollo::common::math::Vec2d GetParkingSpotCenterFromMap(
+    const apollo::hdmap::ParkingSpaceInfoConstPtr& target_parking_spot);
 }  // namespace util
 }  // namespace planning
 }  // namespace apollo

@@ -19,6 +19,7 @@
  **/
 
 #include "modules/planning/tasks/deciders/open_space_decider/open_space_roi_decider.h"
+#include "modules/planning/common/util/common.h"
 
 #include <memory>
 #include <utility>
@@ -31,7 +32,7 @@ namespace planning {
 
 namespace {
 
-bool GetParkingSpotCenterFromRouting(
+bool apollo::planning::util::GetParkingSpotCenterFromRouting(
     const Frame &frame, apollo::common::math::Vec2d *parking_spot_center) {
   const auto &routing_request = frame.local_view().routing->routing_request();
   if (!routing_request.has_parking_info()) {
@@ -54,7 +55,7 @@ bool GetParkingSpotCenterFromRouting(
   return true;
 }
 
-apollo::common::math::Vec2d GetParkingSpotCenterFromMap(
+apollo::common::math::Vec2d apollo::planning::util::GetParkingSpotCenterFromMap(
     const apollo::hdmap::ParkingSpaceInfoConstPtr &target_parking_spot) {
   const auto &points = target_parking_spot->polygon().points();
   double center_x = 0.0;
@@ -1491,8 +1492,8 @@ bool OpenSpaceRoiDecider::CheckDistanceToParkingSpot(
   }
 
   Vec2d parking_spot_center;
-  if (!GetParkingSpotCenterFromRouting(*frame, &parking_spot_center)) {
-    parking_spot_center = GetParkingSpotCenterFromMap(target_parking_spot);
+  if (!apollo::planning::util::GetParkingSpotCenterFromRouting(*frame, &parking_spot_center)) {
+    parking_spot_center = apollo::planning::util::GetParkingSpotCenterFromMap(target_parking_spot);
   }
 
   Vec2d vehicle_vec(vehicle_state_.x(), vehicle_state_.y());

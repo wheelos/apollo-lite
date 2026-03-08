@@ -20,6 +20,7 @@
 
 #include "modules/planning/scenarios/park/valet_parking/valet_parking_scenario.h"
 
+#include "modules/planning/common/util/common.h"
 #include "modules/planning/scenarios/park/valet_parking/stage_approaching_parking_spot.h"
 #include "modules/planning/scenarios/park/valet_parking/stage_parking.h"
 
@@ -30,7 +31,7 @@ namespace valet_parking {
 
 namespace {
 
-bool GetParkingSpotCenterFromRouting(
+bool apollo::planning::util::GetParkingSpotCenterFromRouting(
     const Frame& frame, apollo::common::math::Vec2d* const parking_center) {
   const auto& routing_request = frame.local_view().routing->routing_request();
   if (!routing_request.has_parking_info()) {
@@ -54,7 +55,7 @@ bool GetParkingSpotCenterFromRouting(
   return true;
 }
 
-apollo::common::math::Vec2d GetParkingSpotCenterFromMap(
+apollo::common::math::Vec2d apollo::planning::util::GetParkingSpotCenterFromMap(
     const ParkingSpaceInfoConstPtr& target_parking_spot) {
   const auto& points = target_parking_spot->polygon().points();
   double center_x = 0.0;
@@ -141,29 +142,37 @@ bool ValetParkingScenario::IsTransferable(const Frame& frame,
                                           const double parking_start_range) {
   // TODO(all) Implement available parking spot detection by preception results
   std::string target_parking_spot_id;
-  if (frame.local_view().routing->routing_request().has_parking_info() &&
-      frame.local_view()
-          .routing->routing_request()
-          .parking_info()
-          .has_parking_space_id()) {
-    target_parking_spot_id = frame.local_view()
-                                 .routing->routing_request()
-                                 .parking_info()
-                                 .parking_space_id();
-  } else {
-    ADEBUG << "No parking space id from routing";
-    return false;
+  bool has_parking_info_from_routing = false;
+
+  const auto& routing_request = frame.local_view().routing->routing_request();
+  if (routing_request.has_parking_info()) {
+    const auto& parking_info = routing_request.parking_info();
+    if (parking_info.has_parking_space_id()) {
+      target_parking_spot_id = parking_info.parking_space_id();
+    }
+    if (parking_info.has_corner_point() &&
+        parking_info.corner_point().point_size() > 0) {
+      has_parking_info_from_routing = true;
+    }
   }
 
-  if (target_parking_spot_id.empty()) {
+  if (target_parking_spot_id.empty() && !has_parking_info_from_routing) {
+    ADEBUG << "No parking space id or corner points from routing";
     return false;
   }
 
   ParkingSpaceInfoConstPtr target_parking_spot;
   const auto& vehicle_state = frame.vehicle_state();
 
-  if (!GetTargetParkingSpotById(target_parking_spot_id, &target_parking_spot)) {
-    ADEBUG << "No such parking spot found in HDMap, parking_space_id: "
+  bool found_parking_spot_in_map = false;
+  if (!target_parking_spot_id.empty()) {
+    found_parking_spot_in_map =
+        GetTargetParkingSpotById(target_parking_spot_id, &target_parking_spot);
+  }
+
+  if (!found_parking_spot_in_map && !has_parking_info_from_routing) {
+    ADEBUG << "No such parking spot found in HDMap and no routing corner "
+              "points, parking_space_id: "
            << target_parking_spot_id;
     return false;
   }
@@ -194,15 +203,21 @@ bool ValetParkingScenario::CheckDistanceToParkingSpot(
     const Frame& frame, const VehicleState& vehicle_state,
     const double parking_start_range,
     const ParkingSpaceInfoConstPtr& target_parking_spot) {
-  CHECK_NOTNULL(target_parking_spot);
-  if (target_parking_spot->polygon().points().empty()) {
-    ADEBUG << "parking spot polygon is empty";
-    return false;
-  }
-
   Vec2d parking_spot_center;
-  if (!GetParkingSpotCenterFromRouting(frame, &parking_spot_center)) {
-    parking_spot_center = GetParkingSpotCenterFromMap(target_parking_spot);
+  bool has_center = apollo::planning::util::GetParkingSpotCenterFromRouting(
+      frame, &parking_spot_center);
+
+  if (!has_center) {
+    if (target_parking_spot == nullptr) {
+      AERROR << "No parking spot found in map and no routing info available.";
+      return false;
+    }
+    if (target_parking_spot->polygon().points().empty()) {
+      ADEBUG << "parking spot polygon is empty";
+      return false;
+    }
+    parking_spot_center = apollo::planning::util::GetParkingSpotCenterFromMap(
+        target_parking_spot);
   }
 
   const Vec2d vehicle_vec(vehicle_state.x(), vehicle_state.y());

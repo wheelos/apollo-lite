@@ -130,6 +130,44 @@ int BuildStopDecision(const std::string& stop_wall_id,
   return 0;
 }
 
+
+bool GetParkingSpotCenterFromRouting(
+    const Frame& frame, apollo::common::math::Vec2d* parking_spot_center) {
+  const auto& routing_request = frame.local_view().routing->routing_request();
+  if (!routing_request.has_parking_info()) {
+    return false;
+  }
+  const auto& corner_point = routing_request.parking_info().corner_point();
+  if (corner_point.point_size() <= 0) {
+    return false;
+  }
+  double center_x = 0.0;
+  double center_y = 0.0;
+  for (const auto& point : corner_point.point()) {
+    center_x += point.x();
+    center_y += point.y();
+  }
+  center_x /= static_cast<double>(corner_point.point_size());
+  center_y /= static_cast<double>(corner_point.point_size());
+  parking_spot_center->set_x(center_x);
+  parking_spot_center->set_y(center_y);
+  return true;
+}
+
+apollo::common::math::Vec2d GetParkingSpotCenterFromMap(
+    const apollo::hdmap::ParkingSpaceInfoConstPtr& target_parking_spot) {
+  const auto& points = target_parking_spot->polygon().points();
+  double center_x = 0.0;
+  double center_y = 0.0;
+  for (const auto& point : points) {
+    center_x += point.x();
+    center_y += point.y();
+  }
+  center_x /= static_cast<double>(points.size());
+  center_y /= static_cast<double>(points.size());
+  return apollo::common::math::Vec2d(center_x, center_y);
+}
+
 }  // namespace util
 }  // namespace planning
 }  // namespace apollo
