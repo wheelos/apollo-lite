@@ -40,6 +40,8 @@ cc_library(
     deps = [
         "//cyber",
         "@ffmpeg//:avcodec",
+        "@ffmpeg//:avformat",
+        "@ffmpeg//:swscale",
     ],
 )
 

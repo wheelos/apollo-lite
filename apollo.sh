@@ -94,9 +94,6 @@ function apollo_env_setup() {
         mkdir -p "${APOLLO_BAZEL_DIST_DIR}"
     fi
 
-    if [ ! -f "${APOLLO_ROOT_DIR}/.apollo.bazelrc" ]; then
-        env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/apollo_config.sh" --noninteractive
-    fi
 }
 
 #TODO(all): Update node modules
@@ -117,7 +114,7 @@ function _usage() {
     echo -e "\n${RED}Usage${NO_COLOR}:
     .${BOLD}/apollo.sh${NO_COLOR} [OPTION]"
     echo -e "\n${RED}Options${NO_COLOR}:
-    ${BLUE}config [options]${NO_COLOR}: config bazel build environment either non-interactively (default) or interactively.
+    ${BLUE}config [options]${NO_COLOR}: show guidance for local Bazel overrides (.custom.bazelrc).
     ${BLUE}build [module]${NO_COLOR}: run build for cyber (<module> = cyber) or modules/<module>.  If <module> unspecified, build all.
     ${BLUE}build_dbg [module]${NO_COLOR}: run debug build.
     ${BLUE}build_opt [module]${NO_COLOR}: run optimized build.
@@ -149,6 +146,23 @@ function _check_command() {
     python scripts/command_checker.py --name "${name}" --command "${cmd}" --available "${commands}" --helpmsg "${help_msg}"
 }
 
+function _config_bazel_local_override() {
+    local local_bazelrc="${APOLLO_ROOT_DIR}/.custom.bazelrc"
+    local opt="${1:-}"
+
+    if [[ "${opt}" == "--clean" ]]; then
+        rm -f "${local_bazelrc}"
+        success "Removed local override file: ${local_bazelrc}"
+        return 0
+    fi
+
+    info "Project Bazel defaults are in .bazelrc"
+    info "Optional local overrides file: ${local_bazelrc}"
+    info "Create it manually if needed, for example:"
+    info "${TAB}echo 'build --jobs=4' >> ${local_bazelrc}"
+    return 0
+}
+
 function main() {
     if [ "$#" -eq 0 ]; then
         _usage
@@ -166,7 +180,7 @@ function main() {
     shift
     case "${cmd}" in
         config)
-            env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/apollo_config.sh" "$@"
+            _config_bazel_local_override "$@"
             ;;
         build)
             env ${APOLLO_ENV} bash "${build_sh}" "$@"

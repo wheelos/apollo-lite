@@ -15,8 +15,7 @@
  *****************************************************************************/
 #pragma once
 
-#define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
-#include <proj_api.h>
+#include <proj.h>
 
 #include "Eigen/Geometry"
 
@@ -43,11 +42,11 @@ struct WGS84Corr {
 
 class FrameTransform {
  public:
-  static bool LatlonToUtmXY(double lon, double lat, UTMCoor *utm_xy);
+  static bool LatlonToUtmXY(double lon, double lat, UTMCoor* utm_xy);
   static bool UtmXYToLatlon(double x, double y, int zone, bool southhemi,
-                            WGS84Corr *latlon);
-  static bool XYZToBlh(const Vector3d &xyz, Vector3d *blh);
-  static bool BlhToXYZ(const Vector3d &blh, Vector3d *xyz);
+                            WGS84Corr* latlon);
+  static bool XYZToBlh(const Vector3d& xyz, Vector3d* blh);
+  static bool BlhToXYZ(const Vector3d& blh, Vector3d* xyz);
 
   //  static bool XyzToBlh(const Vector3d& xyz, Position *blh);
   //  static bool BlhToXyz(const Position& blh, Vector3d *xyz);

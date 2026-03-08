@@ -16,8 +16,7 @@ limitations under the License.
 
 #include <string>
 
-#define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
-#include <proj_api.h>
+#include <proj.h>
 
 #include "modules/map/hdmap/adapter/xml_parser/status.h"
 
@@ -44,8 +43,7 @@ class CoordinateConvertTool {
   std::string source_convert_param_;
   std::string dst_convert_param_;
 
-  projPJ pj_from_;
-  projPJ pj_to_;
+  PJ* pj_;
 };
 
 }  // namespace adapter

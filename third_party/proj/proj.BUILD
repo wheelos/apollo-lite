@@ -6,8 +6,12 @@ licenses(["notice"])
 
 cc_library(
     name = "proj",
+    hdrs = glob([
+        "include/**/*.h",
+        "include/**/*.hpp",
+    ]),
     includes = [
-        ".",
+        "include",
     ],
     linkopts = [
         "-L/opt/apollo/sysroot/lib",
