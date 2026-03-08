@@ -26,6 +26,7 @@ A high-performance autonomous driving system
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+- [Production Mode (Docker)](#production-mode-docker)
 - [Copyright and License](#copyright-and-license)
 - [Connect with Us](#connect-with-us)
 
@@ -127,6 +128,36 @@ To build a specific module:
   [Caiyun Cloud Drive](https://caiyun.139.com/w/i/2oxwFbadL3byc) (Extraction
   code: `jfwu`). After downloading, place the archive in the `.cache/distdir`
   directory within your codebase.
+
+---
+
+## Production Mode (Docker)
+
+Apollo-Lite supports a dedicated production profile through `docker-compose.prod.yml` + `env_file`.
+
+### 1. Prepare production env file
+
+```bash
+cp docker/.env.prod.template docker/.env.prod
+```
+
+Edit `docker/.env.prod` as needed (for example, `GLOG_minloglevel=1` to suppress INFO logs).
+
+### 2. Start / enter / stop prod container
+
+```bash
+bash docker/scripts/whl.sh start prod
+bash docker/scripts/whl.sh enter prod
+bash docker/scripts/whl.sh stop
+```
+
+### 3. Configuration precedence (important)
+
+- Base variables: generated into `docker/.env` by `whl.sh`
+- Prod variables: loaded from `docker/.env.prod` via `env_file`
+- If the same key appears in both `environment` and `env_file`, `environment` wins
+
+Current recommendation: keep prod-specific tunables in `docker/.env.prod`, and avoid duplicating those keys in `environment`.
 
 ---
 

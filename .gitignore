@@ -86,3 +86,5 @@ tools/FlameGraph
 .DS_Store
 
 #WORKSPACE
+docker/.env
+docker/.env.prod
