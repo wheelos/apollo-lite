@@ -24,8 +24,8 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
 TARGET_ARCH="$(uname -m)"
 
-info "Install fast-rtps ..."
-bash ${CURR_DIR}/install_fast-rtps.sh build
+# info "Install fast-rtps ..."
+# bash ${CURR_DIR}/install_fast-rtps.sh build
 
 # Python protobuf deps
 bash ${CURR_DIR}/install_protobuf_release.sh

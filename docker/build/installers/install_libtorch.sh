@@ -27,7 +27,7 @@ if [[ -e '/usr/local/libtorch/lib/libtorch.so' ]]; then
   exit 0
 fi
 
-PYTORCH_VERSION="2.6.0"
+PYTORCH_VERSION="2.10.0"
 TARGET_ARCH="$(uname -m)"
 CUDA_SUPPORT=false
 CUDA_VERSION_STR=""
@@ -58,14 +58,16 @@ function install_libtorch_cpp() {
     local PKG_NAME="" URL="" CHECKSUM=""
 
     if [ "$CUDA_SUPPORT" = true ]; then
-      PKG_NAME="libtorch-cxx11-abi-shared-with-deps-${PYTORCH_VERSION}+${CUDA_VERSION_TAG}.zip"
+      PKG_NAME="libtorch-shared-with-deps-${PYTORCH_VERSION}+${CUDA_VERSION_TAG}.zip"
       URL="${BASE_URL}/${CUDA_VERSION_TAG}/${PKG_NAME}"
       # Example: CHECKSUM="419dba362eaf8f1d36849ceee17c3e2ff8ff12ac666b42d3ff02a164ebe090e9"
-      CHECKSUM="TODO_ADD_SHA256_CHECKSUM_FOR_${PKG_NAME}"
+      # libtorch-shared-withh-deps-2.10.0+cu128.zip
+      CHECKSUM='429aa9fead3cf3d557e7c310442a1fae3879cdc14a469ff452043b39b61666a9'
     else
-      PKG_NAME="libtorch-cxx11-abi-shared-with-deps-${PYTORCH_VERSION}%2Bcpu.zip"
+      PKG_NAME="libtorch-shared-with-deps-${PYTORCH_VERSION}%2Bcpu.zip"
       URL="${BASE_URL}/cpu/${PKG_NAME}"
-      CHECKSUM="TODO_ADD_SHA256_CHECKSUM_FOR_CPU_LIBTORCH"
+      # libtorch-shared-with-deps-2.10.0+cpu.zip
+      CHECKSUM="c5bf8efda9224a2d971b19d1ef6cf3ba6fee8ab53e69c49427db003d1d300496"
     fi
 
     if [[ "${CHECKSUM}" == TODO_* ]]; then
@@ -95,6 +97,8 @@ function install_libtorch_cpp() {
   # aarch64 Strategy: Prioritize pre-compiled wheel, fallback to source build
   # ============================================================================
   elif [ "${TARGET_ARCH}" = "aarch64" ]; then
+    # use 2.6.0 in l4t environment
+    PYTORCH_VERSION="2.6.0"
     info "Executing aarch64 strategy..."
     if ! _install_libtorch_from_wheel_aarch64; then
       warning "Pre-compiled wheel installation failed. Falling back to building from source."
@@ -160,6 +164,14 @@ function _install_libtorch_from_wheel_aarch64() {
       warning "Could not download pre-compiled wheel from ${DOWNLOAD_LINK}."
       popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"; return 1
   fi
+
+  # install deps
+  # TODO(leafyleong): just install runtime deps not dev packages
+  apt_get_update_and_install \
+    libopenblas-dev \
+    libomp-dev \
+    zlib1g-dev \
+    libffi-dev
 
   info "Installing downloaded wheel via pip..."
   if ! pip3 install --no-cache-dir "${PKG_NAME}"; then
