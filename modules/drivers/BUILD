@@ -6,9 +6,6 @@ package(
 
 install(
     name = "install",
-    data = [
-        ":drivers.BUILD",
-    ],
     data_dest = "drivers",
     deps = [
         ":pb_drivers",
@@ -31,7 +28,6 @@ install(
         "//modules/drivers/radar/conti_radar:install",
         "//modules/drivers/radar/racobit_radar:install",
         "//modules/drivers/radar/ultrasonic_radar:install",
-        "//modules/drivers/smartereye:install",
         "//modules/drivers/tools/image_decompress:install",
         "//modules/drivers/video:install",
         "//modules/drivers/video/tools/decode_video:install",
@@ -66,7 +62,6 @@ install(
         "//modules/drivers/radar/conti_radar/proto:conti_radar_conf_cc_proto",
         "//modules/drivers/radar/racobit_radar/proto:racobit_radar_conf_cc_proto",
         "//modules/drivers/radar/ultrasonic_radar/proto:ultrasonic_radar_conf_cc_proto",
-        "//modules/drivers/smartereye/proto:config_cc_proto",
         "//modules/drivers/tools/image_decompress/proto:config_cc_proto",
         "//modules/drivers/video/proto:video_h265cfg_cc_proto",
     ],
@@ -90,7 +85,6 @@ install_files(
         "//modules/drivers/radar/conti_radar/proto:conti_radar_conf_py_pb2",
         "//modules/drivers/radar/racobit_radar/proto:racobit_radar_conf_py_pb2",
         "//modules/drivers/radar/ultrasonic_radar/proto:ultrasonic_radar_conf_py_pb2",
-        "//modules/drivers/smartereye/proto:config_py_pb2",
         "//modules/drivers/tools/image_decompress/proto:config_py_pb2",
         "//modules/drivers/video/proto:video_h265cfg_py_pb2",
     ],

@@ -149,26 +149,6 @@ py_proto_library(
 )
 
 cc_proto_library(
-    name = "smartereye_cc_proto",
-    deps = [
-        ":smartereye_proto",
-    ],
-)
-
-proto_library(
-    name = "smartereye_proto",
-    srcs = ["smartereye.proto"],
-    deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
-    ],
-)
-
-py_proto_library(
-    name = "smartereye_py_pb2",
-    deps = [":smartereye_proto"],
-)
-
-cc_proto_library(
     name = "mobileye_cc_proto",
     deps = [
         ":mobileye_proto",
