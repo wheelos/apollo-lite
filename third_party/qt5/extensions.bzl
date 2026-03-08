@@ -1,5 +1,16 @@
 """Bzlmod extension for local Qt5 installation."""
 
+def _get_cpu_arch(repository_ctx):
+    """Get CPU architecture using uname -m."""
+    result = repository_ctx.execute(["uname", "-m"])
+    if result.return_code == 0:
+        return result.stdout.strip()
+    return "unknown"
+
+def _is_arm64(repository_ctx):
+    arch = _get_cpu_arch(repository_ctx)
+    return arch in ["aarch64", "arm64"]
+
 def _qt_repository_impl(repository_ctx):
     default_qt_root = repository_ctx.attr.qt_root
     qt_root = repository_ctx.os.environ.get("APOLLO_QT5_ROOT", default_qt_root)
@@ -9,8 +20,13 @@ def _qt_repository_impl(repository_ctx):
 
     if not include_dir.exists:
         fail("Qt include directory not found: {}".format(include_dir))
-    if not lib_dir.exists:
-        fail("Qt lib directory not found: {}".format(lib_dir))
+
+    # For aarch64, Qt5 libs are in /usr/lib/aarch64-linux-gnu (system path)
+    # and /usr/local/qt5/lib may not exist. Skip lib_dir check for aarch64.
+    # qt.BUILD handles the correct library path via select().
+    if not _is_arm64(repository_ctx):
+        if not lib_dir.exists:
+            fail("Qt lib directory not found: {}".format(lib_dir))
 
     repository_ctx.symlink(str(include_dir) + "/QtCore", "QtCore")
     repository_ctx.symlink(str(include_dir) + "/QtGui", "QtGui")
