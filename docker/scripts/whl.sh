@@ -306,14 +306,12 @@ EOF
       echo ">>> Created ${prod_env_file} from template"
     fi
 
-    if [[ -f "${prod_env_file}" ]]; then
-      cat "${prod_env_file}" >> "${DOCKER_DIR}/.env"
-      echo ">>> Loaded prod overrides from ${prod_env_file}"
-    else
+    if [[ ! -f "${prod_env_file}" ]]; then
       echo ">>> ERROR: Missing prod env file: ${prod_env_file}"
       echo ">>> Hint: copy ${prod_env_template} to ${prod_env_file} and update values."
       exit 1
     fi
+    echo ">>> Using prod env file: ${prod_env_file}"
   fi
 }
 
@@ -343,7 +341,7 @@ function get_cmd() {
 
   local compose_cmd
   compose_cmd="$(get_compose_cmd)"
-  echo "${compose_cmd} --project-name ${project_name} --project-directory ${DOCKER_DIR} --env-file ${DOCKER_DIR}/.env -f ${base_file} -f ${mode_file}"
+  echo "${compose_cmd} --project-name ${project_name} --project-directory ${DOCKER_DIR} -f ${base_file} -f ${mode_file}"
 }
 
 function validate_mode() {

@@ -9,6 +9,8 @@ services:
     user: "root"
     working_dir: /apollo
     shm_size: ${SHM_SIZE}
+    env_file:
+      - .env
 
     environment:
       - USER_NAME=${USER_NAME}
