@@ -123,20 +123,7 @@ cc_library(
         ":with_wey": ["//modules/canbus/vehicle/wey:wey_vehicle_factory"],
         ":with_yunle": ["//modules/canbus/vehicle/yunle:yunle_vehicle_factory"],
         ":with_zhongyun": ["//modules/canbus/vehicle/zhongyun:zhongyun_vehicle_factory"],
-        "//conditions:default": [
-            "//modules/canbus/vehicle/ch:ch_vehicle_factory",
-            "//modules/canbus/vehicle/devkit:devkit_vehicle_factory",
-            "//modules/canbus/vehicle/ge3:ge3_vehicle_factory",
-            "//modules/canbus/vehicle/gem:gem_vehicle_factory",
-            "//modules/canbus/vehicle/lexus:lexus_vehicle_factory",
-            "//modules/canbus/vehicle/lincoln:lincoln_vehicle_factory",
-            "//modules/canbus/vehicle/mk_mini:mk_mini_vehicle_factory",
-            "//modules/canbus/vehicle/neolix_edu:neolix_edu_vehicle_factory",
-            "//modules/canbus/vehicle/transit:transit_vehicle_factory",
-            "//modules/canbus/vehicle/wey:wey_vehicle_factory",
-            "//modules/canbus/vehicle/yunle:yunle_vehicle_factory",
-            "//modules/canbus/vehicle/zhongyun:zhongyun_vehicle_factory"
-        ],
+        "//conditions:default": [],
     }),
     alwayslink = True,
 )

@@ -23,9 +23,7 @@
 #include <utility>
 #include <vector>
 
-// #define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
 #include <proj.h>
-// #include <proj_api.h>
 
 #include "modules/common_msgs/localization_msgs/gps.pb.h"
 #include "modules/common_msgs/localization_msgs/imu.pb.h"

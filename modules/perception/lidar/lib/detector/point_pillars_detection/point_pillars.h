@@ -49,11 +49,11 @@
 #include <string>
 #include <vector>
 
-// headers in TensorRT
+#include <torch/script.h>
+#include <torch/torch.h>
+
 #include "NvInfer.h"
 #include "NvOnnxParser.h"
-#include "torch/script.h"
-#include "torch/torch.h"
 
 // headers in local files
 #include "modules/perception/lidar/lib/detector/point_pillars_detection/anchor_mask_cuda.h"
@@ -102,11 +102,11 @@ class Logger : public nvinfer1::ILogger {
   Severity reportable_severity;
 };
 #elif GPU_PLATFORM == AMD
-  class Logger {};
+class Logger {};
 namespace nvinfer1 {
-  class ICudaEngine {};
-  class IExecutionContext {};
-}
+class ICudaEngine {};
+class IExecutionContext {};
+}  // namespace nvinfer1
 #endif
 
 class PointPillars {

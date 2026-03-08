@@ -12,6 +12,9 @@ cc_library(
         "-L/opt/apollo/sysroot/lib",
         "-lavcodec",
     ],
+    deps = [
+        ":avutil",
+    ],
 )
 
 cc_library(
@@ -22,6 +25,10 @@ cc_library(
         "-L/opt/apollo/sysroot/lib",
         "-lavformat",
     ],
+    deps = [
+        ":avcodec",
+        ":avutil",
+    ],
 )
 
 cc_library(
@@ -31,6 +38,9 @@ cc_library(
     linkopts = [
         "-L/opt/apollo/sysroot/lib",
         "-lswscale",
+    ],
+    deps = [
+        ":avutil",
     ],
 )
 

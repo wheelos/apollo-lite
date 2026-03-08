@@ -24,8 +24,8 @@ cc_binary(
     deps = [
         "@com_github_gflags_gflags//:gflags",
     ] + if_gpu(
-        ["@libtorch_gpu"],
-        ["@libtorch_cpu"],
+        ["@libtorch_gpu//:libtorch_gpu"],
+        ["@libtorch_cpu//:libtorch_cpu"],
     ),
 )
 

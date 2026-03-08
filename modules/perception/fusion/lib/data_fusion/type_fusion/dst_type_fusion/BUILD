@@ -43,7 +43,10 @@ cc_test(
     #
     # The -mno-fix-cortex-a53-843419 flag disables the erratum workaround in the linker.
     # This only affects this test binary; production code remains unaffected.
-    linkopts = ["-mno-fix-cortex-a53-843419"],
+    linkopts = select({
+        "@platforms//cpu:aarch64": ["-mno-fix-cortex-a53-843419"],
+        "//conditions:default": [],
+    }),
     deps = [
         ":dst_type_fusion",
         "//modules/perception/base:base_type",

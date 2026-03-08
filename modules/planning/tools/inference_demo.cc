@@ -15,9 +15,8 @@
  *****************************************************************************/
 
 #include <gflags/gflags.h>
-
-#include "torch/script.h"
-#include "torch/torch.h"
+#include <torch/script.h>
+#include <torch/torch.h>
 
 DEFINE_string(model_file,
               "/apollo/modules/planning/tools/planning_demo_model.pt",
