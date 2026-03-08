@@ -16,32 +16,38 @@
 
 #pragma once
 
-#include "modules/drivers/canbus/can_comm/protocol_data.h"
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
+#include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 namespace apollo {
 namespace canbus {
 namespace mk_mini {
 
 class Odofb18c4deef : public ::apollo::drivers::canbus::ProtocolData<
-                    ::apollo::canbus::ChassisDetail> {
+                          ::apollo::canbus::ChassisDetail> {
  public:
   static const int32_t ID;
   Odofb18c4deef();
   void Parse(const std::uint8_t* bytes, int32_t length,
-                     ChassisDetail* chassis) const override;
+             ChassisDetail* chassis) const override;
 
  private:
+  // config detail: {'bit': 32, 'is_signed_var': True, 'len': 32, 'name':
+  // 'odo_fb_accumulative_angular', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type':
+  // 'double'}
+  double odo_fb_accumulative_angular(const std::uint8_t* bytes,
+                                     const int32_t length) const;
 
-  // config detail: {'bit': 32, 'is_signed_var': True, 'len': 32, 'name': 'odo_fb_accumulative_angular', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type': 'double'}
-  double odo_fb_accumulative_angular(const std::uint8_t* bytes, const int32_t length) const;
-
-  // config detail: {'bit': 0, 'is_signed_var': True, 'len': 32, 'name': 'odo_fb_accumulative_mileage', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type': 'double'}
-  double odo_fb_accumulative_mileage(const std::uint8_t* bytes, const int32_t length) const;
+  // config detail: {'bit': 0, 'is_signed_var': True, 'len': 32, 'name':
+  // 'odo_fb_accumulative_mileage', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type':
+  // 'double'}
+  double odo_fb_accumulative_mileage(const std::uint8_t* bytes,
+                                     const int32_t length) const;
 };
 
 }  // namespace mk_mini
 }  // namespace canbus
 }  // namespace apollo
-
-

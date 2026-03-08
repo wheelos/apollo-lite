@@ -6,25 +6,23 @@ package(
 
 install(
     name = "install",
-    data_dest = "3rd-can-card-library",
     data = [
+        ":3rd-can-card-library.BUILD",
         ":cyberfile.xml",
-        ":3rd-can-card-library.BUILD"
     ],
+    data_dest = "3rd-can-card-library",
 )
 
 install_src_files(
     name = "install_src",
     deps = [
-        "//third_party/can_card_library/hermes_can:lib",
-        "//third_party/can_card_library/hermes_can:headers",
         ":src",
-    ]
+    ],
 )
 
 install_src_files(
     name = "src",
-    src_dir = ["."],
     dest = "3rd-can-card-library/src",
     filter = "*",
+    src_dir = ["."],
 )

@@ -15,6 +15,8 @@ cc_library(
         "//modules/perception/lidar/lib/detector/ncut_segmentation/common:lr_classifier",
         "//modules/perception/pipeline/proto/stage:ncut_config_cc_proto",
         "//modules/perception/lidar/lib/detector/ncut_segmentation/proto:ncut_param_cc_proto",
+        "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
     ],
 )
 
@@ -24,7 +26,6 @@ cc_library(
     hdrs = ["ncut_segmentation.h"],
     copts = [
         "-fopenmp",
-        #"-DDEBUG_NCUT",
     ],
     linkopts = [
         "-lgomp",
@@ -40,10 +41,10 @@ cc_library(
         "//modules/perception/lidar/lib/detector/ncut_segmentation/common:flood_fill",
         "//modules/perception/lidar/lib/detector/ncut_segmentation/common:lr_classifier",
         "//modules/perception/lidar/lib/detector/ncut_segmentation/proto:ncut_param_cc_proto",
+        "//modules/perception/lidar/lib/detector/ncut_segmentation/proto:ncut_debug_cc_proto",
         "//modules/perception/lidar/lib/interface:base_lidar_detector",
         "//modules/perception/pipeline:stage",
-        "@local_config_pcl//:common",
-        "@local_config_vtk//:vtk",
+        "@local_config_pcl//:common"
     ],
 )
 

@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_2_302.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,14 +36,54 @@ TEST_F(Scu2302Test, reset) {
   uint8_t bytes[8] = {0x4D, 0x47, 0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA};
 
   scu2302.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_2_302().vin00(), 'M');  // 77
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_2_302().vin01(), 71);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_2_302().vin02(), 255);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_2_302().vin03(), 238);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_2_302().vin04(), 221);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_2_302().vin05(), 204);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_2_302().vin06(), 187);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_2_302().vin07(), 170);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_2_302()
+          .vin00(),
+      'M');  // 77
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_2_302()
+          .vin01(),
+      71);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_2_302()
+          .vin02(),
+      255);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_2_302()
+          .vin03(),
+      238);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_2_302()
+          .vin04(),
+      221);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_2_302()
+          .vin05(),
+      204);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_2_302()
+          .vin06(),
+      187);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_2_302()
+          .vin07(),
+      170);
 }
 
 }  // namespace ge3

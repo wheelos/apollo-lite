@@ -18,6 +18,9 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/mk_mini/proto/mk_mini.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,15 +34,26 @@ Lrwheelfb18c4d7ef::Lrwheelfb18c4d7ef() {}
 const int32_t Lrwheelfb18c4d7ef::ID = 0x98c4d7ef;
 
 void Lrwheelfb18c4d7ef::Parse(const std::uint8_t* bytes, int32_t length,
-                         ChassisDetail* chassis) const {
-  chassis->mutable_mk_mini()->mutable_lr_wheel_fb_18c4d7ef()->set_lr_wheel_fb_check_bcc(lr_wheel_fb_check_bcc(bytes, length));
-  chassis->mutable_mk_mini()->mutable_lr_wheel_fb_18c4d7ef()->set_lr_wheel_fb_alive_cnt(lr_wheel_fb_alive_cnt(bytes, length));
-  chassis->mutable_mk_mini()->mutable_lr_wheel_fb_18c4d7ef()->set_lr_wheel_fb_pulse(lr_wheel_fb_pulse(bytes, length));
-  chassis->mutable_mk_mini()->mutable_lr_wheel_fb_18c4d7ef()->set_lr_wheel_fb_velocity(lr_wheel_fb_velocity(bytes, length));
+                              ChassisDetail* chassis) const {
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_lr_wheel_fb_18c4d7ef()
+      ->set_lr_wheel_fb_check_bcc(lr_wheel_fb_check_bcc(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_lr_wheel_fb_18c4d7ef()
+      ->set_lr_wheel_fb_alive_cnt(lr_wheel_fb_alive_cnt(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_lr_wheel_fb_18c4d7ef()
+      ->set_lr_wheel_fb_pulse(lr_wheel_fb_pulse(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_lr_wheel_fb_18c4d7ef()
+      ->set_lr_wheel_fb_velocity(lr_wheel_fb_velocity(bytes, length));
 }
 
-// config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name': 'lr_wheel_fb_check_bcc', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
-int Lrwheelfb18c4d7ef::lr_wheel_fb_check_bcc(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name':
+// 'lr_wheel_fb_check_bcc', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
+int Lrwheelfb18c4d7ef::lr_wheel_fb_check_bcc(const std::uint8_t* bytes,
+                                             int32_t length) const {
   Byte t0(bytes + 7);
   int32_t x = t0.get_byte(0, 8);
 
@@ -47,8 +61,11 @@ int Lrwheelfb18c4d7ef::lr_wheel_fb_check_bcc(const std::uint8_t* bytes, int32_t 
   return ret;
 }
 
-// config detail: {'bit': 52, 'is_signed_var': False, 'len': 4, 'name': 'lr_wheel_fb_alive_cnt', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
-int Lrwheelfb18c4d7ef::lr_wheel_fb_alive_cnt(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 52, 'is_signed_var': False, 'len': 4, 'name':
+// 'lr_wheel_fb_alive_cnt', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
+int Lrwheelfb18c4d7ef::lr_wheel_fb_alive_cnt(const std::uint8_t* bytes,
+                                             int32_t length) const {
   Byte t0(bytes + 6);
   int32_t x = t0.get_byte(4, 4);
 
@@ -56,8 +73,11 @@ int Lrwheelfb18c4d7ef::lr_wheel_fb_alive_cnt(const std::uint8_t* bytes, int32_t 
   return ret;
 }
 
-// config detail: {'bit': 16, 'is_signed_var': True, 'len': 32, 'name': 'lr_wheel_fb_pulse', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
-int Lrwheelfb18c4d7ef::lr_wheel_fb_pulse(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 16, 'is_signed_var': True, 'len': 32, 'name':
+// 'lr_wheel_fb_pulse', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
+int Lrwheelfb18c4d7ef::lr_wheel_fb_pulse(const std::uint8_t* bytes,
+                                         int32_t length) const {
   Byte t0(bytes + 5);
   int32_t x = t0.get_byte(0, 8);
 
@@ -83,8 +103,11 @@ int Lrwheelfb18c4d7ef::lr_wheel_fb_pulse(const std::uint8_t* bytes, int32_t leng
   return ret;
 }
 
-// config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name': 'lr_wheel_fb_velocity', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type': 'double'}
-double Lrwheelfb18c4d7ef::lr_wheel_fb_velocity(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name':
+// 'lr_wheel_fb_velocity', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type': 'double'}
+double Lrwheelfb18c4d7ef::lr_wheel_fb_velocity(const std::uint8_t* bytes,
+                                               int32_t length) const {
   Byte t0(bytes + 1);
   int32_t x = t0.get_byte(0, 8);
 

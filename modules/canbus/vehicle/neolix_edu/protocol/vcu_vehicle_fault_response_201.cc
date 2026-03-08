@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -33,63 +34,63 @@ const int32_t Vcuvehiclefaultresponse201::ID = 0x201;
 void Vcuvehiclefaultresponse201::Parse(const std::uint8_t* bytes,
                                        int32_t length,
                                        ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_vehicle_error_indicationsvcu(
           vehicle_error_indicationsvcu(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_brake_system_errorehb(brake_system_errorehb(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_eps_error(eps_error(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_motor_error(motor_error(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_epb_error(epb_error(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_high_voltage_battery_errorbcu(
           high_voltage_battery_errorbcu(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_automode_exit_reason_losscommuni(
           automode_exit_reason_losscommuni(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_automode_exit_reason_reqsignalno(
           automode_exit_reason_reqsignalno(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_automode_exit_reason_low_power(
           automode_exit_reason_low_power(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_automode_exit_reason_highvolt(
           automode_exit_reason_highvolt(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_automode_exit_reason_vehicle_flt(
           automode_exit_reason_vehicle_flt(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_automode_exit_reason_press_emerg(
           automode_exit_reason_press_emerg(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_automode_exit_reason_press_remot(
           automode_exit_reason_press_remot(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_automode_exit_reason_pdu_control(
           automode_exit_reason_pdu_control(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_vcu_faultrept_alivecounter(
           vcu_faultrept_alivecounter(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_fault_response_201()
       ->set_vcu_faultrept_checksum(vcu_faultrept_checksum(bytes, length));
 }

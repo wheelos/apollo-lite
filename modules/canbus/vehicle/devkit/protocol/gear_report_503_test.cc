@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace devkit {
@@ -42,8 +44,18 @@ TEST_F(Gearreport503Test, General) {
   EXPECT_EQ(data[6], 0b00000000);
   EXPECT_EQ(data[7], 0b00000001);
 
-  EXPECT_EQ(cd.devkit().gear_report_503().gear_flt(), 1);
-  EXPECT_EQ(cd.devkit().gear_report_503().gear_actual(), 4);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .gear_report_503()
+          .gear_flt(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .gear_report_503()
+          .gear_actual(),
+      4);
 }
 
 }  // namespace devkit

@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/ecu_status_1_515.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -41,20 +44,76 @@ TEST_F(Ecustatus1515Test, General) {
   EXPECT_EQ(data[6], 0b00010010);
   EXPECT_EQ(data[7], 0b00010100);
 
-  EXPECT_DOUBLE_EQ(cd.ch().ecu_status_1_515().speed(), 5.1299999999999999);
-  EXPECT_DOUBLE_EQ(cd.ch().ecu_status_1_515().acc_speed(), 1.0269999999999999);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().ctrl_sts(), 1);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_sts(), 18);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_err(), 5138);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_mcu_err(), 0);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_mcu_can(), 0);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_hw_lost(), 0);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_eps_err(), 0);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_eps_can(), 0);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_ehb_err(), 1);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_ehb_can(), 0);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_bms_can(), 0);
-  EXPECT_EQ(cd.ch().ecu_status_1_515().chassis_ads_err(), 2);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .speed(),
+      5.1299999999999999);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .acc_speed(),
+      1.0269999999999999);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .ctrl_sts(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_sts(),
+      18);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_err(),
+      5138);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_mcu_err(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_mcu_can(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_hw_lost(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_eps_err(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_eps_can(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_ehb_err(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_ehb_can(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_bms_can(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .ecu_status_1_515()
+          .chassis_ads_err(),
+      2);
 }
 
 }  // namespace ch

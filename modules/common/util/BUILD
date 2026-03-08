@@ -287,6 +287,12 @@ cc_library(
     ]
 )
 
+cc_library(
+    name = "rate_limiter",
+    hdrs = ["rate_limiter.h"],
+    visibility = ["//visibility:public"],
+)
+
 cc_test(
     name = "perf_util_test",
     size = "small",
@@ -308,3 +314,8 @@ cc_test(
 )
 
 cpplint()
+
+cc_library(
+    name = "registry",
+    hdrs = ["registry.h"],
+)

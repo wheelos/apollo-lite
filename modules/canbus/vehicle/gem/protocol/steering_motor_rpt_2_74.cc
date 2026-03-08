@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,14 +33,15 @@ const int32_t Steeringmotorrpt274::ID = 0x74;
 
 void Steeringmotorrpt274::Parse(const std::uint8_t* bytes, int32_t length,
                                 ChassisDetail* chassis) const {
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_steering_motor_rpt_2_74()
       ->set_encoder_temperature(encoder_temperature(bytes, length));
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_steering_motor_rpt_2_74()
       ->set_motor_temperature(motor_temperature(bytes, length));
-  chassis->mutable_gem()->mutable_steering_motor_rpt_2_74()->set_angular_speed(
-      angular_speed(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_steering_motor_rpt_2_74()
+      ->set_angular_speed(angular_speed(bytes, length));
 }
 
 // config detail: {'name': 'encoder_temperature', 'offset': -40.0,

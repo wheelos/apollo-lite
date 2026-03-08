@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_eps_311.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,16 +33,21 @@ const int32_t Scueps311::ID = 0x311;
 
 void Scueps311::Parse(const std::uint8_t* bytes, int32_t length,
                       ChassisDetail* chassis) const {
-  chassis->mutable_ge3()->mutable_scu_eps_311()->set_eps_intidx(
-      eps_intidx(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_eps_311()->set_eps_steeranglespd(
-      eps_steeranglespd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_eps_311()->set_eps_steerangle(
-      eps_steerangle(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_eps_311()->set_eps_faultst(
-      eps_faultst(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_eps_311()->set_eps_drvmode(
-      eps_drvmode(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_eps_311()
+      ->set_eps_intidx(eps_intidx(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_eps_311()
+      ->set_eps_steeranglespd(eps_steeranglespd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_eps_311()
+      ->set_eps_steerangle(eps_steerangle(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_eps_311()
+      ->set_eps_faultst(eps_faultst(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_eps_311()
+      ->set_eps_drvmode(eps_drvmode(bytes, length));
   // newcode
   chassis->mutable_check_response()->set_is_eps_online(
       eps_drvmode(bytes, length) == 3);

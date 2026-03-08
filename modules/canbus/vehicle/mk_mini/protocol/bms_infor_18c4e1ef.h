@@ -16,41 +16,55 @@
 
 #pragma once
 
-#include "modules/drivers/canbus/can_comm/protocol_data.h"
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
+#include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 namespace apollo {
 namespace canbus {
 namespace mk_mini {
 
 class Bmsinfor18c4e1ef : public ::apollo::drivers::canbus::ProtocolData<
-                    ::apollo::canbus::ChassisDetail> {
+                             ::apollo::canbus::ChassisDetail> {
  public:
   static const int32_t ID;
   Bmsinfor18c4e1ef();
   void Parse(const std::uint8_t* bytes, int32_t length,
-                     ChassisDetail* chassis) const override;
+             ChassisDetail* chassis) const override;
 
  private:
+  // config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name':
+  // 'bms_Infor_check_bcc', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
+  int bms_infor_check_bcc(const std::uint8_t* bytes,
+                          const int32_t length) const;
 
-  // config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name': 'bms_Infor_check_bcc', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
-  int bms_infor_check_bcc(const std::uint8_t* bytes, const int32_t length) const;
+  // config detail: {'bit': 52, 'is_signed_var': False, 'len': 4, 'name':
+  // 'bms_Infor_alive_cnt', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
+  int bms_infor_alive_cnt(const std::uint8_t* bytes,
+                          const int32_t length) const;
 
-  // config detail: {'bit': 52, 'is_signed_var': False, 'len': 4, 'name': 'bms_Infor_alive_cnt', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
-  int bms_infor_alive_cnt(const std::uint8_t* bytes, const int32_t length) const;
+  // config detail: {'bit': 32, 'is_signed_var': False, 'len': 16, 'name':
+  // 'bms_Infor_remaining_capacity', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.01, 'type':
+  // 'double'}
+  double bms_infor_remaining_capacity(const std::uint8_t* bytes,
+                                      const int32_t length) const;
 
-  // config detail: {'bit': 32, 'is_signed_var': False, 'len': 16, 'name': 'bms_Infor_remaining_capacity', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.01, 'type': 'double'}
-  double bms_infor_remaining_capacity(const std::uint8_t* bytes, const int32_t length) const;
+  // config detail: {'bit': 16, 'is_signed_var': True, 'len': 16, 'name':
+  // 'bms_Infor_current', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': '', 'precision': 0.01, 'type': 'double'}
+  double bms_infor_current(const std::uint8_t* bytes,
+                           const int32_t length) const;
 
-  // config detail: {'bit': 16, 'is_signed_var': True, 'len': 16, 'name': 'bms_Infor_current', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.01, 'type': 'double'}
-  double bms_infor_current(const std::uint8_t* bytes, const int32_t length) const;
-
-  // config detail: {'bit': 0, 'is_signed_var': False, 'len': 16, 'name': 'bms_Infor_voltage', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.01, 'type': 'double'}
-  double bms_infor_voltage(const std::uint8_t* bytes, const int32_t length) const;
+  // config detail: {'bit': 0, 'is_signed_var': False, 'len': 16, 'name':
+  // 'bms_Infor_voltage', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[0|0]', 'physical_unit': '', 'precision': 0.01, 'type': 'double'}
+  double bms_infor_voltage(const std::uint8_t* bytes,
+                           const int32_t length) const;
 };
 
 }  // namespace mk_mini
 }  // namespace canbus
 }  // namespace apollo
-
-

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iomanip>
 #include <mutex>
 #include <stdexcept>
 #include <vector>
@@ -31,17 +32,39 @@ namespace camera {
 // --- YuvProcessor Helper Functions (now private to the class, declared static)
 namespace {
 
+// Convert UYVY (U Y V Y) to YUYV (Y U Y V)
 inline void ConvertUYVYToYUYV(const uint8_t* src, size_t len,
                               std::vector<uint8_t>& out) {
-  // UYVY: U Y V Y (for two pixels)
-  // YUYV: Y U Y V (for two pixels)
-  // U0 Y0 V0 Y1 -> Y0 U0 Y1 V0
   out.resize(len);
   for (size_t i = 0; i + 3 < len; i += 4) {
-    out[i + 0] = src[i + 1];
-    out[i + 1] = src[i + 0];
-    out[i + 2] = src[i + 3];
-    out[i + 3] = src[i + 2];
+    out[i + 0] = src[i + 1];  // Y0
+    out[i + 1] = src[i + 0];  // U0
+    out[i + 2] = src[i + 3];  // Y1
+    out[i + 3] = src[i + 2];  // V0
+  }
+}
+
+// Convert VYUY (V Y U Y) to YUYV (Y U Y V)
+inline void ConvertVYUYToYUYV(const uint8_t* src, size_t len,
+                              std::vector<uint8_t>& out) {
+  out.resize(len);
+  for (size_t i = 0; i + 3 < len; i += 4) {
+    out[i + 0] = src[i + 1];  // Y0
+    out[i + 1] = src[i + 2];  // U0
+    out[i + 2] = src[i + 3];  // Y1
+    out[i + 3] = src[i + 0];  // V0
+  }
+}
+
+// Convert YVYU (Y V Y U) to YUYV (Y U Y V)
+inline void ConvertYVYUToYUYV(const uint8_t* src, size_t len,
+                              std::vector<uint8_t>& out) {
+  out.resize(len);
+  for (size_t i = 0; i + 3 < len; i += 4) {
+    out[i + 0] = src[i + 0];  // Y0
+    out[i + 1] = src[i + 3];  // U0
+    out[i + 2] = src[i + 2];  // Y1
+    out[i + 3] = src[i + 1];  // V0
   }
 }
 
@@ -49,43 +72,126 @@ inline void ConvertUYVYToYUYV(const uint8_t* src, size_t len,
 
 // --- YuvProcessor Implementation ---
 
-YuvProcessor::YuvProcessor(OutputFormat format, bool is_uyvy)
-    : output_format_(format), is_uyvy_(is_uyvy) {}
+YuvProcessor::YuvProcessor(OutputFormat format, YuvFormat yuv_format,
+                           bool swap_uv)
+    : output_format_(format), yuv_format_(yuv_format), swap_uv_(swap_uv) {}
 
-void YuvProcessor::ConvertYUYVToBGR(const uint8_t* src, int width, int height,
-                                    uint8_t* dst_bgr) {
-  // Create a cv::Mat for the YUYV input
-  // YUYV is an interleaved format where each pixel pair (Y0U0Y1V0) represents
-  // two pixels. OpenCV typically treats YUYV as a 2-channel image (CV_8UC2)
-  // where each "pixel" in the Mat is a UV or Y channel pair, or it can be
-  // explicitly handled as YUV. When using COLOR_YUV2BGR_YUYV, OpenCV expects
-  // the input data to be arranged as YUYV and correctly infers the width and
-  // height for conversion. The width passed to Mat constructor should be the
-  // actual pixel width of the image. The stride (step) is 2 bytes per YUYV
-  // pixel (YUYV is 4 bytes for 2 pixels, so 2 bytes/pixel avg) For
-  // cv::Mat(rows, cols, type, data), cols should be the pixel width, not byte
-  // width.
+void YuvProcessor::ConvertYUYVToRGB(const uint8_t* src, int width, int height,
+                                    uint8_t* dst_rgb) {
+  // YUV 4:2:2 formats use 2 bytes per pixel (4 bytes for 2 pixels)
   size_t yuyv_len = static_cast<size_t>(width) * height * 2;
-  if (opencv_yuyv_temp_buffer_.size() < yuyv_len) {
-    opencv_yuyv_temp_buffer_.resize(yuyv_len);
+
+  // Determine the effective format for conversion (swap UV if requested)
+  YuvFormat effective_format = yuv_format_;
+  if (swap_uv_) {
+    // Swap U and V by toggling between formats
+    switch (yuv_format_) {
+      case YuvFormat::YUYV:
+        effective_format = YuvFormat::YVYU;
+        break;
+      case YuvFormat::YVYU:
+        effective_format = YuvFormat::YUYV;
+        break;
+      case YuvFormat::UYVY:
+        effective_format = YuvFormat::VYUY;
+        break;
+      case YuvFormat::VYUY:
+        effective_format = YuvFormat::UYVY;
+        break;
+    }
   }
-  std::memcpy(opencv_yuyv_temp_buffer_.data(), src, yuyv_len);
-  cv::Mat yuyv_mat(height, width, CV_8UC2, opencv_yuyv_temp_buffer_.data());
-  cv::Mat bgr_mat(height, width, CV_8UC3, dst_bgr);
-  cv::cvtColor(yuyv_mat, bgr_mat, cv::COLOR_YUV2BGR_YUYV);
+
+  // For formats that OpenCV doesn't directly support, convert to YUYV first
+  const uint8_t* convert_src = src;
+
+  if (effective_format == YuvFormat::VYUY) {
+    // VYUY is not directly supported by OpenCV, convert to YUYV first
+    if (yuyv_buffer_.size() < yuyv_len) {
+      yuyv_buffer_.resize(yuyv_len);
+    }
+    ConvertVYUYToYUYV(src, yuyv_len, yuyv_buffer_);
+    convert_src = yuyv_buffer_.data();
+    effective_format = YuvFormat::YUYV;
+  }
+
+  cv::Mat yuyv_mat(height, width, CV_8UC2, const_cast<uint8_t*>(convert_src));
+  cv::Mat rgb_mat(height, width, CV_8UC3, dst_rgb);
+
+  // Select the correct OpenCV conversion based on YUV format
+  int cv_code;
+  switch (effective_format) {
+    case YuvFormat::YUYV:
+      cv_code = cv::COLOR_YUV2RGB_YUYV;
+      break;
+    case YuvFormat::YVYU:
+      cv_code = cv::COLOR_YUV2RGB_YVYU;
+      break;
+    case YuvFormat::UYVY:
+      cv_code = cv::COLOR_YUV2RGB_UYVY;
+      break;
+    case YuvFormat::VYUY:
+      // Already converted to YUYV above
+      cv_code = cv::COLOR_YUV2RGB_YUYV;
+      break;
+    default:
+      cv_code = cv::COLOR_YUV2RGB_YUYV;
+      break;
+  }
+  cv::cvtColor(yuyv_mat, rgb_mat, cv_code);
 }
 
-void YuvProcessor::Process(const void* src, size_t len,
+bool YuvProcessor::Process(const void* src, size_t len,
                            std::shared_ptr<Image> dest_pb) {
+  if (dest_pb == nullptr) {
+    AERROR << "YuvProcessor: destination image is null";
+    return false;
+  }
+
+  if (src == nullptr || len == 0) {
+    AERROR << "YuvProcessor: source buffer is invalid";
+    return false;
+  }
+
   const uint8_t* yuv_data_ptr = static_cast<const uint8_t*>(src);
 
-  // If the format is UYVY, convert to YUYV first.
-  // Reuse member variable yuyv_buffer_ to avoid repeated memory allocation.
-  if (is_uyvy_) {
+  // Determine the effective format (account for UV swapping)
+  YuvFormat effective_format = yuv_format_;
+  if (swap_uv_) {
+    switch (yuv_format_) {
+      case YuvFormat::YUYV:
+        effective_format = YuvFormat::YVYU;
+        break;
+      case YuvFormat::YVYU:
+        effective_format = YuvFormat::YUYV;
+        break;
+      case YuvFormat::UYVY:
+        effective_format = YuvFormat::VYUY;
+        break;
+      case YuvFormat::VYUY:
+        effective_format = YuvFormat::UYVY;
+        break;
+    }
+  }
+
+  // Convert non-YUYV formats to YUYV first for passthrough mode
+  if (output_format_ == OutputFormat::YUYV &&
+      effective_format != YuvFormat::YUYV) {
     if (yuyv_buffer_.size() != len) {
       yuyv_buffer_.resize(len);
     }
-    ConvertUYVYToYUYV(yuv_data_ptr, len, yuyv_buffer_);
+    switch (effective_format) {
+      case YuvFormat::UYVY:
+        ConvertUYVYToYUYV(yuv_data_ptr, len, yuyv_buffer_);
+        break;
+      case YuvFormat::VYUY:
+        ConvertVYUYToYUYV(yuv_data_ptr, len, yuyv_buffer_);
+        break;
+      case YuvFormat::YVYU:
+        ConvertYVYUToYUYV(yuv_data_ptr, len, yuyv_buffer_);
+        break;
+      default:
+        break;
+    }
     yuv_data_ptr = yuyv_buffer_.data();
   }
 
@@ -93,7 +199,7 @@ void YuvProcessor::Process(const void* src, size_t len,
   int height = dest_pb->height();
   if (width <= 0 || height <= 0) {
     AERROR << "YuvProcessor: invalid image size " << width << "x" << height;
-    throw std::invalid_argument("Invalid width/height");
+    return false;
   }
 
   if (output_format_ == OutputFormat::YUYV) {
@@ -107,19 +213,17 @@ void YuvProcessor::Process(const void* src, size_t len,
              << " < " << needed;
       out->resize(needed);
     }
-    // Get mutable pointer to the protobuf's internal data buffer
-    // This buffer must have been pre-allocated to the correct size in
-    // CameraComponent
     uint8_t* dest_rgb_ptr = reinterpret_cast<uint8_t*>(out->data());
 
-    // Convert YUYV to RGB (BGR order) using OpenCV efficient method
-    ConvertYUYVToBGR(yuv_data_ptr, width, height, dest_rgb_ptr);
+    // Convert YUV to RGB using the correct format
+    ConvertYUYVToRGB(yuv_data_ptr, width, height, dest_rgb_ptr);
   } else {
-    // This should ideally be caught during configuration.
     AERROR << "YuvProcessor: unsupported output format "
            << static_cast<int>(output_format_);
-    throw std::runtime_error("Unsupported output format");
+    return false;
   }
+
+  return true;
 }
 
 // --- MjpegProcessor Implementation ---
@@ -267,11 +371,11 @@ bool MjpegProcessor::ConvertToRGB(ImagePtr dest_pb) {
   // av_image_fill_arrays is a utility to set data pointers and linesizes for an
   // AVFrame. We are essentially making frame_rgb_ a "wrapper" around dest_pb's
   // data.
-  int ret = av_image_fill_arrays(
-      frame_rgb_->data, frame_rgb_->linesize,
-      reinterpret_cast<uint8_t*>(
-          dest_pb->mutable_data()),           // Get raw pointer to vector data
-      AV_PIX_FMT_RGB24, width_, height_, 1);  // Align by 1
+  auto* output_buffer = dest_pb->mutable_data();
+  int ret =
+      av_image_fill_arrays(frame_rgb_->data, frame_rgb_->linesize,
+                           reinterpret_cast<uint8_t*>(&(*output_buffer)[0]),
+                           AV_PIX_FMT_RGB24, width_, height_, 1);
 
   if (ret < 0) {
     AERROR << "MjpegProcessor: Failed to fill RGB frame arrays: "
@@ -286,13 +390,18 @@ bool MjpegProcessor::ConvertToRGB(ImagePtr dest_pb) {
   return true;
 }
 
-void MjpegProcessor::Process(const void* src, size_t len,
+bool MjpegProcessor::Process(const void* src, size_t len,
                              std::shared_ptr<Image> dest_pb) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (!dest_pb) {
     AERROR << "MjpegProcessor: Destination Image pointer is null.";
-    return;  // Early exit
+    return false;
+  }
+
+  if (src == nullptr || len == 0) {
+    AERROR << "MjpegProcessor: Source MJPEG buffer is invalid.";
+    return false;
   }
 
   // Check if the underlying data buffer in dest_pb is empty.
@@ -300,19 +409,22 @@ void MjpegProcessor::Process(const void* src, size_t len,
   if (dest_pb->data().empty()) {
     AERROR
         << "MjpegProcessor: Destination Image's internal data buffer is empty.";
-    return;  // Early exit
+    return false;
   }
 
   // Decode the MJPEG packet from the external (Protobuf) memory
   if (!DecodePacket(static_cast<const uint8_t*>(src), static_cast<int>(len))) {
     AERROR << "MjpegProcessor: Failed to decode packet.";
-    return;
+    return false;
   }
 
   // Convert the decoded frame (frame_camera_) to RGB and store in dest_pb
   if (!ConvertToRGB(dest_pb)) {
     AERROR << "MjpegProcessor: Failed to convert to RGB.";
+    return false;
   }
+
+  return true;
 }
 
 }  // namespace camera

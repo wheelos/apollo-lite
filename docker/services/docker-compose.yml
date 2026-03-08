@@ -1,0 +1,32 @@
+services:
+  core:
+    image: ${APOLLO_IMAGE}
+    restart: "no"
+    tty: true
+    stdin_open: true
+
+    # need root user to run entrypoint.sh to add user and group, and change ownership of files
+    user: "root"
+    working_dir: /apollo
+    shm_size: ${SHM_SIZE}
+
+    environment:
+      - USER_NAME=${USER_NAME}
+      - USER_ID=${USER_ID}
+      - GROUP_ID=${GROUP_ID}
+      - DOCKER_USER=${USER_NAME}
+      - DOCKER_USER_ID=${USER_ID}
+      - DOCKER_GRP_ID=${GROUP_ID}
+      - TZ=${TZ}
+      - DISPLAY=${DISPLAY}
+      - AUTO_BOOTSTRAP=${AUTO_BOOTSTRAP}
+      - HISTFILE=/apollo/.bash_history
+
+    volumes:
+      - ${APOLLO_ROOT}:/apollo
+      - /media:/media
+      - ${HOME}/.cache:${HOME}/.cache
+      - ${APOLLO_ROOT}/docker/scripts/entrypoint.sh:/entrypoint.sh
+      - ${BAZEL_CACHE_DIR}:${BAZEL_CACHE_DIR}
+
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]

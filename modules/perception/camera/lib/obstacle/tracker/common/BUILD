@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -13,7 +13,7 @@ cuda_library(
         "//modules/perception/camera/common:camera_frame",
         "//modules/perception/camera/common:util",
         "//modules/perception/inference/utils:inference_gemm_lib",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -46,8 +46,8 @@ cc_library(
     hdrs = ["kalman_filter.h"],
     deps = [
         "//cyber",
+        "//modules/common/util:util_tool",
         "@eigen",
-        "//modules/common/util:util_tool"
     ],
 )
 

@@ -15,7 +15,12 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/protocol/vin_resp1_391.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/wey/proto/wey.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,14 +38,54 @@ TEST_F(Vinresp1391Test, reset) {
   uint8_t bytes[8] = {0x88, 0x44, 0x22, 0x11, 0x11, 0x12, 0x13, 0x14};
 
   vin1.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().vin_resp1_391().vin07(), 136);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().vin_resp1_391().vin06(), 68);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().vin_resp1_391().vin05(), 34);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().vin_resp1_391().vin04(), 17);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().vin_resp1_391().vin03(), 17);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().vin_resp1_391().vin02(), 18);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().vin_resp1_391().vin01(), 19);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().vin_resp1_391().vin00(), 20);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .vin_resp1_391()
+          .vin07(),
+      136);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .vin_resp1_391()
+          .vin06(),
+      68);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .vin_resp1_391()
+          .vin05(),
+      34);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .vin_resp1_391()
+          .vin04(),
+      17);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .vin_resp1_391()
+          .vin03(),
+      17);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .vin_resp1_391()
+          .vin02(),
+      18);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .vin_resp1_391()
+          .vin01(),
+      19);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .vin_resp1_391()
+          .vin00(),
+      20);
 }
 
 }  // namespace wey

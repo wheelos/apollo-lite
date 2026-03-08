@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,31 +33,31 @@ const int32_t Vcuepsreport57::ID = 0x57;
 
 void Vcuepsreport57::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_eps_report_57()
       ->set_drive_enable_resp(drive_enable_resp(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_eps_report_57()
       ->set_control_mode_resp(control_mode_resp(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_eps_report_57()
       ->set_vcu_eps_report(vcu_eps_report(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_eps_report_57()
       ->set_vcu_real_angle(vcu_real_angle(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_eps_report_57()
       ->set_vcu_real_angle_valid(vcu_real_angle_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_eps_report_57()
       ->set_vcu_target_angle_valid(vcu_target_angle_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_eps_report_57()
       ->set_vcu_target_angle(vcu_target_angle(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_eps_report_57()
       ->set_vcu_eps_rept_alivecounter(vcu_eps_rept_alivecounter(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_eps_report_57()
       ->set_vcu_eps_rept_checksum(vcu_eps_rept_checksum(bytes, length));
 

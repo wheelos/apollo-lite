@@ -44,6 +44,11 @@ class V4L2Device {
   void StopStreaming() noexcept;
 
   // Data capture
+  // Return value semantics:
+  //   > 0: data ready
+  //   = 0: timeout
+  //   = -1: error
+  //   = -2: interrupted by signal (EINTR)
   int WaitForData(long sec, long usec);
   V4L2Buffer DequeueBuffer();
   void QueueBuffer(uint32_t index);

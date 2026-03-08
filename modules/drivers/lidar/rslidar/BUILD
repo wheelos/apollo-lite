@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -54,7 +54,7 @@ cc_library(
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/rslidar/proto:rslidar_cc_proto",
         "//modules/drivers/lidar/rslidar/proto:rslidar_config_cc_proto",
-        "@rs_driver",
+        "@robosense-lidar-sdk//:rs_driver",
     ],
     alwayslink = True,
 )

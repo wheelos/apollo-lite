@@ -23,10 +23,10 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
         "//cyber",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
         "//modules/common/math",
-        "//modules/common/util:util_tool",
         "//modules/common/util",
+        "//modules/common/util:util_tool",
+        "//modules/common_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common/util:util_lib",
         "//modules/planning/scenarios:scenario",
         "//modules/planning/scenarios/common:stage_intersection_cruise_impl",
@@ -43,11 +43,11 @@ cc_test(
     srcs = ["stop_sign_unprotected_scenario_test.cc"],
     data = ["//modules/planning:planning_conf"],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":stop_sign_unprotected_scenario",
         "@com_google_googletest//:gtest_main",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
-    linkstatic = True,
+    ],
 )
 
 cc_test(
@@ -58,11 +58,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":stop_sign_unprotected_scenario",
         "@com_google_googletest//:gtest_main",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
-    linkstatic = True,
+    ],
 )
 
 cc_test(
@@ -73,11 +73,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":stop_sign_unprotected_scenario",
         "@com_google_googletest//:gtest_main",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
-    linkstatic = True,
+    ],
 )
 
 cc_test(
@@ -88,11 +88,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":stop_sign_unprotected_scenario",
         "@com_google_googletest//:gtest_main",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
-    linkstatic = True,
+    ],
 )
 
 cpplint()

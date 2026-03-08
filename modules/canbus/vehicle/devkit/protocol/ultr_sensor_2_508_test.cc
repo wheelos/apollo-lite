@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace devkit {
@@ -42,10 +44,30 @@ TEST_F(Ultrsensor2508Test, General) {
   EXPECT_EQ(data[6], 0b00000010);
   EXPECT_EQ(data[7], 0b01000100);
 
-  EXPECT_EQ(cd.devkit().ultr_sensor_2_508().uiuss9_tof_indirect(), 28);
-  EXPECT_EQ(cd.devkit().ultr_sensor_2_508().uiuss8_tof_indirect(), 1000);
-  EXPECT_EQ(cd.devkit().ultr_sensor_2_508().uiuss11_tof_indirect(), 10);
-  EXPECT_EQ(cd.devkit().ultr_sensor_2_508().uiuss10_tof_indirect(), 39);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .ultr_sensor_2_508()
+          .uiuss9_tof_indirect(),
+      28);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .ultr_sensor_2_508()
+          .uiuss8_tof_indirect(),
+      1000);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .ultr_sensor_2_508()
+          .uiuss11_tof_indirect(),
+      10);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .ultr_sensor_2_508()
+          .uiuss10_tof_indirect(),
+      39);
 }
 
 }  // namespace devkit

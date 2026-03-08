@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,24 +33,25 @@ const int32_t Latlonheadingrpt82::ID = 0x82;
 
 void Latlonheadingrpt82::Parse(const std::uint8_t* bytes, int32_t length,
                                ChassisDetail* chassis) const {
-  chassis->mutable_gem()->mutable_lat_lon_heading_rpt_82()->set_heading(
-      heading(bytes, length));
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_lat_lon_heading_rpt_82()
+      ->set_heading(heading(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_lat_lon_heading_rpt_82()
       ->set_longitude_seconds(longitude_seconds(bytes, length));
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_lat_lon_heading_rpt_82()
       ->set_longitude_minutes(longitude_minutes(bytes, length));
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_lat_lon_heading_rpt_82()
       ->set_longitude_degrees(longitude_degrees(bytes, length));
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_lat_lon_heading_rpt_82()
       ->set_latitude_seconds(latitude_seconds(bytes, length));
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_lat_lon_heading_rpt_82()
       ->set_latitude_minutes(latitude_minutes(bytes, length));
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_lat_lon_heading_rpt_82()
       ->set_latitude_degrees(latitude_degrees(bytes, length));
 }

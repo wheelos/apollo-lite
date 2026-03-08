@@ -19,18 +19,18 @@
 #include <string>
 #include <vector>
 
-#ifdef DEBUG_NCUT
-#include "pcl/visualization/pcl_visualizer.h"
-#endif
+#include "modules/perception/lidar/lib/detector/ncut_segmentation/proto/ncut_debug.pb.h"
+#include "modules/perception/lidar/lib/detector/ncut_segmentation/proto/ncut_param.pb.h"
 
+#include "cyber/node/node.h"
+#include "cyber/node/writer.h"
 #include "modules/perception/base/object.h"
 #include "modules/perception/lib/thread/thread_worker.h"
 #include "modules/perception/lidar/common/pcl_util.h"
-#include "modules/perception/lidar/lib/interface/base_ground_detector.h"
-#include "modules/perception/lidar/lib/interface/base_roi_filter.h"
-#include "modules/perception/lidar/lib/interface/base_lidar_detector.h"
 #include "modules/perception/lidar/lib/detector/ncut_segmentation/ncut.h"
-#include "modules/perception/lidar/lib/detector/ncut_segmentation/proto/ncut_param.pb.h"
+#include "modules/perception/lidar/lib/interface/base_ground_detector.h"
+#include "modules/perception/lidar/lib/interface/base_lidar_detector.h"
+#include "modules/perception/lidar/lib/interface/base_roi_filter.h"
 #include "modules/perception/pipeline/stage.h"
 
 namespace apollo {
@@ -80,6 +80,9 @@ class NCutSegmentation : public BaseLidarDetector {
 
   base::ObjectType Label2Type(const std::string& label);
 
+  void FillProtoPointCloud(const base::PointFCloud& cloud,
+                           apollo::drivers::PointCloud* proto_cloud) const;
+
   // ground detector for background segmentation
   BaseGroundDetector* ground_detector_;
   // roi filter for background segmentation
@@ -116,18 +119,10 @@ class NCutSegmentation : public BaseLidarDetector {
 
   NCutConfig ncut_config_;
 
-#ifdef DEBUG_NCUT
-  pcl::visualization::PCLVisualizer::Ptr _viewer;
-  CPointCloudPtr _rgb_cloud;
-  char _viewer_id[128];
-  int _viewer_count;
-  void VisualizePointCloud(const base::PointFCloudPtr& cloud);
-  void VisualizeSegments(const std::vector<base::ObjectPtr>& segments);
-  void VisualizeComponents(
-      const base::PointFCloudPtr& cloud,
-      const std::vector<std::vector<int>>& component_points);
-#endif
-};  // class NCutSegmentation
+  bool publish_debug_info_ = false;
+  std::shared_ptr<apollo::cyber::Writer<NCutDebugInfo>> debug_writer_ = nullptr;
+  std::shared_ptr<apollo::cyber::Node> node_;
+};
 
 }  // namespace lidar
 }  // namespace perception

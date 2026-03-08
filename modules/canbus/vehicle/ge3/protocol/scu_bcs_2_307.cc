@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_bcs_2_307.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,16 +33,21 @@ const int32_t Scubcs2307::ID = 0x307;
 
 void Scubcs2307::Parse(const std::uint8_t* bytes, int32_t length,
                        ChassisDetail* chassis) const {
-  chassis->mutable_ge3()->mutable_scu_bcs_2_307()->set_bcs_vehspdvd(
-      bcs_vehspdvd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_2_307()->set_bcs_yawrate(
-      bcs_yawrate(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_2_307()->set_bcs_vehspd(
-      bcs_vehspd(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_2_307()->set_bcs_vehlongaccel(
-      bcs_vehlongaccel(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_2_307()->set_bcs_vehlataccel(
-      bcs_vehlataccel(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_2_307()
+      ->set_bcs_vehspdvd(bcs_vehspdvd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_2_307()
+      ->set_bcs_yawrate(bcs_yawrate(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_2_307()
+      ->set_bcs_vehspd(bcs_vehspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_2_307()
+      ->set_bcs_vehlongaccel(bcs_vehlongaccel(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_2_307()
+      ->set_bcs_vehlataccel(bcs_vehlataccel(bytes, length));
 }
 
 // config detail: {'description': 'Vehicle speed valid data', 'enum': {0:

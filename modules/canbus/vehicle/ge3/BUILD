@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "ge3_vehicle_factory",
+    alwayslink = True,
     srcs = ["ge3_vehicle_factory.cc"],
     hdrs = ["ge3_vehicle_factory.h"],
     deps = [
@@ -12,6 +13,7 @@ cc_library(
         ":ge3_message_manager",
         "//modules/canbus/proto:vehicle_parameter_cc_proto",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 

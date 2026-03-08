@@ -24,6 +24,7 @@
 #include <sys/time.h>
 
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 /**
@@ -50,8 +51,8 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the input bytes
    * @param chassis_detail the parsed chassis_detail
    */
-  virtual void Parse(const std::uint8_t *bytes, int32_t length,
-                     ChassisDetail *chassis_detail) const;
+  virtual void Parse(const std::uint8_t* bytes, int32_t length,
+                     ChassisDetail* chassis_detail) const;
 
   /*
    * @brief parse received data
@@ -60,9 +61,9 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param timestamp the timestamp of input data
    * @param chassis_detail the parsed chassis_detail
    */
-  virtual void Parse(const std::uint8_t *bytes, int32_t length,
-                     const struct timeval &timestamp,
-                     ChassisDetail *chassis_detail) const;
+  virtual void Parse(const std::uint8_t* bytes, int32_t length,
+                     const struct timeval& timestamp,
+                     ChassisDetail* chassis_detail) const;
 
   /**
    * @brief calculate steering angle based on byte array.
@@ -74,7 +75,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of steering angle
    */
-  double steering_angle(const std::uint8_t *bytes, int32_t length) const;
+  double steering_angle(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief calculate reported steering angle command based on byte array.
@@ -86,7 +87,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of reported steering angle command
    */
-  double reported_steering_angle_cmd(const std::uint8_t *bytes,
+  double reported_steering_angle_cmd(const std::uint8_t* bytes,
                                      int32_t length) const;
 
   /**
@@ -98,7 +99,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of vehicle speed
    */
-  double vehicle_speed(const std::uint8_t *bytes, int32_t length) const;
+  double vehicle_speed(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief calculate epas torque based on byte array.
@@ -110,7 +111,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of epas torque
    */
-  double epas_torque(const std::uint8_t *bytes, int32_t length) const;
+  double epas_torque(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check enabled bit based on byte array.
@@ -121,7 +122,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of enabled bit
    */
-  bool is_enabled(const std::uint8_t *bytes, int32_t length) const;
+  bool is_enabled(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check driver override bit based on byte array.
@@ -132,7 +133,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of driver override
    */
-  bool is_driver_override(const std::uint8_t *bytes, int32_t length) const;
+  bool is_driver_override(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check driver activity bit based on byte array.
@@ -143,7 +144,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of driver activity
    */
-  bool is_driver_activity(const std::uint8_t *bytes, int32_t length) const;
+  bool is_driver_activity(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check watchdog counter fault based on byte array.
@@ -154,7 +155,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of watchdog counter fault
    */
-  bool is_watchdog_counter_fault(const std::uint8_t *bytes,
+  bool is_watchdog_counter_fault(const std::uint8_t* bytes,
                                  int32_t length) const;
 
   /**
@@ -166,7 +167,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of steering angle
    */
-  bool is_channel_1_fault(const std::uint8_t *bytes, int32_t length) const;
+  bool is_channel_1_fault(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check channel 2 fault bit based on byte array.
@@ -177,7 +178,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of channel 2 fault bit
    */
-  bool is_channel_2_fault(const std::uint8_t *bytes, int32_t length) const;
+  bool is_channel_2_fault(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check calibration fault bit based on byte array.
@@ -188,7 +189,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of calibration fault bit
    */
-  bool is_calibration_fault(const std::uint8_t *bytes, int32_t length) const;
+  bool is_calibration_fault(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check connector fault bit based on byte array.
@@ -199,7 +200,7 @@ class Steering65 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the boolean value of connector fault bit
    */
-  bool is_connector_fault(const std::uint8_t *bytes, int32_t length) const;
+  bool is_connector_fault(const std::uint8_t* bytes, int32_t length) const;
 };
 
 }  // namespace lincoln

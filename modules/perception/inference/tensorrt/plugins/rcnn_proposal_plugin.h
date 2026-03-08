@@ -26,7 +26,7 @@ namespace inference {
 
 // TODO(chenjiahao): complete member functions
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 class RCNNProposalPlugin : public nvinfer1::IPlugin {
  public:
   RCNNProposalPlugin(
@@ -124,6 +124,12 @@ class RCNNProposalPlugin : public nvinfer1::IPluginV2Ext {
       const StDetectionOutputSSDParameter &detection_output_ssd_param,
       nvinfer1::Dims *in_dims) {
     num_rois_ = in_dims[2].d[0];
+#if NV_TENSORRT_MAJOR >= 10
+    // im_info dims: [N, 6, 1, 1] in explicit-batch network.
+    if (in_dims[3].nbDims == 4) {
+      explicit_batch_ = in_dims[3].d[0];
+    }
+#endif
 
     for (int i = 0; i < 4; ++i) {
       bbox_mean_[i] = bbox_reg_param.bbox_mean[i];
@@ -238,6 +244,9 @@ class RCNNProposalPlugin : public nvinfer1::IPluginV2Ext {
     p->top_n_ = top_n_;
     p->out_channel_ = out_channel_;
     p->acc_box_num_ = acc_box_num_;
+#if NV_TENSORRT_MAJOR >= 10
+    p->explicit_batch_ = explicit_batch_;
+#endif
 
     for (size_t i = 0; i < thresholds_.size(); i++) {
       p->thresholds_.push_back(thresholds_[i]);
@@ -295,6 +304,9 @@ class RCNNProposalPlugin : public nvinfer1::IPluginV2Ext {
   int acc_box_num_;
 
   std::vector<float> thresholds_{};
+#if NV_TENSORRT_MAJOR >= 10
+  int explicit_batch_ = -1;
+#endif
 
   nvinfer1::AsciiChar *plugin_namespace;
   const nvinfer1::AsciiChar *plugin_type = "";

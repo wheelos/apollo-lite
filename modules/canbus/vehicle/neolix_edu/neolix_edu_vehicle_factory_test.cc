@@ -15,7 +15,9 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/neolix_edu/neolix_edu_vehicle_factory.h"
+
 #include "gtest/gtest.h"
+
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
 
 namespace apollo {

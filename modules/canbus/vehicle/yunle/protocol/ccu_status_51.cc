@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -37,38 +38,51 @@ uint32_t Ccustatus51::GetPeriod() const {
 
 void Ccustatus51::Parse(const std::uint8_t* bytes, int32_t length,
                         ChassisDetail* chassis) const {
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_scu_brake_singal(
-      scu_brake_singal(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_emergency_brake(
-      emergency_brake(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_remote_brake(
-      remote_brake(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_ccu_drive_mode_shift(
-      ccu_drive_mode_shift(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_position_light_sts(
-      position_light_sts(bytes, length));
-  chassis->mutable_yunle()
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_scu_brake_singal(scu_brake_singal(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_emergency_brake(emergency_brake(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_remote_brake(remote_brake(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_ccu_drive_mode_shift(ccu_drive_mode_shift(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_position_light_sts(position_light_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
       ->mutable_ccu_status_51()
       ->set_steering_wheel_direction(steering_wheel_direction(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_right_turn_light_sts(
-      right_turn_light_sts(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_lowbeam_sts(
-      lowbeam_sts(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_left_turn_light_sts(
-      left_turn_light_sts(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_ccu_vehicle_speed(
-      ccu_vehicle_speed(bytes, length));
-  chassis->mutable_yunle()
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_right_turn_light_sts(right_turn_light_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_lowbeam_sts(lowbeam_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_left_turn_light_sts(left_turn_light_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_ccu_vehicle_speed(ccu_vehicle_speed(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
       ->mutable_ccu_status_51()
       ->set_ccu_steering_wheel_angle(ccu_steering_wheel_angle(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_ccu_shiftlevel_sts(
-      ccu_shiftlevel_sts(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_ccu_p_sts(
-      ccu_p_sts(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_ccu_ignition_sts(
-      ccu_ignition_sts(bytes, length));
-  chassis->mutable_yunle()->mutable_ccu_status_51()->set_ccu_drive_mode(
-      ccu_drive_mode(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_ccu_shiftlevel_sts(ccu_shiftlevel_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_ccu_p_sts(ccu_p_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_ccu_ignition_sts(ccu_ignition_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_ccu_status_51()
+      ->set_ccu_drive_mode(ccu_drive_mode(bytes, length));
 }
 
 // config detail: {'bit': 34, 'description': '自动驾驶模式刹车信号',

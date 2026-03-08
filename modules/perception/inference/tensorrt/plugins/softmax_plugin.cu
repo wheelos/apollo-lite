@@ -15,7 +15,7 @@
  *****************************************************************************/
 
 #include <NvInferVersion.h>
- 
+
 #include <vector>
 
 #include "modules/perception/inference/tensorrt/plugins/softmax_plugin.h"
@@ -25,7 +25,7 @@ namespace perception {
 namespace inference {
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 int SoftmaxPlugin::enqueue(int batch_size, const void *const *inputs,
                            void **outputs, void *workspace,
                            cudaStream_t stream) {

@@ -31,11 +31,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":valet_parking",
         "@com_google_googletest//:gtest_main",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
-    linkstatic = True,
+    ],
 )
 
 cc_test(
@@ -46,11 +46,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":valet_parking",
         "@com_google_googletest//:gtest_main",
-    ] + if_gpu(["@local_config_cuda//cuda:cudart"]),
-    linkstatic = True,
+    ],
 )
 
 cpplint()

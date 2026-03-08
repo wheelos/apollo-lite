@@ -17,6 +17,7 @@
 #include "modules/canbus/vehicle/zhongyun/zhongyun_message_manager.h"
 
 #include "gtest/gtest.h"
+
 #include "modules/canbus/vehicle/zhongyun/protocol/brake_control_a4.h"
 #include "modules/canbus/vehicle/zhongyun/protocol/enable_state_feedback_c3.h"
 #include "modules/canbus/vehicle/zhongyun/protocol/error_state_e1.h"

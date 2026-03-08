@@ -22,6 +22,7 @@
 #pragma once
 
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 /**
@@ -52,7 +53,7 @@ class Steering64 : public ::apollo::drivers::canbus::ProtocolData<
    * @brief update the data
    * @param data a pointer to the data to be updated
    */
-  virtual void UpdateData(uint8_t *data);
+  virtual void UpdateData(uint8_t* data);
 
   /**
    * @brief reset the private variables
@@ -63,25 +64,25 @@ class Steering64 : public ::apollo::drivers::canbus::ProtocolData<
    * @brief set steering request enable to true
    * @return a this pointer to the instance itself
    */
-  Steering64 *set_enable();
+  Steering64* set_enable();
 
   /**
    * @brief set steering request disable to true
    * @return a this pointer to the instance itself
    */
-  Steering64 *set_disable();
+  Steering64* set_disable();
 
   /**
    * @brief set steering angle
    * @return a this pointer to the instance itself
    */
-  Steering64 *set_steering_angle(double angle);
+  Steering64* set_steering_angle(double angle);
 
   /**
    * @brief set steering angle speed
    * @return a this pointer to the instance itself
    */
-  Steering64 *set_steering_angle_speed(double angle_speed);
+  Steering64* set_steering_angle_speed(double angle_speed);
 
  private:
   /**
@@ -89,28 +90,28 @@ class Steering64 : public ::apollo::drivers::canbus::ProtocolData<
    * 'f_type': 'value', 'is_signed_var': True, 'physical_range': '[-470|470]',
    * 'bit': 0, 'type': 'double', 'order': 'intel', 'physical_unit': '"degrees"'}
    */
-  void set_steering_angle_p(uint8_t *data, double angle);
+  void set_steering_angle_p(uint8_t* data, double angle);
 
   /**
    * config detail: {'name': 'en', 'offset': 0.0, 'precision': 1.0, 'len': 1,
    * 'f_type': 'valid', 'is_signed_var': False, 'physical_range': '[0|0]',
    * 'bit': 16, 'type': 'bool', 'order': 'intel', 'physical_unit': '""'}
    */
-  void set_enable_p(uint8_t *bytes, bool enable);
+  void set_enable_p(uint8_t* bytes, bool enable);
 
   /**
    * config detail: {'name': 'clear', 'offset': 0.0, 'precision': 1.0, 'len': 1,
    * 'f_type': 'valid', 'is_signed_var': False, 'physical_range': '[0|0]',
    * 'bit': 17, 'type': 'bool', 'order': 'intel', 'physical_unit': '""'}
    */
-  void set_clear_driver_override_flag_p(uint8_t *bytes, bool clear);
+  void set_clear_driver_override_flag_p(uint8_t* bytes, bool clear);
 
   /**
    * config detail: {'name': 'ignore', 'offset': 0.0, 'precision': 1.0, 'len':
    * 1, 'f_type': 'valid', 'is_signed_var': False, 'physical_range': '[0|0]',
    * 'bit': 18, 'type': 'bool', 'order': 'intel', 'physical_unit': '""'}
    */
-  void set_ignore_driver_override_p(uint8_t *bytes, bool ignore);
+  void set_ignore_driver_override_p(uint8_t* bytes, bool ignore);
 
   /**
    * config detail: {'name': 'svel', 'offset': 0.0, 'precision': 2.0, 'len': 8,
@@ -118,16 +119,16 @@ class Steering64 : public ::apollo::drivers::canbus::ProtocolData<
    * 'bit': 24, 'type': 'double', 'order': 'intel', 'physical_unit':
    * '"degrees/s"'}
    */
-  void set_steering_angle_speed_p(uint8_t *data, double angle_speed);
+  void set_steering_angle_speed_p(uint8_t* data, double angle_speed);
 
   /**
    * config detail: {'name': 'count', 'offset': 0.0, 'precision': 1.0, 'len': 8,
    * 'f_type': 'value', 'is_signed_var': False, 'physical_range': '[0|255]',
    * 'bit': 56, 'type': 'int', 'order': 'intel', 'physical_unit': '""'}
    */
-  void set_watchdog_counter_p(uint8_t *data, int32_t count);
+  void set_watchdog_counter_p(uint8_t* data, int32_t count);
 
-  void set_disable_audible_warning_p(uint8_t *data, bool disable);
+  void set_disable_audible_warning_p(uint8_t* data, bool disable);
 
  private:
   double steering_angle_ = 0.0;

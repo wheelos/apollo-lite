@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <limits>
 #include "Eigen/Dense"
-#include "opencv2/opencv.hpp"
+#include "opencv2/imgproc.hpp"
 
 #include "cyber/common/log.h"
 

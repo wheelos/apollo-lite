@@ -23,20 +23,12 @@ geo="${1:-us}"
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./installer_base.sh
 
-if [[ "$geo" == "cn" ]]; then
-  echo "📍 China region, switching mirror source to Taobao (npm mirror)"
-  yarn config set registry https://registry.npmmirror.com/
-  npm config set registry https://registry.npmmirror.com/
-fi
-
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 echo "✅ Node.js installation completed:"
 node -v
 npm -v
-echo "▼ Yarn registry"
-yarn config get registry
 
 # Clean up cache to reduce layer size.
 apt-get clean && \

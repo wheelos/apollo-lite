@@ -27,7 +27,6 @@ bool CameraComponent::Init() {
     AERROR << "Failed to load camera config from: " << config_file_path_;
     return false;
   }
-  AINFO << "Camera config: " << camera_config_->DebugString();
 
   try {
     camera_device_ = std::make_unique<CameraDevice>(camera_config_);
@@ -36,13 +35,11 @@ bool CameraComponent::Init() {
     return false;
   }
 
-  // Get the final actual resolution negotiated by the driver from CameraDevice
   const uint32_t actual_width = camera_config_->width();
   const uint32_t actual_height = camera_config_->height();
-
-  uint32_t image_size_expected;
+  uint32_t image_size_expected = 0;
   std::string encoding_str;
-  uint32_t step_bytes;
+  uint32_t step_bytes = 0;
 
   if (camera_config_->output_type() == config::OutputType::YUYV) {
     image_size_expected = actual_width * actual_height * 2;
@@ -53,39 +50,31 @@ bool CameraComponent::Init() {
     encoding_str = "rgb8";
     step_bytes = 3 * actual_width;
   } else {
-    AERROR << "Unsupported output type in config: "
-           << camera_config_->output_type();
-    return false;
-  }
-
-  if (image_size_expected > kMaxImageSize) {
-    AERROR << "Image size is too big (" << image_size_expected
-           << " bytes), must be less than " << kMaxImageSize << " bytes.";
+    AERROR << "Unsupported output type.";
     return false;
   }
 
   device_wait_ms_ = camera_config_->device_wait_ms();
+  double pub_rate = camera_config_->has_publish_rate()
+                        ? camera_config_->publish_rate()
+                        : camera_config_->frame_rate();
+  // set burst size to 10(larger than 1 to allow some bursts) for jittery data
+  rate_limiter_ =
+      std::make_unique<apollo::cyber::common::TokenBucket>(pub_rate, 10.0);
 
-  // Initialize Protobuf message buffer pool
-  for (int i = 0; i < buffer_size_; ++i) {
+  // Buffer Initialization
+  for (int i = 0; i < kBufferSize; ++i) {
     auto pb_image = std::make_shared<Image>();
     pb_image->mutable_header()->set_frame_id(camera_config_->frame_id());
     pb_image->set_width(actual_width);
     pb_image->set_height(actual_height);
     pb_image->set_encoding(encoding_str);
     pb_image->set_step(step_bytes);
-
-    // Key: Pre-allocate memory by resizing the string. This enables Zero-Copy
-    // during subsequent image processing by ensuring mutable_data()->data()
-    // returns a valid pointer to the allocated memory.
     pb_image->mutable_data()->resize(image_size_expected);
-
     pb_image_buffer_.push_back(pb_image);
   }
 
   writer_ = node_->CreateWriter<Image>(camera_config_->channel_name());
-
-  // Start asynchronous run loop
   running_.store(true);
   async_result_ = cyber::Async(&CameraComponent::Run, this);
   return true;
@@ -93,33 +82,45 @@ bool CameraComponent::Init() {
 
 void CameraComponent::Run() {
   while (running_.load() && !cyber::IsShutdown()) {
-    // Get a protobuf message from the buffer pool
-    auto pb_image = pb_image_buffer_[index_];
-    index_ = (index_ + 1) % buffer_size_;
+    int selected_index = index_;
+    int probe_count = 0;
+    while (probe_count < kBufferSize &&
+           pb_image_buffer_[selected_index].use_count() > 1) {
+      selected_index = (selected_index + 1) % kBufferSize;
+      ++probe_count;
+    }
 
-    // The Poll method now directly processes data into pb_image
+    if (probe_count == kBufferSize) {
+      AWARN_EVERY(100)
+          << "All camera buffers are busy, dropping this cycle.";
+      cyber::SleepFor(std::chrono::milliseconds(1));
+      continue;
+    }
+
+    auto pb_image = pb_image_buffer_[selected_index];
+
+    // 1) Poll from camera device (blocking wait in driver layer)
     if (!camera_device_->Poll(pb_image)) {
-      // If Poll fails, the internal reconnection logic has been handled, just
-      // wait here
       cyber::SleepFor(std::chrono::milliseconds(device_wait_ms_));
       continue;
     }
 
-    // Set publish timestamp
-    pb_image->mutable_header()->set_timestamp_sec(
-        cyber::Time::Now().ToSecond());
+    // 2) Keep header timestamp aligned with the capture timestamp set by device.
+    pb_image->mutable_header()->set_timestamp_sec(pb_image->measurement_time());
 
-    // measurement_time and image data have been filled in Poll()
+    // 3) Rate limiting
+    if (!rate_limiter_->TryConsume()) {
+      index_ = (selected_index + 1) % kBufferSize;
+      continue;
+    }
+
     writer_->Write(pb_image);
-
-    // Note: There is no extra SleepFor(spin_rate_). The loop rate is determined
-    // by the blocking behavior of Poll().
+    index_ = (selected_index + 1) % kBufferSize;
   }
 }
 
 CameraComponent::~CameraComponent() {
-  if (running_.exchange(false)) {  // Use exchange to ensure atomicity
-    // Ensure the async thread has finished before destruction completes
+  if (running_.exchange(false)) {
     if (async_result_.valid()) {
       async_result_.wait();
     }

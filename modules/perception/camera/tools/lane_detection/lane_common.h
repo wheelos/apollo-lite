@@ -19,7 +19,8 @@
 #include <vector>
 
 #include "gflags/gflags.h"
-#include "opencv2/opencv.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
 
 #include "modules/perception/base/lane_struct.h"
 #include "modules/perception/base/point.h"

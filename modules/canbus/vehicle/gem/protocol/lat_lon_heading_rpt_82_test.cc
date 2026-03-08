@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace gem {
@@ -33,20 +35,48 @@ TEST_F(Latlonheadingrpt82Test, reset) {
   ChassisDetail chassis_detail;
   uint8_t bytes[8] = {0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14};
   Latlonheading.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().lat_lon_heading_rpt_82().heading(),
-                   48.84);
   EXPECT_DOUBLE_EQ(
-      chassis_detail.gem().lat_lon_heading_rpt_82().longitude_seconds(), 18);
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .lat_lon_heading_rpt_82()
+          .heading(),
+      48.84);
   EXPECT_DOUBLE_EQ(
-      chassis_detail.gem().lat_lon_heading_rpt_82().longitude_minutes(), 17);
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .lat_lon_heading_rpt_82()
+          .longitude_seconds(),
+      18);
   EXPECT_DOUBLE_EQ(
-      chassis_detail.gem().lat_lon_heading_rpt_82().longitude_degrees(), 4);
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .lat_lon_heading_rpt_82()
+          .longitude_minutes(),
+      17);
   EXPECT_DOUBLE_EQ(
-      chassis_detail.gem().lat_lon_heading_rpt_82().latitude_seconds(), 3);
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .lat_lon_heading_rpt_82()
+          .longitude_degrees(),
+      4);
   EXPECT_DOUBLE_EQ(
-      chassis_detail.gem().lat_lon_heading_rpt_82().latitude_minutes(), 2);
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .lat_lon_heading_rpt_82()
+          .latitude_seconds(),
+      3);
   EXPECT_DOUBLE_EQ(
-      chassis_detail.gem().lat_lon_heading_rpt_82().latitude_degrees(), 1);
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .lat_lon_heading_rpt_82()
+          .latitude_minutes(),
+      2);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .lat_lon_heading_rpt_82()
+          .latitude_degrees(),
+      1);
 }
 
 }  // namespace gem

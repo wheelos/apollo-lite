@@ -19,7 +19,6 @@
  **/
 
 #include "modules/planning/tasks/deciders/open_space_decider/open_space_pre_stop_decider.h"
-#include "modules/planning/common/util/common.h"
 
 #include <memory>
 #include <string>
@@ -32,7 +31,6 @@
 
 namespace apollo {
 namespace planning {
-
 
 using apollo::common::ErrorCode;
 using apollo::common::Status;
@@ -122,8 +120,10 @@ bool OpenSpacePreStopDecider::CheckParkingSpotPreStop(
   }
 
   Vec2d parking_spot_center;
-  if (!apollo::planning::util::GetParkingSpotCenterFromRouting(*frame, &parking_spot_center)) {
-    parking_spot_center = apollo::planning::util::GetParkingSpotCenterFromMap(target_parking_spot_ptr);
+  if (!apollo::planning::util::GetParkingSpotCenterFromRouting(
+          *frame, &parking_spot_center)) {
+    parking_spot_center = apollo::planning::util::GetParkingSpotCenterFromMap(
+        target_parking_spot_ptr);
   }
 
   common::PointENU center_point;
@@ -133,8 +133,7 @@ bool OpenSpacePreStopDecider::CheckParkingSpotPreStop(
   if (!reference_line_info->reference_line().XYToSL(center_point, &center_sl)) {
     AERROR << "Failed to project parking spot center onto reference line "
            << "when setting pre-stop fence. Parking spot center: ("
-           << parking_spot_center.x() << ", " << parking_spot_center.y()
-           << ")";
+           << parking_spot_center.x() << ", " << parking_spot_center.y() << ")";
     return false;
   }
   *target_s = center_sl.s();

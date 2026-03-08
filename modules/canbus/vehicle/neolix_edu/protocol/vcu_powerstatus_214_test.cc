@@ -16,9 +16,11 @@
 
 #include "modules/canbus/vehicle/neolix_edu/protocol/vcu_powerstatus_214.h"
 
+#include "gtest/gtest.h"
+
 #include "glog/logging.h"
 
-#include "gtest/gtest.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
 namespace apollo {
@@ -45,11 +47,21 @@ TEST_F(Vcupowerstatus214Test, reset) {
   EXPECT_EQ(data[6], 0b01010011);
   EXPECT_EQ(data[7], 0b01010100);
 
-  EXPECT_EQ(cd.neolix_edu().vcu_powerstatus_214().vcu_powermode(), 1);
-  EXPECT_EQ(cd.neolix_edu().vcu_powerstatus_214().vcu_powermodevalid(), 2);
-  EXPECT_EQ(
-      cd.neolix_edu().vcu_powerstatus_214().replacebatterystateindication(),
-      true);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_powerstatus_214()
+                .vcu_powermode(),
+            1);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_powerstatus_214()
+                .vcu_powermodevalid(),
+            2);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_powerstatus_214()
+                .replacebatterystateindication(),
+            true);
 }
 
 }  // namespace neolix_edu

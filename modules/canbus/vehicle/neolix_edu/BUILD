@@ -7,6 +7,7 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "neolix_edu_vehicle_factory",
+    alwayslink = True,
     srcs = [
         "neolix_edu_vehicle_factory.cc",
     ],
@@ -18,6 +19,7 @@ cc_library(
         ":neolix_edu_controller",
         ":neolix_edu_message_manager",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 

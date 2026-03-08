@@ -30,15 +30,30 @@ else
     echo -e "[${RED}ERROR${NC}] Link is $LINK_STATE. Please check cable/connection."
 fi
 
-# --- Step 2: Hardware Timestamping Capability ---
+# --- Step 2: PHC Hardware Capability ---
 echo -e "\n${BOLD}>>> Step 2: PHC Hardware Capability${NC}"
+
 ETHTOOL_OUT=$(ethtool -T "$IFACE" 2>&1)
-if [[ $ETHTOOL_OUT == *"SOF_TIMESTAMPING_TX_HARDWARE"* ]]; then
+
+# Check if it contains 'hardware-transmit' or 'SOF_TIMESTAMPING_TX_HARDWARE'
+if echo "$ETHTOOL_OUT" | grep -qiE "hardware-transmit|SOF_TIMESTAMPING_TX_HARDWARE"; then
     echo -e "[${GREEN}OK${NC}] Hardware Timestamping supported."
-    PTP_DEV=$(echo "$ETHTOOL_OUT" | grep "PTP Hardware Clock" | awk '{print $NF}')
-    echo -e "[${BLUE}INFO${NC}] Using PTP Device: /dev/ptp$PTP_DEV"
+
+    # Extract PTP device index
+    PTP_INDEX=$(echo "$ETHTOOL_OUT" | grep "PTP Hardware Clock" | awk -F': ' '{print $2}' | xargs)
+
+    if [ -n "$PTP_INDEX" ] && [ "$PTP_INDEX" != "none" ]; then
+        echo -e "[${BLUE}INFO${NC}] Found PTP Device: /dev/ptp$PTP_INDEX"
+
+        # Further examine the specific protocol supported by the hardware (L2 or L4)
+        if echo "$ETHTOOL_OUT" | grep -q "ptpv2-l2-event"; then
+            echo -e "[${BLUE}INFO${NC}] L2 PTP (Layer 2) is supported."
+        fi
+    else
+        echo -e "[${YELLOW}WARN${NC}] Hardware support detected but no PTP device index found."
+    fi
 else
-    echo -e "[${RED}ERROR${NC}] $IFACE lacks Hardware Timestamping. PTP precision will be poor (Software only)."
+    echo -e "[${RED}ERROR${NC}] $IFACE lacks Hardware Timestamping. PTP precision will be poor."
 fi
 
 # --- Step 3: Upstream Time Source (Chrony) ---

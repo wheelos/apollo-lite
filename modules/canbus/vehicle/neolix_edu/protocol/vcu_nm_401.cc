@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,8 +33,9 @@ const int32_t Vcunm401::ID = 0x401;
 
 void Vcunm401::Parse(const std::uint8_t* bytes, int32_t length,
                      ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()->mutable_vcu_nm_401()->set_vcu_sleepcommand(
-      vcu_sleepcommand(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_vcu_nm_401()
+      ->set_vcu_sleepcommand(vcu_sleepcommand(bytes, length));
 }
 
 // config detail: {'description': '0x0:Inactive;0x1:Active', 'offset': 0.0,

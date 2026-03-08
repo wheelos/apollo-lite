@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,16 +33,21 @@ const int32_t Componentrpt20::ID = 0x20;
 
 void Componentrpt20::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_component_rpt_20()->set_component_type(
-      component_type(bytes, length));
-  chassis->mutable_lexus()->mutable_component_rpt_20()->set_component_func(
-      component_func(bytes, length));
-  chassis->mutable_lexus()->mutable_component_rpt_20()->set_counter(
-      counter(bytes, length));
-  chassis->mutable_lexus()->mutable_component_rpt_20()->set_complement(
-      complement(bytes, length));
-  chassis->mutable_lexus()->mutable_component_rpt_20()->set_config_fault(
-      config_fault(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_component_rpt_20()
+      ->set_component_type(component_type(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_component_rpt_20()
+      ->set_component_func(component_func(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_component_rpt_20()
+      ->set_counter(counter(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_component_rpt_20()
+      ->set_complement(complement(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_component_rpt_20()
+      ->set_config_fault(config_fault(bytes, length));
 }
 
 // config detail: {'name': 'component_type', 'enum': {0:

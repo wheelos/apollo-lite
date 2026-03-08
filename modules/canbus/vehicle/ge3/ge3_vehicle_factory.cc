@@ -15,12 +15,17 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/ge3_vehicle_factory.h"
+
 #include "modules/canbus/vehicle/ge3/ge3_controller.h"
 #include "modules/canbus/vehicle/ge3/ge3_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
 namespace canbus {
+
+REGISTER_PLUGIN_BY_KEY(AbstractVehicleFactory, Ge3VehicleFactory,
+                       apollo::common::GE3);
 
 std::unique_ptr<VehicleController>
 Ge3VehicleFactory::CreateVehicleController() {

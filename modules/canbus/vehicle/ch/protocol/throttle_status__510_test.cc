@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/throttle_status__510.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -41,10 +44,26 @@ TEST_F(Throttlestatus510Test, General) {
   EXPECT_EQ(data[6], 0b00010011);
   EXPECT_EQ(data[7], 0b00010100);
 
-  EXPECT_EQ(cd.ch().throttle_status__510().throttle_pedal_en_sts(), 1);
-  EXPECT_EQ(cd.ch().throttle_status__510().throttle_pedal_sts(), 2);
-  EXPECT_EQ(cd.ch().throttle_status__510().drive_motor_err(), 1);
-  EXPECT_EQ(cd.ch().throttle_status__510().battery_bms_err(), 0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .throttle_status__510()
+          .throttle_pedal_en_sts(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .throttle_status__510()
+          .throttle_pedal_sts(),
+      2);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .throttle_status__510()
+          .drive_motor_err(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .throttle_status__510()
+          .battery_bms_err(),
+      0);
 }
 
 }  // namespace ch

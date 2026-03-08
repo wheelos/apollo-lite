@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/zhongyun/protocol/enable_state_feedback_c3.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,7 +36,9 @@ TEST_F(Enablestatefeedbackc3Test, reset) {
   uint8_t bytes[8] = {0x01, 0x02, 0x01, 0x02, 0x01, 0x12, 0x13, 0x14};
 
   feedback_.Parse(bytes, length, &cd);
-  auto &feedbackinfo = cd.zhongyun().enable_state_feedback_c3();
+  auto& feedbackinfo = ::apollo::canbus::GetChassisExtensionOrDefault<
+                           ::apollo::canbus::Zhongyun>(cd)
+                           .enable_state_feedback_c3();
   EXPECT_DOUBLE_EQ(feedbackinfo.parking_enable_state(), 1);
   EXPECT_DOUBLE_EQ(feedbackinfo.steering_enable_state(), 2);
   EXPECT_DOUBLE_EQ(feedbackinfo.gear_enable_actual(), 1);

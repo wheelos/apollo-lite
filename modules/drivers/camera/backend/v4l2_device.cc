@@ -10,6 +10,7 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <system_error>
 
 #include "cyber/common/log.h"
 
@@ -106,7 +107,7 @@ void V4L2Device::Configure(uint32_t width, uint32_t height,
         throw_runtime_error("Device does not support streaming I/O");
       break;
     case IOMethod::IO_METHOD_UNKNOWN:
-      break;
+      throw_runtime_error("Unknown IO method for " + device_path_);
   }
 
   // Set video format
@@ -244,8 +245,7 @@ void V4L2Device::InitBuffers() {
         throw_runtime_error("Out of memory for read buffer");
       break;
     case IOMethod::IO_METHOD_UNKNOWN:
-      AERROR << "Unknown IO method for " << device_path_;
-      break;
+      throw_runtime_error("Unknown IO method for " + device_path_);
   }
 }
 
@@ -317,7 +317,7 @@ int V4L2Device::WaitForData(long sec, long usec) {
 
   if (r == -1) {
     if (errno == EINTR) {
-      return 0;  // Interrupted, not an error, but no data
+      return -2;  // Interrupted by signal
     }
     AERROR << "select() error on " << device_path_ << ": " << strerror(errno);
     return -1;  // Serious error
@@ -331,10 +331,6 @@ V4L2Buffer V4L2Device::DequeueBuffer() {
   if (io_method_ == IOMethod::IO_METHOD_READ) {
     ssize_t bytes_read = read(fd_, buffers_[0].start, buffers_[0].length);
     if (bytes_read == -1) {
-      if (errno == EAGAIN) {
-        // No data in non-blocking mode is normal
-        throw_runtime_error("No data available for read (EAGAIN)");
-      }
       throw_v4l2_error("read() failed on " + device_path_);
     }
     result_buf.start = buffers_[0].start;
@@ -358,6 +354,13 @@ V4L2Buffer V4L2Device::DequeueBuffer() {
   if (buf_info.index >= buffers_.size()) {
     throw_runtime_error("Invalid buffer index dequeued from driver: " +
                         std::to_string(buf_info.index));
+  }
+
+  if (buf_info.bytesused > buffers_[buf_info.index].length) {
+    throw_runtime_error("Invalid bytesused from driver: " +
+                        std::to_string(buf_info.bytesused) +
+                        ", buffer length: " +
+                        std::to_string(buffers_[buf_info.index].length));
   }
 
   // Fill return structure

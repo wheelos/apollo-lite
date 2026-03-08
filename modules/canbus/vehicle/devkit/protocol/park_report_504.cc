@@ -17,6 +17,8 @@
 #include "modules/canbus/vehicle/devkit/protocol/park_report_504.h"
 
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,10 +33,12 @@ const int32_t Parkreport504::ID = 0x504;
 
 void Parkreport504::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_devkit()->mutable_park_report_504()->set_parking_actual(
-      parking_actual(bytes, length));
-  chassis->mutable_devkit()->mutable_park_report_504()->set_park_flt(
-      park_flt(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_park_report_504()
+      ->set_parking_actual(parking_actual(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_park_report_504()
+      ->set_park_flt(park_flt(bytes, length));
 }
 
 // config detail: {'name': 'parking_actual', 'enum': {0:

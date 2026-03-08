@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,8 +33,9 @@ const int32_t Yawraterpt40d::ID = 0x40D;
 
 void Yawraterpt40d::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_yaw_rate_rpt_40d()->set_yaw_rate(
-      yaw_rate(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_yaw_rate_rpt_40d()
+      ->set_yaw_rate(yaw_rate(bytes, length));
 }
 
 // config detail: {'name': 'yaw_rate', 'offset': 0.0, 'precision': 0.01, 'len':

@@ -87,6 +87,22 @@ py_proto_library(
     deps = [":center_point_detection_config_proto"],
 )
 cc_proto_library(
+    name = "center_point_trt_detection_config_cc_proto",
+    deps = [
+        ":center_point_trt_detection_config_proto",
+    ],
+)
+
+proto_library(
+    name = "center_point_trt_detection_config_proto",
+    srcs = ["center_point_trt_detection_config.proto"],
+)
+
+py_proto_library(
+    name = "center_point_trt_detection_config_py_pb2",
+    deps = [":center_point_trt_detection_config_proto"],
+)
+cc_proto_library(
     name = "omt_bev_cc_proto",
     deps = [
         ":omt_bev_proto",

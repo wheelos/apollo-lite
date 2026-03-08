@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/turnsignal_status__513.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -41,8 +44,16 @@ TEST_F(Turnsignalstatus513Test, General) {
   EXPECT_EQ(data[6], 0b00010011);
   EXPECT_EQ(data[7], 0b00010100);
 
-  EXPECT_EQ(cd.ch().turnsignal_status__513().turn_signal_sts(), 1);
-  EXPECT_EQ(cd.ch().turnsignal_status__513().low_beam_sts(), 1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .turnsignal_status__513()
+          .turn_signal_sts(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .turnsignal_status__513()
+          .low_beam_sts(),
+      1);
 }
 
 }  // namespace ch

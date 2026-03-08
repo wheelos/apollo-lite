@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_2_302.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,14 +33,30 @@ const int32_t Scu2302::ID = 0x302;
 
 void Scu2302::Parse(const std::uint8_t* bytes, int32_t length,
                     ChassisDetail* chassis) const {
-  chassis->mutable_ge3()->mutable_scu_2_302()->set_vin07(vin07(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_2_302()->set_vin06(vin06(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_2_302()->set_vin05(vin05(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_2_302()->set_vin04(vin04(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_2_302()->set_vin03(vin03(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_2_302()->set_vin02(vin02(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_2_302()->set_vin01(vin01(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_2_302()->set_vin00(vin00(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_2_302()
+      ->set_vin07(vin07(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_2_302()
+      ->set_vin06(vin06(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_2_302()
+      ->set_vin05(vin05(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_2_302()
+      ->set_vin04(vin04(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_2_302()
+      ->set_vin03(vin03(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_2_302()
+      ->set_vin02(vin02(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_2_302()
+      ->set_vin01(vin01(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_2_302()
+      ->set_vin00(vin00(bytes, length));
 }
 
 // config detail: {'description': 'VIN string character 07', 'offset': 0.0,

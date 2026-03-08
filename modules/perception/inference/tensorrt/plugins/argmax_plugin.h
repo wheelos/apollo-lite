@@ -27,7 +27,7 @@ namespace perception {
 namespace inference {
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 class ArgMax1Plugin : public nvinfer1::IPlugin {
  public:
   ArgMax1Plugin(const StArgMaxParameter &argmax_param, nvinfer1::Dims in_dims)
@@ -121,11 +121,16 @@ class ArgMax1Plugin : public nvinfer1::IPluginV2Ext {
     CHECK_GE(top_k_, static_cast<size_t>(1))
         << "top k must not be less than 1.";
     output_dims_ = input_dims_;
+#if NV_TENSORRT_MAJOR >= 10
+    const int channel_dim = (output_dims_.nbDims == 4) ? 1 : 0;
+    output_dims_.d[channel_dim] = out_max_val_ ? 2 : 1;
+#else
     output_dims_.d[0] = 1;
     if (out_max_val_) {
       // Produces max_ind and max_val
       output_dims_.d[0] = 2;
     }
+#endif
   }
 
   /**
@@ -143,10 +148,17 @@ class ArgMax1Plugin : public nvinfer1::IPluginV2Ext {
                                      const nvinfer1::Dims *inputs,
                                      int32_t nbInputDims) noexcept override {
     input_dims_ = inputs[0];
+#if NV_TENSORRT_MAJOR >= 10
+    output_dims_ = input_dims_;
+    const int channel_dim = (output_dims_.nbDims == 4) ? 1 : 0;
+    output_dims_.d[channel_dim] = out_max_val_ ? 2 : 1;
+    return output_dims_;
+#else
     for (int i = 1; i < input_dims_.nbDims; i++) {
       output_dims_.d[i] = input_dims_.d[i];
     }
     return output_dims_;
+#endif
   }
 
   void configureWithFormat(const nvinfer1::Dims *inputDims, int32_t nbInputs,
@@ -155,9 +167,15 @@ class ArgMax1Plugin : public nvinfer1::IPluginV2Ext {
                            nvinfer1::PluginFormat format,
                            int32_t maxBatchSize) noexcept override {
     input_dims_ = inputDims[0];
+#if NV_TENSORRT_MAJOR >= 10
+    output_dims_ = input_dims_;
+    const int channel_dim = (output_dims_.nbDims == 4) ? 1 : 0;
+    output_dims_.d[channel_dim] = out_max_val_ ? 2 : 1;
+#else
     for (int i = 1; i < input_dims_.nbDims; i++) {
       output_dims_.d[i] = input_dims_.d[i];
     }
+#endif
   }
 
   size_t getWorkspaceSize(int32_t maxBatchSize) const noexcept override {
@@ -215,11 +233,18 @@ class ArgMax1Plugin : public nvinfer1::IPluginV2Ext {
       (p->input_dims_).d[i] = input_dims_.d[i];
     }
     p->output_dims_ = p->input_dims_;
+#if NV_TENSORRT_MAJOR >= 10
+    {
+      const int channel_dim = (p->output_dims_.nbDims == 4) ? 1 : 0;
+      p->output_dims_.d[channel_dim] = p->out_max_val_ ? 2 : 1;
+    }
+#else
     p->output_dims_.d[0] = 1;
     if (p->out_max_val_) {
       // Produces max_ind and max_val
       p->output_dims_.d[0] = 2;
     }
+#endif
 
     p->plugin_namespace = plugin_namespace;
     return p;

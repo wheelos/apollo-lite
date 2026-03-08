@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,14 +33,18 @@ const int32_t Wheelspeedreport51e::ID = 0x51E;
 
 void Wheelspeedreport51e::Parse(const std::uint8_t* bytes, int32_t length,
                                 ChassisDetail* chassis) const {
-  chassis->mutable_ch()->mutable_wheelspeed_report_51e()->set_rr(
-      rr(bytes, length));
-  chassis->mutable_ch()->mutable_wheelspeed_report_51e()->set_rl(
-      rl(bytes, length));
-  chassis->mutable_ch()->mutable_wheelspeed_report_51e()->set_fr(
-      fr(bytes, length));
-  chassis->mutable_ch()->mutable_wheelspeed_report_51e()->set_fl(
-      fl(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_wheelspeed_report_51e()
+      ->set_rr(rr(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_wheelspeed_report_51e()
+      ->set_rl(rl(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_wheelspeed_report_51e()
+      ->set_fr(fr(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_wheelspeed_report_51e()
+      ->set_fl(fl(bytes, length));
 }
 
 // config detail: {'bit': 48, 'description': 'wheel speed rear right',

@@ -19,6 +19,8 @@
 
 #include <vanjee_driver/api/lidar_driver.hpp>
 #include <vanjee_driver/driver/driver_param.hpp>
+#include <vanjee_driver/msg/lidar_parameter_interface_msg.hpp>
+#include <vanjee_driver/msg/packet.hpp>
 #include <vanjee_driver/msg/point_cloud_msg.hpp>
 #include <vanjee_driver/msg/scan_data_msg.hpp>
 
@@ -38,16 +40,15 @@ typedef ::vanjee::lidar::PointCloudT<PointT> PointCloudMsg;
 
 using ::vanjee::lidar::InputType;
 
-class VanjeelidarComponent
-    : public LidarComponentBase<vanjee::VanjeeScanPacket> {
+class VanjeelidarComponent : public LidarComponentBase<vanjee::VanjeePacket> {
  public:
   ~VanjeelidarComponent();
   bool Init() override;
 
   void ReadScanCallback(
-      const std::shared_ptr<vanjee::VanjeeScanPacket>& scan_message) override;
+      const std::shared_ptr<vanjee::VanjeePacket>& packet) override;
 
-  // void VanjeePacketCallback(const ::vanjee::lidar::Packet& lidar_packet);
+  void VanjeePacketCallback(std::shared_ptr<::vanjee::lidar::Packet> pkt);
 
   std::shared_ptr<::vanjee::lidar::ScanData> VanjeeScanDataAllocateCallback();
 

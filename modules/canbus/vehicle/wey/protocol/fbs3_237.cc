@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,21 +33,30 @@ const int32_t Fbs3237::ID = 0x237;
 
 void Fbs3237::Parse(const std::uint8_t* bytes, int32_t length,
                     ChassisDetail* chassis) const {
-  chassis->mutable_wey()->mutable_fbs3_237()->set_engspd(engspd(bytes, length));
-  chassis->mutable_wey()->mutable_fbs3_237()->set_accpedalpos(
-      accpedalpos(bytes, length));
-  chassis->mutable_wey()->mutable_fbs3_237()->set_epbswtichposition(
-      epbswtichposition(bytes, length));
-  chassis->mutable_wey()->mutable_fbs3_237()->set_currentgear(
-      currentgear(bytes, length));
-  chassis->mutable_wey()->mutable_fbs3_237()->set_eps_streeingmode(
-      eps_streeingmode(bytes, length));
-  chassis->mutable_wey()->mutable_fbs3_237()->set_epsdrvinputtrqvalue(
-      epsdrvinputtrqvalue(bytes, length));
-  chassis->mutable_wey()->mutable_fbs3_237()->set_epsconsumedcurrvalue(
-      epsconsumedcurrvalue(bytes, length));
-  chassis->mutable_wey()->mutable_fbs3_237()->set_epscurrmod(
-      epscurrmod(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs3_237()
+      ->set_engspd(engspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs3_237()
+      ->set_accpedalpos(accpedalpos(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs3_237()
+      ->set_epbswtichposition(epbswtichposition(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs3_237()
+      ->set_currentgear(currentgear(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs3_237()
+      ->set_eps_streeingmode(eps_streeingmode(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs3_237()
+      ->set_epsdrvinputtrqvalue(epsdrvinputtrqvalue(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs3_237()
+      ->set_epsconsumedcurrvalue(epsconsumedcurrvalue(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs3_237()
+      ->set_epscurrmod(epscurrmod(bytes, length));
   // Added for response check
   chassis->mutable_check_response()->set_is_eps_online(
       eps_streeingmode(bytes, length) == 1);

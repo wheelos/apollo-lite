@@ -22,6 +22,7 @@
 #pragma once
 
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 /**
@@ -49,8 +50,8 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param timestamp the timestamp of input data
    * @param chassis_detail the parsed chassis_detail
    */
-  virtual void Parse(const std::uint8_t *bytes, int32_t length,
-                     ChassisDetail *chassis_detail) const;
+  virtual void Parse(const std::uint8_t* bytes, int32_t length,
+                     ChassisDetail* chassis_detail) const;
 
  private:
   /**
@@ -63,7 +64,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of pedal input
    */
-  double pedal_input(const std::uint8_t *bytes, int32_t length) const;
+  double pedal_input(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief get pedal command for control from byte array
@@ -75,7 +76,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of pedal command for control
    */
-  double pedal_cmd(const std::uint8_t *bytes, int32_t length) const;
+  double pedal_cmd(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief get pedal output from byte array
@@ -87,7 +88,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return the value of pedal command for control
    */
-  double pedal_output(const std::uint8_t *bytes, int32_t length) const;
+  double pedal_output(const std::uint8_t* bytes, int32_t length) const;
 
   double parse_two_frames(const std::uint8_t low_byte,
                           const std::uint8_t high_byte) const;
@@ -101,7 +102,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the corresponding bit
    */
-  bool boo_input(const std::uint8_t *bytes, int32_t length) const;
+  bool boo_input(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check if cmd bit from input byte array is 1 or 0 (at position 1)
@@ -112,7 +113,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the corresponding bit
    */
-  bool boo_cmd(const std::uint8_t *bytes, int32_t length) const;
+  bool boo_cmd(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check the boo bit for output from byte array (at position 2)
@@ -123,7 +124,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the corresponding bit
    */
-  bool boo_output(const std::uint8_t *bytes, int32_t length) const;
+  bool boo_output(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * @brief check watchdog_counter bit (at position 3)
@@ -134,7 +135,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the corresponding bit
    */
-  bool is_watchdog_counter_applying_brakes(const std::uint8_t *bytes,
+  bool is_watchdog_counter_applying_brakes(const std::uint8_t* bytes,
                                            int32_t length) const;
 
   /**
@@ -146,7 +147,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return boolean value of the corresponding bit
    */
-  int32_t watchdog_counter_source(const std::uint8_t *bytes,
+  int32_t watchdog_counter_source(const std::uint8_t* bytes,
                                   int32_t length) const;
 
   /**
@@ -158,7 +159,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return true when enabled
    */
-  bool is_enabled(const std::uint8_t *bytes, int32_t length) const;
+  bool is_enabled(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * brief check driver override
@@ -169,7 +170,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return true if driver override
    */
-  bool is_driver_override(const std::uint8_t *bytes, int32_t length) const;
+  bool is_driver_override(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * brief check if is_driver activity
@@ -180,7 +181,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return true if driving activity
    */
-  bool is_driver_activity(const std::uint8_t *bytes, int32_t length) const;
+  bool is_driver_activity(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * brief check if is watchdog counter fault
@@ -191,7 +192,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return true if watchdog counter fault
    */
-  bool is_watchdog_counter_fault(const std::uint8_t *bytes,
+  bool is_watchdog_counter_fault(const std::uint8_t* bytes,
                                  int32_t length) const;
 
   /**
@@ -203,7 +204,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return true if channel 1 fault
    */
-  bool is_channel_1_fault(const std::uint8_t *bytes, int32_t length) const;
+  bool is_channel_1_fault(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * brief check if is channel 2 fault
@@ -214,7 +215,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return true if channel 2 fault
    */
-  bool is_channel_2_fault(const std::uint8_t *bytes, int32_t length) const;
+  bool is_channel_2_fault(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * brief check if boo switch fault
@@ -225,7 +226,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return true if boo switch fault
    */
-  bool is_boo_switch_fault(const std::uint8_t *bytes, int32_t length) const;
+  bool is_boo_switch_fault(const std::uint8_t* bytes, int32_t length) const;
 
   /**
    * brief check if connector fault
@@ -236,7 +237,7 @@ class Brake61 : public ::apollo::drivers::canbus::ProtocolData<
    * @param length the length of the byte array
    * @return true if connector fault
    */
-  bool is_connector_fault(const std::uint8_t *bytes, int32_t length) const;
+  bool is_connector_fault(const std::uint8_t* bytes, int32_t length) const;
 };
 
 }  // namespace lincoln

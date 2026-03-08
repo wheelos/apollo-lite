@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -14,7 +14,7 @@ cuda_library(
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",
         "//modules/perception/camera/lib/obstacle/detector/smoke/proto:smoke_cc_proto",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -31,7 +31,6 @@ cc_library(
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",
-        "@local_config_cuda//cuda:cudart",
     ],
 )
 
@@ -59,6 +58,7 @@ cc_library(
         "//modules/perception/inference/utils:inference_util_lib",
         "//modules/perception/pipeline:stage",
         "@boost.algorithm",
+        "@opencv//:imgproc",
     ],
 )
 

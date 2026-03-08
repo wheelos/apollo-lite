@@ -17,6 +17,7 @@
 #pragma once
 
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_comm/message_manager.h"
 
 namespace apollo {
@@ -26,7 +27,7 @@ namespace yunle {
 using ::apollo::drivers::canbus::MessageManager;
 
 class YunleMessageManager
-	: public MessageManager<::apollo::canbus::ChassisDetail> {
+    : public MessageManager<::apollo::canbus::ChassisDetail> {
  public:
   YunleMessageManager();
   virtual ~YunleMessageManager();
@@ -35,5 +36,3 @@ class YunleMessageManager
 }  // namespace yunle
 }  // namespace canbus
 }  // namespace apollo
-
-

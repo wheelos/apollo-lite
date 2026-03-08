@@ -54,8 +54,44 @@ __global__ void cmp(const int nthreads, const float *in_data,
   }
 }
 
+#if NV_TENSORRT_MAJOR >= 10
+__global__ void argmax_nchw_kernel(const int nthreads, const float *in_data,
+                                  const int n, const int c, const int h,
+                                  const int w, const bool out_max_val,
+                                  const float float_min, float *out_data) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= nthreads) {
+    return;
+  }
+  const int hw = h * w;
+  const int n_id = idx / hw;
+  const int hw_id = idx % hw;
+  const int h_id = hw_id / w;
+  const int w_id = hw_id % w;
+
+  int c_max = 0;
+  float v_max = float_min;
+  const int base = (n_id * c) * hw + h_id * w + w_id;
+  for (int c_id = 0; c_id < c; ++c_id) {
+    const float v = in_data[base + c_id * hw];
+    if (v > v_max) {
+      v_max = v;
+      c_max = c_id;
+    }
+  }
+
+  // Output dims are [N, out_c, H, W], out_c is 1 or 2.
+  const int out_c = out_max_val ? 2 : 1;
+  const int out_base = (n_id * out_c) * hw + h_id * w + w_id;
+  out_data[out_base] = static_cast<float>(c_max);
+  if (out_max_val) {
+    out_data[out_base + hw] = v_max;
+  }
+}
+#endif
+
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 int ArgMax1Plugin::enqueue(int batchSize, const void *const *inputs,
                            void **outputs, void *workspace,
                            cudaStream_t stream) {
@@ -64,6 +100,22 @@ int32_t ArgMax1Plugin::enqueue(int32_t batchSize, const void *const *inputs,
                           void *const *outputs, void *workspace,
                           cudaStream_t stream) noexcept {
 #endif
+#endif
+#if NV_TENSORRT_MAJOR >= 10
+  if (input_dims_.nbDims == 4) {
+    const int n = input_dims_.d[0];
+    const int c = input_dims_.d[1];
+    const int h = input_dims_.d[2];
+    const int w = input_dims_.d[3];
+    const int nthreads = n * h * w;
+    const int thread_size = 256;
+    const int block_size = (nthreads + thread_size - 1) / thread_size;
+    argmax_nchw_kernel<<<block_size, thread_size, 0, stream>>>(
+        nthreads, (const float *)inputs[0], n, c, h, w, out_max_val_,
+        float_min_,
+        reinterpret_cast<float *>(outputs[0]));
+    return 0;
+  }
 #endif
   const int thread_size = 512;
   int block_size =

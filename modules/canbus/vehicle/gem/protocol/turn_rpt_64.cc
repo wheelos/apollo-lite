@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,12 +33,15 @@ const int32_t Turnrpt64::ID = 0x64;
 
 void Turnrpt64::Parse(const std::uint8_t* bytes, int32_t length,
                       ChassisDetail* chassis) const {
-  chassis->mutable_gem()->mutable_turn_rpt_64()->set_manual_input(
-      manual_input(bytes, length));
-  chassis->mutable_gem()->mutable_turn_rpt_64()->set_commanded_value(
-      commanded_value(bytes, length));
-  chassis->mutable_gem()->mutable_turn_rpt_64()->set_output_value(
-      output_value(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_turn_rpt_64()
+      ->set_manual_input(manual_input(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_turn_rpt_64()
+      ->set_commanded_value(commanded_value(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_turn_rpt_64()
+      ->set_output_value(output_value(bytes, length));
 }
 
 // config detail: {'name': 'manual_input', 'enum': {0: 'MANUAL_INPUT_RIGHT', 1:

@@ -19,10 +19,14 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/lexus/lexus_controller.h"
 #include "modules/canbus/vehicle/lexus/lexus_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
 namespace canbus {
+
+REGISTER_PLUGIN_BY_KEY(AbstractVehicleFactory, LexusVehicleFactory,
+                       apollo::common::LEXUS);
 
 std::unique_ptr<VehicleController>
 LexusVehicleFactory::CreateVehicleController() {

@@ -18,6 +18,9 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/mk_mini/proto/mk_mini.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,13 +34,23 @@ Odofb18c4deef::Odofb18c4deef() {}
 const int32_t Odofb18c4deef::ID = 0x98c4deef;
 
 void Odofb18c4deef::Parse(const std::uint8_t* bytes, int32_t length,
-                         ChassisDetail* chassis) const {
-  chassis->mutable_mk_mini()->mutable_odo_fb_18c4deef()->set_odo_fb_accumulative_angular(odo_fb_accumulative_angular(bytes, length));
-  chassis->mutable_mk_mini()->mutable_odo_fb_18c4deef()->set_odo_fb_accumulative_mileage(odo_fb_accumulative_mileage(bytes, length));
+                          ChassisDetail* chassis) const {
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_odo_fb_18c4deef()
+      ->set_odo_fb_accumulative_angular(
+          odo_fb_accumulative_angular(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_odo_fb_18c4deef()
+      ->set_odo_fb_accumulative_mileage(
+          odo_fb_accumulative_mileage(bytes, length));
 }
 
-// config detail: {'bit': 32, 'is_signed_var': True, 'len': 32, 'name': 'odo_fb_accumulative_angular', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type': 'double'}
-double Odofb18c4deef::odo_fb_accumulative_angular(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 32, 'is_signed_var': True, 'len': 32, 'name':
+// 'odo_fb_accumulative_angular', 'offset': 0.0, 'order': 'intel',
+// 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type':
+// 'double'}
+double Odofb18c4deef::odo_fb_accumulative_angular(const std::uint8_t* bytes,
+                                                  int32_t length) const {
   Byte t0(bytes + 7);
   int32_t x = t0.get_byte(0, 8);
 
@@ -63,8 +76,12 @@ double Odofb18c4deef::odo_fb_accumulative_angular(const std::uint8_t* bytes, int
   return ret;
 }
 
-// config detail: {'bit': 0, 'is_signed_var': True, 'len': 32, 'name': 'odo_fb_accumulative_mileage', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type': 'double'}
-double Odofb18c4deef::odo_fb_accumulative_mileage(const std::uint8_t* bytes, int32_t length) const {
+// config detail: {'bit': 0, 'is_signed_var': True, 'len': 32, 'name':
+// 'odo_fb_accumulative_mileage', 'offset': 0.0, 'order': 'intel',
+// 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 0.001, 'type':
+// 'double'}
+double Odofb18c4deef::odo_fb_accumulative_mileage(const std::uint8_t* bytes,
+                                                  int32_t length) const {
   Byte t0(bytes + 3);
   int32_t x = t0.get_byte(0, 8);
 

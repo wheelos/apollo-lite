@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,51 +33,51 @@ const int32_t Llcmotionfeedback120::ID = 0x20;
 
 void Llcmotionfeedback120::Parse(const std::uint8_t* bytes, int32_t length,
                                  ChassisDetail* chassis) const {
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_gear(llc_fbk_gear(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_parkingbrake(llc_fbk_parkingbrake(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_throttleposition(llc_fbk_throttleposition(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_brakepercentrear(llc_fbk_brakepercentrear(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_brakepercentfront(llc_fbk_brakepercentfront(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_steeringcontrolmode(
           llc_fbk_steeringcontrolmode(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_motionfeedback1_counter(
           llc_motionfeedback1_counter(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_motionfeedback1_checksum(
           llc_motionfeedback1_checksum(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_commandaligned(llc_fbk_commandaligned(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_estoppressed(llc_fbk_estoppressed(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_adcrequestautonomy(
           llc_fbk_adcrequestautonomy(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_allowautonomy(llc_fbk_allowautonomy(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_longitudinalcontrolmode(
           llc_fbk_longitudinalcontrolmode(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_motionfeedback1_20()
       ->set_llc_fbk_state(llc_fbk_state(bytes, length));
 }

@@ -19,10 +19,14 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/devkit/devkit_controller.h"
 #include "modules/canbus/vehicle/devkit/devkit_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
 namespace canbus {
+
+REGISTER_PLUGIN_BY_KEY(AbstractVehicleFactory, DevkitVehicleFactory,
+                       apollo::common::DKIT);
 
 std::unique_ptr<VehicleController>
 DevkitVehicleFactory::CreateVehicleController() {

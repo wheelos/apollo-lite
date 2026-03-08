@@ -1,10 +1,12 @@
 #include "modules/drivers/camera/backend/camera_device.h"
 
 #include <chrono>
+#include <iomanip>
 #include <map>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
+#include <system_error>
 #include <thread>
 
 #include <linux/videodev2.h>
@@ -23,7 +25,9 @@ namespace {
 
 const std::map<std::string, uint32_t> PIXEL_FORMAT_MAP = {
     {"yuyv", V4L2_PIX_FMT_YUYV},
+    {"yvyu", V4L2_PIX_FMT_YVYU},
     {"uyvy", V4L2_PIX_FMT_UYVY},
+    {"vyuy", V4L2_PIX_FMT_VYUY},
     {"mjpeg", V4L2_PIX_FMT_MJPEG},
     {"rgb24", V4L2_PIX_FMT_RGB24},
     // Adding yuvmono10. Assuming it maps to V4L2_PIX_FMT_Y10.
@@ -122,14 +126,30 @@ bool CameraDevice::Init() {
     // device.
     config_->set_width(device_->GetWidth());
     config_->set_height(device_->GetHeight());
-    // Note: V4L2Device should ideally provide actual pixel format and frame
-    // rate as well. For this example, we assume get_width/get_height are
-    // sufficient for processor creation.
+
+    // Get the actual pixel format returned by V4L2 driver
+    uint32_t actual_pixel_format = device_->GetPixelFormat();
+    // Convert fourcc to string for logging
+    char fourcc[5] = {0};
+    fourcc[0] = actual_pixel_format & 0xFF;
+    fourcc[1] = (actual_pixel_format >> 8) & 0xFF;
+    fourcc[2] = (actual_pixel_format >> 16) & 0xFF;
+    fourcc[3] = (actual_pixel_format >> 24) & 0xFF;
+    AINFO << "V4L2 driver returned actual pixel format: " << fourcc << " (0x"
+          << std::hex << actual_pixel_format << std::dec << ")";
+
+    // Warn if requested format differs from actual format
+    if (actual_pixel_format != pixel_format_v4l2) {
+      AWARN << "Requested pixel format " << config_->pixel_format() << " (0x"
+            << std::hex << pixel_format_v4l2 << std::dec << ") but got "
+            << fourcc << " (0x" << std::hex << actual_pixel_format << std::dec
+            << ")";
+    }
 
     // 4. Create ImageProcessor based on actual device capabilities and desired
     // output
     processor_.reset();
-    if (pixel_format_v4l2 == V4L2_PIX_FMT_MJPEG) {
+    if (actual_pixel_format == V4L2_PIX_FMT_MJPEG) {
       processor_ =
           std::make_unique<MjpegProcessor>(config_->width(), config_->height());
     } else {
@@ -143,9 +163,34 @@ bool CameraDevice::Init() {
         AINFO << "YuvProcessor will output YUYV passthrough.";
       }
 
-      // Determine if input YUV is UYVY for conversion
-      bool is_uyvy = (pixel_format_v4l2 == V4L2_PIX_FMT_UYVY);
-      processor_ = std::make_unique<YuvProcessor>(output_format, is_uyvy);
+      // Determine the YUV format variant based on actual pixel format
+      YuvProcessor::YuvFormat yuv_format = YuvProcessor::YuvFormat::YUYV;
+      const char* format_name = "YUYV";
+      if (actual_pixel_format == V4L2_PIX_FMT_YUYV) {
+        yuv_format = YuvProcessor::YuvFormat::YUYV;
+        format_name = "YUYV";
+      } else if (actual_pixel_format == V4L2_PIX_FMT_YVYU) {
+        yuv_format = YuvProcessor::YuvFormat::YVYU;
+        format_name = "YVYU";
+      } else if (actual_pixel_format == V4L2_PIX_FMT_UYVY) {
+        yuv_format = YuvProcessor::YuvFormat::UYVY;
+        format_name = "UYVY";
+      } else if (actual_pixel_format == V4L2_PIX_FMT_VYUY) {
+        yuv_format = YuvProcessor::YuvFormat::VYUY;
+        format_name = "VYUY";
+      }
+      AINFO << "YuvProcessor input format: " << format_name;
+
+      // Check if UV channel swapping is requested
+      bool swap_uv =
+          config_->has_swap_uv_channels() && config_->swap_uv_channels();
+      if (swap_uv) {
+        AINFO << "UV channel swapping enabled - treating " << format_name
+              << " as UV-swapped";
+      }
+
+      processor_ =
+          std::make_unique<YuvProcessor>(output_format, yuv_format, swap_uv);
     }
 
     // 5. Set all camera parameters (brightness, exposure, etc.)
@@ -243,6 +288,35 @@ void CameraDevice::SetCameraParameters() {
 }
 
 bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
+  if (pb_image == nullptr) {
+    AERROR << "Camera poll received a null output image pointer.";
+    return false;
+  }
+
+  if (device_ == nullptr || processor_ == nullptr) {
+    AERROR << "Camera " << config_->camera_dev()
+           << " is missing device or processor instance.";
+    state_ = State::RECONNECTING;
+    return false;
+  }
+
+  V4L2Buffer v4l2_buf{};
+  bool has_dequeued_buffer = false;
+  auto queue_buffer_if_needed = [&]() {
+    if (!has_dequeued_buffer) {
+      return;
+    }
+    try {
+      device_->QueueBuffer(v4l2_buf.index);
+    } catch (const std::exception& queue_error) {
+      AERROR << "Failed to queue V4L2 buffer index " << v4l2_buf.index
+             << " on " << config_->camera_dev() << ": "
+             << queue_error.what();
+      state_ = State::RECONNECTING;
+    }
+    has_dequeued_buffer = false;
+  };
+
   // If in reconnecting state, attempt to reconnect first
   if (state_ == State::RECONNECTING) {
     Reconnect();
@@ -266,6 +340,9 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     int ready = device_->WaitForData(2, 0);  // (seconds, microseconds)
 
     if (ready < 0) {  // An error occurred during select()
+      if (ready == -2) {  // select() interrupted by signal
+        return false;
+      }
       AERROR << "select() on " << config_->camera_dev()
              << " failed with error: " << strerror(errno)
              << ". Triggering reconnect.";
@@ -274,8 +351,9 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     }
     if (ready == 0) {  // Timeout: no data ready within the specified time
       select_timeout_count_++;
-      AWARN << "select() timeout on " << config_->camera_dev()
-            << ". Consecutive timeout count: " << select_timeout_count_;
+      AWARN_EVERY(100) << "select() timeout on " << config_->camera_dev()
+                       << ". Consecutive timeout count: "
+                       << select_timeout_count_;
       // If consecutive timeouts exceed a threshold, consider the device
       // unresponsive. Threshold can be tuned based on application needs
       if (select_timeout_count_ >= 3) {
@@ -290,7 +368,8 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     select_timeout_count_ = 0;
 
     // 2. Dequeue a buffer from the V4L2 device
-    V4L2Buffer v4l2_buf = device_->DequeueBuffer();
+    v4l2_buf = device_->DequeueBuffer();
+    has_dequeued_buffer = true;
 
     // 3. Get and validate timestamp
     uint64_t current_ts_ns = GetMonotonicTimestamp(v4l2_buf);
@@ -305,7 +384,7 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
         AINFO << "Dropping frame from " << config_->camera_dev()
               << " due to small interval (" << interval << " ns)."
               << " Expected min: " << frame_drop_interval_ns_ << " ns.";
-        device_->QueueBuffer(v4l2_buf.index);
+        queue_buffer_if_needed();
         return false;  // Frame dropped
       }
 
@@ -324,7 +403,7 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
                                    1e9);  // Convert ns to seconds
     pb_image->set_frame_id(config_->frame_id());
     pb_image->set_encoding(config_->output_type() == OutputType::RGB
-                               ? "bgr8"
+                               ? "rgb8"
                                : "yuyv");  // Set encoding string
     pb_image->set_width(config_->width());
     pb_image->set_height(config_->height());
@@ -335,15 +414,33 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
 
     // 6. Process image data (decode/convert) using the image processor
     // Processor will write directly into pb_image->mutable_data()->data()
-    processor_->Process(v4l2_buf.start, v4l2_buf.length, pb_image);
+    if (!processor_->Process(v4l2_buf.start, v4l2_buf.length, pb_image)) {
+      AWARN_EVERY(50) << "Image processing failed on "
+                      << config_->camera_dev() << ", dropping frame.";
+      queue_buffer_if_needed();
+      return false;
+    }
 
     // 7. Enqueue the buffer back to the V4L2 device for reuse
-    device_->QueueBuffer(v4l2_buf.index);
+    queue_buffer_if_needed();
 
     // Image successfully processed and ready
     return true;
 
+  } catch (const std::system_error& e) {
+    queue_buffer_if_needed();
+    // EAGAIN/EINTR can happen transiently with non-blocking dequeue/read.
+    if (e.code().value() == EAGAIN || e.code().value() == EINTR) {
+      AWARN_EVERY(100) << "Transient V4L2 dequeue/read error on "
+                       << config_->camera_dev() << ": " << e.what();
+      return false;
+    }
+    AERROR << "Polling failed with system error on " << config_->camera_dev()
+           << ": " << e.what();
+    state_ = State::RECONNECTING;
+    return false;
   } catch (const std::exception& e) {
+    queue_buffer_if_needed();
     AERROR << "Polling failed with exception on " << config_->camera_dev()
            << ": " << e.what();
     // In case of any exception during poll, assume device is in a bad state and
@@ -392,8 +489,9 @@ void CameraDevice::Reconnect() {
 
   // Exponential backoff retry logic: 1s, 2s, 4s, ..., capped at 30s.
   // This prevents hammering the system/device on rapid consecutive failures.
-  uint64_t wait_ms =
-      std::min(1000ULL * (1ULL << reconnect_attempts_), 30000ULL);
+  constexpr uint32_t kMaxBackoffShift = 5;  // 32 seconds upper bound
+  uint32_t capped_attempts = std::min(reconnect_attempts_, kMaxBackoffShift);
+  uint64_t wait_ms = std::min(1000ULL * (1ULL << capped_attempts), 30000ULL);
   AINFO << "Waiting for " << wait_ms
         << " ms before next reconnection attempt for " << config_->camera_dev();
   std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));

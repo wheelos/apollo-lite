@@ -16,6 +16,7 @@
 
 #include "modules/canbus/vehicle/yunle/protocol/scu_1_121.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {
@@ -36,28 +37,41 @@ uint32_t Scu1121::GetPeriod() const {
 
 void Scu1121::Parse(const std::uint8_t* bytes, int32_t length,
                     ChassisDetail* chassis) const {
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_angular_speed_flag(
-      angular_speed_flag(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_scu_steering_wheel_angle_r(
-      scu_steering_wheel_angle_r(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_scu_steering_wheel_angle_f(
-      scu_steering_wheel_angle_f(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_gw_lowbeam_req(
-      gw_lowbeam_req(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_gw_position_light_req(
-      gw_position_light_req(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_gw_right_turn_light_req(
-      gw_right_turn_light_req(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_gw_left_turn_light_req(
-      gw_left_turn_light_req(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_scu_brk_en(
-      scu_brk_en(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_scu_target_speed(
-      scu_target_speed(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_scu_shiftlevel_req(
-      scu_shiftlevel_req(bytes, length));
-  chassis->mutable_yunle()->mutable_scu_1_121()->set_scu_drive_mode_req(
-      scu_drive_mode_req(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_angular_speed_flag(angular_speed_flag(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_scu_steering_wheel_angle_r(
+          scu_steering_wheel_angle_r(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_scu_steering_wheel_angle_f(
+          scu_steering_wheel_angle_f(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_gw_lowbeam_req(gw_lowbeam_req(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_gw_position_light_req(gw_position_light_req(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_gw_right_turn_light_req(gw_right_turn_light_req(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_gw_left_turn_light_req(gw_left_turn_light_req(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_scu_brk_en(scu_brk_en(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_scu_target_speed(scu_target_speed(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_scu_shiftlevel_req(scu_shiftlevel_req(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_scu_1_121()
+      ->set_scu_drive_mode_req(scu_drive_mode_req(bytes, length));
 }
 
 void Scu1121::UpdateData(uint8_t* data) {

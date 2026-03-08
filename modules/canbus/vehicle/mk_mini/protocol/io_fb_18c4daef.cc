@@ -18,6 +18,9 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/mk_mini/proto/mk_mini.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -37,71 +40,81 @@ uint32_t Iofb18c4daef::GetPeriod() const {
 
 void Iofb18c4daef::Parse(const std::uint8_t* bytes, int32_t length,
                          ChassisDetail* chassis) const {
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_scramst(
-      io_fb_scramst(bytes, length));
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_chargeen(
-      io_fb_chargeen(bytes, length));
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_dischargeflg(
-      io_fb_dischargeflg(bytes, length));
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_check_bcc(
-      io_fb_check_bcc(bytes, length));
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_alive_cnt(
-      io_fb_alive_cnt(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_scramst(io_fb_scramst(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_chargeen(io_fb_chargeen(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_dischargeflg(io_fb_dischargeflg(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_check_bcc(io_fb_check_bcc(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_alive_cnt(io_fb_alive_cnt(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_rr_drop_sensor(io_fb_rr_drop_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_rm_drop_sensor(io_fb_rm_drop_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_rl_drop_sensor(io_fb_rl_drop_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_fr_drop_sensor(io_fb_fr_drop_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_fm_drop_sensor(io_fb_fm_drop_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_fl_drop_sensor(io_fb_fl_drop_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_rr_impact_sensor(io_fb_rr_impact_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_rm_impact_sensor(io_fb_rm_impact_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_rl_impact_sensor(io_fb_rl_impact_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_fr_impact_sensor(io_fb_fr_impact_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_fm_impact_sensor(io_fb_fm_impact_sensor(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_fl_impact_sensor(io_fb_fl_impact_sensor(bytes, length));
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_speaker(
-      io_fb_speaker(bytes, length));
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_fog_lamp(
-      io_fb_fog_lamp(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_speaker(io_fb_speaker(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_fog_lamp(io_fb_fog_lamp(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_clearance_lamp(io_fb_clearance_lamp(bytes, length));
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_braking_lamp(
-      io_fb_braking_lamp(bytes, length));
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_turn_lamp(
-      io_fb_turn_lamp(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_braking_lamp(io_fb_braking_lamp(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_turn_lamp(io_fb_turn_lamp(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_upper_beam_headlamp(io_fb_upper_beam_headlamp(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_io_fb_18c4daef()
       ->set_io_fb_lower_beam_headlamp(io_fb_lower_beam_headlamp(bytes, length));
-  chassis->mutable_mk_mini()->mutable_io_fb_18c4daef()->set_io_fb_enable(
-      io_fb_enable(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_io_fb_18c4daef()
+      ->set_io_fb_enable(io_fb_enable(bytes, length));
 }
 
 // config detail: {'bit': 44, 'is_signed_var': False, 'len': 1, 'name':

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,18 +33,19 @@ const int32_t Rearlightsrpt418::ID = 0x418;
 
 void Rearlightsrpt418::Parse(const std::uint8_t* bytes, int32_t length,
                              ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_rear_lights_rpt_418()
       ->set_reverse_lights_on_is_valid(
           reverse_lights_on_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_rear_lights_rpt_418()
       ->set_brake_lights_on_is_valid(brake_lights_on_is_valid(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_rear_lights_rpt_418()
       ->set_reverse_lights_on(reverse_lights_on(bytes, length));
-  chassis->mutable_lexus()->mutable_rear_lights_rpt_418()->set_brake_lights_on(
-      brake_lights_on(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_rear_lights_rpt_418()
+      ->set_brake_lights_on(brake_lights_on(bytes, length));
 }
 
 // config detail: {'name': 'reverse_lights_on_is_valid', 'offset': 0.0,

@@ -16,10 +16,12 @@
 
 #include "modules/canbus/vehicle/mk_mini/mk_mini_controller.h"
 
+#include "modules/canbus/vehicle/mk_mini/proto/mk_mini.pb.h"
 #include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/canbus/vehicle/mk_mini/mk_mini_message_manager.h"
 #include "modules/canbus/vehicle/mk_mini/protocol/ctrl_fb_18c4d2ef.h"
 #include "modules/canbus/vehicle/mk_mini/protocol/io_fb_18c4daef.h"
@@ -139,11 +141,14 @@ Chassis Mk_miniController::chassis() {
   // 3 engine_started
   chassis_.set_engine_started(true);
 
-  if (!chassis_detail.has_mk_mini()) {
+  if (!::apollo::canbus::HasChassisExtension<::apollo::canbus::Mk_mini>(
+          chassis_detail)) {
     AERROR << "NO mk_mini chassis information!";
     return chassis_;
   }
-  Mk_mini mk_mini = chassis_detail.mk_mini();
+  Mk_mini mk_mini =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Mk_mini>(
+          chassis_detail);
 
   // 5 speed_mps
   if (mk_mini.has_ctrl_fb_18c4d2ef() &&
@@ -239,6 +244,40 @@ Chassis Mk_miniController::chassis() {
   if (mk_mini.has_bms_flag_infor_18c4e2ef()) {
     chassis_.set_battery_soc_percentage(
         mk_mini.bms_flag_infor_18c4e2ef().bms_flag_infor_soc());
+  }
+
+  // signals
+  if (mk_mini.has_io_fb_18c4daef()) {
+    // turn signal
+    if (mk_mini.io_fb_18c4daef().io_fb_turn_lamp() == 1) {
+      chassis_.mutable_signal()->set_turn_signal(
+          common::VehicleSignal::TURN_LEFT);
+      chassis_.mutable_signal()->set_emergency_light(false);
+    } else if (mk_mini.io_fb_18c4daef().io_fb_turn_lamp() == 2) {
+      chassis_.mutable_signal()->set_turn_signal(
+          common::VehicleSignal::TURN_RIGHT);
+      chassis_.mutable_signal()->set_emergency_light(false);
+    } else if (mk_mini.io_fb_18c4daef().io_fb_turn_lamp() == 3) {
+      chassis_.mutable_signal()->set_turn_signal(
+          common::VehicleSignal::TURN_HAZARD_WARNING);
+      chassis_.mutable_signal()->set_emergency_light(true);
+    } else if (mk_mini.io_fb_18c4daef().io_fb_turn_lamp() == 0) {
+      chassis_.mutable_signal()->set_turn_signal(
+          common::VehicleSignal::TURN_NONE);
+      chassis_.mutable_signal()->set_emergency_light(false);
+    }
+    // high beam
+    if (mk_mini.io_fb_18c4daef().io_fb_upper_beam_headlamp() == 1) {
+      chassis_.mutable_signal()->set_high_beam(true);
+    } else {
+      chassis_.mutable_signal()->set_high_beam(false);
+    }
+    // low beam
+    if (mk_mini.io_fb_18c4daef().io_fb_lower_beam_headlamp() == 1) {
+      chassis_.mutable_signal()->set_low_beam(true);
+    } else {
+      chassis_.mutable_signal()->set_low_beam(false);
+    }
   }
 
   return chassis_;
@@ -359,12 +398,19 @@ void Mk_miniController::SetEpbBreak(const ControlCommand& command) {
 }
 
 void Mk_miniController::SetBeam(const ControlCommand& command) {
-  if (command.signal().high_beam()) {
-    // None
-  } else if (command.signal().low_beam()) {
-    // None
-  } else {
-    // None
+  // always turn clearance lamp on
+  io_cmd_18c4d7d0_->set_io_cmd_clearance_lamp(true);
+  if (command.has_signal()) {
+    if (command.signal().high_beam()) {
+      io_cmd_18c4d7d0_->set_io_cmd_upper_beam_headlamp(true);
+      io_cmd_18c4d7d0_->set_io_cmd_lower_beam_headlamp(false);
+    } else if (command.signal().low_beam()) {
+      io_cmd_18c4d7d0_->set_io_cmd_upper_beam_headlamp(false);
+      io_cmd_18c4d7d0_->set_io_cmd_lower_beam_headlamp(true);
+    } else {
+      io_cmd_18c4d7d0_->set_io_cmd_upper_beam_headlamp(false);
+      io_cmd_18c4d7d0_->set_io_cmd_lower_beam_headlamp(false);
+    }
   }
 }
 
@@ -378,13 +424,20 @@ void Mk_miniController::SetHorn(const ControlCommand& command) {
 
 void Mk_miniController::SetTurningSignal(const ControlCommand& command) {
   // Set Turn Signal
-  auto signal = command.signal().turn_signal();
-  if (signal == common::VehicleSignal::TURN_LEFT) {
-    io_cmd_18c4d7d0_->set_io_cmd_turn_lamp(1);
-  } else if (signal == common::VehicleSignal::TURN_RIGHT) {
-    io_cmd_18c4d7d0_->set_io_cmd_turn_lamp(2);
-  } else {
-    io_cmd_18c4d7d0_->set_io_cmd_turn_lamp(0);
+  if (command.has_signal()) {
+    auto signal = command.signal().turn_signal();
+    if (signal == common::VehicleSignal::TURN_LEFT) {
+      io_cmd_18c4d7d0_->set_io_cmd_turn_lamp(1);
+    } else if (signal == common::VehicleSignal::TURN_RIGHT) {
+      io_cmd_18c4d7d0_->set_io_cmd_turn_lamp(2);
+    } else if (signal == common::VehicleSignal::TURN_HAZARD_WARNING) {
+      io_cmd_18c4d7d0_->set_io_cmd_turn_lamp(3);
+    } else if (command.signal().has_emergency_light() &&
+               command.signal().emergency_light()) {
+      io_cmd_18c4d7d0_->set_io_cmd_turn_lamp(3);
+    } else {
+      io_cmd_18c4d7d0_->set_io_cmd_turn_lamp(0);
+    }
   }
 }
 
@@ -397,7 +450,10 @@ bool Mk_miniController::CheckChassisError() {
   ChassisDetail chassis_detail;
   message_manager_->GetSensorData(&chassis_detail);
 
-  auto error_report = chassis_detail.mk_mini().veh_fb_diag_18c4eaef();
+  auto error_report =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Mk_mini>(
+          chassis_detail)
+          .veh_fb_diag_18c4eaef();
 
   int32_t error_cnt = 0;
   int32_t chassis_error_mask = 0;
@@ -596,7 +652,9 @@ bool Mk_miniController::CheckResponse(const int32_t flags, bool need_wait) {
     }
     bool check_ok = true;
     // TODO(Pride Leong): check alive count and bcc of feedback messages
-    const auto error_report = chassis_detail.mk_mini().veh_fb_diag_18c4eaef();
+    const auto error_report = ::apollo::canbus::GetChassisExtensionOrDefault<
+                                  ::apollo::canbus::Mk_mini>(chassis_detail)
+                                  .veh_fb_diag_18c4eaef();
     if (flags & CHECK_RESPONSE_VCU_UNIT_FLAG) {
       // check if motor in fault state
       is_vcu_online = (!error_report.veh_fb_rdrvmcufault() &&

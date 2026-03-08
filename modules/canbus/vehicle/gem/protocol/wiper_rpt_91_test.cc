@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace gem {
@@ -33,9 +35,24 @@ TEST_F(Wiperrpt91Test, reset) {
   ChassisDetail chassis_detail;
   uint8_t bytes[3] = {0x01, 0x02, 0x03};
   wiper.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().wiper_rpt_91().manual_input(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().wiper_rpt_91().commanded_value(), 2);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().wiper_rpt_91().output_value(), 3);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .wiper_rpt_91()
+          .manual_input(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .wiper_rpt_91()
+          .commanded_value(),
+      2);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .wiper_rpt_91()
+          .output_value(),
+      3);
 }
 
 }  // namespace gem

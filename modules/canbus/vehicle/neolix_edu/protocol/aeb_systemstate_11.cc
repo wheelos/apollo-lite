@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,37 +33,48 @@ const int32_t Aebsystemstate11::ID = 0x11;
 
 void Aebsystemstate11::Parse(const std::uint8_t* bytes, int32_t length,
                              ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_aeb_state(
-      aeb_state(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_aeb_state(aeb_state(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_systemstate_11()
       ->set_aeb_brakestate(aeb_brakestate(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_faultrank(
-      faultrank(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_faultrank(faultrank(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_systemstate_11()
       ->set_currenttemperature(currenttemperature(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_pas_f1_stop(
-      pas_f1_stop(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_pas_f2_stop(
-      pas_f2_stop(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_pas_f3_stop(
-      pas_f3_stop(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_pas_f4_stop(
-      pas_f4_stop(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_pas_b1_stop(
-      pas_b1_stop(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_pas_b2_stop(
-      pas_b2_stop(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_pas_b3_stop(
-      pas_b3_stop(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_pas_b4_stop(
-      pas_b4_stop(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_pas_f1_stop(pas_f1_stop(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_pas_f2_stop(pas_f2_stop(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_pas_f3_stop(pas_f3_stop(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_pas_f4_stop(pas_f4_stop(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_pas_b1_stop(pas_b1_stop(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_pas_b2_stop(pas_b2_stop(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_pas_b3_stop(pas_b3_stop(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_pas_b4_stop(pas_b4_stop(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_aeb_systemstate_11()
       ->set_aeb_livecounter_rear(aeb_livecounter_rear(bytes, length));
-  chassis->mutable_neolix_edu()->mutable_aeb_systemstate_11()->set_aeb_cheksum(
-      aeb_cheksum(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_systemstate_11()
+      ->set_aeb_cheksum(aeb_cheksum(bytes, length));
 }
 
 // config detail: {'description': '0x00:read only;0x01:brake enable', 'offset':

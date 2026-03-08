@@ -11,6 +11,8 @@ cc_library(
         "//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/lib/lane/common:common_functions",
+        "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
     ],
 )
 
@@ -34,7 +36,6 @@ cc_binary(
         "//modules/perception/common:perception_gflags",
         "//modules/perception/common/io:io_util",
         "@com_github_gflags_gflags//:gflags",
-        "@opencv//:imgproc",
     ],
 )
 

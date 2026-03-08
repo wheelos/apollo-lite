@@ -37,7 +37,6 @@ proto_library(
     name = "config_proto",
     srcs = ["config.proto"],
     deps = [
-        ":hesai_config_proto",
         ":lidar_parameter_proto",
         ":velodyne_config_proto",
     ],
@@ -46,26 +45,6 @@ proto_library(
 py_proto_library(
     name = "config_py_pb2",
     deps = [":config_proto"],
-)
-
-cc_proto_library(
-    name = "hesai_cc_proto",
-    deps = [
-        ":hesai_proto",
-    ],
-)
-
-proto_library(
-    name = "hesai_proto",
-    srcs = ["hesai.proto"],
-    deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
-    ],
-)
-
-py_proto_library(
-    name = "hesai_py_pb2",
-    deps = [":hesai_proto"],
 )
 
 cc_proto_library(
@@ -86,26 +65,6 @@ proto_library(
 py_proto_library(
     name = "velodyne_py_pb2",
     deps = [":velodyne_proto"],
-)
-
-cc_proto_library(
-    name = "hesai_config_cc_proto",
-    deps = [
-        ":hesai_config_proto",
-    ],
-)
-
-proto_library(
-    name = "hesai_config_proto",
-    srcs = ["hesai_config.proto"],
-    deps = [
-        ":hesai_proto",
-    ],
-)
-
-py_proto_library(
-    name = "hesai_config_py_pb2",
-    deps = [":hesai_config_proto"],
 )
 
 cc_proto_library(

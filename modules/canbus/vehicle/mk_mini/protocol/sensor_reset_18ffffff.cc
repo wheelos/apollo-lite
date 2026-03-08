@@ -16,6 +16,9 @@
 
 #include "modules/canbus/vehicle/mk_mini/protocol/sensor_reset_18ffffff.h"
 
+#include "modules/canbus/vehicle/mk_mini/proto/mk_mini.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {
@@ -35,10 +38,16 @@ uint32_t Sensorreset18ffffff::GetPeriod() const {
 }
 
 void Sensorreset18ffffff::Parse(const std::uint8_t* bytes, int32_t length,
-                         ChassisDetail* chassis) const {
-  chassis->mutable_mk_mini()->mutable_sensor_reset_18ffffff()->set_close_candiag(close_candiag(bytes, length));
-  chassis->mutable_mk_mini()->mutable_sensor_reset_18ffffff()->set_brake_reset(brake_reset(bytes, length));
-  chassis->mutable_mk_mini()->mutable_sensor_reset_18ffffff()->set_steer_reset(steer_reset(bytes, length));
+                                ChassisDetail* chassis) const {
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_sensor_reset_18ffffff()
+      ->set_close_candiag(close_candiag(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_sensor_reset_18ffffff()
+      ->set_brake_reset(brake_reset(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_sensor_reset_18ffffff()
+      ->set_steer_reset(steer_reset(bytes, length));
 }
 
 void Sensorreset18ffffff::UpdateData(uint8_t* data) {
@@ -54,15 +63,16 @@ void Sensorreset18ffffff::Reset() {
   steer_reset_ = false;
 }
 
-Sensorreset18ffffff* Sensorreset18ffffff::set_close_candiag(
-    int close_candiag) {
+Sensorreset18ffffff* Sensorreset18ffffff::set_close_candiag(int close_candiag) {
   close_candiag_ = close_candiag;
   return this;
- }
+}
 
-// config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name': 'Close_candiag', 'offset': 0.0, 'order': 'intel', 'physical_range': '[-128|127]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
+// config detail: {'bit': 56, 'is_signed_var': False, 'len': 8, 'name':
+// 'Close_candiag', 'offset': 0.0, 'order': 'intel', 'physical_range':
+// '[-128|127]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
 void Sensorreset18ffffff::set_p_close_candiag(uint8_t* data,
-    int close_candiag) {
+                                              int close_candiag) {
   close_candiag = ProtocolData::BoundedValue(-128, 127, close_candiag);
   int x = close_candiag;
 
@@ -70,40 +80,38 @@ void Sensorreset18ffffff::set_p_close_candiag(uint8_t* data,
   to_set.set_value(x, 0, 8);
 }
 
-
-Sensorreset18ffffff* Sensorreset18ffffff::set_brake_reset(
-    bool brake_reset) {
+Sensorreset18ffffff* Sensorreset18ffffff::set_brake_reset(bool brake_reset) {
   brake_reset_ = brake_reset;
   return this;
- }
+}
 
-// config detail: {'bit': 8, 'is_signed_var': False, 'len': 1, 'name': 'Brake_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
-void Sensorreset18ffffff::set_p_brake_reset(uint8_t* data,
-    bool brake_reset) {
+// config detail: {'bit': 8, 'is_signed_var': False, 'len': 1, 'name':
+// 'Brake_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]',
+// 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
+void Sensorreset18ffffff::set_p_brake_reset(uint8_t* data, bool brake_reset) {
   int x = brake_reset;
 
   Byte to_set(data + 1);
   to_set.set_value(x, 0, 1);
 }
 
-
-Sensorreset18ffffff* Sensorreset18ffffff::set_steer_reset(
-    bool steer_reset) {
+Sensorreset18ffffff* Sensorreset18ffffff::set_steer_reset(bool steer_reset) {
   steer_reset_ = steer_reset;
   return this;
- }
+}
 
-// config detail: {'bit': 0, 'is_signed_var': False, 'len': 1, 'name': 'steer_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
-void Sensorreset18ffffff::set_p_steer_reset(uint8_t* data,
-    bool steer_reset) {
+// config detail: {'bit': 0, 'is_signed_var': False, 'len': 1, 'name':
+// 'steer_reset', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]',
+// 'physical_unit': '', 'precision': 1.0, 'type': 'bool'}
+void Sensorreset18ffffff::set_p_steer_reset(uint8_t* data, bool steer_reset) {
   int x = steer_reset;
 
   Byte to_set(data + 0);
   to_set.set_value(x, 0, 1);
 }
 
-
-int Sensorreset18ffffff::close_candiag(const std::uint8_t* bytes, int32_t length) const {
+int Sensorreset18ffffff::close_candiag(const std::uint8_t* bytes,
+                                       int32_t length) const {
   Byte t0(bytes + 7);
   int32_t x = t0.get_byte(0, 8);
 
@@ -111,7 +119,8 @@ int Sensorreset18ffffff::close_candiag(const std::uint8_t* bytes, int32_t length
   return ret;
 }
 
-bool Sensorreset18ffffff::brake_reset(const std::uint8_t* bytes, int32_t length) const {
+bool Sensorreset18ffffff::brake_reset(const std::uint8_t* bytes,
+                                      int32_t length) const {
   Byte t0(bytes + 1);
   int32_t x = t0.get_byte(0, 1);
 
@@ -119,7 +128,8 @@ bool Sensorreset18ffffff::brake_reset(const std::uint8_t* bytes, int32_t length)
   return ret;
 }
 
-bool Sensorreset18ffffff::steer_reset(const std::uint8_t* bytes, int32_t length) const {
+bool Sensorreset18ffffff::steer_reset(const std::uint8_t* bytes,
+                                      int32_t length) const {
   Byte t0(bytes + 0);
   int32_t x = t0.get_byte(0, 1);
 

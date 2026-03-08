@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,18 +33,19 @@ const int32_t Dashcontrolsleftcmd10c::ID = 0x10C;
 
 void Dashcontrolsleftcmd10c::Parse(const std::uint8_t* bytes, int32_t length,
                                    ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_dash_controls_left_cmd_10c()
       ->set_ignore_overrides(ignore_overrides(bytes, length));
-  chassis->mutable_lexus()->mutable_dash_controls_left_cmd_10c()->set_enable(
-      enable(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_dash_controls_left_cmd_10c()
+      ->set_enable(enable(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_dash_controls_left_cmd_10c()
       ->set_clear_override(clear_override(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_dash_controls_left_cmd_10c()
       ->set_clear_faults(clear_faults(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_dash_controls_left_cmd_10c()
       ->set_dash_controls_button(dash_controls_button(bytes, length));
 }

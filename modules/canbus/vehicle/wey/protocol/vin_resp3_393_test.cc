@@ -15,7 +15,12 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/protocol/vin_resp3_393.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/wey/proto/wey.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,7 +38,12 @@ TEST_F(Vinresp3393Test, reset) {
   uint8_t bytes[8] = {0x88, 0x44, 0x22, 0x11, 0x11, 0x12, 0x13, 0x14};
 
   vin3.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().vin_resp3_393().vin16(), 136);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .vin_resp3_393()
+          .vin16(),
+      136);
 }
 
 }  // namespace wey

@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_bcs_1_306.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,26 +33,36 @@ const int32_t Scubcs1306::ID = 0x306;
 
 void Scubcs1306::Parse(const std::uint8_t* bytes, int32_t length,
                        ChassisDetail* chassis) const {
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_aebavailable(
-      bcs_aebavailable(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_cddavailable(
-      bcs_cddavailable(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_brkpedact(
-      bcs_brkpedact(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_intidx(
-      bcs_intidx(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_vdcfaultst(
-      bcs_vdcfaultst(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_vdcactivest(
-      bcs_vdcactivest(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_absfaultst(
-      bcs_absfaultst(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_absactivest(
-      bcs_absactivest(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_faultst(
-      bcs_faultst(bytes, length));
-  chassis->mutable_ge3()->mutable_scu_bcs_1_306()->set_bcs_drvmode(
-      bcs_drvmode(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_aebavailable(bcs_aebavailable(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_cddavailable(bcs_cddavailable(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_brkpedact(bcs_brkpedact(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_intidx(bcs_intidx(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_vdcfaultst(bcs_vdcfaultst(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_vdcactivest(bcs_vdcactivest(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_absfaultst(bcs_absfaultst(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_absactivest(bcs_absactivest(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_faultst(bcs_faultst(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ge3>(chassis)
+      ->mutable_scu_bcs_1_306()
+      ->set_bcs_drvmode(bcs_drvmode(bytes, length));
   // newcode
   chassis->mutable_check_response()->set_is_esp_online(
       bcs_drvmode(bytes, length) == 3);

@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/brake_status__511.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -41,13 +44,41 @@ TEST_F(Brakestatus511Test, General) {
   EXPECT_EQ(data[6], 0b00000000);
   EXPECT_EQ(data[7], 0b00000001);
 
-  EXPECT_EQ(cd.ch().brake_status__511().brake_pedal_en_sts(), 1);
-  EXPECT_EQ(cd.ch().brake_status__511().brake_pedal_sts(), 2);
-  EXPECT_EQ(cd.ch().brake_status__511().brake_err(), 1);
-  EXPECT_EQ(cd.ch().brake_status__511().emergency_btn_env(), 0);
-  EXPECT_EQ(cd.ch().brake_status__511().front_bump_env(), 1);
-  EXPECT_EQ(cd.ch().brake_status__511().back_bump_env(), 1);
-  EXPECT_EQ(cd.ch().brake_status__511().overspd_env(), 0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .brake_status__511()
+          .brake_pedal_en_sts(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .brake_status__511()
+          .brake_pedal_sts(),
+      2);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .brake_status__511()
+          .brake_err(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .brake_status__511()
+          .emergency_btn_env(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .brake_status__511()
+          .front_bump_env(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .brake_status__511()
+          .back_bump_env(),
+      1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ch>(cd)
+          .brake_status__511()
+          .overspd_env(),
+      0);
 }
 
 }  // namespace ch

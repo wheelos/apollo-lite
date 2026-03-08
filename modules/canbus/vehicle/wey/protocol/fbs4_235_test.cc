@@ -15,7 +15,12 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/protocol/fbs4_235.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/wey/proto/wey.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,8 +38,18 @@ TEST_F(Fbs4235Test, reset) {
   uint8_t bytes[8] = {0x04, 0x03, 0x02, 0x01, 0x11, 0x12, 0x13, 0x14};
 
   fbs4.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fbs4_235().steerwheelangle(), 38.5);
-  EXPECT_DOUBLE_EQ(chassis_detail.wey().fbs4_235().steerwheelspd(), 218.5);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fbs4_235()
+          .steerwheelangle(),
+      38.5);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Wey>(
+          chassis_detail)
+          .fbs4_235()
+          .steerwheelspd(),
+      218.5);
 }
 
 }  // namespace wey

@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/brake_command_111.h"
+
 #include "modules/drivers/canbus/common/byte.h"
 
 namespace apollo {

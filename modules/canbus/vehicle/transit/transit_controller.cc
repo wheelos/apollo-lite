@@ -16,10 +16,12 @@
 
 #include "modules/canbus/vehicle/transit/transit_controller.h"
 
+#include "modules/canbus/vehicle/transit/proto/transit.pb.h"
 #include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/canbus/vehicle/transit/transit_message_manager.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/common/kv_db/kv_db.h"
@@ -176,7 +178,9 @@ Chassis TransitController::chassis() {
   // 3
   chassis_.set_engine_started(true);
   // 4
-  auto& transit = chassis_detail.transit();
+  auto transit =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Transit>(
+          chassis_detail);
 
   auto& motion20 = transit.llc_motionfeedback1_20();
   if (motion20.has_llc_fbk_throttleposition()) {
@@ -605,7 +609,10 @@ bool TransitController::CheckResponse() {
     return false;
   }
 
-  auto& motion1_20 = chassis_detail.transit().llc_motionfeedback1_20();
+  auto& motion1_20 =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Transit>(
+          chassis_detail)
+          .llc_motionfeedback1_20();
 
   return (motion1_20.llc_fbk_state() ==
               Llc_motionfeedback1_20::LLC_FBK_STATE_AUTONOMY_NOT_ALLOWED ||

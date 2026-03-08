@@ -108,8 +108,6 @@
 * socketio
     MIT License
     https://github.com/socketio/socket.io-client/blob/master/LICENSE
-* VTK
-    https://github.com/Kitware/VTK/blob/master/Copyright.txt
 * YAML-cpp
     MIT License
     https://github.com/jbeder/yaml-cpp/blob/master/LICENSE
