@@ -1074,8 +1074,17 @@ void TrafficLightsPerceptionComponent::Visualize(
   cv::imwrite(absl::StrCat("/apollo/debug_vis/",
                            std::to_string(frame.timestamp), ".jpg"),
               output_image);
-  cv::imshow("Apollo traffic light detection", output_image);
-  cv::waitKey(1);
+  static bool window_ok = true;
+  if (window_ok) {
+    try {
+      cv::imshow("Apollo traffic light detection", output_image);
+      cv::waitKey(1);
+    } catch (const cv::Exception& e) {
+      window_ok = false;
+      AWARN << "OpenCV highgui is not available (imshow disabled). "
+            << "Falling back to saving images only. Error: " << e.what();
+    }
+  }
 }
 
 void TrafficLightsPerceptionComponent::SyncV2XTrafficLights(

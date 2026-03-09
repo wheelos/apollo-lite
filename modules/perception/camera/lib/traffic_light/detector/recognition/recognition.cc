@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2018 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
+
 #include "modules/perception/camera/lib/traffic_light/detector/recognition/recognition.h"
 
 #include "cyber/common/file.h"
@@ -52,6 +53,12 @@ bool TrafficLightRecognition::Init(const StageConfig& stage_config) {
   }
 
   recognize_param_ = stage_config.traffic_light_recognition_config();
+  recognizer_type_ = recognize_param_.recognizer_type();
+
+  if (recognizer_type_ == TL_RECOGNITION_EFFICIENT_NET) {
+    efficient_net_.reset(new TrafficLightEfficientNetRecognizer());
+    return efficient_net_->Init(recognize_param_);
+  }
 
   classify_quadrate_.reset(new ClassifyBySimple);
   classify_vertical_.reset(new ClassifyBySimple);
@@ -68,15 +75,12 @@ bool TrafficLightRecognition::Init(const StageConfig& stage_config) {
   std::string horizontal_root_dir =
       recognize_param_.horizontal_model().traffic_light_recognition_root_dir();
 
-  classify_quadrate_->Init(recognize_param_.quadrate_model(),
-                           quadrate_gpu_id,
+  classify_quadrate_->Init(recognize_param_.quadrate_model(), quadrate_gpu_id,
                            quadrate_root_dir);
-  classify_vertical_->Init(recognize_param_.vertical_model(),
-                           vertical_gpu_id,
+  classify_vertical_->Init(recognize_param_.vertical_model(), vertical_gpu_id,
                            vertical_root_dir);
   classify_horizontal_->Init(recognize_param_.horizontal_model(),
-                             horizontal_gpu_id,
-                             horizontal_root_dir);
+                             horizontal_gpu_id, horizontal_root_dir);
   return true;
 }
 
@@ -85,13 +89,21 @@ bool TrafficLightRecognition::Process(DataFrame* data_frame) {
     return false;
 
   TrafficLightDetectorOptions traffic_light_recognition_options;
-  bool res = Detect(traffic_light_recognition_options,
-                    data_frame->camera_frame);
+  bool res =
+      Detect(traffic_light_recognition_options, data_frame->camera_frame);
   return res;
 }
 
 bool TrafficLightRecognition::Detect(const TrafficLightDetectorOptions& options,
                                      CameraFrame* frame) {
+  if (recognizer_type_ == TL_RECOGNITION_EFFICIENT_NET) {
+    if (efficient_net_ == nullptr) {
+      AERROR << "EfficientNet recognizer is not initialized";
+      return false;
+    }
+    return efficient_net_->Recognize(frame);
+  }
+
   std::vector<base::TrafficLightPtr> candidate(1);
 
   for (base::TrafficLightPtr light : frame->traffic_lights) {

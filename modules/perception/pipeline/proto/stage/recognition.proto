@@ -2,6 +2,44 @@ syntax = "proto2";
 
 package apollo.perception.camera;
 
+enum TrafficLightRecognitionBackend {
+  TL_RECOGNITION_CAFFE = 0;
+  TL_RECOGNITION_EFFICIENT_NET = 1;
+}
+
+message TLRecognitionModelBlob {
+  optional string name = 1;
+  repeated int32 shape = 2;
+}
+
+message EfficientNetRecognitionConfig {
+  // Model files
+  optional string model_root_dir = 1;
+  optional string onnx_file = 2;
+  optional bool enable_fp16 = 3 [default = true];
+  optional int32 gpu_id = 4 [default = 0];
+
+  // Tensor shapes used to initialize MultiBatchInference blobs.
+  // It should include both inputs and outputs.
+  repeated TLRecognitionModelBlob blobs = 10;
+
+  // Blob names (must match ONNX)
+  optional string input_name = 11 [default = "inputs"];
+  optional string output_cls_name = 12 [default = "outputs_cls"];
+  optional string output_status_name = 13 [default = "outputs_status"];
+
+  // Preprocess params
+  optional float classify_threshold = 20 [default = 0.5];
+  optional int32 classify_resize_width = 21 [default = 96];
+  optional int32 classify_resize_height = 22 [default = 96];
+  optional float scale = 23 [default = 0.00392157];  // 1.0 / 255.0
+  optional float mean_b = 24 [default = 0.0];
+  optional float mean_g = 25 [default = 0.0];
+  optional float mean_r = 26 [default = 0.0];
+  optional bool is_bgr = 27 [default = true];
+  optional int32 max_batch_size = 28 [default = 3];
+}
+
 message ClassifyParam {
   optional string model_name = 1;
   optional string model_type = 2 [default = "CaffeNet"];
@@ -26,4 +64,9 @@ message TrafficLightRecognitionConfig {
   optional ClassifyParam vertical_model = 1;
   optional ClassifyParam quadrate_model = 2;
   optional ClassifyParam horizontal_model = 3;
+
+  // Backend selection
+  optional TrafficLightRecognitionBackend recognizer_type = 10
+      [default = TL_RECOGNITION_CAFFE];
+  optional EfficientNetRecognitionConfig efficient_net = 11;
 }

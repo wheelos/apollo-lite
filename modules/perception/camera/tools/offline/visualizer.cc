@@ -989,12 +989,22 @@ void Visualizer::ShowResult(const cv::Mat &img, const CameraFrame &frame) {
     }
 
     if (cv_imshow_img_) {
-      cv::namedWindow("Apollo Visualizer", CV_WINDOW_NORMAL);
-      cv::setWindowProperty("Apollo Visualizer", CV_WND_PROP_FULLSCREEN,
-                            CV_WINDOW_FULLSCREEN);
-      cv::imshow("Apollo Visualizer", bigimg);
-      int key = cvWaitKey(30);
-      key_handler(camera_name, key);
+      static bool window_ok = true;
+      if (window_ok) {
+        try {
+          cv::namedWindow("Apollo Visualizer", CV_WINDOW_NORMAL);
+          cv::setWindowProperty("Apollo Visualizer", CV_WND_PROP_FULLSCREEN,
+                                CV_WINDOW_FULLSCREEN);
+          cv::imshow("Apollo Visualizer", bigimg);
+          int key = cvWaitKey(30);
+          key_handler(camera_name, key);
+        } catch (const cv::Exception& e) {
+          window_ok = false;
+          AWARN << "OpenCV highgui is not available (imshow disabled). "
+                << "Set write_out_img_=true to save snapshots. Error: "
+                << e.what();
+        }
+      }
     }
     world_image_ = cv::Mat(world_h_, wide_pixel_, CV_8UC3, black_color);
     draw_range_circle();
