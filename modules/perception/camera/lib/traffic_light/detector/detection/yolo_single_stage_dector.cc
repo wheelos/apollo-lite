@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/perception/camera/lib/traffic_light/detector/detection/ultralytics_detector.h"
+#include "modules/perception/camera/lib/traffic_light/detector/detection/yolo_single_stage_dector.h"
 
 #include <algorithm>
 #include <cmath>
@@ -36,7 +36,7 @@ namespace camera {
 namespace {
 
 std::map<std::string, std::vector<int>> BuildShapeMapOrDefault(
-    const UltralyticsTrafficLightDetectionConfig& cfg) {
+    const YoloSingleStageDectorTrafficLightDetectionConfig& cfg) {
   std::map<std::string, std::vector<int>> shapes;
   for (const auto& blob : cfg.blobs()) {
     std::vector<int> shape(blob.shape().begin(), blob.shape().end());
@@ -67,33 +67,34 @@ float IoU(const base::RectI& lhs, const base::RectI& rhs) {
 
 }  // namespace
 
-TrafficLightUltralyticsDetector::~TrafficLightUltralyticsDetector() {
+TrafficLightYoloSingleStageDector::~TrafficLightYoloSingleStageDector() {
   if (owns_stream_ && stream_ != 0) {
     cudaStreamDestroy(stream_);
     stream_ = 0;
   }
 }
 
-bool TrafficLightUltralyticsDetector::Init(
+bool TrafficLightYoloSingleStageDector::Init(
     const TrafficLightDetectionConfig& config) {
   config_ = config;
-  ultralytics_config_ = config.ultralytics_config();
+  yolo_single_stage_dector_config_ = config.yolo_single_stage_dector_config();
 
   gpu_id_ = config.gpu_id();
-  conf_threshold_ = ultralytics_config_.conf_threshold();
-  iou_threshold_ = ultralytics_config_.iou_nms_threshold();
-  scale_ = ultralytics_config_.scale();
-  distance_weight_ = ultralytics_config_.projection_distance_weight();
-  min_box_area_ = ultralytics_config_.min_box_area();
-  resize_height_ = ultralytics_config_.resize_image_height();
-  resize_width_ = ultralytics_config_.resize_image_width();
-  num_classes_ = ultralytics_config_.num_classes();
-  num_predictions_ = ultralytics_config_.num_predictions();
-  pad_value_ = ultralytics_config_.pad_value();
-  is_bgr_ = ultralytics_config_.is_bgr();
-  green_class_id_ = ultralytics_config_.green_class_id();
-  red_class_id_ = ultralytics_config_.red_class_id();
-  yellow_class_id_ = ultralytics_config_.yellow_class_id();
+  conf_threshold_ = yolo_single_stage_dector_config_.conf_threshold();
+  iou_threshold_ = yolo_single_stage_dector_config_.iou_nms_threshold();
+  scale_ = yolo_single_stage_dector_config_.scale();
+  distance_weight_ =
+      yolo_single_stage_dector_config_.projection_distance_weight();
+  min_box_area_ = yolo_single_stage_dector_config_.min_box_area();
+  resize_height_ = yolo_single_stage_dector_config_.resize_image_height();
+  resize_width_ = yolo_single_stage_dector_config_.resize_image_width();
+  num_classes_ = yolo_single_stage_dector_config_.num_classes();
+  num_predictions_ = yolo_single_stage_dector_config_.num_predictions();
+  pad_value_ = yolo_single_stage_dector_config_.pad_value();
+  is_bgr_ = yolo_single_stage_dector_config_.is_bgr();
+  green_class_id_ = yolo_single_stage_dector_config_.green_class_id();
+  red_class_id_ = yolo_single_stage_dector_config_.red_class_id();
+  yellow_class_id_ = yolo_single_stage_dector_config_.yellow_class_id();
 
   if (cudaSetDevice(gpu_id_) != cudaSuccess) {
     AERROR << "Failed to set device to: " << gpu_id_;
@@ -112,22 +113,24 @@ bool TrafficLightUltralyticsDetector::Init(
   image_options_.do_crop = false;
   image_options_.target_color = is_bgr_ ? base::Color::BGR : base::Color::RGB;
 
-  input_names_ = {ultralytics_config_.input_name()};
-  output_names_ = {ultralytics_config_.output_name()};
+  input_names_ = {yolo_single_stage_dector_config_.input_name()};
+  output_names_ = {yolo_single_stage_dector_config_.output_name()};
 
-  const std::string model_root_dir = ultralytics_config_.model_root_dir();
+  const std::string model_root_dir =
+      yolo_single_stage_dector_config_.model_root_dir();
   const std::string onnx_file = cyber::common::GetAbsolutePath(
-      model_root_dir, ultralytics_config_.onnx_file());
+      model_root_dir, yolo_single_stage_dector_config_.onnx_file());
 
   infer_ = std::make_shared<inference::MultiBatchInference>();
   infer_->set_gpu_id(gpu_id_);
   infer_->set_max_batch_size(1);
-  infer_->set_enable_fp16(ultralytics_config_.enable_fp16());
+  infer_->set_enable_fp16(yolo_single_stage_dector_config_.enable_fp16());
   infer_->set_model_info(onnx_file, input_names_, output_names_);
   infer_->SetStream(stream_);
 
-  if (!infer_->Init(BuildShapeMapOrDefault(ultralytics_config_))) {
-    AERROR << "Failed to init MultiBatchInference for Ultralytics TL detection";
+  if (!infer_->Init(BuildShapeMapOrDefault(yolo_single_stage_dector_config_))) {
+    AERROR << "Failed to init MultiBatchInference for YOLO single-stage TL "
+              "detection";
     return false;
   }
 
@@ -137,13 +140,13 @@ bool TrafficLightUltralyticsDetector::Init(
   return input_blob_ != nullptr && output_blob_ != nullptr;
 }
 
-bool TrafficLightUltralyticsDetector::Detect(CameraFrame* frame) {
+bool TrafficLightYoloSingleStageDector::Detect(CameraFrame* frame) {
   return DetectTL(frame);
 }
 
-bool TrafficLightUltralyticsDetector::BuildLetterBoxImage(
+bool TrafficLightYoloSingleStageDector::BuildLetterBoxImage(
     const base::Image8U& src, base::Image8U* dst,
-    UltralyticsLetterBoxParam* param) const {
+    YoloSingleStageDectorLetterBoxParam* param) const {
   if (dst == nullptr || param == nullptr) {
     return false;
   }
@@ -210,8 +213,8 @@ bool TrafficLightUltralyticsDetector::BuildLetterBoxImage(
   return true;
 }
 
-bool TrafficLightUltralyticsDetector::DecodeDetections(
-    const UltralyticsLetterBoxParam& param,
+bool TrafficLightYoloSingleStageDector::DecodeDetections(
+    const YoloSingleStageDectorLetterBoxParam& param,
     std::vector<base::TrafficLightPtr>* detections) const {
   if (detections == nullptr || output_blob_ == nullptr) {
     return false;
@@ -220,7 +223,7 @@ bool TrafficLightUltralyticsDetector::DecodeDetections(
   const int channels = output_blob_->shape(1);
   const int prediction_num = output_blob_->shape(2);
   if (channels < 5 || prediction_num <= 0) {
-    AERROR << "Unexpected output shape for Ultralytics detector";
+    AERROR << "Unexpected output shape for YOLO single-stage detector";
     return false;
   }
 
@@ -277,7 +280,7 @@ bool TrafficLightUltralyticsDetector::DecodeDetections(
   return true;
 }
 
-void TrafficLightUltralyticsDetector::ApplyNMS(
+void TrafficLightYoloSingleStageDector::ApplyNMS(
     std::vector<base::TrafficLightPtr>* detections) const {
   if (detections == nullptr || detections->empty()) {
     return;
@@ -317,7 +320,7 @@ void TrafficLightUltralyticsDetector::ApplyNMS(
   detections->swap(kept);
 }
 
-float TrafficLightUltralyticsDetector::ComputeAssociationScore(
+float TrafficLightYoloSingleStageDector::ComputeAssociationScore(
     const base::TrafficLightPtr& hdmap_light,
     const base::TrafficLightPtr& detection, int image_width,
     int image_height) const {
@@ -348,7 +351,7 @@ float TrafficLightUltralyticsDetector::ComputeAssociationScore(
   return detection_weight * detection_score + distance_weight * distance_score;
 }
 
-void TrafficLightUltralyticsDetector::AssociateDetections(
+void TrafficLightYoloSingleStageDector::AssociateDetections(
     std::vector<base::TrafficLightPtr>* hdmap_lights,
     const std::vector<base::TrafficLightPtr>& detections, int image_width,
     int image_height) {
@@ -403,7 +406,7 @@ void TrafficLightUltralyticsDetector::AssociateDetections(
   }
 }
 
-base::TLColor TrafficLightUltralyticsDetector::ClassIdToColor(
+base::TLColor TrafficLightYoloSingleStageDector::ClassIdToColor(
     int class_id) const {
   if (class_id == green_class_id_) {
     return base::TLColor::TL_GREEN;
@@ -417,7 +420,7 @@ base::TLColor TrafficLightUltralyticsDetector::ClassIdToColor(
   return base::TLColor::TL_UNKNOWN_COLOR;
 }
 
-base::TLDetectionClass TrafficLightUltralyticsDetector::GuessShapeClass(
+base::TLDetectionClass TrafficLightYoloSingleStageDector::GuessShapeClass(
     const base::RectI& roi) const {
   if (roi.height > roi.width * 3 / 2) {
     return base::TLDetectionClass::TL_VERTICAL_CLASS;
@@ -428,7 +431,7 @@ base::TLDetectionClass TrafficLightUltralyticsDetector::GuessShapeClass(
   return base::TLDetectionClass::TL_QUADRATE_CLASS;
 }
 
-bool TrafficLightUltralyticsDetector::DetectTL(CameraFrame* frame) {
+bool TrafficLightYoloSingleStageDector::DetectTL(CameraFrame* frame) {
   if (frame == nullptr) {
     return false;
   }
@@ -469,7 +472,7 @@ bool TrafficLightUltralyticsDetector::DetectTL(CameraFrame* frame) {
   }
   base::Image8U letterbox_image(resize_height_, resize_width_,
                                 image_options_.target_color);
-  UltralyticsLetterBoxParam letterbox_param;
+  YoloSingleStageDectorLetterBoxParam letterbox_param;
   if (!BuildLetterBoxImage(source_image, &letterbox_image, &letterbox_param)) {
     AERROR << "Failed to build letterbox image";
     return false;

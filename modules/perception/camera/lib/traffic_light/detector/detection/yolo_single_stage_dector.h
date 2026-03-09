@@ -35,7 +35,7 @@ namespace apollo {
 namespace perception {
 namespace camera {
 
-struct UltralyticsLetterBoxParam {
+struct YoloSingleStageDectorLetterBoxParam {
   float scale = 1.0f;
   int resized_width = 0;
   int resized_height = 0;
@@ -47,10 +47,10 @@ struct UltralyticsLetterBoxParam {
   int src_height = 0;
 };
 
-class TrafficLightUltralyticsDetector {
+class TrafficLightYoloSingleStageDector {
  public:
-  TrafficLightUltralyticsDetector() = default;
-  ~TrafficLightUltralyticsDetector();
+  TrafficLightYoloSingleStageDector() = default;
+  ~TrafficLightYoloSingleStageDector();
 
   bool Init(const TrafficLightDetectionConfig& config);
   bool Detect(CameraFrame* frame);
@@ -58,8 +58,8 @@ class TrafficLightUltralyticsDetector {
  private:
   bool DetectTL(CameraFrame* frame);
   bool BuildLetterBoxImage(const base::Image8U& src, base::Image8U* dst,
-                           UltralyticsLetterBoxParam* param) const;
-  bool DecodeDetections(const UltralyticsLetterBoxParam& param,
+                           YoloSingleStageDectorLetterBoxParam* param) const;
+  bool DecodeDetections(const YoloSingleStageDectorLetterBoxParam& param,
                         std::vector<base::TrafficLightPtr>* detections) const;
   void AssociateDetections(std::vector<base::TrafficLightPtr>* hdmap_lights,
                            const std::vector<base::TrafficLightPtr>& detections,
@@ -73,7 +73,8 @@ class TrafficLightUltralyticsDetector {
 
  private:
   TrafficLightDetectionConfig config_;
-  UltralyticsTrafficLightDetectionConfig ultralytics_config_;
+  YoloSingleStageDectorTrafficLightDetectionConfig
+      yolo_single_stage_dector_config_;
 
   std::shared_ptr<inference::MultiBatchInference> infer_ = nullptr;
   std::vector<std::string> input_names_;

@@ -7,35 +7,36 @@ stage_config: {
   enabled: true
 
   traffic_light_detection_config: {
-    detector_type: TL_DETECTION_YOLOX
+    detector_type: TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR
     gpu_id: 0
-    max_batch_size: 3
+    max_batch_size: 1
 
-    # crop params (shared with caffe detector)
-    min_crop_size: 400
-    crop_method: 0
-    crop_scale: 2.5
-
-    yolox_config: {
-      model_root_dir: "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_detection/tl_detection_yolox"
-      onnx_file: "yolox.onnx"
+    yolo_single_stage_dector_config: {
+      model_root_dir: "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_detection/tl_detection_ultralytics"
+      onnx_file: "yolov11_traffic.onnx"
       enable_fp16: true
 
       input_name: "images"
-      output_bbox_name: "bbox"
-      output_conf_name: "conf"
-      output_cls_name: "cls"
+      output_name: "output0"
 
-      resize_image_height: 384
-      resize_image_width: 384
-      cls_threshold: 0.24
+      resize_image_height: 640
+      resize_image_width: 640
+      conf_threshold: 0.25
+      iou_nms_threshold: 0.45
       pad_value: 114
+      scale: 0.00392157
+      is_bgr: false
 
-      # Optional; if not provided, defaults will be used.
-      blobs { name: "images" shape: 3 shape: 3 shape: 384 shape: 384 }
-      blobs { name: "bbox" shape: 3 shape: 3024 shape: 4 }
-      blobs { name: "conf" shape: 3 shape: 3024 }
-      blobs { name: "cls" shape: 3 shape: 3024 }
+      num_classes: 3
+      num_predictions: 8400
+      green_class_id: 0
+      red_class_id: 1
+      yellow_class_id: 2
+      projection_distance_weight: 0.15
+      min_box_area: 10
+
+      blobs { name: "images" shape: 1 shape: 3 shape: 640 shape: 640 }
+      blobs { name: "output0" shape: 1 shape: 7 shape: 8400 }
     }
   }
 }
@@ -67,7 +68,6 @@ stage_config: {
       is_bgr: true
       max_batch_size: 3
 
-      # Optional; if not provided, defaults will be used.
       blobs { name: "inputs" shape: 3 shape: 3 shape: 96 shape: 96 }
       blobs { name: "outputs_cls" shape: 3 shape: 4 }
       blobs { name: "outputs_status" shape: 3 shape: 1 }
@@ -92,4 +92,3 @@ traffic_light_config: {
     gpu_id: 0
   }
 }
-

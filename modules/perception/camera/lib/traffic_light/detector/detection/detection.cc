@@ -49,13 +49,9 @@ bool TrafficLightDetection::Init(
   AINFO << "TL detection param: " << param_str;
   detector_type_ = detection_param_.detector_type();
 
-  if (detector_type_ == TL_DETECTION_YOLOX) {
-    yolox_detector_.reset(new TrafficLightYoloxDetector());
-    return yolox_detector_->Init(detection_param_);
-  }
-  if (detector_type_ == TL_DETECTION_ULTRALYTICS_COLOR) {
-    ultralytics_detector_.reset(new TrafficLightUltralyticsDetector());
-    return ultralytics_detector_->Init(detection_param_);
+  if (detector_type_ == TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR) {
+    yolo_single_stage_dector_.reset(new TrafficLightYoloSingleStageDector());
+    return yolo_single_stage_dector_->Init(detection_param_);
   }
 
   // todo:determine details
@@ -178,13 +174,9 @@ bool TrafficLightDetection::Init(const StageConfig &stage_config) {
   AINFO << "TL detection param: " << detection_param_.DebugString();
   detector_type_ = detection_param_.detector_type();
 
-  if (detector_type_ == TL_DETECTION_YOLOX) {
-    yolox_detector_.reset(new TrafficLightYoloxDetector());
-    return yolox_detector_->Init(detection_param_);
-  }
-  if (detector_type_ == TL_DETECTION_ULTRALYTICS_COLOR) {
-    ultralytics_detector_.reset(new TrafficLightUltralyticsDetector());
-    return ultralytics_detector_->Init(detection_param_);
+  if (detector_type_ == TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR) {
+    yolo_single_stage_dector_.reset(new TrafficLightYoloSingleStageDector());
+    return yolo_single_stage_dector_->Init(detection_param_);
   }
 
   detection_root_dir = detection_param_.traffic_light_detection_root_dir();
@@ -384,19 +376,12 @@ bool TrafficLightDetection::Inference(
 
 bool TrafficLightDetection::Detect(const TrafficLightDetectorOptions &options,
                                    CameraFrame *frame) {
-  if (detector_type_ == TL_DETECTION_YOLOX) {
-    if (yolox_detector_ == nullptr) {
-      AERROR << "YOLOX detector is not initialized";
+  if (detector_type_ == TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR) {
+    if (yolo_single_stage_dector_ == nullptr) {
+      AERROR << "YOLO single-stage dector is not initialized";
       return false;
     }
-    return yolox_detector_->Detect(frame);
-  }
-  if (detector_type_ == TL_DETECTION_ULTRALYTICS_COLOR) {
-    if (ultralytics_detector_ == nullptr) {
-      AERROR << "Ultralytics detector is not initialized";
-      return false;
-    }
-    return ultralytics_detector_->Detect(frame);
+    return yolo_single_stage_dector_->Detect(frame);
   }
 
   if (frame->traffic_lights.empty()) {

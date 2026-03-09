@@ -27,8 +27,7 @@
 #include "modules/perception/camera/lib/interface/base_traffic_light_detector.h"
 #include "modules/perception/camera/lib/traffic_light/detector/detection/cropbox.h"
 #include "modules/perception/camera/lib/traffic_light/detector/detection/select.h"
-#include "modules/perception/camera/lib/traffic_light/detector/detection/ultralytics_detector.h"
-#include "modules/perception/camera/lib/traffic_light/detector/detection/yolox_detector.h"
+#include "modules/perception/camera/lib/traffic_light/detector/detection/yolo_single_stage_dector.h"
 #include "modules/perception/inference/inference.h"
 #include "modules/perception/pipeline/stage.h"
 
@@ -74,8 +73,8 @@ class TrafficLightDetection : public BaseTrafficLightDetector {
   TrafficLightDetectionConfig detection_param_;
   std::string detection_root_dir;
   TrafficLightDetectionBackend detector_type_ = TL_DETECTION_CAFFE;
-  std::unique_ptr<TrafficLightYoloxDetector> yolox_detector_;
-  std::unique_ptr<TrafficLightUltralyticsDetector> ultralytics_detector_;
+  std::unique_ptr<TrafficLightYoloSingleStageDector>
+      yolo_single_stage_dector_;
 
   DataProvider::ImageOptions data_provider_image_option_;
   std::shared_ptr<inference::Inference> rt_net_ = nullptr;

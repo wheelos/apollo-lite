@@ -7,13 +7,11 @@ cc_library(
     name = "detection",
     srcs = [
         "detection.cc",
-        "ultralytics_detector.cc",
-        "yolox_detector.cc",
+        "yolo_single_stage_dector.cc",
     ],
     hdrs = [
         "detection.h",
-        "ultralytics_detector.h",
-        "yolox_detector.h",
+        "yolo_single_stage_dector.h",
     ],
     deps = [
         ":cropbox",

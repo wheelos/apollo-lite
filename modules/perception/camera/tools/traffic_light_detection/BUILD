@@ -17,8 +17,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "ultralytics_detector_tool",
-    srcs = ["ultralytics_detector_tool.cc"],
+    name = "yolo_single_stage_dector_tool",
+    srcs = ["yolo_single_stage_dector_tool.cc"],
     deps = [
         "//cyber",
         "//modules/perception/camera/common",

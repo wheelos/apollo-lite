@@ -29,10 +29,10 @@
 #include "modules/perception/base/traffic_light.h"
 #include "modules/perception/camera/common/camera_frame.h"
 #include "modules/perception/camera/common/data_provider.h"
-#include "modules/perception/camera/lib/traffic_light/detector/detection/ultralytics_detector.h"
+#include "modules/perception/camera/lib/traffic_light/detector/detection/yolo_single_stage_dector.h"
 
 DEFINE_string(image_path, "", "Input JPG/PNG path. Example: /tmp/frame.jpg");
-DEFINE_string(output_path, "/tmp/ultralytics_detector_result.jpg",
+DEFINE_string(output_path, "/tmp/yolo_single_stage_dector_result.jpg",
               "Output annotated JPG path.");
 DEFINE_string(config_path,
               "/apollo/modules/perception/pipeline/config/"
@@ -40,6 +40,7 @@ DEFINE_string(config_path,
               "Pipeline config path containing TRAFFIC_LIGHT_DETECTION stage.");
 DEFINE_int32(num_dummy_lights, 32,
              "Number of dummy hdmap lights used to surface detector outputs.");
+DEFINE_int32(gpu_id, -1, "Override gpu_id in detection config when >= 0.");
 DEFINE_string(sensor_name, "front_6mm", "Sensor name for DataProvider.");
 
 namespace apollo {
@@ -187,14 +188,18 @@ bool RunDetectorTool() {
   if (!LoadDetectionConfig(FLAGS_config_path, &detection_config)) {
     return false;
   }
-  if (detection_config.detector_type() != TL_DETECTION_ULTRALYTICS_COLOR) {
-    AERROR << "Detection config is not TL_DETECTION_ULTRALYTICS_COLOR";
+  if (detection_config.detector_type() !=
+      TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR) {
+    AERROR << "Detection config is not TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR";
     return false;
   }
+  if (FLAGS_gpu_id >= 0) {
+    detection_config.set_gpu_id(FLAGS_gpu_id);
+  }
 
-  TrafficLightUltralyticsDetector detector;
+  TrafficLightYoloSingleStageDector detector;
   if (!detector.Init(detection_config)) {
-    AERROR << "Failed to init TrafficLightUltralyticsDetector";
+    AERROR << "Failed to init TrafficLightYoloSingleStageDector";
     return false;
   }
 
