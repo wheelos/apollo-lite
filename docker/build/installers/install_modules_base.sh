@@ -36,9 +36,8 @@ bash ${CURR_DIR}/install_proj.sh
 # bash ${CURR_DIR}/install_pcl.sh
 
 # OpenCV depends on ffmpeg and vtk
-bash ${CURR_DIR}/install_opencv.sh
-
+# bash ${CURR_DIR}/install_opencv.sh
 
 # Clean up cache to reduce layer size.
-apt-get clean && \
+apt-get clean &&
     rm -rf /var/lib/apt/lists/*

@@ -46,7 +46,7 @@ function _clean_bazel_cache() {
 
 function _clean_config() {
   # Remove local bazel config.
-  bash "${TOP_DIR}/scripts/apollo_config.sh" --clean
+  rm -f "${TOP_DIR}/.custom.bazelrc"
 }
 
 function _clean_core() {

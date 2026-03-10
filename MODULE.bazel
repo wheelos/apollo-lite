@@ -27,8 +27,16 @@ use_repo(cudnn_ext, "local_config_cudnn")
 tensorrt_ext = use_extension("//third_party/tensorrt:extensions.bzl", "tensorrt_configure")
 use_repo(tensorrt_ext, "local_config_tensorrt")
 
+proj_ext = use_extension("//third_party/proj:extensions.bzl", "proj")
+ffmpeg_ext = use_extension("//third_party/ffmpeg:extensions.bzl", "ffmpeg")
+qt_ext = use_extension("//third_party/qt5:extensions.bzl", "qt")
+libtorch_ext = use_extension("//third_party/libtorch:extensions.bzl", "libtorch_ext")
+use_repo(libtorch_ext, "libtorch_cpu", "libtorch_gpu")
+use_repo(proj_ext, "proj")
+use_repo(ffmpeg_ext, "ffmpeg")
+use_repo(qt_ext, "qt")
+
 # TODO: Keep the version of Python toolchain consistent with Docker.
-# Note whether there is any duplication with .apollo.bazelrc?
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.defaults(python_version = "3.8")
 python.toolchain(python_version = "3.8")

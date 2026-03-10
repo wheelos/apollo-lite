@@ -44,6 +44,11 @@ qt_cc_library(
     res = glob([
         "*.qrc",
     ]),
+    res_srcs = glob([
+        "images/**/*",
+    ]) + glob([
+        "shaders/**/*",
+    ]),
     uis = glob([
         "uis/*.ui",
     ]),

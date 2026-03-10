@@ -6,20 +6,28 @@ licenses(["notice"])
 
 cc_library(
     name = "libtorch_cpu",
+    hdrs = glob([
+        "include/**/*.h",
+        "include/**/*.hpp",
+        "include/**/*.cuh",
+        "include/**/*.c",
+        "include/**/*.cpp",
+        "include/**/*.cxx",
+    ]),
     includes = [
-        ".",
-        "torch/csrc/api/include",
+        "include",
+        "include/torch/csrc/api/include",
     ],
     linkopts = [
-        "-Wl,-rpath,/usr/local/libtorch/lib",
         "-L/usr/local/libtorch/lib",
+        "-Wl,-rpath,/usr/local/libtorch/lib",
         "-ltorch_cpu",
         "-ltorch",
         "-lc10",
     ],
     linkstatic = False,
     deps = [
-        "@local_config_python//:python_headers",
-        "@local_config_python//:python_lib",
+        "@rules_python//python/cc:current_py_cc_headers",
+        "@rules_python//python/cc:current_py_cc_libs",
     ],
 )

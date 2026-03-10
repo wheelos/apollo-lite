@@ -70,21 +70,21 @@ struct rss_world_model_struct {
 
 class RssDecider : public Task {
  public:
-  explicit RssDecider(const TaskConfig &config);
+  explicit RssDecider(const TaskConfig& config);
 
   apollo::common::Status Execute(
-      Frame *frame, ReferenceLineInfo *reference_line_info) override;
+      Frame* frame, ReferenceLineInfo* reference_line_info) override;
 
  private:
-  apollo::common::Status Process(Frame *frame,
-                                 ReferenceLineInfo *reference_line_info);
+  apollo::common::Status Process(Frame* frame,
+                                 ReferenceLineInfo* reference_line_info);
   struct rss_world_model_struct rss_world_info;
-  void rss_config_default_dynamics(::ad_rss::world::Dynamics *dynamics);
-  void rss_create_ego_object(::ad_rss::world::Object *ego, double vel_lon,
+  void rss_config_default_dynamics(::ad_rss::world::Dynamics* dynamics);
+  void rss_create_ego_object(::ad_rss::world::Object* ego, double vel_lon,
                              double vel_lat);
-  void rss_create_other_object(::ad_rss::world::Object *other, double vel_lon,
+  void rss_create_other_object(::ad_rss::world::Object* other, double vel_lon,
                                double vel_lat);
-  void rss_dump_world_info(const struct rss_world_model_struct &rss_info);
+  void rss_dump_world_info(const struct rss_world_model_struct& rss_info);
 };
 
 }  // namespace planning

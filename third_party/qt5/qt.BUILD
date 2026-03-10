@@ -2,16 +2,17 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 
 cc_library(
     name = "qt_core",
-    hdrs = glob(["*"]),
+    hdrs = glob(["**/*"]),
     copts = [
         "-I.",
     ],
     includes = [
+        ".",
         "QtCore",
     ],
     linkopts = select({
         "@platforms//cpu:aarch64": [
-            "-L/lib/aarch64-linux-gnu", 
+            "-L/lib/aarch64-linux-gnu",
             "-Wl,-rpath,/lib/aarch64-linux-gnu",
         ],
         "//conditions:default": [
@@ -26,14 +27,17 @@ cc_library(
 
 cc_library(
     name = "qt_widgets",
-    hdrs = glob(["*"]),
+    hdrs = glob(["**/*"]),
     copts = [
         "-I.",
     ],
-    includes = ["QtWidgets"],
+    includes = [
+        ".",
+        "QtWidgets",
+    ],
     linkopts = select({
         "@platforms//cpu:aarch64": [
-            "-L/lib/aarch64-linux-gnu", 
+            "-L/lib/aarch64-linux-gnu",
             "-Wl,-rpath,/lib/aarch64-linux-gnu",
         ],
         "//conditions:default": [
@@ -49,14 +53,17 @@ cc_library(
 
 cc_library(
     name = "qt_gui",
-    hdrs = glob(["*"]),
+    hdrs = glob(["**/*"]),
     copts = [
         "-I.",
     ],
-    includes = ["QtGui"],
+    includes = [
+        ".",
+        "QtGui",
+    ],
     linkopts = select({
         "@platforms//cpu:aarch64": [
-            "-L/lib/aarch64-linux-gnu", 
+            "-L/lib/aarch64-linux-gnu",
             "-Wl,-rpath,/lib/aarch64-linux-gnu",
         ],
         "//conditions:default": [
@@ -75,14 +82,17 @@ cc_library(
 
 cc_library(
     name = "qt_opengl",
-    hdrs = glob(["*"]),
+    hdrs = glob(["**/*"]),
     copts = [
         "-I.",
     ],
-    includes = ["QtOpenGL"],
+    includes = [
+        ".",
+        "QtOpenGL",
+    ],
     linkopts = select({
         "@platforms//cpu:aarch64": [
-            "-L/lib/aarch64-linux-gnu", 
+            "-L/lib/aarch64-linux-gnu",
             "-Wl,-rpath,/lib/aarch64-linux-gnu",
         ],
         "//conditions:default": [

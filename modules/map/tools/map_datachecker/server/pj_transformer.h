@@ -15,8 +15,9 @@
  *****************************************************************************/
 #pragma once
 
-#define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
-#include <proj_api.h>
+#include <cstdint>
+
+#include <proj.h>
 
 namespace apollo {
 namespace hdmap {
@@ -25,12 +26,11 @@ class PJTransformer {
  public:
   explicit PJTransformer(int zone_id = 50);
   ~PJTransformer();
-  int LatlongToUtm(int64_t point_count, int point_offset, double *x, double *y,
-                   double *z);
+  int LatlongToUtm(int64_t point_count, int point_offset, double* x, double* y,
+                   double* z);
 
  private:
-  projPJ pj_latlong_;
-  projPJ pj_utm_;
+  PJ* pj_;
 };
 
 }  // namespace hdmap

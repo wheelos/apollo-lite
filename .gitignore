@@ -68,10 +68,11 @@ docs/demo_guide/*.record
 
 # Bash Environment
 .dev_bash_hist
+.bash_history
 
 # bazel cache and others
 .cache/
-.apollo.bazelrc
+.custom.bazelrc
 .errors.log
 
 # Directory for binary distribution
@@ -85,3 +86,5 @@ tools/FlameGraph
 .DS_Store
 
 #WORKSPACE
+docker/.env
+docker/.env.prod

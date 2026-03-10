@@ -12,9 +12,9 @@ declare -A CUDA_LITE_VERSIONS
 declare -A CUDNN_VERSIONS
 declare -A TENSORRT_VERSIONS
 # x86_64
-CUDA_LITE_VERSIONS["x86_64"]="11.8.0"
-CUDNN_VERSIONS["x86_64"]="8"
-TENSORRT_VERSIONS["x86_64"]="8.6.1.6"
+CUDA_LITE_VERSIONS["x86_64"]="12.8.1"
+CUDNN_VERSIONS["x86_64"]="9"
+TENSORRT_VERSIONS["x86_64"]="10.9.0.34"
 # aarch64
 CUDA_LITE_VERSIONS["aarch64"]="12.6"
 CUDNN_VERSIONS["aarch64"]="9.3.0"
@@ -23,7 +23,7 @@ TENSORRT_VERSIONS["aarch64"]="10.3"
 SUPPORTED_ARCHS=( x86_64 aarch64 )
 SUPPORTED_STAGES=( base cyber dev runtime )
 # TODO(All): maybe ROCm support in the future
-SUPPORTED_COMPUTE_PLATFORM=( cpu cuda l4t)
+SUPPORTED_COMPUTE_PLATFORM=( cpu cuda l4t u22 )
 SUPPORTED_CPU_STAGES=( cyber dev runtime )
 
 HOST_ARCH="$(uname -m)"

@@ -30,6 +30,9 @@ namespace apollo {
 namespace localization {
 namespace msf {
 
+constexpr double RAD_TO_DEG = 57.29577951308232;
+constexpr double DEG_TO_RAD = 0.017453292519943295;
+
 using common::Status;
 using common::util::GpsToUnixSeconds;
 
