@@ -399,7 +399,6 @@ class KeyboardController:
             )
             scr.addstr(4, c1, f"EPB:     [{'ON' if self.epb else ' '}]")
             scr.addstr(5, c1, f"SIGNAL:  {self._signal_text()}")
-            scr.addstr(6, c1, f"THRESH:  {self.turn_signal_threshold:.1f}")
 
             c2 = 20
             bar_speed = self._draw_bar(abs(self.speed), SPEED_MAX, 12)
@@ -421,7 +420,8 @@ class KeyboardController:
                     / (STEERING_MAX - STEERING_MIN)
                 )
             )
-            idx = max(0, min(steer_steps, idx))
+            # reverse to match intuitive display, `+` for left, `-` for right
+            idx = max(0, min(steer_steps, steer_steps - idx))
             s_list = list(steer_visual)
             if 0 <= idx < len(s_list):
                 s_list[idx] = "O"
@@ -430,7 +430,7 @@ class KeyboardController:
             scr.addstr(
                 5,
                 c3,
-                f"HIGH:{'ON' if self.high_beam else 'OFF'} EMG:{'ON' if self.emergency_light else 'OFF'}",
+                f"HIGH:{'ON' if self.high_beam else 'OFF'}",
             )
 
             scr.addstr(11, 0, "-" * w)
@@ -449,7 +449,7 @@ class KeyboardController:
                     12, 2, "W/S: Drive | A/D: Steer | B/N: Brake +/- | Space: E-Stop"
                 )
                 scr.addstr(13, 2, "G: Gear | P: EPB | 1/2/3: Mode | Enter: Auto-Drive")
-                scr.addstr(14, 2, "q/e/m: Left/Right/Hazard (toggle) | c: Cancel | o: Horn")
+                scr.addstr(14, 2, "q/e/m: Left/Right/Hazard (toggle) | o: Horn")
                 scr.addstr(15, 2, "l: Lights (Off/Low/High)")
 
             scr.refresh()
