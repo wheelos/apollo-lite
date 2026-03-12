@@ -3,7 +3,7 @@
 ### Install
 
 ```bash
-cd modules/tools/whl-remote/ && bash install.sh
+cd modules/tools/whl-remote/ && sudo bash install.sh
 ```
 
 The installer will interactively prompt for:

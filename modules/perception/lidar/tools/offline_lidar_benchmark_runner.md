@@ -4,6 +4,7 @@
 
 - 产出离线推理结果（每帧一个 `*.txt`）：`//modules/perception/lidar/tools:offline_lidar_obstacle_perception`
 - 读取 `PCD + result_txt + gt_txt` 计算 `precision/recall/AP`：`//modules/perception/tool/benchmark/lidar:lidar_benchmark`
+- 导出可交互网页查看器（逐帧点云/框/匹配状态）：`//modules/perception/tool/benchmark/lidar:lidar_web_visualizer_exporter`
 
 并提供一键脚本：
 
@@ -38,10 +39,11 @@
 
 脚本位置：`modules/perception/lidar/tools/run_offline_lidar_benchmark.sh`
 
-它做两件事：
+它最多做三件事：
 
 1) 先跑离线推理，把每帧结果写到 `--result_dir/*.txt`
 2) 如果传了 `--gt_dir`，再自动生成 list 文件并跑 evaluator 输出指标（log）
+3) 如果传了 `--web_vis_dir`，再导出一个本地网页查看器目录，可交互查看每一帧点云和框
 
 注意：脚本默认直接执行 `bazel-bin/...` 下的二进制，不会自动 build；请确保二进制已在你的环境里构建好，或用 `--offline_bin/--benchmark_bin` 指定它们的位置。
 
@@ -76,7 +78,56 @@
 
 - `/tmp/result_run1/logs/lidar_benchmark.*.log`（评估指标打印）
 
-### 2.3 无 GT：回归一致性（旧版本当伪 GT）
+### 2.3 导出可交互网页查看器
+
+```bash
+./modules/perception/lidar/tools/run_offline_lidar_benchmark.sh \
+  --pcd_dir=/data/pcd \
+  --result_dir=/tmp/result_run1 \
+  --gt_dir=/data/gt_txt \
+  --web_vis_dir=/tmp/result_run1_web \
+  --lidar_detection_config_file=modules/perception/pipeline/config/lidar_detection_pipeline.pb.txt \
+  --lidar_tracking_config_file=modules/perception/pipeline/config/lidar_tracking_pipeline.pb.txt
+```
+
+输出目录示例：
+
+- `/tmp/result_run1_web/index.html`
+- `/tmp/result_run1_web/manifest.json`
+- `/tmp/result_run1_web/frames/frame_0.json`
+
+查看方式：
+
+```bash
+cd /tmp/result_run1_web
+python3 -m http.server 8765
+```
+
+然后浏览器打开：
+
+```text
+http://127.0.0.1:8765
+```
+
+能力：
+
+- 左侧选帧
+- 鼠标旋转 / 平移 / 缩放点云
+- 按图层开关显示点云、det、gt
+- 有 GT 时显示：
+  - TP detection
+  - FP detection
+  - matched GT
+  - missed GT
+  - under-segmented GT
+- 点击框中心查看 `type / confidence / jaccard / matched_index`
+
+说明：
+
+- 没有 `--gt_dir` 也可以导出网页，此时只显示检测结果，不做 TP/FP/FN 区分。
+- 为了控制网页体积，点云会按 `--web_vis_max_points` 采样导出，默认 `30000` 点/帧。
+
+### 2.4 无 GT：回归一致性（旧版本当伪 GT）
 
 这适合验证 “TRT7/8 vs TRT10” 或 “改动前 vs 改动后” 是否输出一致：
 
@@ -110,6 +161,9 @@
 3) 运行目录/配置管理器
 离线工具内部会设置 `FLAGS_config_manager_path="./conf"`，因此需要你的运行环境有对应的 `conf/`（通常 Apollo 运行环境有）。如果你的环境没有，请先补齐或调整运行方式。
 
+4) 网页查看器不是原始全量点云直出
+为了保证浏览器可交互，导出时会对整帧点云做采样；如果你希望看得更密，可以调大 `--web_vis_max_points`，但网页加载和渲染会更重。
+
 ## 4. 从通道导出 PCD（给离线工具喂数据）
 
 如果你只有在线/record 的点云通道，想先导出一批 `.pcd` 再做离线测试，可以用：
@@ -121,4 +175,3 @@
 ```
 
 它会在输出目录持续写入 `*.pcd`（文件名包含时间戳，方便后续与 `*.txt` 对齐）。
-

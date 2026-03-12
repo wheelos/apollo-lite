@@ -1,9 +1,17 @@
 #!/bin/bash
 
-set -u
+set -euo pipefail
 
 INSTALL_DIR="${INSTALL_DIR:-/opt/frp/car}"
 FRP_VER="${FRP_VER:-0.54.0}"
+
+SSH_REMOTE_BASE="${SSH_REMOTE_BASE:-60000}"
+
+LOCAL_SSH_IP="${LOCAL_SSH_IP:-127.0.0.1}"
+LOCAL_SSH_PORT="${LOCAL_SSH_PORT:-22}"
+
+LOCAL_APP_IP="${LOCAL_APP_IP:-127.0.0.1}"
+LOCAL_APP_PORT="${LOCAL_APP_PORT:-8888}"
 
 if [ "$(uname -s)" != "Linux" ]; then
     echo "Error: this installer downloads the Linux build of frp; please run on a Linux host."
@@ -41,17 +49,20 @@ else
     PRIMARY_URL="${FRP_PRIMARY_URL:-https://dl.wheelos.cn/assets/third-party/frp_${FRP_VER}_${suffix}.tar.gz}"
     FALLBACK_URL="${FRP_FALLBACK_URL:-https://github.com/fatedier/frp/releases/download/v${FRP_VER}/frp_${FRP_VER}_${suffix}.tar.gz}"
 
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' EXIT
+
     download_ok=0
     for url in "$PRIMARY_URL" "$FALLBACK_URL"; do
         [ -n "$url" ] || continue
         echo "Attempting download: $url"
         if command -v curl >/dev/null 2>&1; then
-            if curl -fL "$url" -o frp.tar.gz; then
+            if curl -fL "$url" -o "$tmpdir/frp.tar.gz"; then
                 download_ok=1
                 break
             fi
         elif command -v wget >/dev/null 2>&1; then
-            if wget "$url" -O frp.tar.gz; then
+            if wget "$url" -O "$tmpdir/frp.tar.gz"; then
                 download_ok=1
                 break
             fi
@@ -59,7 +70,7 @@ else
             echo "Error: no download tool found; please install curl or wget"
             exit 1
         fi
-        rm -f frp.tar.gz
+        rm -f "$tmpdir/frp.tar.gz"
     done
 
     if [ "$download_ok" -ne 1 ]; then
@@ -70,21 +81,23 @@ else
         exit 1
     fi
 
-    if ! tar -zxf frp.tar.gz; then
-        echo "Error: failed to extract frp.tar.gz"
+    if ! tar -zxf "$tmpdir/frp.tar.gz" -C "$tmpdir"; then
+        echo "Error: failed to extract frp package"
         exit 1
     fi
-    if ! cp "frp_${FRP_VER}_${suffix}/frpc" .; then
+
+    if ! cp "$tmpdir/frp_${FRP_VER}_${suffix}/frpc" .; then
         echo "Error: failed to copy frpc from archive"
         exit 1
     fi
+
     chmod +x frpc
-    rm -rf "frp.tar.gz" "frp_${FRP_VER}_${suffix}"
+    echo "frpc installed to: $INSTALL_DIR/frpc"
 fi
 
-read -p "Enter server IP: " S_IP
-read -p "Enter this car's ID (e.g. 1): " C_ID
-read -s -p "Enter auth.token: " AUTH_TOKEN
+read -r -p "Enter server IP: " S_IP
+read -r -p "Enter this car's ID (e.g. 1): " C_ID
+read -r -s -p "Enter auth.token: " AUTH_TOKEN
 echo
 
 if [ -z "$S_IP" ]; then
@@ -102,11 +115,26 @@ if [ -z "$AUTH_TOKEN" ]; then
     exit 1
 fi
 
-REMOTE_PORT=$((60000 + C_ID))
-# Validate that the computed remote port is within the valid TCP port range.
-if [ "$REMOTE_PORT" -lt 1 ] || [ "$REMOTE_PORT" -gt 65535 ]; then
-    echo "Error: computed remote port $REMOTE_PORT is outside the valid TCP port range (1-65535)."
-    echo "Please choose a car ID such that 60000 + C_ID is within 1-65535 (e.g., C_ID in the range 0..5535)."
+REMOTE_PORT_SSH=$((SSH_REMOTE_BASE + C_ID))
+REMOTE_PORT_APP=$((SSH_REMOTE_BASE + C_ID + 1))
+
+validate_port() {
+    local port="$1"
+    local name="$2"
+    if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        echo "Error: computed $name port $port is outside the valid TCP port range (1-65535)."
+        exit 1
+    fi
+}
+
+validate_port "$LOCAL_SSH_PORT" "local ssh"
+validate_port "$LOCAL_APP_PORT" "local app"
+validate_port "$REMOTE_PORT_SSH" "remote ssh"
+validate_port "$REMOTE_PORT_APP" "remote app"
+
+if [ "$REMOTE_PORT_SSH" -eq "$REMOTE_PORT_APP" ]; then
+    echo "Error: remote SSH port and remote APP port conflict: $REMOTE_PORT_SSH"
+    echo "Please adjust SSH_REMOTE_BASE or SSH_REMOTE_BASE."
     exit 1
 fi
 
@@ -114,13 +142,30 @@ cat <<EOF > frpc.toml
 serverAddr = "$S_IP"
 serverPort = 7000
 auth.token = "$AUTH_TOKEN"
+
 [[proxies]]
 name = "car_${C_ID}_ssh"
 type = "tcp"
-localIP = "127.0.0.1"
-localPort = 22
-remotePort = $REMOTE_PORT
-bindAddr = "127.0.0.1"
+localIP = "$LOCAL_SSH_IP"
+localPort = $LOCAL_SSH_PORT
+remotePort = $REMOTE_PORT_SSH
+
+[[proxies]]
+name = "car_${C_ID}_app_8888"
+type = "tcp"
+localIP = "$LOCAL_APP_IP"
+localPort = $LOCAL_APP_PORT
+remotePort = $REMOTE_PORT_APP
 EOF
+
 chmod 600 frpc.toml
-echo "Car installer finished. Directory: $INSTALL_DIR, assigned port: $REMOTE_PORT"
+
+echo
+echo "Car installer finished."
+echo "Install directory : $INSTALL_DIR"
+echo "Config file       : $INSTALL_DIR/frpc.toml"
+echo "SSH mapping       : ${LOCAL_SSH_IP}:${LOCAL_SSH_PORT} -> ${S_IP}:${REMOTE_PORT_SSH}"
+echo "APP mapping       : ${LOCAL_APP_IP}:${LOCAL_APP_PORT} -> ${S_IP}:${REMOTE_PORT_APP}"
+echo
+echo "Start command:"
+echo "  cd $INSTALL_DIR && ./frpc -c frpc.toml"

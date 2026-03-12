@@ -40,6 +40,7 @@ class Frame : protected SensorObjects {
   // 2. result_objects: objects
   // 3. ground truth objects: gt_objects
   // 4. pose: sensor2world_pose
+  // groundtruth and pose are optional in visualization/export flows
   bool load(const std::vector<std::string>& filenames);
 
   inline std::string get_name() const { return name; }
