@@ -175,3 +175,56 @@ http://127.0.0.1:8765
 ```
 
 它会在输出目录持续写入 `*.pcd`（文件名包含时间戳，方便后续与 `*.txt` 对齐）。
+
+## 5. 从 KITTI-style 数据集转换成 benchmark 输入
+
+如果你手里是这类目录：
+
+```text
+points-label/
+  point/*.bin
+  label/*.txt
+```
+
+其中：
+
+- `point/*.bin` 是 `float32 x y z intensity`
+- `label/*.txt` 是 KITTI-style 逐目标标注
+
+可以先转换成 Apollo benchmark 需要的：
+
+- `pcd/*.pcd`
+- `gt_txt/*.txt`
+
+脚本：
+
+`modules/perception/lidar/tools/convert_kitti_like_dataset_to_apollo_benchmark.py`
+
+示例：
+
+```bash
+python3 modules/perception/lidar/tools/convert_kitti_like_dataset_to_apollo_benchmark.py \
+  --bin_dir=points-label/point \
+  --label_dir=points-label/label \
+  --pcd_dir=/tmp/kitti_like_pcd \
+  --gt_dir=/tmp/kitti_like_gt \
+  --source_z_anchor=bottom
+```
+
+说明：
+
+- 这个脚本默认假设 `label` 里的框已经在 LiDAR 坐标系。
+- `--source_z_anchor` 控制源标注里的 `z` 是按 `bottom / center / top` 解释；脚本会统一转换成 Apollo benchmark 期望的 `z_min`。
+- 脚本会按 3D box 从整帧点云里恢复每个 GT 目标的点和索引，再写入 Apollo `gt.txt`。
+
+转换完成后，就可以直接跑：
+
+```bash
+./modules/perception/lidar/tools/run_offline_lidar_benchmark.sh \
+  --pcd_dir=/tmp/kitti_like_pcd \
+  --result_dir=/tmp/result_run1 \
+  --gt_dir=/tmp/kitti_like_gt \
+  --web_vis_dir=/tmp/result_run1_web \
+  --lidar_detection_config_file=modules/perception/pipeline/config/lidar_detection_pipeline_trt.pb.txt \
+  --lidar_tracking_config_file=modules/perception/pipeline/config/lidar_tracking_pipeline.pb.txt
+```

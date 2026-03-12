@@ -284,17 +284,23 @@ bool ExportWithoutGroundTruth(const ExportOptions& options) {
   std::shared_ptr<Frame> frame;
   std::size_t frame_index = 0;
   while (loader.query_next(frame)) {
-    Json frame_json = BuildFrameJson(*frame, frame_index, options.max_points);
-    const std::string frame_file =
-        "frames/frame_" + std::to_string(frame_index) + ".json";
-    manifest["frames"].push_back(
-        {{"index", static_cast<int>(frame_index)},
-         {"label", frame_json["frame_label"]},
-         {"file", frame_file},
-         {"stats", frame_json["stats"]}});
-    if (!WriteJsonFile(
-            cyber::common::GetAbsolutePath(options.output, frame_file),
-            frame_json)) {
+    try {
+      Json frame_json = BuildFrameJson(*frame, frame_index, options.max_points);
+      const std::string frame_file =
+          "frames/frame_" + std::to_string(frame_index) + ".json";
+      manifest["frames"].push_back(
+          {{"index", static_cast<int>(frame_index)},
+           {"label", frame_json["frame_label"]},
+           {"file", frame_file},
+           {"stats", frame_json["stats"]}});
+      if (!WriteJsonFile(
+              cyber::common::GetAbsolutePath(options.output, frame_file),
+              frame_json)) {
+        return false;
+      }
+    } catch (const std::exception& e) {
+      std::cerr << "Failed to export frame " << frame_index << " ("
+                << frame->get_name() << "): " << e.what() << std::endl;
       return false;
     }
     frame->release();
@@ -329,20 +335,26 @@ bool ExportWithGroundTruth(const ExportOptions& options) {
   std::shared_ptr<FrameStatistics> frame;
   std::size_t frame_index = 0;
   while (loader.query_next(frame)) {
-    frame->find_association();
-    frame->cal_meta_statistics();
+    try {
+      frame->find_association();
+      frame->cal_meta_statistics();
 
-    Json frame_json = BuildFrameJson(*frame, frame_index, options.max_points);
-    const std::string frame_file =
-        "frames/frame_" + std::to_string(frame_index) + ".json";
-    manifest["frames"].push_back(
-        {{"index", static_cast<int>(frame_index)},
-         {"label", frame_json["frame_label"]},
-         {"file", frame_file},
-         {"stats", frame_json["stats"]}});
-    if (!WriteJsonFile(
-            cyber::common::GetAbsolutePath(options.output, frame_file),
-            frame_json)) {
+      Json frame_json = BuildFrameJson(*frame, frame_index, options.max_points);
+      const std::string frame_file =
+          "frames/frame_" + std::to_string(frame_index) + ".json";
+      manifest["frames"].push_back(
+          {{"index", static_cast<int>(frame_index)},
+           {"label", frame_json["frame_label"]},
+           {"file", frame_file},
+           {"stats", frame_json["stats"]}});
+      if (!WriteJsonFile(
+              cyber::common::GetAbsolutePath(options.output, frame_file),
+              frame_json)) {
+        return false;
+      }
+    } catch (const std::exception& e) {
+      std::cerr << "Failed to export frame " << frame_index << " ("
+                << frame->get_name() << "): " << e.what() << std::endl;
       return false;
     }
     frame->release();
