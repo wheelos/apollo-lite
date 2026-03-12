@@ -1,0 +1,41 @@
+waypoint {
+  pose {
+    x: 272091.939530725
+    y: 4020872.846098972
+    z: 0.0
+  }
+  heading: 3.14
+}
+
+parking_info {
+  parking_space_id: "PLACEHOLDER_STRING"
+  parking_point {
+    x: 272091.939530725
+    y: 4020872.846098972
+    z: 0.0
+  }
+  parking_space_type: VERTICAL_PLOT
+  corner_point {
+    point {
+      x: 272095.187138
+      y: 4020871.340925
+      z: 0.0
+    }
+    point {
+      x: 272095.191916
+      y: 4020874.340921
+      z: 0.0
+    }
+    point {
+      x: 272088.691924
+      y: 4020874.351273
+      z: 0.0
+    }
+    point {
+      x: 272088.687146
+      y: 4020871.351277
+      z: 0.0
+    }
+  }
+  heading: 3.14
+}
