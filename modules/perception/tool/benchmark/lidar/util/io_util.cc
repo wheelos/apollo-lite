@@ -111,7 +111,8 @@ bool load_frame_objects(const std::string& filename,
   int frame_id = -1;
   int object_number = -1;
   fin >> frame_id >> object_number;
-  if (object_number < 0 || object_number > 10000) {
+  if (!fin.good() || object_number < 0 || object_number > 10000) {
+    std::cerr << "Invalid frame header in " << filename << std::endl;
     fin.close();
     return false;
   }
@@ -146,34 +147,85 @@ bool load_frame_objects(const std::string& filename,
         confidence >> type >> bbox_center_x >> bbox_center_y >> bbox_center_z >>
         bbox_length >> bbox_width >> bbox_height >> yaw >> roll >> pitch >>
         truncated >> occluded >> velocity_x >> velocity_y >> velocity_z;
+    if (!fin.good()) {
+      std::cerr << "Invalid object header in " << filename << " object " << i
+                << std::endl;
+      fin.close();
+      return false;
+    }
 
     fin >> point_number;
+    if (!fin.good() || point_number < 0 || point_number > 10000000) {
+      std::cerr << "Invalid point_number in " << filename << " object " << i
+                << ": " << point_number << std::endl;
+      fin.close();
+      return false;
+    }
     obj->cloud.reset(new PointCloud);
     obj->cloud->points.resize(point_number);
     for (int j = 0; j < point_number; ++j) {
       Point pt;
       fin >> pt.x >> pt.y >> pt.z >> pt.intensity;
+      if (!fin.good()) {
+        std::cerr << "Invalid object point payload in " << filename
+                  << " object " << i << " point " << j << std::endl;
+        fin.close();
+        return false;
+      }
       obj->cloud->points[j] = pt;
     }
 
     fin >> indice_number;
+    if (!fin.good() || indice_number < -10000000 || indice_number > 10000000) {
+      std::cerr << "Invalid indice_number in " << filename << " object " << i
+                << ": " << indice_number << std::endl;
+      fin.close();
+      return false;
+    }
     obj->indices.reset(new PointIndices);
     obj->polygon.points.clear();
     if (indice_number >= 0) {
+      if (cloud != nullptr &&
+          static_cast<size_t>(indice_number) > cloud->points.size()) {
+        std::cerr << "indice_number exceeds cloud size in " << filename
+                  << " object " << i << ": " << indice_number << " > "
+                  << cloud->points.size() << std::endl;
+        fin.close();
+        return false;
+      }
       obj->indices->indices.resize(indice_number);
       for (int j = 0; j < indice_number; ++j) {
         int pt_indice = -1;
         fin >> pt_indice;
+        if (!fin.good()) {
+          std::cerr << "Invalid indices payload in " << filename << " object "
+                    << i << " index " << j << std::endl;
+          fin.close();
+          return false;
+        }
         obj->indices->indices[j] = pt_indice;
       }
     } else {
       // we hack here, if indices number is negative,
       // we save the polygon points (x, y, z)
       int polygon_points_number = -indice_number;
+      if (polygon_points_number > 10000) {
+        std::cerr << "Invalid polygon point count in " << filename
+                  << " object " << i << ": " << polygon_points_number
+                  << std::endl;
+        fin.close();
+        return false;
+      }
       obj->polygon.points.resize(polygon_points_number);
       for (int j = 0; j < polygon_points_number; ++j) {
         fin >> obj->polygon.points[j].x >> obj->polygon.points[j].y >>
             obj->polygon.points[j].z;
+        if (!fin.good()) {
+          std::cerr << "Invalid polygon payload in " << filename << " object "
+                    << i << " polygon point " << j << std::endl;
+          fin.close();
+          return false;
+        }
       }
       indice_number = 0;
     }
@@ -251,13 +303,17 @@ bool load_frame_objects(const std::string& filename,
     fin >> label_size;
     if (!fin.eof() && cloud != nullptr) {
       if (label_size != cloud->size()) {
-        std::cerr << "Label size " << label_size << " not equal to "
-                  << "cloud size " << cloud->size() << std::endl;
-        fin.close();
-        return false;
-      }
-      for (size_t i = 0; i < label_size; ++i) {
-        fin >> cloud->at(i).label;
+        for (size_t i = 0; i < label_size; ++i) {
+          int ignored_label = 0;
+          fin >> ignored_label;
+          if (!fin.good()) {
+            break;
+          }
+        }
+      } else {
+        for (size_t i = 0; i < label_size; ++i) {
+          fin >> cloud->at(i).label;
+        }
       }
     }
   }
