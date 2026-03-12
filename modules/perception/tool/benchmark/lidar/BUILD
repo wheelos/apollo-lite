@@ -25,4 +25,21 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "lidar_web_visualizer_exporter",
+    srcs = ["lidar_web_visualizer_exporter.cc"],
+    linkopts = [
+        "-llz4",
+    ],
+    deps = [
+        "//cyber/common:file",
+        "//modules/perception/tool/benchmark/lidar/base:benchmark_base",
+        "//modules/perception/tool/benchmark/lidar/eval:benchmark_eval",
+        "//modules/perception/tool/benchmark/lidar/loader:benchmark_loader",
+        "//modules/perception/tool/benchmark/lidar/util:benchmark_util",
+        "@boost.program_options",
+        "@com_github_nlohmann_json//:json",
+    ],
+)
+
 cpplint()

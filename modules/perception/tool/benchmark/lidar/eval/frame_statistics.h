@@ -39,6 +39,19 @@ class FrameStatistics : public Frame {
   bool cal_meta_statistics();
   const MetaStatistics& get_meta_statistics() const { return _meta_stat; }
   double jaccard_index_percentile() const;
+  const std::vector<unsigned int>& get_isolated_object_indices_2017() const {
+    return _isolated_object_indices_2017;
+  }
+  const std::vector<unsigned int>& get_isolated_gt_object_indices_2017() const {
+    return _isolated_gt_object_indices_2017;
+  }
+  const std::vector<unsigned int>& get_underseg_gt_object_indices_2017() const {
+    return _underseg_gt_object_indices_2017;
+  }
+  const std::vector<ObjectMatch>& get_matches() const { return _matches; }
+  const std::vector<unsigned int>& get_strict_match_indices() const {
+    return _strict_match_indices;
+  }
 
  public:
   static void set_jaccard_index_threshold(double threshold);

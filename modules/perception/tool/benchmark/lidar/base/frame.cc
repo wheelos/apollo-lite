@@ -53,7 +53,7 @@ void Frame::set_min_confidence(float confidence) {
 }
 
 bool Frame::load(const std::vector<std::string>& filenames) {
-  if (filenames.size() < 3 || filenames.size() > 4) {
+  if (filenames.size() < 2 || filenames.size() > 4) {
     std::cerr << "file list is not complete" << std::endl;
     return false;
   }
@@ -65,8 +65,11 @@ bool Frame::load(const std::vector<std::string>& filenames) {
   // 4. pose: sensor2world_pose
   std::string pc_filename = filenames[0];
   std::string result_filename = filenames[1];
-  std::string gt_filename = filenames[2];
+  std::string gt_filename = "";
   std::string pose_filename = "";
+  if (filenames.size() >= 3) {
+    gt_filename = filenames[2];
+  }
   if (filenames.size() == 4) {
     pose_filename = filenames[3];
     if (!load_sensor2world_pose(pose_filename, &sensor2world_pose)) {
@@ -93,7 +96,9 @@ bool Frame::load(const std::vector<std::string>& filenames) {
     std::cerr << "Fail to load result: " << result_filename << std::endl;
     return false;
   }
-  if (!load_frame_objects(gt_filename, _s_black_list, &gt_objects)) {
+  gt_objects.clear();
+  if (!gt_filename.empty() &&
+      !load_frame_objects(gt_filename, _s_black_list, &gt_objects)) {
     std::cerr << "Fail to load groundtruth: " << gt_filename << std::endl;
     return false;
   }
