@@ -19,6 +19,26 @@ APOLLO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
 INSTALL_DOCKER_SCRIPT="${APOLLO_ROOT_DIR}/docker/setup_host/install_docker.sh"
 INSTALL_NVIDIA_TOOLKIT_SCRIPT="${APOLLO_ROOT_DIR}/docker/setup_host/install_nvidia_container_toolkit.sh"
 SETUP_HOST_SCRIPT="${APOLLO_ROOT_DIR}/docker/setup_host/config_system.sh"
+ISSUES_LINK="https://github.com/wheelos/apollo-lite"
+SUPPORT_EMAIL="support@wheelos.cn"
+HOST_READY_MARKER="/etc/wheelos_setup_host.done"
+
+# Defaults for config control (can be overridden by env vars)
+# If SKIP_SYSTEM_CONFIG=1, we skip system config; otherwise run it.
+if [[ "${SKIP_SYSTEM_CONFIG:-0}" == "1" ]]; then
+    RUN_SYSTEM_CONFIG=0
+else
+    RUN_SYSTEM_CONFIG=1
+fi
+
+ASCII_WHEELOS=$(cat <<'EOF'
+           __              __
+ _      __/ /_  ___  ___  / /___  _____
+| | /| / / __ \/ _ \/ _ \/ / __ \/ ___/
+| |/ |/ / / / /  __/  __/ / /_/ (__  )
+|__/|__/_/ /_/\___/\___/_/\____/____/
+EOF
+)
 
 # --- Functions ---
 
@@ -52,16 +72,26 @@ check_status() {
     fi
 }
 
+show_welcome() {
+    echo "${ASCII_WHEELOS}"
+    echo ""
+    echo "GitHub: ${ISSUES_LINK}"
+    echo "Email : ${SUPPORT_EMAIL}"
+    echo ""
+}
+
 # --- Main Script Flow ---
 
 echo "--- 🚀 Starting Autonomous Driving Host Environment Configuration ---"
+show_welcome
 echo "Please ensure you run this script with a user that has sudo privileges."
 echo ""
 echo "The script will perform the following steps sequentially:"
 echo "1. Install Docker (checks if already installed, then proceeds)"
 echo "2. Install NVIDIA Container Toolkit (checks if already installed, depends on Docker)"
-echo "3. Perform host system configurations"
+echo "3. Perform host system configurations (optional, can be skipped)"
 echo ""
+
 
 # --- Step 1: Install Docker ---
 echo "--- 🛠️ Step 1/3: Executing Docker installation script... ---"
@@ -96,26 +126,34 @@ check_status $exit_code "NVIDIA Container Toolkit Installation"
 echo "✅ Step 2/3: NVIDIA Container Toolkit installation/check complete."
 echo ""
 
-# --- Step 3: Setup Host Environment ---
-echo "--- 🛠️ Step 3/3: Executing host environment setup script... ---"
-echo "This step performs additional system-level configurations (e.g., network, permissions)."
-
-# Check if the Host Setup script exists
-check_script_existence "${SETUP_HOST_SCRIPT}" "Host Setup Script"
-
-# Execute the sub-script.
-sudo bash "${SETUP_HOST_SCRIPT}"
-exit_code=$?
-check_status $exit_code "Host Environment Setup"
-
-echo "✅ Step 3/3: Host Environment Setup complete."
+# Ensure whl command exists even when system config step is skipped.
+install_whl_system_command
 echo ""
+
+# --- Step 3: Setup Host Environment ---
+if [[ "${RUN_SYSTEM_CONFIG}" -eq 0 ]]; then
+    echo "--- ⏭️ Step 3/3: Host environment setup skipped by request. ---"
+    echo "Skipped script: ${SETUP_HOST_SCRIPT}"
+    echo "Note: This may skip optional tuning such as udev, PTP, CAN, and auto-start service."
+    echo ""
+else
+    echo "--- 🛠️ Step 3/3: Executing host environment setup script... ---"
+    echo "This step performs additional system-level configurations (e.g., network, permissions)."
+
+    # Check if the Host Setup script exists
+    check_script_existence "${SETUP_HOST_SCRIPT}" "Host Setup Script"
+
+    # Execute the sub-script (interactive prompts will control optional steps).
+    sudo bash "${SETUP_HOST_SCRIPT}"
+    exit_code=$?
+    check_status $exit_code "Host Environment Setup"
+
+    echo "✅ Step 3/3: Host Environment Setup complete."
+    echo ""
+fi
 
 echo "--- 🎉 Congratulations! Autonomous Driving Host Environment Configuration is fully complete. ---"
 echo "You might need to reboot your system or log out/in for all changes to take full effect."
 
 # Mark host setup completion
-sudo touch /etc/wheelos_setup_host.done
-
-# Install whl command
-sudo ln -sf "${APOLLO_ROOT_DIR}/docker/scripts/whl.sh" /usr/local/bin/whl
+sudo touch "${HOST_READY_MARKER}"

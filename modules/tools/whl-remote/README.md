@@ -25,4 +25,15 @@ bash manage.sh status
 
 # Stop
 bash manage.sh stop
+
+# Enable autostart on boot (systemd)
+bash manage.sh autostart on
+
+# Disable autostart on boot
+bash manage.sh autostart off
+
+# Check autostart status
+bash manage.sh autostart status
 ```
+
+If you want `frpc` to start automatically on boot, run `bash manage.sh autostart on` after installation.

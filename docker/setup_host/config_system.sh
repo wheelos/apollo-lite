@@ -38,6 +38,10 @@ AUTOSERVICE_SRC_FILE="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/au
 AUTOSERVICE_DEST_FILE="/etc/systemd/system/autostart.service"
 # User who will run the autonomous driving stack. SUDO_USER is the user who invoked sudo.
 WHL_HOST_USER="${SUDO_USER:-$(whoami)}"
+## interactive-only script; no CLI skip/profile parsing in this file
+
+## NOTE: This script is interactive and optional steps are controlled via
+## interactive prompts. No CLI parsing is required here.
 
 # --- PTP Variables ---
 PTP_CONF_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/linuxptp/ptp4l.conf"
@@ -60,6 +64,7 @@ PHC2SYS_OVERRIDE_DEST_DIR="/etc/systemd/system/phc2sys.service.d"
 BOLD='\033[1m'
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 WHITE='\033[34m'
 NO_COLOR='\033[0m'
 
@@ -77,6 +82,45 @@ success() {
 # Prints an error message to stderr.
 error() {
   (echo >&2 -e "[${RED}${BOLD}ERROR${NO_COLOR}] $*")
+}
+
+# Prints a warning message to stderr.
+warning() {
+  (echo >&2 -e "[${YELLOW}${BOLD}WARNING${NO_COLOR}] $*")
+}
+
+prompt_yes_no() {
+  local prompt_msg="$1"
+  local default_yes=${2:-Y}
+  # Non-interactive shells: honor default
+  if [[ ! -t 0 ]]; then
+    if [[ "${default_yes}" == "Y" ]]; then
+      return 0
+    else
+      return 1
+    fi
+  fi
+  local answer
+  read -rp "${prompt_msg} [Y/n]: " answer
+  answer=${answer:-${default_yes}}
+  case "${answer}" in
+    [Yy]* ) return 0 ;;
+    * ) return 1 ;;
+  esac
+}
+
+confirm_and_run() {
+  local label="$1"
+  local fn="$2"
+  if prompt_yes_no "Install/configure ${label}?" Y; then
+    if ! ${fn}; then
+      error "Step '${label}' failed."
+      return 1
+    fi
+  else
+    info "Skipping ${label} by user choice."
+  fi
+  return 0
 }
 
 # --- Pre-condition Check for the Entire Script ---
@@ -121,21 +165,19 @@ check_host_setup_pre_conditions() {
   done
   info "All required commands are available."
 
-  # 4. Check for existence of udev source rules
+  # 4. Check udev source rules (optional)
   if [ ! -d "${UDEV_RULES_SRC_DIR}" ] || [ -z "$(ls -A "${UDEV_RULES_SRC_DIR}")" ]; then
-    error "Udev rules source directory '${UDEV_RULES_SRC_DIR}' not found or is empty."
-    error "Please ensure Apollo's udev rules are present in the expected location."
-    return 1
+    warning "Udev rules source directory '${UDEV_RULES_SRC_DIR}' not found or is empty. The udev step will be skipped unless you provide rules."
+  else
+    info "Udev rules source directory detected."
   fi
-  info "Udev rules source directory detected."
 
-  # 5. Check for existence of autostart service file
+  # 5. Check autostart service file (optional)
   if [ ! -f "${AUTOSERVICE_SRC_FILE}" ]; then
-    error "Autostart service file not found at '${AUTOSERVICE_SRC_FILE}'."
-    error "Please ensure the service definition file is present."
-    return 1
+    warning "Autostart service file not found at '${AUTOSERVICE_SRC_FILE}'. The autostart step will be skipped unless you provide the service file."
+  else
+    info "Autostart service source file detected."
   fi
-  info "Autostart service source file detected."
 
   success "All host setup pre-conditions met."
   return 0
@@ -626,6 +668,7 @@ configure_ptp() {
   fi
 }
 
+# Note: 'whl' system command is installed by setup_host.sh before calling this script.
 
 # --- Main Host Setup Orchestration Function ---
 # This is the primary entry point for setting up the host machine.
@@ -644,9 +687,10 @@ setup_host_machine() {
     return 1
   fi
 
-  if ! setup_core_limits; then
-    error "Failed to configure core limits."
-    return 1
+  if prompt_yes_no "Configure core limits?" Y; then
+    if ! setup_core_limits; then return 1; fi
+  else
+    info "Skipping core limits configuration."
   fi
 
   # 3. Setup Bazel cache directory
@@ -655,52 +699,50 @@ setup_host_machine() {
     return 1
   fi
 
-  # 4. Configure NTP synchronization
-  if ! configure_ntp; then
-    error "Failed to configure NTP synchronization. Aborting host setup."
-    return 1
+  # 4. Configure optional system-level integrations.
+  if prompt_yes_no "Configure NTP synchronization (chrony)?" Y; then
+    if ! configure_ntp; then return 1; fi
+  else
+    info "Skipping NTP configuration."
   fi
 
-  # 4.5 Configure Linux PTP (New Step)
-  if ! configure_ptp; then
-    error "Failed to configure Linux PTP. Aborting host setup."
-    return 1
+  if prompt_yes_no "Configure Linux PTP (ptp4l)?" Y; then
+    if ! configure_ptp; then return 1; fi
+  else
+    info "Skipping PTP configuration."
   fi
 
-  # 5. Apply udev rules
-  if ! apply_udev_rules; then
-    error "Failed to apply udev rules. Aborting host setup."
-    return 1
+  if prompt_yes_no "Apply udev rules?" Y; then
+    if ! apply_udev_rules; then return 1; fi
+  else
+    info "Skipping udev rules."
   fi
 
-  # 6. Configure uvcvideo module
-  if ! configure_uvcvideo_module; then
-    error "Failed to configure uvcvideo module. Aborting host setup."
-    return 1
+  if prompt_yes_no "Configure uvcvideo module options?" Y; then
+    if ! configure_uvcvideo_module; then return 1; fi
+  else
+    info "Skipping uvcvideo configuration."
   fi
 
-  if ! configure_can_bus; then
-    error "Failed to configure CAN bus."
-    return 1
+  if prompt_yes_no "Configure CAN bus (systemd-networkd)?" Y; then
+    if ! configure_can_bus; then return 1; fi
+  else
+    info "Skipping CAN bus configuration."
   fi
 
-  if ! setup_jetson_performance; then
-    error "Failed to configure Jetson performance."
-    # some platform may fail to start jetson_performance service
-    read -r -p "Should Apollo be setup without jetson_performance service?(y/N): " response
-    case "$response" in
-      [yY][eE][sS]|[yY])
-        return 0
-        ;;
-        *)
-        return 1
-        ;;
-      esac
+  if prompt_yes_no "Apply Jetson performance tuning (nvpmodel/jetson_clocks)?" N; then
+    if ! setup_jetson_performance; then
+      error "Failed to configure Jetson performance."
+      return 1
+    fi
+  else
+    info "Skipping Jetson performance tuning."
   fi
 
-  if ! configure_headless_mode; then
-    error "Failed to configure headless mode."
-    return 1
+  if prompt_yes_no "Configure headless mode (disable GUI)?" N; then
+    if ! configure_headless_mode; then return 1; fi
+  else
+    info "Skipping headless mode configuration."
   fi
 
   # 7. Ensure docker permissions are set correctly
@@ -709,10 +751,14 @@ setup_host_machine() {
     return 1
   fi
 
-  # 8. Install and enable the autostart service
-  if ! install_autostart_service; then
-    error "Failed to install the autostart service. Host setup is incomplete."
-    return 1
+  # 8. Install and enable the autostart service (optional)
+  if prompt_yes_no "Install autostart service?" N; then
+    if ! install_autostart_service; then
+      error "Failed to install the autostart service."
+      return 1
+    fi
+  else
+    info "Skipping autostart service installation."
   fi
 
   success "Host machine setup completed successfully!"
@@ -722,20 +768,8 @@ setup_host_machine() {
 # --- Script Entry Point ---
 # Handles command-line arguments to either setup or uninstall host configurations.
 main() {
-  # This script now only supports 'install' mode for setting up the host.
-  # If no argument is provided, it defaults to install.
-  # Any other argument will result in an error message.
-  if [ "$#" -eq 0 ] || [ "$1" == "install" ]; then
-    if [ "$#" -eq 0 ]; then
-      info "No argument provided. Defaulting to 'install' mode."
-    fi
-    setup_host_machine
-  else
-    error "Invalid argument: $1"
-    info "This script is designed for 'install' mode only. Uninstallation is not supported."
-    info "Usage: $0 [install]"
-    return 1 # Return 1 for invalid arguments
-  fi
+  # Interactive-only script: directly run the setup flow.
+  setup_host_machine
 }
 
 # Execute the main function with all command-line arguments
