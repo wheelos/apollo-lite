@@ -29,13 +29,11 @@ SPEED_MIN, SPEED_MAX = -5.0, 5.0
 STEERING_MIN, STEERING_MAX = -100.0, 100.0
 THROTTLE_MIN, THROTTLE_MAX = 0.0, 100.0
 BRAKE_MIN, BRAKE_MAX = 0.0, 100.0
-STEERING_RATE_MIN, STEERING_RATE_MAX = -6.28, 6.28
 ACCEL_MIN, ACCEL_MAX = -5.0, 5.0
 
 SPEED_DELTA = 0.1
-STEERING_DELTA = 1
-THROTTLE_DELTA = 2
-STEERING_RATE_DELTA = 0.1
+STEERING_DELTA = 5
+THROTTLE_DELTA = 5
 BRAKE_DELTA = 1
 TURN_SIGNAL_THRESHOLD_DELTA = 1.0
 ACCEL_DELTA = 0.1
@@ -317,18 +315,6 @@ class KeyboardController:
             self.set_turn_signal(0, "NONE")
         else:
             self.set_turn_signal(signal_val, signal_str)
-
-    def steering_rate_inc(self):
-        self.steering_rate = min(
-            self.steering_rate + STEERING_RATE_DELTA, STEERING_RATE_MAX
-        )
-        self.log_msg(f"Steering rate: {self.steering_rate:.2f}")
-
-    def steering_rate_dec(self):
-        self.steering_rate = max(
-            self.steering_rate - STEERING_RATE_DELTA, STEERING_RATE_MIN
-        )
-        self.log_msg(f"Steering rate: {self.steering_rate:.2f}")
 
     def toggle_engage(self):
         self.engage = not self.engage

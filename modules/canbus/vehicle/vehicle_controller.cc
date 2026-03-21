@@ -146,8 +146,7 @@ ErrorCode VehicleController::Update(const ControlCommand &control_command) {
 
   if (driving_mode() == Chassis::COMPLETE_AUTO_DRIVE ||
       driving_mode() == Chassis::AUTO_STEER_ONLY) {
-    const double steering_rate_threshold = 1.0;
-    if (control_command.steering_rate() > steering_rate_threshold) {
+    if (control_command.has_steering_rate()) {
       Steer(control_command.steering_target(), control_command.steering_rate());
     } else {
       Steer(control_command.steering_target());
