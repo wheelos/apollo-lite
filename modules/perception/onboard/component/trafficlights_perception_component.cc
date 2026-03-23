@@ -269,7 +269,7 @@ int TrafficLightsPerceptionComponent::InitAlgorithmPlugin() {
     // init transform wrappers
     std::string tf2_camera_child_frame_id =
         sensor_manager->GetFrameId(camera_names_[i]);
-    std::shared_ptr<TransformWrapper> trans_wrapper(new TransformWrapper);
+    std::shared_ptr<StateEstimator> trans_wrapper(new StateEstimator);
     trans_wrapper->Init(tf2_camera_child_frame_id);
     camera2world_trans_wrapper_map_[camera_names_[i]] = trans_wrapper;
 

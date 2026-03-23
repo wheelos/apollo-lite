@@ -6,11 +6,11 @@ package(default_visibility = ["//visibility:public"])
 
 
 cc_library(
-    name = "transform_wrapper",
+    name = "state_estimator",
     srcs = [
-        "transform_wrapper.cc",
+        "state_estimator.cc",
     ],
-    hdrs = ["transform_wrapper.h"],
+    hdrs = ["state_estimator.h"],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/common/sensor_manager",
@@ -24,7 +24,7 @@ install(
     name = "install",
     library_dest = "perception/lib",
     targets = [
-        ":transform_wrapper",
+        ":state_estimator",
     ],
     visibility = ["//visibility:public"],
 )

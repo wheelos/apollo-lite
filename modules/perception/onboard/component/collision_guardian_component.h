@@ -10,7 +10,7 @@
 #include "modules/perception/onboard/proto/collision_guardian_component.pb.h"
 
 #include "cyber/component/component.h"
-#include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
+#include "modules/perception/onboard/state_estimator/state_estimator.h"
 
 namespace apollo {
 namespace perception {
@@ -20,7 +20,7 @@ using apollo::drivers::PointCloud;
 
 class CollisionGuardianComponent : public cyber::Component<PointCloud> {
  public:
-  using TransformWrapper = apollo::perception::onboard::TransformWrapper;
+  using StateEstimator = apollo::perception::onboard::StateEstimator;
 
   CollisionGuardianComponent() = default;
   ~CollisionGuardianComponent() = default;
@@ -58,7 +58,7 @@ class CollisionGuardianComponent : public cyber::Component<PointCloud> {
       nullptr;
 
   // TF listener for getting the transform from sensor to vehicle frame.
-  std::unique_ptr<TransformWrapper> transform_wrapper_ = nullptr;
+  std::unique_ptr<StateEstimator> state_estimator_ = nullptr;
 };
 
 CYBER_REGISTER_COMPONENT(CollisionGuardianComponent);

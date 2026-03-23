@@ -16,18 +16,18 @@
 #pragma once
 
 #include <atomic>
+#include <limits>
 #include <memory>
 #include <string>
-#include <limits>
+
+#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "modules/perception/onboard/proto/lidar_component_config.pb.h"
 
 #include "cyber/cyber.h"
 #include "modules/perception/lidar/app/lidar_obstacle_detection.h"
 #include "modules/perception/lidar/common/lidar_frame.h"
 #include "modules/perception/onboard/inner_component_messages/lidar_inner_component_messages.h"
-#include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
-
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
-#include "modules/perception/onboard/proto/lidar_component_config.pb.h"
+#include "modules/perception/onboard/state_estimator/state_estimator.h"
 
 namespace apollo {
 namespace perception {
@@ -63,7 +63,7 @@ class LidarDetectionComponent : public cyber::Component<drivers::PointCloud> {
   std::string lidar2novatel_tf2_child_frame_id_;
   std::string output_channel_name_;
   base::SensorInfo sensor_info_;
-  TransformWrapper lidar2world_trans_;
+  StateEstimator lidar2world_trans_;
   // std::unique_ptr<lidar::BaseLidarObstacleDetection> detector_;
 
   std::unique_ptr<lidar::BaseLidarObstacleDetection> lidar_detection_pipeline_;

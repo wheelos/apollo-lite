@@ -27,7 +27,7 @@ install(
         ":pb_hdrs",
         "//modules/perception/data:install",
         "//modules/perception/onboard/component:install",
-        "//modules/perception/onboard/transform_wrapper:install",
+        "//modules/perception/onboard/state_estimator:install",
         "//modules/perception/onboard/common_flags:install",
         "//modules/perception/production:install",
         "//modules/perception/pipeline:install",

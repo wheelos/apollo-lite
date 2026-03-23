@@ -42,7 +42,7 @@
 #include "modules/perception/onboard/component/camera_perception_viz_message.h"
 #include "modules/perception/onboard/inner_component_messages/inner_component_messages.h"
 #include "modules/perception/onboard/proto/lane_perception_component.pb.h"
-#include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
+#include "modules/perception/onboard/state_estimator/state_estimator.h"
 #include "modules/perception/proto/motion_service.pb.h"
 
 typedef std::shared_ptr<apollo::perception::Motion_Service>
@@ -125,7 +125,7 @@ class LaneDetectionComponent : public apollo::cyber::Component<> {
 
   // TF stuff
   std::map<std::string, std::string> tf_camera_frame_id_map_;
-  std::map<std::string, std::shared_ptr<TransformWrapper>>
+  std::map<std::string, std::shared_ptr<StateEstimator>>
       camera2world_trans_wrapper_map_;
 
   // pre-allocaated-mem data_provider;

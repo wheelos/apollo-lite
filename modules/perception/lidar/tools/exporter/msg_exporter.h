@@ -25,7 +25,7 @@
 #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/perception/lidar/common/pcl_util.h"
-#include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
+#include "modules/perception/onboard/state_estimator/state_estimator.h"
 #include "modules/transform/buffer.h"
 
 namespace apollo {

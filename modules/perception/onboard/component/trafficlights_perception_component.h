@@ -32,7 +32,7 @@
 #include "modules/perception/camera/lib/traffic_light/preprocessor/tl_preprocessor.h"
 #include "modules/perception/map/hdmap/hdmap_input.h"
 #include "modules/perception/onboard/proto/trafficlights_perception_component.pb.h"
-#include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
+#include "modules/perception/onboard/state_estimator/state_estimator.h"
 #include "modules/transform/buffer.h"
 // #include "modules/v2x/common/v2x_proxy_gflags.h"
 // #include "modules/perception/pipeline/proto/traffic_light_config.pb.h"
@@ -131,8 +131,8 @@ class TrafficLightsPerceptionComponent : public apollo::cyber::Component<> {
 
   std::vector<std::string> camera_names_;
   std::vector<std::string> input_camera_channel_names_;
-  // camera_name -> TransformWrapper
-  std::map<std::string, std::shared_ptr<TransformWrapper>>
+  // camera_name -> StateEstimator
+  std::map<std::string, std::shared_ptr<StateEstimator>>
       camera2world_trans_wrapper_map_;
   // camera_name -> image_border_size
   std::map<std::string, int> image_border_sizes_;

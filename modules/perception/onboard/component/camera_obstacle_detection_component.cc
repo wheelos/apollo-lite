@@ -500,7 +500,7 @@ int CameraObstacleDetectionComponent::InitSensorInfo() {
     std::string tf_camera_frame_id =
         sensor_manager->GetFrameId(camera_names_[i]);
     tf_camera_frame_id_map_[camera_names_[i]] = tf_camera_frame_id;
-    std::shared_ptr<TransformWrapper> trans_wrapper(new TransformWrapper);
+    std::shared_ptr<StateEstimator> trans_wrapper(new StateEstimator);
     trans_wrapper->Init(tf_camera_frame_id);
     camera2world_trans_wrapper_map_[camera_names_[i]] = trans_wrapper;
   }

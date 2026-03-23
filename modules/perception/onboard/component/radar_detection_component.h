@@ -27,7 +27,7 @@
 #include "modules/perception/onboard/inner_component_messages/inner_component_messages.h"
 #include "modules/perception/onboard/msg_buffer/msg_buffer.h"
 #include "modules/perception/onboard/proto/radar_component_config.pb.h"
-#include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
+#include "modules/perception/onboard/state_estimator/state_estimator.h"
 #include "modules/perception/radar/app/radar_obstacle_perception.h"
 
 namespace apollo {
@@ -78,8 +78,8 @@ class RadarDetectionComponent : public cyber::Component<ContiRadar> {
   std::string pipeline_name_;
   std::string odometry_channel_name_;
 
-  TransformWrapper radar2world_trans_;
-  TransformWrapper radar2novatel_trans_;
+  StateEstimator radar2world_trans_;
+  StateEstimator radar2novatel_trans_;
   map::HDMapInput* hdmap_input_;
   std::shared_ptr<radar::BasePreprocessor> radar_preprocessor_;
   std::shared_ptr<radar::BaseRadarObstaclePerception> radar_perception_;

@@ -45,10 +45,10 @@ bool CollisionGuardianComponent::Init() {
   min_consecutive_frames_to_trigger_ =
       comp_config.min_consecutive_frames_to_trigger();
 
-  // Initialize TransformWrapper
+  // Initialize StateEstimator
   // According to your provided class, we can just instantiate it.
   // The `GetTrans` method will handle the lookup.
-  transform_wrapper_ = std::make_unique<TransformWrapper>();
+  state_estimator_ = std::make_unique<StateEstimator>();
 
   AINFO << "CollisionGuardianComponent Init SUCCESS";
   return true;
@@ -58,11 +58,11 @@ bool CollisionGuardianComponent::Proc(
     const std::shared_ptr<PointCloud>& message) {
   const double start_time = Clock::NowInSeconds();
 
-  // --- Get sensor to vehicle body transform using TransformWrapper ---
+  // --- Get sensor to vehicle body transform using StateEstimator ---
   Eigen::Affine3d sensor2vehicle_transform;
   // Using the generic GetTrans method as it's the most flexible.
   // This transform will take points from the sensor frame to the vehicle frame.
-  if (!transform_wrapper_->GetTrans(
+  if (!state_estimator_->GetTrans(
           message->header().timestamp_sec(), &sensor2vehicle_transform,
           vehicle_frame_id_, message->header().frame_id())) {
     AERROR << "Failed to get transform from " << message->header().frame_id()
