@@ -115,6 +115,7 @@ cc_library(
         ":pj_transformer",
         ":pose_collection",
         "//cyber",
+        "//modules/common/util:time_conversion",
         "//modules/common_msgs/sensor_msgs:gnss_best_pose_cc_proto",
     ],
 )

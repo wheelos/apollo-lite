@@ -36,11 +36,11 @@ apt_get_update_and_install \
     libzstd-dev
 
 # Ref: https://www.boost.org/
-VERSION="1_74_0"
+VERSION="1_87_0"
 
 PKG_NAME="boost_${VERSION}.tar.bz2"
-DOWNLOAD_LINK="https://boostorg.jfrog.io/artifactory/main/release/${VERSION//_/.}/source/boost_${VERSION}.tar.bz2"
-CHECKSUM="83bfc1507731a0906e387fc28b7ef5417d591429e51e788417fe9ff025e116b1"
+DOWNLOAD_LINK="https://archives.boost.io/release/${VERSION//_/.}/source/boost_${VERSION}.tar.bz2"
+CHECKSUM='af57be25cb4c4f4b413ed692fe378affb4352ea50fbe294a11ef548f4d527d89'
 
 download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
 
@@ -59,7 +59,7 @@ pushd "boost_${VERSION}"
         --prefix="${SYSROOT_DIR}" \
         --without-icu
 
-    ./b2 -d+2 -q -j$(nproc) \
+    ./b2 -d+2 -q -j$(($(nproc) / 2)) \
         --without-graph_parallel \
         --without-mpi \
         variant=release \
@@ -74,7 +74,7 @@ ldconfig
 rm -rf "boost_${VERSION}" "${PKG_NAME}"
 
 if [[ -n "${CLEAN_DEPS}" ]]; then
-    apt_get_remove  \
+    apt_get_remove \
         liblzma-dev \
         libbz2-dev \
         libzstd-dev

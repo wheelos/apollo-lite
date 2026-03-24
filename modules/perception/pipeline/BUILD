@@ -4,6 +4,8 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+PERCEPTION_COPTS = ['-DMODULE_NAME=\\"perception\\"']
+
 install(
     name = "install",
     data_dest = "perception/addition_data/pipeline",
@@ -24,6 +26,7 @@ cc_library(
   hdrs = [
     "data_frame.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     "//modules/perception/camera/common:camera_frame",
     "//modules/perception/fusion/base:fusion_frame",
@@ -39,6 +42,7 @@ cc_library(
   hdrs = [
     "plugin_factory.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     ":plugin",
     "//modules/common/util:util_tool",
@@ -64,6 +68,7 @@ cc_library(
   hdrs = [
     "plugin.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
   ],
@@ -77,6 +82,7 @@ cc_library(
   hdrs = [
     "stage.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     ":data_frame",
     ":plugin_factory",
@@ -93,6 +99,7 @@ cc_library(
   hdrs = [
     "pipeline.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     ":stage",
     "//cyber",

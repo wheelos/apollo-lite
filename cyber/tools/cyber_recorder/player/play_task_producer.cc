@@ -140,12 +140,10 @@ bool PlayTaskProducer::ReadRecordInfo() {
       latest_end_time_ = header.end_time();
     }
 
-    auto begin_time_s = static_cast<double>(header.begin_time()) / 1e9;
-    auto end_time_s = static_cast<double>(header.end_time()) / 1e9;
-    auto begin_time_str =
-        common::UnixSecondsToString(static_cast<int>(begin_time_s));
-    auto end_time_str =
-        common::UnixSecondsToString(static_cast<int>(end_time_s));
+    uint64_t begin_s = header.begin_time() / 1000000000ULL;
+    uint64_t end_s = header.end_time() / 1000000000ULL;
+    auto begin_time_str = common::UnixSecondsToString(begin_s);
+    auto end_time_str = common::UnixSecondsToString(end_s);
 
     std::cout << "file: " << file << ", chunk_number: " << header.chunk_number()
               << ", begin_time: " << header.begin_time() << " ("

@@ -51,11 +51,12 @@ bool Info::Display(const std::string& file) {
             << hdr.minor_version() << std::endl;
 
   // time and duration
-  auto begin_time_s = static_cast<double>(hdr.begin_time()) / 1e9;
-  auto end_time_s = static_cast<double>(hdr.end_time()) / 1e9;
-  auto duration_s = end_time_s - begin_time_s;
-  auto begin_time_str = UnixSecondsToString(static_cast<int>(begin_time_s));
-  auto end_time_str = UnixSecondsToString(static_cast<int>(end_time_s));
+  uint64_t begin_s = hdr.begin_time() / 1000000000ULL;
+  uint64_t end_s = hdr.end_time() / 1000000000ULL;
+  auto duration_s =
+      static_cast<double>(hdr.end_time() - hdr.begin_time()) / 1e9;
+  auto begin_time_str = UnixSecondsToString(begin_s);
+  auto end_time_str = UnixSecondsToString(end_s);
   std::cout << std::setw(w) << "duration: " << duration_s << " Seconds"
             << std::endl;
   std::cout << std::setw(w) << "begin_time: " << begin_time_str << std::endl;

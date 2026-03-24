@@ -16,58 +16,81 @@
 # limitations under the License.
 ###############################################################################
 
+set -e
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Todo(daohu527): The gflags parameter server_ports is passed in through
-# the command line, and then transparently passed to the dreamview startup
-# parameter. Since cyber_launch does not take parameters,
-# it is necessary to discuss whether to add parameter functions in cyber_launch.
-# Read server_ports from modules/common/data/global_flagfile.txt
-DREAMVIEW_URL="http://localhost:8888"
-
-GLOBAL_FLAGFILE="${DIR}/../modules/common/data/global_flagfile.txt"
-if [[ -f "$GLOBAL_FLAGFILE" ]]; then
-  SERVER_PORT=$(grep -E '^--server_ports=' "$GLOBAL_FLAGFILE" | head -n1 | cut -d'=' -f2 | cut -d',' -f1)
-  if [[ -n "$SERVER_PORT" ]]; then
-    DREAMVIEW_URL="http://localhost:${SERVER_PORT}"
-  fi
-fi
-
-echo "DREAMVIEW_URL is set to ${DREAMVIEW_URL}"
-
-cd "${DIR}/.."
-
-# Make sure supervisord has correct coredump file limit.
-ulimit -c unlimited
-
+# 1. Source the base environment file
+# This must be done first to load essential variables like SERVER_PORT
 source "${DIR}/apollo_base.sh"
 
-function start() {
-  for mod in ${APOLLO_BOOTSTRAP_EXTRA_MODULES}; do
-    echo "Starting ${mod}"
-    nohup cyber_launch start ${mod} &
-  done
-  ./scripts/monitor.sh start
-  ./scripts/dreamview.sh start
-  if [ $? -eq 0 ]; then
-    sleep 2 # wait for some time before starting to check
-    http_status="$(curl -o /dev/null -x '' -I -L -s -w '%{http_code}' ${DREAMVIEW_URL})"
-    if [ $http_status -eq 200 ]; then
-      echo "Dreamview is running at" $DREAMVIEW_URL
-    else
-      echo "Failed to start Dreamview. Please check /apollo/nohup.out or /apollo/data/core for more information"
-    fi
-  fi
+# 2. Dynamic Variable Setup
+# SERVER_PORT is now available from apollo_base.sh (exported)
+DREAMVIEW_URL="http://localhost:${SERVER_PORT}"
+info "DREAMVIEW_URL is set to ${DREAMVIEW_URL}"
+
+# 3. Change Directory (Crucial for relative path commands like ./scripts/monitor.sh)
+cd "${DIR}/.."
+
+# Function to print the last N lines of the unified application log file.
+nohup_log() {
+  info "--- Check /apollo/nohup.out for more details.  ---"
+  tail -n 10 /apollo/nohup.out
 }
 
 function stop() {
   ./scripts/dreamview.sh stop
   ./scripts/monitor.sh stop
-  for mod in ${APOLLO_BOOTSTRAP_EXTRA_MODULES}; do
-    echo "Stopping ${mod}"
-    nohup cyber_launch stop ${mod}
-  done
 }
+
+function start() {
+  # Enforce clearing the log file to ensure log messages are from the current run
+  > /apollo/nohup.out
+
+  # 1. Start Monitor
+  ./scripts/monitor.sh start || {
+    error "ERROR: Monitor failed to start (Exit Code: $?). Cleaning up..."
+    nohup_log
+    stop
+    return 1
+  }
+
+  # 2. Start Dreamview
+  ./scripts/dreamview.sh start || {
+    error "ERROR: Dreamview failed to start (Exit Code: $?). Cleaning up..."
+    nohup_log
+    stop
+    return 1
+  }
+
+  # 3. Execute HTTP Health Check (Service availability check)
+  sleep 2 # wait for service initialization
+
+  local http_status
+  # Using -w '%{http_code}' to capture status code
+  http_status="$(curl -o /dev/null -x '' -I -L -s -w '%{http_code}' ${DREAMVIEW_URL})"
+
+  # Robustness Check: Ensure status_code is a safe integer
+  local status_code="${http_status}"
+  if ! [[ "$status_code" =~ ^[0-9]+$ ]]; then
+      status_code=0
+  fi
+
+  if [ "$status_code" -eq 200 ]; then
+    info "SUCCESS: Dreamview is fully running at ${DREAMVIEW_URL}"
+  else
+    # Health check failed (HTTP Status != 200 or connection failure)
+    error "ERROR: Dreamview service failed health check (HTTP Status: ${status_code}). Cleaning up..."
+
+    # Print application runtime log for diagnosis
+    nohup_log
+
+    stop
+    return 1
+  fi
+}
+
+# --- Main Execution ---
 
 case $1 in
   start)

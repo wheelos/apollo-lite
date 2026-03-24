@@ -39,6 +39,7 @@ class UdpStream : public Stream {
   virtual size_t write(const uint8_t* data, size_t length) override;
 
   int get_last_error_code() const { return last_errno_; }
+
  private:
   // Default constructor deleted to prevent instantiation without parameters.
   UdpStream() = delete;
@@ -56,6 +57,7 @@ class UdpStream : public Stream {
 
   int sockfd_ = -1;
   uint32_t timeout_usec_ = 0;
+  bool is_receiver_;
 };
 
 }  // namespace hal
