@@ -151,7 +151,7 @@ bool LateralOSQPOptimizer::optimize(
   settings->eps_abs = 1.0e-05;
   settings->eps_rel = 1.0e-05;
   settings->max_iter = 5000;
-  settings->polish = true;
+  settings->polishing = true;
   settings->verbose = FLAGS_enable_osqp_debug;
 
   // Populate data

@@ -42,7 +42,7 @@ OsqpSpline1dSolver::OsqpSpline1dSolver(const std::vector<double>& x_knots,
   settings_->eps_abs = 1.0e-03;
   settings_->eps_rel = 1.0e-03;
   settings_->max_iter = 5000;
-  // settings_->polish = true;
+  // settings_->polishing = true;
   settings_->verbose = FLAGS_enable_osqp_debug;
   settings_->warm_start = true;
 

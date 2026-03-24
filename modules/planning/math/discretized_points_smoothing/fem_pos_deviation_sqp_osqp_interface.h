@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 
-#include "osqp/osqp.h"
+#include "osqp.h"
 
 namespace apollo {
 namespace planning {

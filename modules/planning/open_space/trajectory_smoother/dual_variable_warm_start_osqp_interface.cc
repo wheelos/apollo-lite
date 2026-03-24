@@ -178,7 +178,7 @@ bool DualVariableWarmStartOSQPInterface::optimize() {
   settings->eps_abs = osqp_config_.eps_abs();
   settings->eps_rel = osqp_config_.eps_rel();
   settings->max_iter = osqp_config_.max_iter();
-  settings->polish = osqp_config_.polish();
+  settings->polishing = osqp_config_.polish();
   settings->verbose = osqp_config_.osqp_debug_log();
 
   // Populate data

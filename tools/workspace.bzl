@@ -23,7 +23,6 @@ def initialize_third_party():
     npp()
     opengl()
     openh264()
-    osqp()
 
 # Define all external repositories required by
 def apollo_repositories():

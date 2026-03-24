@@ -150,7 +150,7 @@ OSQPSettings* PiecewiseJerkSpeedProblem::SolverDefaultSettings() {
   settings->eps_rel = 1e-4;
   settings->eps_prim_inf = 1e-5;
   settings->eps_dual_inf = 1e-5;
-  settings->polish = true;
+  settings->polishing = true;
   settings->verbose = FLAGS_enable_osqp_debug;
   settings->scaled_termination = true;
 

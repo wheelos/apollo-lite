@@ -262,7 +262,7 @@ OSQPSettings* PiecewiseJerkProblem::SolverDefaultSettings() {
   OSQPSettings* settings =
       reinterpret_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
   osqp_set_default_settings(settings);
-  settings->polish = true;
+  settings->polishing = true;
   settings->verbose = FLAGS_enable_osqp_debug;
   settings->scaled_termination = true;
   return settings;

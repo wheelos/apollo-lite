@@ -108,7 +108,7 @@ bool FemPosDeviationSqpOsqpInterface::Solve() {
   settings->verbose = verbose_;
   settings->scaled_termination = scaled_termination_;
   settings->warm_start = warm_start_;
-  settings->polish = true;
+  settings->polishing = true;
   settings->eps_abs = 1e-5;
   settings->eps_rel = 1e-5;
   settings->eps_prim_inf = 1e-5;

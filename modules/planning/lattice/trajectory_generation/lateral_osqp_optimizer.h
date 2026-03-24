@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 
-#include "osqp/osqp.h"
+#include "osqp.h"
 
 #include "modules/planning/common/trajectory1d/piecewise_jerk_trajectory1d.h"
 #include "modules/planning/lattice/trajectory_generation/lateral_qp_optimizer.h"
