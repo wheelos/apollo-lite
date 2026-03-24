@@ -3,10 +3,13 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+PERCEPTION_COPTS = ['-DMODULE_NAME=\\"perception\\"']
+
 cc_library(
     name = "map_manager",
     srcs = ["map_manager.cc"],
     hdrs = ["map_manager.h"],
+    copts = PERCEPTION_COPTS,
     deps = [
         "//cyber",
         "//modules/common/math",

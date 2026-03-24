@@ -561,6 +561,33 @@ inline ImuParameter GetImuParameter(ImuType type) {
       // (1.0/65.5)/125.0 deg/LSB (1.0/8192.0)*9.80665/125.0 m/s/LSB
       return {0.0001221374045, 9.57680664e-06, 125};
 
+    // IMUs listed in UG016 Table 4-15
+    // (values computed from deg/LSB per-sample -> rad/LSB/sample)
+    // ADIS_16505  (X1-3 in UG016)
+    case ImuType::ADIS_16505:
+      return {5.8516723170686335e-09, 4.6566128730773899e-08, 100.0};
+
+    // EPSON G354 (X1-5)
+    case ImuType::EPSON_G354:
+      return {4.2610577441267814e-09, 2.9927520751953103e-08, 125.0};
+
+    // EPSON G365 (X1-6)
+    case ImuType::EPSON_G365:
+      return {4.0350885256335615e-09, 5.9855041503906298e-08, 125.0};
+
+    // EPSON G370 / X1-7H
+    case ImuType::EPSON_G370:
+      return {4.0350925607261113e-09, 7.4818801879882799e-08, 125.0};
+
+    // X26 / X36D
+    case ImuType::X26:
+    case ImuType::X36D:
+      return {3.3289513625990478e-09, 3.0507156729819701e-08, 100.0};
+
+    // M21
+    case ImuType::M21:
+      return {2.6631610900792384e-09, 7.4818801879882799e-08, 100.0};
+
     default:
       return {0.0, 0.0, 0.0};
   }

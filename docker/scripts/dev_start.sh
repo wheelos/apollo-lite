@@ -59,6 +59,7 @@ TARGET_ARCH="$(uname -m)"
 TIMEZONE_CN=(
     "+0800"
     "+0800 CST"
+    "Asia/Shanghai"
     "Time zone: Asia/Shanghai (CST, +0800)"
 )
 
@@ -291,18 +292,31 @@ function check_target_arch() {
     info "Target architecture check passed (${TARGET_ARCH})."
 }
 
+detect_timezone() {
+    if command -v timedatectl 2>&1 >/dev/null; then
+        # Use timedatectl if available (systemd based systems)
+        timedatectl | grep "Time zone" | awk '{print $3}'
+    elif [[ -f /etc/timezone ]]; then
+        # Fallback to /etc/timezone file if it exists
+        cat /etc/timezone
+    elif [[ -L /etc/localtime ]]; then
+        # Fallback to /etc/localtime symlink if it exists
+        readlink -f /etc/localtime | sed 's|.*/zoneinfo/||'
+    else
+        # Fallback to date command for other systems
+        local tzoffset="$(date +"%z")"
+        local tzoffset_sign="${tzoffset:0:1}"
+        local tzoffset_sign_r=$(echo "${tzoffset_sign}" | sed 's/+/@/g; s/-/+/g; s/@/-/g')
+        local tzoffset_hours=$((10#${tzoffset:1:2}))
+        timezone="Etc/GMT${tzoffset_sign_r}${tzoffset_hours}"
+        echo "${timezone}"
+    fi
+}
+
 # Auto-detect China timezone for geo location if GEOLOC is not explicitly set
 function determine_timezone_cn() {
     # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-    local time_zone=
-    if command -v timedatectl 2>&1 >/dev/null; then
-        # Use timedatectl if available (systemd based systems)
-        # Use xargs to trim whitespace, echo "" if grep fails
-        time_zone=$(timedatectl | grep "Time zone" | xargs || echo "")
-    else
-        # Fallback to date command for other systems
-        time_zone=$(date +%z)
-    fi
+    local time_zone="$(detect_timezone)"
 
     if [[ -z "${GEOLOC}" ]]; then # Only auto-detect if GEOLOC wasn't set by argument
         for tz in "${TIMEZONE_CN[@]}"; do
@@ -375,7 +389,6 @@ function prepare_docker_volumes() {
     # Standard mounts required for typical X/GUI/system integration
     volumes+=" -v /media:/media"                  # Removable media
     volumes+=" -v /tmp/.X11-unix:/tmp/.X11-unix:rw" # X server access
-    volumes+=" -v /etc/localtime:/etc/localtime:ro" # Sync timezone
     volumes+=" -v /usr/src:/usr/src"              # Mount kernel sources (often needed by drivers/modules)
     volumes+=" -v /lib/modules:/lib/modules"      # Mount kernel modules (often needed by drivers)
     volumes+=" -v /dev/null:/dev/raw1394"         # Workaround for some older libraries
@@ -508,7 +521,6 @@ function main() {
     local run_opts=(
       -itd     # Interactive, TTY, Detached (run in background)
       --name "${DEV_CONTAINER}"
-      --net host # Use host network
       --shm-size "${SHM_SIZE}"
       -w /apollo             # Set working directory inside container
       --hostname "${DEV_INSIDE}" # Set hostname inside container for easy identification
@@ -521,6 +533,11 @@ function main() {
       run_opts+=(
         --privileged # Grant extended privileges (often needed for device access)
         --pid=host # Use host process namespace (allows host process inspection/signals)
+        --net host # Use host network
+      )
+    else
+      run_opts+=(
+        -p ${SERVER_PORT}:${SERVER_PORT}
       )
     fi
 
@@ -550,6 +567,12 @@ function main() {
         -e DOCKER_IMG="${DEV_IMAGE}"                 # Original image name (tag only)
         -e USE_GPU_HOST="${USE_GPU_HOST}"            # Pass GPU availability status
         -e CROSS_PLATFORM="${CROSS_PLATFORM_FLAG:-}" # Pass cross-platform build flag if applicable
+        # make sure the container has same timezone as host
+        # Note: We do NOT mount /etc/localtime to avoid overwriting container's timezone
+        # if host /etc/localtime is a symlink, it will overwrite the target file
+        # in the container, and cause confusion. So we use -e TZ instead.
+        # setting TZ can also speed up timelocal() calls in some libraries.
+        -e TZ="$(detect_timezone)"
     )
 
     # Define host entries to add to the container's /etc/hosts

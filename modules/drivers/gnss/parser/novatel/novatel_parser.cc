@@ -62,81 +62,103 @@ NovatelParser::NovatelParser(const config::Config& config) : Parser() {
 }
 
 bool NovatelParser::ProcessHeader() {
-  // Get a view of all readable data in the buffer.
-  auto buffer_view = buffer_.Peek();
+  // Define the 2-byte sync pattern we are looking for.
+  // Using a static constexpr char array to create the string_view is efficient.
+  static constexpr char SYNC_PATTERN[] = {static_cast<char>(novatel::SYNC_0),
+                                          static_cast<char>(novatel::SYNC_1)};
+  static constexpr std::string_view sync_pattern_view(SYNC_PATTERN, 2);
 
-  // If the view is smaller than the smallest possible header, we can't do
-  // anything.
-  if (buffer_view.length() < sizeof(novatel::ShortHeader)) {
-    return false;
-  }
+  while (true) {
+    // Get a zero-copy view of all readable data in the buffer.
+    auto buffer_view = buffer_.Peek();
 
-  // Start searching for the sync sequence from our last known position.
-  // This avoids re-scanning garbage data on every call.
-  for (size_t i = search_start_offset_; i <= buffer_view.length() - 3; ++i) {
-    // Check for the 3-byte Novatel sync sequence
-    if (static_cast<uint8_t>(buffer_view[i]) == novatel::SYNC_0 &&
-        static_cast<uint8_t>(buffer_view[i + 1]) == novatel::SYNC_1) {
-      size_t header_len = 0;
-      if (static_cast<uint8_t>(buffer_view[i + 2]) ==
-          novatel::SYNC_2_LONG_HEADER) {
-        header_len = sizeof(novatel::LongHeader);
-      } else if (static_cast<uint8_t>(buffer_view[i + 2]) ==
-                 novatel::SYNC_2_SHORT_HEADER) {
-        header_len = sizeof(novatel::ShortHeader);
-      }
-
-      if (header_len > 0) {
-        // We found a potential header start at offset `i`.
-        // First, consume all garbage data before this header.
-        buffer_.Drain(i);
-        search_start_offset_ =
-            0;  // Reset search offset as we've consumed the garbage.
-
-        // Now, check if we have enough data for the full header.
-        // We need a new view because we just drained some data.
-        auto current_view = buffer_.Peek();
-        if (current_view.length() < header_len) {
-          // Not enough data for the full header. Wait for more.
-          AINFO_EVERY(100) << "Found Novatel sync, but need " << header_len
-                           << " bytes for header, have "
-                           << current_view.length();
-          return false;
-        }
-
-        // We have enough data for the header. Let's get the message length.
-        uint16_t message_length;
-        if (header_len == sizeof(novatel::LongHeader)) {
-          message_length =
-              reinterpret_cast<const novatel::LongHeader*>(current_view.data())
-                  ->message_length;
-        } else {
-          message_length =
-              reinterpret_cast<const novatel::ShortHeader*>(current_view.data())
-                  ->message_length;
-        }
-
-        // Store the total expected length for the payload processing stage.
-        header_length_ = header_len;
-        total_length_ = header_len + message_length + novatel::CRC_LENGTH;
-
-        AINFO_EVERY(100) << "Novatel header located. Header len: "
-                         << header_length_
-                         << ", Payload len: " << message_length
-                         << ", Total message len: " << total_length_;
-
-        return true;  // Header is located and validated, ready for payload
-                      // processing.
-      }
+    // If the buffer is smaller than the minimal possible full header,
+    // there's no point in searching yet.
+    if (buffer_view.length() < sizeof(novatel::ShortHeader)) {
+      AINFO_EVERY(100) << "Buffer too small to contain a full header. Have "
+                       << buffer_view.length() << ", need at least "
+                       << sizeof(novatel::ShortHeader);
+      return false;
     }
+
+    // Use string_view::find to locate the sync pattern.
+    // This is much faster than a manual byte-by-byte loop.
+    auto pos = buffer_view.find(sync_pattern_view);
+
+    if (pos == std::string_view::npos) {
+      // The sync pattern was not found at all in the current buffer.
+      // We can safely discard most of the buffer, but keep the last byte
+      // in case it's the start of a new sync sequence (SYNC_0).
+      AINFO_EVERY(100) << "No Novatel sync pattern found in "
+                       << buffer_view.length() << " bytes of data.";
+      buffer_.Drain(buffer_view.length() > 0 ? buffer_view.length() - 1 : 0);
+      return false;
+    }
+
+    // We found the first two sync bytes at offset `pos`.
+    // First, discard all the garbage data before this potential header.
+    if (pos > 0) {
+      buffer_.Drain(pos);
+      // Get a new, clean view of the buffer which now starts with SYNC_0.
+      buffer_view = buffer_.Peek();
+    }
+
+    // Check if we have enough data for the 3rd sync byte.
+    if (buffer_view.length() < 3) {
+      AINFO_EVERY(100) << "Found partial Novatel sync, need 3rd byte.";
+      return false;  // Wait for more data.
+    }
+
+    // Now, check the 3rd sync byte to determine header type.
+    size_t header_len = 0;
+    if (static_cast<uint8_t>(buffer_view[2]) == novatel::SYNC_2_LONG_HEADER) {
+      header_len = sizeof(novatel::LongHeader);
+    } else if (static_cast<uint8_t>(buffer_view[2]) ==
+               novatel::SYNC_2_SHORT_HEADER) {
+      header_len = sizeof(novatel::ShortHeader);
+    }
+
+    if (header_len == 0) {
+      // False positive. The first 2 bytes matched, but the 3rd did not.
+      // This is not a valid header. We discard the first byte (SYNC_0)
+      // and loop again to search for the next valid sync sequence.
+      AERROR << "Invalid 3rd sync byte after a SYNC_0, SYNC_1 match. "
+                "Discarding one byte and retrying.";
+      buffer_.Drain(1);
+      continue;  // Restart the search from the next byte.
+    }
+
+    // We have a valid 3-byte sync sequence.
+    // Now, check if we have enough data for the full header.
+    if (buffer_view.length() < header_len) {
+      AINFO_EVERY(100) << "Found Novatel sync, but need " << header_len
+                       << " bytes for header, have " << buffer_view.length();
+      return false;  // Not enough data for the full header. Wait for more.
+    }
+
+    // We have enough data for the header. Let's get the message payload length.
+    uint16_t message_length;
+    if (header_len == sizeof(novatel::LongHeader)) {
+      message_length =
+          reinterpret_cast<const novatel::LongHeader*>(buffer_view.data())
+              ->message_length;
+    } else {  // ShortHeader
+      message_length =
+          reinterpret_cast<const novatel::ShortHeader*>(buffer_view.data())
+              ->message_length;
+    }
+
+    // Store the lengths for the payload processing stage.
+    header_length_ = header_len;
+    total_length_ = header_len + message_length + novatel::CRC_LENGTH;
+
+    AINFO_EVERY(100) << "Novatel header located. Header len: " << header_length_
+                     << ", Payload len: " << message_length
+                     << ", Total message len: " << total_length_;
+
+    // Success! The header is found and validated. Ready for payload processing.
+    return true;
   }
-
-  // No sync sequence found yet. We can safely discard the scanned portion
-  // minus the last 2 bytes, as they could be part of a future sync sequence.
-  search_start_offset_ =
-      (buffer_view.length() > 2) ? buffer_view.length() - 2 : 0;
-
-  return false;
 }
 
 std::optional<std::vector<Parser::ParsedMessage>>
@@ -163,8 +185,11 @@ NovatelParser::ProcessPayload() {
     // The header was bad. We need to discard it and start searching again
     // right after it to avoid getting stuck on the same bad header.
     buffer_.Drain(header_length_);
-    return std::vector<Parser::ParsedMessage>();  // Return empty to reset
-                                                  // state.
+
+    // Reset state for the next message.
+    total_length_ = 0;
+    header_length_ = 0;
+    return std::vector<Parser::ParsedMessage>();
   }
 
   // CRC is OK. The entire message is valid.
@@ -233,7 +258,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
 
   switch (message_id) {
     case novatel::BESTGNSSPOS:
-      if (payload_size != sizeof(novatel::BestPos)) { /* log error */
+      if (payload_size != sizeof(novatel::BestPos)) {
         break;
       }
       if (HandleGnssBestpos(
@@ -247,7 +272,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
 
     case novatel::BESTPOS:
     case novatel::PSRPOS:
-      if (payload_size != sizeof(novatel::BestPos)) { /* log error */
+      if (payload_size != sizeof(novatel::BestPos)) {
         break;
       }
       if (HandleBestPos(reinterpret_cast<const novatel::BestPos*>(payload_data),
@@ -265,7 +290,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
     case novatel::BESTGNSSVEL:
     case novatel::BESTVEL:
     case novatel::PSRVEL:
-      if (payload_size != sizeof(novatel::BestVel)) { /* log error */
+      if (payload_size != sizeof(novatel::BestVel)) {
         break;
       }
       // HandleBestVel updates internal gnss_. It might rely on pos data already
@@ -279,12 +304,13 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       }
       break;
 
-    case novatel::CORRIMUDATA:  // ... and other IMU/INS correction messages
+    case novatel::CORRIMUDATA:
     case novatel::CORRIMUDATAS:
     case novatel::IMURATECORRIMUS:
-      if (payload_size != sizeof(novatel::CorrImuData)) { /* log error */
+      if (payload_size != sizeof(novatel::CorrImuData)) {
         break;
       }
+
       // HandleCorrImuData updates internal ins_.
       has_corr_imu_message_ = true;
       if (HandleCorrImuData(
@@ -295,9 +321,9 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       }
       break;
 
-    case novatel::INSCOV:  // ... and INS covariance messages
+    case novatel::INSCOV:
     case novatel::INSCOVS:
-      if (payload_size != sizeof(novatel::InsCov)) { /* log error */
+      if (payload_size != sizeof(novatel::InsCov)) {
         break;
       }
       // HandleInsCov updates internal ins_. It returns false in original code,
@@ -308,9 +334,9 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       // logic.
       break;
 
-    case novatel::INSPVA:  // and other INS position/velocity/attitude messages
+    case novatel::INSPVA:
     case novatel::INSPVAS:
-      if (payload_size != sizeof(novatel::InsPva)) { /* log error */
+      if (payload_size != sizeof(novatel::InsPva)) {
         break;
       }
       // HandleInsPva updates internal ins_.
@@ -322,9 +348,9 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       }
       break;
 
-    case novatel::RAWIMUX:  // ... and other Raw IMU messages
+    case novatel::RAWIMUX:
     case novatel::RAWIMUSX:
-      if (payload_size != sizeof(novatel::RawImuX)) { /* log error */
+      if (payload_size != sizeof(novatel::RawImuX)) {
         break;
       }
       // HandleRawImuX updates internal imu_.
@@ -338,7 +364,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
 
     case novatel::RAWIMU:
     case novatel::RAWIMUS:
-      if (payload_size != sizeof(novatel::RawImu)) { /* log error */
+      if (payload_size != sizeof(novatel::RawImu)) {
         break;
       }
       // HandleRawImu updates internal imu_.
@@ -351,7 +377,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       break;
 
     case novatel::INSPVAX:  // INS PVA with extended status
-      if (payload_size != sizeof(novatel::InsPvaX)) { /* log error */
+      if (payload_size != sizeof(novatel::InsPvaX)) {
         break;
       }
       // HandleInsPvax updates internal ins_stat_.
@@ -363,8 +389,8 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       }
       break;
 
-    case novatel::BDSEPHEMERIS:  // ... and other Ephemeris messages
-      if (payload_size != sizeof(novatel::BDS_Ephemeris)) { /* log error */
+    case novatel::BDSEPHEMERIS:
+      if (payload_size != sizeof(novatel::BDS_Ephemeris)) {
         break;
       }
       // HandleBdsEph updates internal gnss_ephemeris_.
@@ -377,7 +403,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       break;
 
     case novatel::GPSEPHEMERIS:
-      if (payload_size != sizeof(novatel::GPS_Ephemeris)) { /* log error */
+      if (payload_size != sizeof(novatel::GPS_Ephemeris)) {
         break;
       }
       // HandleGpsEph updates internal gnss_ephemeris_.
@@ -390,7 +416,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       break;
 
     case novatel::GLOEPHEMERIS:
-      if (payload_size != sizeof(novatel::GLO_Ephemeris)) { /* log error */
+      if (payload_size != sizeof(novatel::GLO_Ephemeris)) {
         break;
       }
       // HandleGloEph updates internal gnss_ephemeris_.
@@ -402,7 +428,7 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       }
       break;
 
-    case novatel::RANGE:  // Raw Observation Data
+    case novatel::RANGE:
       // DecodeGnssObservation handles the raw data block using input_oem4
       if (DecodeGnssObservation(payload_data, payload_data + payload_size)) {
         auto msg_ptr =
@@ -412,8 +438,8 @@ std::vector<Parser::ParsedMessage> NovatelParser::PrepareMessage(
       }
       break;
 
-    case novatel::HEADING:                            // Heading message
-      if (payload_size != sizeof(novatel::Heading)) { /* log error */
+    case novatel::HEADING:
+      if (payload_size != sizeof(novatel::Heading)) {
         break;
       }
       // HandleHeading updates internal heading_.

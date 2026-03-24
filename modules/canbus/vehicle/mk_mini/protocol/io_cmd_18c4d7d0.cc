@@ -36,9 +36,6 @@ uint32_t Iocmd18c4d7d0::GetPeriod() const {
 
 void Iocmd18c4d7d0::UpdateData(uint8_t* data) {
   set_p_io_cmd_discharge(data, io_cmd_discharge_);
-  // set alive count before bcc, because bcc is calculated based on all
-  set_p_io_cmd_alive_cnt(data, io_cmd_alive_cnt_);
-  set_p_io_cmd_check_bcc(data, io_cmd_check_bcc_);
   set_p_io_cmd_speaker(data, io_cmd_speaker_);
   set_p_io_cmd_fog_lamp(data, io_cmd_fog_lamp_);
   set_p_io_cmd_clearance_lamp(data, io_cmd_clearance_lamp_);
@@ -47,6 +44,9 @@ void Iocmd18c4d7d0::UpdateData(uint8_t* data) {
   set_p_io_cmd_upper_beam_headlamp(data, io_cmd_upper_beam_headlamp_);
   set_p_io_cmd_lower_beam_headlamp(data, io_cmd_lower_beam_headlamp_);
   set_p_io_cmd_enable(data, io_cmd_enable_);
+  // set alive count before bcc, because bcc is calculated based on all
+  set_p_io_cmd_alive_cnt(data, io_cmd_alive_cnt_);
+  set_p_io_cmd_check_bcc(data, io_cmd_check_bcc_);
 }
 
 void Iocmd18c4d7d0::Reset() {
@@ -187,10 +187,10 @@ Iocmd18c4d7d0* Iocmd18c4d7d0::set_io_cmd_turn_lamp(int io_cmd_turn_lamp) {
 
 // config detail: {'bit': 10, 'is_signed_var': False, 'len': 2, 'name':
 // 'io_cmd_turn_lamp', 'offset': 0.0, 'order': 'intel', 'physical_range':
-// '[0|0]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
+// '[0|3]', 'physical_unit': '', 'precision': 1.0, 'type': 'int'}
 void Iocmd18c4d7d0::set_p_io_cmd_turn_lamp(uint8_t* data,
                                            int io_cmd_turn_lamp) {
-  io_cmd_turn_lamp = ProtocolData::BoundedValue(0, 0, io_cmd_turn_lamp);
+  io_cmd_turn_lamp = ProtocolData::BoundedValue(0, 3, io_cmd_turn_lamp);
   int x = io_cmd_turn_lamp;
 
   Byte to_set(data + 1);
