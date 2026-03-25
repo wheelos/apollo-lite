@@ -24,6 +24,13 @@
 namespace apollo {
 namespace transform {
 
+namespace {
+// Period at which static transforms are re-broadcast (milliseconds).
+// Periodic re-publishing ensures late-joining subscribers always receive the
+// transforms regardless of module startup order.
+constexpr uint32_t kStaticBroadcastPeriodMs = 1000;
+}  // namespace
+
 bool StaticTransformComponent::Init() {
   if (!GetProtoConfig(&conf_)) {
     AERROR << "Parse conf file failed, " << ConfigFilePath();
@@ -35,6 +42,13 @@ bool StaticTransformComponent::Init() {
       cyber::transport::QosProfileConf::QOS_PROFILE_TF_STATIC);
   writer_ = node_->CreateWriter<TransformStampeds>(attr);
   SendTransforms();
+
+  // Periodically republish static transforms so that late-joining subscribers
+  // always receive them, regardless of startup order.
+  timer_ = std::make_unique<cyber::Timer>(
+      kStaticBroadcastPeriodMs,
+      [this]() { writer_->Write(transform_stampeds_); }, false);
+  timer_->Start();
   return true;
 }
 

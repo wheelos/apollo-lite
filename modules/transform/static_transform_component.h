@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "cyber/component/component.h"
+#include "cyber/timer/timer.h"
 #include "modules/transform/proto/static_transform_conf.pb.h"
 #include "modules/common_msgs/transform_msgs/transform.pb.h"
 
@@ -43,6 +44,7 @@ class StaticTransformComponent final : public apollo::cyber::Component<> {
   apollo::static_transform::Conf conf_;
   std::shared_ptr<cyber::Writer<TransformStampeds>> writer_;
   TransformStampeds transform_stampeds_;
+  std::unique_ptr<cyber::Timer> timer_;
 };
 
 CYBER_REGISTER_COMPONENT(StaticTransformComponent)
