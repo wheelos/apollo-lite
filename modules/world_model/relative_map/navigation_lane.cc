@@ -184,6 +184,31 @@ bool NavigationLane::GeneratePath() {
         std::make_tuple(0, left_width, right_width, current_navi_path);
   };
 
+  // When a routing destination is set but no pre-recorded navigation lines are
+  // available, generate a path toward the destination using the bearing angle.
+  // Lane markers (if available) are used for lane-keeping (lateral offset).
+  auto generate_path_to_destination_func = [this, &lane_marker]() {
+    auto current_navi_path = std::make_shared<NavigationPath>();
+    auto *path = current_navi_path->mutable_path();
+    const auto &left_lane = lane_marker.left_lane_marker();
+    const auto &right_lane = lane_marker.right_lane_marker();
+    if (left_lane.view_range() > config_.min_view_range_to_use_lane_marker() ||
+        right_lane.view_range() > config_.min_view_range_to_use_lane_marker()) {
+      // Perception lane markers are available: use them to stay in lane.
+      ConvertLaneMarkerToPath(lane_marker, path);
+    } else {
+      // No lane markers: fall back to pure bearing toward the destination.
+      GenerateDestinationBearingPath(path);
+    }
+    current_navi_path->set_path_priority(0);
+    double left_width = perceived_left_width_ > 0.0 ? perceived_left_width_
+                                                    : default_left_width_;
+    double right_width = perceived_right_width_ > 0.0 ? perceived_right_width_
+                                                      : default_right_width_;
+    current_navi_path_tuple_ =
+        std::make_tuple(0, left_width, right_width, current_navi_path);
+  };
+
   ADEBUG << "Beginning of NavigationLane::GeneratePath().";
   ADEBUG << "navigation_line_num: " << navigation_line_num;
 
@@ -205,9 +230,14 @@ bool NavigationLane::GeneratePath() {
     }
 
     // If no navigation path is generated based on navigation lines, we generate
-    // one where the vehicle is located based on perceived lane markers.
+    // one where the vehicle is located based on perceived lane markers or
+    // toward the routing destination if one has been set.
     if (navigation_path_list_.empty()) {
-      generate_path_on_perception_func();
+      if (has_destination_) {
+        generate_path_to_destination_func();
+      } else {
+        generate_path_on_perception_func();
+      }
       return true;
     }
 
@@ -341,10 +371,71 @@ bool NavigationLane::GeneratePath() {
     return true;
   }
 
-  // Generate a navigation path where the vehicle is located based on perceived
-  // lane markers.
-  generate_path_on_perception_func();
+  // No navigation lines: fall back to destination-bearing path or perception.
+  if (has_destination_) {
+    generate_path_to_destination_func();
+  } else {
+    generate_path_on_perception_func();
+  }
   return true;
+}
+
+bool NavigationLane::IsDestinationReached(double threshold) const {
+  if (!has_destination_) {
+    return false;
+  }
+  const double dx =
+      destination_enu_x_ - original_pose_.position().x();
+  const double dy =
+      destination_enu_y_ - original_pose_.position().y();
+  return std::hypot(dx, dy) <= threshold;
+}
+
+void NavigationLane::GenerateDestinationBearingPath(common::Path *const path) {
+  CHECK_NOTNULL(path);
+  path->set_name("Path toward routing destination.");
+
+  const double dx = destination_enu_x_ - original_pose_.position().x();
+  const double dy = destination_enu_y_ - original_pose_.position().y();
+  const double dist_to_dest = std::hypot(dx, dy);
+
+  // If the vehicle is already at or past the destination, there is nothing to
+  // generate; the destination-reached check in RelativeMap will clear it.
+  if (dist_to_dest < 0.01) {
+    return;
+  }
+
+  // Convert the ENU direction vector to FLU by rotating by -heading.
+  // This is the same convention used in ConvertNavigationLineToPath.
+  auto flu_dir = Vec2d{dx, dy}.Rotate(-original_pose_.heading());
+
+  // Bearing angle in FLU and unit direction vector.
+  const double bearing_angle = std::atan2(flu_dir.y(), flu_dir.x());
+  const double flu_ux = flu_dir.x() / dist_to_dest;
+  const double flu_uy = flu_dir.y() / dist_to_dest;
+
+  const double path_range =
+      std::min(dist_to_dest, config_.max_len_for_navigation_lane());
+
+  // start_s = -2.0: begin the path 2 m behind the vehicle (matching the
+  // convention in ConvertLaneMarkerToPath) so that the planner always has a
+  // reference segment behind the current position.
+  const double start_s = -2.0;
+  // unit_z: longitudinal step size in meters (matches ConvertLaneMarkerToPath).
+  const double unit_z = 1.0;
+  const int num_points =
+      static_cast<int>((path_range - start_s) / unit_z) + 1;
+  for (int i = 0; i < num_points; ++i) {
+    const double s = start_s + i * unit_z;
+    auto *point = path->add_path_point();
+    point->set_x(flu_ux * s);
+    point->set_y(flu_uy * s);
+    // Accumulated arc length: straight line so each step is exactly unit_z.
+    point->set_s(start_s + i * unit_z);
+    point->set_theta(bearing_angle);
+    point->set_kappa(0.0);
+    point->set_dkappa(0.0);
+  }
 }
 
 double NavigationLane::EvaluateCubicPolynomial(const double c0, const double c1,

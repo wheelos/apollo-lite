@@ -24,6 +24,7 @@ namespace relative_map {
 using apollo::canbus::Chassis;
 using apollo::localization::LocalizationEstimate;
 using apollo::perception::PerceptionObstacles;
+using apollo::routing::RoutingRequest;
 
 bool RelativeMapComponent::Init() {
   vehicle_state_provider_ = std::make_shared<common::VehicleStateProvider>();
@@ -68,6 +69,13 @@ bool RelativeMapComponent::InitReaders() {
       [this](const std::shared_ptr<NavigationInfo>& navigation_info) {
         ADEBUG << "Received chassis data: run chassis callback.";
         relative_map_.OnNavigationInfo(*navigation_info.get());
+      });
+
+  routing_request_reader_ = node_->CreateReader<RoutingRequest>(
+      FLAGS_routing_request_topic,
+      [this](const std::shared_ptr<RoutingRequest>& routing_request) {
+        ADEBUG << "Received routing request: updating destination.";
+        relative_map_.OnRoutingRequest(*routing_request.get());
       });
 
   relative_map_writer_ = node_->CreateWriter<MapMsg>(FLAGS_relative_map_topic);
