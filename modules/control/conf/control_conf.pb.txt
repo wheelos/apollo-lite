@@ -1,5 +1,4 @@
 control_test_duration: -1
-enable_csv_debug: false
 enable_speed_station_preview: false
 is_control_test_mode: false
 use_preview_speed_for_table: false

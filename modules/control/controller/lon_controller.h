@@ -113,8 +113,6 @@ class LonController : public Controller {
   void SetDigitalFilter(double ts, double cutoff_freq,
                         common::DigitalFilter *digital_filter);
 
-  void CloseLogFile();
-
   const localization::LocalizationEstimate *localization_ = nullptr;
   const canbus::Chassis *chassis_ = nullptr;
 
@@ -133,8 +131,6 @@ class LonController : public Controller {
 
   LeadlagController speed_leadlag_controller_;
   LeadlagController station_leadlag_controller_;
-
-  FILE *speed_log_file_ = nullptr;
 
   common::DigitalFilter digital_filter_pitch_angle_;
 

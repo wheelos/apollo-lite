@@ -17,7 +17,6 @@
 #include "modules/control/controller/mpc_controller.h"
 
 #include <algorithm>
-#include <iomanip>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -41,34 +40,11 @@ using apollo::cyber::Clock;
 using Matrix = Eigen::MatrixXd;
 using apollo::common::VehicleConfigHelper;
 
-namespace {
-
-std::string GetLogFileName() {
-  time_t raw_time;
-  char name_buffer[80];
-  std::time(&raw_time);
-
-  std::tm time_tm;
-  localtime_r(&raw_time, &time_tm);
-  strftime(name_buffer, sizeof(name_buffer),
-           "/tmp/mpc_controller_%F_%H%M%S.csv", &time_tm);
-  return std::string(name_buffer);
-}
-
-void WriteHeaders(std::ofstream &file_stream) {}
-}  // namespace
-
 MPCController::MPCController() : name_("MPC Controller") {
-  if (FLAGS_enable_csv_debug) {
-    mpc_log_file_.open(GetLogFileName());
-    mpc_log_file_ << std::fixed;
-    mpc_log_file_ << std::setprecision(6);
-    WriteHeaders(mpc_log_file_);
-  }
   AINFO << "Using " << name_;
 }
 
-MPCController::~MPCController() { CloseLogFile(); }
+MPCController::~MPCController() {}
 
 bool MPCController::LoadControlConf(const ControlConf *control_conf) {
   if (!control_conf) {
@@ -143,7 +119,7 @@ bool MPCController::LoadControlConf(const ControlConf *control_conf) {
 
 void MPCController::ProcessLogs(const SimpleMPCDebug *debug,
                                 const canbus::Chassis *chassis) {
-  // TODO(QiL): Add debug information
+  ADEBUG << "MPC_Control_Detail: " << debug->ShortDebugString();
 }
 
 void MPCController::LogInitParameters() {
@@ -241,17 +217,11 @@ Status MPCController::Init(std::shared_ptr<DependencyInjector> injector,
   return Status::OK();
 }
 
-void MPCController::CloseLogFile() {
-  if (FLAGS_enable_csv_debug && mpc_log_file_.is_open()) {
-    mpc_log_file_.close();
-  }
-}
-
 double MPCController::Wheel2SteerPct(const double wheel_angle) {
   return wheel_angle / wheel_single_direction_max_degree_ * 100;
 }
 
-void MPCController::Stop() { CloseLogFile(); }
+void MPCController::Stop() {}
 
 std::string MPCController::Name() const { return name_; }
 

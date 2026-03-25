@@ -103,8 +103,6 @@ class LonSpeedController : public Controller {
   void GetPathRemain(SimpleLongitudinalDebug *debug);
 
  private:
-  void CloseLogFile();
-
   const localization::LocalizationEstimate *localization_ = nullptr;
   const canbus::Chassis *chassis_ = nullptr;
 
@@ -119,8 +117,6 @@ class LonSpeedController : public Controller {
 
   PIDController station_pid_controller_;
   LeadlagController station_leadlag_controller_;
-
-  FILE *speed_log_file_ = nullptr;
 
   const ControlConf *control_conf_ = nullptr;
 

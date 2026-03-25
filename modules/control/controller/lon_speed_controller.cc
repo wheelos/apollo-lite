@@ -40,50 +40,12 @@ using apollo::cyber::Time;
 LonSpeedController::LonSpeedController()
     : name_(
           ControlConf_ControllerType_Name(ControlConf::LON_SPEED_CONTROLLER)) {
-  if (FLAGS_enable_csv_debug) {
-    time_t rawtime;
-    char name_buffer[80];
-    std::time(&rawtime);
-    std::tm time_tm;
-    localtime_r(&rawtime, &time_tm);
-    strftime(name_buffer, 80, "/tmp/speed_log__%F_%H%M%S.csv", &time_tm);
-    speed_log_file_ = fopen(name_buffer, "w");
-    if (speed_log_file_ == nullptr) {
-      AERROR << "Fail to open file:" << name_buffer;
-      FLAGS_enable_csv_debug = false;
-    }
-    if (speed_log_file_ != nullptr) {
-      fprintf(speed_log_file_,
-              "station_reference,"
-              "station_error,"
-              "station_error_limited,"
-              "preview_station_error,"
-              "speed_reference,"
-              "speed_error,"
-              "speed_error_limited,"
-              "preview_speed_reference,"
-              "preview_speed_error,"
-              "speed_lookup,"
-              "is_full_stop"
-              "\r\n");
-
-      fflush(speed_log_file_);
-    }
-  }
   AINFO << name_ << " used.";
 }
 
-void LonSpeedController::CloseLogFile() {
-  if (FLAGS_enable_csv_debug) {
-    if (speed_log_file_ != nullptr) {
-      fclose(speed_log_file_);
-      speed_log_file_ = nullptr;
-    }
-  }
-}
-void LonSpeedController::Stop() { CloseLogFile(); }
+void LonSpeedController::Stop() {}
 
-LonSpeedController::~LonSpeedController() { CloseLogFile(); }
+LonSpeedController::~LonSpeedController() {}
 
 Status LonSpeedController::Init(std::shared_ptr<DependencyInjector> injector,
                                 const ControlConf *control_conf) {
@@ -255,16 +217,7 @@ Status LonSpeedController::ComputeControlCommand(
   debug->set_speed_controller_input_limited(desired_speed_limited);
   debug->set_speed_lookup(chassis_->speed_mps());
 
-  if (FLAGS_enable_csv_debug && speed_log_file_ != nullptr) {
-    fprintf(speed_log_file_,
-            "%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f,%d\r\n",
-            debug->station_reference(), debug->station_error(),
-            debug->station_error_limited(), debug->preview_station_error(),
-            debug->speed_reference(), debug->speed_error(),
-            debug->speed_controller_input_limited(),
-            debug->preview_speed_reference(), debug->preview_speed_error(),
-            debug->speed_lookup(), debug->is_full_stop());
-  }
+  ADEBUG << "Lon_Speed_Control_Detail: " << debug->ShortDebugString();
 
   return Status::OK();
 }
