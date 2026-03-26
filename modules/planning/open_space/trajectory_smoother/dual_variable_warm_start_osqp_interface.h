@@ -50,16 +50,18 @@ class DualVariableWarmStartOSQPInterface {
 
   bool optimize();
 
-  void assemble_P(std::vector<c_float>* P_data, std::vector<c_int>* P_indices,
-                  std::vector<c_int>* P_indptr);
+  void assemble_P(std::vector<OSQPFloat>* P_data,
+                  std::vector<OSQPInt>* P_indices,
+                  std::vector<OSQPInt>* P_indptr);
 
-  void assemble_constraint(std::vector<c_float>* A_data,
-                           std::vector<c_int>* A_indices,
-                           std::vector<c_int>* A_indptr);
+  void assemble_constraint(std::vector<OSQPFloat>* A_data,
+                           std::vector<OSQPInt>* A_indices,
+                           std::vector<OSQPInt>* A_indptr);
 
-  void assembleA(const int r, const int c, const std::vector<c_float>& P_data,
-                 const std::vector<c_int>& P_indices,
-                 const std::vector<c_int>& P_indptr);
+  void assembleA(const int r, const int c,
+                 const std::vector<OSQPFloat>& P_data,
+                 const std::vector<OSQPInt>& P_indices,
+                 const std::vector<OSQPInt>& P_indptr);
 
   void check_solution(const Eigen::MatrixXd& l_warm_up,
                       const Eigen::MatrixXd& n_warm_up);

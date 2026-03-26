@@ -83,7 +83,11 @@ class MpcOsqp {
 
   template <typename T>
   T *CopyData(const std::vector<T> &vec) {
-    T *data = new T[vec.size()];
+    if (vec.empty()) {
+      return nullptr;
+    }
+    T *data =
+        reinterpret_cast<T *>(std::malloc(sizeof(T) * vec.size()));
     memcpy(data, vec.data(), sizeof(T) * vec.size());
     return data;
   }

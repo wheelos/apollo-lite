@@ -36,15 +36,6 @@ class OsqpSpline1dSolver : public Spline1dSolver {
   virtual ~OsqpSpline1dSolver();
 
   bool Solve() override;
-
-  void CleanUp();
-
-  void ResetOsqp();
-
- private:
-  OSQPSettings* settings_ = nullptr;
-  OSQPWorkspace* work_ = nullptr;  // Workspace
-  OSQPData* data_ = nullptr;       // OSQPData
 };
 
 }  // namespace planning

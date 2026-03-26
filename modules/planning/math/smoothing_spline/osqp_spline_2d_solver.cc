@@ -28,6 +28,44 @@ namespace apollo {
 namespace planning {
 namespace {
 constexpr double kRoadBound = 1e10;
+
+bool HasUsableSolutionStatus(const OSQPInt status) {
+  return status != OSQP_PRIMAL_INFEASIBLE &&
+         status != OSQP_PRIMAL_INFEASIBLE_INACCURATE &&
+         status != OSQP_DUAL_INFEASIBLE &&
+         status != OSQP_DUAL_INFEASIBLE_INACCURATE &&
+         status != OSQP_NON_CVX;
+}
+
+OSQPCscMatrix* CscMatrix(OSQPInt m, OSQPInt n,
+                         std::vector<OSQPFloat>* values,
+                         std::vector<OSQPInt>* indices,
+                         std::vector<OSQPInt>* indptr) {
+  return OSQPCscMatrix_new(m, n, values->size(),
+                           values->empty() ? nullptr : values->data(),
+                           indices->empty() ? nullptr : indices->data(),
+                           indptr->data());
+}
+
+void DenseToUpperCSCMatrix(const Eigen::MatrixXd& dense_matrix,
+                           std::vector<OSQPFloat>* data,
+                           std::vector<OSQPInt>* indices,
+                           std::vector<OSQPInt>* indptr) {
+  static constexpr double kEpsilon = 1e-9;
+  int data_count = 0;
+  for (int c = 0; c < dense_matrix.cols(); ++c) {
+    indptr->emplace_back(data_count);
+    for (int r = 0; r <= c && r < dense_matrix.rows(); ++r) {
+      if (std::fabs(dense_matrix(r, c)) < kEpsilon) {
+        continue;
+      }
+      data->emplace_back(static_cast<OSQPFloat>(dense_matrix(r, c)));
+      ++data_count;
+      indices->emplace_back(r);
+    }
+  }
+  indptr->emplace_back(data_count);
+}
 }
 
 using apollo::common::math::DenseToCSCMatrix;
@@ -58,16 +96,17 @@ bool OsqpSpline2dSolver::Solve() {
   // For details, visit: https://osqp.org/docs/examples/demo.html
 
   // change P to csc format
-  const MatrixXd& P = kernel_.kernel_matrix();
+  const MatrixXd P =
+      0.5 * (kernel_.kernel_matrix() + kernel_.kernel_matrix().transpose());
   ADEBUG << "P: " << P.rows() << ", " << P.cols();
   if (P.rows() == 0) {
     return false;
   }
 
-  std::vector<c_float> P_data;
-  std::vector<c_int> P_indices;
-  std::vector<c_int> P_indptr;
-  DenseToCSCMatrix(P, &P_data, &P_indices, &P_indptr);
+  std::vector<OSQPFloat> P_data;
+  std::vector<OSQPInt> P_indices;
+  std::vector<OSQPInt> P_indptr;
+  DenseToUpperCSCMatrix(P, &P_data, &P_indices, &P_indptr);
 
   // change A to csc format
   const MatrixXd& inequality_constraint_matrix =
@@ -83,16 +122,16 @@ bool OsqpSpline2dSolver::Solve() {
     return false;
   }
 
-  std::vector<c_float> A_data;
-  std::vector<c_int> A_indices;
-  std::vector<c_int> A_indptr;
+  std::vector<OSQPFloat> A_data;
+  std::vector<OSQPInt> A_indices;
+  std::vector<OSQPInt> A_indptr;
   DenseToCSCMatrix(A, &A_data, &A_indices, &A_indptr);
 
   // set q, l, u: l < A < u
   const MatrixXd& q_eigen = kernel_.offset();
-  c_float q[q_eigen.rows()];  // NOLINT
+  std::vector<OSQPFloat> q(q_eigen.rows());
   for (int i = 0; i < q_eigen.size(); ++i) {
-    q[i] = q_eigen(i);
+    q[i] = static_cast<OSQPFloat>(q_eigen(i));
   }
 
   const MatrixXd& inequality_constraint_boundary =
@@ -100,42 +139,30 @@ bool OsqpSpline2dSolver::Solve() {
   const MatrixXd& equality_constraint_boundary =
       constraint_.equality_constraint().constraint_boundary();
 
-  auto constraint_num = inequality_constraint_boundary.rows() +
-                        equality_constraint_boundary.rows();
+  OSQPInt constraint_num = static_cast<OSQPInt>(
+      inequality_constraint_boundary.rows() + equality_constraint_boundary.rows());
 
-  static constexpr float kEpsilon = 1e-9f;
-  static constexpr float kUpperLimit = 1e9f;
-  c_float l[constraint_num];  // NOLINT
-  c_float u[constraint_num];  // NOLINT
-  for (int i = 0; i < constraint_num; ++i) {
+  static constexpr OSQPFloat kEpsilon = 1e-9f;
+  static constexpr OSQPFloat kUpperLimit = 1e9f;
+  std::vector<OSQPFloat> l(constraint_num);
+  std::vector<OSQPFloat> u(constraint_num);
+  for (OSQPInt i = 0; i < constraint_num; ++i) {
     if (i < inequality_constraint_boundary.rows()) {
-      l[i] = inequality_constraint_boundary(i, 0);
+      l[i] = static_cast<OSQPFloat>(inequality_constraint_boundary(i, 0));
       u[i] = kUpperLimit;
     } else {
       const auto idx = i - inequality_constraint_boundary.rows();
-      l[i] = equality_constraint_boundary(idx, 0) - kEpsilon;
-      u[i] = equality_constraint_boundary(idx, 0) + kEpsilon;
+      l[i] = static_cast<OSQPFloat>(equality_constraint_boundary(idx, 0) -
+                                    kEpsilon);
+      u[i] = static_cast<OSQPFloat>(equality_constraint_boundary(idx, 0) +
+                                    kEpsilon);
     }
   }
 
-  // Problem settings
-  OSQPSettings* settings =
-      reinterpret_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
-
-  // Populate data
-  OSQPData* data = reinterpret_cast<OSQPData*>(c_malloc(sizeof(OSQPData)));
-  data->n = P.rows();
-  data->m = constraint_num;
-  data->P = csc_matrix(data->n, data->n, P_data.size(), P_data.data(),
-                       P_indices.data(), P_indptr.data());
-  data->q = q;
-  data->A = csc_matrix(data->m, data->n, A_data.size(), A_data.data(),
-                       A_indices.data(), A_indptr.data());
-  data->l = l;
-  data->u = u;
-
-  // Define Solver settings as default
-  osqp_set_default_settings(settings);
+  OSQPSettings* settings = OSQPSettings_new();
+  if (settings == nullptr) {
+    return false;
+  }
   settings->alpha = 1.0;  // Change alpha parameter
   settings->eps_abs = 1.0e-05;
   settings->eps_rel = 1.0e-05;
@@ -143,28 +170,57 @@ bool OsqpSpline2dSolver::Solve() {
   settings->polishing = true;
   settings->verbose = FLAGS_enable_osqp_debug;
 
-  // Setup workspace
-  OSQPWorkspace* work = nullptr;
-  work = osqp_setup(data, settings);
-  // osqp_setup(&work, data, settings);
+  OSQPCscMatrix* P_matrix = CscMatrix(static_cast<OSQPInt>(P.rows()),
+                                      static_cast<OSQPInt>(P.rows()), &P_data,
+                                      &P_indices, &P_indptr);
+  OSQPCscMatrix* A_matrix = CscMatrix(
+      constraint_num, static_cast<OSQPInt>(P.rows()), &A_data, &A_indices,
+      &A_indptr);
+  if (P_matrix == nullptr || A_matrix == nullptr) {
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
+  }
+
+  OSQPSolver* solver = nullptr;
+  if (osqp_setup(&solver, P_matrix, q.data(), A_matrix, l.data(), u.data(),
+                 constraint_num, static_cast<OSQPInt>(P.rows()), settings) !=
+          0 ||
+      solver == nullptr) {
+    if (solver != nullptr) {
+      osqp_cleanup(solver);
+    }
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
+  }
 
   // Solve Problem
-  osqp_solve(work);
+  osqp_solve(solver);
+  if (solver->solution == nullptr ||
+      !HasUsableSolutionStatus(solver->info->status_val)) {
+    osqp_cleanup(solver);
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
+  }
 
   MatrixXd solved_params = MatrixXd::Zero(P.rows(), 1);
   for (int i = 0; i < P.rows(); ++i) {
-    solved_params(i, 0) = work->solution->x[i];
+    solved_params(i, 0) = solver->solution->x[i];
   }
 
   last_num_param_ = static_cast<int>(P.rows());
   last_num_constraint_ = static_cast<int>(constraint_num);
 
   // Cleanup
-  osqp_cleanup(work);
-  c_free(data->A);
-  c_free(data->P);
-  c_free(data);
-  c_free(settings);
+  osqp_cleanup(solver);
+  OSQPCscMatrix_free(A_matrix);
+  OSQPCscMatrix_free(P_matrix);
+  OSQPSettings_free(settings);
 
   return spline_.set_splines(solved_params, spline_.spline_order());
 }

@@ -41,13 +41,13 @@ void PiecewiseJerkSpeedProblem::set_penalty_dx(std::vector<double> penalty_dx) {
   penalty_dx_ = std::move(penalty_dx);
 }
 
-void PiecewiseJerkSpeedProblem::CalculateKernel(std::vector<c_float>* P_data,
-                                                std::vector<c_int>* P_indices,
-                                                std::vector<c_int>* P_indptr) {
+void PiecewiseJerkSpeedProblem::CalculateKernel(
+    std::vector<OSQPFloat>* P_data, std::vector<OSQPInt>* P_indices,
+    std::vector<OSQPInt>* P_indptr) {
   const int n = static_cast<int>(num_of_knots_);
   const int kNumParam = 3 * n;
   const int kNumValue = 4 * n - 1;
-  std::vector<std::vector<std::pair<c_int, c_float>>> columns;
+  std::vector<std::vector<std::pair<OSQPInt, OSQPFloat>>> columns;
   columns.resize(kNumParam);
   int value_index = 0;
 
@@ -117,7 +117,7 @@ void PiecewiseJerkSpeedProblem::CalculateKernel(std::vector<c_float>* P_data,
   P_indptr->push_back(ind_p);
 }
 
-void PiecewiseJerkSpeedProblem::CalculateOffset(std::vector<c_float>* q) {
+void PiecewiseJerkSpeedProblem::CalculateOffset(std::vector<OSQPFloat>* q) {
   CHECK_NOTNULL(q);
   const int n = static_cast<int>(num_of_knots_);
   const int kNumParam = 3 * n;
@@ -143,9 +143,10 @@ void PiecewiseJerkSpeedProblem::CalculateOffset(std::vector<c_float>* q) {
 
 OSQPSettings* PiecewiseJerkSpeedProblem::SolverDefaultSettings() {
   // Define Solver default settings
-  OSQPSettings* settings =
-      reinterpret_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
-  osqp_set_default_settings(settings);
+  OSQPSettings* settings = OSQPSettings_new();
+  if (settings == nullptr) {
+    return nullptr;
+  }
   settings->eps_abs = 1e-4;
   settings->eps_rel = 1e-4;
   settings->eps_prim_inf = 1e-5;

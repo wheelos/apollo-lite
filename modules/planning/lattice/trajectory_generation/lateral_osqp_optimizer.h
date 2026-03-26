@@ -43,9 +43,9 @@ class LateralOSQPOptimizer : public LateralQPOptimizer {
 
  private:
   void CalculateKernel(const std::vector<std::pair<double, double>>& d_bounds,
-                       std::vector<c_float>* P_data,
-                       std::vector<c_int>* P_indices,
-                       std::vector<c_int>* P_indptr);
+                       std::vector<OSQPFloat>* P_data,
+                       std::vector<OSQPInt>* P_indices,
+                       std::vector<OSQPInt>* P_indptr);
 };
 
 }  // namespace planning

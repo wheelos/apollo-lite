@@ -21,9 +21,21 @@ namespace common {
 namespace math {
 namespace {
 
+bool HasUsableSolutionStatus(const OSQPInt status) {
+  return status != OSQP_PRIMAL_INFEASIBLE &&
+         status != OSQP_PRIMAL_INFEASIBLE_INACCURATE &&
+         status != OSQP_DUAL_INFEASIBLE &&
+         status != OSQP_DUAL_INFEASIBLE_INACCURATE &&
+         status != OSQP_NON_CVX;
+}
+
 OSQPCscMatrix* CscMatrix(OSQPInt m, OSQPInt n, OSQPInt nzmax, OSQPFloat* x,
                          OSQPInt* i, OSQPInt* p) {
-  return OSQPCscMatrix_new(m, n, nzmax, x, i, p);
+  OSQPCscMatrix* matrix = OSQPCscMatrix_new(m, n, nzmax, x, i, p);
+  if (matrix != nullptr) {
+    matrix->owned = 1;
+  }
+  return matrix;
 }
 
 }  // namespace
@@ -262,6 +274,10 @@ MpcOsqpData *MpcOsqp::Data() {
     data->P = CscMatrix(kernel_dim, kernel_dim, P_data.size(),
                         CopyData(P_data), CopyData(P_indices),
                         CopyData(P_indptr));
+    if (data->P == nullptr) {
+      std::free(data);
+      return nullptr;
+    }
     ADEBUG << "Get P matrix";
     data->q = gradient_.data();
     ADEBUG << "before CalculateEqualityConstraint";
@@ -275,6 +291,11 @@ MpcOsqpData *MpcOsqp::Data() {
                             control_dim_ * horizon_,
                         kernel_dim, A_data.size(), CopyData(A_data),
                         CopyData(A_indices), CopyData(A_indptr));
+    if (data->A == nullptr) {
+      OSQPCscMatrix_free(data->P);
+      std::free(data);
+      return nullptr;
+    }
     ADEBUG << "Get A matrix";
     data->l = lowerBound_.data();
     data->u = upperBound_.data();
@@ -299,6 +320,9 @@ bool MpcOsqp::Solve(std::vector<double> *control_cmd) {
   ADEBUG << "MPC2Matrix";
 
   MpcOsqpData *data = Data();
+  if (data == nullptr) {
+    return false;
+  }
   ADEBUG << "OSQP data done";
   ADEBUG << "OSQP data n" << data->n;
   ADEBUG << "OSQP data m" << data->m;
@@ -315,11 +339,18 @@ bool MpcOsqp::Solve(std::vector<double> *control_cmd) {
   }
 
   OSQPSettings *settings = Settings();
+  if (settings == nullptr) {
+    FreeData(data);
+    return false;
+  }
   ADEBUG << "OSQP setting done";
   OSQPSolver *solver = nullptr;
   if (osqp_setup(&solver, data->P, data->q, data->A, data->l, data->u,
                  data->m, data->n, settings) != 0 ||
       solver == nullptr) {
+    if (solver != nullptr) {
+      osqp_cleanup(solver);
+    }
     FreeData(data);
     std::free(settings);
     return false;
@@ -330,7 +361,7 @@ bool MpcOsqp::Solve(std::vector<double> *control_cmd) {
   auto status = solver->info->status_val;
   ADEBUG << "status:" << status;
   // check status
-  if (status < 0 || (status != 1 && status != 2)) {
+  if (!HasUsableSolutionStatus(status)) {
     AERROR << "failed optimization status:\t" << solver->info->status;
     osqp_cleanup(solver);
     FreeData(data);
@@ -346,7 +377,15 @@ bool MpcOsqp::Solve(std::vector<double> *control_cmd) {
 
   size_t first_control = state_dim_ * (horizon_ + 1);
   for (size_t i = 0; i < control_dim_; ++i) {
-    control_cmd->at(i) = solver->solution->x[i + first_control];
+    double control = solver->solution->x[i + first_control];
+    const double lower = matrix_u_lower_(i, 0);
+    const double upper = matrix_u_upper_(i, 0);
+    if (control <= lower + eps_abs_) {
+      control = lower;
+    } else if (control >= upper - eps_abs_) {
+      control = upper;
+    }
+    control_cmd->at(i) = std::max(lower, std::min(upper, control));
     ADEBUG << "control_cmd:" << i << ":" << control_cmd->at(i);
   }
 

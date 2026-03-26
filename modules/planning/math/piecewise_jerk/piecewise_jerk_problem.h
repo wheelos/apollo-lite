@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <array>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -28,6 +29,16 @@
 
 namespace apollo {
 namespace planning {
+
+struct PiecewiseJerkProblemData {
+  OSQPInt n;
+  OSQPInt m;
+  OSQPCscMatrix* P;
+  std::vector<OSQPFloat> q;
+  OSQPCscMatrix* A;
+  std::vector<OSQPFloat> l;
+  std::vector<OSQPFloat> u;
+};
 
 /*
  * @brief:
@@ -114,34 +125,26 @@ class PiecewiseJerkProblem {
 
   const std::vector<double>& opt_dx() const { return dx_; }
 
-  const std::vector<double>& opt_ddx() const { return ddx_; }
+ const std::vector<double>& opt_ddx() const { return ddx_; }
 
  protected:
   // naming convention follows osqp solver.
-  virtual void CalculateKernel(std::vector<c_float>* P_data,
-                               std::vector<c_int>* P_indices,
-                               std::vector<c_int>* P_indptr) = 0;
+  virtual void CalculateKernel(std::vector<OSQPFloat>* P_data,
+                               std::vector<OSQPInt>* P_indices,
+                               std::vector<OSQPInt>* P_indptr) = 0;
 
-  virtual void CalculateOffset(std::vector<c_float>* q) = 0;
+  virtual void CalculateOffset(std::vector<OSQPFloat>* q) = 0;
 
-  virtual void CalculateAffineConstraint(std::vector<c_float>* A_data,
-                                         std::vector<c_int>* A_indices,
-                                         std::vector<c_int>* A_indptr,
-                                         std::vector<c_float>* lower_bounds,
-                                         std::vector<c_float>* upper_bounds);
+  virtual void CalculateAffineConstraint(
+      std::vector<OSQPFloat>* A_data, std::vector<OSQPInt>* A_indices,
+      std::vector<OSQPInt>* A_indptr, std::vector<OSQPFloat>* lower_bounds,
+      std::vector<OSQPFloat>* upper_bounds);
 
   virtual OSQPSettings* SolverDefaultSettings();
 
-  OSQPData* FormulateProblem();
+  PiecewiseJerkProblemData FormulateProblem();
 
-  void FreeData(OSQPData* data);
-
-  template <typename T>
-  T* CopyData(const std::vector<T>& vec) {
-    T* data = new T[vec.size()];
-    memcpy(data, vec.data(), sizeof(T) * vec.size());
-    return data;
-  }
+  void FreeData(PiecewiseJerkProblemData* data);
 
  protected:
   size_t num_of_knots_ = 0;

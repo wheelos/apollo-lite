@@ -71,31 +71,32 @@ class FemPosDeviationOsqpInterface {
 
   const std::vector<double>& opt_x() const { return x_; }
 
-  const std::vector<double>& opt_y() const { return y_; }
+ const std::vector<double>& opt_y() const { return y_; }
 
  private:
-  void CalculateKernel(std::vector<c_float>* P_data,
-                       std::vector<c_int>* P_indices,
-                       std::vector<c_int>* P_indptr);
+  void CalculateKernel(std::vector<OSQPFloat>* P_data,
+                       std::vector<OSQPInt>* P_indices,
+                       std::vector<OSQPInt>* P_indptr);
 
-  void CalculateOffset(std::vector<c_float>* q);
+  void CalculateOffset(std::vector<OSQPFloat>* q);
 
-  void CalculateAffineConstraint(std::vector<c_float>* A_data,
-                                 std::vector<c_int>* A_indices,
-                                 std::vector<c_int>* A_indptr,
-                                 std::vector<c_float>* lower_bounds,
-                                 std::vector<c_float>* upper_bounds);
+  void CalculateAffineConstraint(std::vector<OSQPFloat>* A_data,
+                                 std::vector<OSQPInt>* A_indices,
+                                 std::vector<OSQPInt>* A_indptr,
+                                 std::vector<OSQPFloat>* lower_bounds,
+                                 std::vector<OSQPFloat>* upper_bounds);
 
-  void SetPrimalWarmStart(std::vector<c_float>* primal_warm_start);
+  void SetPrimalWarmStart(std::vector<OSQPFloat>* primal_warm_start);
 
   bool OptimizeWithOsqp(
       const size_t kernel_dim, const size_t num_affine_constraint,
-      std::vector<c_float>* P_data, std::vector<c_int>* P_indices,
-      std::vector<c_int>* P_indptr, std::vector<c_float>* A_data,
-      std::vector<c_int>* A_indices, std::vector<c_int>* A_indptr,
-      std::vector<c_float>* lower_bounds, std::vector<c_float>* upper_bounds,
-      std::vector<c_float>* q, std::vector<c_float>* primal_warm_start,
-      OSQPData* data, OSQPWorkspace** work, OSQPSettings* settings);
+      std::vector<OSQPFloat>* P_data, std::vector<OSQPInt>* P_indices,
+      std::vector<OSQPInt>* P_indptr, std::vector<OSQPFloat>* A_data,
+      std::vector<OSQPInt>* A_indices, std::vector<OSQPInt>* A_indptr,
+      std::vector<OSQPFloat>* lower_bounds,
+      std::vector<OSQPFloat>* upper_bounds, std::vector<OSQPFloat>* q,
+      std::vector<OSQPFloat>* primal_warm_start, OSQPSolver** solver,
+      OSQPSettings* settings);
 
  private:
   // Reference points and deviation bounds
