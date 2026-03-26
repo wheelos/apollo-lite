@@ -28,11 +28,7 @@ namespace {
 constexpr double kMaxVariableRange = 1.0e10;
 
 bool HasUsableSolutionStatus(const OSQPInt status) {
-  return status != OSQP_PRIMAL_INFEASIBLE &&
-         status != OSQP_PRIMAL_INFEASIBLE_INACCURATE &&
-         status != OSQP_DUAL_INFEASIBLE &&
-         status != OSQP_DUAL_INFEASIBLE_INACCURATE &&
-         status != OSQP_NON_CVX;
+  return status == OSQP_SOLVED || status == OSQP_SOLVED_INACCURATE;
 }
 
 template <typename T>

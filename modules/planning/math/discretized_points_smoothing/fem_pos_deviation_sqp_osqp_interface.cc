@@ -32,11 +32,7 @@ namespace planning {
 namespace {
 
 bool HasUsableSolutionStatus(const OSQPInt status) {
-  return status != OSQP_PRIMAL_INFEASIBLE &&
-         status != OSQP_PRIMAL_INFEASIBLE_INACCURATE &&
-         status != OSQP_DUAL_INFEASIBLE &&
-         status != OSQP_DUAL_INFEASIBLE_INACCURATE &&
-         status != OSQP_NON_CVX;
+  return status == OSQP_SOLVED || status == OSQP_SOLVED_INACCURATE;
 }
 
 OSQPCscMatrix* CscMatrix(OSQPInt m, OSQPInt n,

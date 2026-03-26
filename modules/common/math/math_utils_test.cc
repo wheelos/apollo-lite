@@ -16,10 +16,12 @@
 
 #include "modules/common/math/math_utils.h"
 
+#include <cstdio>
 #include <cstdlib>
 
 #include "gtest/gtest.h"
 
+#include "cyber/init.h"
 #include "osqp.h"
 
 namespace apollo {
@@ -126,23 +128,21 @@ TEST(MathUtilsTest, AlmostEqualTest) {
 
 TEST(MathUtilsTest, QPSTTest) {
   // Load problem data
-  OSQPFloat P_x[4] = {
+  OSQPFloat P_x[3] = {
       4.00000000000000000000,
-      1.00000000000000000000,
       1.00000000000000000000,
       2.00000000000000000000,
   };
-  OSQPInt P_nnz = 4;
-  OSQPInt P_i[4] = {
+  OSQPInt P_nnz = 3;
+  OSQPInt P_i[3] = {
       0,
-      1,
       0,
       1,
   };
   OSQPInt P_p[3] = {
       0,
-      2,
-      4,
+      1,
+      3,
   };
   OSQPFloat q[2] = {
       1.00000000000000000000,
@@ -206,3 +206,12 @@ TEST(MathUtilsTest, QPSTTest) {
 }  // namespace math
 }  // namespace common
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  apollo::cyber::Init(argv[0]);
+  const int result = RUN_ALL_TESTS();
+  apollo::cyber::Clear();
+  std::fflush(nullptr);
+  std::_Exit(result);
+}

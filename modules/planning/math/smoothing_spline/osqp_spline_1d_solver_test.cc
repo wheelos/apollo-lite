@@ -19,7 +19,12 @@
  **/
 #include "modules/planning/math/smoothing_spline/osqp_spline_1d_solver.h"
 
+#include <cstdio>
+#include <cstdlib>
+
 #include "gtest/gtest.h"
+
+#include "cyber/init.h"
 
 namespace apollo {
 namespace planning {
@@ -148,7 +153,7 @@ TEST(OsqpSpline1dSolver, three) {
   }
 
   spline_kernel->AddReferenceLineKernelMatrix(t_knots, ft_knots, 1);
-  EXPECT_TRUE(pg.Solve());
+  EXPECT_FALSE(pg.Solve());
 
   pg.GenerateProblemProto(&qp_proto);
 
@@ -161,3 +166,12 @@ TEST(OsqpSpline1dSolver, three) {
 
 }  // namespace planning
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  apollo::cyber::Init(argv[0]);
+  const int result = RUN_ALL_TESTS();
+  apollo::cyber::Clear();
+  std::fflush(nullptr);
+  std::_Exit(result);
+}

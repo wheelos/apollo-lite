@@ -31,11 +31,7 @@ namespace planning {
 namespace {
 
 bool HasUsableSolutionStatus(const OSQPInt status) {
-  return status != OSQP_PRIMAL_INFEASIBLE &&
-         status != OSQP_PRIMAL_INFEASIBLE_INACCURATE &&
-         status != OSQP_DUAL_INFEASIBLE &&
-         status != OSQP_DUAL_INFEASIBLE_INACCURATE &&
-         status != OSQP_NON_CVX;
+  return status == OSQP_SOLVED || status == OSQP_SOLVED_INACCURATE;
 }
 
 bool HasFiniteSolution(const OSQPSolver* solver, const OSQPInt n) {
@@ -218,8 +214,12 @@ bool OsqpSpline1dSolver::Solve() {
   }
 
   if (!HasUsableSolutionStatus(solver->info->status_val)) {
-    AWARN << "1d spline OSQP returned status " << solver->info->status
-          << ", using finite iterate for backward compatibility";
+    AERROR << "1d spline OSQP failed with status " << solver->info->status;
+    osqp_cleanup(solver);
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
   }
 
   MatrixXd solved_params = MatrixXd::Zero(P.rows(), 1);
