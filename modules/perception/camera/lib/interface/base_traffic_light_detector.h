@@ -36,6 +36,12 @@ struct TrafficLightDetectorInitOptions : public BaseInitOptions {
 
 struct TrafficLightDetectorOptions {};
 
+struct TrafficLightDetectorRuntimeContext {
+  double timestamp_sec = -1.0;
+  std::string camera_name;
+  bool enable_debug = false;
+};
+
 class BaseTrafficLightDetector : public pipeline::Stage {
  public:
   using StageConfig = pipeline::StageConfig;
@@ -56,11 +62,37 @@ class BaseTrafficLightDetector : public pipeline::Stage {
   virtual bool Detect(const TrafficLightDetectorOptions& options,
                       CameraFrame* frame) = 0;
 
-  virtual bool Init(const StageConfig& stage_config) = 0;
+  // Migration-friendly entry for module-owned stages.
+  virtual bool Detect(const TrafficLightDetectorRuntimeContext& context,
+                      CameraFrame* frame) {
+    (void)context;
+    TrafficLightDetectorOptions options;
+    return Detect(options, frame);
+  }
 
-  virtual bool Process(DataFrame* data_frame) = 0;
+  virtual bool Init(const StageConfig& stage_config) {
+    if (!Initialize(stage_config)) {
+      return false;
+    }
+    return Init(TrafficLightDetectorInitOptions());
+  }
 
-  virtual bool IsEnabled() const = 0;;
+  virtual bool Process(DataFrame* data_frame) {
+    if (data_frame == nullptr || data_frame->camera_frame == nullptr) {
+      return false;
+    }
+    TrafficLightDetectorOptions options;
+    return Detect(options, data_frame->camera_frame);
+  }
+
+  virtual bool ValidateStageConfig(const StageConfig& stage_config) const {
+    (void)stage_config;
+    return true;
+  }
+
+  virtual bool Shutdown() { return true; }
+
+  virtual bool IsEnabled() const { return enable_; }
 
   virtual std::string Name() const = 0;
 

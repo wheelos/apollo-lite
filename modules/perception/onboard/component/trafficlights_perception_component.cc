@@ -292,7 +292,8 @@ int TrafficLightsPerceptionComponent::InitAlgorithmPlugin() {
     return cyber::FAIL;
   }
 
-  traffic_light_pipeline_.reset(new camera::TrafficLightCameraPerception);
+  traffic_light_pipeline_.reset(
+      new traffic_light::TrafficLightPerceptionPipeline);
   if (!traffic_light_pipeline_->Init(trafficlight_config)) {
     AERROR << "camera_traffic_light_pipeline_->Init() failed";
     return cyber::FAIL;

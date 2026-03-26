@@ -7,11 +7,7 @@ cc_binary(
     name = "traffic_light_detection",
     srcs = ["traffic_light_detection.cc"],
     deps = [
-        "//cyber",
-        "//modules/perception/camera/app:traffic_light_camera_perception",
-        "//modules/perception/camera/tools/common",
-        "//modules/perception/common:perception_gflags",
-        "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
+        "//modules/perception/traffic_light/tools/traffic_light_detection:traffic_light_detection_tool_lib",
         "@com_github_gflags_gflags//:gflags",
     ],
 )
@@ -22,7 +18,7 @@ cc_binary(
     deps = [
         "//cyber",
         "//modules/perception/camera/common",
-        "//modules/perception/camera/lib/traffic_light/detector/detection:detection",
+        "//modules/perception/camera/lib/traffic_light/detector:detection",
         "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
         "@com_github_gflags_gflags//:gflags",
         "@opencv//:imgcodecs",

@@ -39,6 +39,11 @@ struct TLPreprocessorOption {
   std::map<std::string, int>* image_borders_size = nullptr;
 };
 
+struct TLPreprocessorRuntimeContext {
+  double timestamp_sec = -1.0;
+  std::string camera_name;
+};
+
 class BaseTLPreprocessor {
  public:
   BaseTLPreprocessor() = default;
@@ -68,6 +73,13 @@ class BaseTLPreprocessor {
 
   virtual const std::vector<std::string>&
                 GetCameraNamesByDescendingFocalLen() const = 0;
+
+  // Optional lifecycle hooks for module-owned runtime orchestration.
+  virtual bool ValidateConfiguration() const { return true; }
+
+  virtual bool Reset() { return true; }
+
+  virtual bool Shutdown() { return true; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BaseTLPreprocessor);

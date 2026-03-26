@@ -33,6 +33,12 @@ struct TrafficLightTrackerOptions {
   double time_stamp;
 };
 
+struct TrafficLightTrackerRuntimeContext {
+  double timestamp_sec = -1.0;
+  std::string camera_name;
+  bool enable_debug = false;
+};
+
 class BaseTrafficLightTracker : public pipeline::Stage {
  public:
   using StageConfig = pipeline::StageConfig;
@@ -53,11 +59,38 @@ class BaseTrafficLightTracker : public pipeline::Stage {
   virtual bool Track(const TrafficLightTrackerOptions& options,
                      CameraFrame* frame) = 0;
 
-  virtual bool Init(const StageConfig& stage_config) = 0;
+  // Migration-friendly entry for module-owned stages.
+  virtual bool Track(const TrafficLightTrackerRuntimeContext& context,
+                     CameraFrame* frame) {
+    TrafficLightTrackerOptions options;
+    options.time_stamp = context.timestamp_sec;
+    return Track(options, frame);
+  }
 
-  virtual bool Process(DataFrame* data_frame) = 0;
+  virtual bool Init(const StageConfig& stage_config) {
+    if (!Initialize(stage_config)) {
+      return false;
+    }
+    return Init(TrafficLightTrackerInitOptions());
+  }
 
-  virtual bool IsEnabled() const = 0;;
+  virtual bool Process(DataFrame* data_frame) {
+    if (data_frame == nullptr || data_frame->camera_frame == nullptr) {
+      return false;
+    }
+    TrafficLightTrackerOptions options;
+    options.time_stamp = data_frame->camera_frame->timestamp;
+    return Track(options, data_frame->camera_frame);
+  }
+
+  virtual bool ValidateStageConfig(const StageConfig& stage_config) const {
+    (void)stage_config;
+    return true;
+  }
+
+  virtual bool Shutdown() { return true; }
+
+  virtual bool IsEnabled() const { return enable_; }
 
   virtual std::string Name() const = 0;
 

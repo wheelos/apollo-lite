@@ -1,5 +1,4 @@
 stage_type: TRAFFIC_LIGHT_DETECTION
-stage_type: TRAFFIC_LIGHT_RECOGNITION
 stage_type: SEMANTIC_REVISER
 
 stage_config: {
@@ -7,7 +6,22 @@ stage_config: {
   enabled: true
 
   traffic_light_detection_config: {
-    detector_type: TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR
+    min_crop_size: 270
+    crop_method: 0
+    mean_r: 0
+    mean_g: 0
+    mean_b: 0
+    is_bgr:true
+    crop_scale: 2.5
+    input_blob_name : "img"
+    im_param_blob_name : ""
+    output_blob_name : "bboxes"
+    model_name: "./"
+    model_type: "TorchNet"
+    proto_file:"yolo12n_traffic.pt"
+    weight_file: ""
+    max_batch_size: 1  # only support 1 so far
+    traffic_light_detection_root_dir: "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_detection/tl_detection_caffe"
     gpu_id: 0
     max_batch_size: 1
 
@@ -37,40 +51,6 @@ stage_config: {
 
       blobs { name: "images" shape: 1 shape: 3 shape: 640 shape: 640 }
       blobs { name: "output0" shape: 1 shape: 7 shape: 8400 }
-    }
-  }
-}
-
-stage_config: {
-  stage_type: TRAFFIC_LIGHT_RECOGNITION
-  enabled: true
-
-  traffic_light_recognition_config: {
-    recognizer_type: TL_RECOGNITION_EFFICIENT_NET
-
-    efficient_net: {
-      model_root_dir: "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_recognition/efficient_net"
-      onnx_file: "efficient_net.onnx"
-      enable_fp16: true
-      gpu_id: 0
-
-      input_name: "inputs"
-      output_cls_name: "outputs_cls"
-      output_status_name: "outputs_status"
-
-      classify_threshold: 0.5
-      classify_resize_width: 96
-      classify_resize_height: 96
-      scale: 0.00392157
-      mean_b: 0
-      mean_g: 0
-      mean_r: 0
-      is_bgr: true
-      max_batch_size: 3
-
-      blobs { name: "inputs" shape: 3 shape: 3 shape: 96 shape: 96 }
-      blobs { name: "outputs_cls" shape: 3 shape: 4 }
-      blobs { name: "outputs_status" shape: 3 shape: 1 }
     }
   }
 }

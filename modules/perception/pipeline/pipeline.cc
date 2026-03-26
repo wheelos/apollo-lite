@@ -30,8 +30,7 @@
 #include "modules/perception/camera/lib/obstacle/tracker/omt/omt_obstacle_tracker.h"
 #include "modules/perception/camera/lib/obstacle/tracker/omt2/omt_bev_tracker.h"
 #include "modules/perception/camera/lib/obstacle/transformer/multicue/multicue_obstacle_transformer.h"
-#include "modules/perception/camera/lib/traffic_light/detector/detection/detection.h"
-#include "modules/perception/camera/lib/traffic_light/detector/recognition/recognition.h"
+#include "modules/perception/camera/lib/traffic_light/detector/detection.h"
 #include "modules/perception/camera/lib/traffic_light/tracker/semantic_decision.h"
 #include "modules/perception/fusion/lib/data_fusion/all_latest_fusion/all_latest_fusion.h"
 #include "modules/perception/fusion/lib/fusion_system/probabilistic_fusion/probabilistic_fusion.h"
@@ -191,9 +190,6 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
       break;
     case StageType::TRAFFIC_LIGHT_DETECTION:
       stage_ptr.reset(new camera::TrafficLightDetection());
-      break;
-    case StageType::TRAFFIC_LIGHT_RECOGNITION:
-      stage_ptr.reset(new camera::TrafficLightRecognition());
       break;
     case StageType::SEMANTIC_REVISER:
       stage_ptr.reset(new camera::SemanticReviser());

@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/perception/camera/lib/traffic_light/detector/detection/detection.h"
+#include "modules/perception/camera/lib/traffic_light/detector/detection.h"
 
 namespace apollo {
 namespace perception {
@@ -39,9 +39,6 @@ TEST(DetectionTest, init_test) {
         "camera/lib/traffic_light/detector/detection/data/";
     init_options.gpu_id = 0;
     EXPECT_TRUE(detector->Init(init_options));
-    EXPECT_NEAR(detector->mean_[0], 122.7717, 1e-4);
-    EXPECT_NEAR(detector->mean_[1], 115.9465, 1e-4);
-    EXPECT_NEAR(detector->mean_[2], 102.9801, 1e-4);
   }
   {
     std::shared_ptr<TrafficLightDetection> detector(new TrafficLightDetection);

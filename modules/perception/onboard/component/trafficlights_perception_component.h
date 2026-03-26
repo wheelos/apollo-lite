@@ -27,12 +27,12 @@
 #include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
 #include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/common_msgs/v2x_msgs/v2x_traffic_light.pb.h"
-#include "modules/perception/camera/app/traffic_light_camera_perception.h"
 #include "modules/perception/camera/common/util.h"
 #include "modules/perception/camera/lib/traffic_light/preprocessor/tl_preprocessor.h"
 #include "modules/perception/map/hdmap/hdmap_input.h"
 #include "modules/perception/onboard/proto/trafficlights_perception_component.pb.h"
 #include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
+#include "modules/perception/traffic_light/application/traffic_light_perception_pipeline.h"
 #include "modules/transform/buffer.h"
 // #include "modules/v2x/common/v2x_proxy_gflags.h"
 // #include "modules/perception/pipeline/proto/traffic_light_config.pb.h"
@@ -182,7 +182,8 @@ class TrafficLightsPerceptionComponent : public apollo::cyber::Component<> {
   // proc
   camera::CameraPerceptionInitOptions camera_perception_init_options_;
   camera::CameraPerceptionOptions camera_perception_options_;
-  std::unique_ptr<camera::TrafficLightCameraPerception> traffic_light_pipeline_;
+    std::unique_ptr<traffic_light::TrafficLightPerceptionPipeline>
+            traffic_light_pipeline_;
   ::google::protobuf::RepeatedPtrField<apollo::hdmap::Curve> stoplines_;
 
   // msg channel name

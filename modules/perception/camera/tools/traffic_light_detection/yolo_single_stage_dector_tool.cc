@@ -29,7 +29,7 @@
 #include "modules/perception/base/traffic_light.h"
 #include "modules/perception/camera/common/camera_frame.h"
 #include "modules/perception/camera/common/data_provider.h"
-#include "modules/perception/camera/lib/traffic_light/detector/detection/yolo_single_stage_dector.h"
+#include "modules/perception/camera/lib/traffic_light/detector/yolo_single_stage_dector.h"
 
 DEFINE_string(image_path, "", "Input JPG/PNG path. Example: /tmp/frame.jpg");
 DEFINE_string(output_path, "/tmp/yolo_single_stage_dector_result.jpg",
