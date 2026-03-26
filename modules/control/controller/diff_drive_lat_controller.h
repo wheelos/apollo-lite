@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <fstream>
 #include <memory>
 
 #include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
@@ -61,8 +60,6 @@ class DiffDriveLatController : public Controller {
   void ProcessLogs(const SimpleLateralDebug *debug,
                    const canbus::Chassis *chassis);
 
-  void CloseLogFile();
-
   void InitializeFilters();
 
   void UpdateDrivingOrientation();
@@ -89,8 +86,6 @@ class DiffDriveLatController : public Controller {
   std::shared_ptr<DependencyInjector> injector_;
 
   std::string name_;
-
-  std::ofstream steer_log_file_;
 
   double driving_orientation_ = 0.0;
   double query_relative_time_;

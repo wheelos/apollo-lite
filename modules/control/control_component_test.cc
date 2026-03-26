@@ -243,7 +243,6 @@ void ControlComponentTest::TrimControlCommand(ControlCommand* origin) {
 
 TEST_F(ControlComponentTest, simple_test) {
   FLAGS_test_data_dir = "/apollo/modules/control/testdata/simple_control_test/";
-  FLAGS_enable_csv_debug = true;
   FLAGS_test_localization_file = "1_localization.pb.txt";
   FLAGS_test_pad_file = "1_pad.pb.txt";
   FLAGS_test_planning_file = "1_planning.pb.txt";

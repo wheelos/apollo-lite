@@ -33,8 +33,6 @@ DECLARE_string(calibration_table_file);
 
 DECLARE_double(control_test_duration);
 
-DECLARE_bool(enable_csv_debug);
-
 // temporary gflag for test purpose
 DECLARE_bool(enable_speed_station_preview);
 

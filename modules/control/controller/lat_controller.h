@@ -21,7 +21,6 @@
 
 #pragma once
 
-#include <fstream>
 #include <memory>
 #include <string>
 
@@ -124,8 +123,6 @@ class LatController : public Controller {
   void LogInitParameters();
   void ProcessLogs(const SimpleLateralDebug *debug,
                    const canbus::Chassis *chassis);
-
-  void CloseLogFile();
 
   // vehicle
   const ControlConf *control_conf_ = nullptr;
@@ -234,9 +231,6 @@ class LatController : public Controller {
 
   double previous_heading_acceleration_ = 0.0;
   double previous_ref_heading_acceleration_ = 0.0;
-
-  // for logging purpose
-  std::ofstream steer_log_file_;
 
   const std::string name_;
 

@@ -39,7 +39,6 @@ class RelativePositionTest : public ControlTestBase {
 };
 
 TEST_F(RelativePositionTest, simple_left) {
-  FLAGS_enable_csv_debug = true;
   FLAGS_test_localization_file = "0_apollo_localization_pose.pb.txt";
   FLAGS_test_pad_file = "0_pad.pb.txt";
   FLAGS_test_planning_file = "0_apollo_planning.pb.txt";

@@ -34,50 +34,12 @@ using apollo::common::ErrorCode;
 using apollo::common::Status;
 using apollo::common::TrajectoryPoint;
 
-namespace {
-
-std::string GetLogFileName() {
-  time_t raw_time;
-  char name_buffer[80];
-  std::time(&raw_time);
-  std::tm time_tm;
-  localtime_r(&raw_time, &time_tm);
-  strftime(name_buffer, 80, "/tmp/steer_log_simple_optimal_%F_%H%M%S.csv",
-           &time_tm);
-  return std::string(name_buffer);
-}
-
-void WriteHeaders(std::ofstream &file_stream) {
-  file_stream << "current_lateral_error,"
-              << "current_ref_heading,"
-              << "current_heading,"
-              << "current_heading_error,"
-              << "heading_error_rate,"
-              << "lateral_error_rate,"
-              << "current_curvature,"
-              << "v" << std::endl;
-}
-
-}  // namespace
-
 DiffDriveLatController::DiffDriveLatController()
     : name_("PID-based Diff drive lat Controller") {
-  if (FLAGS_enable_csv_debug) {
-    steer_log_file_.open(GetLogFileName());
-    steer_log_file_ << std::fixed;
-    steer_log_file_ << std::setprecision(6);
-    WriteHeaders(steer_log_file_);
-  }
   AINFO << "Using " << name_;
 }
 
-DiffDriveLatController::~DiffDriveLatController() { CloseLogFile(); }
-
-void DiffDriveLatController::CloseLogFile() {
-  if (FLAGS_enable_csv_debug && steer_log_file_.is_open()) {
-    steer_log_file_.close();
-  }
-}
+DiffDriveLatController::~DiffDriveLatController() {}
 
 void DiffDriveLatController::InitializeFilters() {
   // Low pass filter
@@ -230,9 +192,7 @@ void DiffDriveLatController::ProcessLogs(const SimpleLateralDebug *debug,
       ",", debug->heading_error(), ",", debug->heading_error_rate(), ",",
       debug->lateral_error_rate(), ",", debug->curvature(), ",",
       injector_->vehicle_state()->linear_velocity());
-  if (FLAGS_enable_csv_debug) {
-    steer_log_file_ << log_str << std::endl;
-  }
+  ADEBUG << "Steer_Control_Detail: " << log_str;
 }
 
 void DiffDriveLatController::ComputeLateralErrors(
@@ -372,7 +332,7 @@ Status DiffDriveLatController::Reset() {
 
 std::string DiffDriveLatController::Name() const { return name_; }
 
-void DiffDriveLatController::Stop() { CloseLogFile(); }
+void DiffDriveLatController::Stop() {}
 
 }  // namespace control
 }  // namespace apollo

@@ -17,7 +17,6 @@
 #include "modules/control/controller/lat_controller.h"
 
 #include <algorithm>
-#include <iomanip>
 #include <utility>
 #include <vector>
 
@@ -44,53 +43,11 @@ using apollo::common::VehicleStateProvider;
 using Matrix = Eigen::MatrixXd;
 using apollo::cyber::Clock;
 
-namespace {
-
-std::string GetLogFileName() {
-  time_t raw_time;
-  char name_buffer[80];
-  std::time(&raw_time);
-  std::tm time_tm;
-  localtime_r(&raw_time, &time_tm);
-  strftime(name_buffer, 80, "/tmp/steer_log_simple_optimal_%F_%H%M%S.csv",
-           &time_tm);
-  return std::string(name_buffer);
-}
-
-void WriteHeaders(std::ofstream &file_stream) {
-  file_stream << "lateral_error,"
-              << "lateral_error_rate,"
-              << "lateral_error_feedback,"
-              << "heading,"
-              << "ref_heading,"
-              << "heading_error,"
-              << "heading_error_rate,"
-              << "heading_error_feedback,"
-              << "curvature,"
-              << "steer_angle,"
-              << "steer_angle_feedforward,"
-              << "steer_angle_feedback,"
-              << "steer_angle_feedback_augment,"
-              << "steering_percentage,"
-              << "steer_angle_lateral_contribution,"
-              << "steer_angle_lateral_rate_contribution,"
-              << "steer_angle_heading_contribution,"
-              << "steer_angle_heading_rate_contribution,"
-              << "linear_velocity" << std::endl;
-}
-}  // namespace
-
 LatController::LatController() : name_("LQR-based Lateral Controller") {
-  if (FLAGS_enable_csv_debug) {
-    steer_log_file_.open(GetLogFileName());
-    steer_log_file_ << std::fixed;
-    steer_log_file_ << std::setprecision(6);
-    WriteHeaders(steer_log_file_);
-  }
   AINFO << "Using " << name_;
 }
 
-LatController::~LatController() { CloseLogFile(); }
+LatController::~LatController() {}
 
 bool LatController::LoadControlConf(const ControlConf *control_conf) {
   if (!control_conf) {
@@ -169,9 +126,6 @@ void LatController::ProcessLogs(const SimpleLateralDebug *debug,
       debug->steer_angle_heading_contribution(),
       debug->steer_angle_heading_rate_contribution(),
       injector_->vehicle_state()->linear_velocity());
-  if (FLAGS_enable_csv_debug) {
-    steer_log_file_ << log_str << std::endl;
-  }
   ADEBUG << "Steer_Control_Detail: " << log_str;
 }
 
@@ -288,12 +242,6 @@ Status LatController::Init(std::shared_ptr<DependencyInjector> injector,
   return Status::OK();
 }
 
-void LatController::CloseLogFile() {
-  if (FLAGS_enable_csv_debug && steer_log_file_.is_open()) {
-    steer_log_file_.close();
-  }
-}
-
 void LatController::LoadLatGainScheduler(
     const LatControllerConf &lat_controller_conf) {
   const auto &lat_err_gain_scheduler =
@@ -318,7 +266,7 @@ void LatController::LoadLatGainScheduler(
       << "Fail to load heading error gain scheduler";
 }
 
-void LatController::Stop() { CloseLogFile(); }
+void LatController::Stop() {}
 
 std::string LatController::Name() const { return name_; }
 
