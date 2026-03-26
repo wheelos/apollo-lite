@@ -101,7 +101,10 @@ prompt_yes_no() {
     fi
   fi
   local answer
-  read -rp "${prompt_msg} [Y/n]: " answer
+  # Print prompt to stderr to avoid accidental duplication when stdout is
+  # redirected or when other parts of the script also write to stdout.
+  printf "%s" "${prompt_msg} [Y/n]: " >&2
+  read -r answer
   answer=${answer:-${default_yes}}
   case "${answer}" in
     [Yy]* ) return 0 ;;

@@ -106,22 +106,48 @@ set -- "${remaining_args[@]}"
 
 # Prepare to call the container selection script
 
-# ----- Phase 1: Container Selection -----
 
+# ----- Phase 1: Container Selection -----
 
 # Source environment utilities
 source "${DOCKER_DIR}/scripts/env_setup.sh"
 
-ARCH=$(uname -m)
-OS=$(detect_os_version)
-USE_GPU=$(detect_gpu_use_interactive)
+# Helper: prepare APOLLO_IMAGE and CONTAINER_NAME. If a valid non-empty
+# docker/.env exists (and WHL_FORCE_REGENERATE_ENV is not set), reuse it to
+# avoid prompting; otherwise detect host and run selection logic.
+prepare_image_selection() {
+  local env_file="${DOCKER_DIR}/.env"
+  ARCH=$(uname -m)
 
-# Call the container selection script
-source "${DOCKER_DIR}/scripts/container_selection.sh"
+  if [[ -z "${WHL_FORCE_REGENERATE_ENV:-}" && -f "${env_file}" && -s "${env_file}" ]]; then
+    echo ">>> Reusing existing ${env_file} to avoid interactive prompts."
+    # shellcheck disable=SC1090
+    source "${env_file}" || true
+    # If APOLLO_IMAGE is already provided from env, we're done.
+    if [[ -n "${APOLLO_IMAGE:-}" ]]; then
+      echo ">>> Using image from .env: ${APOLLO_IMAGE}"
+      # Ensure USE_GPU is defined to avoid unbound variable errors later.
+      if [[ -z "${USE_GPU:-}" ]]; then
+        if gpu_available; then
+          USE_GPU="true"
+        else
+          USE_GPU="false"
+        fi
+      fi
+      return 0
+    fi
+  fi
 
+  # Fallback: detect host and ask interactively as before
+  OS=$(detect_os_version)
+  USE_GPU=$(detect_gpu_use_interactive)
+  # Call the container selection script which will set APOLLO_IMAGE
+  source "${DOCKER_DIR}/scripts/container_selection.sh"
+  select_container "$ARCH" "$OS" "$USE_GPU"
+}
 
-
-
+# Prepare image/container name
+prepare_image_selection
 
 function require_host_ready() {
   if [[ "${WHL_SKIP_HOST_CHECK:-0}" == "1" ]]; then
@@ -181,7 +207,12 @@ verify_gpu_ready
 if [[ -n "${CUSTOM_IMAGE}" ]]; then
   echo ">>> Using custom image: ${CUSTOM_IMAGE}"
   APOLLO_IMAGE="${CUSTOM_IMAGE}"
+elif [[ -n "${APOLLO_IMAGE:-}" ]]; then
+  echo ">>> Using image from environment: ${APOLLO_IMAGE}"
 else
+  # Ensure OS/USE_GPU are defined before calling interactive selector
+  OS=${OS:-$(detect_os_version)}
+  USE_GPU=${USE_GPU:-$(detect_gpu_use_interactive)}
   select_container "$ARCH" "$OS" "$USE_GPU"
 fi
 
@@ -315,7 +346,7 @@ function cmd_prune() {
 
 # ----- Main Script Execution -----
 function show_help() {
-  echo "Usage: bash whl.sh [OPTIONS] [COMMAND] [MODE]"
+  echo "Usage: whl [OPTIONS] [COMMAND] [MODE]"
   echo ""
   echo "Options:"
   echo "  -n, --name NAME    Specify container name (default: apollo_{dev|test|prod}_{USER})"
@@ -339,11 +370,11 @@ function show_help() {
   echo "  prod       Production mode (Host net, Restart enabled)"
   echo ""
   echo "Examples:"
-  echo "  bash whl.sh enter                    # Enter dev container (auto-select image)"
-  echo "  bash whl.sh -n my_container enter    # Enter container with custom name"
-  echo "  bash whl.sh -i myimage:latest start  # Start with custom image"
-  echo "  bash whl.sh start prod               # Start production container"
-  echo "  bash whl.sh --os 20.04 enter dev     # Enter with Ubuntu 20.04 image"
+  echo "  whl enter                    # Enter dev container (auto-select image)"
+  echo "  whl -n my_container enter    # Enter container with custom name"
+  echo "  whl -i myimage:latest start  # Start with custom image"
+  echo "  whl start prod               # Start production container"
+  echo "  whl --os 20.04 enter dev     # Enter with Ubuntu 20.04 image"
 }
 
 # Simple routing

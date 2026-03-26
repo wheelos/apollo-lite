@@ -107,12 +107,57 @@ function detect_timezone() {
   fi
 }
 
+# Try to reuse an existing env file to avoid interactive prompts.
+# Usage: try_reuse_env_file <env_file>
+try_reuse_env_file() {
+  local env_file="$1"
+  if [[ -z "${WHL_FORCE_REGENERATE_ENV:-}" && -f "${env_file}" && -s "${env_file}" ]]; then
+    echo ">>> Using existing ${env_file}; set WHL_FORCE_REGENERATE_ENV=1 to force regeneration."
+    # Safely parse KEY=VALUE pairs only (avoid sourcing arbitrary code).
+    # Supports quoted and unquoted values, ignores comments and blank lines.
+    while IFS= read -r _line || [[ -n "$_line" ]]; do
+      local line="$_line"
+      # Trim leading/trailing whitespace
+      line="$(echo "${line}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+      # Skip empty or comment lines
+      [[ -z "${line}" || "${line:0:1}" == "#" ]] && continue
+      if [[ "${line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+        local key="${BASH_REMATCH[1]}"
+        local val="${BASH_REMATCH[2]}"
+        # Remove surrounding quotes if present
+        if [[ "${val}" =~ ^\"(.*)\"$ ]]; then
+          val="${BASH_REMATCH[1]}"
+        elif [[ "${val}" =~ ^\'(.*)\'$ ]]; then
+          val="${BASH_REMATCH[1]}"
+        fi
+        export "${key}"="${val}"
+      fi
+    done < "${env_file}"
+
+    # Ensure DREAMVIEW_PORT exported (fall back to calculation if missing)
+    if [[ -n "${SERVER_PORT:-}" ]]; then
+      export DREAMVIEW_PORT="${SERVER_PORT}"
+    elif [[ -n "${DREAMVIEW_PORT:-}" ]]; then
+      export DREAMVIEW_PORT="${DREAMVIEW_PORT}"
+    else
+      export DREAMVIEW_PORT="$(calculate_dreamview_port)"
+    fi
+    return 0
+  fi
+  return 1
+}
+
 function generate_env() {
   local mode="$1"
   local project_root="$2"
   local docker_dir="$3"
   local apollo_image="$4"
   local custom_container_name="$5"
+
+  local env_file="${docker_dir}/.env"
+  if try_reuse_env_file "${env_file}"; then
+    return 0
+  fi
 
   local container_name="apollo_dev_${USER}"
   local prod_env_file="${docker_dir}/.env.prod"
@@ -137,13 +182,20 @@ function generate_env() {
   local target_arch="${TARGET_ARCH:-$(uname -m)}"
   local bazel_cache_dir="${BAZEL_CACHE_DIR:-/var/cache/bazel/repo_cache}"
 
-  echo ">>> Generating .env for [${mode}]..."
+  # If running prod mode and a prod env file already exists, reuse it to avoid prompts.
+  if [[ "${mode}" == "prod" ]] && try_reuse_env_file "${prod_env_file}"; then
+    return 0
+  fi
 
+  echo ">>> Generating .env for [${mode}]..."
   CONTAINER_NAME="${container_name}"
   export CONTAINER_NAME
   export DISPLAY="${final_display}"
 
-  cat >"${docker_dir}/.env" <<ENV_EOF
+  # Write .env atomically to avoid readers seeing a partially-written file.
+  local tmp_env_file
+  tmp_env_file="${docker_dir}/.env.tmp.$(date +%s).$$"
+  cat >"${tmp_env_file}" <<ENV_EOF
 APOLLO_ROOT=${project_root}
 APOLLO_IMAGE=${apollo_image}
 CONTAINER_NAME=${container_name}
@@ -159,9 +211,16 @@ SHM_SIZE=2g
 # Dynamic port (Test mode)
 SERVER_PORT=${dreamview_port}
 
+# Also export DREAMVIEW_PORT for consistency with scripts that read it directly.
+DREAMVIEW_PORT=${dreamview_port}
+
 # Controlling Entrypoint Behavior
 AUTO_BOOTSTRAP=${AUTO_BOOTSTRAP:-false}
 ENV_EOF
+
+  # Move into place atomically
+  mv "${tmp_env_file}" "${docker_dir}/.env"
+  chmod 644 "${docker_dir}/.env" || true
 
   if [[ "${mode}" == "prod" ]]; then
     if [[ ! -f "${prod_env_file}" && -f "${prod_env_template}" ]]; then
