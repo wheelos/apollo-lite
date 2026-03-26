@@ -40,8 +40,10 @@ T* CopyData(const std::vector<T>& vec) {
   if (vec.empty()) {
     return nullptr;
   }
-  T* data =
-      reinterpret_cast<T*>(std::malloc(sizeof(T) * vec.size()));
+  T* data = reinterpret_cast<T*>(std::malloc(sizeof(T) * vec.size()));
+  if (data == nullptr) {
+    return nullptr;
+  }
   std::memcpy(data, vec.data(), sizeof(T) * vec.size());
   return data;
 }

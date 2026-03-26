@@ -20,6 +20,8 @@
 
 #include "modules/planning/math/smoothing_spline/osqp_spline_2d_solver.h"
 
+#include <cmath>
+
 #include "cyber/common/log.h"
 #include "modules/common/math/matrix_operations.h"
 #include "modules/planning/common/planning_gflags.h"
