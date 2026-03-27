@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 INSTALL_DIR="${INSTALL_DIR:-/opt/frp/car}"
 FRP_VER="${FRP_VER:-0.54.0}"
 
@@ -169,3 +171,5 @@ echo "APP mapping       : ${LOCAL_APP_IP}:${LOCAL_APP_PORT} -> ${S_IP}:${REMOTE_
 echo
 echo "Start command:"
 echo "  cd $INSTALL_DIR && ./frpc -c frpc.toml"
+echo "Autostart command:"
+echo "  bash $SCRIPT_DIR/manage.sh autostart on"
