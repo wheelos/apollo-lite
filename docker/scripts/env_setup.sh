@@ -113,6 +113,15 @@ try_reuse_env_file() {
   local env_file="$1"
   if [[ -z "${WHL_FORCE_REGENERATE_ENV:-}" && -f "${env_file}" && -s "${env_file}" ]]; then
     echo ">>> Using existing ${env_file}; set WHL_FORCE_REGENERATE_ENV=1 to force regeneration."
+    # Preserve caller-provided AUTO_BOOTSTRAP (e.g., systemd autostart service)
+    # so that reusing .env does not silently override runtime intent.
+    local had_auto_bootstrap="0"
+    local inherited_auto_bootstrap=""
+    if [[ -n "${AUTO_BOOTSTRAP+x}" ]]; then
+      had_auto_bootstrap="1"
+      inherited_auto_bootstrap="${AUTO_BOOTSTRAP}"
+    fi
+
     # Safely parse KEY=VALUE pairs only (avoid sourcing arbitrary code).
     # Supports quoted and unquoted values, ignores comments and blank lines.
     while IFS= read -r _line || [[ -n "$_line" ]]; do
@@ -133,6 +142,10 @@ try_reuse_env_file() {
         export "${key}"="${val}"
       fi
     done < "${env_file}"
+
+    if [[ "${had_auto_bootstrap}" == "1" ]]; then
+      export AUTO_BOOTSTRAP="${inherited_auto_bootstrap}"
+    fi
 
     # Ensure DREAMVIEW_PORT exported (fall back to calculation if missing)
     if [[ -n "${SERVER_PORT:-}" ]]; then

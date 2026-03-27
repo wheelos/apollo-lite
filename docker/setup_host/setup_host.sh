@@ -78,21 +78,29 @@ check_status() {
 install_whl_system_command() {
     local script_path="${APOLLO_ROOT_DIR}/docker/scripts/whl.sh"
     local link_path="/usr/local/bin/whl"
-
-    # If whl already exists on PATH, do nothing.
-    if command -v whl >/dev/null 2>&1; then
-        echo "✅ 'whl' already available on PATH: $(command -v whl)"
-        return 0
-    fi
+    local existing_whl
+    local resolved_existing=""
 
     if [ ! -f "${script_path}" ]; then
         echo "⚠️  whl helper script not found at ${script_path}; skipping installation of system 'whl' command."
         return 0
     fi
 
+    chmod +x "${script_path}"
+
+    existing_whl="$(command -v whl 2>/dev/null || true)"
+    if [ -n "${existing_whl}" ]; then
+        resolved_existing="$(readlink -f "${existing_whl}" 2>/dev/null || echo "${existing_whl}")"
+        if [ "${resolved_existing}" = "${script_path}" ]; then
+            echo "✅ 'whl' already available on PATH: ${existing_whl}"
+            return 0
+        fi
+        echo "⚠️  Existing 'whl' found at ${existing_whl}; replacing with project whl helper."
+    fi
+
     echo "🔧 Installing system 'whl' command -> ${link_path} (requires sudo)"
-    sudo ln -sf "${script_path}" "${link_path}" || true
-    sudo chmod +x "${script_path}" "${link_path}" || true
+    sudo ln -sf "${script_path}" "${link_path}"
+    sudo chmod +x "${link_path}"
     echo "✅ Installed 'whl' -> ${link_path}"
 }
 
@@ -178,5 +186,5 @@ fi
 echo "--- 🎉 Configuration complete. ---"
 echo "--- ⚠️ Close and reopen your terminal to apply changes! ---"
 
-# Mark host setup completion
+# Mark host setup completion with a single marker.
 sudo touch "${HOST_READY_MARKER}"

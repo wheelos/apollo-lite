@@ -111,6 +111,8 @@ set -- "${remaining_args[@]}"
 
 # Source environment utilities
 source "${DOCKER_DIR}/scripts/env_setup.sh"
+# Source container selection once so select_container is always available.
+source "${DOCKER_DIR}/scripts/container_selection.sh"
 
 # Helper: prepare APOLLO_IMAGE and CONTAINER_NAME. If a valid non-empty
 # docker/.env exists (and WHL_FORCE_REGENERATE_ENV is not set), reuse it to
@@ -121,8 +123,7 @@ prepare_image_selection() {
 
   if [[ -z "${WHL_FORCE_REGENERATE_ENV:-}" && -f "${env_file}" && -s "${env_file}" ]]; then
     echo ">>> Reusing existing ${env_file} to avoid interactive prompts."
-    # shellcheck disable=SC1090
-    source "${env_file}" || true
+    try_reuse_env_file "${env_file}" || true
     # If APOLLO_IMAGE is already provided from env, we're done.
     if [[ -n "${APOLLO_IMAGE:-}" ]]; then
       echo ">>> Using image from .env: ${APOLLO_IMAGE}"
@@ -141,8 +142,6 @@ prepare_image_selection() {
   # Fallback: detect host and ask interactively as before
   OS=$(detect_os_version)
   USE_GPU=$(detect_gpu_use_interactive)
-  # Call the container selection script which will set APOLLO_IMAGE
-  source "${DOCKER_DIR}/scripts/container_selection.sh"
   select_container "$ARCH" "$OS" "$USE_GPU"
 }
 

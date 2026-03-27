@@ -594,12 +594,6 @@ setup_jetson_performance() {
 
 # Switches the system to non-graphical multi-user mode (headless).
 configure_headless_mode() {
-    # This is a significant change, only run if explicitly requested.
-    if [[ "${SETUP_HEADLESS_MODE:-no}" != "yes" ]]; then
-        info "SETUP_HEADLESS_MODE is not 'yes'. Skipping GUI disable."
-        return 0
-    fi
-
     info "Configuring system for headless operation (disabling GUI)..."
     # Check if it's already in the desired state (idempotency)
     if systemctl get-default | grep -q "multi-user.target"; then
@@ -657,17 +651,21 @@ configure_ptp() {
   if systemctl is-active --quiet ptp4l; then
     success "PTP E2E is ACTIVE."
   else
-    # some platform may failed to start ptp server
+    # some platform may fail to start ptp server
     error "PTP failed to start. Check 'journalctl -u ptp4l'."
+    if [[ ! -t 0 ]]; then
+      warning "Non-interactive mode detected; continue without PTP synchronization."
+      return 0
+    fi
     read -r -p "Should Apollo be setup without time synchronization?(y/N): " response
-     case "$response" in
-        [yY][eE][sS]|[yY])
-          return 0
-          ;;
-         *)
-          return 1
-          ;;
-     esac
+    case "$response" in
+      [yY][eE][sS]|[yY])
+        return 0
+        ;;
+      *)
+        return 1
+        ;;
+    esac
   fi
 }
 

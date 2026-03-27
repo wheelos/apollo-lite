@@ -70,7 +70,7 @@ sudo bash docker/setup_host/setup_host.sh
 ```
 
 - `setup_host.sh` will install `whl` (system command linked at `/usr/local/bin/whl`) before running system configuration.
-- After completing, the installer will create the marker file `/etc/wheelos_setup_host.done` to indicate host readiness.
+- After completing, the installer writes `/etc/wheelos_setup_host.done` to indicate host readiness.
 
 2. Start or enter the container with `whl`:
 
