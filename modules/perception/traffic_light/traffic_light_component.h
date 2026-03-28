@@ -118,9 +118,11 @@ class TrafficLightComponent : public apollo::cyber::Component<> {
   RuntimeState runtime_state_;
 
   std::shared_ptr<IDataProviderPort> data_provider_;
+  std::shared_ptr<IFrameInputPort> frame_input_port_;
   std::shared_ptr<IPoseProviderPort> pose_provider_;
   std::shared_ptr<IMapProviderPort> map_provider_;
   std::shared_ptr<IV2XProviderPort> v2x_provider_;
+  std::shared_ptr<IV2XInputPort> v2x_input_port_;
   std::shared_ptr<IResultWriterPort> result_writer_;
 
   std::vector<std::string> camera_names_ = {"front_6mm"};

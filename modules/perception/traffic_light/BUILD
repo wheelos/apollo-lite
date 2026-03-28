@@ -23,7 +23,8 @@ cc_library(
 cc_library(
     name = "tl_ports",
     hdrs = [
-        "ports/default_port_adapters.h",
+        "ports/default_provider_ports.h",
+        "ports/collecting_result_writer_port.h",
         "ports/provider_ports.h",
         "ports/result_writer_port.h",
         "ports/hdmap_map_provider_port.h",

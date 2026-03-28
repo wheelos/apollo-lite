@@ -7,28 +7,22 @@
 #include <vector>
 
 #include "modules/perception/traffic_light/ports/provider_ports.h"
-#include "modules/perception/traffic_light/ports/result_writer_port.h"
 
 namespace apollo {
 namespace perception {
 namespace traffic_light {
 
-class InMemoryDataProviderPort : public IDataProviderPort {
+class InMemoryDataProviderPort : public IDataProviderPort,
+                                 public IFrameInputPort {
  public:
-  void SetFrameId(uint64_t frame_id) { frame_id_ = frame_id; }
-
-  void SetTimestamp(uint64_t timestamp_ns) { timestamp_ns_ = timestamp_ns; }
-
-  void SetPrimaryCameraName(std::string camera_name) {
-    primary_camera_name_ = std::move(camera_name);
-  }
-
-  void SetWideImage(const Image& image) { image_wide_ = image; }
-
-  void SetTeleImage(const Image& image) { image_tele_ = image; }
-
-  void SetCameraFrames(std::vector<CameraFrameState> camera_frames) {
-    camera_frames_ = std::move(camera_frames);
+  bool PushCameraFrame(uint64_t frame_id,
+                       const CameraFrameState& frame) override {
+    frame_id_ = frame_id;
+    timestamp_ns_ = frame.timestamp_ns;
+    primary_camera_name_ = frame.camera_name;
+    camera_frames_.clear();
+    camera_frames_.push_back(frame);
+    return true;
   }
 
   bool PopulateFrameData(PipelineContext* context) override {
@@ -38,16 +32,18 @@ class InMemoryDataProviderPort : public IDataProviderPort {
     context->frame_id = frame_id_;
     context->timestamp = timestamp_ns_;
     context->primary_camera_name = primary_camera_name_;
-    context->image_wide = image_wide_;
-    context->image_tele = image_tele_;
+    context->image_wide = Image();
+    context->image_tele = Image();
     context->camera_frames = camera_frames_;
     if (context->primary_camera_name.empty() &&
         !context->camera_frames.empty()) {
       context->primary_camera_name = context->camera_frames.front().camera_name;
     }
-    context->status.image_healthy = !context->camera_frames.empty() ||
-                                    context->image_wide.data != nullptr ||
-                                    context->image_tele.data != nullptr;
+    if (!context->camera_frames.empty()) {
+      // Keep legacy single-image fields in sync for transitional stages.
+      context->image_tele = context->camera_frames.front().image;
+    }
+    context->status.image_healthy = !context->camera_frames.empty();
     return context->status.image_healthy;
   }
 
@@ -55,8 +51,6 @@ class InMemoryDataProviderPort : public IDataProviderPort {
   uint64_t frame_id_ = 0;
   uint64_t timestamp_ns_ = 0;
   std::string primary_camera_name_;
-  Image image_wide_;
-  Image image_tele_;
   std::vector<CameraFrameState> camera_frames_;
 };
 
@@ -138,7 +132,7 @@ class CachedMapProviderPort : public IMapProviderPort {
 };
 
 // 适用于在线/离线混合场景：异步推送 V2X，按帧快照注入当前上下文。
-class BufferedV2XProviderPort : public IV2XProviderPort {
+class BufferedV2XProviderPort : public IV2XProviderPort, public IV2XInputPort {
  public:
   void SetMaxBufferSize(size_t max_buffer_size) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -146,7 +140,7 @@ class BufferedV2XProviderPort : public IV2XProviderPort {
     TrimLocked();
   }
 
-  void PushEvidence(const V2XLightEvidence& evidence) {
+  void PushV2XEvidence(const V2XLightEvidence& evidence) override {
     std::lock_guard<std::mutex> lock(mutex_);
     buffer_.push_back(evidence);
     TrimLocked();
@@ -188,29 +182,6 @@ class BufferedV2XProviderPort : public IV2XProviderPort {
   std::mutex mutex_;
   size_t max_buffer_size_ = 64;
   std::deque<V2XLightEvidence> buffer_;
-};
-
-// 最小 demo 结果出口：允许直接读取最终仲裁结果而不依赖 Cyber writer。
-class CollectingResultWriterPort : public IResultWriterPort {
- public:
-  bool Write(const PipelineContext& context,
-             const TrafficLightResult& result) override {
-    last_frame_id_ = context.frame_id;
-    last_result_ = result;
-    history_.push_back(result);
-    return true;
-  }
-
-  const TrafficLightResult& last_result() const { return last_result_; }
-
-  uint64_t last_frame_id() const { return last_frame_id_; }
-
-  const std::vector<TrafficLightResult>& history() const { return history_; }
-
- private:
-  uint64_t last_frame_id_ = 0;
-  TrafficLightResult last_result_;
-  std::vector<TrafficLightResult> history_;
 };
 
 }  // namespace traffic_light

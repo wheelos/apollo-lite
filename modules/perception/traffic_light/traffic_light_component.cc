@@ -10,7 +10,7 @@
 #include "modules/common_msgs/v2x_msgs/v2x_traffic_light.pb.h"
 
 #include "cyber/common/log.h"
-#include "modules/perception/traffic_light/ports/default_port_adapters.h"
+#include "modules/perception/traffic_light/ports/default_provider_ports.h"
 
 namespace apollo {
 namespace perception {
@@ -219,6 +219,12 @@ bool TrafficLightComponent::InitDefaultPorts() {
   if (data_provider_ == nullptr) {
     data_provider_ = std::make_shared<InMemoryDataProviderPort>();
   }
+  frame_input_port_ =
+      std::dynamic_pointer_cast<IFrameInputPort>(data_provider_);
+  if (frame_input_port_ == nullptr) {
+    AERROR << "Configured data_provider does not implement IFrameInputPort";
+    return false;
+  }
   if (pose_provider_ == nullptr) {
     auto pose_provider = std::make_shared<StaticPoseProviderPort>();
     VehicleState ego_state;
@@ -231,6 +237,11 @@ bool TrafficLightComponent::InitDefaultPorts() {
   }
   if (v2x_provider_ == nullptr) {
     v2x_provider_ = std::make_shared<BufferedV2XProviderPort>();
+  }
+  v2x_input_port_ = std::dynamic_pointer_cast<IV2XInputPort>(v2x_provider_);
+  if (v2x_input_port_ == nullptr) {
+    AERROR << "Configured v2x_provider does not implement IV2XInputPort";
+    return false;
   }
   if (result_writer_ == nullptr) {
     auto writer =
@@ -295,9 +306,7 @@ void TrafficLightComponent::OnReceiveImage(
     const std::shared_ptr<apollo::drivers::Image>& image,
     const std::string& camera_name) {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto data_provider =
-      std::dynamic_pointer_cast<InMemoryDataProviderPort>(data_provider_);
-  if (data_provider == nullptr || image == nullptr) {
+  if (frame_input_port_ == nullptr || image == nullptr) {
     return;
   }
 
@@ -314,11 +323,9 @@ void TrafficLightComponent::OnReceiveImage(
       static_cast<uint64_t>(image->measurement_time() * 1e9);
   camera_frame.image = frame_image;
 
-  data_provider->SetFrameId(++frame_counter_);
-  data_provider->SetTimestamp(camera_frame.timestamp_ns);
-  data_provider->SetPrimaryCameraName(camera_name);
-  data_provider->SetTeleImage(frame_image);
-  data_provider->SetCameraFrames({camera_frame});
+  if (!frame_input_port_->PushCameraFrame(++frame_counter_, camera_frame)) {
+    return;
+  }
 
   if (enable_debug_image_stream_ && debug_image_writer_ != nullptr) {
     debug_image_writer_->Write(image);
@@ -329,9 +336,7 @@ void TrafficLightComponent::OnReceiveImage(
 
 void TrafficLightComponent::OnReceiveV2XMsg(
     const std::shared_ptr<apollo::v2x::IntersectionTrafficLightData>& v2x_msg) {
-  auto v2x_provider =
-      std::dynamic_pointer_cast<BufferedV2XProviderPort>(v2x_provider_);
-  if (v2x_provider == nullptr || v2x_msg == nullptr) {
+  if (v2x_input_port_ == nullptr || v2x_msg == nullptr) {
     return;
   }
 
@@ -347,7 +352,7 @@ void TrafficLightComponent::OnReceiveV2XMsg(
           single.color() == apollo::v2x::SingleTrafficLight::FLASH_GREEN;
       evidence.confidence = static_cast<float>(v2x_msg->confidence());
       evidence.timestamp_sec = v2x_msg->header().timestamp_sec();
-      v2x_provider->PushEvidence(evidence);
+      v2x_input_port_->PushV2XEvidence(evidence);
     }
   }
 }

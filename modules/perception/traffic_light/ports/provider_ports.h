@@ -38,6 +38,23 @@ class IV2XProviderPort {
   virtual bool PopulateV2X(PipelineContext* context) = 0;
 };
 
+// Streaming frame input abstraction for online callback ingestion.
+class IFrameInputPort {
+ public:
+  virtual ~IFrameInputPort() = default;
+
+  virtual bool PushCameraFrame(uint64_t frame_id,
+                               const CameraFrameState& frame) = 0;
+};
+
+// Streaming V2X input abstraction for asynchronous callback ingestion.
+class IV2XInputPort {
+ public:
+  virtual ~IV2XInputPort() = default;
+
+  virtual void PushV2XEvidence(const V2XLightEvidence& evidence) = 0;
+};
+
 }  // namespace traffic_light
 }  // namespace perception
 }  // namespace apollo
