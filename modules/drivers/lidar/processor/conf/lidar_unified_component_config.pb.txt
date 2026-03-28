@@ -1,0 +1,24 @@
+output_channel: "/apollo/sensor/lidar/unified/PointCloud2"
+
+auxiliary_lidar_inputs {
+	topic_name: "/apollo/sensor/rslidar/up/PointCloud2"
+}
+
+sensor_buffer_size: 16
+max_full_pointcloud_points: 600000
+worker_num: 0
+
+base_link_frame_id: "base_link"
+world_frame_id: "world"
+
+enable_ego_query_filter: true
+ego_box_forward_x: 2.8
+ego_box_backward_x: -2.8
+ego_box_forward_y: 1.4
+ego_box_backward_y: -1.4
+
+voxel_size: 0.15
+max_ref_time_delta_ms: 80
+motion_compensation_bins: 12
+metrics_log_interval: 50
+strict_auxiliary_sync: false
