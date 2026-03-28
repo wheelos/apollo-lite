@@ -1,0 +1,12 @@
+module_config {
+  module_library : "/apollo/bazel-bin/modules/perception/traffic_light/libtraffic_light_component.so"
+
+  components {
+    class_name : "TrafficLightComponent"
+    config {
+      name: "TrafficLightsComponent"
+      config_file_path: "/apollo/modules/perception/traffic_light/conf/traffic_light.pb.txt"
+      flag_file_path: "/apollo/modules/perception/production/conf/perception/perception_common.flag"
+    }
+  }
+}

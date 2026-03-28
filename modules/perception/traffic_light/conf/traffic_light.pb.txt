@@ -1,0 +1,32 @@
+tl_tf2_frame_id: "world"
+tl_tf2_child_frame_id: "novatel"
+
+camera_name_list: "front_6mm"
+camera_channel_name_list: "/apollo/sensor/camera/front_6mm/image"
+
+max_process_image_fps: 8
+query_tf_interval_seconds: 0.3
+valid_hdmap_interval: 1.5
+image_sys_ts_diff_threshold: 0.5
+sync_interval_seconds: 0.5
+default_image_border_size: 100
+
+pipeline_config_root_dir: "/apollo/modules/perception/pipeline/config"
+pipeline_config_file: "trafficlights_perception.pb.txt"
+
+traffic_light_output_channel_name: "/apollo/perception/traffic_light"
+simulation_channel_name: "/perception/traffic_light_simulation"
+v2x_trafficlights_input_channel_name: "/apollo/v2x/traffic_light"
+v2x_sync_interval_seconds: 0.1
+max_v2x_msg_buff_size: 50
+
+tl_preprocessor_name: "TrafficLightPreprocessorStage"
+enable_undistortion: false
+image_width: 1920
+image_height: 1080
+image_channel_num: 3
+check_image_status_interval_thresh: 1.0
+observability_output_dir: "/apollo/debug_vis"
+enable_debug_visualization: false
+health_log_interval_seconds: 5.0
+enable_perf_logging: true
