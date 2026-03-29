@@ -17,7 +17,7 @@ common --enable_bzlmod
 common --distdir=.cache/distdir
 
 # Prefer https://bcr.bazel.build/
-build --registry=file:///apollo/data/bazel-central-registry
+# build --registry=file:///apollo/data/bazel-central-registry
 build --registry=https://bcr.wheelos.cn/
 build --registry=https://bcr.bazel.build/
 
