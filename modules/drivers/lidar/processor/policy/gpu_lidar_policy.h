@@ -1,5 +1,10 @@
 #pragma once
 
+#include <atomic>
+#include <mutex>
+#include <vector>
+
+#include "modules/drivers/lidar/processor/policy/lidar_policy_cuda_kernels.h"
 #include "modules/drivers/lidar/processor/policy/lidar_policy_interface.h"
 
 // Forward declaration of CUDA kernels or utility structures
@@ -47,6 +52,14 @@ class GpuLidarFusionPolicy : public LidarFusionPolicy {
   LidarUnifiedComponentConfig config_;
   apollo::transform::BufferInterface* tf_buffer_ = nullptr;
   cudaStream_t* cuda_stream_ = nullptr;  // Asynchronous CUDA execution stream
+  std::mutex scratch_mutex_;
+  std::vector<CudaPointXYZIT> host_input_points_;
+  std::vector<CudaPointXYZIT> host_fused_points_;
+  std::vector<CudaMatrix4f> host_pose_buffer_;
+  std::atomic<uint64_t> metrics_calls_{0};
+  std::atomic<uint64_t> metrics_input_points_{0};
+  std::atomic<uint64_t> metrics_output_points_{0};
+  std::atomic<uint64_t> metrics_elapsed_ns_{0};
 };
 
 /// @brief Extremely fast GPU-based bounding box filtering & parallel bitonic
@@ -65,6 +78,14 @@ class GpuLidarFilterPolicy : public LidarFilterPolicy {
   LidarUnifiedComponentConfig config_;
   cudaStream_t* cuda_stream_ = nullptr;
   void* d_voxel_hash_table_ = nullptr;  // Persistent GPU Hash Table memory
+  std::mutex scratch_mutex_;
+  std::vector<CudaPointXYZIT> host_input_points_;
+  std::vector<CudaPointXYZIT> host_ego_filtered_points_;
+  std::vector<CudaPointXYZIT> host_voxel_filtered_points_;
+  std::atomic<uint64_t> metrics_calls_{0};
+  std::atomic<uint64_t> metrics_input_points_{0};
+  std::atomic<uint64_t> metrics_output_points_{0};
+  std::atomic<uint64_t> metrics_elapsed_ns_{0};
 };
 
 }  // namespace lidar

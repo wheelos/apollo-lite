@@ -1,6 +1,7 @@
 #include "modules/drivers/lidar/processor/lidar_unified_component.h"
 
 #include <algorithm>
+#include <functional>
 
 namespace apollo {
 namespace drivers {
@@ -18,9 +19,9 @@ std::string ResolvePolicyMode(const LidarUnifiedComponentConfig& config) {
   return "gpu";
 #endif
   switch (config.compute_mode()) {
-    case LidarUnifiedComponentConfig::USE_GPU:
+    case LidarUnifiedComponentConfig::COMPUTE_MODE_GPU:
       return "gpu";
-    case LidarUnifiedComponentConfig::USE_CPU:
+    case LidarUnifiedComponentConfig::COMPUTE_MODE_CPU:
     default:
       return "cpu";
   }
@@ -56,6 +57,12 @@ bool LidarUnifiedComponent::Init() {
     AERROR << "Failed to initialize lidar policies for mode=" << policy_mode;
     return false;
   }
+
+  ts_sanity_.SetConfig(config_.ts_sanity_min_interval_ms(),
+                       config_.ts_sanity_max_interval_ms(),
+                       config_.ts_sanity_max_jump_ms());
+  degrade_policy_.SetConfig(config_.degrade_on_ts_anomaly(),
+                            config_.ts_sanity_max_consecutive_errors());
 
   sensor_buffer_capacity_ =
       std::max<size_t>(2, static_cast<size_t>(config_.sensor_buffer_size()));
@@ -118,21 +125,49 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
   EnsureSensorBuffer(primary_sensor_id_);
   PushToBuffer(primary_sensor_id_, point_cloud);
 
+  if (config_.ts_sanity_enabled()) {
+    const TsSanityResult ts_result =
+        ts_sanity_.Check(point_cloud->measurement_time());
+    if (ts_result.status != TsSanityStatus::kOk &&
+        ts_result.status != TsSanityStatus::kFirstFrame) {
+      dtc_reporter_.ReportTsAnomaly(ts_result.status, ts_result.interval_ms,
+                                    ts_result.consecutive_errors,
+                                    primary_sensor_id_);
+      const DegradeEvent event =
+          degrade_policy_.OnTsAnomaly(ts_result.consecutive_errors);
+      dtc_reporter_.ReportDegradeTransition(event);
+    }
+  }
+
   FrameMetrics frame_metrics;
-  std::vector<SensorFrame> frames;
+  std::vector<FrameHandle> frame_handles;
   if (!CollectNearestFrames(point_cloud->measurement_time(), primary_sensor_id_,
-                            &frames, &frame_metrics)) {
+                            &frame_handles, &frame_metrics)) {
     AERROR << "Failed to collect nearest frames for ref timestamp "
            << point_cloud->measurement_time();
     return false;
   }
 
+  if (degrade_policy_.CurrentMode() == DegradeMode::kSingleLidar) {
+    frame_handles.erase(
+        std::remove_if(
+            frame_handles.begin(), frame_handles.end(),
+            [](const FrameHandle& handle) { return !handle.is_primary; }),
+        frame_handles.end());
+    frame_metrics.expected_sensor_count = 1;
+    frame_metrics.matched_sensor_count = frame_handles.size();
+    frame_metrics.missing_auxiliary_count = 0;
+    frame_metrics.time_delta_exceeded_count = 0;
+  }
+
   std::shared_ptr<PointCloud> unified_output;
-  if (!BuildUnifiedPointCloud(point_cloud, frames, &frame_metrics,
+  if (!BuildUnifiedPointCloud(point_cloud, frame_handles, &frame_metrics,
                               &unified_output)) {
     AERROR << "Failed to build unified point cloud";
     return false;
   }
+
+  dtc_reporter_.ReportDegradeTransition(degrade_policy_.OnFrameOk());
 
   LogFrameMetrics(frame_metrics);
   writer_->Write(unified_output);
@@ -151,69 +186,58 @@ void LidarUnifiedComponent::PushToBuffer(
 
 bool LidarUnifiedComponent::CollectNearestFrames(
     double ref_timestamp, const std::string& primary_sensor_id,
-    std::vector<SensorFrame>* frames, FrameMetrics* frame_metrics) {
-  if (frames == nullptr || frame_metrics == nullptr) {
+    std::vector<FrameHandle>* frame_handles, FrameMetrics* frame_metrics) {
+  if (frame_handles == nullptr || frame_metrics == nullptr) {
     return false;
   }
-  frames->clear();
-  frame_metrics->expected_sensor_count = 1 + auxiliary_inputs_.size();
-  frame_metrics->matched_sensor_count = 0;
-  frame_metrics->missing_auxiliary_count = 0;
-  frame_metrics->time_delta_exceeded_count = 0;
 
-  const uint32_t max_delta_ms = config_.max_ref_time_delta_ms();
-  const auto primary_buffer = GetSensorBuffer(primary_sensor_id);
-  PointCloudConstPtr primary_frame;
-  FrameLookupFailureReason failure_reason = FrameLookupFailureReason::kNone;
-  if (!FindNearestFrame(primary_buffer, ref_timestamp, max_delta_ms,
-                        &primary_frame, &failure_reason)) {
-    AERROR << "Primary sensor frame unavailable around reference timestamp";
-    return false;
-  }
-  frames->push_back(SensorFrame{primary_sensor_id, primary_frame, true});
-
+  std::vector<std::string> auxiliary_topics;
+  auxiliary_topics.reserve(auxiliary_inputs_.size());
   for (const auto& auxiliary_input : auxiliary_inputs_) {
-    std::string sensor_id;
-    {
-      std::lock_guard<std::mutex> lock(sensor_registry_mutex_);
-      const auto it =
-          auxiliary_sensor_ids_by_topic_.find(auxiliary_input.topic_name);
-      if (it != auxiliary_sensor_ids_by_topic_.end()) {
-        sensor_id = it->second;
-      }
-    }
-
-    if (sensor_id.empty()) {
-      ++frame_metrics->missing_auxiliary_count;
-      if (config_.strict_auxiliary_sync()) {
-        AERROR << "Auxiliary topic has not resolved sensor id yet: "
-               << auxiliary_input.topic_name;
-        return false;
-      }
-      continue;
-    }
-
-    PointCloudConstPtr nearest;
-    failure_reason = FrameLookupFailureReason::kNone;
-    if (!FindNearestFrame(GetSensorBuffer(sensor_id), ref_timestamp,
-                          max_delta_ms, &nearest, &failure_reason)) {
-      ++frame_metrics->missing_auxiliary_count;
-      if (failure_reason == FrameLookupFailureReason::kTimeDeltaExceeded) {
-        ++frame_metrics->time_delta_exceeded_count;
-      }
-      if (config_.strict_auxiliary_sync()) {
-        AERROR << "Auxiliary sensor sync failed: " << sensor_id;
-        return false;
-      }
-      AWARN << "Skip auxiliary sensor " << sensor_id
-            << " due to sync miss, topic=" << auxiliary_input.topic_name;
-      continue;
-    }
-    frames->push_back(SensorFrame{sensor_id, nearest, false});
+    auxiliary_topics.push_back(auxiliary_input.topic_name);
   }
 
-  frame_metrics->matched_sensor_count = frames->size();
-  return !frames->empty();
+  SyncGateMetrics sync_metrics;
+  const bool ok = sync_gate_.SelectFrames(
+      ref_timestamp, primary_sensor_id, auxiliary_topics,
+      config_.max_ref_time_delta_ms(), config_.strict_auxiliary_sync(),
+      [this](const std::string& topic_name, std::string* sensor_id) {
+        if (sensor_id == nullptr) {
+          return false;
+        }
+        std::lock_guard<std::mutex> lock(sensor_registry_mutex_);
+        const auto it = auxiliary_sensor_ids_by_topic_.find(topic_name);
+        if (it == auxiliary_sensor_ids_by_topic_.end()) {
+          return false;
+        }
+        *sensor_id = it->second;
+        return !sensor_id->empty();
+      },
+      [this](const std::string& sensor_id, double timestamp,
+             uint32_t max_delta_ms, PointCloudConstPtr* nearest_frame,
+             bool* time_delta_exceeded) {
+        if (time_delta_exceeded != nullptr) {
+          *time_delta_exceeded = false;
+        }
+        FrameLookupFailureReason failure_reason =
+            FrameLookupFailureReason::kNone;
+        const bool found =
+            FindNearestFrame(GetSensorBuffer(sensor_id), timestamp,
+                             max_delta_ms, nearest_frame, &failure_reason);
+        if (!found && time_delta_exceeded != nullptr) {
+          *time_delta_exceeded =
+              failure_reason == FrameLookupFailureReason::kTimeDeltaExceeded;
+        }
+        return found;
+      },
+      frame_handles, &sync_metrics);
+
+  frame_metrics->expected_sensor_count = sync_metrics.expected_sensor_count;
+  frame_metrics->matched_sensor_count = sync_metrics.matched_sensor_count;
+  frame_metrics->missing_auxiliary_count = sync_metrics.missing_auxiliary_count;
+  frame_metrics->time_delta_exceeded_count =
+      sync_metrics.time_delta_exceeded_count;
+  return ok;
 }
 
 bool LidarUnifiedComponent::FindNearestFrame(
@@ -271,10 +295,10 @@ bool LidarUnifiedComponent::FindNearestFrame(
 
 bool LidarUnifiedComponent::BuildUnifiedPointCloud(
     const PointCloudConstPtr& main_frame,
-    const std::vector<SensorFrame>& frames, FrameMetrics* frame_metrics,
+    const std::vector<FrameHandle>& frame_handles, FrameMetrics* frame_metrics,
     std::shared_ptr<PointCloud>* output) {
   if (main_frame == nullptr || frame_metrics == nullptr || output == nullptr ||
-      frames.empty() || deskew_policy_ == nullptr ||
+      frame_handles.empty() || deskew_policy_ == nullptr ||
       fusion_policy_ == nullptr || filter_policy_ == nullptr) {
     return false;
   }
@@ -282,51 +306,14 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
   std::vector<SensorFrameContext> contexts;
   std::vector<std::vector<double>> motion_sample_times;
   std::vector<std::vector<Eigen::Affine3d>> motion_poses;
-  contexts.reserve(frames.size());
-  motion_sample_times.reserve(frames.size());
-  motion_poses.reserve(frames.size());
+  contexts.reserve(frame_handles.size());
+  motion_sample_times.reserve(frame_handles.size());
+  motion_poses.reserve(frame_handles.size());
 
   size_t required_points = 0;
-  for (const auto& frame_item : frames) {
-    if (frame_item.point_cloud == nullptr) {
-      if (frame_item.is_primary) {
-        AERROR << "Main sensor frame is null: " << frame_item.sensor_id;
-        return false;
-      }
-      AWARN << "Skip auxiliary sensor due to null frame: "
-            << frame_item.sensor_id;
-      continue;
-    }
-
-    SensorFrameContext context;
-    context.sensor_id = frame_item.sensor_id;
-    context.point_cloud = frame_item.point_cloud;
-    context.is_primary = frame_item.is_primary;
-
-    std::vector<double> sample_times;
-    std::vector<Eigen::Affine3d> poses;
-    if (!deskew_policy_->ComputeMotionCompensationPoses(context, &sample_times,
-                                                        &poses) ||
-        sample_times.empty() || poses.empty() ||
-        sample_times.size() != poses.size()) {
-      if (frame_item.is_primary) {
-        AERROR << "Failed to compute motion compensation poses for main sensor "
-               << frame_item.sensor_id;
-        return false;
-      }
-      AWARN << "Skip auxiliary sensor due to invalid motion compensation data: "
-            << frame_item.sensor_id;
-      continue;
-    }
-
-    contexts.push_back(std::move(context));
-    motion_sample_times.push_back(std::move(sample_times));
-    motion_poses.push_back(std::move(poses));
-    required_points +=
-        static_cast<size_t>(frame_item.point_cloud->point_size());
-  }
-
-  if (contexts.empty()) {
+  if (!pose_bins_builder_.Build(frame_handles, deskew_policy_.get(), &contexts,
+                                &motion_sample_times, &motion_poses,
+                                &required_points)) {
     AERROR << "No valid sensor context for fusion";
     return false;
   }
@@ -346,7 +333,7 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
   fused_buffer.item_size = sizeof(apollo::drivers::PointXYZIT);
   fused_buffer.device_type = MemoryDeviceType::kHost;
   fused_buffer.device_id =
-      config_.compute_mode() == LidarUnifiedComponentConfig::USE_GPU
+      config_.compute_mode() == LidarUnifiedComponentConfig::COMPUTE_MODE_GPU
           ? static_cast<int>(config_.gpu_device_id())
           : -1;
 
@@ -395,7 +382,6 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
   *output = unified;
   return true;
 }
-
 }  // namespace lidar
 }  // namespace drivers
 }  // namespace apollo

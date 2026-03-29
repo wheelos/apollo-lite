@@ -18,7 +18,13 @@
 #include "modules/drivers/lidar/proto/lidar_unified_component_config.pb.h"
 
 #include "cyber/cyber.h"
+#include "modules/drivers/lidar/processor/control/frame_handle.h"
+#include "modules/drivers/lidar/processor/control/pose_bins_builder.h"
+#include "modules/drivers/lidar/processor/control/sync_gate.h"
 #include "modules/drivers/lidar/processor/policy/lidar_policy_interface.h"
+#include "modules/drivers/lidar/processor/safety/degrade_policy.h"
+#include "modules/drivers/lidar/processor/safety/dtc_reporter.h"
+#include "modules/drivers/lidar/processor/safety/ts_sanity.h"
 #include "modules/transform/buffer.h"
 
 namespace apollo {
@@ -51,12 +57,6 @@ class LidarUnifiedComponent : public apollo::cyber::Component<PointCloud> {
     std::string topic_name;
   };
 
-  struct SensorFrame {
-    std::string sensor_id;
-    PointCloudConstPtr point_cloud;
-    bool is_primary = false;
-  };
-
   struct FrameMetrics {
     size_t expected_sensor_count = 0;
     size_t matched_sensor_count = 0;
@@ -84,7 +84,7 @@ class LidarUnifiedComponent : public apollo::cyber::Component<PointCloud> {
 
   bool CollectNearestFrames(double ref_timestamp,
                             const std::string& primary_sensor_id,
-                            std::vector<SensorFrame>* frames,
+                            std::vector<FrameHandle>* frame_handles,
                             FrameMetrics* frame_metrics);
   bool FindNearestFrame(const std::shared_ptr<SensorBuffer>& sensor_buffer,
                         double ref_timestamp, uint32_t max_ref_time_delta_ms,
@@ -92,7 +92,7 @@ class LidarUnifiedComponent : public apollo::cyber::Component<PointCloud> {
                         FrameLookupFailureReason* failure_reason) const;
 
   bool BuildUnifiedPointCloud(const PointCloudConstPtr& main_frame,
-                              const std::vector<SensorFrame>& frames,
+                              const std::vector<FrameHandle>& frame_handles,
                               FrameMetrics* frame_metrics,
                               std::shared_ptr<PointCloud>* output);
   void LogFrameMetrics(const FrameMetrics& frame_metrics);
@@ -114,6 +114,11 @@ class LidarUnifiedComponent : public apollo::cyber::Component<PointCloud> {
   std::unique_ptr<LidarDeskewPolicy> deskew_policy_;
   std::unique_ptr<LidarFusionPolicy> fusion_policy_;
   std::unique_ptr<LidarFilterPolicy> filter_policy_;
+  PoseBinsBuilder pose_bins_builder_;
+  SyncGate sync_gate_;
+  TsSanity ts_sanity_;
+  DegradePolicy degrade_policy_;
+  DtcReporter dtc_reporter_;
   std::shared_ptr<apollo::cyber::Writer<PointCloud>> writer_;
 
   std::vector<apollo::drivers::PointXYZIT> full_pointcloud_buffer_;

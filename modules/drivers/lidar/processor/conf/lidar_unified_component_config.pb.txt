@@ -22,3 +22,10 @@ max_ref_time_delta_ms: 80
 motion_compensation_bins: 12
 metrics_log_interval: 50
 strict_auxiliary_sync: false
+
+ts_sanity_enabled: true
+ts_sanity_min_interval_ms: 40
+ts_sanity_max_interval_ms: 200
+ts_sanity_max_jump_ms: 500
+ts_sanity_max_consecutive_errors: 3
+degrade_on_ts_anomaly: true

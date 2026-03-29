@@ -1,0 +1,63 @@
+syntax = "proto2";
+
+package apollo.drivers.lidar;
+
+message LidarUnifiedComponentConfig {
+  enum ComputeMode {
+    COMPUTE_MODE_CPU = 0;
+    COMPUTE_MODE_GPU = 1;
+  }
+
+  message AuxiliaryLidarInput {
+    optional string topic_name = 1;
+  }
+
+  // Core channel / frame IDs
+  optional string output_channel = 1;
+  optional string base_link_frame_id = 2;
+  optional string world_frame_id = 3;
+
+  // Buffer / capacity
+  optional uint32 sensor_buffer_size = 4 [default = 8];
+  optional uint32 max_full_pointcloud_points = 5 [default = 300000];
+  optional uint32 worker_num = 6 [default = 0];
+
+  // Ego-box filter
+  optional bool enable_ego_query_filter = 7 [default = false];
+  optional double ego_box_forward_x = 8 [default = 2.8];
+  optional double ego_box_backward_x = 9 [default = -2.8];
+  optional double ego_box_forward_y = 10 [default = 1.4];
+  optional double ego_box_backward_y = 11 [default = -1.4];
+
+  // Voxel downsampling
+  optional double voxel_size = 12 [default = 0.1];
+
+  // Synchronisation
+  optional uint32 max_ref_time_delta_ms = 13 [default = 100];
+  optional uint32 motion_compensation_bins = 14 [default = 12];
+  optional bool strict_auxiliary_sync = 16 [default = false];
+
+  // Observability
+  optional uint32 metrics_log_interval = 15 [default = 100];
+
+  // Compute backend
+  optional ComputeMode compute_mode = 17 [default = COMPUTE_MODE_CPU];
+  optional uint32 gpu_device_id = 18 [default = 0];
+
+  // Auxiliary sensors
+  repeated AuxiliaryLidarInput auxiliary_lidar_inputs = 19;
+
+  // M4 – Timestamp sanity
+  optional bool ts_sanity_enabled = 20 [default = true];
+  // Minimum expected frame interval (ms). Frames arriving faster are anomalous.
+  optional uint32 ts_sanity_min_interval_ms = 21 [default = 40];
+  // Maximum expected frame interval (ms). A longer gap triggers a late-frame anomaly.
+  optional uint32 ts_sanity_max_interval_ms = 22 [default = 200];
+  // Timestamp jump threshold (ms). A forward/backward jump larger than this is flagged.
+  optional uint32 ts_sanity_max_jump_ms = 23 [default = 500];
+  // Number of consecutive errors that triggers degrade activation.
+  optional uint32 ts_sanity_max_consecutive_errors = 24 [default = 3];
+
+  // M4 - Degrade policy trigger signals
+  optional bool degrade_on_ts_anomaly = 25 [default = true];
+}

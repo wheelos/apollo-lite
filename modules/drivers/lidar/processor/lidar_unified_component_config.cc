@@ -40,6 +40,37 @@ bool LidarUnifiedComponent::ValidateConfig() const {
     return false;
   }
 
+  if (config_.metrics_log_interval() == 0) {
+    AERROR << "metrics_log_interval must be > 0";
+    return false;
+  }
+
+  if (config_.voxel_size() <= 0.0) {
+    AERROR << "voxel_size must be > 0";
+    return false;
+  }
+
+  if (config_.ts_sanity_enabled()) {
+    if (config_.ts_sanity_min_interval_ms() == 0) {
+      AERROR << "ts_sanity_min_interval_ms must be > 0";
+      return false;
+    }
+    if (config_.ts_sanity_max_interval_ms() <
+        config_.ts_sanity_min_interval_ms()) {
+      AERROR
+          << "ts_sanity_max_interval_ms must be >= ts_sanity_min_interval_ms";
+      return false;
+    }
+    if (config_.ts_sanity_max_jump_ms() < config_.ts_sanity_max_interval_ms()) {
+      AERROR << "ts_sanity_max_jump_ms must be >= ts_sanity_max_interval_ms";
+      return false;
+    }
+    if (config_.ts_sanity_max_consecutive_errors() == 0) {
+      AERROR << "ts_sanity_max_consecutive_errors must be > 0";
+      return false;
+    }
+  }
+
   for (const auto& input_cfg : config_.auxiliary_lidar_inputs()) {
     if (input_cfg.topic_name().empty()) {
       AERROR << "auxiliary_lidar_inputs.topic_name is required";

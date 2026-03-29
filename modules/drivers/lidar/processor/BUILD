@@ -75,14 +75,36 @@ cc_library(
 )
 
 cc_library(
+    name="safety_policy_lib",
+    srcs=[
+        "safety/degrade_policy.cc",
+        "safety/dtc_reporter.cc",
+        "safety/ts_sanity.cc",
+    ],
+    hdrs=[
+        "safety/degrade_policy.h",
+        "safety/dtc_reporter.h",
+        "safety/ts_sanity.h",
+    ],
+    deps=[
+        "//cyber",
+    ],
+)
+
+cc_library(
     name="lidar_unified_component_lib",
     srcs=[
+        "control/pose_bins_builder.cc",
+        "control/sync_gate.cc",
         "lidar_unified_component.cc",
         "lidar_unified_component_config.cc",
         "lidar_unified_component_ingest.cc",
         "lidar_unified_component_observability.cc",
     ],
     hdrs=[
+        "control/frame_handle.h",
+        "control/pose_bins_builder.h",
+        "control/sync_gate.h",
         "lidar_unified_component.h",
         "policy/cpu_lidar_policy.h",
         "policy/gpu_lidar_policy.h",
@@ -98,6 +120,7 @@ cc_library(
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
         ":lidar_policy_lib",
+        ":safety_policy_lib",
         "//modules/transform:buffer",
         "@boost.circular_buffer",
         "@eigen",

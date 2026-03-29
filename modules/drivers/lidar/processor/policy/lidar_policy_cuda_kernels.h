@@ -27,6 +27,19 @@ struct CudaEgoFilterParams {
   float backward_y = 0.0f;
 };
 
+struct CudaWorkspaceStats {
+  uint64_t points_in_expand_count = 0;
+  uint64_t points_out_expand_count = 0;
+  uint64_t sample_times_expand_count = 0;
+  uint64_t poses_expand_count = 0;
+  uint64_t hash_table_expand_count = 0;
+  size_t points_in_peak_capacity = 0;
+  size_t points_out_peak_capacity = 0;
+  size_t sample_times_peak_capacity = 0;
+  size_t poses_peak_capacity = 0;
+  size_t hash_table_peak_capacity = 0;
+};
+
 bool CudaComputeTimestampRange(const uint64_t* host_timestamps, size_t count,
                                int device_id, uint64_t* min_timestamp,
                                uint64_t* max_timestamp);
@@ -47,6 +60,8 @@ size_t CudaApplyVoxelDownsample(const CudaPointXYZIT* host_input_points,
                                 size_t input_count, float voxel_size,
                                 CudaPointXYZIT* host_output_points,
                                 size_t output_capacity, int device_id);
+
+bool CudaGetWorkspaceStats(int device_id, CudaWorkspaceStats* stats);
 
 }  // namespace lidar
 }  // namespace drivers
