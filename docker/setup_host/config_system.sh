@@ -613,6 +613,37 @@ configure_headless_mode() {
 }
 
 # Configures Linux PTP (ptp4l and phc2sys) as Master.
+# Sets up automatic disk cleaning service
+setup_disk_clean() {
+  info "Configuring automated disk cleanup service..."
+
+  local service_src="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/disk-clean.service"
+  local timer_src="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/disk-clean.timer"
+  local target_service="/etc/systemd/system/disk-clean.service"
+  local target_timer="/etc/systemd/system/disk-clean.timer"
+
+  if [[ ! -f "${service_src}" ]] || [[ ! -f "${timer_src}" ]]; then
+    error "Disk cleanup service files not found in ${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/."
+    return 1
+  fi
+
+  info "Copying service and timer files to systemd..."
+  sudo sed "s#__APOLLO_ROOT_DIR__#${APOLLO_ROOT_DIR}#g" "${service_src}" | sudo tee "${target_service}" > /dev/null
+  sudo cp "${timer_src}" "${target_timer}"
+
+  info "Reloading systemd, enabling and starting disk-clean.timer..."
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now disk-clean.timer
+
+  if [ $? -ne 0 ]; then
+    error "Failed to enable disk-clean timer."
+    return 1
+  fi
+
+  success "Disk cleanup service configured successfully."
+  return 0
+}
+
 configure_ptp() {
   info "Configuring Linux PTP as Master..."
 
@@ -753,6 +784,15 @@ setup_host_machine() {
   fi
 
   # 8. Install and enable the autostart service (optional)
+  if prompt_yes_no "Configure automated disk cleanup service?" Y; then
+    if ! setup_disk_clean; then
+      error "Failed to configure disk cleanup service."
+      return 1
+    fi
+  else
+    info "Skipping disk cleanup service configuration."
+  fi
+
   if prompt_yes_no "Install autostart service?" N; then
     if ! install_autostart_service; then
       error "Failed to install the autostart service."
