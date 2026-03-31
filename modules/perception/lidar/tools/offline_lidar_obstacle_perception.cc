@@ -14,6 +14,10 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+
 #include "Eigen/Dense"
 #include "absl/strings/str_cat.h"
 #include "gflags/gflags.h"
@@ -46,12 +50,36 @@ DEFINE_string(output_path, "./output/", "output path");
 DEFINE_string(sensor_name, "velodyne64", "sensor name");
 DEFINE_string(lidar_detection_config_file, "", "");
 DEFINE_string(lidar_tracking_config_file, "", "");
+DEFINE_string(progress_file, "", "optional json progress output path");
 
 namespace apollo {
 namespace perception {
 namespace lidar {
 
 using cyber::common::GetFileName;
+
+void WriteProgress(const std::string& stage, std::size_t current,
+                   std::size_t total, const std::string& message, bool done) {
+  if (FLAGS_progress_file.empty()) {
+    return;
+  }
+  std::ofstream fout(FLAGS_progress_file, std::ios::out | std::ios::trunc);
+  if (!fout.is_open()) {
+    return;
+  }
+  const double percent =
+      total == 0 ? (done ? 100.0 : 0.0)
+                 : 100.0 * static_cast<double>(current) /
+                       static_cast<double>(std::max<std::size_t>(1, total));
+  fout << "{"
+       << "\"stage\":\"" << stage << "\","
+       << "\"current\":" << current << ","
+       << "\"total\":" << total << ","
+       << "\"percent\":" << std::fixed << std::setprecision(2) << percent << ","
+       << "\"done\":" << (done ? "true" : "false") << ","
+       << "\"message\":\"" << message << "\""
+       << "}\n";
+}
 
 class OfflineLidarObstaclePerception {
  public:
@@ -108,6 +136,8 @@ class OfflineLidarObstaclePerception {
                 }
                 return lhs <= rhs;
               });
+    WriteProgress("prepare", 0, pcd_file_names.size(), "pcd files listed",
+                  false);
     for (size_t i = 0; i < pcd_file_names.size(); ++i) {
       AINFO << "***************** Frame " << i << " ******************";
       AINFO << pcd_file_names[i];
@@ -203,8 +233,12 @@ class OfflineLidarObstaclePerception {
               absl::StrCat(output_path, "/", file_stem, ".txt"))) {
         return false;
       }
+      WriteProgress("infer", i + 1, pcd_file_names.size(), file_stem,
+                    i + 1 == pcd_file_names.size());
     }
 
+    WriteProgress("complete", pcd_file_names.size(), pcd_file_names.size(),
+                  "offline lidar finished", true);
     return true;
   }
 
