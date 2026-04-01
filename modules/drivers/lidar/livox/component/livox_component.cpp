@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2024 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Wheelos Team. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,19 +19,29 @@
 #include <string>
 #include <utility>
 
-#include "modules/drivers/lidar/livox/component/livox_dispatcher.h"
 namespace apollo {
 namespace drivers {
 namespace lidar {
 
+static LivoxLidarComponent* g_livox_component = nullptr;
+
+uint64_t GetEthPacketTimestamp(uint8_t timestamp_type, uint8_t* time_stamp,
+                               uint8_t size) {
+  LdsStamp time;
+  memcpy(time.stamp_bytes, time_stamp, size);
+
+  if (timestamp_type == kTimestampTypeGptpOrPtp ||
+      timestamp_type == kTimestampTypeGps) {
+    return time.stamp;
+  }
+  return cyber::Time::Now().ToNanosecond();
+}
+
 void LivoxLidarComponent::BinaryDataProcess(const unsigned char* data,
                                             int data_type, int point_size,
-                                            uint64_t pkt_timestamp,
-                                            uint32_t time_interval) {
-  if (data_type == kLivoxLidarCartesianCoordinateHighData) {
-    AINFO << "high data received, dot num = " << point_size;
-    auto* p_point_data =
-        reinterpret_cast<const LivoxLidarCartesianHighRawPoint*>(data);
+                                            uint64_t pkt_timestamp) {
+  if (data_type == kExtendCartesian) {
+    auto* p_point_data = reinterpret_cast<const LivoxExtendRawPoint*>(data);
 
     for (int i = 0; i < point_size; ++i) {
       PointXYZIT point;
@@ -39,63 +49,66 @@ void LivoxLidarComponent::BinaryDataProcess(const unsigned char* data,
       point.set_y(p_point_data[i].y * 0.001);
       point.set_z(p_point_data[i].z * 0.001);
       point.set_intensity(p_point_data[i].reflectivity);
-      uint64_t point_timestamp = pkt_timestamp + i * time_interval;
-      point.set_timestamp(point_timestamp);
+      point.set_timestamp(pkt_timestamp);
       integral_queue_.push_back(std::move(point));
     }
 
     uint64_t integral_timestamp_diff = integral_time_ * 1e9;
-    int cnt = 0;
-    AINFO << "old front t = " << integral_queue_.front().timestamp()
-          << " old back t = " << integral_queue_.back().timestamp();
     while (!integral_queue_.empty() &&
            integral_queue_.front().timestamp() <
                integral_queue_.back().timestamp() - integral_timestamp_diff) {
       integral_queue_.pop_front();
-      cnt++;
     }
-    AINFO << "integral point cnt = " << integral_queue_.size()
-          << ", point pop size = " << cnt;
-    AINFO << "new front t = " << integral_queue_.front().timestamp()
-          << " new back t = " << integral_queue_.back().timestamp();
 
-  } else if (data_type == kLivoxLidarCartesianCoordinateLowData) {
-    AINFO << "low data received, dot num = " << point_size;
-    auto* p_point_data =
-        reinterpret_cast<const LivoxLidarCartesianLowRawPoint*>(data);
-    // todo 后增加
-    (void)p_point_data;
+  } else if (data_type == kCartesian) {
+    auto* p_point_data = reinterpret_cast<const LivoxRawPoint*>(data);
 
-  } else if (data_type == kLivoxLidarSphericalCoordinateData) {
-    AINFO << "spherical data received, dot num = " << point_size;
-    auto* p_point_data = reinterpret_cast<const LivoxLidarSpherPoint*>(data);
-    // todo 后增加
+    for (int i = 0; i < point_size; ++i) {
+      PointXYZIT point;
+      point.set_x(p_point_data[i].x * 0.001);
+      point.set_y(p_point_data[i].y * 0.001);
+      point.set_z(p_point_data[i].z * 0.001);
+      point.set_intensity(p_point_data[i].reflectivity);
+      point.set_timestamp(pkt_timestamp);
+      integral_queue_.push_back(std::move(point));
+    }
+
+    uint64_t integral_timestamp_diff = integral_time_ * 1e9;
+    while (!integral_queue_.empty() &&
+           integral_queue_.front().timestamp() <
+               integral_queue_.back().timestamp() - integral_timestamp_diff) {
+      integral_queue_.pop_front();
+    }
+
+  } else if (data_type == kSpherical || data_type == kExtendSpherical) {
+    auto* p_point_data = reinterpret_cast<const LivoxSpherPoint*>(data);
     (void)p_point_data;
   }
 }
 
-void LivoxLidarComponent::PointCloudCallback(uint32_t handle,
-                                             const uint8_t dev_type,
-                                             LivoxLidarEthernetPacket* data,
+void LivoxLidarComponent::PointCloudCallback(uint8_t handle,
+                                             LivoxEthPacket* data,
+                                             uint32_t data_num,
                                              void* client_data) {
-  if (data == nullptr) {
+  if (data == nullptr || data_num == 0) {
+    return;
+  }
+
+  if (!g_livox_component) {
     return;
   }
 
   AINFO << boost::format(
-               "point cloud handle: %d, data_num: %d, data_type: %d, "
-               "length: "
-               "%d, frame_counter: %d\n") %
-               handle % data->dot_num % data->data_type % data->length %
-               data->frame_cnt;
+               "point cloud handle: %d, data_num: %d, data_type: %d\n") %
+               static_cast<int>(handle) % data_num %
+               static_cast<int>(data->data_type);
 
-  size_t byte_size = GetEthPacketByteSize(data);
+  size_t byte_size = g_livox_component->GetEthPacketByteSize(data, data_num);
   uint64_t pkt_timestamp = GetEthPacketTimestamp(
-      data->time_type, data->timestamp, sizeof(data->timestamp));
-  uint32_t time_interval = data->time_interval * 100;  // 0.1us -> 100ns
+      data->timestamp_type, data->timestamp, sizeof(data->timestamp));
 
-  BinaryDataProcess(data->data, data->data_type, data->dot_num, pkt_timestamp,
-                    time_interval);
+  g_livox_component->BinaryDataProcess(data->data, data->data_type, data_num,
+                                       pkt_timestamp);
 
   if (byte_size > 0) {
     std::shared_ptr<livox::LivoxScan> scan_message =
@@ -104,28 +117,31 @@ void LivoxLidarComponent::PointCloudCallback(uint32_t handle,
     scan_message->set_timestamp(pkt_timestamp);
     auto* data_addr = static_cast<unsigned char*>(data->data);
     scan_message->set_data(data_addr, byte_size);
-    scan_message->set_point_size(data->dot_num);
-    LidarComponentBase<livox::LivoxScan>::WriteScan(scan_message);
+    scan_message->set_point_size(data_num);
+    g_livox_component->WriteScan(scan_message);
   }
 
-  CheckTimestampAndPublishPointCloud();
+  g_livox_component->CheckTimestampAndPublishPointCloud();
 }
 
-size_t LivoxLidarComponent::GetEthPacketByteSize(
-    LivoxLidarEthernetPacket* data) {
+size_t LivoxLidarComponent::GetEthPacketByteSize(LivoxEthPacket* data,
+                                                 uint32_t data_num) {
   size_t byte_size = 0;
-  if (data == nullptr || data->data == nullptr) {
+  if (data == nullptr) {
     return 0;
   }
   switch (data->data_type) {
-    case kLivoxLidarCartesianCoordinateHighData:
-      byte_size = sizeof(LivoxLidarCartesianHighRawPoint) * data->dot_num;
+    case kExtendCartesian:
+      byte_size = sizeof(LivoxExtendRawPoint) * data_num;
       break;
-    case kLivoxLidarCartesianCoordinateLowData:
-      byte_size = sizeof(LivoxLidarCartesianLowRawPoint) * data->dot_num;
+    case kCartesian:
+      byte_size = sizeof(LivoxRawPoint) * data_num;
       break;
-    case kLivoxLidarSphericalCoordinateData:
-      byte_size = sizeof(LivoxLidarSpherPoint) * data->dot_num;
+    case kSpherical:
+      byte_size = sizeof(LivoxSpherPoint) * data_num;
+      break;
+    case kExtendSpherical:
+      byte_size = sizeof(LivoxExtendSpherPoint) * data_num;
       break;
     default:
       byte_size = 0;
@@ -155,6 +171,83 @@ void LivoxLidarComponent::PreparePointsMsg(PointCloud& msg) {
   msg.mutable_header()->set_lidar_timestamp(timestamp);
 }
 
+void LivoxLidarComponent::OnDeviceBroadcast(const BroadcastDeviceInfo* info) {
+  if (!info) {
+    return;
+  }
+
+  if (info->dev_type == kDeviceTypeHub) {
+    AINFO << "In lidar mode, ignoring hub device: " << info->broadcast_code;
+    return;
+  }
+
+  if (!g_livox_component) {
+    AERROR << "g_livox_component is nullptr";
+    return;
+  }
+
+  std::string broadcast_code = g_livox_component->config_.broadcast_code();
+  if (!broadcast_code.empty() &&
+      broadcast_code != std::string(info->broadcast_code)) {
+    AINFO << "Broadcast code mismatch, skipping device: "
+          << info->broadcast_code;
+    return;
+  }
+
+  livox_status result = kStatusFailure;
+  uint8_t handle = 0;
+  result = AddLidarToConnect(info->broadcast_code, &handle);
+  if (result == kStatusSuccess && handle < kMaxLidarCount) {
+    g_livox_component->lidar_handle_ = handle;
+    SetDataCallback(handle, LivoxLidarComponent::PointCloudCallback, nullptr);
+    AINFO << "Livox lidar added to connect. handle="
+          << static_cast<int>(handle);
+  } else {
+    AERROR << "Add lidar to connect failed. result=" << result
+           << " handle=" << static_cast<int>(handle);
+  }
+}
+
+void LivoxLidarComponent::OnDeviceStateUpdate(const DeviceInfo* device,
+                                              DeviceEvent event) {
+  if (!device) {
+    return;
+  }
+
+  if (!g_livox_component) {
+    return;
+  }
+
+  uint8_t handle = device->handle;
+
+  if (event == kEventConnect) {
+    AINFO << "Lidar[" << device->broadcast_code << "] connected!";
+    QueryDeviceInformation(handle, nullptr, nullptr);
+  } else if (event == kEventDisconnect) {
+    AERROR << "Lidar[" << device->broadcast_code << "] disconnected!";
+  } else if (event == kEventStateChange) {
+    AINFO << "Lidar[" << device->broadcast_code << "] state change to "
+          << static_cast<int>(device->state);
+    if (device->state == kLidarStateNormal) {
+      LidarStartSampling(handle, LivoxLidarComponent::OnLidarStartSamplingCb,
+                         g_livox_component);
+    }
+  }
+}
+
+void LivoxLidarComponent::OnLidarStartSamplingCb(livox_status status,
+                                                 uint8_t handle,
+                                                 uint8_t response,
+                                                 void* client_data) {
+  if (status != kStatusSuccess || response != 0) {
+    AERROR << "Lidar start sampling failed. status=" << status
+           << " handle=" << static_cast<int>(handle)
+           << " response=" << static_cast<int>(response);
+    return;
+  }
+  AINFO << "Lidar start sampling success. handle=" << static_cast<int>(handle);
+}
+
 bool LivoxLidarComponent::Init() {
   GetProtoConfig(&config_);
   RETURN_VAL_IF(
@@ -167,36 +260,28 @@ bool LivoxLidarComponent::Init() {
       LidarConfigBase_SourceType_ONLINE_LIDAR) {
     if (!config_.has_enable_sdk_console_log() ||
         !config_.enable_sdk_console_log()) {
-      DisableLivoxSdkConsoleLogger();
-    }
-    if (!LivoxLidarSdkInit(config_.lidar_config_file_path().c_str())) {
-      AERROR << "livox sdk init fail, maybe init by other component";
-      //            LivoxLidarSdkUninit();
+      DisableConsoleLogger();
     }
 
-    std::string lidar_ip = config_.lidar_ip();
-    uint32_t lidar_handle = 0;
-    if (!LivoxDispatcher::GetLivoxDispatcherInstance().GetHandleFromIP(
-            lidar_ip, lidar_handle)) {
-      AERROR << "livox ip address format error, component init fail";
+    g_livox_component = this;
+
+    if (!::Init()) {
+      ::Uninit();
+      AERROR << "Livox SDK init fail!";
       return false;
     }
 
-    AINFO << "init lidar, handle = " << lidar_handle;
+    SetBroadcastCallback(LivoxLidarComponent::OnDeviceBroadcast);
+    SetDeviceStateUpdateCallback(LivoxLidarComponent::OnDeviceStateUpdate);
 
-    LivoxDispatcher::GetLivoxDispatcherInstance()
-        .RegisterHandleDispatchCallback(
-            lidar_handle,
-            std::bind(&LivoxLidarComponent::PointCloudCallback, this,
-                      std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3, std::placeholders::_4));
+    if (!Start()) {
+      ::Uninit();
+      AERROR << "Livox SDK start fail!";
+      return false;
+    }
 
-    SetLivoxLidarPointCloudCallBack(
-        GlobalPointCloudCallback,
-        reinterpret_cast<void*>(
-            &LivoxDispatcher::GetLivoxDispatcherInstance()));
-
-    AINFO << "livox lidar init success";
+    AINFO << "Livox SDK initialized, waiting for device discovery...";
+    sdk_initialized_ = true;
   }
   return true;
 }
@@ -205,9 +290,7 @@ void LivoxLidarComponent::ReadScanCallback(
     const std::shared_ptr<livox::LivoxScan>& scan_message) {
   auto data_addr = (unsigned char*)scan_message->data().c_str();
   BinaryDataProcess(data_addr, scan_message->data_type(),
-                    scan_message->point_size(), scan_message->timestamp(),
-                    scan_message->time_interval());
-
+                    scan_message->point_size(), scan_message->timestamp());
   CheckTimestampAndPublishPointCloud();
 }
 
@@ -215,7 +298,6 @@ void LivoxLidarComponent::CheckTimestampAndPublishPointCloud() {
   if (!integral_queue_.empty()) {
     uint64_t timestamp_now = cyber::Time::Now().ToNanosecond();
     uint64_t timestamp_dist = timestamp_now - last_pointcloud_pub_timestamp_;
-
     uint64_t tolerable_timestamp = (1e9 / pointcloud_freq_);
 
     if (timestamp_dist > tolerable_timestamp) {
@@ -230,7 +312,7 @@ void LivoxLidarComponent::CheckTimestampAndPublishPointCloud() {
 
       PreparePointsMsg(*pcd_frame);
       LidarComponentBase<livox::LivoxScan>::WritePointCloud(pcd_frame);
-      AINFO << "pcd frame write, publish timestamp = " << timestamp_now;
+      AINFO << "pcd frame write, Publish timestamp = " << timestamp_now;
       last_pointcloud_pub_timestamp_ = timestamp_now;
     }
   }

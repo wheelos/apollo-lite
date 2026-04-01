@@ -16,26 +16,15 @@ cc_library(
     name = "livox_component_lib",
     srcs = [
         "component/livox_component.cpp",
-        "component/livox_dispatcher.cpp",
-        "driver/livox_util.cpp",
     ],
     hdrs = [
         "component/livox_component.h",
-        "component/livox_dispatcher.h",
-        "component/livox_obserable_binder.h",
-        "driver/livox_util.h",
     ],
-    copts = LIVOX_COPTS + [
-        "-I/usr/local/include",
-    ],
-    linkopts = [
-        "-L/usr/local/lib",
-        "-Wl,-rpath,/usr/local/lib",
-        "-llivox_lidar_sdk_shared",
-    ],
+    copts = LIVOX_COPTS,
     deps = [
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/livox/proto:livox_cc_proto",
+        "@livox-sdk",
     ],
     alwayslink = True,
 )

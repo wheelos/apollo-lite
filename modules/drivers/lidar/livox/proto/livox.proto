@@ -6,10 +6,9 @@ import "modules/drivers/lidar/common/proto/lidar_config_base.proto";
 
 message Config {
   required apollo.drivers.lidar.LidarConfigBase config_base = 1;
-  required string lidar_ip = 2;
-  optional string lidar_config_file_path = 3;
-  optional double integral_time = 4 [default = 0.1];
-  optional bool enable_sdk_console_log = 5 [default = false];
+  optional string broadcast_code = 2;
+  optional double integral_time = 3 [default = 0.1];
+  optional bool enable_sdk_console_log = 4 [default = false];
 }
 
 message LivoxScan {
@@ -17,5 +16,4 @@ message LivoxScan {
   optional int32 data_type = 2;
   optional bytes data = 3;
   optional int32 point_size = 4;
-  optional int32 time_interval = 5;
 }
