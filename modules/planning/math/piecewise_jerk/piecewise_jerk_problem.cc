@@ -56,6 +56,14 @@ OSQPCscMatrix* OwnedCscMatrix(OSQPInt m, OSQPInt n,
   }
   return matrix;
 }
+
+void ReleaseSolverOwnedMatrices(PiecewiseJerkProblemData* data) {
+  if (data == nullptr) {
+    return;
+  }
+  data->P = nullptr;
+  data->A = nullptr;
+}
 }  // namespace
 
 PiecewiseJerkProblem::PiecewiseJerkProblem(
@@ -136,6 +144,7 @@ bool PiecewiseJerkProblem::Optimize(const int max_iter) {
                  data.u.data(), data.m, data.n, settings) != 0 ||
       osqp_work == nullptr) {
     if (osqp_work != nullptr) {
+      ReleaseSolverOwnedMatrices(&data);
       osqp_cleanup(osqp_work);
     }
     FreeData(&data);
@@ -149,12 +158,14 @@ bool PiecewiseJerkProblem::Optimize(const int max_iter) {
 
   if (!HasUsableSolutionStatus(status)) {
     AERROR << "failed optimization status:\t" << osqp_work->info->status;
+    ReleaseSolverOwnedMatrices(&data);
     osqp_cleanup(osqp_work);
     FreeData(&data);
     OSQPSettings_free(settings);
     return false;
   } else if (osqp_work->solution == nullptr) {
     AERROR << "The solution from OSQP is nullptr";
+    ReleaseSolverOwnedMatrices(&data);
     osqp_cleanup(osqp_work);
     FreeData(&data);
     OSQPSettings_free(settings);
@@ -173,6 +184,7 @@ bool PiecewiseJerkProblem::Optimize(const int max_iter) {
   }
 
   // Cleanup
+  ReleaseSolverOwnedMatrices(&data);
   osqp_cleanup(osqp_work);
   FreeData(&data);
   OSQPSettings_free(settings);
