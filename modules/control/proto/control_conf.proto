@@ -20,7 +20,6 @@ message ControlConf {
 
   // configs from gflags
   optional double control_test_duration = 1 [default = -1];
-  optional bool enable_csv_debug = 2 [default = false];
   optional bool enable_speed_station_preview = 3 [default = false];
   optional bool is_control_test_mode = 4 [default = false];
   optional bool use_preview_speed_for_table = 5 [default = false];

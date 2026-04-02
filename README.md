@@ -57,107 +57,51 @@ For a deeper understanding, refer to the following documents:
 
 ---
 
-## Quick Start
+## Host setup and container startup (quick guide)
 
-We recommend using the **CPU version for quick experience and verification**.
-- The CPU-based image is smaller and has simpler dependencies, making it suitable for beginners and basic planning modules.
-- The **GPU version** has a larger image size and more complex dependencies, and is more appropriate for **deep development scenarios** such as deep learning and GPU-accelerated workflows.
+### Purpose
+- Ensure host is prepared (Docker, NVIDIA runtime, OS tuning) and provide a simple workflow to start the Apollo container using the `whl` helper.
 
----
-
-### 1. Install Deployment Tool
+### Summary (recommended flow)
+1. Run the host setup script (interactive): installs Docker, NVIDIA toolkit and then runs system configuration steps interactively.
 
 ```bash
-pip install whl-deploy
+sudo bash docker/setup_host/setup_host.sh
 ```
 
-`whl-deploy` is a tool that simplifies deployment of WheelOS environments using **bundle packages** or **`manifest.yaml`**. For detailed usage, ref [docs](https://github.com/wheelos-tools/whl-deploy/blob/main/README.md)
+- `setup_host.sh` will install `whl` (system command linked at `/usr/local/bin/whl`) before running system configuration.
+- After completing, the installer writes `/etc/wheelos_setup_host.done` to indicate host readiness.
 
----
-
-### 2. Setup Host Environment
-
-Run the following to prepare your host machine:
+2. Start or enter the container with `whl`:
 
 ```bash
-whl-deploy run
+# start in dev mode
+whl start
+
+# enter the dev container (starts it if needed)
+whl enter
 ```
 
-### 3. Start Docker Container
+### Notes about interactive system configuration
+- `config_system.sh` (invoked by `setup_host.sh`) is interactive: for each optional system tuning step (NTP/ptp/udev/uvcvideo/CAN/Jetson tuning/headless/autostart) it will ask you whether to apply it (Y/n). Hardware-related tuning defaults to conservative choices.
 
-Download and start the Apollo container image (only required once):
+### Automation / non-interactive runs
+- `config_system.sh` and `setup_host.sh` detect non-interactive stdin and use sensible defaults. To run unattended and accept defaults, redirect stdin from `/dev/null`:
 
 ```bash
-bash docker/scripts/dev_start.sh -d testing
+sudo bash docker/setup_host/setup_host.sh < /dev/null
 ```
 
-To enter the running container environment in subsequent sessions:
+- If you need to fully automate and explicitly choose Yes/No for every prompt, use an automation tool or supply answers via stdin (careful: using `yes` will force all answers to `y`). Example (force yes for all prompts):
 
 ```bash
-bash docker/scripts/dev_into.sh
+yes | sudo bash docker/setup_host/setup_host.sh
 ```
 
-### 4. Build Apollo
-
-To build the entire Apollo project:
-
-```bash
-./apollo.sh build_cpu
-```
-
-To build a specific module:
-
-```bash
-./apollo.sh build_cpu <module_name>
-# Example:
-./apollo.sh build_cpu planning
-```
-
-#### Notes and Troubleshooting
-
-- **Out of Memory (OOM) Issues:** If the build process is terminated due to
-  insufficient memory, try limiting the number of CPU threads used during the
-  build:
-
-  ```bash
-  ./apollo.sh build_cpu dreamview --cpus=2
-  ```
-
-- **Slow Download Speeds:** If you experience slow downloads, you can manually
-  download the required archive from the following link:
-  [Caiyun Cloud Drive](https://caiyun.139.com/w/i/2oxwFbadL3byc) (Extraction
-  code: `jfwu`). After downloading, place the archive in the `.cache/distdir`
-  directory within your codebase.
-
----
-
-## Production Mode (Docker)
-
-Apollo-Lite supports a dedicated production profile through `docker-compose.prod.yml` + `env_file`.
-
-### 1. Prepare production env file
-
-```bash
-cp docker/.env.prod.template docker/.env.prod
-```
-
-Edit `docker/.env.prod` as needed (for example, `GLOG_minloglevel=1` to suppress INFO logs).
-
-### 2. Start / enter / stop prod container
-
-```bash
-bash docker/scripts/whl.sh start prod
-bash docker/scripts/whl.sh enter prod
-bash docker/scripts/whl.sh stop
-```
-
-### 3. Configuration precedence (important)
-
-- Base variables: generated into `docker/.env` by `whl.sh`
-- Prod variables: loaded from `docker/.env.prod` via `env_file`
-- If the same key appears in both `environment` and `env_file`, `environment` wins
-
-Current recommendation: keep prod-specific tunables in `docker/.env.prod`, and avoid duplicating those keys in `environment`.
+### Environment and files
+- Generated env file used by `whl` is `docker/.env`. `whl` calls the internal `generate_env` step and verifies the file before launching.
+- Host-ready marker: `/etc/wheelos_setup_host.done`
+- `whl` helper location: `/usr/local/bin/whl`
 
 ---
 

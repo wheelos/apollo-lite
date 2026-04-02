@@ -13,9 +13,12 @@ Group=__GROUP__
 WorkingDirectory=__APOLLO_ROOT_DIR__
 
 # --- Environment ---
-# Docker Compose sometimes needs HOME to find .docker/config.json or similar
+# HOME is set so docker can find user docker configs.
 Environment="HOME=__HOME_DIR__"
-# Auto-start Dreamview inside the container on boot
+# AUTO_BOOTSTRAP precedence:
+# - Service `Environment` sets the process env.
+# - Compose `AUTO_BOOTSTRAP=${AUTO_BOOTSTRAP}` uses the process value over `.env`.
+# - `entrypoint.sh` runs bootstrap only when AUTO_BOOTSTRAP=="true" inside container.
 Environment="AUTO_BOOTSTRAP=true"
 # Ensure the script can find standard tools
 Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
