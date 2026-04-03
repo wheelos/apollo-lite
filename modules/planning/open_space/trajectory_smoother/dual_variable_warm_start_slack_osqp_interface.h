@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "Eigen/Dense"
-#include "osqp/osqp.h"
+#include "osqp.h"
 
 #include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
 #include "modules/planning/proto/planner_open_space_config.pb.h"
@@ -51,23 +51,26 @@ class DualVariableWarmStartSlackOSQPInterface {
 
   bool optimize();
 
-  void assembleP(std::vector<c_float>* P_data, std::vector<c_int>* P_indices,
-                 std::vector<c_int>* P_indptr);
+  void assembleP(std::vector<OSQPFloat>* P_data,
+                 std::vector<OSQPInt>* P_indices,
+                 std::vector<OSQPInt>* P_indptr);
 
-  void assembleConstraint(std::vector<c_float>* A_data,
-                          std::vector<c_int>* A_indices,
-                          std::vector<c_int>* A_indptr);
+  void assembleConstraint(std::vector<OSQPFloat>* A_data,
+                          std::vector<OSQPInt>* A_indices,
+                          std::vector<OSQPInt>* A_indptr);
 
-  void assembleA(const int r, const int c, const std::vector<c_float>& P_data,
-                 const std::vector<c_int>& P_indices,
-                 const std::vector<c_int>& P_indptr);
+  void assembleA(const int r, const int c,
+                 const std::vector<OSQPFloat>& P_data,
+                 const std::vector<OSQPInt>& P_indices,
+                 const std::vector<OSQPInt>& P_indptr);
 
   void checkSolution(const Eigen::MatrixXd& l_warm_up,
                      const Eigen::MatrixXd& n_warm_up);
 
-  void printMatrix(const int r, const int c, const std::vector<c_float>& P_data,
-                   const std::vector<c_int>& P_indices,
-                   const std::vector<c_int>& P_indptr);
+  void printMatrix(const int r, const int c,
+                   const std::vector<OSQPFloat>& P_data,
+                   const std::vector<OSQPInt>& P_indices,
+                   const std::vector<OSQPInt>& P_indptr);
 
  private:
   OSQPConfig osqp_config_;

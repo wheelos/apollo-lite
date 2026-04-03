@@ -16,6 +16,8 @@
 
 #include "modules/planning/math/piecewise_jerk/piecewise_jerk_problem.h"
 
+#include <cstring>
+
 #include "cyber/common/log.h"
 #include "modules/planning/common/planning_gflags.h"
 
@@ -24,6 +26,44 @@ namespace planning {
 
 namespace {
 constexpr double kMaxVariableRange = 1.0e10;
+
+bool HasUsableSolutionStatus(const OSQPInt status) {
+  return status == OSQP_SOLVED || status == OSQP_SOLVED_INACCURATE;
+}
+
+template <typename T>
+T* CopyData(const std::vector<T>& vec) {
+  if (vec.empty()) {
+    return nullptr;
+  }
+  T* data = reinterpret_cast<T*>(std::malloc(sizeof(T) * vec.size()));
+  if (data == nullptr) {
+    return nullptr;
+  }
+  std::memcpy(data, vec.data(), sizeof(T) * vec.size());
+  return data;
+}
+
+OSQPCscMatrix* OwnedCscMatrix(OSQPInt m, OSQPInt n,
+                              const std::vector<OSQPFloat>& values,
+                              const std::vector<OSQPInt>& indices,
+                              const std::vector<OSQPInt>& indptr) {
+  OSQPCscMatrix* matrix =
+      OSQPCscMatrix_new(m, n, values.size(), CopyData(values),
+                        CopyData(indices), CopyData(indptr));
+  if (matrix != nullptr) {
+    matrix->owned = 1;
+  }
+  return matrix;
+}
+
+void ReleaseSolverOwnedMatrices(PiecewiseJerkProblemData* data) {
+  if (data == nullptr) {
+    return;
+  }
+  data->P = nullptr;
+  data->A = nullptr;
+}
 }  // namespace
 
 PiecewiseJerkProblem::PiecewiseJerkProblem(
@@ -48,70 +88,87 @@ PiecewiseJerkProblem::PiecewiseJerkProblem(
   weight_x_ref_vec_ = std::vector<double>(num_of_knots_, 0.0);
 }
 
-OSQPData* PiecewiseJerkProblem::FormulateProblem() {
+PiecewiseJerkProblemData PiecewiseJerkProblem::FormulateProblem() {
   // calculate kernel
-  std::vector<c_float> P_data;
-  std::vector<c_int> P_indices;
-  std::vector<c_int> P_indptr;
+  std::vector<OSQPFloat> P_data;
+  std::vector<OSQPInt> P_indices;
+  std::vector<OSQPInt> P_indptr;
   CalculateKernel(&P_data, &P_indices, &P_indptr);
 
   // calculate affine constraints
-  std::vector<c_float> A_data;
-  std::vector<c_int> A_indices;
-  std::vector<c_int> A_indptr;
-  std::vector<c_float> lower_bounds;
-  std::vector<c_float> upper_bounds;
+  std::vector<OSQPFloat> A_data;
+  std::vector<OSQPInt> A_indices;
+  std::vector<OSQPInt> A_indptr;
+  std::vector<OSQPFloat> lower_bounds;
+  std::vector<OSQPFloat> upper_bounds;
   CalculateAffineConstraint(&A_data, &A_indices, &A_indptr, &lower_bounds,
                             &upper_bounds);
 
   // calculate offset
-  std::vector<c_float> q;
+  std::vector<OSQPFloat> q;
   CalculateOffset(&q);
 
-  OSQPData* data = reinterpret_cast<OSQPData*>(c_malloc(sizeof(OSQPData)));
+  PiecewiseJerkProblemData data{};
   CHECK_EQ(lower_bounds.size(), upper_bounds.size());
 
-  size_t kernel_dim = 3 * num_of_knots_;
-  size_t num_affine_constraint = lower_bounds.size();
+  OSQPInt kernel_dim = static_cast<OSQPInt>(3 * num_of_knots_);
+  OSQPInt num_affine_constraint =
+      static_cast<OSQPInt>(lower_bounds.size());
 
-  data->n = kernel_dim;
-  data->m = num_affine_constraint;
-  data->P = csc_matrix(kernel_dim, kernel_dim, P_data.size(), CopyData(P_data),
-                       CopyData(P_indices), CopyData(P_indptr));
-  data->q = CopyData(q);
-  data->A =
-      csc_matrix(num_affine_constraint, kernel_dim, A_data.size(),
-                 CopyData(A_data), CopyData(A_indices), CopyData(A_indptr));
-  data->l = CopyData(lower_bounds);
-  data->u = CopyData(upper_bounds);
+  data.n = kernel_dim;
+  data.m = num_affine_constraint;
+  data.P = OwnedCscMatrix(kernel_dim, kernel_dim, P_data, P_indices, P_indptr);
+  data.q = std::move(q);
+  data.A = OwnedCscMatrix(num_affine_constraint, kernel_dim, A_data, A_indices,
+                          A_indptr);
+  data.l = std::move(lower_bounds);
+  data.u = std::move(upper_bounds);
   return data;
 }
 
 bool PiecewiseJerkProblem::Optimize(const int max_iter) {
-  OSQPData* data = FormulateProblem();
+  PiecewiseJerkProblemData data = FormulateProblem();
 
   OSQPSettings* settings = SolverDefaultSettings();
+  if (settings == nullptr || data.P == nullptr || data.A == nullptr) {
+    FreeData(&data);
+    if (settings != nullptr) {
+      OSQPSettings_free(settings);
+    }
+    return false;
+  }
   settings->max_iter = max_iter;
 
-  OSQPWorkspace* osqp_work = nullptr;
-  osqp_work = osqp_setup(data, settings);
-  // osqp_setup(&osqp_work, data, settings);
+  OSQPSolver* osqp_work = nullptr;
+  if (osqp_setup(&osqp_work, data.P, data.q.data(), data.A, data.l.data(),
+                 data.u.data(), data.m, data.n, settings) != 0 ||
+      osqp_work == nullptr) {
+    if (osqp_work != nullptr) {
+      ReleaseSolverOwnedMatrices(&data);
+      osqp_cleanup(osqp_work);
+    }
+    FreeData(&data);
+    OSQPSettings_free(settings);
+    return false;
+  }
 
   osqp_solve(osqp_work);
 
   auto status = osqp_work->info->status_val;
 
-  if (status < 0 || (status != 1 && status != 2)) {
+  if (!HasUsableSolutionStatus(status)) {
     AERROR << "failed optimization status:\t" << osqp_work->info->status;
+    ReleaseSolverOwnedMatrices(&data);
     osqp_cleanup(osqp_work);
-    FreeData(data);
-    c_free(settings);
+    FreeData(&data);
+    OSQPSettings_free(settings);
     return false;
   } else if (osqp_work->solution == nullptr) {
     AERROR << "The solution from OSQP is nullptr";
+    ReleaseSolverOwnedMatrices(&data);
     osqp_cleanup(osqp_work);
-    FreeData(data);
-    c_free(settings);
+    FreeData(&data);
+    OSQPSettings_free(settings);
     return false;
   }
 
@@ -127,16 +184,17 @@ bool PiecewiseJerkProblem::Optimize(const int max_iter) {
   }
 
   // Cleanup
+  ReleaseSolverOwnedMatrices(&data);
   osqp_cleanup(osqp_work);
-  FreeData(data);
-  c_free(settings);
+  FreeData(&data);
+  OSQPSettings_free(settings);
   return true;
 }
 
 void PiecewiseJerkProblem::CalculateAffineConstraint(
-    std::vector<c_float>* A_data, std::vector<c_int>* A_indices,
-    std::vector<c_int>* A_indptr, std::vector<c_float>* lower_bounds,
-    std::vector<c_float>* upper_bounds) {
+    std::vector<OSQPFloat>* A_data, std::vector<OSQPInt>* A_indices,
+    std::vector<OSQPInt>* A_indptr, std::vector<OSQPFloat>* lower_bounds,
+    std::vector<OSQPFloat>* upper_bounds) {
   // 3N params bounds on x, x', x''
   // 3(N-1) constraints on x, x', x''
   // 3 constraints on x_init_
@@ -146,7 +204,7 @@ void PiecewiseJerkProblem::CalculateAffineConstraint(
   lower_bounds->resize(num_of_constraints);
   upper_bounds->resize(num_of_constraints);
 
-  std::vector<std::vector<std::pair<c_int, c_float>>> variables(
+  std::vector<std::vector<std::pair<OSQPInt, OSQPFloat>>> variables(
       num_of_variables);
 
   int constraint_index = 0;
@@ -259,10 +317,11 @@ void PiecewiseJerkProblem::CalculateAffineConstraint(
 
 OSQPSettings* PiecewiseJerkProblem::SolverDefaultSettings() {
   // Define Solver default settings
-  OSQPSettings* settings =
-      reinterpret_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
-  osqp_set_default_settings(settings);
-  settings->polish = true;
+  OSQPSettings* settings = OSQPSettings_new();
+  if (settings == nullptr) {
+    return nullptr;
+  }
+  settings->polishing = true;
   settings->verbose = FLAGS_enable_osqp_debug;
   settings->scaled_termination = true;
   return settings;
@@ -338,18 +397,14 @@ void PiecewiseJerkProblem::set_end_state_ref(
   has_end_state_ref_ = true;
 }
 
-void PiecewiseJerkProblem::FreeData(OSQPData* data) {
-  delete[] data->q;
-  delete[] data->l;
-  delete[] data->u;
-
-  delete[] data->P->i;
-  delete[] data->P->p;
-  delete[] data->P->x;
-
-  delete[] data->A->i;
-  delete[] data->A->p;
-  delete[] data->A->x;
+void PiecewiseJerkProblem::FreeData(PiecewiseJerkProblemData* data) {
+  if (data == nullptr) {
+    return;
+  }
+  OSQPCscMatrix_free(data->P);
+  OSQPCscMatrix_free(data->A);
+  data->P = nullptr;
+  data->A = nullptr;
 }
 
 }  // namespace planning

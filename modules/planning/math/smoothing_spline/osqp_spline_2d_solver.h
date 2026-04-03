@@ -24,7 +24,7 @@
 
 #include "gtest/gtest_prod.h"
 
-#include "osqp/osqp.h"
+#include "osqp.h"
 
 #include "modules/planning/math/smoothing_spline/spline_2d.h"
 #include "modules/planning/math/smoothing_spline/spline_2d_solver.h"
@@ -51,11 +51,6 @@ class OsqpSpline2dSolver final : public Spline2dSolver {
 
  private:
   FRIEND_TEST(OSQPSolverTest, basic_test);
-
- private:
-  OSQPSettings* osqp_settings_ = nullptr;
-  OSQPWorkspace* work_ = nullptr;  // Workspace
-  OSQPData* data_ = nullptr;       // OSQPData
 
   int last_num_constraint_ = 0;
   int last_num_param_ = 0;

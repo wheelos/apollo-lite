@@ -107,7 +107,7 @@ cc_test(
     srcs = ["osqp_spline_1d_solver_test.cc"],
     deps = [
         ":osqp_spline_1d_solver",
-        "@com_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -195,7 +195,7 @@ cc_test(
     deps = [
         ":osqp_spline_2d_solver",
         "//modules/planning/math:curve_math",
-        "@com_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest",
     ],
 )
 

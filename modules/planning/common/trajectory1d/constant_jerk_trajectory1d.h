@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 #include "modules/planning/math/curve1d/curve1d.h"

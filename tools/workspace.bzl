@@ -8,7 +8,6 @@ load("//third_party/localization_msf:workspace.bzl", localization_msf = "repo")
 load("//third_party/npp:workspace.bzl", npp = "repo")
 load("//third_party/opengl:workspace.bzl", opengl = "repo")
 load("//third_party/openh264:workspace.bzl", openh264 = "repo")
-load("//third_party/osqp:workspace.bzl", osqp = "repo")
 
 def initialize_third_party():
     """ Load third party repositories.  See above load() statements. """
@@ -23,7 +22,6 @@ def initialize_third_party():
     npp()
     opengl()
     openh264()
-    osqp()
 
 # Define all external repositories required by
 def apollo_repositories():

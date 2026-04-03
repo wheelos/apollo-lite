@@ -53,12 +53,12 @@ class PiecewiseJerkPathProblem : public PiecewiseJerkProblem {
 
   virtual ~PiecewiseJerkPathProblem() = default;
 
- protected:
-  void CalculateKernel(std::vector<c_float>* P_data,
-                       std::vector<c_int>* P_indices,
-                       std::vector<c_int>* P_indptr) override;
+protected:
+  void CalculateKernel(std::vector<OSQPFloat>* P_data,
+                       std::vector<OSQPInt>* P_indices,
+                       std::vector<OSQPInt>* P_indptr) override;
 
-  void CalculateOffset(std::vector<c_float>* q) override;
+  void CalculateOffset(std::vector<OSQPFloat>* q) override;
 };
 
 }  // namespace planning
