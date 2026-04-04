@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <chrono>
 
 #include "modules/common_msgs/basic_msgs/geometry.pb.h"
 #include "modules/common_msgs/chassis_msgs/chassis.pb.h"
@@ -28,6 +29,7 @@
 
 #include "cyber/common/macros.h"
 #include "cyber/cyber.h"
+#include "cyber/service/client.h"
 
 namespace apollo {
 namespace mission {
@@ -37,6 +39,18 @@ class MissionContext {
   void SetRoutingWriter(
       const std::shared_ptr<cyber::Writer<routing::RoutingRequest>>& writer) {
     routing_writer_ = writer;
+  }
+
+  void SetRoutingClient(
+      const std::shared_ptr<apollo::cyber::Client<routing::RoutingRequest,
+                                                 routing::RoutingResponse>>&
+          client) {
+    routing_client_ = client;
+  }
+
+  void SetRoutingResponseWriter(
+      const std::shared_ptr<cyber::Writer<routing::RoutingResponse>>& writer) {
+    routing_response_writer_ = writer;
   }
 
   // Data storage (written by Component)
@@ -77,13 +91,35 @@ class MissionContext {
   }
 
   void SendRoutingRequest(const common::PointENU& end_pose) {
-    if (routing_writer_ == nullptr) {
-      return;
-    }
     routing::RoutingRequest request;
     auto* waypoint = request.add_waypoint();
     *waypoint->mutable_pose() = end_pose;
-    routing_writer_->Write(request);
+
+    // Prefer calling routing service if client available (transition mode).
+    if (routing_client_ != nullptr) {
+      auto response = routing_client_->SendRequest(request,
+                                                  std::chrono::seconds(2));
+      if (response == nullptr) {
+        AERROR << "[Mission] Routing Service 调用失败或超时！";
+        return;
+      }
+      // Business-level checks can be done by Mission before publishing
+      if (response->has_status() &&
+          response->status().error_code() != apollo::common::ErrorCode::OK) {
+        AERROR << "[Mission] Routing 算法求解失败，原因："
+               << response->status().msg();
+        return;
+      }
+      if (routing_response_writer_ != nullptr) {
+        routing_response_writer_->Write(response);
+      }
+      return;
+    }
+
+    // Fallback: publish RoutingRequest to topic as before
+    if (routing_writer_ != nullptr) {
+      routing_writer_->Write(request);
+    }
   }
 
   void SetCurrentMissionId(const std::string& id) {
@@ -102,6 +138,11 @@ class MissionContext {
   std::string current_mission_id_;
 
   std::shared_ptr<cyber::Writer<routing::RoutingRequest>> routing_writer_;
+    std::shared_ptr<apollo::cyber::Client<routing::RoutingRequest,
+                       routing::RoutingResponse>>
+      routing_client_;
+    std::shared_ptr<cyber::Writer<routing::RoutingResponse>>
+      routing_response_writer_;
   std::shared_ptr<canbus::Chassis> chassis_;
   std::shared_ptr<localization::LocalizationEstimate> localization_;
   std::unordered_map<std::string, common::PointENU> waypoints_;

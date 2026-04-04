@@ -75,6 +75,18 @@ bool RoutingComponent::Init() {
       false));
   timer_->Start();
 
+  // Expose routing as a service for Mission and other clients.
+  routing_service_ = node_->CreateService<RoutingRequest, RoutingResponse>(
+      "routing_service", [this](const std::shared_ptr<RoutingRequest>& request,
+                                std::shared_ptr<RoutingResponse>& response) {
+        if (!routing_.Process(request, response.get())) {
+          response->mutable_routing_request()->CopyFrom(*request);
+        }
+        common::util::FillHeader(node_->Name(), response.get());
+        std::lock_guard<std::mutex> guard(this->mutex_);
+        this->response_ = response;
+      });
+
   return routing_.Init().ok() && routing_.Start().ok();
 }
 
@@ -88,7 +100,11 @@ bool RoutingComponent::Proc(const std::shared_ptr<RoutingRequest>& request) {
     response->mutable_routing_request()->CopyFrom(*request);
   }
   common::util::FillHeader(node_->Name(), response.get());
-  response_writer_->Write(response);
+  // Publish response on topic for backward compatibility with modules
+  // that still use the routing_request -> routing_response topic flow.
+  if (response_writer_ != nullptr) {
+    response_writer_->Write(response);
+  }
   {
     std::lock_guard<std::mutex> guard(mutex_);
     response_ = std::move(response);

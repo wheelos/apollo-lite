@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include "cyber/service/service.h"
 #include "modules/routing/routing.h"
 
 namespace apollo {
@@ -34,6 +35,8 @@ class RoutingComponent final
   bool Proc(const std::shared_ptr<RoutingRequest>& request) override;
 
  private:
+  std::shared_ptr<::apollo::cyber::Service<RoutingRequest, RoutingResponse>>
+      routing_service_ = nullptr;
   std::shared_ptr<::apollo::cyber::Writer<RoutingResponse>> response_writer_ =
       nullptr;
   std::shared_ptr<::apollo::cyber::Writer<RoutingResponse>>

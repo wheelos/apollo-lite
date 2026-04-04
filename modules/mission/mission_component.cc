@@ -125,9 +125,19 @@ bool MissionComponent::InitCyberCommunication() {
         MissionContext::Instance()->UpdateLocalization(msg);
       });
 
-  auto routing_writer =
-      node_->CreateWriter<RoutingRequest>(FLAGS_routing_request_topic);
-  MissionContext::Instance()->SetRoutingWriter(routing_writer);
+    // Create a routing service client. Mission will call routing as a service
+    // and publish the RoutingResponse to the original topic so Planning stays
+    // untouched.
+    auto routing_client = node_->CreateClient<RoutingRequest, RoutingResponse>(
+      "routing_service");
+    MissionContext::Instance()->SetRoutingClient(routing_client);
+
+    // Create writer for RoutingResponse so Mission can publish the result
+    // under the same topic Planning expects.
+    auto routing_response_writer =
+      node_->CreateWriter<RoutingResponse>(FLAGS_routing_response_topic);
+    MissionContext::Instance()->SetRoutingResponseWriter(
+      routing_response_writer);
 
   return true;
 }
