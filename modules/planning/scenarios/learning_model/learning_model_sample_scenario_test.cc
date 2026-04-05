@@ -29,6 +29,7 @@
 namespace apollo {
 namespace planning {
 namespace scenario {
+namespace learning_model {
 
 class LearningModelSampleScenarioTest : public ::testing::Test {
  public:
@@ -49,9 +50,10 @@ TEST_F(LearningModelSampleScenarioTest, Init) {
   ScenarioContext context;
   auto injector = std::make_shared<DependencyInjector>();
   scenario_.reset(new LearningModelSampleScenario(config, &context, injector));
-  EXPECT_EQ(scenario_->scenario_type(), ScenarioType::LEARNING_MODEL_SAMPLE);
+  EXPECT_EQ(scenario_->Type(), ScenarioType::LEARNING_MODEL_SAMPLE);
 }
 
+}  // namespace learning_model
 }  // namespace scenario
 }  // namespace planning
 }  // namespace apollo

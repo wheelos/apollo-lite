@@ -97,52 +97,6 @@ bool ValetParkingScenario::GetScenarioConfig() {
   return true;
 }
 
-bool ValetParkingScenario::IsTransferable(const Frame& frame,
-                                          const double parking_start_range) {
-  // TODO(all) Implement available parking spot detection by preception results
-  std::string target_parking_spot_id;
-  if (frame.local_view().routing->routing_request().has_parking_info() &&
-      frame.local_view()
-          .routing->routing_request()
-          .parking_info()
-          .has_parking_space_id()) {
-    target_parking_spot_id = frame.local_view()
-                                 .routing->routing_request()
-                                 .parking_info()
-                                 .parking_space_id();
-  } else {
-    ADEBUG << "No parking space id from routing";
-    return false;
-  }
-
-  if (target_parking_spot_id.empty()) {
-    return false;
-  }
-
-  const auto& nearby_path =
-      frame.reference_line_info().front().reference_line().map_path();
-  PathOverlap parking_space_overlap;
-  const auto& vehicle_state = frame.vehicle_state();
-
-  if (!SearchTargetParkingSpotOnPath(nearby_path, target_parking_spot_id,
-                                     &parking_space_overlap)) {
-    ADEBUG << "No such parking spot found after searching all path forward "
-              "possible"
-           << target_parking_spot_id;
-    return false;
-  }
-
-  if (!CheckDistanceToParkingSpot(frame, vehicle_state, nearby_path,
-                                  parking_start_range, parking_space_overlap)) {
-    ADEBUG << "target parking spot found, but too far, distance larger than "
-              "pre-defined distance"
-           << target_parking_spot_id;
-    return false;
-  }
-
-  return true;
-}
-
 bool ValetParkingScenario::SearchTargetParkingSpotOnPath(
     const Path& nearby_path, const std::string& target_parking_id,
     PathOverlap* parking_space_overlap) {

@@ -83,14 +83,30 @@ DEFINE_string(scenario_valet_parking_config_file,
               "/apollo/modules/planning/conf/"
               "scenario/valet_parking_config.pb.txt",
               "valet_parking scenario config file");
-DEFINE_string(scenario_deadend_turnaround_config_file,
-              "/apollo/modules/planning/conf/"
-              "scenario/deadend_turnaround_config.pb.txt",
-              "deadend_turnaround scenario config file");
 DEFINE_string(scenario_yield_sign_config_file,
               "/apollo/modules/planning/conf/"
               "scenario/yield_sign_config.pb.txt",
               "yield_sign scenario config file");
+
+DEFINE_string(scenario_mission_idle_config_file,
+              "/apollo/modules/planning/conf/scenario/"
+              "mission_idle_config.pb.txt",
+              "mission_idle scenario config file");
+
+DEFINE_string(scenario_escape_config_file,
+              "/apollo/modules/planning/conf/scenario/"
+              "escape_config.pb.txt",
+              "escape scenario config file");
+
+DEFINE_string(scenario_narrow_street_maneuver_config_file,
+              "/apollo/modules/planning/conf/scenario/"
+              "narrow_street_maneuver_config.pb.txt",
+              "narrow_street_maneuver scenario config file");
+
+DEFINE_string(scenario_deadend_turnaround_config_file,
+              "/apollo/modules/planning/conf/scenario/"
+              "deadend_turnaround_config.pb.txt",
+              "deadend_turnaround scenario config file");
 
 DEFINE_bool(enable_scenario_bare_intersection, true,
             "enable bare_intersection scenarios in planning");
@@ -536,6 +552,10 @@ DEFINE_bool(use_soft_bound_in_nonlinear_speed_opt, true,
 DEFINE_bool(use_front_axe_center_in_path_planning, false,
             "If using front axe center in path planning, the path can be "
             "more agile.");
+
+DEFINE_bool(use_center_mass_in_path_planning, false,
+            "If true, constrain path curvature using a center-mass vehicle "
+            "model when computing ddl bounds.");
 
 DEFINE_bool(use_road_boundary_from_map, false, "get road boundary from HD map");
 

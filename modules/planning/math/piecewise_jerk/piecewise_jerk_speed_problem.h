@@ -56,7 +56,7 @@ class PiecewiseJerkSpeedProblem : public PiecewiseJerkProblem {
 
   void set_penalty_dx(std::vector<double> penalty_dx);
 
-protected:
+ protected:
   // naming convention follows osqp solver.
   void CalculateKernel(std::vector<OSQPFloat>* P_data,
                        std::vector<OSQPInt>* P_indices,

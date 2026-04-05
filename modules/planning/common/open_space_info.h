@@ -136,8 +136,8 @@ class OpenSpaceInfo {
     return obstacles_vertices_vec_;
   }
 
-  std::vector<std::vector<common::math::Vec2d>> *
-  mutable_obstacles_vertices_vec() {
+  std::vector<std::vector<common::math::Vec2d>>
+      *mutable_obstacles_vertices_vec() {
     return &obstacles_vertices_vec_;
   }
 
@@ -258,13 +258,13 @@ class OpenSpaceInfo {
     fallback_trajectory_ = traj_gear_pair;
   }
 
-  std::pair<PublishableTrajectory, canbus::Chassis::GearPosition> *
-  mutable_publishable_trajectory_data() {
+  std::pair<PublishableTrajectory, canbus::Chassis::GearPosition>
+      *mutable_publishable_trajectory_data() {
     return &publishable_trajectory_data_;
   }
 
-  const std::pair<PublishableTrajectory, canbus::Chassis::GearPosition> &
-  publishable_trajectory_data() const {
+  const std::pair<PublishableTrajectory, canbus::Chassis::GearPosition>
+      &publishable_trajectory_data() const {
     return publishable_trajectory_data_;
   }
 

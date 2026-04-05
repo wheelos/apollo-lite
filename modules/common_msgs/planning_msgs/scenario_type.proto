@@ -30,6 +30,10 @@ enum ScenarioType {
     LEARNING_MODEL_SAMPLE = 15;
     // turn around
     DEADEND_TURNAROUND = 16;
+
+    ESCAPE = 19;
+    MISSION_IDLE = 20;
+    NARROW_STREET_MANEUVER = 21;
 }
 
 // StageType is a superset of stages from all scenarios.
@@ -97,4 +101,15 @@ enum StageType {
 
     // learning_model_sample scenario
     LEARNING_MODEL_RUN = 1000;
+    // mission_idle scenario
+    MISSION_IDLE_DEFAULT_STAGE = 1300;
+
+    // escape scenario
+    ESCAPE_DEFAULT_STAGE = 1301;
+
+    // narrow_street_maneuver scenario
+    NARROW_STREET_MANEUVER_DEFAULT_STAGE = 1302;
+
+    // narrow_street_u_turn scenario
+    NARROW_STREET_U_TURN_DEFAULT_STAGE = 1303;
 }

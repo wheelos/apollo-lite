@@ -41,6 +41,15 @@
 namespace apollo {
 namespace planning {
 
+// Spatial Distribution Layer State: Determines the obstacle processing path
+enum class InteractionType {
+  IGNORE,     // Far background: Completely ignore
+  NUDGEABLE,  // Lateral risk: Only avoid and speed limit, do not enter the ST
+              // graph
+  YIELDING,   // Dynamic game: May cut in, need to build a flexible ST
+  BLOCKING    // Absolute foreground: Must stop, build a hard ST
+};
+
 /**
  * @class Obstacle
  * @brief This is the class that associates an Obstacle with its path
@@ -213,11 +222,8 @@ class Obstacle {
   void SetBlockingObstacle(bool blocking) { is_blocking_obstacle_ = blocking; }
   bool IsBlockingObstacle() const { return is_blocking_obstacle_; }
 
-  /*
-   * @brief IsLaneBlocking is only meaningful when IsStatic() == true.
-   */
-  bool IsLaneBlocking() const { return is_lane_blocking_; }
-  void CheckLaneBlocking(const ReferenceLine& reference_line);
+  void SetInteractionType(InteractionType type) { interaction_type_ = type; }
+
   bool IsLaneChangeBlocking() const { return is_lane_change_blocking_; }
   void SetLaneChangeBlocking(const bool is_distance_clear);
 
@@ -234,6 +240,8 @@ class Obstacle {
                                  STBoundary* const st_boundary);
   bool IsValidObstacle(
       const perception::PerceptionObstacle& perception_obstacle);
+
+  double CalculateSTMaxTime() const;
 
  private:
   std::string id_;
@@ -259,10 +267,10 @@ class Obstacle {
   ObjectDecisionType lateral_decision_;
   ObjectDecisionType longitudinal_decision_;
 
+  InteractionType interaction_type_;
+
   // for keep_clear usage only
   bool is_blocking_obstacle_ = false;
-
-  bool is_lane_blocking_ = false;
 
   bool is_lane_change_blocking_ = false;
 
