@@ -22,6 +22,21 @@ max_ref_time_delta_ms: 80
 motion_compensation_bins: 12
 metrics_log_interval: 50
 strict_auxiliary_sync: false
+sensor_pose_cache_duration_sec: 1.0
+sensor_pose_cache_max_extrapolation_sec: 0.15
+sensor_pose_query_timeout_sec: 0.02
+fixed_delay_ema_alpha: 0.2
+fixed_delay_update_limit_ms: 80.0
+clock_offset_ema_alpha: 0.2
+overlap_region_forward_x: 25.0
+overlap_region_backward_x: -5.0
+overlap_region_left_y: 12.0
+overlap_region_right_y: -12.0
+overlap_region_min_z: -3.0
+overlap_region_max_z: 3.0
+overlap_quality_ema_alpha: 0.2
+auxiliary_min_overlap_quality_weight: 0.1
+overlap_quality_sample_stride: 16
 
 ts_sanity_enabled: true
 ts_sanity_min_interval_ms: 40

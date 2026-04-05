@@ -42,7 +42,7 @@ class GpuLidarFusionPolicy : public LidarFusionPolicy {
             apollo::transform::BufferInterface* tf_buffer) override;
 
   bool FuseToBaseLink(
-      double reference_timestamp_sec,
+      double reference_timestamp_sec, const Eigen::Affine3d& world2base_ref,
       const std::vector<SensorFrameContext>& frames,
       const std::vector<std::vector<Eigen::Affine3d>>& frames_motion_poses,
       const std::vector<std::vector<double>>& frames_motion_times,
@@ -55,7 +55,7 @@ class GpuLidarFusionPolicy : public LidarFusionPolicy {
   std::mutex scratch_mutex_;
   std::vector<CudaPointXYZIT> host_input_points_;
   std::vector<CudaPointXYZIT> host_fused_points_;
-  std::vector<CudaMatrix4f> host_pose_buffer_;
+  std::vector<CudaPose> host_pose_buffer_;
   std::atomic<uint64_t> metrics_calls_{0};
   std::atomic<uint64_t> metrics_input_points_{0};
   std::atomic<uint64_t> metrics_output_points_{0};
@@ -81,7 +81,7 @@ class GpuLidarFilterPolicy : public LidarFilterPolicy {
   std::mutex scratch_mutex_;
   std::vector<CudaPointXYZIT> host_input_points_;
   std::vector<CudaPointXYZIT> host_ego_filtered_points_;
-  std::vector<CudaPointXYZIT> host_voxel_filtered_points_;
+  std::vector<PointXYZIT> host_centroid_points_;
   std::atomic<uint64_t> metrics_calls_{0};
   std::atomic<uint64_t> metrics_input_points_{0};
   std::atomic<uint64_t> metrics_output_points_{0};

@@ -34,7 +34,7 @@ bool GpuLidarFusionPolicy::Init(const LidarUnifiedComponentConfig& config,
 }
 
 bool GpuLidarFusionPolicy::FuseToBaseLink(
-    double reference_timestamp_sec,
+    double reference_timestamp_sec, const Eigen::Affine3d& world2base_ref,
     const std::vector<SensorFrameContext>& frames,
     const std::vector<std::vector<Eigen::Affine3d>>& frames_motion_poses,
     const std::vector<std::vector<double>>& frames_motion_times,
@@ -55,14 +55,7 @@ bool GpuLidarFusionPolicy::FuseToBaseLink(
       frames.size() != frames_motion_times.size()) {
     return false;
   }
-
-  Eigen::Affine3d world_from_base_ref = Eigen::Affine3d::Identity();
-  if (!QueryTransformAffine(
-          tf_buffer_, config_.world_frame_id(), config_.base_link_frame_id(),
-          cyber::Time(reference_timestamp_sec), &world_from_base_ref)) {
-    return false;
-  }
-  const CudaMatrix4f world2base = ToCudaMatrix(world_from_base_ref.inverse());
+  const Eigen::Affine3d base_from_world_ref = world2base_ref;
 
   size_t write_idx = 0;
   size_t total_input_points = 0;
@@ -88,7 +81,6 @@ bool GpuLidarFusionPolicy::FuseToBaseLink(
       continue;
     }
 
-    std::vector<CudaPointXYZIT> input_points;
     const size_t frame_point_count =
         static_cast<size_t>(frame.point_cloud->point_size());
     total_input_points += frame_point_count;
@@ -105,7 +97,8 @@ bool GpuLidarFusionPolicy::FuseToBaseLink(
       host_pose_buffer_.resize(poses.size());
     }
     for (size_t pose_idx = 0; pose_idx < poses.size(); ++pose_idx) {
-      host_pose_buffer_[pose_idx] = ToCudaMatrix(poses[pose_idx]);
+      host_pose_buffer_[pose_idx] =
+          ToCudaPose(base_from_world_ref * poses[pose_idx]);
     }
 
     if (write_idx >= output_buffer->capacity) {
@@ -124,7 +117,7 @@ bool GpuLidarFusionPolicy::FuseToBaseLink(
     }
     const size_t fused_count = CudaFuseFrameToBaseLink(
         host_input_points_.data(), input_count, sample_times.data(),
-        sample_times.size(), host_pose_buffer_.data(), &world2base,
+        sample_times.size(), host_pose_buffer_.data(),
         frame.point_cloud->measurement_time(), host_fused_points_.data(),
         remaining_capacity, device_id);
     if (fused_count == 0U && input_count > 0U) {

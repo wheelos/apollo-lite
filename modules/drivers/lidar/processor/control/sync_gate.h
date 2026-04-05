@@ -23,11 +23,10 @@ class SyncGate {
   using ResolveSensorIdByTopicFn = std::function<bool(
       const std::string& topic_name, std::string* sensor_id)>;
 
-  using LookupNearestFrameFn = std::function<bool(
-      const std::string& sensor_id, double ref_timestamp,
-      uint32_t max_ref_time_delta_ms,
-      std::shared_ptr<const apollo::drivers::PointCloud>* frame,
-      bool* time_delta_exceeded)>;
+  using LookupNearestFrameFn =
+      std::function<bool(const std::string& sensor_id, double ref_timestamp,
+                         uint32_t max_ref_time_delta_ms,
+                         FrameHandle* frame_handle, bool* time_delta_exceeded)>;
 
   bool SelectFrames(double ref_timestamp, const std::string& primary_sensor_id,
                     const std::vector<std::string>& auxiliary_topics,

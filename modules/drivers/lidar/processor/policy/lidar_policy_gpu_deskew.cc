@@ -36,41 +36,18 @@ bool GpuLidarDeskewPolicy::ComputeMotionCompensationPoses(
     return false;
   }
 
-  std::vector<uint64_t> timestamps;
-  timestamps.reserve(
-      static_cast<size_t>(frame_context.point_cloud->point_size()));
-  const uint64_t fallback_ts = static_cast<uint64_t>(
-      frame_context.point_cloud->measurement_time() * kSecondToNano);
-  for (const auto& point : frame_context.point_cloud->point()) {
-    timestamps.push_back(point.timestamp() == 0U ? fallback_ts
-                                                 : point.timestamp());
-  }
-  if (timestamps.empty()) {
-    timestamps.push_back(fallback_ts);
-  }
-
-  uint64_t min_ts = 0U;
-  uint64_t max_ts = 0U;
-  if (!CudaComputeTimestampRange(timestamps.data(), timestamps.size(),
-                                 static_cast<int>(config_.gpu_device_id()),
-                                 &min_ts, &max_ts)) {
-    AERROR << "GpuLidarDeskewPolicy failed to compute timestamp range on CUDA";
-    return false;
-  }
-
-  const double local_min = static_cast<double>(min_ts) / kSecondToNano;
-  const double local_max = static_cast<double>(max_ts) / kSecondToNano;
   const size_t bins = std::max<size_t>(
       1, static_cast<size_t>(config_.motion_compensation_bins()));
-  sample_times->assign(bins, local_min);
+  if (!BuildMotionSampleTimes(*frame_context.point_cloud, bins, true,
+                              static_cast<int>(config_.gpu_device_id()),
+                              sample_times)) {
+    AERROR << "GpuLidarDeskewPolicy failed to build motion samples";
+    return false;
+  }
   poses->assign(bins, Eigen::Affine3d::Identity());
 
   for (size_t i = 0; i < bins; ++i) {
-    const double ratio =
-        bins == 1 ? 0.0
-                  : static_cast<double>(i) / static_cast<double>(bins - 1);
-    const double sample_ts = local_min + ratio * (local_max - local_min);
-    (*sample_times)[i] = sample_ts;
+    const double sample_ts = (*sample_times)[i];
 
     Eigen::Affine3d pose = Eigen::Affine3d::Identity();
     if (!QueryTransformAffine(tf_buffer_, config_.world_frame_id(),

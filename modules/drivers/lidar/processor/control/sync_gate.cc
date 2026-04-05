@@ -26,15 +26,17 @@ bool SyncGate::SelectFrames(double ref_timestamp,
   metrics->missing_auxiliary_count = 0;
   metrics->time_delta_exceeded_count = 0;
 
-  std::shared_ptr<const apollo::drivers::PointCloud> primary_frame;
+  FrameHandle primary_handle;
   bool primary_time_delta_exceeded = false;
   if (!lookup_nearest_frame(primary_sensor_id, ref_timestamp,
-                            max_ref_time_delta_ms, &primary_frame,
+                            max_ref_time_delta_ms, &primary_handle,
                             &primary_time_delta_exceeded)) {
     AERROR << "Primary sensor frame unavailable around reference timestamp";
     return false;
   }
-  frame_handles->push_back(FrameHandle{primary_sensor_id, primary_frame, true});
+  primary_handle.sensor_id = primary_sensor_id;
+  primary_handle.is_primary = true;
+  frame_handles->push_back(primary_handle);
 
   for (const auto& topic_name : auxiliary_topics) {
     std::string sensor_id;
@@ -48,10 +50,10 @@ bool SyncGate::SelectFrames(double ref_timestamp,
       continue;
     }
 
-    std::shared_ptr<const apollo::drivers::PointCloud> nearest_frame;
+    FrameHandle nearest_handle;
     bool time_delta_exceeded = false;
     if (!lookup_nearest_frame(sensor_id, ref_timestamp, max_ref_time_delta_ms,
-                              &nearest_frame, &time_delta_exceeded)) {
+                              &nearest_handle, &time_delta_exceeded)) {
       ++metrics->missing_auxiliary_count;
       if (time_delta_exceeded) {
         ++metrics->time_delta_exceeded_count;
@@ -65,7 +67,9 @@ bool SyncGate::SelectFrames(double ref_timestamp,
       continue;
     }
 
-    frame_handles->push_back(FrameHandle{sensor_id, nearest_frame, false});
+    nearest_handle.sensor_id = sensor_id;
+    nearest_handle.is_primary = false;
+    frame_handles->push_back(nearest_handle);
   }
 
   metrics->matched_sensor_count = frame_handles->size();

@@ -22,21 +22,29 @@ constexpr float kPointInfThreshold = 1e3f;
 bool ResolvePointTimestampBounds(const PointCloud& cloud, double* min_sec,
                                  double* max_sec);
 
+bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
+                            bool use_gpu_timestamp_range, int gpu_device_id,
+                            std::vector<double>* sample_times);
+
 double ResolvePointTimestampSec(const PointXYZIT& point,
                                 double fallback_measurement_time);
 
 uint64_t ResolvePointTimestampNs(const PointXYZIT& point,
                                  double fallback_measurement_time);
 
-size_t ResolveNearestPoseIndex(double point_time,
-                               const std::vector<double>& sample_times,
-                               size_t pose_count);
+bool InterpolateAffinePose(double point_time,
+                           const std::vector<double>& sample_times,
+                           const std::vector<Eigen::Affine3d>& poses,
+                           Eigen::Affine3d* interpolated_pose);
 
 bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
                           const std::string& target_frame,
                           const std::string& source_frame,
                           const cyber::Time& query_time,
                           Eigen::Affine3d* transform);
+
+size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
+                                             float voxel_size);
 
 bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
                           const std::vector<double>& sample_times,
@@ -50,12 +58,12 @@ bool EnsureGpuBackendAvailable(const char* policy_name);
 
 #ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
 struct CudaPointXYZIT;
-struct CudaMatrix4f;
+struct CudaPose;
 
 CudaPointXYZIT ToCudaPoint(const PointXYZIT& point,
                            double measurement_time_sec);
 PointXYZIT ToProtoPoint(const CudaPointXYZIT& point);
-CudaMatrix4f ToCudaMatrix(const Eigen::Affine3d& in);
+CudaPose ToCudaPose(const Eigen::Affine3d& in);
 #endif
 
 }  // namespace lidar

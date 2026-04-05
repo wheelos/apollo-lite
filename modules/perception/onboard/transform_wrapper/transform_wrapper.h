@@ -15,8 +15,9 @@
  *****************************************************************************/
 #pragma once
 
-#include <deque>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "Eigen/Core"
@@ -24,6 +25,7 @@
 #include "gflags/gflags.h"
 
 #include "modules/transform/buffer.h"
+#include "modules/transform/pose_cache.h"
 
 namespace apollo {
 namespace perception {
@@ -44,24 +46,6 @@ struct StampedTransform {
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
-
-class TransformCache {
- public:
-  TransformCache() = default;
-  ~TransformCache() = default;
-
-  void AddTransform(const StampedTransform& transform);
-  bool QueryTransform(double timestamp, StampedTransform* transform,
-                      double max_duration = 0.0);
-
-  inline void SetCacheDuration(double duration) { cache_duration_ = duration; }
-
- protected:
-  // in ascending order of time
-  std::deque<StampedTransform> transforms_;
-  double cache_duration_ = 1.0;
-};
-
 class TransformWrapper {
  public:
   TransformWrapper() {}
@@ -93,6 +77,12 @@ class TransformWrapper {
                   const std::string& frame_id,
                   const std::string& child_frame_id);
 
+  apollo::transform::TransformFrameCache* GetOrCreateTransformCache(
+      const std::string& frame_id, const std::string& child_frame_id);
+
+  static std::string MakeTransformCacheKey(const std::string& frame_id,
+                                           const std::string& child_frame_id);
+
  private:
   bool inited_ = false;
 
@@ -104,8 +94,9 @@ class TransformWrapper {
   std::string novatel2world_tf2_child_frame_id_;
 
   std::unique_ptr<Eigen::Affine3d> sensor2novatel_extrinsics_;
-
-  TransformCache transform_cache_;
+  mutable std::mutex transform_cache_mutex_;
+  std::map<std::string, std::unique_ptr<apollo::transform::TransformFrameCache>>
+      transform_caches_;
 };
 
 }  // namespace onboard

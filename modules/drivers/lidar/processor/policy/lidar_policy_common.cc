@@ -37,6 +37,56 @@ bool ResolvePointTimestampBounds(const PointCloud& cloud, double* min_sec,
   return true;
 }
 
+bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
+                            bool use_gpu_timestamp_range, int gpu_device_id,
+                            std::vector<double>* sample_times) {
+  if (bins == 0U || sample_times == nullptr) {
+    return false;
+  }
+
+  double local_min = 0.0;
+  double local_max = 0.0;
+#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
+  if (use_gpu_timestamp_range) {
+    std::vector<uint64_t> timestamps;
+    timestamps.reserve(static_cast<size_t>(cloud.point_size()));
+    const uint64_t fallback_ts =
+        static_cast<uint64_t>(cloud.measurement_time() * kSecondToNano);
+    for (const auto& point : cloud.point()) {
+      timestamps.push_back(point.timestamp() == 0U ? fallback_ts
+                                                   : point.timestamp());
+    }
+    if (timestamps.empty()) {
+      timestamps.push_back(fallback_ts);
+    }
+
+    uint64_t min_ts = 0U;
+    uint64_t max_ts = 0U;
+    if (!CudaComputeTimestampRange(timestamps.data(), timestamps.size(),
+                                   gpu_device_id, &min_ts, &max_ts)) {
+      return false;
+    }
+    local_min = static_cast<double>(min_ts) / kSecondToNano;
+    local_max = static_cast<double>(max_ts) / kSecondToNano;
+  } else {
+#endif
+    if (!ResolvePointTimestampBounds(cloud, &local_min, &local_max)) {
+      return false;
+    }
+#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
+  }
+#endif
+
+  sample_times->assign(bins, local_min);
+  for (size_t i = 0; i < bins; ++i) {
+    const double ratio =
+        bins == 1 ? 0.0
+                  : static_cast<double>(i) / static_cast<double>(bins - 1);
+    (*sample_times)[i] = local_min + ratio * (local_max - local_min);
+  }
+  return true;
+}
+
 double ResolvePointTimestampSec(const PointXYZIT& point,
                                 double fallback_measurement_time) {
   if (point.timestamp() == 0U) {
@@ -53,29 +103,58 @@ uint64_t ResolvePointTimestampNs(const PointXYZIT& point,
   return static_cast<uint64_t>(fallback_measurement_time * kSecondToNano);
 }
 
-size_t ResolveNearestPoseIndex(double point_time,
-                               const std::vector<double>& sample_times,
-                               size_t pose_count) {
-  const size_t pair_count = std::min(sample_times.size(), pose_count);
-  if (pair_count <= 1) {
-    return 0;
+bool InterpolateAffinePose(double point_time,
+                           const std::vector<double>& sample_times,
+                           const std::vector<Eigen::Affine3d>& poses,
+                           Eigen::Affine3d* interpolated_pose) {
+  if (interpolated_pose == nullptr) {
+    return false;
+  }
+
+  const size_t pair_count = std::min(sample_times.size(), poses.size());
+  if (pair_count == 0U) {
+    return false;
+  }
+  if (pair_count == 1U) {
+    *interpolated_pose = poses.front();
+    return true;
   }
 
   const auto begin = sample_times.begin();
   const auto end = begin + static_cast<std::ptrdiff_t>(pair_count);
   const auto lower = std::lower_bound(begin, end, point_time);
   if (lower == begin) {
-    return 0;
+    *interpolated_pose = poses.front();
+    return true;
   }
   if (lower == end) {
-    return pair_count - 1;
+    *interpolated_pose = poses[pair_count - 1U];
+    return true;
   }
 
   const size_t right_idx = static_cast<size_t>(std::distance(begin, lower));
-  const size_t left_idx = right_idx - 1;
-  const double left_dt = std::fabs(point_time - sample_times[left_idx]);
-  const double right_dt = std::fabs(sample_times[right_idx] - point_time);
-  return (left_dt <= right_dt) ? left_idx : right_idx;
+  const size_t left_idx = right_idx - 1U;
+  const double left_time = sample_times[left_idx];
+  const double right_time = sample_times[right_idx];
+  if (std::fabs(right_time - left_time) <= 1e-9) {
+    *interpolated_pose = poses[right_idx];
+    return true;
+  }
+
+  const double ratio =
+      std::clamp((point_time - left_time) / (right_time - left_time), 0.0, 1.0);
+  const Eigen::Vector3d translation =
+      poses[left_idx].translation() +
+      ratio * (poses[right_idx].translation() - poses[left_idx].translation());
+  Eigen::Quaterniond left_rotation(poses[left_idx].linear());
+  Eigen::Quaterniond right_rotation(poses[right_idx].linear());
+  if (left_rotation.dot(right_rotation) < 0.0) {
+    right_rotation.coeffs() *= -1.0;
+  }
+  const Eigen::Quaterniond rotation =
+      left_rotation.slerp(ratio, right_rotation);
+  *interpolated_pose = Eigen::Translation3d(translation) * rotation;
+  return true;
 }
 
 bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
@@ -112,6 +191,88 @@ bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
   }
 }
 
+namespace {
+
+struct VoxelKey {
+  int x = 0;
+  int y = 0;
+  int z = 0;
+};
+
+struct IndexedVoxelPoint {
+  VoxelKey key;
+  size_t index = 0;
+};
+
+}  // namespace
+
+size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
+                                             float voxel_size) {
+  if (points == nullptr || count == 0U || voxel_size <= 1e-4f) {
+    return count;
+  }
+
+  std::vector<IndexedVoxelPoint> ordered_points;
+  ordered_points.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    ordered_points.push_back(IndexedVoxelPoint{
+        VoxelKey{static_cast<int>(std::floor(points[i].x() / voxel_size)),
+                 static_cast<int>(std::floor(points[i].y() / voxel_size)),
+                 static_cast<int>(std::floor(points[i].z() / voxel_size))},
+        i});
+  }
+
+  std::stable_sort(
+      ordered_points.begin(), ordered_points.end(),
+      [](const IndexedVoxelPoint& lhs, const IndexedVoxelPoint& rhs) {
+        if (lhs.key.x != rhs.key.x) {
+          return lhs.key.x < rhs.key.x;
+        }
+        if (lhs.key.y != rhs.key.y) {
+          return lhs.key.y < rhs.key.y;
+        }
+        if (lhs.key.z != rhs.key.z) {
+          return lhs.key.z < rhs.key.z;
+        }
+        return lhs.index < rhs.index;
+      });
+
+  size_t write_idx = 0;
+  for (size_t begin = 0; begin < ordered_points.size();) {
+    const VoxelKey key = ordered_points[begin].key;
+    size_t end = begin;
+    double sum_x = 0.0;
+    double sum_y = 0.0;
+    double sum_z = 0.0;
+    double sum_intensity = 0.0;
+    long double sum_timestamp = 0.0;
+    while (end < ordered_points.size() && ordered_points[end].key.x == key.x &&
+           ordered_points[end].key.y == key.y &&
+           ordered_points[end].key.z == key.z) {
+      const PointXYZIT& point = points[ordered_points[end].index];
+      sum_x += point.x();
+      sum_y += point.y();
+      sum_z += point.z();
+      sum_intensity += point.intensity();
+      sum_timestamp += static_cast<long double>(point.timestamp());
+      ++end;
+    }
+
+    const double count_inv = 1.0 / static_cast<double>(end - begin);
+    PointXYZIT centroid_point;
+    centroid_point.set_x(static_cast<float>(sum_x * count_inv));
+    centroid_point.set_y(static_cast<float>(sum_y * count_inv));
+    centroid_point.set_z(static_cast<float>(sum_z * count_inv));
+    centroid_point.set_intensity(static_cast<float>(sum_intensity * count_inv));
+    centroid_point.set_timestamp(
+        static_cast<uint64_t>(std::llround(sum_timestamp * count_inv)));
+    points[write_idx++] = centroid_point;
+    begin = end;
+  }
+
+  return write_idx;
+}
+
 bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
                           const std::vector<double>& sample_times,
                           const std::vector<Eigen::Affine3d>& world_from_sensor,
@@ -132,15 +293,15 @@ bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
   }
 
   const double point_time = ResolvePointTimestampSec(point, measurement_time);
-  const size_t pose_idx = ResolveNearestPoseIndex(point_time, sample_times,
-                                                  world_from_sensor.size());
-  if (pose_idx >= world_from_sensor.size()) {
+  Eigen::Affine3d interpolated_world_from_sensor = Eigen::Affine3d::Identity();
+  if (!InterpolateAffinePose(point_time, sample_times, world_from_sensor,
+                             &interpolated_world_from_sensor)) {
     return false;
   }
 
   const Eigen::Vector3d raw(point.x(), point.y(), point.z());
   const Eigen::Vector3d target =
-      (world2base_ref * world_from_sensor[pose_idx]) * raw;
+      (world2base_ref * interpolated_world_from_sensor) * raw;
 
   output_point->set_x(static_cast<float>(target.x()));
   output_point->set_y(static_cast<float>(target.y()));
@@ -194,14 +355,16 @@ PointXYZIT ToProtoPoint(const CudaPointXYZIT& point) {
   return out;
 }
 
-CudaMatrix4f ToCudaMatrix(const Eigen::Affine3d& in) {
-  CudaMatrix4f out;
-  const Eigen::Matrix4d mat = in.matrix();
-  for (int row = 0; row < 4; ++row) {
-    for (int col = 0; col < 4; ++col) {
-      out.data[row * 4 + col] = static_cast<float>(mat(row, col));
-    }
-  }
+CudaPose ToCudaPose(const Eigen::Affine3d& in) {
+  CudaPose out;
+  out.tx = static_cast<float>(in.translation().x());
+  out.ty = static_cast<float>(in.translation().y());
+  out.tz = static_cast<float>(in.translation().z());
+  const Eigen::Quaterniond rotation(in.linear());
+  out.qx = static_cast<float>(rotation.x());
+  out.qy = static_cast<float>(rotation.y());
+  out.qz = static_cast<float>(rotation.z());
+  out.qw = static_cast<float>(rotation.w());
   return out;
 }
 #endif

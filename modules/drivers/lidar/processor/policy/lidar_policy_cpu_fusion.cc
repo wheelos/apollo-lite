@@ -14,7 +14,7 @@ bool CpuLidarFusionPolicy::Init(const LidarUnifiedComponentConfig& config,
 }
 
 bool CpuLidarFusionPolicy::FuseToBaseLink(
-    double reference_timestamp_sec,
+    double reference_timestamp_sec, const Eigen::Affine3d& world2base_ref,
     const std::vector<SensorFrameContext>& frames,
     const std::vector<std::vector<Eigen::Affine3d>>& frames_motion_poses,
     const std::vector<std::vector<double>>& frames_motion_times,
@@ -25,14 +25,7 @@ bool CpuLidarFusionPolicy::FuseToBaseLink(
       frames.size() != frames_motion_times.size()) {
     return false;
   }
-
-  Eigen::Affine3d world_from_base_ref = Eigen::Affine3d::Identity();
-  if (!QueryTransformAffine(
-          tf_buffer_, config_.world_frame_id(), config_.base_link_frame_id(),
-          cyber::Time(reference_timestamp_sec), &world_from_base_ref)) {
-    return false;
-  }
-  const Eigen::Affine3d world2base_ref = world_from_base_ref.inverse();
+  (void)reference_timestamp_sec;
 
   size_t write_idx = 0;
   for (size_t frame_idx = 0; frame_idx < frames.size(); ++frame_idx) {

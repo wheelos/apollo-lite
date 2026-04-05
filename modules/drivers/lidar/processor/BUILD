@@ -122,6 +122,7 @@ cc_library(
         ":lidar_policy_lib",
         ":safety_policy_lib",
         "//modules/transform:buffer",
+        "//modules/transform:pose_cache",
         "@boost.circular_buffer",
         "@eigen",
     ],
@@ -144,6 +145,7 @@ cc_test(
         "//conditions:default": [],
     }),
     deps=[
+        ":lidar_unified_component_lib",
         ":lidar_policy_lib",
         "//modules/common_msgs/transform_msgs:transform_cc_proto",
         "@com_google_googletest//:gtest",

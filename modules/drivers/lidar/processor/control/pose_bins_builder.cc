@@ -12,9 +12,8 @@ bool PoseBinsBuilder::Build(
     std::vector<std::vector<double>>* motion_sample_times,
     std::vector<std::vector<Eigen::Affine3d>>* motion_poses,
     size_t* required_points) const {
-  if (deskew_policy == nullptr || contexts == nullptr ||
-      motion_sample_times == nullptr || motion_poses == nullptr ||
-      required_points == nullptr) {
+  if (contexts == nullptr || motion_sample_times == nullptr ||
+      motion_poses == nullptr || required_points == nullptr) {
     return false;
   }
 
@@ -44,10 +43,21 @@ bool PoseBinsBuilder::Build(
 
     std::vector<double> sample_times;
     std::vector<Eigen::Affine3d> poses;
-    if (!deskew_policy->ComputeMotionCompensationPoses(context, &sample_times,
-                                                       &poses) ||
-        sample_times.empty() || poses.empty() ||
-        sample_times.size() != poses.size()) {
+    if (handle.buffered_frame != nullptr &&
+        handle.buffered_frame->pose_prefetch_ok &&
+        !handle.buffered_frame->motion_sample_times.empty() &&
+        handle.buffered_frame->motion_sample_times.size() ==
+            handle.buffered_frame->motion_poses.size()) {
+      sample_times = handle.buffered_frame->motion_sample_times;
+      poses = handle.buffered_frame->motion_poses;
+    } else if (deskew_policy != nullptr &&
+               deskew_policy->ComputeMotionCompensationPoses(
+                   context, &sample_times, &poses) &&
+               !sample_times.empty() && !poses.empty() &&
+               sample_times.size() == poses.size()) {
+      // Legacy fallback for call sites that have not migrated to prefetched
+      // motion samples yet.
+    } else {
       if (handle.is_primary) {
         AERROR << "Failed to compute motion compensation poses for main sensor "
                << handle.sensor_id;

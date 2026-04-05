@@ -41,6 +41,8 @@ void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
   const uint64_t total_output = total_output_points_.load();
   const uint64_t total_aux_missing = total_missing_auxiliary_frames_.load();
   const uint64_t total_time_delta = total_time_delta_exceeded_.load();
+  const uint64_t total_pose_prefetch_timeouts =
+      total_pose_prefetch_timeouts_.load();
   const uint64_t total_tf_failures = total_tf_query_failures_.load();
   const uint64_t ts_anomalies = dtc_reporter_.ts_anomaly_count();
   const uint64_t degrade_transitions = dtc_reporter_.degrade_transition_count();
@@ -55,6 +57,9 @@ void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
         << ", voxel_filtered_points=" << frame_metrics.voxel_filtered_points
         << ", ego_filtered_points=" << frame_metrics.ego_filtered_points
         << ", output_points=" << frame_metrics.output_points
+        << ", max_abs_clock_offset_ms=" << frame_metrics.max_abs_clock_offset_ms
+        << ", min_overlap_quality_weight="
+        << frame_metrics.min_overlap_quality_weight
         << ", ts_anomalies=" << ts_anomalies
         << ", degrade_transitions=" << degrade_transitions
         << ", avg_output_ratio="
@@ -64,6 +69,9 @@ void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
                static_cast<double>(total_frames)
         << ", avg_time_window_violations="
         << static_cast<double>(total_time_delta) /
+               static_cast<double>(total_frames)
+        << ", avg_pose_prefetch_timeouts="
+        << static_cast<double>(total_pose_prefetch_timeouts) /
                static_cast<double>(total_frames)
         << ", avg_tf_failures="
         << static_cast<double>(total_tf_failures) /

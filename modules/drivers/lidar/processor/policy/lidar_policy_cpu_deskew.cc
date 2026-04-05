@@ -22,24 +22,16 @@ bool CpuLidarDeskewPolicy::ComputeMotionCompensationPoses(
     return false;
   }
 
-  double local_min = 0.0;
-  double local_max = 0.0;
-  if (!ResolvePointTimestampBounds(*frame_context.point_cloud, &local_min,
-                                   &local_max)) {
-    return false;
-  }
-
   const size_t bins = std::max<size_t>(
       1, static_cast<size_t>(config_.motion_compensation_bins()));
-  sample_times->assign(bins, local_min);
+  if (!BuildMotionSampleTimes(*frame_context.point_cloud, bins, false, -1,
+                              sample_times)) {
+    return false;
+  }
   poses->assign(bins, Eigen::Affine3d::Identity());
 
   for (size_t i = 0; i < bins; ++i) {
-    const double ratio =
-        bins == 1 ? 0.0
-                  : static_cast<double>(i) / static_cast<double>(bins - 1);
-    const double sample_ts = local_min + ratio * (local_max - local_min);
-    (*sample_times)[i] = sample_ts;
+    const double sample_ts = (*sample_times)[i];
 
     Eigen::Affine3d pose = Eigen::Affine3d::Identity();
     if (!QueryTransformAffine(tf_buffer_, config_.world_frame_id(),

@@ -19,7 +19,10 @@
 #include <algorithm>
 #include <string>
 
+#include "cyber/time/time.h"
 #include "modules/common_msgs/transform_msgs/transform.pb.h"
+#include "tf2/buffer_core.h"
+#include "tf2/convert.h"
 
 namespace apollo {
 namespace transform {

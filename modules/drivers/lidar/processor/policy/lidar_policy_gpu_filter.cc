@@ -29,7 +29,7 @@ bool GpuLidarFilterPolicy::Init(const LidarUnifiedComponentConfig& config) {
       1, static_cast<size_t>(config_.max_full_pointcloud_points()));
   host_input_points_.reserve(max_points);
   host_ego_filtered_points_.reserve(max_points);
-  host_voxel_filtered_points_.reserve(max_points);
+  host_centroid_points_.reserve(max_points);
   return true;
 }
 
@@ -85,19 +85,21 @@ size_t GpuLidarFilterPolicy::ApplyFilters(PointCloudBuffer* io_buffer,
     *ego_filtered_count = input_count - after_ego;
   }
 
-  if (host_voxel_filtered_points_.size() < after_ego) {
-    host_voxel_filtered_points_.resize(after_ego);
+  if (host_centroid_points_.size() < after_ego) {
+    host_centroid_points_.resize(after_ego);
   }
-  const size_t after_voxel = CudaApplyVoxelDownsample(
-      host_ego_filtered_points_.data(), after_ego, config_.voxel_size(),
-      host_voxel_filtered_points_.data(), after_ego, device_id);
+  for (size_t i = 0; i < after_ego; ++i) {
+    host_centroid_points_[i] = ToProtoPoint(host_ego_filtered_points_[i]);
+  }
+  const size_t after_voxel = ApplyDeterministicVoxelCentroidFilter(
+      host_centroid_points_.data(), after_ego, config_.voxel_size());
   if (voxel_filtered_count != nullptr) {
     *voxel_filtered_count = after_ego - after_voxel;
   }
 
   const size_t write_count = std::min(after_voxel, io_buffer->capacity);
   for (size_t i = 0; i < write_count; ++i) {
-    host_points[i] = ToProtoPoint(host_voxel_filtered_points_[i]);
+    host_points[i] = host_centroid_points_[i];
   }
   io_buffer->valid_count = write_count;
 

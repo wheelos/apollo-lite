@@ -60,4 +60,25 @@ message LidarUnifiedComponentConfig {
 
   // M4 - Degrade policy trigger signals
   optional bool degrade_on_ts_anomaly = 25 [default = true];
+
+  // TF pose prefetch cache
+  optional double sensor_pose_cache_duration_sec = 26 [default = 1.0];
+  optional double sensor_pose_cache_max_extrapolation_sec = 27 [default = 0.15];
+  optional double sensor_pose_query_timeout_sec = 28 [default = 0.02];
+
+  // Multi-lidar fixed-delay and clock-offset observability
+  optional double fixed_delay_ema_alpha = 29 [default = 0.2];
+  optional double fixed_delay_update_limit_ms = 30 [default = 80.0];
+  optional double clock_offset_ema_alpha = 31 [default = 0.2];
+
+  // Overlap region quality weighting
+  optional double overlap_region_forward_x = 32 [default = 25.0];
+  optional double overlap_region_backward_x = 33 [default = -5.0];
+  optional double overlap_region_left_y = 34 [default = 12.0];
+  optional double overlap_region_right_y = 35 [default = -12.0];
+  optional double overlap_region_min_z = 36 [default = -3.0];
+  optional double overlap_region_max_z = 37 [default = 3.0];
+  optional double overlap_quality_ema_alpha = 38 [default = 0.2];
+  optional double auxiliary_min_overlap_quality_weight = 39 [default = 0.0];
+  optional uint32 overlap_quality_sample_stride = 40 [default = 16];
 }

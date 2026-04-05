@@ -20,39 +20,147 @@ namespace {
 constexpr uint64_t kSecondToNano = 1000000000ULL;
 constexpr uint64_t kEmptyVoxel = std::numeric_limits<uint64_t>::max();
 constexpr uint64_t kPointInfThreshold = 1000ULL;
+constexpr float kSlerpLinearFallbackDot = 0.9995f;
 
-__host__ __device__ inline float MatAt(const CudaMatrix4f* m, int r, int c) {
-  return m->data[r * 4 + c];
-}
-
-__host__ __device__ inline float3 ApplyAffine(const CudaMatrix4f* m,
-                                              const CudaPointXYZIT& p) {
+__host__ __device__ inline float3 MakeFloat3(float x, float y, float z) {
   float3 out;
-  out.x = MatAt(m, 0, 0) * p.x + MatAt(m, 0, 1) * p.y + MatAt(m, 0, 2) * p.z +
-          MatAt(m, 0, 3);
-  out.y = MatAt(m, 1, 0) * p.x + MatAt(m, 1, 1) * p.y + MatAt(m, 1, 2) * p.z +
-          MatAt(m, 1, 3);
-  out.z = MatAt(m, 2, 0) * p.x + MatAt(m, 2, 1) * p.y + MatAt(m, 2, 2) * p.z +
-          MatAt(m, 2, 3);
+  out.x = x;
+  out.y = y;
+  out.z = z;
   return out;
 }
 
-__device__ inline int ResolveNearestPoseIndex(double point_ts,
-                                              const double* sample_times,
-                                              int sample_count) {
+__host__ __device__ inline float3 AddFloat3(const float3& lhs,
+                                            const float3& rhs) {
+  return MakeFloat3(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z);
+}
+
+__host__ __device__ inline float3 ScaleFloat3(const float3& vec, float scale) {
+  return MakeFloat3(vec.x * scale, vec.y * scale, vec.z * scale);
+}
+
+__host__ __device__ inline float3 CrossFloat3(const float3& lhs,
+                                              const float3& rhs) {
+  return MakeFloat3(lhs.y * rhs.z - lhs.z * rhs.y,
+                    lhs.z * rhs.x - lhs.x * rhs.z,
+                    lhs.x * rhs.y - lhs.y * rhs.x);
+}
+
+__host__ __device__ inline float4 MakeFloat4(float x, float y, float z,
+                                             float w) {
+  float4 out;
+  out.x = x;
+  out.y = y;
+  out.z = z;
+  out.w = w;
+  return out;
+}
+
+__host__ __device__ inline float QuaternionDot(const float4& lhs,
+                                               const float4& rhs) {
+  return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z + lhs.w * rhs.w;
+}
+
+__host__ __device__ inline float4 NormalizeQuaternion(const float4& quat) {
+  const float norm = sqrtf(QuaternionDot(quat, quat));
+  if (norm <= 1e-8f) {
+    return MakeFloat4(0.0f, 0.0f, 0.0f, 1.0f);
+  }
+  const float inv_norm = 1.0f / norm;
+  return MakeFloat4(quat.x * inv_norm, quat.y * inv_norm, quat.z * inv_norm,
+                    quat.w * inv_norm);
+}
+
+__host__ __device__ inline float3 RotatePoint(const float4& quat,
+                                              const float3& point) {
+  const float3 q_vec = MakeFloat3(quat.x, quat.y, quat.z);
+  const float3 twice_cross = ScaleFloat3(CrossFloat3(q_vec, point), 2.0f);
+  return AddFloat3(point,
+                   AddFloat3(ScaleFloat3(twice_cross, quat.w),
+                             CrossFloat3(q_vec, twice_cross)));
+}
+
+__host__ __device__ inline float4 SlerpQuaternion(const float4& lhs,
+                                                  const float4& rhs,
+                                                  float ratio) {
+  float4 rhs_adjusted = rhs;
+  float dot = QuaternionDot(lhs, rhs_adjusted);
+  if (dot < 0.0f) {
+    rhs_adjusted.x = -rhs_adjusted.x;
+    rhs_adjusted.y = -rhs_adjusted.y;
+    rhs_adjusted.z = -rhs_adjusted.z;
+    rhs_adjusted.w = -rhs_adjusted.w;
+    dot = -dot;
+  }
+
+  if (dot >= kSlerpLinearFallbackDot) {
+    return NormalizeQuaternion(MakeFloat4(
+        lhs.x + ratio * (rhs_adjusted.x - lhs.x),
+        lhs.y + ratio * (rhs_adjusted.y - lhs.y),
+        lhs.z + ratio * (rhs_adjusted.z - lhs.z),
+        lhs.w + ratio * (rhs_adjusted.w - lhs.w)));
+  }
+
+  const float theta_0 = acosf(fminf(fmaxf(dot, -1.0f), 1.0f));
+  const float sin_theta_0 = sinf(theta_0);
+  if (fabsf(sin_theta_0) <= 1e-6f) {
+    return NormalizeQuaternion(lhs);
+  }
+  const float theta = theta_0 * ratio;
+  const float sin_theta = sinf(theta);
+  const float s0 = cosf(theta) - dot * sin_theta / sin_theta_0;
+  const float s1 = sin_theta / sin_theta_0;
+  return NormalizeQuaternion(MakeFloat4(
+      s0 * lhs.x + s1 * rhs_adjusted.x, s0 * lhs.y + s1 * rhs_adjusted.y,
+      s0 * lhs.z + s1 * rhs_adjusted.z, s0 * lhs.w + s1 * rhs_adjusted.w));
+}
+
+__device__ inline CudaPose InterpolatePose(double point_ts,
+                                           const double* sample_times,
+                                           const CudaPose* poses,
+                                           int sample_count) {
   if (sample_count <= 1) {
-    return 0;
+    return poses[0];
   }
-  int best_idx = 0;
-  double best_dist = fabs(point_ts - sample_times[0]);
-  for (int i = 1; i < sample_count; ++i) {
-    const double dist = fabs(point_ts - sample_times[i]);
-    if (dist < best_dist) {
-      best_idx = i;
-      best_dist = dist;
-    }
+  if (point_ts <= sample_times[0]) {
+    return poses[0];
   }
-  return best_idx;
+  if (point_ts >= sample_times[sample_count - 1]) {
+    return poses[sample_count - 1];
+  }
+
+  int right_idx = 1;
+  while (right_idx < sample_count && point_ts > sample_times[right_idx]) {
+    ++right_idx;
+  }
+  if (right_idx >= sample_count) {
+    return poses[sample_count - 1];
+  }
+
+  const int left_idx = right_idx - 1;
+  const double left_time = sample_times[left_idx];
+  const double right_time = sample_times[right_idx];
+  if (fabs(right_time - left_time) <= 1e-9) {
+    return poses[right_idx];
+  }
+
+  const float ratio = static_cast<float>(
+      fmin(fmax((point_ts - left_time) / (right_time - left_time), 0.0), 1.0));
+  const CudaPose& left = poses[left_idx];
+  const CudaPose& right = poses[right_idx];
+  const float4 left_quat = MakeFloat4(left.qx, left.qy, left.qz, left.qw);
+  const float4 right_quat = MakeFloat4(right.qx, right.qy, right.qz, right.qw);
+  const float4 out_quat = SlerpQuaternion(left_quat, right_quat, ratio);
+
+  CudaPose out;
+  out.tx = left.tx + ratio * (right.tx - left.tx);
+  out.ty = left.ty + ratio * (right.ty - left.ty);
+  out.tz = left.tz + ratio * (right.tz - left.tz);
+  out.qx = out_quat.x;
+  out.qy = out_quat.y;
+  out.qz = out_quat.z;
+  out.qw = out_quat.w;
+  return out;
 }
 
 __global__ void TimestampRangeKernel(const uint64_t* timestamps, size_t count,
@@ -70,8 +178,7 @@ __global__ void TimestampRangeKernel(const uint64_t* timestamps, size_t count,
 
 __global__ void FusionKernel(const CudaPointXYZIT* in_points, size_t point_count,
                              const double* sample_times, int sample_count,
-                             const CudaMatrix4f* poses,
-                             const CudaMatrix4f* world2base,
+                             const CudaPose* poses,
                              double measurement_time,
                              CudaPointXYZIT* out_points,
                              unsigned int* out_count,
@@ -93,15 +200,12 @@ __global__ void FusionKernel(const CudaPointXYZIT* in_points, size_t point_count
                               ? measurement_time
                               : static_cast<double>(in.timestamp) /
                                     static_cast<double>(kSecondToNano);
-  const int pose_idx = ResolveNearestPoseIndex(point_ts, sample_times,
-                                               sample_count);
-  const float3 world_p = ApplyAffine(&poses[pose_idx], in);
-
-  CudaPointXYZIT world_point = in;
-  world_point.x = world_p.x;
-  world_point.y = world_p.y;
-  world_point.z = world_p.z;
-  const float3 base_p = ApplyAffine(world2base, world_point);
+  const CudaPose pose = InterpolatePose(point_ts, sample_times, poses,
+                                        sample_count);
+  const float3 base_p = AddFloat3(
+      RotatePoint(MakeFloat4(pose.qx, pose.qy, pose.qz, pose.qw),
+                  MakeFloat3(in.x, in.y, in.z)),
+      MakeFloat3(pose.tx, pose.ty, pose.tz));
 
   CudaPointXYZIT out = in;
   out.x = base_p.x;
@@ -246,7 +350,6 @@ struct CudaWorkspace {
     cudaFree(d_points_out);
     cudaFree(d_sample_times);
     cudaFree(d_poses);
-    cudaFree(d_world2base);
     cudaFree(d_count);
     cudaFree(d_hash_table);
     cudaFree(d_timestamps);
@@ -272,12 +375,6 @@ struct CudaWorkspace {
   bool EnsurePoses(size_t count) {
     return EnsureDeviceBuffer(&d_poses, &poses_capacity, count,
                               &poses_expand_count, &poses_peak_capacity);
-  }
-
-  bool EnsureWorld2Base() {
-    return EnsureDeviceBuffer(&d_world2base, &world2base_capacity, 1,
-                              &world2base_expand_count,
-                              &world2base_peak_capacity);
   }
 
   bool EnsureCounter() {
@@ -323,8 +420,7 @@ struct CudaWorkspace {
   CudaPointXYZIT* d_points_in = nullptr;
   CudaPointXYZIT* d_points_out = nullptr;
   double* d_sample_times = nullptr;
-  CudaMatrix4f* d_poses = nullptr;
-  CudaMatrix4f* d_world2base = nullptr;
+  CudaPose* d_poses = nullptr;
   unsigned int* d_count = nullptr;
   uint64_t* d_hash_table = nullptr;
   uint64_t* d_timestamps = nullptr;
@@ -335,7 +431,6 @@ struct CudaWorkspace {
   size_t points_out_capacity = 0;
   size_t sample_times_capacity = 0;
   size_t poses_capacity = 0;
-  size_t world2base_capacity = 0;
   size_t count_capacity = 0;
   size_t hash_table_capacity = 0;
   size_t timestamps_capacity = 0;
@@ -346,7 +441,6 @@ struct CudaWorkspace {
   uint64_t points_out_expand_count = 0;
   uint64_t sample_times_expand_count = 0;
   uint64_t poses_expand_count = 0;
-  uint64_t world2base_expand_count = 0;
   uint64_t count_expand_count = 0;
   uint64_t hash_table_expand_count = 0;
   uint64_t timestamps_expand_count = 0;
@@ -357,7 +451,6 @@ struct CudaWorkspace {
   size_t points_out_peak_capacity = 0;
   size_t sample_times_peak_capacity = 0;
   size_t poses_peak_capacity = 0;
-  size_t world2base_peak_capacity = 0;
   size_t count_peak_capacity = 0;
   size_t hash_table_peak_capacity = 0;
   size_t timestamps_peak_capacity = 0;
@@ -447,13 +540,12 @@ size_t CudaFuseFrameToBaseLink(const CudaPointXYZIT* host_input_points,
                                size_t input_count,
                                const double* host_sample_times,
                                size_t sample_count,
-                               const CudaMatrix4f* host_world_from_sensor,
-                               const CudaMatrix4f* host_world2base,
+                               const CudaPose* host_base_from_sensor_poses,
                                double measurement_time,
                                CudaPointXYZIT* host_output_points,
                                size_t output_capacity, int device_id) {
   if (host_input_points == nullptr || host_sample_times == nullptr ||
-      host_world_from_sensor == nullptr || host_world2base == nullptr ||
+      host_base_from_sensor_poses == nullptr ||
       host_output_points == nullptr || input_count == 0 || sample_count == 0 ||
       output_capacity == 0) {
     return 0;
@@ -471,7 +563,7 @@ size_t CudaFuseFrameToBaseLink(const CudaPointXYZIT* host_input_points,
 
   if (!ws->EnsurePointBuffers(input_count, output_capacity) ||
       !ws->EnsureSampleTimes(sample_count) || !ws->EnsurePoses(sample_count) ||
-      !ws->EnsureWorld2Base() || !ws->EnsureCounter()) {
+      !ws->EnsureCounter()) {
     return 0;
   }
 
@@ -483,11 +575,9 @@ size_t CudaFuseFrameToBaseLink(const CudaPointXYZIT* host_input_points,
             CheckCuda(cudaMemcpy(ws->d_sample_times, host_sample_times,
                                  sample_count * sizeof(double),
                                  cudaMemcpyHostToDevice)) &&
-            CheckCuda(cudaMemcpy(ws->d_poses, host_world_from_sensor,
-                                 sample_count * sizeof(CudaMatrix4f),
+            CheckCuda(cudaMemcpy(ws->d_poses, host_base_from_sensor_poses,
+                                 sample_count * sizeof(CudaPose),
                                  cudaMemcpyHostToDevice)) &&
-            CheckCuda(cudaMemcpy(ws->d_world2base, host_world2base,
-                                 sizeof(CudaMatrix4f), cudaMemcpyHostToDevice)) &&
             CheckCuda(cudaMemcpy(ws->d_count, &h_count, sizeof(unsigned int),
                                  cudaMemcpyHostToDevice));
 
@@ -496,7 +586,7 @@ size_t CudaFuseFrameToBaseLink(const CudaPointXYZIT* host_input_points,
     const int blocks = static_cast<int>((input_count + threads - 1U) / threads);
     FusionKernel<<<blocks, threads>>>(
         ws->d_points_in, input_count, ws->d_sample_times,
-        static_cast<int>(sample_count), ws->d_poses, ws->d_world2base,
+      static_cast<int>(sample_count), ws->d_poses,
         measurement_time, ws->d_points_out, ws->d_count,
         static_cast<unsigned int>(output_capacity));
     ok = CheckCuda(cudaGetLastError()) && CheckCuda(cudaDeviceSynchronize()) &&

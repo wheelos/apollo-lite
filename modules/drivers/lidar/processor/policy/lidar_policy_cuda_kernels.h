@@ -15,8 +15,14 @@ struct CudaPointXYZIT {
   uint64_t timestamp;
 };
 
-struct CudaMatrix4f {
-  float data[16];
+struct CudaPose {
+  float tx;
+  float ty;
+  float tz;
+  float qx;
+  float qy;
+  float qz;
+  float qw;
 };
 
 struct CudaEgoFilterParams {
@@ -47,8 +53,7 @@ bool CudaComputeTimestampRange(const uint64_t* host_timestamps, size_t count,
 size_t CudaFuseFrameToBaseLink(
     const CudaPointXYZIT* host_input_points, size_t input_count,
     const double* host_sample_times, size_t sample_count,
-    const CudaMatrix4f* host_world_from_sensor,
-    const CudaMatrix4f* host_world2base, double measurement_time,
+  const CudaPose* host_base_from_sensor_poses, double measurement_time,
     CudaPointXYZIT* host_output_points, size_t output_capacity, int device_id);
 
 size_t CudaApplyEgoFilter(const CudaPointXYZIT* host_input_points,

@@ -18,8 +18,21 @@ cc_library(
         "//cyber",
         "//modules/common_msgs/transform_msgs:transform_cc_proto",
         "//modules/common/adapters:adapter_gflags",
+        ":pose_cache",
         "//third_party/tf2",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "pose_cache",
+    srcs = ["pose_cache.cc"],
+    hdrs = ["pose_cache.h"],
+    deps = [
+        ":buffer_interface",
+        "//cyber/common:log",
+        "//cyber/time:time",
+        "@eigen",
     ],
 )
 
@@ -27,7 +40,9 @@ cc_library(
     name = "buffer_interface",
     hdrs = ["buffer_interface.h"],
     deps = [
+        "//cyber/time:time",
         "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "//third_party/tf2",
     ],
     visibility = ["//visibility:private"],
 )
@@ -71,6 +86,17 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "pose_cache_test",
+    size = "small",
+    srcs = ["pose_cache_test.cc"],
+    deps = [
+        ":pose_cache",
+        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_binary(
     name = "libstatic_transform_component.so",
     linkshared = True,
@@ -89,6 +115,7 @@ install(
     targets = [
         ":libstatic_transform_component.so",
         ":buffer",
+        ":pose_cache",
         ":transform_broadcaster",
     ],
     deps = [
