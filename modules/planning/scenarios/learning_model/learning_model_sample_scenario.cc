@@ -27,6 +27,7 @@
 namespace apollo {
 namespace planning {
 namespace scenario {
+namespace learning_model {
 
 apollo::common::util::Factory<
     StageType, Stage,
@@ -87,6 +88,7 @@ bool LearningModelSampleScenario::GetScenarioConfig() {
   return true;
 }
 
+}  // namespace learning_model
 }  // namespace scenario
 }  // namespace planning
 }  // namespace apollo

@@ -26,6 +26,7 @@
 namespace apollo {
 namespace planning {
 namespace scenario {
+namespace learning_model {
 
 using apollo::common::TrajectoryPoint;
 
@@ -50,6 +51,7 @@ Stage::StageStatus LearningModelSampleStageRun::FinishStage() {
   return FinishScenario();
 }
 
+}  // namespace learning_model
 }  // namespace scenario
 }  // namespace planning
 }  // namespace apollo

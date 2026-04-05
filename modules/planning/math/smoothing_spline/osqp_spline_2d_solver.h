@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
 #include "gtest/gtest_prod.h"
