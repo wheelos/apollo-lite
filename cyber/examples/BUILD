@@ -23,6 +23,26 @@ cc_binary(
 )
 
 cc_binary(
+    name = "tf_static_talker",
+    srcs = ["tf_static_talker.cc"],
+    deps = [
+        "//cyber",
+        "//modules/common/adapters:adapter_gflags",
+        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+    ],
+)
+
+cc_binary(
+    name = "tf_static_probe",
+    srcs = ["tf_static_probe.cc"],
+    deps = [
+        "//cyber",
+        "//modules/common/adapters:adapter_gflags",
+        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+    ],
+)
+
+cc_binary(
     name = "paramserver",
     srcs = ["paramserver.cc"],
     deps = [
