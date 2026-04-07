@@ -44,8 +44,7 @@ struct ValetParkingContext {
 
 class ValetParkingScenario : public Scenario {
  public:
-  ValetParkingScenario(const ScenarioConfig& config,
-                       const ScenarioContext* context,
+  ValetParkingScenario(const ScenarioConfig& config, ScenarioContext* context,
                        const std::shared_ptr<DependencyInjector>& injector)
       : Scenario(config, context, injector) {}
 
@@ -55,10 +54,7 @@ class ValetParkingScenario : public Scenario {
       const ScenarioConfig::StageConfig& stage_config,
       const std::shared_ptr<DependencyInjector>& injector) override;
 
-  static bool IsTransferable(const Frame& frame,
-                             const double parking_start_range);
-
-  ValetParkingContext* GetContext() { return &context_; }
+  ScenarioGrade Grade() const override { return ScenarioGrade::MISSION; }
 
  private:
   static void RegisterStages();

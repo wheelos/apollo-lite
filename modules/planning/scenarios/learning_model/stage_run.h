@@ -28,6 +28,7 @@
 namespace apollo {
 namespace planning {
 namespace scenario {
+namespace learning_model {
 
 struct LearningModelSampleContext;
 
@@ -51,6 +52,7 @@ class LearningModelSampleStageRun : public Stage {
   ScenarioLearningModelSampleConfig scenario_config_;
 };
 
+}  // namespace learning_model
 }  // namespace scenario
 }  // namespace planning
 }  // namespace apollo

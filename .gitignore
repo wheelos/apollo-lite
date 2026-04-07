@@ -72,7 +72,6 @@ docs/demo_guide/*.record
 
 # bazel cache and others
 .cache/
-.custom.bazelrc
 .errors.log
 
 # Directory for binary distribution

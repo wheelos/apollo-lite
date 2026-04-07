@@ -1,0 +1,24 @@
+# Scenario Transition Tests
+test_suites:
+  - name: "Emergency and Escape Logic"
+    cases:
+      - id: "TC_001"
+        description: "HMI Triggering emergency stop"
+        input:
+          vehicle_state: { speed: 5.0, timestamp: 1000.0 }
+          pad_message: "STOP"
+        expected:
+          scenario: "EMERGENCY_STOP"
+          grade: "CRITICAL"
+
+      - id: "TC_002"
+        description: "Vehicle stuck for too long triggers extrication"
+        input:
+          vehicle_state: { speed: 0.05, timestamp: 1011.0 }
+          has_routing: true
+          history_stuck_time: 1000.0
+          is_waiting_rule: false
+          is_at_dest: false
+        expected:
+          scenario: "ESCAPE"
+          grade: "MANEUVER"

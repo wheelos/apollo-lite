@@ -38,8 +38,7 @@ struct EmergencyStopContext {
 
 class EmergencyStopScenario : public Scenario {
  public:
-  EmergencyStopScenario(const ScenarioConfig& config,
-                        const ScenarioContext* context,
+  EmergencyStopScenario(const ScenarioConfig& config, ScenarioContext* context,
                         const std::shared_ptr<DependencyInjector>& injector)
       : Scenario(config, context, injector) {}
 
@@ -47,9 +46,9 @@ class EmergencyStopScenario : public Scenario {
 
   std::unique_ptr<Stage> CreateStage(
       const ScenarioConfig::StageConfig& stage_config,
-      const std::shared_ptr<DependencyInjector>& injector);
+      const std::shared_ptr<DependencyInjector>& injector) override;
 
-  EmergencyStopContext* GetContext() { return &context_; }
+  ScenarioGrade Grade() const override { return ScenarioGrade::CRITICAL; }
 
  private:
   static void RegisterStages();

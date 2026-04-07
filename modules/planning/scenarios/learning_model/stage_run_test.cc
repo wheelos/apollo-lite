@@ -25,6 +25,8 @@ namespace apollo {
 namespace planning {
 namespace scenario {
 
+namespace learning_model {
+
 class StageRunTest : public ::testing::Test {
  public:
   virtual void SetUp() {
@@ -43,6 +45,7 @@ TEST_F(StageRunTest, Init) {
             StageType_Name(StageType::LEARNING_MODEL_RUN));
 }
 
+}  // namespace learning_model
 }  // namespace scenario
 }  // namespace planning
 }  // namespace apollo

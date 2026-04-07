@@ -33,6 +33,7 @@
 #include "modules/common/util/util.h"
 #include "modules/map/hdmap/hdmap_common.h"
 #include "modules/map/hdmap/hdmap_util.h"
+#include "modules/planning/common/obstacle_decider.h"
 
 namespace apollo {
 namespace planning {
@@ -349,56 +350,47 @@ void ReferenceLineInfo::SetTrajectory(const DiscretizedTrajectory& trajectory) {
   discretized_trajectory_ = trajectory;
 }
 
-bool ReferenceLineInfo::AddObstacleHelper(
-    const std::shared_ptr<Obstacle>& obstacle) {
-  return AddObstacle(obstacle.get()) != nullptr;
-}
-
-// AddObstacle is thread safe
 Obstacle* ReferenceLineInfo::AddObstacle(const Obstacle* obstacle) {
-  if (!obstacle) {
-    AERROR << "The provided obstacle is empty";
-    return nullptr;
-  }
+  if (!obstacle) return nullptr;
   auto* mutable_obstacle = path_decision_.AddObstacle(*obstacle);
-  if (!mutable_obstacle) {
-    AERROR << "failed to add obstacle " << obstacle->Id();
-    return nullptr;
-  }
+  if (!mutable_obstacle) return nullptr;
 
+  // 1. Calculate the SL boundary
   SLBoundary perception_sl;
   if (!reference_line_.GetSLBoundary(obstacle->PerceptionBoundingBox(),
                                      &perception_sl)) {
-    AERROR << "Failed to get sl boundary for obstacle: " << obstacle->Id();
-    return mutable_obstacle;
+    return mutable_obstacle;  // Calculation failed, no decision made
   }
   mutable_obstacle->SetPerceptionSlBoundary(perception_sl);
-  mutable_obstacle->CheckLaneBlocking(reference_line_);
-  if (mutable_obstacle->IsLaneBlocking()) {
-    ADEBUG << "obstacle [" << obstacle->Id() << "] is lane blocking.";
-  } else {
-    ADEBUG << "obstacle [" << obstacle->Id() << "] is NOT lane blocking.";
+
+  // 2. Decision-making decentralization
+  const double ego_width =
+      VehicleConfigHelper::GetConfig().vehicle_param().width();
+  auto interaction_type = ObstacleDecider::ComputeInteractionType(
+      perception_sl, *obstacle, ego_width, reference_line_, adc_sl_boundary_,
+      IsChangeLanePath());
+
+  mutable_obstacle->SetInteractionType(interaction_type);
+
+  // 3. Record decision tags (Tagging)
+  ObjectDecisionType decision;
+  if (interaction_type == InteractionType::IGNORE) {
+    decision.mutable_ignore();
+    path_decision_.AddLateralDecision("decider_filter", obstacle->Id(),
+                                      decision);
+  } else if (interaction_type == InteractionType::NUDGEABLE) {
+    decision.mutable_nudge();
+    path_decision_.AddLateralDecision("decider_filter", obstacle->Id(),
+                                      decision);
+  } else if (interaction_type == InteractionType::BLOCKING) {
+    // Static blocking, BuildReferenceLineStBoundary is where physical
+    // constraints are generated.
   }
 
-  if (IsIrrelevantObstacle(*mutable_obstacle)) {
-    ObjectDecisionType ignore;
-    ignore.mutable_ignore();
-    path_decision_.AddLateralDecision("reference_line_filter", obstacle->Id(),
-                                      ignore);
-    path_decision_.AddLongitudinalDecision("reference_line_filter",
-                                           obstacle->Id(), ignore);
-    ADEBUG << "NO build reference line st boundary. id:" << obstacle->Id();
-  } else {
-    ADEBUG << "build reference line st boundary. id:" << obstacle->Id();
-    mutable_obstacle->BuildReferenceLineStBoundary(reference_line_,
-                                                   adc_sl_boundary_.start_s());
+  // 4. Build ST boundary
+  mutable_obstacle->BuildReferenceLineStBoundary(reference_line_,
+                                                 adc_sl_boundary_.start_s());
 
-    ADEBUG << "reference line st boundary: t["
-           << mutable_obstacle->reference_line_st_boundary().min_t() << ", "
-           << mutable_obstacle->reference_line_st_boundary().max_t() << "] s["
-           << mutable_obstacle->reference_line_st_boundary().min_s() << ", "
-           << mutable_obstacle->reference_line_st_boundary().max_s() << "]";
-  }
   return mutable_obstacle;
 }
 
@@ -426,24 +418,6 @@ bool ReferenceLineInfo::AddObstacles(
   }
 
   return true;
-}
-
-bool ReferenceLineInfo::IsIrrelevantObstacle(const Obstacle& obstacle) {
-  if (obstacle.IsCautionLevelObstacle()) {
-    return false;
-  }
-  // if adc is on the road, and obstacle behind adc, ignore
-  const auto& obstacle_boundary = obstacle.PerceptionSLBoundary();
-  if (obstacle_boundary.end_s() > reference_line_.Length()) {
-    return true;
-  }
-  if (is_on_reference_line_ && !IsChangeLanePath() &&
-      obstacle_boundary.end_s() < adc_sl_boundary_.end_s() &&
-      (reference_line_.IsOnLane(obstacle_boundary) ||
-       obstacle_boundary.end_s() < 0.0)) {  // if obstacle is far backward
-    return true;
-  }
-  return false;
 }
 
 const DiscretizedTrajectory& ReferenceLineInfo::trajectory() const {
