@@ -53,7 +53,7 @@ TEST(LidarLibMapManagerTest, lidar_map_manager_test) {
   map::HDMapInput::Instance()->Reset();
 
   MapManager map_manager;
-  EXPECT_EQ(map_manager.Name(), "MapManager");
+  EXPECT_EQ(map_manager.Name(), "HdmapContextProvider");
   MapManagerOptions option;
   EXPECT_FALSE(map_manager.Update(option, nullptr));
   LidarFrame frame;

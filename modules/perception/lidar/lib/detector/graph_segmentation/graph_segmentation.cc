@@ -20,12 +20,12 @@ namespace apollo {
 namespace perception {
 namespace lidar {
 
-bool GraphSegmentation::Init(const LidarDetectorInitOptions& options) {
+bool GraphClusterSegmenter::Init(const LidarDetectorInitOptions& options) {
   // Use default config path under this module; runtime can override if needed.
   return true;
 }
 
-bool GraphSegmentation::Init(const StageConfig& stage_config) {
+bool GraphClusterSegmenter::Init(const StageConfig& stage_config) {
   if (!Initialize(stage_config)) {
     return false;
   }
@@ -33,36 +33,37 @@ bool GraphSegmentation::Init(const StageConfig& stage_config) {
   stage_conf_ = stage_config;
 
   // get config
-  resolution_ = stage_conf_.graph_segmentation_config().resolution();
-  threshold_ = stage_conf_.graph_segmentation_config().threshold();
-  min_pt_number_ = stage_conf_.graph_segmentation_config().min_pt_number();
-  search_radius_ = stage_conf_.graph_segmentation_config().search_radius();
+  resolution_ = stage_conf_.graph_cluster_segmenter_config().resolution();
+  threshold_ = stage_conf_.graph_cluster_segmenter_config().threshold();
+  min_pt_number_ = stage_conf_.graph_cluster_segmenter_config().min_pt_number();
+  search_radius_ = stage_conf_.graph_cluster_segmenter_config().search_radius();
   height_threshold_ =
-      stage_conf_.graph_segmentation_config().height_threshold();
-  semantic_cost_ = stage_conf_.graph_segmentation_config().semantic_cost();
+      stage_conf_.graph_cluster_segmenter_config().height_threshold();
+  semantic_cost_ = stage_conf_.graph_cluster_segmenter_config().semantic_cost();
 
   // initialize graph segmentor
   graph_segmentor_.Init(threshold_);
 
   ACHECK(bg_map_.Init(
-      stage_conf_.graph_segmentation_config().xmin(),
-      stage_conf_.graph_segmentation_config().xmax(),
-      stage_conf_.graph_segmentation_config().ymin(),
-      stage_conf_.graph_segmentation_config().ymax(), resolution_,
-      height_threshold_, stage_conf_.graph_segmentation_config().car_xmin(),
-      stage_conf_.graph_segmentation_config().car_xmax(),
-      stage_conf_.graph_segmentation_config().car_ymin(),
-      stage_conf_.graph_segmentation_config().car_ymax(),
-      stage_conf_.graph_segmentation_config().car_zmax(),
-      stage_conf_.graph_segmentation_config().min_radius(),
-      stage_conf_.graph_segmentation_config().z_min_from_ground()));
+      stage_conf_.graph_cluster_segmenter_config().xmin(),
+      stage_conf_.graph_cluster_segmenter_config().xmax(),
+      stage_conf_.graph_cluster_segmenter_config().ymin(),
+      stage_conf_.graph_cluster_segmenter_config().ymax(), resolution_,
+      height_threshold_,
+      stage_conf_.graph_cluster_segmenter_config().car_xmin(),
+      stage_conf_.graph_cluster_segmenter_config().car_xmax(),
+      stage_conf_.graph_cluster_segmenter_config().car_ymin(),
+      stage_conf_.graph_cluster_segmenter_config().car_ymax(),
+      stage_conf_.graph_cluster_segmenter_config().car_zmax(),
+      stage_conf_.graph_cluster_segmenter_config().min_radius(),
+      stage_conf_.graph_cluster_segmenter_config().z_min_from_ground()));
   grid_width_ =
-      static_cast<int>((stage_conf_.graph_segmentation_config().ymax() -
-                        stage_conf_.graph_segmentation_config().ymin()) *
+      static_cast<int>((stage_conf_.graph_cluster_segmenter_config().ymax() -
+                        stage_conf_.graph_cluster_segmenter_config().ymin()) *
                        1.0f / resolution_);
   grid_height_ =
-      static_cast<int>((stage_conf_.graph_segmentation_config().xmax() -
-                        stage_conf_.graph_segmentation_config().xmin()) *
+      static_cast<int>((stage_conf_.graph_cluster_segmenter_config().xmax() -
+                        stage_conf_.graph_cluster_segmenter_config().xmin()) *
                        1.0f / resolution_);
 
   // clear background objects
@@ -73,7 +74,7 @@ bool GraphSegmentation::Init(const StageConfig& stage_config) {
   return Init(init_options);
 }
 
-bool GraphSegmentation::Process(DataFrame* data_frame) {
+bool GraphClusterSegmenter::Process(DataFrame* data_frame) {
   if (data_frame == nullptr || data_frame->lidar_frame == nullptr) {
     return false;
   }
@@ -81,13 +82,13 @@ bool GraphSegmentation::Process(DataFrame* data_frame) {
   return Detect(options, data_frame->lidar_frame);
 }
 
-bool GraphSegmentation::Detect(const LidarDetectorOptions& options,
-                               LidarFrame* frame) {
+bool GraphClusterSegmenter::Detect(const LidarDetectorOptions& options,
+                                   LidarFrame* frame) {
   // clear background objects buffer
   bg_objects_.clear();
 
   // Input sizes for analysis
-  AINFO << "GraphSeg Detect: cloud: " << frame->cloud->size()
+  AINFO << "GraphClusterSegmenter: cloud: " << frame->cloud->size()
         << ", non_ground: " << frame->non_ground_indices.indices.size()
         << ", roi: " << frame->roi_indices.indices.size()
         << ", secondary: " << frame->secondary_indices.indices.size();
@@ -104,7 +105,7 @@ bool GraphSegmentation::Detect(const LidarDetectorOptions& options,
   }
   // cluster
   if (!Segment(frame)) {
-    AERROR << "Graph Segment error.";
+    AERROR << "GraphClusterSegmenter segment error.";
     return false;
   }
   // split
@@ -125,7 +126,7 @@ bool GraphSegmentation::Detect(const LidarDetectorOptions& options,
   return true;
 }
 
-bool GraphSegmentation::Segment(LidarFrame* frame) {
+bool GraphClusterSegmenter::Segment(LidarFrame* frame) {
   std::vector<common::Edge> edge_set;
   edge_set.clear();
   common::Edge edge;
@@ -255,8 +256,8 @@ bool GraphSegmentation::Segment(LidarFrame* frame) {
   return true;
 }
 
-float GraphSegmentation::NodeDistance(BgNode n1, int x1, int y1, BgNode n2,
-                                      int x2, int y2) {
+float GraphClusterSegmenter::NodeDistance(BgNode n1, int x1, int y1, BgNode n2,
+                                          int x2, int y2) {
   float x_diff = static_cast<float>(x1 - x2) * resolution_;
   float y_diff = static_cast<float>(y1 - y2) * resolution_;
   float mean_height_diff = n1.mean_height - n2.mean_height;
@@ -296,7 +297,7 @@ float GraphSegmentation::NodeDistance(BgNode n1, int x1, int y1, BgNode n2,
   return total_cost;
 }
 
-void GraphSegmentation::GetObjectsFromClusters(LidarFrame* frame) {
+void GraphClusterSegmenter::GetObjectsFromClusters(LidarFrame* frame) {
   // point cloud
   auto original_cloud_ = frame->cloud;
   auto original_world_cloud_ = frame->world_cloud;
@@ -324,7 +325,7 @@ void GraphSegmentation::GetObjectsFromClusters(LidarFrame* frame) {
   BgObjectBuilder(&bg_objects_, frame->lidar2novatel_extrinsics);
 }
 
-bool GraphSegmentation::Split(LidarFrame* frame) {
+bool GraphClusterSegmenter::Split(LidarFrame* frame) {
   std::vector<std::shared_ptr<base::Object>> split_objects;
   // record object number
   int before_split_num = bg_objects_.size();
@@ -334,8 +335,9 @@ bool GraphSegmentation::Split(LidarFrame* frame) {
     std::shared_ptr<base::Object> obj = bg_objects_.at(i);
     if (NeedSplit(obj)) {
       std::vector<base::ObjectPtr> this_split;
-      SplitObject(obj, &this_split,
-                  stage_conf_.graph_segmentation_config().split_distance());
+      SplitObject(
+          obj, &this_split,
+          stage_conf_.graph_cluster_segmenter_config().split_distance());
       BgObjectBuilder(&this_split, frame->lidar2novatel_extrinsics);
       split_objects.insert(split_objects.end(), this_split.begin(),
                            this_split.end());
@@ -358,7 +360,7 @@ bool GraphSegmentation::Split(LidarFrame* frame) {
   return true;
 }
 
-bool GraphSegmentation::NeedSplit(std::shared_ptr<base::Object> object) {
+bool GraphClusterSegmenter::NeedSplit(std::shared_ptr<base::Object> object) {
   // get length and width
   float length, width;
   if (object->size(0) > object->size(1)) {
@@ -371,11 +373,11 @@ bool GraphSegmentation::NeedSplit(std::shared_ptr<base::Object> object) {
   // additional guards: enough points and sufficiently long to split
   const size_t pts = object->lidar_supplement.cloud.size();
   const float split_dist =
-      stage_conf_.graph_segmentation_config().split_distance();
+      stage_conf_.graph_cluster_segmenter_config().split_distance();
   bool aspect_ok =
       (width > 1e-6f) &&
       (length / (width + 1e-6f) >
-       stage_conf_.graph_segmentation_config().split_aspect_ratio());
+       stage_conf_.graph_cluster_segmenter_config().split_aspect_ratio());
   bool long_enough = (length >= 2.0f * split_dist);
   bool enough_points = (pts >= std::max<size_t>(min_pt_number_, 48));
   if (aspect_ok && long_enough && enough_points) {
@@ -384,7 +386,7 @@ bool GraphSegmentation::NeedSplit(std::shared_ptr<base::Object> object) {
   return false;
 }
 
-bool GraphSegmentation::SetBgObjectDefaultVal(LidarFrame* frame) {
+bool GraphClusterSegmenter::SetBgObjectDefaultVal(LidarFrame* frame) {
   int start_index = frame->segmented_objects.size();
   for (size_t i = 0; i < bg_objects_.size(); i++) {
     std::shared_ptr<base::Object> object = bg_objects_.at(i);
@@ -407,7 +409,7 @@ bool GraphSegmentation::SetBgObjectDefaultVal(LidarFrame* frame) {
   return true;
 }
 
-PERCEPTION_REGISTER_LIDARDETECTOR(GraphSegmentation);
+PERCEPTION_REGISTER_LIDARDETECTOR(GraphClusterSegmenter);
 
 }  // namespace lidar
 }  // namespace perception

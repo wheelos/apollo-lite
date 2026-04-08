@@ -41,7 +41,7 @@ bool SpatioTemporalGroundDetector::Init(const StageConfig& stage_config) {
   if (!Initialize(stage_config)) {
     return false;
   }
-  config_ = stage_config.spatio_temporal_ground_detector_config();
+  config_ = stage_config.ground_segmenter_config();
   return InitInternal(config_);
 }
 

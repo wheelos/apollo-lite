@@ -59,6 +59,8 @@ import "modules/perception/pipeline/proto/stage/yolo_obstacle_detector_config.pr
 import "modules/perception/pipeline/proto/traffic_light_config.proto";
 
 enum PluginType {
+  option allow_alias = true;
+
   CAMERA_GET_OBJECT = 1;
   POINTCLOUD_DOWN_SAMPLE = 2;
   RESIZIE_AND_NORMALIZE = 3;
@@ -66,7 +68,8 @@ enum PluginType {
   GET_IMAGE_DATA = 5;
 
   // filter
-  ROI_BOUNDARY_FILTER = 6;
+  HDMAP_BOUNDARY_OBJECT_FILTER = 6;
+  ROI_BOUNDARY_FILTER = 6 [deprecated = true];
   FILTER_BBOX = 7;
 
   RECOVER_BBOX = 8;
@@ -95,7 +98,8 @@ message PluginConfig {
     camera.ResizeAndNormalizeConfig resize_and_normalize_config = 14;
     lidar.PointcloudDownSampleConfig pointcloud_downsample_config = 15;
     lidar.PointcloudGetObjectsConfig pointcloud_get_objects_config = 16;
-    lidar.ROIBoundaryFilterConfig roi_boundary_filter_config = 17;
+    lidar.HdmapBoundaryObjectFilterConfig
+        hdmap_boundary_object_filter_config = 17;
     lidar.MlfTrackObjectMatcherConfig mlf_track_object_matcher_config = 18;
     lidar.MlfTrackerConfig mlf_tracker_config = 19;
     lidar.CcrfTypeFusionConfig ccrf_type_fusion_config = 20;
@@ -105,6 +109,8 @@ message PluginConfig {
 
 // stage
 enum StageType {
+  option allow_alias = true;
+
   // preprocessors
   // camera preprocessor
   CAMERA_DETECTION_PREPROCESSOR = 1;
@@ -117,10 +123,13 @@ enum StageType {
   // radar preprocessors
   CONTI_ARS_PREPROCESSOR = 5;
 
-  MAP_MANAGER = 6;
+  HDMAP_CONTEXT_PROVIDER = 6;
+  MAP_MANAGER = 6 [deprecated = true];
   ALL_LATEST_FUSION = 7;
-  HDMAP_ROI_FILTER = 8;
-  GROUND_DETECTOR = 9;
+  POINTCLOUD_ROI_FILTER = 8;
+  HDMAP_ROI_FILTER = 8 [deprecated = true];
+  GROUND_SEGMENTER = 9;
+  GROUND_DETECTOR = 9 [deprecated = true];
 
   // detectors
   // camera detectors
@@ -144,7 +153,8 @@ enum StageType {
   CENTER_POINT_DETECTION = 33;
   // radar detectors
   CONTI_ARS_DETECTOR = 34;
-  GRAPH_SEGMENTATION = 35;
+  GRAPH_CLUSTER_SEGMENTER = 35;
+  GRAPH_SEGMENTATION = 35 [deprecated = true];
   CENTER_POINT_TRT_DETECTION = 36;
 
   // post processors
@@ -157,8 +167,10 @@ enum StageType {
   DENSELINE_LANE_POSTPROCESSOR = 104;
   // lidar post processors
   POINTCLOUD_DETECTION_POSTPROCESSOR = 105;
-  OBJECT_BUILDER = 106;
-  OBJECT_FILTER_BANK = 107;
+  OBJECT_GEOMETRY_BUILDER = 106;
+  OBJECT_BUILDER = 106 [deprecated = true];
+  OBJECT_POST_FILTER_BANK = 107;
+  OBJECT_FILTER_BANK = 107 [deprecated = true];
 
   // tracker
   OMT_BEV_OBSTACLE_TRACKER = 119;
@@ -188,6 +200,9 @@ message StageConfig {
 
   repeated PluginConfig plugin_config = 3;
 
+  // Optional semantic alias used for display/logging so a stable stage_type
+  // can keep backward compatibility while the configured stage name reflects
+  // the actual role in a pipeline.
   optional string type = 4;
 
   reserved 5 to 9;
@@ -198,21 +213,20 @@ message StageConfig {
     lidar.PointcloudDetectionPostprocessorConfig
         pointcloud_detection_postprocessor_config = 11;
     lidar.PointcloudPreprocessorConfig pointcloud_preprocessor_config = 12;
-    lidar.MapManagerConfig map_manager_config = 13;
-    lidar.ObjectFilterBankConfig object_filter_bank_config = 14;
+    lidar.HdmapContextProviderConfig hdmap_context_provider_config = 13;
+    lidar.ObjectPostFilterBankConfig object_post_filter_bank_config = 14;
     lidar.MlfEngineConfig mlf_engine_config = 16;
     lidar.FusedClassifierConfig fused_classifier_config = 17;
     lidar.CNNSegConfig cnnseg_config = 18;
     lidar.NCutConfig ncut_config = 19;
     lidar.GroundServiceDetectorConfig ground_service_detector_config = 20;
-    lidar.SpatioTemporalGroundDetectorConfig
-        spatio_temporal_ground_detector_config = 21;
-    lidar.HDMapRoiFilterConfig hdmap_roi_filter_config = 22;
+    lidar.SpatioTemporalGroundDetectorConfig ground_segmenter_config = 21;
+    lidar.PointCloudRoiFilterConfig pointcloud_roi_filter_config = 22;
     lidar.PointPillarsDetectionConfig point_pillars_detection_config = 23;
-    lidar.ObjectBuilderConfig object_builder_config = 24;
+    lidar.ObjectGeometryBuilderConfig object_geometry_builder_config = 24;
     lidar.CenterPointDetectionConfig center_point_detection_config = 25;
     lidar.MaskPillarsDetectionConfig mask_pillars_detection_config = 26;
-    lidar.GraphSegmentationConfig graph_segmentation_config = 27;
+    lidar.GraphClusterSegmenterConfig graph_cluster_segmenter_config = 27;
     lidar.CenterPointTRTDetectionConfig center_point_trt_detection_config = 28;
 
     camera.TrafficLightDetectionConfig traffic_light_detection_config = 50;

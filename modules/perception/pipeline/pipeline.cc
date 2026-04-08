@@ -147,13 +147,13 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::POINTCLOUD_DETECTION_POSTPROCESSOR:
       stage_ptr.reset(new lidar::PointcloudDetectionPostprocessor());
       break;
-    case StageType::MAP_MANAGER:
-      stage_ptr.reset(new lidar::MapManager());
+    case StageType::HDMAP_CONTEXT_PROVIDER:
+      stage_ptr.reset(new lidar::HdmapContextProvider());
       break;
-    case StageType::HDMAP_ROI_FILTER:
-      stage_ptr.reset(new lidar::HdmapROIFilter());
+    case StageType::POINTCLOUD_ROI_FILTER:
+      stage_ptr.reset(new lidar::HdmapPointCloudRoiFilter());
       break;
-    case StageType::GROUND_DETECTOR:
+    case StageType::GROUND_SEGMENTER:
       stage_ptr.reset(new lidar::SpatioTemporalGroundDetector());
       break;
     case StageType::POINT_PILLARS_DETECTION:
@@ -165,8 +165,8 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::NCUT_SEGMENTATION:
       stage_ptr.reset(new lidar::NCutSegmentation());
       break;
-    case StageType::GRAPH_SEGMENTATION:
-      stage_ptr.reset(new lidar::GraphSegmentation());
+    case StageType::GRAPH_CLUSTER_SEGMENTER:
+      stage_ptr.reset(new lidar::GraphClusterSegmenter());
       break;
     case StageType::MASK_PILLARS_DETECTION:
       stage_ptr.reset(new lidar::MaskPillarsDetection());
@@ -177,11 +177,11 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::CENTER_POINT_TRT_DETECTION:
       stage_ptr.reset(new lidar::CenterPointTRT());
       break;
-    case StageType::OBJECT_BUILDER:
-      stage_ptr.reset(new lidar::ObjectBuilder());
+    case StageType::OBJECT_GEOMETRY_BUILDER:
+      stage_ptr.reset(new lidar::ObjectGeometryBuilder());
       break;
-    case StageType::OBJECT_FILTER_BANK:
-      stage_ptr.reset(new lidar::ObjectFilterBank());
+    case StageType::OBJECT_POST_FILTER_BANK:
+      stage_ptr.reset(new lidar::ObjectPostFilterBank());
       break;
     case StageType::MLF_ENGINE:
       stage_ptr.reset(new lidar::MlfEngine());

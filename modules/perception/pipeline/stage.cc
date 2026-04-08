@@ -26,7 +26,11 @@ bool Stage::Initialize(const StageConfig& stage_config) {
   Clear();
 
   stage_config_ = stage_config;
-  name_ = StageType_Name(stage_config.stage_type());
+  if (stage_config.has_type() && !stage_config.type().empty()) {
+    name_ = stage_config.type();
+  } else {
+    name_ = StageType_Name(stage_config.stage_type());
+  }
   enable_ = stage_config.enabled();
 
   for (const auto& plugin_config : stage_config.plugin_config()) {
