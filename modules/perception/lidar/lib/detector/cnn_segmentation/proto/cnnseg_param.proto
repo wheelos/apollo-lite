@@ -13,7 +13,7 @@ message CNNSegParam {
   // for method SppEngine
   optional string ground_detector = 7
       [default = "SpatioTemporalGroundDetector"];
-  optional string roi_filter = 8 [default = "HdmapROIFilter"];
+  optional string roi_filter = 8 [default = "HdmapPointCloudRoiFilter"];
   optional bool remove_ground_points = 9 [default = false];
 
   // for both clustering methods

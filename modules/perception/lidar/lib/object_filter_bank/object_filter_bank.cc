@@ -27,19 +27,23 @@ namespace perception {
 namespace lidar {
 
 using apollo::cyber::common::GetAbsolutePath;
+using apollo::cyber::common::PathExists;
 
-bool ObjectFilterBank::Init(const ObjectFilterInitOptions& options) {
+bool ObjectPostFilterBank::Init(const ObjectFilterInitOptions& options) {
   auto config_manager = lib::ConfigManager::Instance();
   const lib::ModelConfig* model_config = nullptr;
   ACHECK(config_manager->GetModelConfig(Name(), &model_config));
   const std::string work_root = config_manager->work_root();
-  std::string config_file;
   std::string root_path;
   ACHECK(model_config->get_value("root_path", &root_path));
-  config_file = GetAbsolutePath(work_root, root_path);
-  config_file = GetAbsolutePath(config_file, options.sensor_name);
-  config_file = GetAbsolutePath(config_file, "filter_bank.conf");
-  ObjectFilterBankConfig config;
+  const std::string config_dir = GetAbsolutePath(
+      GetAbsolutePath(work_root, root_path), options.sensor_name);
+  std::string config_file =
+      GetAbsolutePath(config_dir, "object_post_filter_bank.conf");
+  if (!PathExists(config_file)) {
+    config_file = GetAbsolutePath(config_dir, "filter_bank.conf");
+  }
+  ObjectPostFilterBankConfig config;
   ACHECK(apollo::cyber::common::GetProtoFromFile(config_file, &config));
   filter_bank_.clear();
   for (int i = 0; i < config.filter_name_size(); ++i) {
@@ -60,7 +64,7 @@ bool ObjectFilterBank::Init(const ObjectFilterInitOptions& options) {
   return true;
 }
 
-bool ObjectFilterBank::Init(const StageConfig& stage_config) {
+bool ObjectPostFilterBank::Init(const StageConfig& stage_config) {
   if (!Initialize(stage_config)) {
     return false;
   }
@@ -83,7 +87,7 @@ bool ObjectFilterBank::Init(const StageConfig& stage_config) {
   return true;
 }
 
-bool ObjectFilterBank::Process(DataFrame* data_frame) {
+bool ObjectPostFilterBank::Process(DataFrame* data_frame) {
   if (data_frame == nullptr) return false;
 
   LidarFrame* lidar_frame = data_frame->lidar_frame;
@@ -103,8 +107,8 @@ bool ObjectFilterBank::Process(DataFrame* data_frame) {
   return true;
 }
 
-bool ObjectFilterBank::Filter(const ObjectFilterOptions& options,
-                              LidarFrame* frame) {
+bool ObjectPostFilterBank::Filter(const ObjectFilterOptions& options,
+                                  LidarFrame* frame) {
   size_t object_number = frame->segmented_objects.size();
   for (auto& filter : filter_bank_) {
     if (!filter->Filter(options, frame)) {

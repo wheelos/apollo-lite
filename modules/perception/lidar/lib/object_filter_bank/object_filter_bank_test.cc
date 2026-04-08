@@ -76,7 +76,7 @@ TEST(LidarLibObjectFilterBankTest, lidar_lib_object_filter_bank_test) {
       "lidar/lib/object_filter_bank/filter_bank";
 
   ObjectFilterBank filter_bank;
-  EXPECT_EQ(filter_bank.Name(), "ObjectFilterBank");
+  EXPECT_EQ(filter_bank.Name(), "ObjectPostFilterBank");
   EXPECT_TRUE(filter_bank.Init());
   EXPECT_EQ(filter_bank.Size(), 3);
   LidarFrame frame;

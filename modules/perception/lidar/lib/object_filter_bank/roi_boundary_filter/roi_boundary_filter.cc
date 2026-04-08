@@ -17,13 +17,12 @@
 
 #include <limits>
 
-#include "cyber/common/file.h"
-#include "cyber/common/log.h"
-
-#include "modules/perception/common/geometry/common.h"
-#include "modules/perception/lib/config_manager/config_manager.h"
 #include "modules/perception/pipeline/proto/plugin/roi_boundary_filter_config.pb.h"
 
+#include "cyber/common/file.h"
+#include "cyber/common/log.h"
+#include "modules/perception/common/geometry/common.h"
+#include "modules/perception/lib/config_manager/config_manager.h"
 
 namespace {
 constexpr double kDoubleMax = std::numeric_limits<double>::max();
@@ -34,22 +33,27 @@ namespace perception {
 namespace lidar {
 
 using cyber::common::GetAbsolutePath;
+using cyber::common::PathExists;
 
-ROIBoundaryFilter::ROIBoundaryFilter(const PluginConfig& plugin_config) {
+HdmapBoundaryObjectFilter::HdmapBoundaryObjectFilter(
+    const PluginConfig& plugin_config) {
   Init(plugin_config);
 }
 
-bool ROIBoundaryFilter::Init(const ObjectFilterInitOptions& options) {
+bool HdmapBoundaryObjectFilter::Init(const ObjectFilterInitOptions& options) {
   auto config_manager = lib::ConfigManager::Instance();
   const lib::ModelConfig* model_config = nullptr;
   ACHECK(config_manager->GetModelConfig(Name(), &model_config));
   const std::string work_root = config_manager->work_root();
-  std::string config_file;
   std::string root_path;
   ACHECK(model_config->get_value("root_path", &root_path));
-  config_file = GetAbsolutePath(work_root, root_path);
-  config_file = GetAbsolutePath(config_file, "roi_boundary_filter.conf");
-  ROIBoundaryFilterConfig config;
+  const std::string config_dir = GetAbsolutePath(work_root, root_path);
+  std::string config_file =
+      GetAbsolutePath(config_dir, "hdmap_boundary_object_filter.conf");
+  if (!PathExists(config_file)) {
+    config_file = GetAbsolutePath(config_dir, "roi_boundary_filter.conf");
+  }
+  HdmapBoundaryObjectFilterConfig config;
   ACHECK(cyber::common::GetProtoFromFile(config_file, &config));
   distance_to_boundary_threshold_ = config.distance_to_boundary_threshold();
   confidence_threshold_ = config.confidence_threshold();
@@ -58,8 +62,8 @@ bool ROIBoundaryFilter::Init(const ObjectFilterInitOptions& options) {
   return true;
 }
 
-bool ROIBoundaryFilter::Filter(const ObjectFilterOptions& options,
-                               LidarFrame* frame) {
+bool HdmapBoundaryObjectFilter::Filter(const ObjectFilterOptions& options,
+                                       LidarFrame* frame) {
   if (!frame) {
     AINFO << "Lidar frame is nullptr.";
     return false;
@@ -107,8 +111,9 @@ bool ROIBoundaryFilter::Filter(const ObjectFilterOptions& options,
   return true;
 }
 
-bool ROIBoundaryFilter::Init(const PluginConfig& plugin_config) {
-  ROIBoundaryFilterConfig config = plugin_config.roi_boundary_filter_config();
+bool HdmapBoundaryObjectFilter::Init(const PluginConfig& plugin_config) {
+  HdmapBoundaryObjectFilterConfig config =
+      plugin_config.hdmap_boundary_object_filter_config();
 
   distance_to_boundary_threshold_ = config.distance_to_boundary_threshold();
   confidence_threshold_ = config.confidence_threshold();
@@ -117,8 +122,8 @@ bool ROIBoundaryFilter::Init(const PluginConfig& plugin_config) {
   return true;
 }
 
-void ROIBoundaryFilter::BuildWorldPolygons(const ObjectFilterOptions& options,
-                                           const LidarFrame& frame) {
+void HdmapBoundaryObjectFilter::BuildWorldPolygons(
+    const ObjectFilterOptions& options, const LidarFrame& frame) {
   const Eigen::Affine3d& pose = frame.lidar2world_pose;
   const std::vector<base::ObjectPtr>& objects = frame.segmented_objects;
   polygons_in_world_.clear();
@@ -142,8 +147,8 @@ void ROIBoundaryFilter::BuildWorldPolygons(const ObjectFilterOptions& options,
   }
 }
 
-void ROIBoundaryFilter::FillObjectRoiFlag(const ObjectFilterOptions& options,
-                                          LidarFrame* frame) {
+void HdmapBoundaryObjectFilter::FillObjectRoiFlag(
+    const ObjectFilterOptions& options, LidarFrame* frame) {
   auto& objects = frame->segmented_objects;
   objects_cross_roi_.assign(objects.size(), false);
   for (size_t i = 0; i < objects.size(); ++i) {
@@ -164,7 +169,7 @@ void ROIBoundaryFilter::FillObjectRoiFlag(const ObjectFilterOptions& options,
   }
 }
 
-void ROIBoundaryFilter::FilterObjectsOutsideBoundary(
+void HdmapBoundaryObjectFilter::FilterObjectsOutsideBoundary(
     const ObjectFilterOptions& options, LidarFrame* frame,
     std::vector<bool>* objects_valid_flag) {
   const EigenVector<base::RoadBoundary>& road_boundary =
@@ -206,7 +211,7 @@ void ROIBoundaryFilter::FilterObjectsOutsideBoundary(
   }
 }
 
-void ROIBoundaryFilter::FilterObjectsInsideBoundary(
+void HdmapBoundaryObjectFilter::FilterObjectsInsideBoundary(
     const ObjectFilterOptions& options, LidarFrame* frame,
     std::vector<bool>* objects_valid_flag) {
   const EigenVector<base::RoadBoundary>& road_boundary =
@@ -249,7 +254,7 @@ void ROIBoundaryFilter::FilterObjectsInsideBoundary(
   }
 }
 
-void ROIBoundaryFilter::FilterObjectsByConfidence(
+void HdmapBoundaryObjectFilter::FilterObjectsByConfidence(
     const ObjectFilterOptions& options, LidarFrame* frame,
     std::vector<bool>* objects_valid_flag) {
   auto& objects = frame->segmented_objects;
@@ -270,7 +275,7 @@ void ROIBoundaryFilter::FilterObjectsByConfidence(
   }
 }
 
-PERCEPTION_REGISTER_OBJECTFILTER(ROIBoundaryFilter);
+PERCEPTION_REGISTER_OBJECTFILTER(HdmapBoundaryObjectFilter);
 
 }  // namespace lidar
 }  // namespace perception

@@ -34,7 +34,9 @@ namespace lidar {
 
 class HdmapROIFilterTest;
 
-class HdmapROIFilter : public BaseROIFilter {
+// Point-level ROI extractor. It converts HDMap polygons into the lidar local
+// frame and populates roi_indices for downstream stages.
+class HdmapPointCloudRoiFilter : public BaseROIFilter {
  public:
   using DirectionMajor = Bitmap2D::DirectionMajor;
   using PolygonDType = base::PolygonDType;
@@ -44,15 +46,15 @@ class HdmapROIFilter : public BaseROIFilter {
   using Polygon = typename PolygonScanCvter<T>::Polygon;
 
  public:
-  HdmapROIFilter()
+  HdmapPointCloudRoiFilter()
       : BaseROIFilter(),
         range_(120.0),
         cell_size_(0.25),
         extend_dist_(0.0),
         no_edge_table_(false) {
-    name_ = "HdmapROIFilter";
+    name_ = "HdmapPointCloudRoiFilter";
   }
-  ~HdmapROIFilter() = default;
+  ~HdmapPointCloudRoiFilter() = default;
 
   bool Init(const ROIFilterInitOptions& options) override;
 
@@ -67,7 +69,7 @@ class HdmapROIFilter : public BaseROIFilter {
   std::string Name() const override { return name_; }
 
  private:
-  bool InternalInit(const HDMapRoiFilterConfig& config);
+  bool InternalInit(const PointCloudRoiFilterConfig& config);
 
   // Core Helper: Transform polygons from World to Local frame
   void TransformPolygonsToLocal(
@@ -100,11 +102,13 @@ class HdmapROIFilter : public BaseROIFilter {
 
   Bitmap2D bitmap_;
   ROIServiceContent roi_service_content_;
-  HDMapRoiFilterConfig hdmap_roi_filter_config_;
+  PointCloudRoiFilterConfig pointcloud_roi_filter_config_;
 
   friend class HdmapROIFilterTest;
   friend class LidarLibROIServiceTest;
 };
+
+using HdmapROIFilter = HdmapPointCloudRoiFilter;
 
 }  // namespace lidar
 }  // namespace perception

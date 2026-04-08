@@ -30,15 +30,17 @@ namespace apollo {
 namespace perception {
 namespace lidar {
 
-struct ObjectBuilderInitOptions {};
+struct ObjectGeometryBuilderInitOptions {};
 
-struct ObjectBuilderOptions {
+struct ObjectGeometryBuilderOptions {
   Eigen::Vector3d ref_center = Eigen::Vector3d(0, 0, 0);
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-class ObjectBuilder : public pipeline::Stage {
+// Geometry builder for segmented clusters. It fills polygon, size, center,
+// anchor point and timestamps for downstream object-level filtering/tracking.
+class ObjectGeometryBuilder : public pipeline::Stage {
  public:
   using DataFrame = pipeline::DataFrame;
   using Plugin = pipeline::Plugin;
@@ -46,18 +48,18 @@ class ObjectBuilder : public pipeline::Stage {
   using StageConfig = pipeline::StageConfig;
 
  public:
-  ObjectBuilder() = default;
-  ~ObjectBuilder() = default;
+  ObjectGeometryBuilder() { name_ = "ObjectGeometryBuilder"; }
+  ~ObjectGeometryBuilder() = default;
 
   // @brief: initialization. Get orientation estimator instance.
   // @param [in]: ObjectBuilderInitOptions.
-  bool Init(
-      const ObjectBuilderInitOptions& options = ObjectBuilderInitOptions());
+  bool Init(const ObjectGeometryBuilderInitOptions& options =
+                ObjectGeometryBuilderInitOptions());
 
   // @brief: calculate and fill object size, center, directions.
   // @param [in]: ObjectBuilderOptions.
   // @param [in/out]: LidarFrame*.
-  bool Build(const ObjectBuilderOptions& options, LidarFrame* frame);
+  bool Build(const ObjectGeometryBuilderOptions& options, LidarFrame* frame);
 
   bool Init(const StageConfig& stage_config) override;
 
@@ -105,7 +107,11 @@ class ObjectBuilder : public pipeline::Stage {
   void GetMinMax3D(const apollo::perception::base::PointCloud<
                        apollo::perception::base::PointF>& cloud,
                    Eigen::Vector3f* min_pt, Eigen::Vector3f* max_pt);
-};  // class ObjectBuilder
+};  // class ObjectGeometryBuilder
+
+using ObjectBuilderInitOptions = ObjectGeometryBuilderInitOptions;
+using ObjectBuilderOptions = ObjectGeometryBuilderOptions;
+using ObjectBuilder = ObjectGeometryBuilder;
 
 }  // namespace lidar
 }  // namespace perception
