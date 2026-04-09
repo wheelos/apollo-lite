@@ -53,7 +53,7 @@ bool RadarDetectionComponent::Init() {
   // Init algorithm plugin
   ACHECK(InitAlgorithmPlugin()) << "Failed to init algorithm plugin.";
   radar2world_trans_.Init(tf_child_frame_id_);
-  radar2novatel_trans_.Init(tf_child_frame_id_);
+  radar2vehicle_trans_.Init(tf_child_frame_id_);
   localization_subscriber_.Init(
       odometry_channel_name_,
       odometry_channel_name_ + '_' + comp_config.radar_name());
@@ -137,18 +137,19 @@ bool RadarDetectionComponent::InternalProc(
     AERROR << "Failed to get pose at time: " << timestamp;
     return true;
   }
-  Eigen::Affine3d radar2novatel_trans;
-  if (!radar2novatel_trans_.GetTrans(timestamp, &radar2novatel_trans, "novatel",
+  Eigen::Affine3d radar2vehicle_trans;
+  if (!radar2vehicle_trans_.GetTrans(timestamp, &radar2vehicle_trans,
+                                     FLAGS_obs_sensor2vehicle_tf2_frame_id,
                                      tf_child_frame_id_)) {
     out_message->error_code_ = apollo::common::ErrorCode::PERCEPTION_ERROR_TF;
-    AERROR << "Failed to get radar2novatel trans at time: " << timestamp;
+    AERROR << "Failed to get radar2vehicle trans at time: " << timestamp;
     return true;
   }
   PERF_BLOCK_END_WITH_INDICATOR(radar_info_.name, "GetSensor2worldTrans");
   Eigen::Matrix4d radar2world_pose = radar_trans.matrix();
   options.detector_options.radar2world_pose = &radar2world_pose;
-  Eigen::Matrix4d radar2novatel_trans_m = radar2novatel_trans.matrix();
-  options.detector_options.radar2novatel_trans = &radar2novatel_trans_m;
+  Eigen::Matrix4d radar2vehicle_trans_m = radar2vehicle_trans.matrix();
+  options.detector_options.radar2vehicle_trans = &radar2vehicle_trans_m;
   if (!GetCarLocalizationSpeed(timestamp,
                                &(options.detector_options.car_linear_speed),
                                &(options.detector_options.car_angular_speed))) {

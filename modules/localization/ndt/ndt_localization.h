@@ -77,9 +77,7 @@ class NDTLocalization {
   /**@brief transfer pointcloud message to LidarFrame */
   void LidarMsgTransfer(const std::shared_ptr<drivers::PointCloud>& message,
                         LidarFrame* lidar_frame);
-  /**@brief Load lidar extrinsics from file */
-  bool LoadLidarExtrinsic(const std::string& file_path,
-                          Eigen::Affine3d* lidar_extrinsic);
+  bool UpdateLidarExtrinsic(const std::string& lidar_frame_id);
   /**@brief load lidar height from file */
   bool LoadLidarHeight(const std::string& file_path, LidarHeight* height);
   /**@brief load zone id from map folder */
@@ -125,6 +123,8 @@ class NDTLocalization {
   LidarHeight lidar_height_;
   Eigen::Affine3d lidar_pose_;
   Eigen::Affine3d velodyne_extrinsic_;
+  std::string lidar_frame_id_ = "";
+  bool has_lidar_extrinsic_ = false;
   LocalizationEstimate lidar_localization_result_;
   double ndt_score_ = 0;
   unsigned int bad_score_count_ = 0;

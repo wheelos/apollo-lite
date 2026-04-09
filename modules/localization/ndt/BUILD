@@ -30,6 +30,7 @@ cc_library(
         "//modules/common_msgs/sensor_msgs:ins_cc_proto",
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/localization/common:localization_gflags",
+        "//modules/localization/common:rigid_transform_helper",
         "//modules/localization/msf/common/util",
         "//modules/localization/ndt/ndt_locator:ndt_lidar_locator",
         "//modules/common_msgs/localization_msgs:gps_cc_proto",

@@ -74,6 +74,7 @@ typedef apollo::localization::msf::pyramid_map::MapNodeIndex MapNodeIndex;
 struct LidarFrame {
   LidarFrame() : measurement_time(0.0) {}
   double measurement_time;  // unix time
+  std::string frame_id;
   std::vector<float> pt_xs;
   std::vector<float> pt_ys;
   std::vector<float> pt_zs;

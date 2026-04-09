@@ -79,7 +79,7 @@ class RadarDetectionComponent : public cyber::Component<ContiRadar> {
   std::string odometry_channel_name_;
 
   TransformWrapper radar2world_trans_;
-  TransformWrapper radar2novatel_trans_;
+  TransformWrapper radar2vehicle_trans_;
   map::HDMapInput* hdmap_input_;
   std::shared_ptr<radar::BasePreprocessor> radar_preprocessor_;
   std::shared_ptr<radar::BaseRadarObstaclePerception> radar_perception_;

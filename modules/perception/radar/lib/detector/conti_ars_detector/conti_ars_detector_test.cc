@@ -47,10 +47,10 @@ TEST(ContiArsDetector, detect) {
   DetectorOptions options;
   Eigen::Matrix4d pose;
   pose << 0, -1, 0, 4, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1;
-  Eigen::Matrix4d radar2novatel_trans;
-  radar2novatel_trans << 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
+  Eigen::Matrix4d radar2vehicle_trans;
+  radar2vehicle_trans << 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
   options.radar2world_pose = &pose;
-  options.radar2novatel_trans = &radar2novatel_trans;
+  options.radar2vehicle_trans = &radar2vehicle_trans;
   options.car_linear_speed = Eigen::Vector3f(3, 1, 0);
   options.car_angular_speed = Eigen::Vector3f(0, 0, 0);
 

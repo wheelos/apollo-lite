@@ -25,6 +25,7 @@
 #include "cyber/common/log.h"
 #include "modules/perception/camera/tools/offline/colormap.h"
 #include "modules/perception/camera/tools/offline/keycode.h"
+#include "modules/perception/common/io/io_util.h"
 #include "modules/perception/common/perception_gflags.h"
 
 namespace apollo {
@@ -494,8 +495,8 @@ bool Visualizer::save_extrinsic_in_yaml(const std::string &camera_name,
                                         const double pitch_radian,
                                         const double yaw_radian,
                                         const double roll_radian) {
-  std::string yaml_file =
-      FLAGS_obs_sensor_intrinsic_path + "/" + camera_name + "_extrinsics.yaml";
+  std::string yaml_file = common::ResolveExtrinsicPath(
+      FLAGS_obs_sensor_intrinsic_path, camera_name + "_extrinsics.yaml");
 
   copy_backup_file(yaml_file);
 
@@ -891,12 +892,13 @@ void Visualizer::Draw2Dand3D(const cv::Mat &img, const CameraFrame &frame) {
   if (!tf_server_->QueryPos(frame.timestamp, &pose)) {
     pose.setIdentity();
   }
-  Eigen::Affine3d lidar2novatel;
-  if (!tf_server_->QueryTransform("velodyne128", "novatel", &lidar2novatel)) {
+  Eigen::Affine3d lidar2vehicle;
+  if (!tf_server_->QueryTransform("velodyne128", "base_link",
+                                  &lidar2vehicle)) {
     AWARN << "Failed to query transform from lidar to ground.";
     return;
   }
-  Eigen::Affine3d lidar2world = pose * lidar2novatel;
+  Eigen::Affine3d lidar2world = pose * lidar2vehicle;
   Eigen::Affine3d world2lidar = lidar2world.inverse();
   for (const auto &object : frame.tracked_objects) {
     base::RectF rect(object->camera_supplement.box);

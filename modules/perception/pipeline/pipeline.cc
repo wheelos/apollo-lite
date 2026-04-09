@@ -20,8 +20,6 @@
 #include "modules/common/util/map_util.h"
 #include "modules/perception/camera/lib/obstacle/camera_detection_postprocessor/camera_detection_postprocessor.h"
 // #include
-// "modules/perception/camera/lib/obstacle/detector/bev_detection/bev_obstacle_detector.h"
-// #include
 // "modules/perception/camera/lib/obstacle/detector/caddn/caddn_obstacle_detector.h"
 #include "modules/perception/camera/lib/obstacle/detector/smoke/smoke_obstacle_detector.h"
 #include "modules/perception/camera/lib/obstacle/detector/yolo/yolo_obstacle_detector.h"
@@ -42,7 +40,6 @@
 #include "modules/perception/lidar/lib/detector/center_point_trt/center_point_trt.h"
 #include "modules/perception/lidar/lib/detector/cnn_segmentation/cnn_segmentation.h"
 #include "modules/perception/lidar/lib/detector/graph_segmentation/graph_segmentation.h"
-#include "modules/perception/lidar/lib/detector/mask_pillars_detection/mask_pillars_detection.h"
 #include "modules/perception/lidar/lib/detector/ncut_segmentation/ncut_segmentation.h"
 #include "modules/perception/lidar/lib/detector/point_pillars_detection/point_pillars_detection.h"
 #include "modules/perception/lidar/lib/ground_detector/spatio_temporal_ground_detector/spatio_temporal_ground_detector.h"
@@ -168,9 +165,7 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::GRAPH_CLUSTER_SEGMENTER:
       stage_ptr.reset(new lidar::GraphClusterSegmenter());
       break;
-    case StageType::MASK_PILLARS_DETECTION:
-      stage_ptr.reset(new lidar::MaskPillarsDetection());
-      break;
+    // MaskPillars is not available in the current tree.
     // case StageType::CENTER_POINT_DETECTION:
     //   stage_ptr.reset(new lidar::CenterPointDetection());
     //   break;
@@ -228,9 +223,7 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::LOCATION_REFINER_OBSTACLE_POSTPROCESSOR:
       stage_ptr.reset(new camera::LocationRefinerObstaclePostprocessor());
       break;
-    // case StageType::BEV_OBSTACLE_DETECTOR:
-    //   stage_ptr.reset(new camera::BEVObstacleDetector());
-    //   break;
+    // BEV obstacle detector is temporarily disabled in this build.
     case StageType::OMT_BEV_OBSTACLE_TRACKER:
       stage_ptr.reset(new camera::OMTBEVTracker());
       break;

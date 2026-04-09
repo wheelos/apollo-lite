@@ -96,9 +96,7 @@ class LocalizationLidarProcess {
   bool CheckDelta(const LidarFrame &frame, const TransformD &inspva_pose);
   void UpdateState(const int ret, const double time);
 
-  // Load lidar-imu extrinsic parameter.
-  bool LoadLidarExtrinsic(const std::string &file_path,
-                          TransformD *lidar_extrinsic);
+  bool UpdateLidarExtrinsic(const std::string &lidar_frame_id);
   // Load lidar height (the distance between lidar and ground).
   bool LoadLidarHeight(const std::string &file_path, LidarHeight *height);
 
@@ -112,8 +110,8 @@ class LocalizationLidarProcess {
   PoseForcast *pose_forecastor_;
 
   std::string map_path_;
-  std::string lidar_extrinsic_file_;
   std::string lidar_height_file_;
+  std::string lidar_frame_id_;
   int localization_mode_ = 2;
   int yaw_align_mode_ = 2;
   int lidar_filter_size_ = 17;
@@ -124,6 +122,7 @@ class LocalizationLidarProcess {
   double map_coverage_theshold_ = 0.8;
   TransformD lidar_extrinsic_;
   LidarHeight lidar_height_;
+  bool has_lidar_extrinsic_ = false;
 
   bool is_get_first_lidar_msg_ = false;
   TransformD cur_predict_location_;

@@ -121,7 +121,7 @@ bool BackgroundMap::UpdateMask(LidarFrame* frame) {
     auto pt = frame->cloud->at(index);
     // filter point beyond height_threshold_
     Eigen::Vector4d trans_point(pt.x, pt.y, pt.z, 1);
-    trans_point = frame->lidar2novatel_extrinsics * trans_point;
+    trans_point = frame->lidar2vehicle_extrinsics * trans_point;
     if (trans_point(2) >= height_threshold_) {
       continue;
     }
@@ -130,14 +130,15 @@ bool BackgroundMap::UpdateMask(LidarFrame* frame) {
       continue;
     }
 
-    Eigen::Vector4d p_nv(pt.x, pt.y, pt.z, 1);
-    p_nv = frame->lidar2novatel_extrinsics * p_nv;
-    if (p_nv(0) > car_xmin_ && p_nv(0) < car_xmax_ && p_nv(1) > car_ymin_ &&
-        p_nv(1) < car_ymax_ && p_nv(2) < car_zmax_) {
+    Eigen::Vector4d p_vehicle(pt.x, pt.y, pt.z, 1);
+    p_vehicle = frame->lidar2vehicle_extrinsics * p_vehicle;
+    if (p_vehicle(0) > car_xmin_ && p_vehicle(0) < car_xmax_ &&
+        p_vehicle(1) > car_ymin_ && p_vehicle(1) < car_ymax_ &&
+        p_vehicle(2) < car_zmax_) {
       continue;
     }
 
-    if (p_nv(2) <= z_min_from_ground_) {
+    if (p_vehicle(2) <= z_min_from_ground_) {
       continue;
     }
 

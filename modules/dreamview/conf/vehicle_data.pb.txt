@@ -39,10 +39,6 @@ data_files {
   dest_path: "/apollo/modules/control/conf/navigation_lincoln.pb.txt"
 }
 data_files {
-  source_path: "novatel_localization_extrinsics.yaml"
-  dest_path: "/apollo/modules/localization/msf/params/novatel_localization_extrinsics.yaml"
-}
-data_files {
   source_path: "velodyne_params"
   dest_path: "/apollo/modules/drivers/lidar/velodyne/params"
 }

@@ -61,6 +61,9 @@ class ObstacleDetectionCamera final : public BaseCameraPerception {
 
   bool Init(const PipelineConfig &pipeline_config) override;
 
+  bool SetLidarToCameraDetectorExtrinsics(
+      const Eigen::Matrix4d &lidar_to_vehicle);
+
   bool Perception(const CameraPerceptionOptions &options,
                   CameraFrame *frame) override;
 

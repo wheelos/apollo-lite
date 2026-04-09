@@ -24,6 +24,18 @@ cc_library(
 )
 
 cc_library(
+    name = "transform_query",
+    srcs = ["transform_query.cc"],
+    hdrs = ["transform_query.h"],
+    deps = [
+        "//cyber",
+        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "//modules/transform:buffer",
+        "@eigen",
+    ],
+)
+
+cc_library(
     name = "buffer_interface",
     hdrs = ["buffer_interface.h"],
     deps = [
@@ -89,6 +101,7 @@ install(
     targets = [
         ":libstatic_transform_component.so",
         ":buffer",
+        ":transform_query",
         ":transform_broadcaster",
     ],
     deps = [

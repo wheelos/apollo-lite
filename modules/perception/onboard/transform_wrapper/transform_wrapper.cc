@@ -25,12 +25,12 @@ namespace apollo {
 namespace perception {
 namespace onboard {
 
-DEFINE_string(obs_sensor2novatel_tf2_frame_id, "imu",
-              "sensor to novatel frame id");
-DEFINE_string(obs_novatel2world_tf2_frame_id, "world",
-              "novatel to world frame id");
-DEFINE_string(obs_novatel2world_tf2_child_frame_id, "imu",
-              "novatel to world child frame id");
+DEFINE_string(obs_sensor2vehicle_tf2_frame_id, "base_link",
+              "parent frame id for sensor extrinsics");
+DEFINE_string(obs_vehicle2world_tf2_frame_id, "map",
+              "global pose frame id");
+DEFINE_string(obs_vehicle2world_tf2_child_frame_id, "base_link",
+              "vehicle pose child frame id");
 DEFINE_double(obs_tf2_buff_size, 0.01, "query Cyber TF buffer size in second");
 DEFINE_double(obs_transform_cache_size, 1.0, "transform cache size in second");
 DEFINE_double(obs_max_local_pose_extrapolation_latency, 0.15,
@@ -139,60 +139,60 @@ bool TransformCache::QueryTransform(double timestamp,
 }
 
 void TransformWrapper::Init(
-    const std::string& sensor2novatel_tf2_child_frame_id) {
-  sensor2novatel_tf2_frame_id_ = FLAGS_obs_sensor2novatel_tf2_frame_id;
-  sensor2novatel_tf2_child_frame_id_ = sensor2novatel_tf2_child_frame_id;
-  novatel2world_tf2_frame_id_ = FLAGS_obs_novatel2world_tf2_frame_id;
-  novatel2world_tf2_child_frame_id_ =
-      FLAGS_obs_novatel2world_tf2_child_frame_id;
+    const std::string& sensor2vehicle_tf2_child_frame_id) {
+  sensor2vehicle_tf2_frame_id_ = FLAGS_obs_sensor2vehicle_tf2_frame_id;
+  sensor2vehicle_tf2_child_frame_id_ = sensor2vehicle_tf2_child_frame_id;
+  vehicle2world_tf2_frame_id_ = FLAGS_obs_vehicle2world_tf2_frame_id;
+  vehicle2world_tf2_child_frame_id_ =
+      FLAGS_obs_vehicle2world_tf2_child_frame_id;
   transform_cache_.SetCacheDuration(FLAGS_obs_transform_cache_size);
   inited_ = true;
 }
 
 void TransformWrapper::Init(
-    const std::string& sensor2novatel_tf2_frame_id,
-    const std::string& sensor2novatel_tf2_child_frame_id,
-    const std::string& novatel2world_tf2_frame_id,
-    const std::string& novatel2world_tf2_child_frame_id) {
-  sensor2novatel_tf2_frame_id_ = sensor2novatel_tf2_frame_id;
-  sensor2novatel_tf2_child_frame_id_ = sensor2novatel_tf2_child_frame_id;
-  novatel2world_tf2_frame_id_ = novatel2world_tf2_frame_id;
-  novatel2world_tf2_child_frame_id_ = novatel2world_tf2_child_frame_id;
+    const std::string& sensor2vehicle_tf2_frame_id,
+    const std::string& sensor2vehicle_tf2_child_frame_id,
+    const std::string& vehicle2world_tf2_frame_id,
+    const std::string& vehicle2world_tf2_child_frame_id) {
+  sensor2vehicle_tf2_frame_id_ = sensor2vehicle_tf2_frame_id;
+  sensor2vehicle_tf2_child_frame_id_ = sensor2vehicle_tf2_child_frame_id;
+  vehicle2world_tf2_frame_id_ = vehicle2world_tf2_frame_id;
+  vehicle2world_tf2_child_frame_id_ = vehicle2world_tf2_child_frame_id;
   transform_cache_.SetCacheDuration(FLAGS_obs_transform_cache_size);
   inited_ = true;
 }
 
 bool TransformWrapper::GetSensor2worldTrans(
     double timestamp, Eigen::Affine3d* sensor2world_trans,
-    Eigen::Affine3d* novatel2world_trans) {
+    Eigen::Affine3d* vehicle2world_trans) {
   if (!inited_) {
     AERROR << "TransformWrapper not Initialized,"
            << " unable to call GetSensor2worldTrans.";
     return false;
   }
 
-  if (sensor2novatel_extrinsics_ == nullptr) {
-    StampedTransform trans_sensor2novatel;
-    if (!QueryTrans(timestamp, &trans_sensor2novatel,
-                    sensor2novatel_tf2_frame_id_,
-                    sensor2novatel_tf2_child_frame_id_)) {
+  if (sensor2vehicle_extrinsics_ == nullptr) {
+    StampedTransform trans_sensor2vehicle;
+    if (!QueryTrans(timestamp, &trans_sensor2vehicle,
+                    sensor2vehicle_tf2_frame_id_,
+                    sensor2vehicle_tf2_child_frame_id_)) {
       return false;
     }
-    sensor2novatel_extrinsics_.reset(new Eigen::Affine3d);
-    *sensor2novatel_extrinsics_ =
-        trans_sensor2novatel.translation * trans_sensor2novatel.rotation;
-    AINFO << "Get sensor2novatel extrinsics successfully.";
+    sensor2vehicle_extrinsics_.reset(new Eigen::Affine3d);
+    *sensor2vehicle_extrinsics_ =
+        trans_sensor2vehicle.translation * trans_sensor2vehicle.rotation;
+    AINFO << "Get sensor-to-body extrinsics successfully.";
   }
 
-  StampedTransform trans_novatel2world;
-  trans_novatel2world.timestamp = timestamp;
-  Eigen::Affine3d novatel2world;
+  StampedTransform trans_vehicle2world;
+  trans_vehicle2world.timestamp = timestamp;
+  Eigen::Affine3d vehicle2world;
 
-  if (!QueryTrans(timestamp, &trans_novatel2world, novatel2world_tf2_frame_id_,
-                  novatel2world_tf2_child_frame_id_)) {
+  if (!QueryTrans(timestamp, &trans_vehicle2world, vehicle2world_tf2_frame_id_,
+                  vehicle2world_tf2_child_frame_id_)) {
     if (FLAGS_obs_enable_local_pose_extrapolation) {
       if (!transform_cache_.QueryTransform(
-              timestamp, &trans_novatel2world,
+              timestamp, &trans_vehicle2world,
               FLAGS_obs_max_local_pose_extrapolation_latency)) {
         return false;
       }
@@ -200,14 +200,14 @@ bool TransformWrapper::GetSensor2worldTrans(
       return false;
     }
   } else if (FLAGS_obs_enable_local_pose_extrapolation) {
-    transform_cache_.AddTransform(trans_novatel2world);
+    transform_cache_.AddTransform(trans_vehicle2world);
   }
 
-  novatel2world =
-      trans_novatel2world.translation * trans_novatel2world.rotation;
-  *sensor2world_trans = novatel2world * (*sensor2novatel_extrinsics_);
-  if (novatel2world_trans != nullptr) {
-    *novatel2world_trans = novatel2world;
+  vehicle2world =
+      trans_vehicle2world.translation * trans_vehicle2world.rotation;
+  *sensor2world_trans = vehicle2world * (*sensor2vehicle_extrinsics_);
+  if (vehicle2world_trans != nullptr) {
+    *vehicle2world_trans = vehicle2world;
   }
   AINFO << "Get pose timestamp: " << timestamp << ", pose: \n"
         << (*sensor2world_trans).matrix();
@@ -215,11 +215,11 @@ bool TransformWrapper::GetSensor2worldTrans(
 }
 
 bool TransformWrapper::GetExtrinsics(Eigen::Affine3d* trans) {
-  if (!inited_ || trans == nullptr || sensor2novatel_extrinsics_ == nullptr) {
+  if (!inited_ || trans == nullptr || sensor2vehicle_extrinsics_ == nullptr) {
     AERROR << "TransformWrapper get extrinsics failed";
     return false;
   }
-  *trans = *sensor2novatel_extrinsics_;
+  *trans = *sensor2vehicle_extrinsics_;
   return true;
 }
 
@@ -249,20 +249,23 @@ bool TransformWrapper::QueryTrans(double timestamp, StampedTransform* trans,
                                   const std::string& child_frame_id) {
   cyber::Time query_time(timestamp);
   std::string err_string;
-  if (!tf2_buffer_->canTransform(frame_id, child_frame_id, query_time,
-                                 static_cast<float>(FLAGS_obs_tf2_buff_size),
-                                 &err_string)) {
+  if (!transform_query_.CanTransform(
+          frame_id, child_frame_id, query_time,
+          static_cast<float>(FLAGS_obs_tf2_buff_size), &err_string)) {
     apollo::transform::TransformStamped latest_transform;
     double latest_buffer_time;
     if (!FLAGS_hardware_trigger) {
-      try {
-        latest_transform = tf2_buffer_->lookupTransform(
-            frame_id, child_frame_id, apollo::cyber::Time(0));
-        latest_buffer_time = latest_transform.header().timestamp_sec();
-      } catch (tf2::TransformException& ex) {
-        AERROR << ex.what();
+      std::string lookup_error;
+      if (!transform_query_.LookupTransform(frame_id, child_frame_id,
+                                            apollo::cyber::Time(0),
+                                            &latest_transform,
+                                            static_cast<float>(
+                                                FLAGS_obs_tf2_buff_size),
+                                            &lookup_error)) {
+        AERROR << lookup_error;
         return false;
       }
+      latest_buffer_time = latest_transform.header().timestamp_sec();
     }
     // In simulation mode, use the latest transform information if query failed.
     if (!cyber::common::GlobalData::Instance()->IsRealityMode()) {
@@ -282,23 +285,23 @@ bool TransformWrapper::QueryTrans(double timestamp, StampedTransform* trans,
   }
 
   apollo::transform::TransformStamped stamped_transform;
-  try {
-    stamped_transform =
-        tf2_buffer_->lookupTransform(frame_id, child_frame_id, query_time);
-
-    trans->translation =
-        Eigen::Translation3d(stamped_transform.transform().translation().x(),
-                             stamped_transform.transform().translation().y(),
-                             stamped_transform.transform().translation().z());
-    trans->rotation =
-        Eigen::Quaterniond(stamped_transform.transform().rotation().qw(),
-                           stamped_transform.transform().rotation().qx(),
-                           stamped_transform.transform().rotation().qy(),
-                           stamped_transform.transform().rotation().qz());
-  } catch (tf2::TransformException& ex) {
-    AERROR << ex.what();
+  std::string lookup_error;
+  if (!transform_query_.LookupTransform(
+          frame_id, child_frame_id, query_time, &stamped_transform,
+          static_cast<float>(FLAGS_obs_tf2_buff_size), &lookup_error)) {
+    AERROR << lookup_error;
     return false;
   }
+
+  trans->translation =
+      Eigen::Translation3d(stamped_transform.transform().translation().x(),
+                           stamped_transform.transform().translation().y(),
+                           stamped_transform.transform().translation().z());
+  trans->rotation =
+      Eigen::Quaterniond(stamped_transform.transform().rotation().qw(),
+                         stamped_transform.transform().rotation().qx(),
+                         stamped_transform.transform().rotation().qy(),
+                         stamped_transform.transform().rotation().qz());
   return true;
 }
 

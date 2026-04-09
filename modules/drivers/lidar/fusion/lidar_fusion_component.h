@@ -27,7 +27,7 @@
 #include "cyber/cyber.h"
 #include "cyber/node/reader.h"
 #include "cyber/node/writer.h"
-#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
 
 namespace apollo {
 namespace drivers {
@@ -81,7 +81,7 @@ class LidarFusionComponent
               int* target_size);
 
   LidarFusionConfig config_;
-  apollo::transform::Buffer* tf2_buffer_ptr_ = nullptr;
+    apollo::transform::TransformQuery transform_query_;
   std::shared_ptr<apollo::cyber::Writer<apollo::drivers::PointCloud>> writer_;
   std::vector<
       std::shared_ptr<apollo::cyber::Reader<apollo::drivers::PointCloud>>>

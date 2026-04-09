@@ -30,7 +30,7 @@
 #include "modules/drivers/lidar/proto/velodyne_config.pb.h"
 #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
 
-#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
 
 namespace apollo {
 namespace drivers {
@@ -72,7 +72,7 @@ class Compensator {
 
   bool IsValid(const Eigen::Vector3d& point);
 
-  transform::Buffer* tf2_buffer_ptr_ = transform::Buffer::Instance();
+  transform::TransformQuery transform_query_;
   CompensatorConfig config_;
 };
 

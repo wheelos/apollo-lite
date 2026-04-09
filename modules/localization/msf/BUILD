@@ -35,6 +35,7 @@ cc_library(
         "//modules/common_msgs/sensor_msgs:heading_cc_proto",
         "//modules/common_msgs/sensor_msgs:imu_cc_proto",
         "//modules/localization/common:localization_gflags",
+        "//modules/localization/common:rigid_transform_helper",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/local_integ",
         "//modules/localization/msf/local_pyramid_map/base_map",
