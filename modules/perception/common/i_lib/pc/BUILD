@@ -8,6 +8,9 @@ cc_library(
     name = "i_ground",
     srcs = ["i_ground.cc"],
     hdrs = ["i_ground.h"],
+    copts = if_x86_64([
+        "-msse4.1",
+    ]),
     deps = [
         ":i_struct_s",
         ":i_util",

@@ -262,6 +262,13 @@ Status PathBoundsDecider::Process(
   // RemoveRedundantPathBoundaries(&candidate_path_boundaries);
 
   // Success
+  for (const auto& path_boundary : candidate_path_boundaries) {
+    if (path_boundary.boundary().size() < 2) {
+      AERROR << "Path boundary size is less than 2, which is not allowed.";
+      return Status(ErrorCode::PLANNING_ERROR,
+                    "Path boundary size is less than 2.");
+    }
+  }
   reference_line_info->SetCandidatePathBoundaries(
       std::move(candidate_path_boundaries));
   ADEBUG << "Completed regular and fallback path boundaries generation.";

@@ -7,7 +7,7 @@ message LidarDetectionComponentConfig {
   optional string detector_name = 2;
   optional bool enable_hdmap = 3;
   optional double lidar_query_tf_offset = 4;
-  optional string lidar2novatel_tf2_child_frame_id = 5;
+  optional string lidar2vehicle_tf2_child_frame_id = 5;
   optional string output_channel_name = 6;
   optional string lidar_detection_conf_dir = 7
       [default = "/apollo/modules/perception/pipeline/config"];

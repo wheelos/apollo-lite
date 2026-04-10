@@ -44,6 +44,7 @@
 #include "modules/planning/common/speed/speed_data.h"
 #include "modules/planning/common/st_graph_data.h"
 #include "modules/planning/common/trajectory/discretized_trajectory.h"
+#include "modules/planning/reference_line/reference_line.h"
 
 namespace apollo {
 namespace planning {
@@ -259,8 +260,6 @@ class ReferenceLineInfo {
 
   void ExportVehicleSignal(common::VehicleSignal* vehicle_signal) const;
 
-  bool IsIrrelevantObstacle(const Obstacle& obstacle);
-
   void MakeDecision(DecisionResult* decision_result,
                     PlanningContext* planning_context) const;
 
@@ -272,8 +271,6 @@ class ReferenceLineInfo {
   void MakeEStopDecision(DecisionResult* decision_result) const;
 
   void SetObjectDecisions(ObjectDecisions* object_decisions) const;
-
-  bool AddObstacleHelper(const std::shared_ptr<Obstacle>& obstacle);
 
   bool GetFirstOverlap(const std::vector<hdmap::PathOverlap>& path_overlaps,
                        hdmap::PathOverlap* path_overlap);

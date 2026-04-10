@@ -115,8 +115,8 @@ bool LidarObstacleDetection::Process(DataFrame* data_frame) {
 LidarProcessResult LidarObstacleDetection::Process(
     const LidarObstacleDetectionOptions& options, LidarFrame* frame) {
   PointCloudPreprocessorOptions preprocessor_options;
-  preprocessor_options.sensor2novatel_extrinsics =
-      options.sensor2novatel_extrinsics;
+  preprocessor_options.sensor2vehicle_extrinsics =
+      options.sensor2vehicle_extrinsics;
   if (cloud_preprocessor_->Preprocess(preprocessor_options, frame)) {
     return ProcessCommon(options, frame);
   }
@@ -134,8 +134,8 @@ LidarProcessResult LidarObstacleDetection::Process(
 
   PERF_BLOCK_START();
   PointCloudPreprocessorOptions preprocessor_options;
-  preprocessor_options.sensor2novatel_extrinsics =
-      options.sensor2novatel_extrinsics;
+  preprocessor_options.sensor2vehicle_extrinsics =
+      options.sensor2vehicle_extrinsics;
   PERF_BLOCK_END_WITH_INDICATOR(sensor_name, "preprocess");
   if (cloud_preprocessor_->Preprocess(preprocessor_options, message, frame)) {
     return ProcessCommon(options, frame);

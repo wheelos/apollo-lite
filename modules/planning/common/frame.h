@@ -173,6 +173,9 @@ class Frame {
     return pad_msg_driving_action_;
   }
 
+  void ReadPadMsgDrivingAction();
+  void ResetPadMsgDrivingAction();
+
  private:
   common::Status InitFrameData(
       const common::VehicleStateProvider *vehicle_state_provider,
@@ -198,9 +201,6 @@ class Frame {
   void AddObstacle(const Obstacle &obstacle);
 
   void ReadTrafficLights();
-
-  void ReadPadMsgDrivingAction();
-  void ResetPadMsgDrivingAction();
 
   /**
    * @brief Read center park position

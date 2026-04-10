@@ -53,20 +53,20 @@
 ###########################################################################
 # Flags from transform_wrapper
 
-# sensor to novatel frame id.
+# sensor to vehicle reference frame id.
 # type: string
 # default:
---obs_sensor2novatel_tf2_frame_id=novatel
+--obs_sensor2vehicle_tf2_frame_id=base_link
 
-# novatel to world frame id.
+# vehicle pose parent frame id.
 # type: string
 # default:
---obs_novatel2world_tf2_frame_id=world
+--obs_vehicle2world_tf2_frame_id=map
 
-# novatel to world child frame id.
+# vehicle pose child frame id.
 # type: string
 # default:
---obs_novatel2world_tf2_child_frame_id=novatel
+--obs_vehicle2world_tf2_child_frame_id=base_link
 
 # query Cyber TF buffer size in second.
 # type: double

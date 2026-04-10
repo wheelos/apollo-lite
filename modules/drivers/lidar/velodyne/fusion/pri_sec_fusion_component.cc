@@ -30,7 +30,6 @@ bool PriSecFusionComponent::Init() {
     AWARN << "Load config failed, config file" << ConfigFilePath();
     return false;
   }
-  buffer_ptr_ = apollo::transform::Buffer::Instance();
 
   fusion_writer_ = node_->CreateWriter<PointCloud>(conf_.fusion_channel());
 
@@ -101,29 +100,14 @@ bool PriSecFusionComponent::QueryPoseAffine(const std::string& target_frame_id,
                                             const std::string& source_frame_id,
                                             Eigen::Affine3d* pose) {
   std::string err_string;
-  if (!buffer_ptr_->canTransform(target_frame_id, source_frame_id,
-                                 cyber::Time(0), 0.02f, &err_string)) {
+  if (!transform_query_.LookupTransformToAffine(
+          target_frame_id, source_frame_id, cyber::Time(0), pose, 0.02f,
+          &err_string)) {
     AERROR << "Can not find transform. "
            << "target_id:" << target_frame_id << " frame_id:" << source_frame_id
            << " Error info: " << err_string;
     return false;
   }
-  apollo::transform::TransformStamped stamped_transform;
-  try {
-    stamped_transform = buffer_ptr_->lookupTransform(
-        target_frame_id, source_frame_id, cyber::Time(0));
-  } catch (tf2::TransformException& ex) {
-    AERROR << ex.what();
-    return false;
-  }
-  *pose =
-      Eigen::Translation3d(stamped_transform.transform().translation().x(),
-                           stamped_transform.transform().translation().y(),
-                           stamped_transform.transform().translation().z()) *
-      Eigen::Quaterniond(stamped_transform.transform().rotation().qw(),
-                         stamped_transform.transform().rotation().qx(),
-                         stamped_transform.transform().rotation().qy(),
-                         stamped_transform.transform().rotation().qz());
   return true;
 }
 

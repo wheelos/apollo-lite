@@ -29,3 +29,13 @@ cc_library(
 )
 
 cpplint()
+
+cc_test(
+    name = "graph_segmentation_test",
+    size = "small",
+    srcs = ["graph_segmentation_test.cc"],
+    deps = [
+        ":graph_segmentation",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

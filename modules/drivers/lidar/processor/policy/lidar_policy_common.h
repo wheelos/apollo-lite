@@ -24,7 +24,8 @@ bool ResolvePointTimestampBounds(const PointCloud& cloud, double* min_sec,
 
 bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
                             bool use_gpu_timestamp_range, int gpu_device_id,
-                            std::vector<double>* sample_times);
+                            std::vector<double>* sample_times,
+                            bool* used_measurement_time_fallback = nullptr);
 
 double ResolvePointTimestampSec(const PointXYZIT& point,
                                 double fallback_measurement_time);
@@ -40,7 +41,7 @@ bool InterpolateAffinePose(double point_time,
 bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
                           const std::string& target_frame,
                           const std::string& source_frame,
-                          const cyber::Time& query_time,
+                          const cyber::Time& query_time, float timeout_sec,
                           Eigen::Affine3d* transform);
 
 size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
@@ -48,8 +49,8 @@ size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
 
 bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
                           const std::vector<double>& sample_times,
-                          const std::vector<Eigen::Affine3d>& world_from_sensor,
-                          const Eigen::Affine3d& world2base_ref,
+                          const std::vector<Eigen::Affine3d>& map_from_sensor,
+                          const Eigen::Affine3d& map2base_ref,
                           PointXYZIT* output_point);
 
 PointXYZIT* GetHostPoints(PointCloudBuffer* buffer);

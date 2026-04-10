@@ -46,6 +46,8 @@ class EmergencyPullOverScenario : public Scenario {
 
   void Init() override;
 
+  ScenarioGrade Grade() const override { return ScenarioGrade::CRITICAL; }
+
   std::unique_ptr<Stage> CreateStage(
       const ScenarioConfig::StageConfig& stage_config,
       const std::shared_ptr<DependencyInjector>& injector);

@@ -84,6 +84,30 @@ bool WebSocketHandler::BroadcastData(const std::string &data, bool skippable) {
   return all_success;
 }
 
+bool WebSocketHandler::BroadcastBinaryData(const std::string &data,
+                                           bool skippable) {
+  std::vector<Connection *> connections_to_send;
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (connections_.empty()) {
+      return true;
+    }
+    for (auto &kv : connections_) {
+      Connection *conn = kv.first;
+      connections_to_send.push_back(conn);
+    }
+  }
+
+  bool all_success = true;
+  for (Connection *conn : connections_to_send) {
+    if (!SendBinaryData(conn, data, skippable)) {
+      all_success = false;
+    }
+  }
+
+  return all_success;
+}
+
 bool WebSocketHandler::SendBinaryData(Connection *conn, const std::string &data,
                                       bool skippable) {
   return SendData(conn, data, skippable, MG_WEBSOCKET_OPCODE_BINARY);

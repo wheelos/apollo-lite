@@ -15,7 +15,7 @@ message LidarUnifiedComponentConfig {
   // Core channel / frame IDs
   optional string output_channel = 1;
   optional string base_link_frame_id = 2;
-  optional string world_frame_id = 3;
+  optional string map_frame_id = 3;
 
   // Buffer / capacity
   optional uint32 sensor_buffer_size = 4 [default = 8];

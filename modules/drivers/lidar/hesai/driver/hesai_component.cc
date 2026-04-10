@@ -118,9 +118,12 @@ void HesaiComponent::SendPointCloud(
   if (point_size > 0) {
     const double pcl_timestamp = msg.points[point_size - 1].timestamp;
     cloud_message->set_measurement_time(pcl_timestamp);
+    cloud_message->mutable_header()->set_lidar_timestamp(
+        GetNanosecondTimestampFromSecondTimestamp(pcl_timestamp));
     timestamp_diff = pcl_timestamp - msg.points[0].timestamp;
   } else {
     cloud_message->set_measurement_time(0.0);
+    cloud_message->mutable_header()->set_lidar_timestamp(0);
   }
 
   for (int i = 0; i < point_size; ++i) {

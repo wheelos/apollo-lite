@@ -63,7 +63,6 @@ cc_library(
         "//modules/common_msgs/sensor_msgs:ins_cc_proto",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/gnss/util",
-        "//modules/transform:transform_broadcaster",
         "@eigen",
         "@proj",
     ],

@@ -27,13 +27,14 @@ PiecewiseJerkPathProblem::PiecewiseJerkPathProblem(
     const std::array<double, 3>& x_init)
     : PiecewiseJerkProblem(num_of_knots, delta_s, x_init) {}
 
-void PiecewiseJerkPathProblem::CalculateKernel(std::vector<c_float>* P_data,
-                                               std::vector<c_int>* P_indices,
-                                               std::vector<c_int>* P_indptr) {
+void PiecewiseJerkPathProblem::CalculateKernel(
+    std::vector<OSQPFloat>* P_data, std::vector<OSQPInt>* P_indices,
+    std::vector<OSQPInt>* P_indptr) {
   const int n = static_cast<int>(num_of_knots_);
   const int num_of_variables = 3 * n;
   const int num_of_nonzeros = num_of_variables + (n - 1);
-  std::vector<std::vector<std::pair<c_int, c_float>>> columns(num_of_variables);
+  std::vector<std::vector<std::pair<OSQPInt, OSQPFloat>>> columns(
+      num_of_variables);
   int value_index = 0;
 
   // x(i)^2 * (w_x + w_x_ref[i]), w_x_ref might be a uniform value for all x(i)
@@ -101,7 +102,7 @@ void PiecewiseJerkPathProblem::CalculateKernel(std::vector<c_float>* P_data,
   P_indptr->push_back(ind_p);
 }
 
-void PiecewiseJerkPathProblem::CalculateOffset(std::vector<c_float>* q) {
+void PiecewiseJerkPathProblem::CalculateOffset(std::vector<OSQPFloat>* q) {
   CHECK_NOTNULL(q);
   const int n = static_cast<int>(num_of_knots_);
   const int kNumParam = 3 * n;

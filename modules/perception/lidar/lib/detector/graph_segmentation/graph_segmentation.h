@@ -39,10 +39,10 @@ namespace apollo {
 namespace perception {
 namespace lidar {
 
-class GraphSegmentation : public BaseLidarDetector {
+class GraphClusterSegmenter : public BaseLidarDetector {
  public:
-  GraphSegmentation() = default;
-  ~GraphSegmentation() = default;
+  GraphClusterSegmenter() { name_ = "GraphClusterSegmenter"; }
+  ~GraphClusterSegmenter() = default;
   /**
    * @brief Init graph segmentation
    *
@@ -70,7 +70,7 @@ class GraphSegmentation : public BaseLidarDetector {
    *
    * @return std::string
    */
-  std::string Name() const override { return "GraphSegmentation"; }
+  std::string Name() const override { return name_; }
 
   /**
    * @brief Graph segment
@@ -141,6 +141,8 @@ class GraphSegmentation : public BaseLidarDetector {
   StageConfig stage_conf_;
   std::vector<std::shared_ptr<base::Object>> bg_objects_;
 };
+
+using GraphSegmentation = GraphClusterSegmenter;
 
 }  // namespace lidar
 }  // namespace perception

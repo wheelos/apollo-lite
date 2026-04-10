@@ -3,9 +3,12 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <iomanip>
 #include <limits>
+#include <sstream>
 
 #include "cyber/cyber.h"
+#include "modules/transform/transform_query.h"
 #ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
 #include "modules/drivers/lidar/processor/policy/lidar_policy_cuda_kernels.h"
 #endif
@@ -13,6 +16,40 @@
 namespace apollo {
 namespace drivers {
 namespace lidar {
+
+namespace {
+
+constexpr double kDeskewTimestampFallbackThresholdSec = 1.0;
+
+void FillUniformMotionSampleTimes(double timestamp_sec, size_t bins,
+                                  std::vector<double>* sample_times) {
+  sample_times->assign(bins, timestamp_sec);
+}
+
+std::string FormatTimestampSummary(double timestamp_sec) {
+  std::ostringstream stream;
+  stream << std::fixed << std::setprecision(9) << timestamp_sec << "s";
+  if (timestamp_sec > 0.0) {
+    stream << " [" << cyber::Time(timestamp_sec).ToString() << "]";
+  }
+  return stream.str();
+}
+
+bool ShouldFallbackToMeasurementTime(double measurement_time_sec,
+                                     double point_min_time_sec,
+                                     double point_max_time_sec) {
+  if (!std::isfinite(measurement_time_sec) || measurement_time_sec <= 0.0 ||
+      !std::isfinite(point_min_time_sec) || !std::isfinite(point_max_time_sec)) {
+    return false;
+  }
+
+  return std::fabs(point_min_time_sec - measurement_time_sec) >
+                 kDeskewTimestampFallbackThresholdSec ||
+         std::fabs(point_max_time_sec - measurement_time_sec) >
+                 kDeskewTimestampFallbackThresholdSec;
+}
+
+}  // namespace
 
 bool ResolvePointTimestampBounds(const PointCloud& cloud, double* min_sec,
                                  double* max_sec) {
@@ -39,9 +76,14 @@ bool ResolvePointTimestampBounds(const PointCloud& cloud, double* min_sec,
 
 bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
                             bool use_gpu_timestamp_range, int gpu_device_id,
-                            std::vector<double>* sample_times) {
+                            std::vector<double>* sample_times,
+                            bool* used_measurement_time_fallback) {
   if (bins == 0U || sample_times == nullptr) {
     return false;
+  }
+
+  if (used_measurement_time_fallback != nullptr) {
+    *used_measurement_time_fallback = false;
   }
 
   double local_min = 0.0;
@@ -76,6 +118,26 @@ bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
 #ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
   }
 #endif
+
+  if (ShouldFallbackToMeasurementTime(cloud.measurement_time(), local_min,
+                                      local_max)) {
+    if (used_measurement_time_fallback != nullptr) {
+      *used_measurement_time_fallback = true;
+    }
+    AINFO_EVERY(10)
+        << "Invalid per-point timestamps detected, fallback to measurement_time"
+        << " and disable intra-frame deskew. measurement="
+        << FormatTimestampSummary(cloud.measurement_time())
+        << ", point_range=[" << FormatTimestampSummary(local_min) << ", "
+        << FormatTimestampSummary(local_max) << "]"
+        << ", min_delta="
+        << std::showpos << std::fixed << std::setprecision(6)
+        << (local_min - cloud.measurement_time()) << "s"
+        << ", max_delta=" << (local_max - cloud.measurement_time()) << "s"
+        << std::noshowpos;
+    FillUniformMotionSampleTimes(cloud.measurement_time(), bins, sample_times);
+    return true;
+  }
 
   sample_times->assign(bins, local_min);
   for (size_t i = 0; i < bins; ++i) {
@@ -160,35 +222,22 @@ bool InterpolateAffinePose(double point_time,
 bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
                           const std::string& target_frame,
                           const std::string& source_frame,
-                          const cyber::Time& query_time,
+                          const cyber::Time& query_time, float timeout_sec,
                           Eigen::Affine3d* transform) {
   if (tf_buffer == nullptr || transform == nullptr) {
     return false;
   }
 
+  apollo::transform::TransformQuery query(tf_buffer);
   std::string err;
-  if (!tf_buffer->canTransform(target_frame, source_frame, query_time, 0.02f,
-                               &err)) {
+  if (!query.LookupTransformToAffine(target_frame, source_frame, query_time,
+                                     transform, timeout_sec, &err)) {
     AWARN << "Transform unavailable from " << source_frame << " to "
           << target_frame << ": " << err;
     return false;
   }
 
-  try {
-    const auto stamped =
-        tf_buffer->lookupTransform(target_frame, source_frame, query_time);
-    *transform = Eigen::Translation3d(stamped.transform().translation().x(),
-                                      stamped.transform().translation().y(),
-                                      stamped.transform().translation().z()) *
-                 Eigen::Quaterniond(stamped.transform().rotation().qw(),
-                                    stamped.transform().rotation().qx(),
-                                    stamped.transform().rotation().qy(),
-                                    stamped.transform().rotation().qz());
-    return true;
-  } catch (const std::exception& e) {
-    AWARN << "lookupTransform failed: " << e.what();
-    return false;
-  }
+  return true;
 }
 
 namespace {
@@ -275,10 +324,10 @@ size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
 
 bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
                           const std::vector<double>& sample_times,
-                          const std::vector<Eigen::Affine3d>& world_from_sensor,
-                          const Eigen::Affine3d& world2base_ref,
+                          const std::vector<Eigen::Affine3d>& map_from_sensor,
+                          const Eigen::Affine3d& map2base_ref,
                           PointXYZIT* output_point) {
-  if (output_point == nullptr || world_from_sensor.empty()) {
+  if (output_point == nullptr || map_from_sensor.empty()) {
     return false;
   }
 
@@ -293,15 +342,17 @@ bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
   }
 
   const double point_time = ResolvePointTimestampSec(point, measurement_time);
-  Eigen::Affine3d interpolated_world_from_sensor = Eigen::Affine3d::Identity();
-  if (!InterpolateAffinePose(point_time, sample_times, world_from_sensor,
-                             &interpolated_world_from_sensor)) {
+  Eigen::Affine3d interpolated_map_from_sensor = Eigen::Affine3d::Identity();
+  if (!InterpolateAffinePose(point_time, sample_times, map_from_sensor,
+                             &interpolated_map_from_sensor)) {
     return false;
   }
 
   const Eigen::Vector3d raw(point.x(), point.y(), point.z());
+  // Output points stay in the reference base_link frame. The fixed/map frame
+  // is only an anchor for composing sensor(t) -> base(ref) consistently.
   const Eigen::Vector3d target =
-      (world2base_ref * interpolated_world_from_sensor) * raw;
+      (map2base_ref * interpolated_map_from_sensor) * raw;
 
   output_point->set_x(static_cast<float>(target.x()));
   output_point->set_y(static_cast<float>(target.y()));

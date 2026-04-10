@@ -24,8 +24,6 @@
 
 #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
 
-#include "modules/transform/buffer.h"
-
 namespace apollo {
 namespace drivers {
 namespace lidar {
@@ -36,7 +34,6 @@ bool LidarFusionComponent::Init() {
     AERROR << "Load config file " << ConfigFilePath() << " failed.";
     return false;
   }
-  tf2_buffer_ptr_ = apollo::transform::Buffer::Instance();
 
   writer_ = node_->CreateWriter<apollo::drivers::PointCloud>(
       config_.output_channel());
@@ -289,30 +286,15 @@ bool LidarFusionComponent::QueryPoseAffine(const uint64_t& timestamp,
                                            Eigen::Affine3d* pose) {
   cyber::Time query_time(timestamp);
   std::string err_string;
-  if (!tf2_buffer_ptr_->canTransform(target_frame_id, source_frame_id,
-                                     query_time, 2e-2, &err_string)) {
+  if (!transform_query_.LookupTransformToAffine(
+          target_frame_id, source_frame_id, query_time, pose, 2e-2,
+          &err_string)) {
     AERROR << "Can not find transform, "
            << "target_frame_id: " << target_frame_id
            << ", source_frame_id: " << source_frame_id
            << ", Error info: " << err_string;
     return false;
   }
-  apollo::transform::TransformStamped stamped_transform;
-  try {
-    stamped_transform = tf2_buffer_ptr_->lookupTransform(
-        target_frame_id, source_frame_id, query_time);
-  } catch (tf2::TransformException& ex) {
-    AERROR << ex.what();
-    return false;
-  }
-  *pose =
-      Eigen::Translation3d(stamped_transform.transform().translation().x(),
-                           stamped_transform.transform().translation().y(),
-                           stamped_transform.transform().translation().z()) *
-      Eigen::Quaterniond(stamped_transform.transform().rotation().qw(),
-                         stamped_transform.transform().rotation().qx(),
-                         stamped_transform.transform().rotation().qy(),
-                         stamped_transform.transform().rotation().qz());
   return true;
 }
 

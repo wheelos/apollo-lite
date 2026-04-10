@@ -21,6 +21,8 @@
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
+#include "modules/localization/common/rigid_transform_helper.h"
+#include "modules/localization/common/localization_gflags.h"
 #include "modules/common/util/perf_util.h"
 
 namespace apollo {
@@ -34,8 +36,8 @@ LocalizationLidarProcess::LocalizationLidarProcess()
     : locator_(new LocalizationLidar()),
       pose_forecastor_(new PoseForcast()),
       map_path_(""),
-      lidar_extrinsic_file_(""),
       lidar_height_file_(""),
+    lidar_frame_id_(""),
       localization_mode_(2),
       yaw_align_mode_(2),
       lidar_filter_size_(17),
@@ -46,6 +48,7 @@ LocalizationLidarProcess::LocalizationLidarProcess()
       map_coverage_theshold_(0.8),
       lidar_extrinsic_(TransformD::Identity()),
       lidar_height_(),
+      has_lidar_extrinsic_(false),
       is_get_first_lidar_msg_(false),
       cur_predict_location_(TransformD::Identity()),
       pre_predict_location_(TransformD::Identity()),
@@ -75,8 +78,8 @@ LocalizationLidarProcess::~LocalizationLidarProcess() {
 Status LocalizationLidarProcess::Init(const LocalizationIntegParam& params) {
   // initial_success_ = false;
   map_path_ = params.map_path;
-  lidar_extrinsic_file_ = params.lidar_extrinsic_file;
   lidar_height_file_ = params.lidar_height_file;
+  lidar_frame_id_.clear();
   localization_mode_ = params.localization_mode;
   yaw_align_mode_ = params.lidar_yaw_align_mode;
   utm_zone_id_ = params.utm_zone_id;
@@ -98,6 +101,7 @@ Status LocalizationLidarProcess::Init(const LocalizationIntegParam& params) {
   out_map_count_ = 0;
 
   is_get_first_lidar_msg_ = false;
+  has_lidar_extrinsic_ = false;
   cur_predict_location_ = TransformD::Identity();
   pre_predict_location_ = TransformD::Identity();
   pre_location_ = TransformD::Identity();
@@ -107,16 +111,7 @@ Status LocalizationLidarProcess::Init(const LocalizationIntegParam& params) {
   local_lidar_status_ = LocalLidarStatus::MSF_LOCAL_LIDAR_UNDEFINED_STATUS;
   local_lidar_quality_ = LocalLidarQuality::MSF_LOCAL_LIDAR_BAD;
 
-  bool success = LoadLidarExtrinsic(lidar_extrinsic_file_, &lidar_extrinsic_);
-  if (!success) {
-    AERROR << "LocalizationLidar: Fail to access the lidar"
-              " extrinsic file: "
-           << lidar_extrinsic_file_;
-    return Status(common::LOCALIZATION_ERROR_LIDAR,
-                  "Fail to access the lidar extrinsic file");
-  }
-
-  success = LoadLidarHeight(lidar_height_file_, &lidar_height_);
+  bool success = LoadLidarHeight(lidar_height_file_, &lidar_height_);
   if (!success) {
     AWARN << "LocalizationLidar: Fail to load the lidar"
              " height file: "
@@ -127,7 +122,7 @@ Status LocalizationLidarProcess::Init(const LocalizationIntegParam& params) {
   if (!locator_->Init(map_path_, lidar_filter_size_, lidar_filter_size_,
                       utm_zone_id_)) {
     local_lidar_status_ = LocalLidarStatus::MSF_LOCAL_LIDAR_MAP_LOADING_FAILED;
-    return Status(common::LOCALIZATION_ERROR_LIDAR,
+    return Status(apollo::common::LOCALIZATION_ERROR_LIDAR,
                   "Fail to load localization map!");
   }
 
@@ -162,6 +157,12 @@ double LocalizationLidarProcess::ComputeDeltaYawLimit(
 }
 
 void LocalizationLidarProcess::PcdProcess(const LidarFrame& lidar_frame) {
+  if (!UpdateLidarExtrinsic(lidar_frame.frame_id)) {
+    AERROR << "PcdProcess: failed to resolve lidar rigid TF for frame "
+           << lidar_frame.frame_id;
+    return;
+  }
+
   if (!CheckState()) {
     AERROR << "PcdProcess: Receive an invalid lidar msg!";
     return;
@@ -261,6 +262,36 @@ int LocalizationLidarProcess::GetResult(LocalizationEstimate* lidar_local_msg) {
   msf_status->set_local_lidar_quality(local_lidar_quality_);
 
   return static_cast<int>(lidar_status_);
+}
+
+bool LocalizationLidarProcess::UpdateLidarExtrinsic(
+    const std::string& lidar_frame_id) {
+  if (lidar_frame_id.empty()) {
+    AERROR << "LocalizationLidar: incoming point cloud is missing frame_id.";
+    return false;
+  }
+  if (has_lidar_extrinsic_ && lidar_frame_id_ == lidar_frame_id) {
+    return true;
+  }
+
+  if (!apollo::localization::common::LookupStaticTransform(
+          lidar_frame_id, FLAGS_broadcast_tf_child_frame_id,
+          &lidar_extrinsic_)) {
+    return false;
+  }
+
+  const Eigen::Quaterniond extrinsic_quat(lidar_extrinsic_.linear());
+  AINFO << "LocalizationLidar rigid TF: "
+        << FLAGS_broadcast_tf_child_frame_id << " -> " << lidar_frame_id
+        << " trans: " << lidar_extrinsic_.translation().x() << ", "
+        << lidar_extrinsic_.translation().y() << ", "
+        << lidar_extrinsic_.translation().z() << " quat: "
+        << extrinsic_quat.x() << ", " << extrinsic_quat.y() << ", "
+        << extrinsic_quat.z() << ", " << extrinsic_quat.w();
+  locator_->SetVelodyneExtrinsic(lidar_extrinsic_);
+  lidar_frame_id_ = lidar_frame_id;
+  has_lidar_extrinsic_ = true;
+  return true;
 }
 
 void LocalizationLidarProcess::IntegPvaProcess(const InsPva& sins_pva_msg) {
@@ -406,33 +437,6 @@ void LocalizationLidarProcess::UpdateState(const int ret, const double time) {
     AERROR << "LocalizationLidar: The reflection map load failed!";
     lidar_status_ = LidarState::NOT_VALID;
   }
-}
-
-bool LocalizationLidarProcess::LoadLidarExtrinsic(const std::string& file_path,
-                                                  TransformD* lidar_extrinsic) {
-  CHECK_NOTNULL(lidar_extrinsic);
-
-  YAML::Node config = YAML::LoadFile(file_path);
-  if (config["transform"]) {
-    if (config["transform"]["translation"]) {
-      lidar_extrinsic->translation()(0) =
-          config["transform"]["translation"]["x"].as<double>();
-      lidar_extrinsic->translation()(1) =
-          config["transform"]["translation"]["y"].as<double>();
-      lidar_extrinsic->translation()(2) =
-          config["transform"]["translation"]["z"].as<double>();
-      if (config["transform"]["rotation"]) {
-        double qx = config["transform"]["rotation"]["x"].as<double>();
-        double qy = config["transform"]["rotation"]["y"].as<double>();
-        double qz = config["transform"]["rotation"]["z"].as<double>();
-        double qw = config["transform"]["rotation"]["w"].as<double>();
-        lidar_extrinsic->linear() =
-            Eigen::Quaterniond(qw, qx, qy, qz).toRotationMatrix();
-        return true;
-      }
-    }
-  }
-  return false;
 }
 
 bool LocalizationLidarProcess::LoadLidarHeight(const std::string& file_path,

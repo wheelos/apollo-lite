@@ -1,11 +1,12 @@
-#include "modules/transform/pose_cache.h"
-
 #include <map>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 
 #include <gtest/gtest.h>
+
+#include "modules/transform/buffer_interface.h"
+#include "modules/transform/timed_transform_resolver.h"
 
 namespace apollo {
 namespace transform {
@@ -89,38 +90,30 @@ class MockBuffer : public BufferInterface {
                         errstr);
   }
 
+  bool GetLatestStaticTransform(const std::string& target_frame,
+                                const std::string& source_frame,
+                                TransformStamped* transform) const override {
+    if (transform == nullptr) {
+      return false;
+    }
+    const auto it =
+        transforms_.lower_bound(Key(target_frame, source_frame, 0U));
+    if (it == transforms_.end() || std::get<0>(it->first) != target_frame ||
+        std::get<1>(it->first) != source_frame) {
+      return false;
+    }
+    *transform = it->second;
+    return true;
+  }
+
  private:
   std::map<Key, TransformStamped> transforms_;
 };
 
 }  // namespace
 
-TEST(PoseCacheTest, InterpolatesBetweenCachedSamples) {
-  PoseCache cache(2.0);
-  ASSERT_TRUE(cache.Insert(10.0, Eigen::Translation3d(0.0, 0.0, 0.0) *
-                                     Eigen::Quaterniond::Identity()));
-  ASSERT_TRUE(cache.Insert(12.0, Eigen::Translation3d(2.0, 0.0, 0.0) *
-                                     Eigen::Quaterniond::Identity()));
-
-  Eigen::Affine3d pose = Eigen::Affine3d::Identity();
-  PoseCacheStatus status = PoseCacheStatus::kEmpty;
-  ASSERT_TRUE(cache.Query(11.0, 0.2, &pose, &status));
-  EXPECT_EQ(status, PoseCacheStatus::kOk);
-  EXPECT_DOUBLE_EQ(pose.translation().x(), 1.0);
-}
-
-TEST(PoseCacheTest, RejectsQueriesBeyondExtrapolationWindow) {
-  PoseCache cache(2.0);
-  ASSERT_TRUE(cache.Insert(10.0, Eigen::Translation3d(1.0, 0.0, 0.0) *
-                                     Eigen::Quaterniond::Identity()));
-
-  Eigen::Affine3d pose = Eigen::Affine3d::Identity();
-  PoseCacheStatus status = PoseCacheStatus::kEmpty;
-  EXPECT_FALSE(cache.Query(10.5, 0.1, &pose, &status));
-  EXPECT_EQ(status, PoseCacheStatus::kTooOld);
-}
-
-TEST(TransformFrameCacheTest, PrefetchesAndServesCachedInterpolatedPoses) {
+TEST(TimedTransformResolverCacheTest,
+     PrefetchesAndServesCachedInterpolatedPoses) {
   MockBuffer buffer;
   buffer.AddTransform(
       "world", "lidar", 10.0,
@@ -129,18 +122,20 @@ TEST(TransformFrameCacheTest, PrefetchesAndServesCachedInterpolatedPoses) {
       "world", "lidar", 12.0,
       Eigen::Translation3d(2.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
-  TransformFrameCache cache(&buffer, "world", "lidar",
-                            PoseCacheOptions{2.0, 0.2, 0.01f});
-  ASSERT_TRUE(cache.PrefetchBatch({12.0, 10.0}));
+  TimedTransformResolver resolver(
+      &buffer, "world", "lidar",
+      TimedTransformResolverOptions{0.01f, 2.0, 0.2, 0.015, true, true});
+  ASSERT_TRUE(resolver.PrefetchBatch({12.0, 10.0}));
 
   Eigen::Affine3d pose = Eigen::Affine3d::Identity();
-  PoseCacheStatus status = PoseCacheStatus::kEmpty;
-  ASSERT_TRUE(cache.QueryCached(11.0, &pose, &status));
-  EXPECT_EQ(status, PoseCacheStatus::kOk);
+  TransformResolveStatus status = TransformResolveStatus::kEmpty;
+  ASSERT_TRUE(resolver.QueryCached(11.0, &pose, &status));
+  EXPECT_EQ(status, TransformResolveStatus::kOk);
   EXPECT_DOUBLE_EQ(pose.translation().x(), 1.0);
 }
 
-TEST(TransformFrameCacheTest, StoresOutOfOrderPrefetchesInSortedWindow) {
+TEST(TimedTransformResolverCacheTest,
+     StoresOutOfOrderPrefetchesInSortedWindow) {
   MockBuffer buffer;
   buffer.AddTransform(
       "world", "lidar", 10.0,
@@ -149,17 +144,18 @@ TEST(TransformFrameCacheTest, StoresOutOfOrderPrefetchesInSortedWindow) {
       "world", "lidar", 11.0,
       Eigen::Translation3d(1.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
-  TransformFrameCache cache(&buffer, "world", "lidar",
-                            PoseCacheOptions{2.0, 0.2, 0.01f});
-  ASSERT_TRUE(cache.Prefetch(11.0));
-  ASSERT_TRUE(cache.Prefetch(10.0));
+  TimedTransformResolver resolver(
+      &buffer, "world", "lidar",
+      TimedTransformResolverOptions{0.01f, 2.0, 0.2, 0.015, true, true});
+  ASSERT_TRUE(resolver.Prefetch(11.0));
+  ASSERT_TRUE(resolver.Prefetch(10.0));
 
   Eigen::Affine3d pose = Eigen::Affine3d::Identity();
-  ASSERT_TRUE(cache.QueryCached(10.5, &pose));
+  ASSERT_TRUE(resolver.QueryCached(10.5, &pose));
   EXPECT_DOUBLE_EQ(pose.translation().x(), 0.5);
 }
 
-TEST(TransformFrameCacheTest,
+TEST(TimedTransformResolverCacheTest,
      PrefetchBatchDoesNotTreatForwardExtrapolationAsCacheHit) {
   MockBuffer buffer;
   buffer.AddTransform(
@@ -169,28 +165,34 @@ TEST(TransformFrameCacheTest,
       "world", "lidar", 10.1,
       Eigen::Translation3d(1.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
-  TransformFrameCache cache(&buffer, "world", "lidar",
-                            PoseCacheOptions{2.0, 0.2, 0.01f});
-  ASSERT_TRUE(cache.PrefetchBatch({10.0, 10.1}));
+  TimedTransformResolver resolver(
+      &buffer, "world", "lidar",
+      TimedTransformResolverOptions{0.01f, 2.0, 0.2, 0.015, true, true});
+  ASSERT_TRUE(resolver.PrefetchBatch({10.0, 10.1}));
 
   Eigen::Affine3d pose = Eigen::Affine3d::Identity();
-  ASSERT_TRUE(cache.QueryCachedStrict(10.1, &pose));
+  ASSERT_TRUE(resolver.QueryCachedStrict(10.1, &pose));
   EXPECT_DOUBLE_EQ(pose.translation().x(), 1.0);
 }
 
-TEST(TransformFrameCacheTest, StrictQueryRejectsForwardExtrapolationOnlyCache) {
-  TransformFrameCache cache(nullptr, "world", "lidar",
-                            PoseCacheOptions{2.0, 0.2, 0.01f});
-  ASSERT_TRUE(cache.StorePose(
-      10.0, Eigen::Translation3d(1.0, 0.0, 0.0) *
-                Eigen::Quaterniond::Identity()));
+TEST(TimedTransformResolverCacheTest,
+     StrictQueryRejectsForwardExtrapolationOnlyCache) {
+  MockBuffer buffer;
+  buffer.AddTransform(
+      "world", "lidar", 10.0,
+      Eigen::Translation3d(1.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
+
+  TimedTransformResolver resolver(
+      &buffer, "world", "lidar",
+      TimedTransformResolverOptions{0.01f, 2.0, 0.2, 0.015, true, true});
+  ASSERT_TRUE(resolver.Prefetch(10.0));
 
   Eigen::Affine3d pose = Eigen::Affine3d::Identity();
-  PoseCacheStatus status = PoseCacheStatus::kEmpty;
-  EXPECT_FALSE(cache.QueryCachedStrict(10.1, &pose, &status));
-  EXPECT_EQ(status, PoseCacheStatus::kTooOld);
-  ASSERT_TRUE(cache.QueryCached(10.1, &pose, &status));
-  EXPECT_EQ(status, PoseCacheStatus::kOk);
+  TransformResolveStatus status = TransformResolveStatus::kEmpty;
+  EXPECT_FALSE(resolver.QueryCachedStrict(10.1, &pose, &status));
+  EXPECT_EQ(status, TransformResolveStatus::kTooOld);
+  ASSERT_TRUE(resolver.QueryCached(10.1, &pose, &status));
+  EXPECT_EQ(status, TransformResolveStatus::kOk);
   EXPECT_DOUBLE_EQ(pose.translation().x(), 1.0);
 }
 

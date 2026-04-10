@@ -42,7 +42,7 @@ class GpuLidarFusionPolicy : public LidarFusionPolicy {
             apollo::transform::BufferInterface* tf_buffer) override;
 
   bool FuseToBaseLink(
-      double reference_timestamp_sec, const Eigen::Affine3d& world2base_ref,
+      double reference_timestamp_sec, const Eigen::Affine3d& map2base_ref,
       const std::vector<SensorFrameContext>& frames,
       const std::vector<std::vector<Eigen::Affine3d>>& frames_motion_poses,
       const std::vector<std::vector<double>>& frames_motion_times,

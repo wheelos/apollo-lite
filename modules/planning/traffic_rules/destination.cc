@@ -109,8 +109,7 @@ int Destination::MakeDecisions(Frame* frame,
   // build stop decision
   ADEBUG << "BuildStopDecision: destination";
   const double dest_lane_s =
-      std::fmax(0.0, routing_end.s() - FLAGS_virtual_stop_wall_length -
-                         config_.destination().stop_distance());
+      std::fmax(0.0, routing_end.s() - FLAGS_virtual_stop_wall_length);
   util::BuildStopDecision(stop_wall_id, routing_end.id(), dest_lane_s,
                           config_.destination().stop_distance(),
                           StopReasonCode::STOP_REASON_DESTINATION,

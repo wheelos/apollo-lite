@@ -74,6 +74,22 @@ class MockBuffer : public apollo::transform::BufferInterface {
     return Exists(target_frame, source_frame, source_time, errstr);
   }
 
+  bool GetLatestStaticTransform(
+      const std::string& target_frame, const std::string& source_frame,
+      apollo::transform::TransformStamped* transform) const override {
+    if (transform == nullptr) {
+      return false;
+    }
+    const auto it =
+        transforms_.lower_bound(Key(target_frame, source_frame, 0U));
+    if (it == transforms_.end() || std::get<0>(it->first) != target_frame ||
+        std::get<1>(it->first) != source_frame) {
+      return false;
+    }
+    *transform = it->second;
+    return true;
+  }
+
  private:
   static apollo::transform::TransformStamped ToStamped(
       const std::string& target_frame, const std::string& source_frame,
@@ -141,7 +157,7 @@ std::shared_ptr<PointCloud> MakePointCloud(
 
 LidarUnifiedComponentConfig MakeConfig() {
   LidarUnifiedComponentConfig config;
-  config.set_world_frame_id("world");
+  config.set_map_frame_id("map");
   config.set_base_link_frame_id("base_link");
   config.set_motion_compensation_bins(3);
   config.set_voxel_size(1.0f);
@@ -208,13 +224,13 @@ TEST(LidarPolicyFactoryTest, CreatesPoliciesForKnownModes) {
 TEST(CpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
   MockBuffer tf_buffer;
   tf_buffer.AddTransform(
-      "world", "lidar", cyber::Time(10.0),
+    "map", "lidar", cyber::Time(10.0),
       Eigen::Translation3d(0.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
   tf_buffer.AddTransform(
-      "world", "lidar", cyber::Time(11.0),
+    "map", "lidar", cyber::Time(11.0),
       Eigen::Translation3d(1.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
   tf_buffer.AddTransform(
-      "world", "lidar", cyber::Time(12.0),
+    "map", "lidar", cyber::Time(12.0),
       Eigen::Translation3d(2.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
   CpuLidarDeskewPolicy policy;
@@ -241,13 +257,43 @@ TEST(CpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
   EXPECT_DOUBLE_EQ(poses[2].translation().x(), 2.0);
 }
 
+TEST(CpuLidarDeskewPolicyTest,
+     FallsBackToMeasurementTimeForInvalidPointTimestamps) {
+  MockBuffer tf_buffer;
+  tf_buffer.AddTransform(
+      "map", "lidar", cyber::Time(12.0),
+      Eigen::Translation3d(2.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
+
+  CpuLidarDeskewPolicy policy;
+  ASSERT_TRUE(policy.Init(MakeConfig(), &tf_buffer));
+
+  SensorFrameContext frame_context;
+  frame_context.sensor_id = "lidar";
+  frame_context.point_cloud = MakePointCloud(
+      "lidar", 12.0,
+      {{0.0f, 0.0f, 0.0f, 2085983134000164270ULL},
+       {0.0f, 0.0f, 0.0f, 2085983134000263691ULL}});
+
+  std::vector<double> sample_times;
+  std::vector<Eigen::Affine3d> poses;
+  ASSERT_TRUE(policy.ComputeMotionCompensationPoses(frame_context,
+                                                    &sample_times, &poses));
+  ASSERT_EQ(sample_times.size(), 3U);
+  ASSERT_EQ(poses.size(), 3U);
+  EXPECT_DOUBLE_EQ(sample_times[0], 12.0);
+  EXPECT_DOUBLE_EQ(sample_times[1], 12.0);
+  EXPECT_DOUBLE_EQ(sample_times[2], 12.0);
+  EXPECT_DOUBLE_EQ(poses[0].translation().x(), 2.0);
+  EXPECT_DOUBLE_EQ(poses[1].translation().x(), 2.0);
+  EXPECT_DOUBLE_EQ(poses[2].translation().x(), 2.0);
+}
+
 TEST(CpuLidarFusionPolicyTest, FusesPointsIntoReferenceBaseFrame) {
   MockBuffer tf_buffer;
   CpuLidarFusionPolicy policy;
   ASSERT_TRUE(policy.Init(MakeConfig(), &tf_buffer));
-  const Eigen::Affine3d world2base_ref =
-      (Eigen::Translation3d(2.0, 0.0, 0.0) *
-       Eigen::Quaterniond::Identity())
+  const Eigen::Affine3d map2base_ref =
+      (Eigen::Translation3d(2.0, 0.0, 0.0) * Eigen::Quaterniond::Identity())
           .inverse();
 
   SensorFrameContext frame_context;
@@ -272,8 +318,8 @@ TEST(CpuLidarFusionPolicyTest, FusesPointsIntoReferenceBaseFrame) {
       Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
   }};
 
-  ASSERT_TRUE(policy.FuseToBaseLink(12.0, world2base_ref, {frame_context},
-                                    poses, sample_times, &buffer));
+  ASSERT_TRUE(policy.FuseToBaseLink(12.0, map2base_ref, {frame_context}, poses,
+                                    sample_times, &buffer));
   ASSERT_EQ(buffer.valid_count, 2U);
   EXPECT_FLOAT_EQ(storage[0].x(), 4.0f);
   EXPECT_FLOAT_EQ(storage[1].x(), 6.0f);
@@ -283,13 +329,12 @@ TEST(CpuLidarFusionPolicyTest, InterpolatesIntermediatePoseBins) {
   MockBuffer tf_buffer;
   CpuLidarFusionPolicy policy;
   ASSERT_TRUE(policy.Init(MakeConfig(), &tf_buffer));
-  const Eigen::Affine3d world2base_ref = Eigen::Affine3d::Identity();
+  const Eigen::Affine3d map2base_ref = Eigen::Affine3d::Identity();
 
   SensorFrameContext frame_context;
   frame_context.sensor_id = "lidar";
   frame_context.point_cloud =
-      MakePointCloud("lidar", 11.0,
-                     {{0.0f, 0.0f, 0.0f, 11 * kSecondToNano}});
+      MakePointCloud("lidar", 11.0, {{0.0f, 0.0f, 0.0f, 11 * kSecondToNano}});
 
   std::vector<PointXYZIT> storage(4);
   PointCloudBuffer buffer;
@@ -306,8 +351,8 @@ TEST(CpuLidarFusionPolicyTest, InterpolatesIntermediatePoseBins) {
       Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
   }};
 
-  ASSERT_TRUE(policy.FuseToBaseLink(11.0, world2base_ref, {frame_context},
-                                    poses, sample_times, &buffer));
+  ASSERT_TRUE(policy.FuseToBaseLink(11.0, map2base_ref, {frame_context}, poses,
+                                    sample_times, &buffer));
   ASSERT_EQ(buffer.valid_count, 1U);
   EXPECT_FLOAT_EQ(storage[0].x(), 6.0f);
 }
@@ -344,7 +389,8 @@ TEST(CpuLidarFilterPolicyTest, AppliesEgoFilterBeforeVoxelDownsample) {
   EXPECT_FLOAT_EQ(storage[1].x(), 1.6f);
 }
 
-TEST(CpuLidarFilterPolicyTest, AggregatesDeterministicVoxelCentroidAndIntensity) {
+TEST(CpuLidarFilterPolicyTest,
+     AggregatesDeterministicVoxelCentroidAndIntensity) {
   CpuLidarFilterPolicy policy;
   auto config = MakeConfig();
   config.set_enable_ego_query_filter(false);
@@ -405,8 +451,7 @@ TEST(LidarUnifiedComponentTest, FindsNearestFrameFromOutOfOrderBuffer) {
   sensor_state->frames.push_back(make_buffered_frame(10.10));
 
   FrameHandle nearest_frame;
-  auto failure_reason =
-      LidarUnifiedComponent::FrameLookupFailureReason::kNone;
+  auto failure_reason = LidarUnifiedComponent::FrameLookupFailureReason::kNone;
   ASSERT_TRUE(component.FindNearestFrame(sensor_state, "lidar", 10.05, 100,
                                          &nearest_frame, &failure_reason));
   ASSERT_NE(nearest_frame.point_cloud, nullptr);
@@ -428,12 +473,12 @@ TEST(LidarUnifiedComponentTest, ReportsTimeDeltaExceededForNearestFrame) {
   sensor_state->frames.push_back(early_frame);
 
   FrameHandle nearest_frame;
-  auto failure_reason =
-      LidarUnifiedComponent::FrameLookupFailureReason::kNone;
+  auto failure_reason = LidarUnifiedComponent::FrameLookupFailureReason::kNone;
   EXPECT_FALSE(component.FindNearestFrame(sensor_state, "lidar", 10.05, 40,
                                           &nearest_frame, &failure_reason));
-  EXPECT_EQ(failure_reason,
-            LidarUnifiedComponent::FrameLookupFailureReason::kTimeDeltaExceeded);
+  EXPECT_EQ(
+      failure_reason,
+      LidarUnifiedComponent::FrameLookupFailureReason::kTimeDeltaExceeded);
 }
 
 TEST(LidarUnifiedComponentTest, AppliesFixedDelayDuringFrameLookup) {
@@ -452,8 +497,7 @@ TEST(LidarUnifiedComponentTest, AppliesFixedDelayDuringFrameLookup) {
   sensor_state->frames.push_back(aligned_frame);
 
   FrameHandle nearest_frame;
-  auto failure_reason =
-      LidarUnifiedComponent::FrameLookupFailureReason::kNone;
+  auto failure_reason = LidarUnifiedComponent::FrameLookupFailureReason::kNone;
   ASSERT_TRUE(component.FindNearestFrame(sensor_state, "lidar", 10.0, 40,
                                          &nearest_frame, &failure_reason));
   EXPECT_DOUBLE_EQ(nearest_frame.point_cloud->measurement_time(), 10.02);
@@ -519,10 +563,12 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesSkipsLowQualityAuxiliary) {
   component.config_.set_strict_auxiliary_sync(false);
   component.config_.set_max_ref_time_delta_ms(100);
   component.config_.set_auxiliary_min_overlap_quality_weight(0.2);
-  component.auxiliary_inputs_.push_back(LidarUnifiedComponent::SensorInput{"/aux"});
+  component.auxiliary_inputs_.push_back(
+      LidarUnifiedComponent::SensorInput{"/aux"});
   component.auxiliary_sensor_ids_by_topic_["/aux"] = "aux_lidar";
 
-  auto make_buffered_frame = [](const std::string& sensor_id, double timestamp_sec) {
+  auto make_buffered_frame = [](const std::string& sensor_id,
+                                double timestamp_sec) {
     auto frame = std::make_shared<BufferedFrame>();
     frame->point_cloud = MakePointCloud(sensor_id, timestamp_sec, {});
     frame->pose_prefetch_ok = true;
@@ -533,7 +579,8 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesSkipsLowQualityAuxiliary) {
   primary_state->frames.push_back(make_buffered_frame("primary", 10.0));
   component.sensor_states_["primary"] = primary_state;
 
-  auto auxiliary_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
+  auto auxiliary_state =
+      std::make_shared<LidarUnifiedComponent::SensorState>(4);
   auxiliary_state->overlap_quality_weight = 0.1;
   auxiliary_state->frames.push_back(make_buffered_frame("aux_lidar", 10.0));
   component.sensor_states_["aux_lidar"] = auxiliary_state;
@@ -541,7 +588,7 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesSkipsLowQualityAuxiliary) {
   std::vector<FrameHandle> frame_handles;
   LidarUnifiedComponent::FrameMetrics metrics;
   ASSERT_TRUE(component.CollectNearestFrames(10.0, "primary", &frame_handles,
-                                            &metrics));
+                                             &metrics));
   ASSERT_EQ(frame_handles.size(), 1U);
   EXPECT_TRUE(frame_handles.front().is_primary);
   EXPECT_EQ(metrics.missing_auxiliary_count, 1U);
@@ -558,15 +605,14 @@ TEST(LidarUnifiedComponentTest, EstimatesOverlapQualityWeight) {
   component.config_.set_overlap_region_max_z(1.0);
 
   BufferedFrame frame;
-  frame.point_cloud = MakePointCloud("lidar", 10.0,
-                                     {{0.0f, 0.0f, 0.0f, 10U},
-                                      {5.0f, 5.0f, 0.0f, 10U}});
+  frame.point_cloud = MakePointCloud(
+      "lidar", 10.0, {{0.0f, 0.0f, 0.0f, 10U}, {5.0f, 5.0f, 0.0f, 10U}});
   frame.motion_sample_times = {10.0};
   frame.motion_poses = {Eigen::Affine3d::Identity()};
   frame.pose_prefetch_ok = true;
 
-  const double overlap_weight =
-      component.EstimateOverlapQualityWeight(frame, Eigen::Affine3d::Identity());
+  const double overlap_weight = component.EstimateOverlapQualityWeight(
+      frame, Eigen::Affine3d::Identity());
   EXPECT_DOUBLE_EQ(overlap_weight, 0.5);
 }
 
@@ -605,7 +651,8 @@ TEST(GpuLidarFilterPolicyTest, AppliesGpuFilteringOrFailsWithoutBackend) {
 }
 
 #ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-TEST(GpuLidarFilterPolicyTest, AggregatesDeterministicVoxelCentroidAndIntensity) {
+TEST(GpuLidarFilterPolicyTest,
+     AggregatesDeterministicVoxelCentroidAndIntensity) {
   GpuLidarFilterPolicy policy;
   auto config = MakeConfig();
   config.set_enable_ego_query_filter(false);
@@ -648,9 +695,8 @@ TEST(GpuLidarFusionPolicyTest, FusesPointsIntoReferenceBaseFrame) {
   auto config = MakeConfig();
   config.set_gpu_device_id(0);
   ASSERT_TRUE(policy.Init(config, &tf_buffer));
-  const Eigen::Affine3d world2base_ref =
-      (Eigen::Translation3d(2.0, 0.0, 0.0) *
-       Eigen::Quaterniond::Identity())
+  const Eigen::Affine3d map2base_ref =
+      (Eigen::Translation3d(2.0, 0.0, 0.0) * Eigen::Quaterniond::Identity())
           .inverse();
 
   SensorFrameContext frame_context;
@@ -675,7 +721,7 @@ TEST(GpuLidarFusionPolicyTest, FusesPointsIntoReferenceBaseFrame) {
       Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
   }};
 
-  ASSERT_TRUE(policy.FuseToBaseLink(12.0, world2base_ref, {frame_context},
+  ASSERT_TRUE(policy.FuseToBaseLink(12.0, map2base_ref, {frame_context},
                                     poses, sample_times, &buffer));
   ASSERT_EQ(buffer.valid_count, 2U);
   std::vector<float> xs{storage[0].x(), storage[1].x()};
@@ -690,13 +736,12 @@ TEST(GpuLidarFusionPolicyTest, InterpolatesIntermediatePoseBins) {
   auto config = MakeConfig();
   config.set_gpu_device_id(0);
   ASSERT_TRUE(policy.Init(config, &tf_buffer));
-  const Eigen::Affine3d world2base_ref = Eigen::Affine3d::Identity();
+  const Eigen::Affine3d map2base_ref = Eigen::Affine3d::Identity();
 
   SensorFrameContext frame_context;
   frame_context.sensor_id = "lidar";
   frame_context.point_cloud =
-      MakePointCloud("lidar", 11.0,
-                     {{0.0f, 0.0f, 0.0f, 11 * kSecondToNano}});
+      MakePointCloud("lidar", 11.0, {{0.0f, 0.0f, 0.0f, 11 * kSecondToNano}});
 
   std::vector<PointXYZIT> storage(4);
   PointCloudBuffer buffer;
@@ -713,14 +758,15 @@ TEST(GpuLidarFusionPolicyTest, InterpolatesIntermediatePoseBins) {
       Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
   }};
 
-  ASSERT_TRUE(policy.FuseToBaseLink(11.0, world2base_ref, {frame_context},
+  ASSERT_TRUE(policy.FuseToBaseLink(11.0, map2base_ref, {frame_context},
                                     poses, sample_times, &buffer));
   ASSERT_EQ(buffer.valid_count, 1U);
   EXPECT_NEAR(storage[0].x(), 6.0f, 1e-4f);
 }
 
-TEST(GpuLidarFusionPolicyTest, PreservesRelativePrecisionWithLargeWorldOffsets) {
-  constexpr double kWorldOffset = 1e8;
+TEST(GpuLidarFusionPolicyTest,
+    PreservesRelativePrecisionWithLargeMapOffsets) {
+  constexpr double kMapOffset = 1e8;
 
   MockBuffer tf_buffer;
 
@@ -728,8 +774,8 @@ TEST(GpuLidarFusionPolicyTest, PreservesRelativePrecisionWithLargeWorldOffsets) 
   auto config = MakeConfig();
   config.set_gpu_device_id(0);
   ASSERT_TRUE(policy.Init(config, &tf_buffer));
-  const Eigen::Affine3d world2base_ref =
-      (Eigen::Translation3d(kWorldOffset + 2.0, 0.0, 0.0) *
+    const Eigen::Affine3d map2base_ref =
+      (Eigen::Translation3d(kMapOffset + 2.0, 0.0, 0.0) *
        Eigen::Quaterniond::Identity())
           .inverse();
 
@@ -751,13 +797,13 @@ TEST(GpuLidarFusionPolicyTest, PreservesRelativePrecisionWithLargeWorldOffsets) 
 
   const std::vector<std::vector<double>> sample_times{{10.0, 12.0}};
   const std::vector<std::vector<Eigen::Affine3d>> poses{{
-      Eigen::Translation3d(kWorldOffset + 5.0, 0.0, 0.0) *
+      Eigen::Translation3d(kMapOffset + 5.0, 0.0, 0.0) *
           Eigen::Quaterniond::Identity(),
-      Eigen::Translation3d(kWorldOffset + 7.0, 0.0, 0.0) *
+      Eigen::Translation3d(kMapOffset + 7.0, 0.0, 0.0) *
           Eigen::Quaterniond::Identity(),
   }};
 
-  ASSERT_TRUE(policy.FuseToBaseLink(12.0, world2base_ref, {frame_context},
+    ASSERT_TRUE(policy.FuseToBaseLink(12.0, map2base_ref, {frame_context},
                                     poses, sample_times, &buffer));
   ASSERT_EQ(buffer.valid_count, 2U);
   std::vector<float> xs{storage[0].x(), storage[1].x()};
@@ -769,13 +815,13 @@ TEST(GpuLidarFusionPolicyTest, PreservesRelativePrecisionWithLargeWorldOffsets) 
 TEST(GpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
   MockBuffer tf_buffer;
   tf_buffer.AddTransform(
-      "world", "lidar", cyber::Time(10.0),
+    "map", "lidar", cyber::Time(10.0),
       Eigen::Translation3d(0.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
   tf_buffer.AddTransform(
-      "world", "lidar", cyber::Time(11.0),
+    "map", "lidar", cyber::Time(11.0),
       Eigen::Translation3d(1.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
   tf_buffer.AddTransform(
-      "world", "lidar", cyber::Time(12.0),
+    "map", "lidar", cyber::Time(12.0),
       Eigen::Translation3d(2.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
   GpuLidarDeskewPolicy policy;

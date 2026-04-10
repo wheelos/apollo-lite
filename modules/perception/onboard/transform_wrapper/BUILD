@@ -14,7 +14,8 @@ cc_library(
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/common/sensor_manager",
-        "//modules/transform:buffer",
+        "//modules/transform:timed_transform_resolver",
+        "//modules/transform:transform_query",
         "@com_github_gflags_gflags//:gflags",
         "@eigen",
     ],

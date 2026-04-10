@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -15,6 +15,16 @@ cc_library(
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/pipeline:stage",
+    ],
+)
+
+cc_test(
+    name = "object_builder_test",
+    size = "small",
+    srcs = ["object_builder_test.cc"],
+    deps = [
+        ":object_builder",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

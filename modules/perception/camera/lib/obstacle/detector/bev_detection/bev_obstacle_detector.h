@@ -24,7 +24,6 @@
 #include <opencv2/core.hpp>
 
 #include "paddle/include/paddle_inference_api.h"
-#include "yaml-cpp/yaml.h"
 
 #include "modules/perception/pipeline/proto/stage/bev_obstacle_detection_config.pb.h"
 
@@ -52,6 +51,9 @@ class BEVObstacleDetector : public BaseObstacleDetector {
   bool Detect(const ObstacleDetectorOptions& options,
               CameraFrame* frame) override;
 
+    bool SetLidarToVehicleExtrinsics(
+            const Eigen::Matrix4d& lidar_to_vehicle) override;
+
   bool Process(DataFrame* data_frame) override;
 
   void Resize(const cv::Mat& img, int resized_h, int resized_w,
@@ -74,18 +76,14 @@ class BEVObstacleDetector : public BaseObstacleDetector {
 
   std::string Name() const override { return name_; }
 
- private:
-  bool LoadExtrinsics(const std::string& yaml_file,
-                      Eigen::Matrix4d* camera_extrinsic);
-
   void GetObjects(const std::vector<float>& detections,
                   const std::vector<int64_t>& labels,
                   const std::vector<float>& scores,
                   camera::CameraFrame* camera_frame);
 
   void FillBBox3d(const float* bbox, const Eigen::Affine3d& cam2world_pose,
-                  const Eigen::Matrix4d& cam2imu_matrix_rt,
-                  const Eigen::Matrix4d& lidar2imu_matrix_rt,
+                  const Eigen::Matrix4d& camera2lidar_matrix_rt,
+                  const Eigen::Matrix4d& lidar2vehicle_matrix_rt,
                   base::ObjectPtr obj);
 
   base::ObjectSubType GetObjectSubType(const int label);
@@ -143,7 +141,8 @@ class BEVObstacleDetector : public BaseObstacleDetector {
   std::vector<int> output_bbox_shape_{300, 9};
   std::vector<int> output_score_shape_{300};
   std::vector<int> output_label_shape_{300};
-  Eigen::Matrix4d lidar2imu_matrix_rt_;
+    Eigen::Matrix4d lidar2vehicle_matrix_rt_ = Eigen::Matrix4d::Identity();
+    bool has_lidar_to_vehicle_extrinsics_ = false;
 
   std::vector<float> mean_{103.530, 116.280, 123.675};
   std::vector<float> std_{57.375, 57.120, 58.395};

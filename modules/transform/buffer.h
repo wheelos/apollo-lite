@@ -52,9 +52,10 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
    * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
    * tf2::ExtrapolationException, tf2::InvalidArgumentException
    */
-  virtual TransformStamped lookupTransform(
+  TransformStamped lookupTransform(
       const std::string& target_frame, const std::string& source_frame,
-      const cyber::Time& time, const float timeout_second = 0.01f) const;
+      const cyber::Time& time,
+      const float timeout_second = 0.01f) const override;
 
   /** \brief Get the transform between two frames by frame ID assuming fixed
    *frame.
@@ -72,10 +73,11 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
    * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
    * tf2::ExtrapolationException, tf2::InvalidArgumentException
    */
-  virtual TransformStamped lookupTransform(
+  TransformStamped lookupTransform(
       const std::string& target_frame, const cyber::Time& target_time,
       const std::string& source_frame, const cyber::Time& source_time,
-      const std::string& fixed_frame, const float timeout_second = 0.01f) const;
+      const std::string& fixed_frame,
+      const float timeout_second = 0.01f) const override;
 
   /** \brief Test if a transform is possible
    * \param target_frame The frame into which to transform
@@ -86,11 +88,11 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
    * transform failed, if not nullptr
    * \return True if the transform is possible, false otherwise
    */
-  virtual bool canTransform(const std::string& target_frame,
-                            const std::string& source_frame,
-                            const cyber::Time& target_time,
-                            const float timeout_second = 0.01f,
-                            std::string* errstr = nullptr) const;
+    bool canTransform(const std::string& target_frame,
+                                        const std::string& source_frame,
+                                        const cyber::Time& target_time,
+                                        const float timeout_second = 0.01f,
+                                        std::string* errstr = nullptr) const override;
 
   /** \brief Test if a transform is possible
    * \param target_frame The frame into which to transform
@@ -104,17 +106,17 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
    * transform failed, if not nullptr
    * \return True if the transform is possible, false otherwise
    */
-  virtual bool canTransform(const std::string& target_frame,
-                            const cyber::Time& target_time,
-                            const std::string& source_frame,
-                            const cyber::Time& source_time,
-                            const std::string& fixed_frame,
-                            const float timeout_second = 0.01f,
-                            std::string* errstr = nullptr) const;
+    bool canTransform(const std::string& target_frame,
+                                        const cyber::Time& target_time,
+                                        const std::string& source_frame,
+                                        const cyber::Time& source_time,
+                                        const std::string& fixed_frame,
+                                        const float timeout_second = 0.01f,
+                                        std::string* errstr = nullptr) const override;
 
-  bool GetLatestStaticTF(const std::string& frame_id,
-                         const std::string& child_frame_id,
-                         TransformStamped* tf);
+    bool GetLatestStaticTransform(const std::string& frame_id,
+                                                                const std::string& child_frame_id,
+                                                                TransformStamped* tf) const override;
 
  private:
   void SubscriptionCallback(

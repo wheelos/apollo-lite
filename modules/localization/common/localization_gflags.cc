@@ -51,10 +51,9 @@ DEFINE_bool(enable_gps_timestamp, false,
 
 // msf parame
 DEFINE_string(local_map_name, "local_map", "The path of localization map.");
-DEFINE_string(lidar_extrinsics_file,
-              "/apollo/modules/localization/msf/params/velodyne_params/"
-              "velodyne64_novatel_extrinsics_example.yaml",
-              "Lidar extrinsics parameter file.");
+DEFINE_string(lidar_extrinsics_file, "",
+              "Deprecated legacy lidar extrinsics yaml used only by local "
+              "tools.");
 DEFINE_string(lidar_height_file,
               "/apollo/modules/localization/msf/params/velodyne_params/"
               "velodyne64_height.yaml",
@@ -117,17 +116,19 @@ DEFINE_bool(enable_lidar_localization, true,
 
 DEFINE_string(lidar_topic, "/apollo/sensor/lidar128/compensator/PointCloud2",
               "lidar pointcloud topic");
-DEFINE_string(broadcast_tf_frame_id, "world", "world frame id in tf");
-DEFINE_string(broadcast_tf_child_frame_id, "localization",
-              "localization frame id in tf");
+DEFINE_string(broadcast_tf_frame_id, "map", "global frame id in tf");
+DEFINE_string(broadcast_tf_child_frame_id, "base_link",
+              "vehicle pose frame id in tf");
+DEFINE_string(localization_tf_imu_frame_id, "imu_link",
+              "imu frame id in the rigid TF tree");
 DEFINE_bool(broadcast_tf_use_system_clock, false, "tf use system clock");
 // imu vehicle extrinsic
-DEFINE_string(vehicle_imu_file,
-              "/apollo/modules/localization/msf/params"
-              "/vehicle_params/vehicle_imu_extrinsics.yaml",
-              "Vehicle coord to imu coord.");
-DEFINE_bool(if_vehicle_imu_from_file, true,
-            "Whether load vehicle imu extrinsic from yaml file");
+DEFINE_string(vehicle_imu_file, "",
+              "Deprecated legacy vehicle-to-imu extrinsics yaml used only by "
+              "local tools.");
+DEFINE_bool(if_vehicle_imu_from_file, false,
+            "Deprecated legacy switch. MSF now reads rigid vehicle-to-imu "
+            "extrinsics from TF.");
 DEFINE_double(imu_vehicle_qx, 0.0, "Vehicle imu quaternion qx");
 DEFINE_double(imu_vehicle_qy, 0.0, "Vehicle imu quaternion qy");
 DEFINE_double(imu_vehicle_qz, 0.0, "Vehicle imu quaternion qz");

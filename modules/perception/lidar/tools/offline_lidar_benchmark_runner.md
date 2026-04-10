@@ -47,6 +47,8 @@
 
 注意：脚本默认直接执行 `bazel-bin/...` 下的二进制，不会自动 build；请确保二进制已在你的环境里构建好，或用 `--offline_bin/--benchmark_bin` 指定它们的位置。
 
+补充：脚本现在默认会给离线推理二进制追加 `--flagfile=modules/common/data/global_flagfile.txt`。如果你开启了 `--use_hdmap=true`，高精地图目录默认就从这个 flagfile 里的 `--map_dir=...` 读取；也可以用 `--flagfile=/your/flagfile.txt` 覆盖。
+
 ### 2.1 只生成 result（不评估）
 
 ```bash
@@ -158,10 +160,13 @@ http://127.0.0.1:8765
 2) tracking config 仍然必填
 `offline_lidar_obstacle_perception` 在 `setup()` 里一定会初始化 tracking pipeline，所以即使 `--enable_tracking=false` 也需要给 `--lidar_tracking_config_file` 一个有效路径。
 
-3) 运行目录/配置管理器
+3) 依赖 HDMap/ROI 的 pipeline 需要显式提供 `--pose_dir`
+如果离线运行时没有传 `--pose_dir`，`offline_lidar_obstacle_perception` 不会为 `LidarFrame` 填充 `lidar2world_pose`，它会保持默认单位阵。这样即使 detection pipeline 里启用了 `HDMAP_CONTEXT_PROVIDER` 和 `POINTCLOUD_ROI_FILTER`，也很容易在日志里看到 `No polygons in ROI`，因为查询 ROI 时使用的是默认原点姿态而不是真实车辆位姿。对包含地图上下文的 pipeline，建议总是提供与 `*.pcd` 同名的 `*.pose` 或 `*.pcd.pose` 文件。
+
+4) 运行目录/配置管理器
 离线工具内部会设置 `FLAGS_config_manager_path="./conf"`，因此需要你的运行环境有对应的 `conf/`（通常 Apollo 运行环境有）。如果你的环境没有，请先补齐或调整运行方式。
 
-4) 网页查看器不是原始全量点云直出
+5) 网页查看器不是原始全量点云直出
 为了保证浏览器可交互，导出时会对整帧点云做采样；如果你希望看得更密，可以调大 `--web_vis_max_points`，但网页加载和渲染会更重。
 
 ## 4. 从通道导出 PCD（给离线工具喂数据）

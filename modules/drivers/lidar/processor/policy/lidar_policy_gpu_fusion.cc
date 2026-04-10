@@ -34,7 +34,7 @@ bool GpuLidarFusionPolicy::Init(const LidarUnifiedComponentConfig& config,
 }
 
 bool GpuLidarFusionPolicy::FuseToBaseLink(
-    double reference_timestamp_sec, const Eigen::Affine3d& world2base_ref,
+    double reference_timestamp_sec, const Eigen::Affine3d& map2base_ref,
     const std::vector<SensorFrameContext>& frames,
     const std::vector<std::vector<Eigen::Affine3d>>& frames_motion_poses,
     const std::vector<std::vector<double>>& frames_motion_times,
@@ -55,7 +55,7 @@ bool GpuLidarFusionPolicy::FuseToBaseLink(
       frames.size() != frames_motion_times.size()) {
     return false;
   }
-  const Eigen::Affine3d base_from_world_ref = world2base_ref;
+  const Eigen::Affine3d base_from_map_ref = map2base_ref;
 
   size_t write_idx = 0;
   size_t total_input_points = 0;
@@ -98,7 +98,7 @@ bool GpuLidarFusionPolicy::FuseToBaseLink(
     }
     for (size_t pose_idx = 0; pose_idx < poses.size(); ++pose_idx) {
       host_pose_buffer_[pose_idx] =
-          ToCudaPose(base_from_world_ref * poses[pose_idx]);
+          ToCudaPose(base_from_map_ref * poses[pose_idx]);
     }
 
     if (write_idx >= output_buffer->capacity) {

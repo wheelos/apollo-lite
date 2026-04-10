@@ -50,13 +50,16 @@ bool GpuLidarDeskewPolicy::ComputeMotionCompensationPoses(
     const double sample_ts = (*sample_times)[i];
 
     Eigen::Affine3d pose = Eigen::Affine3d::Identity();
-    if (!QueryTransformAffine(tf_buffer_, config_.world_frame_id(),
-                              frame_context.sensor_id, cyber::Time(sample_ts),
-                              &pose)) {
+    if (!QueryTransformAffine(
+            tf_buffer_, config_.map_frame_id(), frame_context.sensor_id,
+            cyber::Time(sample_ts),
+            static_cast<float>(config_.sensor_pose_query_timeout_sec()),
+            &pose)) {
       if (i == 0) {
         if (!QueryTransformAffine(
-                tf_buffer_, config_.world_frame_id(), frame_context.sensor_id,
+                tf_buffer_, config_.map_frame_id(), frame_context.sensor_id,
                 cyber::Time(frame_context.point_cloud->measurement_time()),
+                static_cast<float>(config_.sensor_pose_query_timeout_sec()),
                 &pose)) {
           return false;
         }

@@ -81,6 +81,7 @@ message TaskConfig {
 }
 
 message ScenarioBareIntersectionUnprotectedConfig {
+  optional uint32 scenario_entry_score = 20 [default = 60];
   optional double start_bare_intersection_scenario_distance = 1
       [default = 25.0];  // meter
   // explicit stop while waiting
@@ -93,6 +94,7 @@ message ScenarioBareIntersectionUnprotectedConfig {
 }
 
 message ScenarioEmergencyPullOverConfig {
+  optional uint32 scenario_entry_score = 20 [default = 1000];
   optional double max_stop_deceleration = 1 [default = 3.0];
   optional double slow_down_deceleration_time = 2 [default = 3.0];  // second
   optional double target_slow_down_speed = 3 [default = 2.5];       // m/s
@@ -100,17 +102,25 @@ message ScenarioEmergencyPullOverConfig {
 }
 
 message ScenarioEmergencyStopConfig {
+  optional uint32 scenario_entry_score = 20 [default = 1000];
   optional double max_stop_deceleration = 1 [default = 6.0];
   optional double stop_distance = 2 [default = 1.0];  // meter
 }
 
-message ScenarioLaneFollowConfig {}
+message ScenarioLaneFollowConfig {
+    optional uint32 scenario_entry_score = 1 [default = 10];
+}
 
-message ScenarioLearningModelSampleConfig {}
+message ScenarioLearningModelSampleConfig {
+  optional uint32 scenario_entry_score = 1 [default = 10];
+}
 
-message ScenarioNarrowStreetUTurnConfig {}
+message ScenarioNarrowStreetUTurnConfig {
+  optional uint32 scenario_entry_score = 1 [default = 10];
+}
 
 message ScenarioParkAndGoConfig {
+  optional uint32 scenario_entry_score = 20 [default = 60];
   optional double front_obstacle_buffer = 1 [default = 4.0];  // meter
   optional double heading_buffer = 2 [default = 0.5];         // rad
   optional double min_dist_to_dest = 3 [default = 25.0];      // meter
@@ -118,6 +128,7 @@ message ScenarioParkAndGoConfig {
 }
 
 message ScenarioPullOverConfig {
+  optional uint32 scenario_entry_score = 20 [default = 90];
   optional double start_pull_over_scenario_distance = 1
       [default = 50.0];                                                // meter
   optional double pull_over_min_distance_buffer = 2 [default = 10.0];  // meter
@@ -132,9 +143,11 @@ message ScenarioPullOverConfig {
   optional double max_valid_stop_distance = 9 [default = 1.0];
   optional double s_distance_to_stop_for_open_space_parking = 10
       [default = 7.0];
+  optional double avoid_junction_distance = 11 [default = 8.0];
 }
 
 message ScenarioStopSignUnprotectedConfig {
+  optional uint32 scenario_entry_score = 20 [default = 80];
   optional double start_stop_sign_scenario_distance = 1
       [default = 5.0];  // meter
   optional double watch_vehicle_max_valid_stop_distance = 2
@@ -147,6 +160,7 @@ message ScenarioStopSignUnprotectedConfig {
 }
 
 message ScenarioTrafficLightProtectedConfig {
+  optional uint32 scenario_entry_score = 20 [default = 80];
   optional double start_traffic_light_scenario_distance = 1
       [default = 5.0];                                          // meter
   optional double max_valid_stop_distance = 2 [default = 2.0];  // meter
@@ -154,6 +168,7 @@ message ScenarioTrafficLightProtectedConfig {
 }
 
 message ScenarioTrafficLightUnprotectedLeftTurnConfig {
+  optional uint32 scenario_entry_score = 20 [default = 60];
   optional double start_traffic_light_scenario_distance = 1
       [default = 5.0];                                          // meter
   optional double approach_cruise_speed = 2 [default = 2.78];   // m/s (10km/h)
@@ -165,6 +180,7 @@ message ScenarioTrafficLightUnprotectedLeftTurnConfig {
 }
 
 message ScenarioTrafficLightUnprotectedRightTurnConfig {
+  optional uint32 scenario_entry_score = 20 [default = 60];
   optional double start_traffic_light_scenario_distance = 1
       [default = 5.0];  // meter
   optional bool enable_right_turn_on_red = 2 [default = false];
@@ -177,16 +193,19 @@ message ScenarioTrafficLightUnprotectedRightTurnConfig {
 }
 
 message ScenarioValetParkingConfig {
+  optional uint32 scenario_entry_score = 20 [default = 95];
   optional double parking_spot_range_to_start = 1 [default = 20.0];
   optional double max_valid_stop_distance = 2 [default = 1.0];  // meter
 }
 
 message ScenarioDeadEndTurnAroundConfig {
+  optional uint32 scenario_entry_score = 20 [default = 70];
   optional double dead_end_start_range = 1 [default = 20.0];
   optional double max_valid_stop_distance = 2 [default = 1.0];  // meter
 }
 
 message ScenarioYieldSignConfig {
+  optional uint32 scenario_entry_score = 20 [default = 80];
   optional double start_yield_sign_scenario_distance = 1
       [default = 10.0];                                         // meter
   optional double max_valid_stop_distance = 2 [default = 4.5];  // meter
@@ -300,4 +319,14 @@ message PlanningConfig {
   // default task config, it will be used if there is no scenario-specific
   // task config.
   repeated TaskConfig default_task_config = 6;
+  optional ScenarioTransitionConfig scenario_transition_config = 7;
+}
+
+message ScenarioTransitionRule {
+  optional ScenarioType from_scenario_type = 1;
+  repeated ScenarioType to_scenario_types = 2;
+}
+
+message ScenarioTransitionConfig {
+  repeated ScenarioTransitionRule transition_rules = 1;
 }

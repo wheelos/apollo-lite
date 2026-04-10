@@ -40,9 +40,10 @@ apollo::common::util::Factory<
     PluginFactory::plugin_factory_;
 
 void PluginFactory::Init() {
-  plugin_factory_.Register(PluginType::ROI_BOUNDARY_FILTER,
+  plugin_factory_.Register(PluginType::HDMAP_BOUNDARY_OBJECT_FILTER,
                            [](const PluginConfig& plugin_config) -> Plugin* {
-                             return new lidar::ROIBoundaryFilter(plugin_config);
+                             return new lidar::HdmapBoundaryObjectFilter(
+                                 plugin_config);
                            });
   plugin_factory_.Register(
       PluginType::POINTCLOUD_GET_OBJECTS,

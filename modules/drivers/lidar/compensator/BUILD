@@ -41,7 +41,7 @@ cc_library(
         "//modules/common/latency_recorder",
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/compensator/proto:lidar_compensator_config_cc_proto",
-        "//modules/transform:buffer",
+        "//modules/transform:transform_query",
         "@eigen",
     ],
     alwayslink = True,

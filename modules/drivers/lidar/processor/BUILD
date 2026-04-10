@@ -67,6 +67,7 @@ cc_library(
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
         "//modules/transform:buffer",
+        "//modules/transform:transform_query_core",
         "@eigen",
     ] + select({
         ":lidar_gpu_backend_enabled": [":lidar_policy_cuda_kernels_lib"],
@@ -122,7 +123,7 @@ cc_library(
         ":lidar_policy_lib",
         ":safety_policy_lib",
         "//modules/transform:buffer",
-        "//modules/transform:pose_cache",
+        "//modules/transform:timed_transform_resolver",
         "@boost.circular_buffer",
         "@eigen",
     ],

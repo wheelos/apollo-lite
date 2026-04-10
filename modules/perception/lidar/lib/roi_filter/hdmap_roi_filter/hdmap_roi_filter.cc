@@ -32,8 +32,9 @@ namespace lidar {
 
 using apollo::cyber::common::GetAbsolutePath;
 using apollo::cyber::common::GetProtoFromFile;
+using apollo::cyber::common::PathExists;
 
-bool HdmapROIFilter::Init(const ROIFilterInitOptions& options) {
+bool HdmapPointCloudRoiFilter::Init(const ROIFilterInitOptions& options) {
   auto config_manager = lib::ConfigManager::Instance();
   const lib::ModelConfig* model_config = nullptr;
   ACHECK(config_manager->GetModelConfig(Name(), &model_config));
@@ -42,27 +43,32 @@ bool HdmapROIFilter::Init(const ROIFilterInitOptions& options) {
   std::string root_path;
   ACHECK(model_config->get_value("root_path", &root_path));
 
-  std::string config_file = GetAbsolutePath(work_root, root_path);
-  config_file = GetAbsolutePath(config_file, "hdmap_roi_filter.conf");
+  const std::string config_dir = GetAbsolutePath(work_root, root_path);
+  std::string config_file =
+      GetAbsolutePath(config_dir, "pointcloud_roi_filter.conf");
+  if (!PathExists(config_file)) {
+    config_file = GetAbsolutePath(config_dir, "hdmap_roi_filter.conf");
+  }
 
-  HDMapRoiFilterConfig config;
+  PointCloudRoiFilterConfig config;
   ACHECK(GetProtoFromFile(config_file, &config));
 
   return InternalInit(config);
 }
 
-bool HdmapROIFilter::Init(const StageConfig& stage_config) {
+bool HdmapPointCloudRoiFilter::Init(const StageConfig& stage_config) {
   if (!Initialize(stage_config)) return false;
 
-  if (!stage_config.has_hdmap_roi_filter_config()) {
-    AERROR << "HdmapROIFilter config missing in StageConfig";
+  if (!stage_config.has_pointcloud_roi_filter_config()) {
+    AERROR << "HdmapPointCloudRoiFilter config missing in StageConfig";
     return false;
   }
-  return InternalInit(stage_config.hdmap_roi_filter_config());
+  return InternalInit(stage_config.pointcloud_roi_filter_config());
 }
 
-bool HdmapROIFilter::InternalInit(const HDMapRoiFilterConfig& config) {
-  hdmap_roi_filter_config_ = config;
+bool HdmapPointCloudRoiFilter::InternalInit(
+    const PointCloudRoiFilterConfig& config) {
+  pointcloud_roi_filter_config_ = config;
   range_ = config.range();
   cell_size_ = config.cell_size();
   extend_dist_ = config.extend_dist();
@@ -83,20 +89,20 @@ bool HdmapROIFilter::InternalInit(const HDMapRoiFilterConfig& config) {
 
   bitmap_.Init(min_range, max_range, cell_size);
 
-  AINFO << "HdmapROIFilter Inited. Range:" << range_ << " Cell:" << cell_size_
-        << " Grid:" << bitmap_.map_size().transpose();
+  AINFO << "HdmapPointCloudRoiFilter Inited. Range:" << range_
+        << " Cell:" << cell_size_ << " Grid:" << bitmap_.map_size().transpose();
 
   return true;
 }
 
-bool HdmapROIFilter::Process(DataFrame* data_frame) {
+bool HdmapPointCloudRoiFilter::Process(DataFrame* data_frame) {
   if (!data_frame || !data_frame->lidar_frame) return false;
   ROIFilterOptions options;  // Default options
   return Filter(options, data_frame->lidar_frame);
 }
 
-bool HdmapROIFilter::Filter(const ROIFilterOptions& options,
-                            LidarFrame* frame) {
+bool HdmapPointCloudRoiFilter::Filter(const ROIFilterOptions& options,
+                                      LidarFrame* frame) {
   if (!frame || !frame->cloud) {
     AERROR << "Input cloud is null.";
     return false;
@@ -169,7 +175,7 @@ bool HdmapROIFilter::Filter(const ROIFilterOptions& options,
   return true;
 }
 
-void HdmapROIFilter::TransformPolygonsToLocal(
+void HdmapPointCloudRoiFilter::TransformPolygonsToLocal(
     const Eigen::Affine3d& lidar2world_pose,
     const std::vector<PolygonDType*>& polygons_world,
     std::vector<PolygonDType>& polygons_local) {
@@ -202,7 +208,7 @@ void HdmapROIFilter::TransformPolygonsToLocal(
   }
 }
 
-bool HdmapROIFilter::PreparePolygonMask(
+bool HdmapPointCloudRoiFilter::PreparePolygonMask(
     const std::vector<PolygonDType>& polygons,
     std::vector<Polygon<double>>* raw_polygons, Bitmap2D* bitmap) {
   // Reset raw polygons buffer
@@ -247,9 +253,9 @@ bool HdmapROIFilter::PreparePolygonMask(
                                   no_edge_table_);
 }
 
-bool HdmapROIFilter::Bitmap2dFilter(const base::PointFCloudPtr& cloud,
-                                    const Bitmap2D& bitmap,
-                                    base::PointIndices* roi_indices) {
+bool HdmapPointCloudRoiFilter::Bitmap2dFilter(const base::PointFCloudPtr& cloud,
+                                              const Bitmap2D& bitmap,
+                                              base::PointIndices* roi_indices) {
   roi_indices->indices.clear();
   roi_indices->indices.reserve(cloud->size());
 
@@ -264,7 +270,8 @@ bool HdmapROIFilter::Bitmap2dFilter(const base::PointFCloudPtr& cloud,
   return true;
 }
 
-void HdmapROIFilter::UpdateService(const Eigen::Affine3d& lidar2world_pose) {
+void HdmapPointCloudRoiFilter::UpdateService(
+    const Eigen::Affine3d& lidar2world_pose) {
   auto roi_service = SceneManager::Instance().Service("ROIService");
   if (!roi_service) return;
 
@@ -279,7 +286,7 @@ void HdmapROIFilter::UpdateService(const Eigen::Affine3d& lidar2world_pose) {
   roi_service->UpdateServiceContent(roi_service_content_);
 }
 
-PERCEPTION_REGISTER_ROIFILTER(HdmapROIFilter);
+PERCEPTION_REGISTER_ROIFILTER(HdmapPointCloudRoiFilter);
 
 }  // namespace lidar
 }  // namespace perception

@@ -1,143 +1,149 @@
-/******************************************************************************
- * Copyright 2018 The Apollo Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *****************************************************************************/
+// Copyright 2026 WheelOS. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//  Created Date: 2026-04-11
+//  Author: daohu527
 
 #include "modules/perception/lidar/lib/ground_detector/spatio_temporal_ground_detector/spatio_temporal_ground_detector.h"
 
-#include "gflags/gflags.h"
+#include <limits>
+#include <string>
+
 #include "gtest/gtest.h"
 
-#include "pcl/io/pcd_io.h"
+#include "modules/perception/base/point_cloud.h"
+#include "modules/perception/common/point_cloud_processing/common.h"
+#include "modules/perception/lidar/common/lidar_point_label.h"
 
 namespace apollo {
 namespace perception {
-namespace lib {
-
-DECLARE_string(work_root);
-DECLARE_string(config_manager_path);
-
-}  // namespace lib
-
 namespace lidar {
 
-bool LoadPCDFile(const std::string& file_path, base::PointFCloudPtr cloud_out) {
-  int ret = 0;
-  pcl::PointCloud<pcl::PointXYZI> org_cloud;
-  if ((ret = pcl::io::loadPCDFile(file_path, org_cloud)) < 0) {
-    AERROR << "Failed to load pcd file: " << file_path << " " << ret;
-    return false;
-  }
+namespace {
 
-  cloud_out->resize(org_cloud.size());
-  int pid = 0;
-  for (size_t i = 0; i < org_cloud.size(); ++i) {
-    if (std::isnan(org_cloud.at(i).x) || std::isnan(org_cloud.at(i).y) ||
-        std::isnan(org_cloud.at(i).z)) {
-      continue;
-    }
-    base::PointF& pt = cloud_out->at(pid++);
-    pt.x = org_cloud.at(i).x;
-    pt.y = org_cloud.at(i).y;
-    pt.z = org_cloud.at(i).z;
-    pt.intensity = org_cloud.at(i).intensity;
-  }
-  cloud_out->resize(pid);
+pipeline::StageConfig MakeStageConfig() {
+  pipeline::StageConfig stage_config;
+  stage_config.set_stage_type(pipeline::StageType::GROUND_SEGMENTER);
+  stage_config.set_enabled(true);
+  stage_config.set_type("SpatioTemporalGroundDetector");
 
-  return true;
+  auto* config = stage_config.mutable_ground_segmenter_config();
+  config->set_grid_size(32);
+  config->set_ground_thres(0.25f);
+  config->set_roi_rad_x(120.0f);
+  config->set_roi_rad_y(120.0f);
+  config->set_roi_rad_z(100.0f);
+  config->set_nr_smooth_iter(5);
+  config->set_use_roi(false);
+  config->set_use_ground_service(false);
+  config->set_sample_region_z_lower(-3.0f);
+  config->set_sample_region_z_upper(-1.0f);
+  config->set_roi_near_rad(32.0f);
+  config->set_planefit_orien_threshold(5.0f);
+  config->set_big_grid_size(256);
+  config->set_small_grid_size(32);
+  config->set_z_compare_thres(0.1f);
+  config->set_smooth_z_thres(1.0f);
+  config->set_planefit_dist_thres_near(0.1f);
+  config->set_planefit_dist_thres_far(0.2f);
+  config->set_inliers_min_threshold(6);
+  config->set_near_range_dist(10.0f);
+  config->set_near_range_ground_thres(0.25f);
+  config->set_middle_range_dist(20.0f);
+  config->set_middle_range_ground_thres(0.25f);
+  return stage_config;
 }
 
-TEST(SpatioTemporalGroundDetectorTest, test_spatio_temporal_ground_detector) {
-  // char cyber_path[100] = "CYBER_PATH=";
-  // putenv(cyber_path);
-  // char module_path[100] = "MODULE_PATH=";
-  // putenv(module_path);
-  // EXPECT_TRUE(SceneManager::Instance().Init());
+}  // namespace
 
-  // // load pcd data
-  // base::PointFCloudPtr pc_ptr;
-  // pc_ptr.reset(new base::PointFCloud);
-  // std::string filename =
-  //     "modules/perception/testdata/lidar/lib/"
-  //     "ground_detector/spatio_temporal_ground_detector/"
-  //     "pcd_data/QB9178_3_1461752790_1461753090_36701.pcd";
-  // bool ret = LoadPCDFile(filename, pc_ptr);
-  // ACHECK(ret) << "Failed to load " << filename;
+class SpatioTemporalGroundDetectorTest : public ::testing::Test {
+ protected:
+  void SetUp() override { detector_.reset(new SpatioTemporalGroundDetector()); }
 
-  // // test init
-  // std::shared_ptr<SpatioTemporalGroundDetector> detector(
-  //     new SpatioTemporalGroundDetector);
-  // EXPECT_TRUE(detector->Init());
-  // EXPECT_STREQ("SpatioTemporalGroundDetector", detector->Name().c_str());
+  void EmitMetric(const std::string& key, double value) {
+    ::testing::Test::RecordProperty(key, std::to_string(value));
+  }
 
-  // // test input
-  // GroundDetectorOptions options;
-  // std::shared_ptr<LidarFrame> frame_data = nullptr;
-  // EXPECT_FALSE(detector->Detect(options, frame_data.get()));
-  // frame_data = std::shared_ptr<LidarFrame>(new LidarFrame);
-  // EXPECT_FALSE(detector->Detect(options, frame_data.get()));
-  // frame_data->cloud = base::PointFCloudPool::Instance().Get();
-  // frame_data->world_cloud = base::PointDCloudPool::Instance().Get();
-  // EXPECT_FALSE(detector->Detect(options, frame_data.get()));
+  std::unique_ptr<SpatioTemporalGroundDetector> detector_;
+};
 
-  // // test use_roi_ = false
-  // frame_data->cloud = pc_ptr;
-  // frame_data->lidar2world_pose = Eigen::Affine3d::Identity();
-  // base::PointD temp;
-  // for (size_t i = 0; i < frame_data->cloud->size(); ++i) {
-  //   const auto& pt = frame_data->cloud->at(i);
-  //   temp.x = pt.x;
-  //   temp.y = pt.y;
-  //   temp.z = pt.z;
-  //   frame_data->world_cloud->push_back(temp);
-  // }
-  // EXPECT_TRUE(detector->Detect(options, frame_data.get()));
-  // EXPECT_GT(frame_data->non_ground_indices.indices.size(), 0);
+TEST_F(SpatioTemporalGroundDetectorTest, FlatGroundTest) {
+  LidarFrame frame;
+  frame.cloud = base::PointFCloudPool::Instance().Get();
+  frame.world_cloud = base::PointDCloudPool::Instance().Get();
 
-  // // test use_roi_ = true && default_point_size_ = 100
-  // detector->use_roi_ = true;
-  // detector->default_point_size_ = 10;
-  // size_t roi_num = static_cast<size_t>(0.75 * pc_ptr->size());
-  // std::vector<int> roi_indices(roi_num);
-  // std::iota(roi_indices.begin(), roi_indices.end(), 0);
-  // frame_data->roi_indices.indices = roi_indices;
-  // EXPECT_TRUE(detector->Detect(options, frame_data.get()));
-  // EXPECT_EQ(roi_num * 2, detector->default_point_size_);
-  // EXPECT_EQ(roi_num * 2, detector->point_indices_temp_.size());
-  // EXPECT_EQ(roi_num * 6, detector->data_.size());
-  // EXPECT_GT(frame_data->non_ground_indices.indices.size(), 0);
+  // Synthetic planar ground
+  int total_ground = 500;
+  for (int i = 0; i < total_ground; ++i) {
+    base::PointF pt;
+    pt.x = static_cast<float>(i % 20);
+    pt.y = static_cast<float>(i / 20);
+    // Add small noise
+    pt.z = 0.05f * ((i % 3) - 1);
+    frame.cloud->push_back(pt, 0.0);
+  }
 
-  // detector->use_roi_ = false;
-  // EXPECT_TRUE(detector->Detect(options, frame_data.get()));
-  // EXPECT_GT(frame_data->non_ground_indices.indices.size(), 0);
-  // auto ground_service = SceneManager::Instance().Service("GroundService");
-  // GroundServicePtr ground_service_cast =
-  //     std::dynamic_pointer_cast<GroundService>(ground_service);
+  // Non-ground points
+  int total_non_ground = 50;
+  for (int i = 0; i < total_non_ground; ++i) {
+    base::PointF pt;
+    pt.x = static_cast<float>(i);
+    pt.y = static_cast<float>(i);
+    pt.z = 2.0f;
+    frame.cloud->push_back(pt, 0.0);
+  }
 
-  // Eigen::Vector3d world_point(0.0, 0.0, 0.0);
-  // float out_query = 0.0f;
-  // float out_detected = 0.0f;
-  // for (size_t i = 0; i < 10; ++i) {
-  //   const auto& index = frame_data->non_ground_indices.indices[i];
-  //   const auto& pt = frame_data->world_cloud->at(index);
-  //   out_detected = frame_data->world_cloud->points_height(index);
-  //   world_point(0) = pt.x;
-  //   world_point(1) = pt.y;
-  //   world_point(2) = pt.z;
-  //   out_query = ground_service_cast->QueryPointToGroundDistance(world_point);
-  //   EXPECT_NEAR(out_query, out_detected, 1e-6);
-  // }
+  // Need to populate world cloud to avoid crash if it depends on it
+  for (size_t i = 0; i < frame.cloud->size(); ++i) {
+    base::PointD ptd;
+    ptd.x = frame.cloud->at(i).x;
+    ptd.y = frame.cloud->at(i).y;
+    ptd.z = frame.cloud->at(i).z;
+    frame.world_cloud->push_back(ptd, 0.0);
+  }
+
+  frame.cloud->mutable_points_height()->assign(
+      frame.cloud->size(), std::numeric_limits<float>::max());
+  frame.world_cloud->mutable_points_height()->assign(
+      frame.world_cloud->size(), std::numeric_limits<float>::max());
+  frame.cloud->mutable_points_label()->assign(frame.cloud->size(), 0u);
+  frame.world_cloud->mutable_points_label()->assign(frame.world_cloud->size(),
+                                                    0u);
+  frame.lidar2vehicle_extrinsics = Eigen::Affine3d::Identity();
+  frame.lidar2world_pose = Eigen::Affine3d::Identity();
+
+  auto stage_config = MakeStageConfig();
+  EXPECT_TRUE(detector_->Init(stage_config));
+
+  GroundDetectorOptions options;
+  EXPECT_TRUE(detector_->Detect(options, &frame));
+
+  int ground_count = 0;
+  int non_ground_count = 0;
+  for (size_t i = 0; i < frame.cloud->size(); ++i) {
+    if (frame.cloud->points_label(i) ==
+        static_cast<uint8_t>(LidarPointLabel::GROUND)) {
+      ground_count++;
+    } else {
+      non_ground_count++;
+    }
+  }
+
+  EmitMetric("ground_points_count", ground_count);
+  EmitMetric("non_ground_points_count", non_ground_count);
+  EmitMetric("total_input_points", frame.cloud->size());
+  EXPECT_GT(ground_count, 0);
 }
 
 }  // namespace lidar

@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -22,6 +22,16 @@ cc_library(
         "@eigen",
     ],
     alwayslink = True,
+)
+
+cc_test(
+    name = "pointcloud_preprocessor_test",
+    size = "small",
+    srcs = ["pointcloud_preprocessor_test.cc"],
+    deps = [
+        ":pointcloud_preprocessor",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cpplint()

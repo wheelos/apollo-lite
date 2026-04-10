@@ -16,13 +16,14 @@
 
 #pragma once
 
-#include <algorithm>
 #include <string>
 
-#include "cyber/time/time.h"
-#include "modules/common_msgs/transform_msgs/transform.pb.h"
 #include "tf2/buffer_core.h"
 #include "tf2/convert.h"
+
+#include "modules/common_msgs/transform_msgs/transform.pb.h"
+
+#include "cyber/time/time.h"
 
 namespace apollo {
 namespace transform {
@@ -30,6 +31,9 @@ namespace transform {
 // extend the TFCore class and the TFCpp class
 class BufferInterface {
  public:
+  BufferInterface() = default;
+  virtual ~BufferInterface() = default;
+
   /** \brief Get the transform between two frames by frame ID.
    * \param target_frame The frame to which data should be transformed
    * \param source_frame The frame where the data originated
@@ -101,6 +105,10 @@ class BufferInterface {
                             const std::string& fixed_frame,
                             const float timeout_second = 0.01f,
                             std::string* errstr = nullptr) const = 0;
+
+  virtual bool GetLatestStaticTransform(const std::string& target_frame,
+                                        const std::string& source_frame,
+                                        TransformStamped* transform) const = 0;
 
   // Transform, simple api, with pre-allocation
   template <typename T>

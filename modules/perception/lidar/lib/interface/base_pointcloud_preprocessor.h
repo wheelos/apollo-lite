@@ -33,7 +33,7 @@ struct PointCloudPreprocessorInitOptions {
 };
 
 struct PointCloudPreprocessorOptions {
-  Eigen::Affine3d sensor2novatel_extrinsics;
+  Eigen::Affine3d sensor2vehicle_extrinsics;
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;

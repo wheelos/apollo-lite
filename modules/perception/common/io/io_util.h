@@ -40,6 +40,11 @@ bool LoadOmnidirectionalCameraIntrinsics(
     const std::string &yaml_file,
     base::OmnidirectionalCameraDistortionModel *model);
 
+std::string GetTransformExtrinsicPath(const std::string &file_name);
+
+std::string ResolveExtrinsicPath(const std::string &params_dir,
+                                 const std::string &file_name);
+
 bool GetFileList(const std::string &path, const std::string &suffix,
                  std::vector<std::string> *files);
 

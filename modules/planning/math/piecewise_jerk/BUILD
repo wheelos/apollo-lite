@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -32,6 +32,16 @@ cc_library(
     hdrs = ["piecewise_jerk_speed_problem.h"],
     deps = [
         ":piecewise_jerk_problem",
+    ],
+)
+
+cc_test(
+    name = "piecewise_jerk_problem_test",
+    size = "small",
+    srcs = ["piecewise_jerk_problem_test.cc"],
+    deps = [
+        ":piecewise_jerk_problem",
+        "@com_google_googletest//:gtest",
     ],
 )
 

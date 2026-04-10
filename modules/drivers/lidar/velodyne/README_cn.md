@@ -24,7 +24,7 @@ velodyne驱动是以component的形式实现的，包含了:
   proto: [modules/drivers/proto/pointcloud.proto]https://github.com/ApolloAuto/apollo/blob/master/modules/drivers/proto/pointcloud.proto
 
 ### 坐标系
-* world
+* map
 * novatel
 * velodyne128
 

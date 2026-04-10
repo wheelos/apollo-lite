@@ -15,8 +15,8 @@ bool LidarUnifiedComponent::ValidateConfig() const {
     return false;
   }
 
-  if (config_.world_frame_id().empty()) {
-    AERROR << "world_frame_id is required";
+  if (config_.map_frame_id().empty()) {
+    AERROR << "map_frame_id is required";
     return false;
   }
 
