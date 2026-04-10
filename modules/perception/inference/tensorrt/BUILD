@@ -102,7 +102,6 @@ cc_test(
     deps = [
         ":rt_net",
         "//modules/perception/inference/utils:inference_util_cuda_lib",
-        "@atlas//:cblas",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -9,7 +9,6 @@ SUPPORTED_ARCHS=" x86_64 aarch64 "
 APOLLO_VERSION="@non-git"
 APOLLO_ENV=""
 
-USE_ESD_CAN=false
 : ${STAGE:=dev}
 
 AVAILABLE_COMMANDS="config build build_dbg build_opt build_cpu build_gpu build_opt_gpu test coverage lint \
@@ -42,16 +41,6 @@ function check_minimal_memory_requirement() {
     fi
 }
 
-function determine_esdcan_use() {
-    local esdcan_dir="${APOLLO_ROOT_DIR}/third_party/can_card_library/esd_can"
-    local use_esd=false
-    if [[ "${ARCH}" == "x86_64" ]] &&
-        [[ -f "${esdcan_dir}/include/ntcan.h" ]] &&
-        [[ -f "${esdcan_dir}/lib/libntcan.so.4" ]]; then
-        use_esd=true
-    fi
-    USE_ESD_CAN="${use_esd}"
-}
 
 function check_apollo_version() {
     local branch="$(git_branch)"
@@ -70,10 +59,8 @@ function apollo_env_setup() {
     check_platform_support
     check_minimal_memory_requirement
     determine_gpu_use_target
-    determine_esdcan_use
 
     APOLLO_ENV="${APOLLO_ENV} STAGE=${STAGE}"
-    APOLLO_ENV="${APOLLO_ENV} USE_ESD_CAN=${USE_ESD_CAN}"
     # Add more here ...
 
     info "Apollo Environment Settings:"
