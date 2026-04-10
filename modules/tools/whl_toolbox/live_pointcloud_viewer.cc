@@ -22,7 +22,7 @@
 #include "cyber/common/log.h"
 #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/dreamview/backend/handlers/websocket_handler.h"
-#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
 
 DEFINE_string(channel, "", "PointCloud channel to subscribe to.");
 DEFINE_int32(port, 8891, "CivetWeb listening port for live pointcloud viewer.");
@@ -295,39 +295,17 @@ class LivePointCloudViewer {
       }
     }
 
-    auto *buffer = apollo::transform::Buffer::Instance();
     std::string err;
-    if (!buffer->canTransform(target_frame_, source_frame, apollo::cyber::Time(0),
-                              1.0f, &err)) {
+    Eigen::Affine3d pose = Eigen::Affine3d::Identity();
+    if (!transform_query_.LookupTransformToAffine(
+            target_frame_, source_frame, apollo::cyber::Time(0), &pose, 1.0f,
+            &err)) {
       if (error != nullptr) {
-        *error = std::string("failed to resolve static transform from ") +
+        *error = std::string("failed to resolve transform from ") +
                  source_frame + " to " + target_frame_ + ": " + err;
       }
       return false;
     }
-
-    apollo::transform::TransformStamped transform;
-    try {
-      transform = buffer->lookupTransform(target_frame_, source_frame,
-                                          apollo::cyber::Time(0), 1.0f);
-    } catch (const std::exception &ex) {
-      if (error != nullptr) {
-        *error = std::string("failed to lookup transform from ") +
-                 source_frame + " to " + target_frame_ + ": " + ex.what();
-      }
-      return false;
-    }
-
-    const Eigen::Quaterniond rotation(
-        transform.transform().rotation().qw(),
-        transform.transform().rotation().qx(),
-        transform.transform().rotation().qy(),
-        transform.transform().rotation().qz());
-    Eigen::Affine3d pose = Eigen::Affine3d::Identity();
-    pose.linear() = rotation.toRotationMatrix();
-    pose.translation() << transform.transform().translation().x(),
-        transform.transform().translation().y(),
-        transform.transform().translation().z();
 
     {
       std::lock_guard<std::mutex> lock(status_mutex_);
@@ -355,6 +333,7 @@ class LivePointCloudViewer {
   const int port_ = 0;
   const int max_points_ = 0;
   const std::string target_frame_;
+  apollo::transform::TransformQuery transform_query_;
 
   mutable std::mutex status_mutex_;
   std::uint64_t frame_count_ = 0;

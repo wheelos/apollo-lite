@@ -36,7 +36,6 @@ using apollo::common::Quaternion;
 using apollo::drivers::CompressedImage;
 using apollo::localization::LocalizationEstimate;
 using apollo::localization::Pose;
-using apollo::transform::TransformStamped;
 
 namespace {
 void ConvertMatrixToArray(const Eigen::Matrix4d& matrix,
@@ -127,10 +126,11 @@ void PerceptionCameraUpdater::GetImageLocalization(
 bool PerceptionCameraUpdater::QueryStaticTF(const std::string& frame_id,
                                             const std::string& child_frame_id,
                                             Eigen::Matrix4d* matrix) {
-  TransformStamped transform;
-  if (tf_buffer_->GetLatestStaticTF(frame_id, child_frame_id, &transform)) {
-    ConstructTransformationMatrix(transform.transform().rotation(),
-                                  transform.transform().translation(), matrix);
+  Eigen::Affine3d transform = Eigen::Affine3d::Identity();
+  if (transform_query_.GetLatestStaticTransformToAffine(frame_id,
+                                                        child_frame_id,
+                                                        &transform)) {
+    *matrix = transform.matrix();
     return true;
   }
   return false;

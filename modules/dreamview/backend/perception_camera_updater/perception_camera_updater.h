@@ -27,13 +27,12 @@
 #include "modules/common_msgs/localization_msgs/pose.pb.h"
 #include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
-#include "modules/common_msgs/transform_msgs/transform.pb.h"
 #include "modules/dreamview/proto/camera_update.pb.h"
 
 #include "cyber/cyber.h"
 #include "cyber/service_discovery/specific_manager/channel_manager.h"
 #include "modules/dreamview/backend/handlers/websocket_handler.h"
-#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
 
 namespace apollo {
 namespace dreamview {
@@ -80,7 +79,7 @@ class PerceptionCameraUpdater {
    */
   void GetImageLocalization(std::vector<double> *localization);
 
-  apollo::transform::Buffer *tf_buffer_ = apollo::transform::Buffer::Instance();
+    apollo::transform::TransformQuery transform_query_;
   bool QueryStaticTF(const std::string &frame_id,
                      const std::string &child_frame_id,
                      Eigen::Matrix4d *matrix);

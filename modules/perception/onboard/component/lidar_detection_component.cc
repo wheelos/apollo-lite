@@ -109,7 +109,22 @@ bool LidarDetectionComponent::InitAlgorithmPlugin() {
   ACHECK(lidar_detection_pipeline_->Init(lidar_detection_config_))
       << "lidar obstacle detection init error";
 
-  lidar2world_trans_.Init(lidar2vehicle_tf2_child_frame_id_);
+  std::string lidar_tf_child_frame_id = lidar2vehicle_tf2_child_frame_id_;
+  if (lidar_tf_child_frame_id.empty()) {
+    lidar_tf_child_frame_id = sensor_info_.frame_id;
+  } else if (lidar_tf_child_frame_id == FLAGS_obs_sensor2vehicle_tf2_frame_id &&
+             sensor_info_.frame_id != FLAGS_obs_sensor2vehicle_tf2_frame_id &&
+             !sensor_info_.frame_id.empty()) {
+    AWARN << "Lidar detection config collapses sensor extrinsics to identity "
+          << "by using vehicle frame " << lidar_tf_child_frame_id
+          << "; fallback to sensor frame " << sensor_info_.frame_id;
+    lidar_tf_child_frame_id = sensor_info_.frame_id;
+  }
+
+  lidar2world_trans_.Init(FLAGS_obs_sensor2vehicle_tf2_frame_id,
+                          lidar_tf_child_frame_id,
+                          FLAGS_obs_vehicle2world_tf2_frame_id,
+                          FLAGS_obs_vehicle2world_tf2_child_frame_id);
   return true;
 }
 

@@ -26,7 +26,7 @@
 #include "modules/localization/ndt/ndt_locator/lidar_locator_ndt.h"
 #include "modules/common_msgs/localization_msgs/gps.pb.h"
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
 
 namespace apollo {
 namespace localization {
@@ -49,8 +49,8 @@ class NDTLocalization {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
  public:
-  NDTLocalization() {}
-  ~NDTLocalization() { tf_buffer_ = nullptr; }
+  NDTLocalization() = default;
+  ~NDTLocalization() = default;
   /**@brief init configuration */
   void Init();
   /**@brief receive odometry message */
@@ -109,7 +109,7 @@ class NDTLocalization {
   std::string module_name_ = "ndt_localization";
   LocalizationPoseBuffer pose_buffer_;
 
-  transform::Buffer* tf_buffer_ = nullptr;
+  transform::TransformQuery transform_query_;
   std::string tf_target_frame_id_ = "";
   std::string tf_source_frame_id_ = "";
 

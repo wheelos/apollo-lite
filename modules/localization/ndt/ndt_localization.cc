@@ -33,9 +33,6 @@ namespace localization {
 namespace ndt {
 
 void NDTLocalization::Init() {
-  tf_buffer_ = apollo::transform::Buffer::Instance();
-  tf_buffer_->Init();
-
   resolution_id_ = 0;
   zone_id_ = FLAGS_local_utm_zone_id;
   online_resolution_ = FLAGS_online_resolution;
@@ -342,29 +339,13 @@ void NDTLocalization::ComposeLidarResult(double time_stamp,
 bool NDTLocalization::QueryPoseFromTF(double time, Eigen::Affine3d* pose) {
   cyber::Time query_time(time);
   const float time_out = 0.01f;
-  std::string err_msg = "";
-  bool can_transform = tf_buffer_->canTransform(
-      tf_target_frame_id_, tf_source_frame_id_, query_time, time_out, &err_msg);
-  if (!can_transform) {
+  std::string err_msg;
+  if (!transform_query_.LookupTransformToAffine(
+          tf_target_frame_id_, tf_source_frame_id_, query_time, pose,
+          time_out, &err_msg)) {
     AERROR << "Can not transform: " << err_msg;
     return false;
   }
-  apollo::transform::TransformStamped query_transform;
-  try {
-    query_transform = tf_buffer_->lookupTransform(
-        tf_target_frame_id_, tf_source_frame_id_, query_time);
-  } catch (tf2::TransformException ex) {
-    AERROR << ex.what();
-    return false;
-  }
-  pose->translation()[0] = query_transform.transform().translation().x();
-  pose->translation()[1] = query_transform.transform().translation().y();
-  pose->translation()[2] = query_transform.transform().translation().z();
-  Eigen::Quaterniond tmp_quat(query_transform.transform().rotation().qw(),
-                              query_transform.transform().rotation().qx(),
-                              query_transform.transform().rotation().qy(),
-                              query_transform.transform().rotation().qz());
-  pose->linear() = tmp_quat.toRotationMatrix();
   return true;
 }
 

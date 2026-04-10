@@ -37,6 +37,19 @@ bool TransformQuery::CanTransform(const std::string& target_frame_id,
                                timeout_sec, err_msg);
 }
 
+bool TransformQuery::CanTransform(const std::string& target_frame_id,
+                                  const cyber::Time& target_time,
+                                  const std::string& source_frame_id,
+                                  const cyber::Time& source_time,
+                                  const std::string& fixed_frame_id,
+                                  float timeout_sec,
+                                  std::string* err_msg) const {
+  CHECK_NOTNULL(buffer_);
+  return buffer_->canTransform(target_frame_id, target_time, source_frame_id,
+                               source_time, fixed_frame_id, timeout_sec,
+                               err_msg);
+}
+
 bool TransformQuery::LookupTransform(const std::string& target_frame_id,
                                      const std::string& source_frame_id,
                                      const cyber::Time& query_time,
@@ -63,6 +76,35 @@ bool TransformQuery::LookupTransform(const std::string& target_frame_id,
   return true;
 }
 
+bool TransformQuery::LookupTransform(const std::string& target_frame_id,
+                                     const cyber::Time& target_time,
+                                     const std::string& source_frame_id,
+                                     const cyber::Time& source_time,
+                                     const std::string& fixed_frame_id,
+                                     TransformStamped* transform,
+                                     float timeout_sec,
+                                     std::string* err_msg) const {
+  CHECK_NOTNULL(transform);
+
+  if (!CanTransform(target_frame_id, target_time, source_frame_id,
+                    source_time, fixed_frame_id, timeout_sec, err_msg)) {
+    return false;
+  }
+
+  try {
+    *transform = buffer_->lookupTransform(target_frame_id, target_time,
+                                          source_frame_id, source_time,
+                                          fixed_frame_id, timeout_sec);
+  } catch (const tf2::TransformException& ex) {
+    if (err_msg != nullptr) {
+      *err_msg = ex.what();
+    }
+    return false;
+  }
+
+  return true;
+}
+
 bool TransformQuery::LookupTransformToAffine(
     const std::string& target_frame_id, const std::string& source_frame_id,
     const cyber::Time& query_time, Eigen::Affine3d* transform,
@@ -72,6 +114,24 @@ bool TransformQuery::LookupTransformToAffine(
   TransformStamped stamped_transform;
   if (!LookupTransform(target_frame_id, source_frame_id, query_time,
                        &stamped_transform, timeout_sec, err_msg)) {
+    return false;
+  }
+
+  *transform = ToAffine(stamped_transform);
+  return true;
+}
+
+bool TransformQuery::LookupTransformToAffine(
+    const std::string& target_frame_id, const cyber::Time& target_time,
+    const std::string& source_frame_id, const cyber::Time& source_time,
+    const std::string& fixed_frame_id, Eigen::Affine3d* transform,
+    float timeout_sec, std::string* err_msg) const {
+  CHECK_NOTNULL(transform);
+
+  TransformStamped stamped_transform;
+  if (!LookupTransform(target_frame_id, target_time, source_frame_id,
+                       source_time, fixed_frame_id, &stamped_transform,
+                       timeout_sec, err_msg)) {
     return false;
   }
 

@@ -39,6 +39,14 @@ class TransformQuery {
                     float timeout_sec = 0.01f,
                     std::string* err_msg = nullptr) const;
 
+  bool CanTransform(const std::string& target_frame_id,
+                    const cyber::Time& target_time,
+                    const std::string& source_frame_id,
+                    const cyber::Time& source_time,
+                    const std::string& fixed_frame_id,
+                    float timeout_sec = 0.01f,
+                    std::string* err_msg = nullptr) const;
+
   bool LookupTransform(const std::string& target_frame_id,
                        const std::string& source_frame_id,
                        const cyber::Time& query_time,
@@ -46,9 +54,27 @@ class TransformQuery {
                        float timeout_sec = 0.01f,
                        std::string* err_msg = nullptr) const;
 
+  bool LookupTransform(const std::string& target_frame_id,
+                       const cyber::Time& target_time,
+                       const std::string& source_frame_id,
+                       const cyber::Time& source_time,
+                       const std::string& fixed_frame_id,
+                       TransformStamped* transform,
+                       float timeout_sec = 0.01f,
+                       std::string* err_msg = nullptr) const;
+
   bool LookupTransformToAffine(const std::string& target_frame_id,
                                const std::string& source_frame_id,
                                const cyber::Time& query_time,
+                               Eigen::Affine3d* transform,
+                               float timeout_sec = 0.01f,
+                               std::string* err_msg = nullptr) const;
+
+  bool LookupTransformToAffine(const std::string& target_frame_id,
+                               const cyber::Time& target_time,
+                               const std::string& source_frame_id,
+                               const cyber::Time& source_time,
+                               const std::string& fixed_frame_id,
                                Eigen::Affine3d* transform,
                                float timeout_sec = 0.01f,
                                std::string* err_msg = nullptr) const;
