@@ -26,13 +26,11 @@
 #include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/perception/lidar/common/pcl_util.h"
 #include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
-#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
 
 namespace apollo {
 namespace perception {
 namespace lidar {
-
-using apollo::transform::Buffer;
 
 class MsgExporter {
  public:
@@ -77,7 +75,7 @@ class MsgExporter {
   std::vector<std::string> _channels;
   std::vector<std::string> _child_frame_ids;
   std::string _localization_method;
-  Buffer* tf2_buffer_ = Buffer::Instance();
+  apollo::transform::TransformQuery transform_query_;
 };
 
 }  // namespace lidar

@@ -24,13 +24,38 @@ cc_library(
 )
 
 cc_library(
-    name = "transform_query",
+    name = "transform_query_core",
     srcs = ["transform_query.cc"],
     hdrs = ["transform_query.h"],
     deps = [
-        "//cyber",
+        "//cyber/common:log",
+        "//cyber/time:time",
         "//modules/common_msgs/transform_msgs:transform_cc_proto",
-        "//modules/transform:buffer",
+        "//modules/transform:buffer_interface",
+        "//third_party/tf2",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "transform_query",
+    srcs = ["transform_query_default.cc"],
+    deps = [
+        ":buffer",
+        ":transform_query_core",
+    ],
+)
+
+cc_library(
+    name = "timed_transform_resolver",
+    srcs = ["timed_transform_resolver.cc"],
+    hdrs = ["timed_transform_resolver.h"],
+    deps = [
+        "//cyber/common:global_data",
+        "//cyber/common:log",
+        "//cyber/time:time",
+        "//modules/common/util:string_util",
+        "//modules/transform:transform_query_core",
         "@eigen",
     ],
 )
@@ -39,9 +64,36 @@ cc_library(
     name = "buffer_interface",
     hdrs = ["buffer_interface.h"],
     deps = [
+        "//cyber/time:time",
         "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "//third_party/tf2",
     ],
-    visibility = ["//visibility:private"],
+)
+
+cc_test(
+    name = "transform_query_test",
+    size = "small",
+    srcs = ["transform_query_test.cc"],
+    deps = [
+        ":buffer_interface",
+        ":transform_query_core",
+        "//third_party/tf2",
+        "@com_google_googletest//:gtest_main",
+        "@eigen",
+    ],
+)
+
+cc_test(
+    name = "timed_transform_resolver_test",
+    size = "small",
+    srcs = ["timed_transform_resolver_test.cc"],
+    deps = [
+        ":buffer_interface",
+        ":timed_transform_resolver",
+        ":transform_query_core",
+        "@com_google_googletest//:gtest_main",
+        "@eigen",
+    ],
 )
 
 cc_library(
@@ -96,11 +148,11 @@ install(
     library_dest = "transform/lib",
     data = [
         ":runtime_data",
-        "transform.BUILD",
     ],
     targets = [
         ":libstatic_transform_component.so",
         ":buffer",
+        ":timed_transform_resolver",
         ":transform_query",
         ":transform_broadcaster",
     ],

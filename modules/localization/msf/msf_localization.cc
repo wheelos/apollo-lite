@@ -33,6 +33,12 @@ namespace localization {
 
 using apollo::common::Status;
 
+namespace {
+
+constexpr float kStartupStaticTransformTimeoutSec = 3.0f;
+
+}  // namespace
+
 MSFLocalization::MSFLocalization()
     : monitor_logger_(
           apollo::common::monitor::MonitorMessageItem::LOCALIZATION),
@@ -100,7 +106,7 @@ void MSFLocalization::InitParams() {
   Eigen::Affine3d vehicle_to_imu = Eigen::Affine3d::Identity();
   ACHECK(apollo::localization::common::LookupStaticTransform(
       FLAGS_localization_tf_imu_frame_id, FLAGS_broadcast_tf_child_frame_id,
-      &vehicle_to_imu))
+      &vehicle_to_imu, kStartupStaticTransformTimeoutSec))
       << "Failed to load rigid vehicle-to-imu TF. vehicle frame: "
       << FLAGS_broadcast_tf_child_frame_id
       << ", imu frame: " << FLAGS_localization_tf_imu_frame_id;

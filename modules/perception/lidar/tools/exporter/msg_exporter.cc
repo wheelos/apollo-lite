@@ -194,32 +194,17 @@ bool MsgExporter::QuerySensorToWorldPose(double timestamp,
 bool MsgExporter::QueryPose(double timestamp, const std::string& frame_id,
                             const std::string& child_frame_id,
                             Eigen::Matrix4d* pose) {
-  cyber::Time query_time(timestamp);
+  Eigen::Affine3d affine_pose = Eigen::Affine3d::Identity();
   std::string err_string;
-  if (!tf2_buffer_->canTransform(frame_id, child_frame_id, query_time, 0.05f,
-                                 &err_string)) {
+  if (!transform_query_.LookupTransformToAffine(
+          frame_id, child_frame_id, cyber::Time(timestamp), &affine_pose,
+          0.05f, &err_string)) {
     AERROR << "Can not find transform. "  //<< FORMAT_TIMESTAMP(timestamp)
            << " frame_id: " << frame_id << " child_frame_id: " << child_frame_id
            << " Error info: " << err_string;
     return false;
   }
-  apollo::transform::TransformStamped stamped_transform;
-  try {
-    stamped_transform =
-        tf2_buffer_->lookupTransform(frame_id, child_frame_id, query_time);
-    Eigen::Translation3d translation(
-        stamped_transform.transform().translation().x(),
-        stamped_transform.transform().translation().y(),
-        stamped_transform.transform().translation().z());
-    Eigen::Quaterniond rotation(stamped_transform.transform().rotation().qw(),
-                                stamped_transform.transform().rotation().qx(),
-                                stamped_transform.transform().rotation().qy(),
-                                stamped_transform.transform().rotation().qz());
-    *pose = (translation * rotation).matrix();
-  } catch (tf2::TransformException& ex) {
-    AERROR << ex.what();
-    return false;
-  }
+  *pose = affine_pose.matrix();
   return true;
 }
 
