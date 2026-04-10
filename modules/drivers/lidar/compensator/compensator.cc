@@ -20,6 +20,8 @@
 #include <memory>
 #include <string>
 
+#include "cyber/common/log.h"
+
 namespace apollo {
 namespace drivers {
 namespace lidar {
@@ -27,34 +29,15 @@ namespace lidar {
 bool Compensator::QueryPoseAffineFromTF2(const uint64_t& timestamp, void* pose,
                                          const std::string& child_frame_id) {
   cyber::Time query_time(timestamp);
+  Eigen::Affine3d* tmp_pose = static_cast<Eigen::Affine3d*>(pose);
   std::string err_string;
-  if (!tf2_buffer_ptr_->canTransform(
-          config_.world_frame_id(), child_frame_id, query_time,
+  if (!transform_query_.LookupTransformToAffine(
+          config_.world_frame_id(), child_frame_id, query_time, tmp_pose,
           config_.transform_query_timeout(), &err_string)) {
     AERROR << "Can not find transform. " << timestamp
            << " frame_id:" << child_frame_id << " Error info: " << err_string;
     return false;
   }
-
-  apollo::transform::TransformStamped stamped_transform;
-
-  try {
-    stamped_transform = tf2_buffer_ptr_->lookupTransform(
-        config_.world_frame_id(), child_frame_id, query_time);
-  } catch (tf2::TransformException& ex) {
-    AERROR << ex.what();
-    return false;
-  }
-
-  Eigen::Affine3d* tmp_pose = (Eigen::Affine3d*)pose;
-  *tmp_pose =
-      Eigen::Translation3d(stamped_transform.transform().translation().x(),
-                           stamped_transform.transform().translation().y(),
-                           stamped_transform.transform().translation().z()) *
-      Eigen::Quaterniond(stamped_transform.transform().rotation().qw(),
-                         stamped_transform.transform().rotation().qx(),
-                         stamped_transform.transform().rotation().qy(),
-                         stamped_transform.transform().rotation().qz());
   return true;
 }
 

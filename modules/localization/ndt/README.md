@@ -9,7 +9,8 @@
   * Point cloud data from LiDAR sensor ( `/apollo/sensor/velodyne64/compensator/PointCloud2`)
   * Inspva message from integrated navigation sensor ( `/apollo/sensor/gnss/odometry`)
   * Localization map (FLAGS_map_dir + "/" + FLAGS_ndt_map_dir + "/" + FLAGS_local_map_name)
-  * Parameter config files (velodyne64_novatel_extrinsics_example.yaml, velodyne64_height.yaml, located in `modules/localization/msf/params/`)
+  * Rigid LiDAR extrinsics from the TF tree published by `modules/transform`
+  * Parameter config files for LiDAR height (velodyne64_height.yaml, located in `modules/localization/msf/params/`)
 
 ## Output
   * Localization result defined by Protobuf message `LocalizationEstimate`, which can be found in file `localization/proto/localization.proto`. ( `/apollo/localization/pose`)

@@ -19,9 +19,6 @@ install(
 install(
     name = "install",
     data_dest = "perception",
-    data = [
-        ":perception.BUILD",
-    ],
     deps = [
         ":pb_perception",
         ":pb_hdrs",

@@ -322,7 +322,7 @@ void GraphClusterSegmenter::GetObjectsFromClusters(LidarFrame* frame) {
     bg_objects_.push_back(std::move(obj));
   }
   // background object builder
-  BgObjectBuilder(&bg_objects_, frame->lidar2novatel_extrinsics);
+  BgObjectBuilder(&bg_objects_, frame->lidar2vehicle_extrinsics);
 }
 
 bool GraphClusterSegmenter::Split(LidarFrame* frame) {
@@ -338,7 +338,7 @@ bool GraphClusterSegmenter::Split(LidarFrame* frame) {
       SplitObject(
           obj, &this_split,
           stage_conf_.graph_cluster_segmenter_config().split_distance());
-      BgObjectBuilder(&this_split, frame->lidar2novatel_extrinsics);
+      BgObjectBuilder(&this_split, frame->lidar2vehicle_extrinsics);
       split_objects.insert(split_objects.end(), this_split.begin(),
                            this_split.end());
       continue;

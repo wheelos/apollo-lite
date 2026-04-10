@@ -25,7 +25,8 @@ namespace perception {
 namespace lidar {
 
 bool BgObjectBuilder(std::vector<base::ObjectPtr>* objects,
-                     Eigen::Affine3d& lidar2novatel_pose) {
+                     Eigen::Affine3d& lidar2vehicle_extrinsics) {
+  (void)lidar2vehicle_extrinsics;
   if (objects == nullptr) {
     AINFO << "objects is null.";
     return false;

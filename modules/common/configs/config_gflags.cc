@@ -52,8 +52,8 @@ DEFINE_bool(use_cyber_time, false,
             "Whether Clock::Now() gets time from system_clock::now() or from "
             "Cyber.");
 
-DEFINE_string(localization_tf2_frame_id, "world", "the tf2 transform frame id");
-DEFINE_string(localization_tf2_child_frame_id, "localization",
+DEFINE_string(localization_tf2_frame_id, "map", "the tf2 transform frame id");
+DEFINE_string(localization_tf2_child_frame_id, "base_link",
               "the tf2 transform child frame id");
 
 DEFINE_bool(use_navigation_mode, false,

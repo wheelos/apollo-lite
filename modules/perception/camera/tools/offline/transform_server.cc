@@ -15,8 +15,10 @@
  *****************************************************************************/
 #include "modules/perception/camera/tools/offline/transform_server.h"
 
+#include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/perception/camera/common/util.h"
+#include "modules/perception/common/io/io_util.h"
 #include "yaml-cpp/yaml.h"
 
 namespace apollo {
@@ -52,11 +54,15 @@ bool TransformServer::Init(const std::vector<std::string> &camera_names,
   }
   // 2. Init lidar and camera extrinsic
   std::vector<std::string> extrinsic_filelist;
-  extrinsic_filelist.push_back(params_dir +
-                               "/velodyne128_novatel_extrinsics.yaml");
+  extrinsic_filelist.push_back(
+      common::ResolveExtrinsicPath(params_dir,
+                     "base_link_imu_link_extrinsics.yaml"));
+  extrinsic_filelist.push_back(
+      common::ResolveExtrinsicPath(params_dir,
+                                   "velodyne128_base_link_extrinsics.yaml"));
   for (const auto &camera_name : camera_names) {
-    extrinsic_filelist.push_back(params_dir + "/" + camera_name +
-                                 "_extrinsics.yaml");
+    extrinsic_filelist.push_back(common::ResolveExtrinsicPath(
+        params_dir, camera_name + "_extrinsics.yaml"));
   }
 
   for (const auto &yaml_file : extrinsic_filelist) {

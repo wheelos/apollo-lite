@@ -1,7 +1,7 @@
 # The coordinate frame attached to the vehicle's chassis/center of rotation.
 # All filtering operations (ego, height, ROI) are performed in this stable frame.
-# Common values are "imu" or "base_link".
-vehicle_frame_id: "imu"
+# Common values are "imu_link" or "base_link".
+vehicle_frame_id: "base_link"
 
 
 # --- Ego Vehicle Dimensions (for Self-Filtering) ---

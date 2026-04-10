@@ -16,6 +16,8 @@
 
 #include "modules/transform/buffer.h"
 
+#include "tf2/exceptions.h"
+
 #include "absl/strings/str_cat.h"
 
 #include "cyber/cyber.h"
@@ -28,6 +30,17 @@ using Clock = ::apollo::cyber::Clock;
 namespace {
 constexpr float kSecondToNanoFactor = 1e9f;
 constexpr uint64_t kMilliToNanoFactor = 1e6;
+
+void ThrowLookupTimeout(const std::string& target_frame,
+                        const std::string& source_frame,
+                        const std::string& error) {
+  if (!error.empty()) {
+    throw tf2::LookupException(error);
+  }
+
+  throw tf2::LookupException(absl::StrCat(
+      "Lookup transform timeout from ", source_frame, " to ", target_frame));
+}
 }  // namespace
 
 namespace apollo {
@@ -120,9 +133,9 @@ void Buffer::SubscriptionCallbackImpl(
   }
 }
 
-bool Buffer::GetLatestStaticTF(const std::string& frame_id,
-                               const std::string& child_frame_id,
-                               TransformStamped* tf) {
+bool Buffer::GetLatestStaticTransform(const std::string& frame_id,
+                 const std::string& child_frame_id,
+                 TransformStamped* tf) const {
   for (auto reverse_iter = static_msgs_.rbegin();
        reverse_iter != static_msgs_.rend(); ++reverse_iter) {
     if ((*reverse_iter).header.frame_id == frame_id &&
@@ -169,6 +182,12 @@ TransformStamped Buffer::lookupTransform(const std::string& target_frame,
                                          const std::string& source_frame,
                                          const cyber::Time& time,
                                          const float timeout_second) const {
+  std::string errstr;
+  if (!canTransform(target_frame, source_frame, time, timeout_second,
+                    &errstr)) {
+    ThrowLookupTimeout(target_frame, source_frame, errstr);
+  }
+
   tf2::Time tf2_time(time.ToNanosecond());
   geometry_msgs::TransformStamped tf2_trans_stamped =
       tf2::BufferCore::lookupTransform(target_frame, source_frame, tf2_time);
@@ -183,6 +202,12 @@ TransformStamped Buffer::lookupTransform(const std::string& target_frame,
                                          const cyber::Time& source_time,
                                          const std::string& fixed_frame,
                                          const float timeout_second) const {
+  std::string errstr;
+  if (!canTransform(target_frame, target_time, source_frame, source_time,
+                    fixed_frame, timeout_second, &errstr)) {
+    ThrowLookupTimeout(target_frame, source_frame, errstr);
+  }
+
   geometry_msgs::TransformStamped tf2_trans_stamped =
       tf2::BufferCore::lookupTransform(target_frame, target_time.ToNanosecond(),
                                        source_frame, source_time.ToNanosecond(),
@@ -196,26 +221,33 @@ bool Buffer::canTransform(const std::string& target_frame,
                           const std::string& source_frame,
                           const cyber::Time& time, const float timeout_second,
                           std::string* errstr) const {
+  std::string local_errstr;
+  std::string* error = errstr != nullptr ? errstr : &local_errstr;
   uint64_t timeout_ns =
       static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
-  uint64_t start_time = Clock::Now().ToNanosecond();  // time.ToNanosecond();
-  while (Clock::Now().ToNanosecond() < start_time + timeout_ns &&
-         !cyber::IsShutdown()) {
-    errstr->clear();
+  uint64_t start_time = Clock::Now().ToNanosecond();
+  uint64_t deadline = start_time + timeout_ns;
+  do {
+    error->clear();
     bool retval = tf2::BufferCore::canTransform(target_frame, source_frame,
-                                                time.ToNanosecond(), errstr);
+                                                time.ToNanosecond(), error);
     if (retval) {
       return true;
-    } else {
-      if (!cyber::common::GlobalData::Instance()->IsRealityMode()) {
-        break;
-      }
-      const int sleep_time_ms = 3;
-      AWARN << "BufferCore::canTransform failed: " << *errstr;
-      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
     }
+
+    if (!cyber::common::GlobalData::Instance()->IsRealityMode() ||
+        cyber::IsShutdown() || Clock::Now().ToNanosecond() >= deadline) {
+      break;
+    }
+
+    const int sleep_time_ms = 3;
+    ADEBUG << "BufferCore::canTransform retry: " << *error;
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
+  } while (Clock::Now().ToNanosecond() < deadline && !cyber::IsShutdown());
+
+  if (errstr != nullptr) {
+    *errstr += ":timeout";
   }
-  *errstr = *errstr + ":timeout";
   return false;
 }
 
@@ -226,29 +258,37 @@ bool Buffer::canTransform(const std::string& target_frame,
                           const std::string& fixed_frame,
                           const float timeout_second,
                           std::string* errstr) const {
-  // poll for transform if timeout is set
+  std::string local_errstr;
+  std::string* error = errstr != nullptr ? errstr : &local_errstr;
   uint64_t timeout_ns =
       static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
   uint64_t start_time = Clock::Now().ToNanosecond();
-  while (Clock::Now().ToNanosecond() < start_time + timeout_ns &&
-         !cyber::IsShutdown()) {  // Make sure we haven't been stopped
-    errstr->clear();
+  uint64_t deadline = start_time + timeout_ns;
+  do {
+    error->clear();
     bool retval = tf2::BufferCore::canTransform(
         target_frame, target_time.ToNanosecond(), source_frame,
-        source_time.ToNanosecond(), fixed_frame, errstr);
+        source_time.ToNanosecond(), fixed_frame, error);
     if (retval) {
       return true;
-    } else {
-      const int sleep_time_ms = 3;
-      AWARN << "BufferCore::canTransform failed: " << *errstr;
-      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
-      if (!cyber::common::GlobalData::Instance()->IsRealityMode()) {
-        Clock::SetNow(Time(Clock::Now().ToNanosecond() +
-                           sleep_time_ms * kMilliToNanoFactor));
-      }
     }
+
+    if (cyber::IsShutdown() || Clock::Now().ToNanosecond() >= deadline) {
+      break;
+    }
+
+    const int sleep_time_ms = 3;
+    ADEBUG << "BufferCore::canTransform retry: " << *error;
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
+    if (!cyber::common::GlobalData::Instance()->IsRealityMode()) {
+      Clock::SetNow(Time(Clock::Now().ToNanosecond() +
+                         sleep_time_ms * kMilliToNanoFactor));
+    }
+  } while (Clock::Now().ToNanosecond() < deadline && !cyber::IsShutdown());
+
+  if (errstr != nullptr) {
+    *errstr += ":timeout";
   }
-  *errstr = *errstr + ":timeout";
   return false;
 }
 

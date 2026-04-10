@@ -309,13 +309,13 @@ bool SpatioTemporalGroundDetector::Detect(const GroundDetectorOptions& options,
     // This avoids misclassifying points slightly below the fitted plane.
     float threshold = ground_thres_;
     const auto& pt_local = frame->cloud->at(idx);
-    // Use novatel(vehicle) frame longitudinal distance for adaptive
+    // Use vehicle-frame longitudinal distance for adaptive
     // thresholding (closest to 10.0 logic). If extrinsics are identity, this
     // degenerates to lidar frame.
-    const Eigen::Vector3d pt_novatel =
-        frame->lidar2novatel_extrinsics *
+    const Eigen::Vector3d pt_vehicle =
+        frame->lidar2vehicle_extrinsics *
         Eigen::Vector3d(pt_local.x, pt_local.y, pt_local.z);
-    const float forward_dist = static_cast<float>(pt_novatel.y());
+    const float forward_dist = static_cast<float>(pt_vehicle.y());
     if (forward_dist > 0.0f && forward_dist < near_range_dist_) {
       threshold = near_range_ground_thres_;
     } else if (forward_dist >= near_range_dist_ &&
