@@ -31,7 +31,6 @@ COVERAGE_DAT="${BAZEL_OUT}/_coverage/_coverage_report.dat"
 
 ARCH="$(uname -m)"
 
-: ${USE_ESD_CAN:=false}
 USE_GPU=-1
 
 CMDLINE_OPTIONS=
@@ -39,12 +38,6 @@ SHORTHAND_TARGETS=
 DISABLED_TARGETS=
 
 function _determine_drivers_disabled() {
-  if ! ${USE_ESD_CAN}; then
-    warning "ESD CAN library supplied by ESD Electronics doesn't exist."
-    warning "If you need ESD CAN, please refer to:"
-    warning "  third_party/can_card_library/esd_can/README.md"
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/drivers/canbus/can_client/esd/..."
-  fi
 }
 
 function _determine_localization_disabled() {
@@ -223,9 +216,6 @@ function format_bazel_targets() {
 }
 
 function run_bazel_coverage() {
-  if ${USE_ESD_CAN}; then
-    CMDLINE_OPTIONS="${CMDLINE_OPTIONS} --define USE_ESD_CAN=${USE_ESD_CAN}"
-  fi
   CMDLINE_OPTIONS="$(echo ${CMDLINE_OPTIONS} | xargs)"
 
   local test_targets

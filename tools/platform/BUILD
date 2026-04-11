@@ -10,13 +10,6 @@ config_setting(
 )
 
 config_setting(
-    name = "use_esd_can",
-    define_values = {
-        "USE_ESD_CAN": "true",
-    },
-)
-
-config_setting(
     name = "with_teleop",
     define_values = {
         "WITH_TELEOP": "true",

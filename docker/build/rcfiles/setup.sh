@@ -51,7 +51,7 @@ if [ ! -f /apollo/LICENSE ]; then
   APOLLO_IN_DOCKER=false
   APOLLO_PATH="/opt/apollo/neo"
   APOLLO_ROOT_DIR=${APOLLO_PATH}/packages
-  
+
   if [ -f /.dockerenv ]; then
     APOLLO_IN_DOCKER=true
   fi
@@ -68,7 +68,6 @@ if [ ! -f /apollo/LICENSE ]; then
   export GLOG_colorlogtostderr=1
   export GLOG_minloglevel=0
   export sysmo_start=0
-  export USE_ESD_CAN=false
 
 fi
 
