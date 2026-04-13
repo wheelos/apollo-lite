@@ -56,6 +56,10 @@ uint64_t LivoxLidarComponent::GetEthPacketTimestamp(uint8_t handle,
                        config_.max_timestamp_diff_s() : 10.0;
   uint64_t max_diff_ns = static_cast<uint64_t>(max_diff_s * 1e9);
 
+  // apply timestamp offset
+  if (config_.timestamp_offset() != 0) {
+    packet_timestamp += static_cast<int64_t>(config_.timestamp_offset() * 1e9);
+  }
   // Calculate absolute difference
   uint64_t diff_ns;
   if (packet_timestamp > system_time_ns) {

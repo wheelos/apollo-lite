@@ -30,6 +30,9 @@ message Config {
   //
   // Default: 10.0 seconds
   optional double max_timestamp_diff_s = 6 [default = 10.0];
+
+  // timestamp offset in seconds, applyed to point cloud timestamp
+  optional double timestamp_offset = 7 [default = 0];
 }
 
 message LivoxScan {
