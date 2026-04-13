@@ -76,9 +76,31 @@
           <div class="metric-label">Last Point Count</div>
           <div class="metric-value" id="points-value">0</div>
         </div>
+        <div class="metric">
+          <div class="metric-label">Perception Channel</div>
+          <div class="metric-value" id="obstacle-channel-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Obstacle Count</div>
+          <div class="metric-value" id="obstacle-count-value">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Obstacle Frame</div>
+          <div class="metric-value" id="obstacle-frame-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Obstacle Timestamp</div>
+          <div class="metric-value" id="obstacle-timestamp-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Overlay Status</div>
+          <div class="metric-value" id="overlay-error-value">OK</div>
+        </div>
       </section>
       <section id="canvas-root">
         <div id="overlay"><strong>Tips:</strong> Left drag rotates, right drag pans, wheel zooms.</div>
+        <span style="color:#ff8a5b;">Non-ground</span> /
+        <span style="color:#7cff6b;">Perception boxes</span>
         <div id="viewer"></div>
       </section>
     </div>

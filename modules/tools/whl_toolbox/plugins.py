@@ -677,9 +677,7 @@ class SlamVisualizationPlugin(ToolboxPlugin):
         def _slam_asset(asset_name: str):
             if asset_name not in {"three.min.js", "OrbitControls.js"}:
                 abort(404)
-            return send_file(
-                REPO_ROOT / "modules/slam_localization/tools/slam_visualization/static" / asset_name
-            )
+            return send_file(REPO_ROOT / "modules/tools/whl_toolbox/static/vendor" / asset_name)
 
         @app.get("/api/plugins/slam_visualization/map_raw.pcd")
         def _raw_map():
@@ -757,9 +755,7 @@ class LivePointCloudPlugin(ToolboxPlugin):
         def _live_pointcloud_asset(asset_name: str):
             if asset_name not in {"three.min.js", "OrbitControls.js"}:
                 abort(404)
-            return send_file(
-                REPO_ROOT / "modules/slam_localization/tools/slam_visualization/static" / asset_name
-            )
+            return send_file(REPO_ROOT / "modules/tools/whl_toolbox/static/vendor" / asset_name)
 
     def run_action(self, action_id: str, params: Dict[str, Any], ctx: JobContext) -> None:
         if action_id != "launch_viewer":

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <array>
 #include <condition_variable>
 #include <cmath>
 #include <cstdint>
@@ -21,8 +22,10 @@
 #include "cyber/cyber.h"
 #include "cyber/common/log.h"
 #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "modules/dreamview/backend/handlers/websocket_handler.h"
 #include "modules/transform/transform_query.h"
+#include "modules/transform/buffer.h"
 
 DEFINE_string(channel, "", "PointCloud channel to subscribe to.");
 DEFINE_int32(port, 8891, "CivetWeb listening port for live pointcloud viewer.");
@@ -39,6 +42,31 @@ namespace whl_toolbox {
 using Json = nlohmann::json;
 using apollo::dreamview::WebSocketHandler;
 using apollo::drivers::PointCloud;
+using ::apollo::perception::PerceptionObstacle;
+using ::apollo::perception::PerceptionObstacles;
+
+constexpr char kPerceptionObstacleChannel[] = "/apollo/perception/obstacles";
+constexpr char kWorldFrame[] = "world";
+
+
+const char *ObstacleTypeName(PerceptionObstacle::Type type) {
+  switch (type) {
+    case PerceptionObstacle::PEDESTRIAN:
+      return "PEDESTRIAN";
+    case PerceptionObstacle::BICYCLE:
+      return "BICYCLE";
+    case PerceptionObstacle::VEHICLE:
+      return "VEHICLE";
+    case PerceptionObstacle::UNKNOWN_MOVABLE:
+      return "UNKNOWN_MOVABLE";
+    case PerceptionObstacle::UNKNOWN_UNMOVABLE:
+      return "UNKNOWN_UNMOVABLE";
+    case PerceptionObstacle::UNKNOWN:
+    default:
+      return "UNKNOWN";
+  }
+}
+
 
 class HealthHandler : public CivetHandler {
  public:
@@ -105,6 +133,16 @@ class LivePointCloudViewer {
         });
     if (reader_ == nullptr) {
       AERROR << "failed to create pointcloud reader for " << channel_;
+      return false;
+    }
+    obstacle_reader_ = node_->CreateReader<PerceptionObstacles>(
+        kPerceptionObstacleChannel,
+        [this](const std::shared_ptr<PerceptionObstacles> &message) {
+          this->OnPerceptionObstacles(message);
+        });
+    if (obstacle_reader_ == nullptr) {
+      AERROR << "failed to subscribe perception obstacle channel "
+             << kPerceptionObstacleChannel;
       return false;
     }
     if (target_frame_.empty()) {
@@ -192,6 +230,82 @@ class LivePointCloudViewer {
     }
   }
 
+  void OnPerceptionObstacles(
+      const std::shared_ptr<PerceptionObstacles> &message) {
+    if (message == nullptr) {
+      return;
+    }
+
+    std::string display_frame;
+    double display_timestamp_sec = 0.0;
+    bool waiting_for_source_frame = false;
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      display_frame = target_frame_.empty() ? source_frame_ : target_frame_;
+      display_timestamp_sec = last_timestamp_sec_;
+      if (display_frame.empty()) {
+        obstacle_overlay_error_ =
+            "waiting for pointcloud frame before rendering perception boxes";
+        waiting_for_source_frame = true;
+      }
+    }
+    if (waiting_for_source_frame) {
+      websocket_->BroadcastData(BuildStatusJson().dump(), true);
+      return;
+    }
+
+    const double obstacle_timestamp_sec = ResolveObstacleTimestamp(*message);
+    const double timestamp_sec =
+        display_timestamp_sec > 0.0 ? display_timestamp_sec : obstacle_timestamp_sec;
+    std::string error;
+    Eigen::Affine3d world_to_display = Eigen::Affine3d::Identity();
+    if (!LookupWorldToDisplayPose(display_frame, timestamp_sec, &world_to_display,
+                                  &error)) {
+      {
+        std::lock_guard<std::mutex> lock(status_mutex_);
+        obstacle_overlay_error_ = error;
+      }
+      websocket_->BroadcastData(BuildStatusJson().dump(), true);
+      return;
+    }
+
+    Json payload;
+    payload["type"] = "obstacles";
+    payload["channel"] = kPerceptionObstacleChannel;
+    payload["frame"] = display_frame;
+    payload["timestamp_sec"] = timestamp_sec;
+    payload["obstacles"] = Json::array();
+
+    for (const auto &obstacle : message->perception_obstacle()) {
+      const Json obstacle_json =
+          BuildObstacleJson(obstacle, world_to_display);
+      if (!obstacle_json.is_null()) {
+        payload["obstacles"].push_back(obstacle_json);
+      }
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      last_obstacle_count_ =
+          static_cast<std::uint32_t>(payload["obstacles"].size());
+      last_obstacle_timestamp_sec_ = timestamp_sec;
+      obstacle_display_frame_ = display_frame;
+      obstacle_overlay_error_.clear();
+    }
+    websocket_->BroadcastData(payload.dump(), true);
+  }
+
+  double ResolveObstacleTimestamp(const PerceptionObstacles &message) const {
+    if (message.has_header() && message.header().has_timestamp_sec()) {
+      return message.header().timestamp_sec();
+    }
+    if (message.perception_obstacle_size() > 0 &&
+        message.perception_obstacle(0).has_timestamp()) {
+      return message.perception_obstacle(0).timestamp();
+    }
+    return 0.0;
+  }
+
   double ResolveTimestamp(const PointCloud &message) const {
     if (message.header().has_timestamp_sec()) {
       return message.header().timestamp_sec();
@@ -212,6 +326,11 @@ class LivePointCloudViewer {
     payload["source_frame"] = source_frame_;
     payload["target_frame"] = target_frame_;
     payload["transform_enabled"] = !target_frame_.empty();
+    payload["perception_obstacle_channel"] = kPerceptionObstacleChannel;
+    payload["last_obstacle_count"] = last_obstacle_count_;
+    payload["last_obstacle_timestamp_sec"] = last_obstacle_timestamp_sec_;
+    payload["obstacle_display_frame"] = obstacle_display_frame_;
+    payload["obstacle_overlay_error"] = obstacle_overlay_error_;
     return payload;
   }
 
@@ -316,6 +435,133 @@ class LivePointCloudViewer {
     return true;
   }
 
+  bool LookupWorldToDisplayPose(const std::string &display_frame,
+                                double timestamp_sec,
+                                Eigen::Affine3d *world_to_display,
+                                std::string *error) const {
+    auto *buffer = ::apollo::transform::Buffer::Instance();
+    const ::apollo::cyber::Time query_time(timestamp_sec);
+    std::string err;
+    if (!buffer->canTransform(display_frame, kWorldFrame, query_time, 0.2f,
+                              &err)) {
+      if (error != nullptr) {
+        *error = std::string("failed to resolve transform from world to ") +
+                 display_frame + ": " + err;
+      }
+      return false;
+    }
+
+    ::apollo::transform::TransformStamped transform_stamped;
+    try {
+      transform_stamped =
+          buffer->lookupTransform(display_frame, kWorldFrame, query_time, 0.2f);
+    } catch (const std::exception &ex) {
+      if (error != nullptr) {
+        *error = std::string("failed to lookup transform from world to ") +
+                 display_frame + ": " + ex.what();
+      }
+      return false;
+    }
+
+    const auto &tf = transform_stamped.transform();
+    const Eigen::Quaterniond rotation(tf.rotation().qw(), tf.rotation().qx(),
+                                      tf.rotation().qy(), tf.rotation().qz());
+    Eigen::Affine3d pose = Eigen::Affine3d::Identity();
+    pose.linear() = rotation.toRotationMatrix();
+    pose.translation() << tf.translation().x(), tf.translation().y(),
+        tf.translation().z();
+    *world_to_display = pose;
+    return true;
+  }
+
+  Eigen::Vector3d TransformPoint(const apollo::common::Point3D &point,
+                                 const Eigen::Affine3d &world_to_display) const {
+    return world_to_display *
+           Eigen::Vector3d(point.x(), point.y(), point.z());
+  }
+
+  std::vector<Eigen::Vector3d> BuildBasePolygonWorld(
+      const PerceptionObstacle &obstacle) const {
+    std::vector<Eigen::Vector3d> polygon;
+    polygon.reserve(static_cast<std::size_t>(obstacle.polygon_point_size()));
+    for (const auto &point : obstacle.polygon_point()) {
+      polygon.emplace_back(point.x(), point.y(), point.z());
+    }
+    if (!polygon.empty()) {
+      return polygon;
+    }
+
+    if (!obstacle.has_position() || !obstacle.has_length() ||
+        !obstacle.has_width()) {
+      return {};
+    }
+
+    const double center_x = obstacle.position().x();
+    const double center_y = obstacle.position().y();
+    const double center_z = obstacle.position().z();
+    const double half_length = obstacle.length() * 0.5;
+    const double half_width = obstacle.width() * 0.5;
+    const double yaw = obstacle.has_theta() ? obstacle.theta() : 0.0;
+    const double cos_yaw = std::cos(yaw);
+    const double sin_yaw = std::sin(yaw);
+    const std::array<std::pair<double, double>, 4> local_corners = {
+        std::make_pair(half_length, half_width),
+        std::make_pair(half_length, -half_width),
+        std::make_pair(-half_length, -half_width),
+        std::make_pair(-half_length, half_width),
+    };
+    polygon.reserve(local_corners.size());
+    for (const auto &corner : local_corners) {
+      const double x =
+          center_x + corner.first * cos_yaw - corner.second * sin_yaw;
+      const double y =
+          center_y + corner.first * sin_yaw + corner.second * cos_yaw;
+      polygon.emplace_back(x, y, center_z);
+    }
+    return polygon;
+  }
+
+  Json BuildObstacleJson(const PerceptionObstacle &obstacle,
+                         const Eigen::Affine3d &world_to_display) const {
+    std::vector<Eigen::Vector3d> base_polygon =
+        BuildBasePolygonWorld(obstacle);
+    if (base_polygon.size() < 2) {
+      return Json();
+    }
+
+    const double height = obstacle.has_height()
+                              ? std::max(0.1, obstacle.height())
+                              : 1.0;
+    Json base = Json::array();
+    Json top = Json::array();
+    for (const auto &point : base_polygon) {
+      apollo::common::Point3D world_point;
+      world_point.set_x(point.x());
+      world_point.set_y(point.y());
+      world_point.set_z(point.z());
+      const Eigen::Vector3d transformed =
+          TransformPoint(world_point, world_to_display);
+      base.push_back(transformed.x());
+      base.push_back(transformed.y());
+      base.push_back(transformed.z());
+
+      world_point.set_z(point.z() + height);
+      const Eigen::Vector3d transformed_top =
+          TransformPoint(world_point, world_to_display);
+      top.push_back(transformed_top.x());
+      top.push_back(transformed_top.y());
+      top.push_back(transformed_top.z());
+    }
+
+    Json payload;
+    payload["id"] = obstacle.id();
+    payload["type"] = ObstacleTypeName(obstacle.type());
+    payload["height"] = height;
+    payload["base"] = std::move(base);
+    payload["top"] = std::move(top);
+    return payload;
+  }
+
   void MarkReady() {
     std::lock_guard<std::mutex> lock(ready_mutex_);
     ready_ = true;
@@ -343,6 +589,11 @@ class LivePointCloudViewer {
   bool transform_ready_ = false;
   Eigen::Affine3d source_to_target_pose_ = Eigen::Affine3d::Identity();
 
+  std::uint32_t last_obstacle_count_ = 0;
+  double last_obstacle_timestamp_sec_ = 0.0;
+  std::string obstacle_display_frame_;
+  std::string obstacle_overlay_error_;
+
   std::mutex ready_mutex_;
   std::condition_variable ready_cv_;
   bool ready_ = false;
@@ -354,6 +605,8 @@ class LivePointCloudViewer {
   std::unique_ptr<HealthHandler> health_handler_;
   std::shared_ptr<apollo::cyber::Node> node_;
   std::shared_ptr<apollo::cyber::Reader<PointCloud>> reader_;
+  std::shared_ptr<::apollo::cyber::Reader<PerceptionObstacles>>
+      obstacle_reader_;
 };
 
 }  // namespace whl_toolbox

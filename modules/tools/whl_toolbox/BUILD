@@ -25,6 +25,8 @@ cc_binary(
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/transform:transform_query",
+        "//modules/transform:buffer",
+        "//modules/common_msgs/perception_msgs:perception_obstacle_cc_proto",
         "@civetweb//:civetserver",
         "@com_github_gflags_gflags//:gflags",
         "@com_github_nlohmann_json//:json",
