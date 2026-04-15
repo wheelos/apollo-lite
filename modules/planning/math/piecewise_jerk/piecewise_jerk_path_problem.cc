@@ -17,6 +17,8 @@
 #include "modules/planning/math/piecewise_jerk/piecewise_jerk_path_problem.h"
 
 #include <algorithm>
+#include <utility>
+#include <vector>
 
 #include "cyber/common/log.h"
 #include "modules/planning/common/planning_gflags.h"

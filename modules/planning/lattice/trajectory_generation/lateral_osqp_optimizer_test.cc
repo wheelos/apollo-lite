@@ -60,6 +60,21 @@ TEST(LateralOSQPOptimizerTest, OptimizeFailsForInfeasibleBounds) {
   EXPECT_FALSE(optimizer.optimize(d_state, 1.0, d_bounds));
 }
 
+TEST(LateralOSQPOptimizerTest, OptimizeClearsPreviousSolutionState) {
+  LateralOSQPOptimizer optimizer;
+  const std::array<double, 3> d_state = {0.0, 0.0, 0.0};
+  const std::vector<std::pair<double, double>> first_bounds = {
+      {-1.0, 1.0}, {-1.0, 1.0}, {-1.0, 1.0}};
+  const std::vector<std::pair<double, double>> second_bounds = {{-0.5, 0.5},
+                                                                {-0.5, 0.5}};
+
+  ASSERT_TRUE(optimizer.optimize(d_state, 1.0, first_bounds));
+  ASSERT_TRUE(optimizer.optimize(d_state, 1.0, second_bounds));
+
+  const auto frenet_path = optimizer.GetFrenetFramePath();
+  EXPECT_EQ(frenet_path.size(), second_bounds.size());
+}
+
 }  // namespace planning
 }  // namespace apollo
 

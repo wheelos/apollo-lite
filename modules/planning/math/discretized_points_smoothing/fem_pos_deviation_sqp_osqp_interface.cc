@@ -175,10 +175,21 @@ bool FemPosDeviationSqpOsqpInterface::Solve() {
       CalculateOffset(&q);
       CalculateAffineConstraint(opt_xy_, &A_data, &A_indices, &A_indptr,
                                 &lower_bounds, &upper_bounds);
-      osqp_update_data_vec(work, q.data(), lower_bounds.data(),
-                           upper_bounds.data());
-      osqp_update_data_mat(work, nullptr, nullptr, 0, A_data.data(), nullptr,
-                           static_cast<OSQPInt>(A_data.size()));
+      const OSQPInt update_vec_status =
+          osqp_update_data_vec(work, q.data(), lower_bounds.data(),
+                               upper_bounds.data());
+      const OSQPInt update_mat_status = osqp_update_data_mat(
+          work, nullptr, nullptr, 0, A_data.data(), nullptr,
+          static_cast<OSQPInt>(A_data.size()));
+      if (update_vec_status != 0 || update_mat_status != 0) {
+        AERROR << "failed to update osqp data, vec status: "
+               << update_vec_status << ", mat status: "
+               << update_mat_status;
+        weight_curvature_constraint_slack_var_ = original_slack_penalty;
+        osqp_cleanup(work);
+        OSQPSettings_free(settings);
+        return false;
+      }
 
       bool iterative_solve_res = OptimizeWithOsqp(primal_warm_start, work);
       if (!iterative_solve_res) {
@@ -520,8 +531,8 @@ bool FemPosDeviationSqpOsqpInterface::OptimizeWithOsqp(
   slack_.resize(num_of_slack_variables_);
   for (int i = 0; i < num_of_points_; ++i) {
     int index = i * 2;
-    opt_xy_.at(i) =
-        std::make_pair(solver->solution->x[index], solver->solution->x[index + 1]);
+    opt_xy_.at(i) = std::make_pair(solver->solution->x[index],
+                                   solver->solution->x[index + 1]);
   }
 
   for (int i = 0; i < num_of_slack_variables_; ++i) {

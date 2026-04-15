@@ -53,7 +53,7 @@ class PiecewiseJerkPathProblem : public PiecewiseJerkProblem {
 
   virtual ~PiecewiseJerkPathProblem() = default;
 
-protected:
+ protected:
   void CalculateKernel(std::vector<OSQPFloat>* P_data,
                        std::vector<OSQPInt>* P_indices,
                        std::vector<OSQPInt>* P_indptr) override;

@@ -14,11 +14,13 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include "modules/planning/math/piecewise_jerk/piecewise_jerk_path_problem.h"
 #include "modules/planning/math/piecewise_jerk/piecewise_jerk_problem.h"
+#include "modules/planning/math/piecewise_jerk/piecewise_jerk_speed_problem.h"
 
 #include <array>
+#include <cstdlib>
 #include <cstdio>
-#include <utility>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -29,6 +31,33 @@ namespace apollo {
 namespace planning {
 
 namespace {
+
+void ExpectUpperTriangularSorted(const OSQPCscMatrix* matrix,
+                                 const OSQPInt num_cols) {
+  ASSERT_NE(matrix, nullptr);
+  ASSERT_NE(matrix->p, nullptr);
+  ASSERT_NE(matrix->i, nullptr);
+  for (OSQPInt col = 0; col < num_cols; ++col) {
+    ASSERT_LE(matrix->p[col], matrix->p[col + 1]);
+    for (OSQPInt idx = matrix->p[col]; idx < matrix->p[col + 1]; ++idx) {
+      EXPECT_LE(matrix->i[idx], col);
+      if (idx + 1 < matrix->p[col + 1]) {
+        EXPECT_LT(matrix->i[idx], matrix->i[idx + 1]);
+      }
+    }
+  }
+}
+
+bool HasOffDiagonalEntry(const OSQPCscMatrix* matrix, const OSQPInt num_cols) {
+  for (OSQPInt col = 0; col < num_cols; ++col) {
+    for (OSQPInt idx = matrix->p[col]; idx < matrix->p[col + 1]; ++idx) {
+      if (matrix->i[idx] < col) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 class TestPiecewiseJerkProblem : public PiecewiseJerkProblem {
  public:
@@ -59,10 +88,29 @@ class TestPiecewiseJerkProblem : public PiecewiseJerkProblem {
   }
 };
 
+class InspectablePiecewiseJerkPathProblem : public PiecewiseJerkPathProblem {
+ public:
+  using PiecewiseJerkPathProblem::PiecewiseJerkPathProblem;
+
+  PiecewiseJerkProblemData BuildData() { return FormulateProblem(); }
+
+  void ReleaseData(PiecewiseJerkProblemData* data) { FreeData(data); }
+};
+
+class InspectablePiecewiseJerkSpeedProblem : public PiecewiseJerkSpeedProblem {
+ public:
+  using PiecewiseJerkSpeedProblem::PiecewiseJerkSpeedProblem;
+
+  PiecewiseJerkProblemData BuildData() { return FormulateProblem(); }
+
+  void ReleaseData(PiecewiseJerkProblemData* data) { FreeData(data); }
+};
+
 }  // namespace
 
 TEST(PiecewiseJerkProblemTest, FormulatedMatricesOwnTheirStorage) {
-  TestPiecewiseJerkProblem problem(3, 1.0, std::array<double, 3>{0.0, 0.0, 0.0});
+  TestPiecewiseJerkProblem problem(3, 1.0,
+                                   std::array<double, 3>{0.0, 0.0, 0.0});
 
   auto data = problem.BuildData();
   ASSERT_NE(data.P, nullptr);
@@ -74,7 +122,8 @@ TEST(PiecewiseJerkProblemTest, FormulatedMatricesOwnTheirStorage) {
 }
 
 TEST(PiecewiseJerkProblemTest, OptimizeSucceedsForFeasibleProblem) {
-  TestPiecewiseJerkProblem problem(3, 1.0, std::array<double, 3>{0.0, 0.0, 0.0});
+  TestPiecewiseJerkProblem problem(3, 1.0,
+                                   std::array<double, 3>{0.0, 0.0, 0.0});
   problem.set_x_bounds(-1.0, 1.0);
   problem.set_dx_bounds(-1.0, 1.0);
   problem.set_ddx_bounds(-1.0, 1.0);
@@ -96,10 +145,37 @@ TEST(PiecewiseJerkProblemTest, OptimizeSucceedsForFeasibleProblem) {
 }
 
 TEST(PiecewiseJerkProblemTest, OptimizeFailsForInfeasibleBounds) {
-  TestPiecewiseJerkProblem problem(3, 1.0, std::array<double, 3>{0.0, 0.0, 0.0});
+  TestPiecewiseJerkProblem problem(3, 1.0,
+                                   std::array<double, 3>{0.0, 0.0, 0.0});
   problem.set_x_bounds(1.0, 1.0);
 
   EXPECT_FALSE(problem.Optimize(100));
+}
+
+TEST(PiecewiseJerkProblemTest, PathKernelBuildsUpperTriangularSortedCsc) {
+  InspectablePiecewiseJerkPathProblem problem(
+      4, 1.0, std::array<double, 3>{0.0, 0.0, 0.0});
+  problem.set_weight_dddx(1.0);
+
+  auto data = problem.BuildData();
+  ASSERT_NE(data.P, nullptr);
+  ExpectUpperTriangularSorted(data.P, data.n);
+  EXPECT_TRUE(HasOffDiagonalEntry(data.P, data.n));
+
+  problem.ReleaseData(&data);
+}
+
+TEST(PiecewiseJerkProblemTest, SpeedKernelBuildsUpperTriangularSortedCsc) {
+  InspectablePiecewiseJerkSpeedProblem problem(
+      4, 1.0, std::array<double, 3>{0.0, 0.0, 0.0});
+  problem.set_weight_dddx(1.0);
+
+  auto data = problem.BuildData();
+  ASSERT_NE(data.P, nullptr);
+  ExpectUpperTriangularSorted(data.P, data.n);
+  EXPECT_TRUE(HasOffDiagonalEntry(data.P, data.n));
+
+  problem.ReleaseData(&data);
 }
 
 }  // namespace planning

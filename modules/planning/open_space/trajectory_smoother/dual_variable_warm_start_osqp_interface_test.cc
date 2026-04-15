@@ -19,24 +19,71 @@
  **/
 #include "modules/planning/open_space/trajectory_smoother/dual_variable_warm_start_osqp_interface.h"
 
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+
 #include <coin/IpIpoptApplication.hpp>
 #include <coin/IpSolveStatistics.hpp>
 
 #include "gtest/gtest.h"
 
 #include "cyber/common/file.h"
+#include "cyber/init.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/open_space/trajectory_smoother/dual_variable_warm_start_ipopt_qp_interface.h"
 
 namespace apollo {
 namespace planning {
 
+namespace {
+
+std::string PlannerConfigPath() {
+  constexpr char kConfigPath[] =
+      "modules/planning/testdata/conf/open_space_standard_parking_lot.pb.txt";
+  const char* test_srcdir = std::getenv("TEST_SRCDIR");
+  const char* test_workspace = std::getenv("TEST_WORKSPACE");
+  if (test_srcdir != nullptr && test_workspace != nullptr) {
+    return std::string(test_srcdir) + "/" + test_workspace + "/" +
+           kConfigPath;
+  }
+  return kConfigPath;
+}
+
+void ExpectUpperTriangularSorted(const std::vector<OSQPInt>& indptr,
+                                 const std::vector<OSQPInt>& indices,
+                                 const OSQPInt num_cols) {
+  ASSERT_EQ(indptr.size(), static_cast<size_t>(num_cols + 1));
+  for (OSQPInt col = 0; col < num_cols; ++col) {
+    ASSERT_LE(indptr[col], indptr[col + 1]);
+    for (OSQPInt idx = indptr[col]; idx < indptr[col + 1]; ++idx) {
+      EXPECT_LE(indices[idx], col);
+      if (idx + 1 < indptr[col + 1]) {
+        EXPECT_LT(indices[idx], indices[idx + 1]);
+      }
+    }
+  }
+}
+
+bool HasOffDiagonalEntry(const std::vector<OSQPInt>& indptr,
+                        const std::vector<OSQPInt>& indices,
+                        const OSQPInt num_cols) {
+  for (OSQPInt col = 0; col < num_cols; ++col) {
+    for (OSQPInt idx = indptr[col]; idx < indptr[col + 1]; ++idx) {
+      if (indices[idx] < col) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
 class DualVariableWarmStartOSQPInterfaceTest : public ::testing::Test {
  public:
   virtual void SetUp() {
-    FLAGS_planner_open_space_config_filename =
-        "/apollo/modules/planning/testdata/conf/"
-        "open_space_standard_parking_lot.pb.txt";
+  FLAGS_planner_open_space_config_filename = PlannerConfigPath();
 
     ACHECK(apollo::cyber::common::GetProtoFromFile(
         FLAGS_planner_open_space_config_filename, &planner_open_space_config_))
@@ -84,6 +131,19 @@ void DualVariableWarmStartOSQPInterfaceTest::ProblemSetup() {
 
 TEST_F(DualVariableWarmStartOSQPInterfaceTest, initilization) {
   EXPECT_NE(ptop_, nullptr);
+}
+
+TEST_F(DualVariableWarmStartOSQPInterfaceTest,
+       AssemblePBuildsUpperTriangularSortedCsc) {
+  std::vector<OSQPFloat> P_data;
+  std::vector<OSQPInt> P_indices;
+  std::vector<OSQPInt> P_indptr;
+
+  ptop_->assemble_P(&P_data, &P_indices, &P_indptr);
+
+  const OSQPInt num_cols = static_cast<OSQPInt>(P_indptr.size() - 1);
+  ExpectUpperTriangularSorted(P_indptr, P_indices, num_cols);
+  EXPECT_TRUE(HasOffDiagonalEntry(P_indptr, P_indices, num_cols));
 }
 
 TEST_F(DualVariableWarmStartOSQPInterfaceTest, optimize) {
@@ -154,3 +214,12 @@ TEST_F(DualVariableWarmStartOSQPInterfaceTest, optimize) {
 }
 }  // namespace planning
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  apollo::cyber::Init(argv[0]);
+  const int result = RUN_ALL_TESTS();
+  apollo::cyber::Clear();
+  std::fflush(nullptr);
+  std::_Exit(result);
+}

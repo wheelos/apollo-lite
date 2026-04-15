@@ -34,7 +34,51 @@ std::vector<std::pair<double, double>> StraightLineRefPoints() {
   return {{0.0, 0.0}, {1.0, 0.0}, {2.0, 0.0}, {3.0, 0.0}};
 }
 
+void ExpectUpperTriangularSorted(const std::vector<OSQPInt>& indptr,
+                                 const std::vector<OSQPInt>& indices,
+                                 const OSQPInt num_cols) {
+  ASSERT_EQ(indptr.size(), static_cast<size_t>(num_cols + 1));
+  for (OSQPInt col = 0; col < num_cols; ++col) {
+    ASSERT_LE(indptr[col], indptr[col + 1]);
+    for (OSQPInt idx = indptr[col]; idx < indptr[col + 1]; ++idx) {
+      EXPECT_LE(indices[idx], col);
+      if (idx + 1 < indptr[col + 1]) {
+        EXPECT_LT(indices[idx], indices[idx + 1]);
+      }
+    }
+  }
+}
+
+bool HasOffDiagonalEntry(const std::vector<OSQPInt>& indptr,
+                         const std::vector<OSQPInt>& indices,
+                         const OSQPInt num_cols) {
+  for (OSQPInt col = 0; col < num_cols; ++col) {
+    for (OSQPInt idx = indptr[col]; idx < indptr[col + 1]; ++idx) {
+      if (indices[idx] < col) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace
+
+class FemPosDeviationOsqpInterfaceTestPeer {
+ public:
+  static void PrepareKernelTest(FemPosDeviationOsqpInterface* solver,
+                                const int num_points) {
+    solver->num_of_points_ = num_points;
+    solver->num_of_variables_ = num_points * 2;
+  }
+
+  static void CalculateKernel(FemPosDeviationOsqpInterface* solver,
+                              std::vector<OSQPFloat>* P_data,
+                              std::vector<OSQPInt>* P_indices,
+                              std::vector<OSQPInt>* P_indptr) {
+    solver->CalculateKernel(P_data, P_indices, P_indptr);
+  }
+};
 
 TEST(FemPosDeviationOsqpInterfaceTest, SolveSucceedsForStraightLineInput) {
   FemPosDeviationOsqpInterface solver;
@@ -59,6 +103,25 @@ TEST(FemPosDeviationOsqpInterfaceTest, SolveFailsWhenInputSizesMismatch) {
   solver.set_bounds_around_refs({0.0, 0.0, 0.0});
 
   EXPECT_FALSE(solver.Solve());
+}
+
+TEST(FemPosDeviationOsqpInterfaceTest, KernelUsesUpperTriangularSortedCsc) {
+  FemPosDeviationOsqpInterface solver;
+  const auto ref_points = StraightLineRefPoints();
+  solver.set_ref_points(ref_points);
+  solver.set_bounds_around_refs(std::vector<double>(ref_points.size(), 0.0));
+  FemPosDeviationOsqpInterfaceTestPeer::PrepareKernelTest(
+      &solver, static_cast<int>(ref_points.size()));
+
+  std::vector<OSQPFloat> P_data;
+  std::vector<OSQPInt> P_indices;
+  std::vector<OSQPInt> P_indptr;
+  FemPosDeviationOsqpInterfaceTestPeer::CalculateKernel(
+      &solver, &P_data, &P_indices, &P_indptr);
+
+  const OSQPInt num_cols = static_cast<OSQPInt>(P_indptr.size() - 1);
+  ExpectUpperTriangularSorted(P_indptr, P_indices, num_cols);
+  EXPECT_TRUE(HasOffDiagonalEntry(P_indptr, P_indices, num_cols));
 }
 
 }  // namespace planning

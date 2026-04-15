@@ -331,12 +331,27 @@ cc_test(
     name = "dual_variable_warm_start_osqp_interface_test",
     size = "small",
     srcs = ["dual_variable_warm_start_osqp_interface_test.cc"],
+    data = ["//modules/planning:planning_testdata"],
     linkstatic = True,
     deps = [
         ":dual_variable_warm_start_ipopt_qp_interface",
         ":dual_variable_warm_start_osqp_interface",
-        "@com_google_googletest//:gtest_main",
+        "//cyber",
+        "@adolc",
+        "@com_google_googletest//:gtest",
         "@ipopt",
+    ],
+)
+
+cc_test(
+    name = "dual_variable_warm_start_slack_osqp_interface_test",
+    size = "small",
+    srcs = ["dual_variable_warm_start_slack_osqp_interface_test.cc"],
+    data = ["//modules/planning:planning_testdata"],
+    deps = [
+        ":dual_variable_warm_start_slack_osqp_interface",
+        "//cyber",
+        "@com_google_googletest//:gtest",
     ],
 )
 

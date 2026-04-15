@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "Eigen/Dense"
-#include "osqp.h"
+#include <osqp.h>
 
 #include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
 #include "modules/planning/proto/planner_open_space_config.pb.h"
