@@ -26,7 +26,7 @@
 #include <utility>
 #include <vector>
 
-#include "osqp.h"
+#include <osqp.h>
 
 namespace apollo {
 namespace planning {
@@ -126,7 +126,7 @@ class PiecewiseJerkProblem {
 
   const std::vector<double>& opt_dx() const { return dx_; }
 
- const std::vector<double>& opt_ddx() const { return ddx_; }
+  const std::vector<double>& opt_ddx() const { return ddx_; }
 
  protected:
   // naming convention follows osqp solver.

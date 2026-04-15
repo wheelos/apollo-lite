@@ -23,9 +23,8 @@
 #include <cstddef>
 #include <vector>
 
-#include "osqp.h"
+#include <osqp.h>
 
-#include "modules/common/math/qp_solver/qp_solver.h"
 #include "modules/planning/math/smoothing_spline/spline_1d_solver.h"
 
 namespace apollo {

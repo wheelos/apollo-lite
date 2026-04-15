@@ -40,7 +40,9 @@ cc_test(
     size = "small",
     srcs = ["piecewise_jerk_problem_test.cc"],
     deps = [
+        ":piecewise_jerk_path_problem",
         ":piecewise_jerk_problem",
+        ":piecewise_jerk_speed_problem",
         "@com_google_googletest//:gtest",
     ],
 )

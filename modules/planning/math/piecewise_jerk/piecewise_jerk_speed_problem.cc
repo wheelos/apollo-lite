@@ -16,6 +16,10 @@
 
 #include "modules/planning/math/piecewise_jerk/piecewise_jerk_speed_problem.h"
 
+#include <algorithm>
+#include <utility>
+#include <vector>
+
 #include "cyber/common/log.h"
 #include "modules/planning/common/planning_gflags.h"
 
@@ -95,11 +99,12 @@ void PiecewiseJerkSpeedProblem::CalculateKernel(
           (scale_factor_[2] * scale_factor_[2]));
   ++value_index;
 
-  // -2 * w_dddx / delta_s^2 * x(i)'' * x(i + 1)''
+  // OSQP 1.0 expects P in CSC upper-triangular form only.
+  // Store the x(i)'' * x(i + 1)'' cross term in column i+1 with row i.
   for (int i = 0; i < n - 1; ++i) {
-    columns[2 * n + i].emplace_back(2 * n + i + 1,
-                                    -2.0 * weight_dddx_ / delta_s_square /
-                                        (scale_factor_[2] * scale_factor_[2]));
+    columns[2 * n + i + 1].emplace_back(
+        2 * n + i, -2.0 * weight_dddx_ / delta_s_square /
+                         (scale_factor_[2] * scale_factor_[2]));
     ++value_index;
   }
 
@@ -107,9 +112,16 @@ void PiecewiseJerkSpeedProblem::CalculateKernel(
 
   int ind_p = 0;
   for (int i = 0; i < kNumParam; ++i) {
+    std::sort(columns[i].begin(), columns[i].end(),
+              [](const std::pair<OSQPInt, OSQPFloat>& lhs,
+                 const std::pair<OSQPInt, OSQPFloat>& rhs) {
+                return lhs.first < rhs.first;
+              });
     P_indptr->push_back(ind_p);
     for (const auto& row_data_pair : columns[i]) {
-      P_data->push_back(row_data_pair.second * 2.0);
+      const bool is_diagonal_entry = row_data_pair.first == i;
+      P_data->push_back(is_diagonal_entry ? row_data_pair.second * 2.0
+                                          : row_data_pair.second);
       P_indices->push_back(row_data_pair.first);
       ++ind_p;
     }

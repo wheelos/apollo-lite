@@ -248,7 +248,11 @@ bool DualVariableWarmStartSlackOSQPInterface::optimize() {
       !HasUsableSolutionStatus(work->info->status_val)) {
     AWARN << "OSQP dual warm up unsuccess, "
           << "return status: " << work->info->status;
-    succ = false;
+    osqp_cleanup(work);
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
   }
 
   // transfer to make lambda's norm under 1
@@ -319,7 +323,7 @@ bool DualVariableWarmStartSlackOSQPInterface::optimize() {
     }
   }
 
-  succ = succ & (work->info->obj_val <= 1.0);
+  succ = succ && (work->info->obj_val <= 1.0);
 
   // Cleanup
   osqp_cleanup(work);

@@ -20,7 +20,9 @@
 
 #include "modules/planning/math/smoothing_spline/osqp_spline_1d_solver.h"
 
+#include <algorithm>
 #include <cmath>
+#include <vector>
 
 #include "cyber/common/log.h"
 #include "modules/common/math/matrix_operations.h"
@@ -148,8 +150,9 @@ bool OsqpSpline1dSolver::Solve() {
   settings->verbose = FLAGS_enable_osqp_debug;
   settings->warm_starting = true;
 
-  OSQPInt constraint_num = static_cast<OSQPInt>(
-      inequality_constraint_boundary.rows() + equality_constraint_boundary.rows());
+  OSQPInt constraint_num =
+      static_cast<OSQPInt>(inequality_constraint_boundary.rows() +
+                           equality_constraint_boundary.rows());
 
   static constexpr OSQPFloat kUpperLimit = 1e9;
   const OSQPFloat equality_tolerance =

@@ -24,10 +24,12 @@
 #include <utility>
 #include <vector>
 
-#include "osqp.h"
+#include <osqp.h>
 
 namespace apollo {
 namespace planning {
+
+class FemPosDeviationOsqpInterfaceTestPeer;
 
 class FemPosDeviationOsqpInterface {
  public:
@@ -72,7 +74,9 @@ class FemPosDeviationOsqpInterface {
 
   const std::vector<double>& opt_x() const { return x_; }
 
- const std::vector<double>& opt_y() const { return y_; }
+  const std::vector<double>& opt_y() const { return y_; }
+
+  friend class FemPosDeviationOsqpInterfaceTestPeer;
 
  private:
   void CalculateKernel(std::vector<OSQPFloat>* P_data,

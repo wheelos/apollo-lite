@@ -16,7 +16,10 @@
 
 #include "modules/planning/math/piecewise_jerk/piecewise_jerk_problem.h"
 
+#include <cstdlib>
 #include <cstring>
+#include <utility>
+#include <vector>
 
 #include "cyber/common/log.h"
 #include "modules/planning/common/planning_gflags.h"
@@ -140,9 +143,13 @@ bool PiecewiseJerkProblem::Optimize(const int max_iter) {
   settings->max_iter = max_iter;
 
   OSQPSolver* osqp_work = nullptr;
-  if (osqp_setup(&osqp_work, data.P, data.q.data(), data.A, data.l.data(),
-                 data.u.data(), data.m, data.n, settings) != 0 ||
+  const OSQPInt setup_status =
+      osqp_setup(&osqp_work, data.P, data.q.data(), data.A, data.l.data(),
+                 data.u.data(), data.m, data.n, settings);
+  if (setup_status != 0 ||
       osqp_work == nullptr) {
+    AERROR << "osqp_setup failed with error code: " << setup_status
+           << ", n: " << data.n << ", m: " << data.m;
     if (osqp_work != nullptr) {
       ReleaseSolverOwnedMatrices(&data);
       osqp_cleanup(osqp_work);

@@ -16,6 +16,8 @@
 
 #include "modules/planning/lattice/trajectory_generation/lateral_osqp_optimizer.h"
 
+#include <vector>
+
 #include "cyber/common/log.h"
 #include "modules/common/math/matrix_operations.h"
 #include "modules/planning/common/planning_gflags.h"
@@ -49,6 +51,12 @@ bool LateralOSQPOptimizer::optimize(
   CalculateKernel(d_bounds, &P_data, &P_indices, &P_indptr);
   delta_s_ = delta_s;
   const int num_var = static_cast<int>(d_bounds.size());
+  opt_d_.clear();
+  opt_d_prime_.clear();
+  opt_d_pprime_.clear();
+  opt_d_.reserve(d_bounds.size());
+  opt_d_prime_.reserve(d_bounds.size());
+  opt_d_pprime_.reserve(d_bounds.size());
   const OSQPInt kNumParam = static_cast<OSQPInt>(3 * d_bounds.size());
   const OSQPInt kNumConstraint = kNumParam + 3 * (num_var - 1) + 3;
   std::vector<OSQPFloat> lower_bounds(kNumConstraint);
