@@ -225,3 +225,20 @@ py_proto_library(
     name = "pointcloud_get_objects_config_py_pb2",
     deps = [":pointcloud_get_objects_config_proto"],
 )
+
+cc_proto_library(
+    name = "polygon_region_filter_config_cc_proto",
+    deps = [
+        ":polygon_region_filter_config_proto",
+    ],
+)
+
+proto_library(
+    name = "polygon_region_filter_config_proto",
+    srcs = ["polygon_region_filter_config.proto"],
+)
+
+py_proto_library(
+    name = "polygon_region_filter_config_py_pb2",
+    deps = [":polygon_region_filter_config_proto"],
+)

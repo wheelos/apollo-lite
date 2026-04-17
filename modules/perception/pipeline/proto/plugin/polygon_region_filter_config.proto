@@ -1,0 +1,40 @@
+/******************************************************************************
+ * Copyright 2026 The WheelOS Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *****************************************************************************/
+syntax = "proto2";
+
+package apollo.perception.lidar;
+
+message Point2D {
+  optional double x = 1;
+  optional double y = 2;
+}
+
+message PolygonRegion {
+  optional string name = 1;
+  repeated Point2D points = 2;
+}
+
+message PolygonRegionFilterConfig {
+  // Regions to exclude objects (objects inside these regions will be filtered out)
+  repeated PolygonRegion exclude_regions = 1;
+  // Regions to include objects (only objects inside these regions will be kept)
+  // If empty, all objects not in exclude_regions are kept
+  repeated PolygonRegion include_regions = 2;
+  // If true, only check object center point; otherwise check all polygon points
+  optional bool use_center_point_only = 3 [default = false];
+  // Coordinate system for polygon points: "local" (lidar) or "world"
+  optional string coordinate_system = 4 [default = "world"];
+}
