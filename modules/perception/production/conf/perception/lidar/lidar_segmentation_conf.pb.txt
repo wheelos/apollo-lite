@@ -1,4 +1,4 @@
-sensor_name: "velodyne128"
+sensor_name: "base_link"
 detector_name: "LidarObstacleDetection"
 enable_hdmap: true
 lidar_query_tf_offset: 0
