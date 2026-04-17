@@ -1,11 +1,8 @@
 {
   // ——————————————————————
-  // Formatting rules and editor integrations (workspace)
+  // Formatting rules
   // ——————————————————————
   "editor.formatOnSave": true,
-  "C_Cpp.clang_format_path": "clang-format",
-  "clang-format.executable": "clang-format",
-  "clang-format.style": "file",
   "editor.formatOnPaste": true,
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
@@ -15,13 +12,15 @@
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
   "files.eol": "\n",
-
   // ——————————————————————
   // Global Editor Experience (default fallback)
   // ——————————————————————
   "editor.tabSize": 2,
   "editor.detectIndentation": false,
-  "editor.rulers": [80, 120],
+  "editor.rulers": [
+    80,
+    120
+  ],
   "editor.minimap.enabled": false,
   "editor.bracketPairColorization.enabled": true,
   "editor.guides.bracketPairs": "active",
@@ -29,7 +28,6 @@
   "editor.cursorSmoothCaretAnimation": "on",
   "editor.smoothScrolling": true,
   "editor.fontSize": 14,
-
   // ——————————————————————
   // File exclusions
   // ——————————————————————
@@ -37,56 +35,95 @@
     "**/.DS_Store": true,
     "**/node_modules": true,
     "**/dist": true,
-    "**/__pycache__": true
+    "**/__pycache__": true,
+    "**/bazel-*/": true,
+    "**/bazel-out/**": true,
+    "**/bazel-bin/**": true,
+    "**/bazel-testlogs/**": true,
+    "**/data/**": true
   },
   "search.exclude": {
     "**/node_modules": true,
     "**/dist": true,
-    "**/build": true
+    "**/build": true,
+    "**/bazel-*/": true,
+    "**/bazel-out/**": true,
+    "**/data/**": true
   },
-
   // ——————————————————————
   // Language-specific settings
   // ——————————————————————
+  // JavaScript
   "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.rulers": [80, 120]
+    "editor.rulers": [
+      80,
+      120
+    ]
   },
+  // TypeScript
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.rulers": [80, 120]
+    "editor.rulers": [
+      80,
+      120
+    ]
   },
+  // JSON
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.tabSize": 2
   },
+  // Markdown
   "[markdown]": {
     "editor.wordWrap": "on",
-    "editor.quickSuggestions": {"comments": "on", "strings": "on", "other": "on"}
+    "editor.quickSuggestions": {
+      "comments": "on",
+      "strings": "on",
+      "other": "on"
+    }
   },
+  // Python (Black uses 88)
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true,
-    "editor.rulers": [88]
+    "editor.rulers": [
+      88
+    ]
   },
+  // C++ (Google style, 80 char limit)
   "[cpp]": {
     "editor.defaultFormatter": "xaver.clang-format",
-    "editor.rulers": [80]
+    "editor.rulers": [
+      80
+    ]
   },
-
   // ——————————————————————
   // ESLint
   // ——————————————————————
-  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
-
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
   // ——————————————————————
   // Terminal
   // ——————————————————————
   "terminal.integrated.defaultProfile.linux": "bash",
   "terminal.integrated.defaultProfile.windows": "PowerShell",
-
   // ——————————————————————
   // TypeScript Import Handling
   // ——————————————————————
-  "typescript.updateImportsOnFileMove.enabled": "always"
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  // Remote SSH: prefer local helper server to reduce round-trips
+  "remote.SSH.useLocalServer": true,
+  // Watcher exclusions for large directories to reduce SSH traffic
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/bazel-out/**": true,
+    "**/bazel-bin/**": true,
+    "**/bazel-*/**": true,
+    "**/data/**": true
+  }
 }
