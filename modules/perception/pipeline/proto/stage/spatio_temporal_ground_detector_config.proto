@@ -41,4 +41,9 @@ message SpatioTemporalGroundDetectorConfig {
   optional bool enable_debug_non_ground_cloud = 24 [default = false];
   optional string debug_cloud_channel = 25
       [default = "/apollo/sensor/perception/nonground/PointCloud2"];
+
+  // Debug PCD save settings for ground segmentation analysis
+  optional bool enable_save_ground_pcd = 26 [default = false];
+  optional string ground_pcd_save_dir = 27
+      [default = "/apollo/data/ground_segmentation_debug/"];
 }

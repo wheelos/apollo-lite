@@ -16,6 +16,7 @@
 #include "modules/perception/onboard/component/lidar_detection_component.h"
 
 #include "cyber/time/clock.h"
+#include "modules/perception/onboard/msg_serializer/msg_serializer.h"
 #include "modules/common/util/string_util.h"
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
 #include "modules/perception/lidar/common/lidar_error_code.h"
@@ -49,6 +50,7 @@ bool LidarDetectionComponent::Init() {
       static_cast<float>(comp_config.lidar_query_tf_offset());
   enable_hdmap_ = comp_config.enable_hdmap();
   writer_ = node_->CreateWriter<LidarFrameMessage>(output_channel_name_);
+  debug_writer_ = node_->CreateWriter<PerceptionObstacles>("/apollo/perception/obstacles");
 
   const auto& lidar_detection_root_dir = comp_config.lidar_detection_conf_dir();
   const auto& lidar_detection_conf_file =
@@ -84,6 +86,18 @@ bool LidarDetectionComponent::Proc(
   if (status) {
     writer_->Write(out_message);
     AINFO << "Send lidar detect output message.";
+
+    // 额外输出protobuf到 /apollo/perception/obstacles 用于调试
+    auto debug_msg = std::make_shared<PerceptionObstacles>();
+    MsgSerializer::SerializeMsg(
+        out_message->timestamp_,
+        out_message->lidar_timestamp_,
+        out_message->seq_num_,
+        out_message->lidar_frame_->segmented_objects,
+        out_message->error_code_,
+        debug_msg.get());
+    debug_writer_->Write(debug_msg);
+    AINFO << "Send detection debug output to /apollo/perception/obstacles";
   }
   return status;
 }
@@ -173,10 +187,12 @@ bool LidarDetectionComponent::InternalProc(
   Eigen::Affine3d pose_vehicle = Eigen::Affine3d::Identity();
   const double lidar_query_tf_timestamp =
       timestamp - lidar_query_tf_offset_ * 0.001;
+  // const double lidar_query_tf_timestamp = cyber::Time::Now().ToSecond() - 0.1;
   if (!lidar2world_trans_.GetSensor2worldTrans(lidar_query_tf_timestamp, &pose,
                                                &pose_vehicle)) {
     out_message->error_code_ = apollo::common::ErrorCode::PERCEPTION_ERROR_TF;
-    AERROR << "Failed to get pose at time: " << lidar_query_tf_timestamp;
+    AERROR << std::fixed << std::setprecision(9)
+           << "Failed to get pose at time: " << lidar_query_tf_timestamp;
     return false;
   }
 

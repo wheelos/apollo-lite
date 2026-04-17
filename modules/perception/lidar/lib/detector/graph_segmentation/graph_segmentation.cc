@@ -69,6 +69,19 @@ bool GraphClusterSegmenter::Init(const StageConfig& stage_config) {
   // clear background objects
   bg_objects_.clear();
 
+  // Print actual loaded configuration for debugging
+  AINFO << "========== GraphClusterSegmenter Actual Config ==========";
+  AINFO << "resolution: " << resolution_;
+  AINFO << "threshold: " << threshold_;
+  AINFO << "min_pt_number: " << min_pt_number_;
+  AINFO << "search_radius: " << search_radius_;
+  AINFO << "height_threshold: " << height_threshold_;
+  AINFO << "z_min_from_ground: " << stage_conf_.graph_cluster_segmenter_config().z_min_from_ground();
+  AINFO << "min_radius: " << stage_conf_.graph_cluster_segmenter_config().min_radius();
+  AINFO << "grid_width: " << grid_width_;
+  AINFO << "grid_height: " << grid_height_;
+  AINFO << "==========================================================";
+
   // Fall back to default Init without external config path.
   LidarDetectorInitOptions init_options;
   return Init(init_options);

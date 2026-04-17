@@ -108,6 +108,10 @@ bool HdmapPointCloudRoiFilter::Filter(const ROIFilterOptions& options,
     return false;
   }
 
+  // [日志1] 输入统计
+  size_t input_size = frame->cloud->size();
+  AINFO << "[ROI-Filter] Input points: " << input_size;
+
   // Guard: If map is missing (MapManager failed), we pass through everything
   // or return false depending on safety policy.
   // Here we assume if hdmap_struct exists but is empty, it means "No Road".
@@ -117,6 +121,8 @@ bool HdmapPointCloudRoiFilter::Filter(const ROIFilterOptions& options,
     frame->roi_indices.indices.resize(frame->cloud->size());
     std::iota(frame->roi_indices.indices.begin(),
               frame->roi_indices.indices.end(), 0);
+    AINFO << "[ROI-Filter] Result: PASS-THROUGH (no map), "
+          << frame->roi_indices.indices.size() << " points";
     return true;
   }
 
@@ -125,9 +131,15 @@ bool HdmapPointCloudRoiFilter::Filter(const ROIFilterOptions& options,
   const auto& road_polys = frame->hdmap_struct->road_polygons;
   const auto& junc_polys = frame->hdmap_struct->junction_polygons;
 
+  // [日志2] 多边形统计
+  AINFO << "[ROI-Filter] HDMap polygons: "
+        << road_polys.size() << " roads + "
+        << junc_polys.size() << " junctions";
+
   if (road_polys.empty() && junc_polys.empty()) {
     AWARN << "No polygons in ROI. Filter out all points.";
     frame->roi_indices.indices.clear();
+    AINFO << "[ROI-Filter] Result: EMPTY (no polygons)";
     return true;
   }
 
@@ -142,15 +154,29 @@ bool HdmapPointCloudRoiFilter::Filter(const ROIFilterOptions& options,
   TransformPolygonsToLocal(frame->lidar2world_pose, polygons_world_ptr_,
                            polygons_local_);
 
+  // [日志3] 坐标转换后
+  AINFO << "[ROI-Filter] Transformed " << polygons_local_.size()
+        << " polygons to local frame";
+
   // 3. Rasterize Polygons into Bitmap
   if (!PreparePolygonMask(polygons_local_, &raw_polygons_, &bitmap_)) {
     AWARN << "Failed to build polygon mask.";
     return false;
   }
 
+  // [日志4] 位图信息
+  AINFO << "[ROI-Filter] Bitmap size: " << bitmap_.map_size().transpose()
+        << " major_dir: " << (static_cast<Bitmap2D::DirectionMajor>(bitmap_.dir_major()) == Bitmap2D::DirectionMajor::XMAJOR ? "X" : "Y");
+
   // 4. Query Bitmap (Filter Points)
   // This is O(N_points) but extremely fast (array lookup)
   Bitmap2dFilter(frame->cloud, bitmap_, &(frame->roi_indices));
+
+  // [日志5] 最终结果
+  size_t output_size = frame->roi_indices.indices.size();
+  double keep_ratio = static_cast<double>(output_size) / input_size * 100.0;
+  AINFO << "[ROI-Filter] Result: " << output_size << "/" << input_size
+        << " points kept (" << keep_ratio << "%)";
 
   // 5. Labeling (for debug/visualization)
   auto* labels_local = frame->cloud->mutable_points_label();
