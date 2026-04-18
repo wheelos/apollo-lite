@@ -66,7 +66,7 @@ if [[ "${AUTO_BOOTSTRAP}" == "true" ]]; then
     echo "[Entrypoint] Auto-starting Dreamview..."
     # run as user
     # sudo -u ${USER_NAME} bash -c "cd /apollo && source ~/.bashrc && source ~/.bash_aliases && source /apollo/cyber/setup.bash && ./scripts/bootstrap.sh start > /apollo/data/log/bootstrap.log 2>&1"
-    runuser -u ${USER_NAME} -- bash -l -c "cd /apollo && ./scripts/bootstrap.sh start > /apollo/data/log/bootstrap.log 2>&1"
+    runuser -u ${USER_NAME} -- bash -l -c "cd /apollo && ./scripts/bootstrap.sh start > /apollo/data/log/bootstrap.log 2>&1" || true
 fi
 
 # 5. Keep running the container
