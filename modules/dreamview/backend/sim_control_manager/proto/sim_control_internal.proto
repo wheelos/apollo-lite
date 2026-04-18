@@ -4,6 +4,31 @@ package apollo.sim_control;
 
 import "modules/common_msgs/basic_msgs/header.proto";
 
+enum SimControlSpawnMode {
+    SIM_CONTROL_SPAWN_MODE_UNKNOWN = 0;
+    SIM_CONTROL_SPAWN_MODE_LEGACY = 1;
+    SIM_CONTROL_SPAWN_MODE_EXPLICIT_START = 2;
+    SIM_CONTROL_SPAWN_MODE_LOCALIZATION_START = 3;
+    SIM_CONTROL_SPAWN_MODE_ROUTING_START = 4;
+}
+
+enum SimControlPredictionMode {
+    SIM_CONTROL_PREDICTION_MODE_UNKNOWN = 0;
+    SIM_CONTROL_PREDICTION_MODE_LEGACY = 1;
+    SIM_CONTROL_PREDICTION_MODE_EMPTY = 2;
+    SIM_CONTROL_PREDICTION_MODE_CUSTOM_FILE = 3;
+    SIM_CONTROL_PREDICTION_MODE_EXTERNAL_PASSTHROUGH = 4;
+}
+
+enum SimControlStartSource {
+    SIM_CONTROL_START_SOURCE_UNKNOWN = 0;
+    SIM_CONTROL_START_SOURCE_NONE = 1;
+    SIM_CONTROL_START_SOURCE_EXPLICIT = 2;
+    SIM_CONTROL_START_SOURCE_LOCALIZATION = 3;
+    SIM_CONTROL_START_SOURCE_MAP_DEFAULT = 4;
+    SIM_CONTROL_START_SOURCE_ROUTING_REQUEST = 5;
+}
+
 message SimCarStatus {
     optional double x = 1;                      // pos x in meters.
     optional double y = 2;                      // pos y in meters.
@@ -25,4 +50,31 @@ message SimCarStatus {
 message SimControlData {
    optional apollo.common.Header header = 1;
    optional SimCarStatus sim_car_status = 2;
+}
+
+message SimControlStatus {
+   optional apollo.common.Header header = 1;
+   optional bool enabled = 2;
+   optional string dynamic_model_name = 3;
+   optional SimControlSpawnMode configured_spawn_mode = 4;
+   optional SimControlPredictionMode configured_prediction_mode = 5;
+   optional SimControlStartSource last_start_source = 6;
+   optional bool waiting_for_routing_start = 7;
+   optional bool route_start_applied = 8;
+   optional bool sim_control_timer_started = 9;
+   optional bool publishing_prediction = 10;
+   optional bool publishing_empty_prediction = 11;
+   optional bool publishing_custom_prediction = 12;
+   optional uint32 custom_prediction_obstacle_count = 13;
+   optional string custom_prediction_file = 14;
+   optional uint32 last_routing_waypoint_count = 15;
+   optional uint32 last_routing_sequence_num = 16;
+   optional string last_routing_module_name = 17;
+   optional string status_message = 18;
+   optional double start_x = 19;
+   optional double start_y = 20;
+   optional double start_theta = 21;
+   optional double current_x = 22;
+   optional double current_y = 23;
+   optional double current_theta = 24;
 }

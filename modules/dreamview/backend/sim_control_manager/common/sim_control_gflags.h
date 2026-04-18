@@ -16,7 +16,10 @@
 
 #pragma once
 
+#include <string>
+
 #include "gflags/gflags.h"
+#include "modules/dreamview/backend/sim_control_manager/proto/sim_control_internal.pb.h"
 
 DECLARE_string(dynamic_model_name);
 
@@ -46,7 +49,27 @@ DECLARE_bool(enable_backward_fnn_model);
 
 DECLARE_bool(enable_sim_at_nonauto_mode);
 
+DECLARE_bool(enable_sim_control_custom_prediction);
+DECLARE_string(sim_control_custom_prediction_file);
+DECLARE_string(sim_control_spawn_mode);
+DECLARE_string(sim_control_prediction_mode);
+DECLARE_string(sim_control_status_topic);
+
 // cascade model
 DECLARE_string(torch_gp_model_file);
 DECLARE_bool(use_cuda_in_cascade_model);
 DECLARE_string(cascade_model_conf_file);
+
+namespace apollo {
+namespace dreamview {
+
+apollo::sim_control::SimControlSpawnMode GetConfiguredSimControlSpawnMode();
+apollo::sim_control::SimControlPredictionMode
+GetConfiguredSimControlPredictionMode();
+std::string SimControlSpawnModeToString(
+    apollo::sim_control::SimControlSpawnMode mode);
+std::string SimControlPredictionModeToString(
+    apollo::sim_control::SimControlPredictionMode mode);
+
+}  // namespace dreamview
+}  // namespace apollo
