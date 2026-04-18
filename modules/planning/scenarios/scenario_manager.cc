@@ -260,7 +260,7 @@ void ScenarioManager::ScenarioDispatch(const Frame& frame) {
 
   // 2. Construct Context
   DeciderContext context;
-  context.frame = &frame;  // Take address of const reference
+  context.frame = &frame;
   context.current_scenario = current_scenario_.get();
   context.first_encountered_overlaps = &first_encountered_overlap_map_;
 
@@ -270,7 +270,7 @@ void ScenarioManager::ScenarioDispatch(const Frame& frame) {
 
     if (!decision.IsValid()) continue;
 
-    AINFO << decision.DebugString();
+    AINFO_EVERY(100) << decision.DebugString();
 
     bool allowed = transition_guard_.IsTransitionAllowed(
         current_type, current_status, decision.type, decision.grade);

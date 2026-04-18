@@ -24,7 +24,6 @@
 #include "modules/common/util/point_factory.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
-
 namespace apollo {
 namespace planning {
 namespace scenario {
@@ -269,10 +268,12 @@ ScenarioDecisionResult ParkDecider::CheckPullOver(
     return false;
   };
 
-  if (check_overlap(ReferenceLineInfo::PNC_JUNCTION) ||
+  const bool near_junction =
+      check_overlap(ReferenceLineInfo::PNC_JUNCTION) ||
       check_overlap(ReferenceLineInfo::SIGNAL) ||
       check_overlap(ReferenceLineInfo::STOP_SIGN) ||
-      check_overlap(ReferenceLineInfo::YIELD_SIGN)) {
+      check_overlap(ReferenceLineInfo::YIELD_SIGN);
+  if (near_junction) {
     return ScenarioDecisionResult();
   }
 
