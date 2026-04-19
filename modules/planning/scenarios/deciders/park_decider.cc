@@ -17,13 +17,36 @@
 
 #include "modules/planning/scenarios/deciders/park_decider.h"
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
+#include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/common/util/point_factory.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
+
+namespace {
+
+double ComputePullOverPreparationDistance(
+    const apollo::planning::ScenarioPullOverConfig& config) {
+  const auto& vehicle_param =
+      apollo::common::VehicleConfigHelper::Instance()->GetConfig().vehicle_param();
+  return vehicle_param.front_edge_to_center() +
+         config.s_distance_to_stop_for_open_space_parking() +
+         config.max_valid_stop_distance();
+}
+
+double ComputeEffectivePullOverMinDistance(
+    const apollo::planning::ScenarioPullOverConfig& config) {
+  return std::max({config.pull_over_min_distance_buffer(),
+                   config.max_distance_stop_search(),
+                   ComputePullOverPreparationDistance(config)});
+}
+
+}  // namespace
+
 namespace apollo {
 namespace planning {
 namespace scenario {
@@ -188,24 +211,11 @@ ScenarioDecisionResult ParkDecider::CheckPullOver(
 
   // 3. Load Configuration
   const auto& config = config_.pull_over_config();
-  const double min_dist = config.pull_over_min_distance_buffer();
+  const double min_dist = ComputeEffectivePullOverMinDistance(config);
   const double max_dist = config.start_pull_over_scenario_distance();
   const double stop_search_dist = config.max_distance_stop_search();
   const double junction_buffer = config.avoid_junction_distance();
   const uint32_t scenario_entry_score = config.scenario_entry_score();
-
-  // 1. Sticky Strategy
-  // If we are already in PULL_OVER scenario and it is not finished,
-  // we must keep it (high priority/grade) to ensure continuity.
-  const auto current_scenario = context.current_scenario;
-  if (current_scenario->Type() == ScenarioType::PULL_OVER) {
-    if (current_scenario->GetStatus() !=
-        Scenario::ScenarioStatus::STATUS_DONE) {
-      return ScenarioDecisionResult(
-          ScenarioType::PULL_OVER, ScenarioGrade::MISSION, scenario_entry_score,
-          "Pull Over In Progress (Sticky)");
-    }
-  }
 
   // 2. Pre-conditions Check
   // Must be in a single lane (not changing lanes) and have valid routing.
@@ -227,6 +237,23 @@ ScenarioDecisionResult ParkDecider::CheckPullOver(
   reference_line.XYToSL(routing_end.pose(), &dest_sl);
   const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
   const double dist_to_dest = dest_sl.s() - adc_front_edge_s;
+
+  // 1. Sticky Strategy
+  // Keep PullOver once a valid target is established, or while the destination
+  // is still far enough ahead that the pull-over path search remains feasible.
+  const auto current_scenario = context.current_scenario;
+  if (current_scenario->Type() == ScenarioType::PULL_OVER &&
+      current_scenario->GetStatus() != Scenario::ScenarioStatus::STATUS_DONE) {
+    const auto& pull_over_status =
+        injector_->planning_context()->planning_status().pull_over();
+    if (pull_over_status.has_position() || dist_to_dest >= min_dist) {
+      return ScenarioDecisionResult(
+          ScenarioType::PULL_OVER, ScenarioGrade::MISSION, scenario_entry_score,
+          "Pull Over In Progress (Sticky)");
+    }
+    ADEBUG << "PullOver no longer feasible before target selection. distance["
+           << dist_to_dest << "] effective_min_distance[" << min_dist << "]";
+  }
 
   // Check if the vehicle is within the operational range
   if (dist_to_dest < min_dist || dist_to_dest > max_dist) {
