@@ -4,7 +4,7 @@ services:
     privileged: false
 
     environment:
-      - USE_GPU_HOST=0
+      - USE_GPU_HOST=${USE_GPU_HOST}
       - TEST_MODE=true
 
     # Port mapping: Host machine dynamic port -> Container port 8888
@@ -12,9 +12,6 @@ services:
     ports:
       - "${SERVER_PORT}:8888"
 
-    # Resource limitations: To prevent the test server from crashing.
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: '8G'
+    # Resource limits are test-scoped and come from TEST_* values in .env.global.
+    cpus: "${TEST_CPUS}"
+    mem_limit: "${TEST_MEMORY}"
