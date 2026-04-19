@@ -39,7 +39,9 @@ fi
 
 # 2. Correct critical directory permissions
 chown "$USER_NAME":"$USER_NAME" /apollo
-[ -d "/var/cache/bazel" ] && chown -R "$USER_NAME":"$USER_NAME" /var/cache/bazel
+if [[ -n "${BAZEL_CACHE_DIR:-}" && -d "${BAZEL_CACHE_DIR}" ]]; then
+  chown -R "$USER_NAME":"$USER_NAME" "${BAZEL_CACHE_DIR}"
+fi
 
 # 3. Load Apollo environment
 # setup rc files

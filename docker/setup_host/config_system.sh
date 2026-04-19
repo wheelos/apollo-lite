@@ -21,7 +21,7 @@ APOLLO_ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # use relative path for multiple instances
 CORE_DUMP_DIR="data/core"
 CORE_DUMP_CONF_FILE="/etc/sysctl.d/99-core-dump.conf"
-BAZEL_CACHE_DIR="/var/cache/bazel/repo_cache"
+BAZEL_CACHE_DIR="${APOLLO_ROOT_DIR}/.cache/bazel/repo_cache"
 UVCVIDEO_CONF_FILE="/etc/modprobe.d/uvcvideo.conf"
 UDEV_RULES_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/udev/rules.d"
 UDEV_RULES_DEST_DIR="/etc/udev/rules.d"

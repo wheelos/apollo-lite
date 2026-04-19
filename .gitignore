@@ -87,7 +87,3 @@ docker/.env.prod
 modules/tools/whl_toolbox/runtime
 
 docs/context/*
-!docs/context/environment-setup/
-docs/context/environment-setup/*
-!docs/context/environment-setup/README.md
-!docs/context/environment-setup/whl-mode-env-workflow.md

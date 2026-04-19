@@ -2,6 +2,9 @@ services:
   core:
     container_name: ${CONTAINER_NAME}
     privileged: false
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
     environment:
       - USE_GPU_HOST=${USE_GPU_HOST}
