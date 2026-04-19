@@ -22,7 +22,7 @@ build --registry=https://bcr.wheelos.cn/
 build --registry=https://bcr.bazel.build/
 
 # Set up a shared cache to avoid repeated pulls from remote libraries
-build --repository_cache=/var/cache/bazel/repo_cache
+build --repository_cache=.cache/bazel/repo_cache
 build --disk_cache=.cache/build
 
 # +------------------------------------------------------------+
