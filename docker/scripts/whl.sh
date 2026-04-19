@@ -22,16 +22,16 @@ function show_help() {
   echo "Usage: whl [OPTIONS] [COMMAND] [MODE]"
   echo ""
   echo "Options:"
-  echo "  -n, --name NAME    Specify container name for the selected mode"
   echo "  -i, --image IMAGE  Specify Docker image for the selected mode"
   echo "  --os VERSION       Specify OS version (default: auto-detect, fallback: 22.04)"
   echo "  -h, --help         Show this help message"
   echo "                     (Prod env file: docker/.env.prod; template: docker/.env.prod.template)"
   echo ""
   echo "User-maintained overrides live in .env.global at the project root."
-  echo "Use mode-specific keys such as DEV_CONTAINER_NAME, DEV_USE_GPU,"
-  echo "DEV_BAZEL_CACHE_DIR, TEST_CONTAINER_NAME, TEST_SERVER_PORT,"
-  echo "TEST_USE_GPU, TEST_CPUS, TEST_MEMORY, and TEST_BAZEL_CACHE_DIR."
+  echo "Use mode-specific keys such as DEV_USE_GPU, DEV_BAZEL_CACHE_DIR,"
+  echo "TEST_SERVER_PORT, TEST_USE_GPU, TEST_CPUS, TEST_MEMORY,"
+  echo "and TEST_BAZEL_CACHE_DIR."
+  echo "Container names are deterministic and no longer user-configurable."
   echo "whl regenerates docker/.env.<mode>.local on every run for compose/runtime use."
   echo ""
   echo "Extra env overrides (useful for CI):"
@@ -58,23 +58,13 @@ function show_help() {
   echo "  whl start test               # Start test container using TEST_* overrides"
   echo "  whl stop test                # Stop only the test container"
   echo "  whl stop all                 # Stop dev/test and prod when configured"
-  echo "  whl -n my_test start test    # Override the selected mode container name"
 }
 
-CUSTOM_CONTAINER_NAME=""
 CUSTOM_IMAGE=""
 
 function parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -n | --name)
-        if [[ -z "${2:-}" || "${2}" == -* ]]; then
-          echo ">>> ERROR: --name requires a container name argument"
-          exit 2
-        fi
-        CUSTOM_CONTAINER_NAME="$2"
-        shift 2
-        ;;
       -i | --image)
         if [[ -z "${2:-}" || "${2}" == -* ]]; then
           echo ">>> ERROR: --image requires an image name argument"
@@ -109,7 +99,7 @@ parse_args "$@"
 remaining_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -n | --name | -i | --image | --os)
+    -i | --image | --os)
       shift 2
       ;;
     *)
@@ -121,7 +111,6 @@ done
 set -- "${remaining_args[@]}"
 
 ACTION="${1:-enter}"
-MODE_ARG="${2:-}"
 if [[ "${ACTION}" == "help" || "${ACTION}" == "--help" || "${ACTION}" == "-h" ]]; then
   show_help
   exit 0
@@ -153,18 +142,6 @@ function validate_stop_target() {
     return 0
   fi
   validate_mode "${target}"
-}
-
-function action_requires_local_image() {
-  local action="$1"
-  case "${action}" in
-    start | enter | update)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
 }
 
 function compose_project_name() {
@@ -287,7 +264,7 @@ function get_cmd() {
 function stop_mode() {
   local mode="$1"
   prepare_mode_context "${mode}" "false"
-  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}" "${CUSTOM_CONTAINER_NAME}"
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
   ensure_env_generated "${mode}"
   $(get_cmd "${mode}") down 2>/dev/null || true
 }
@@ -298,7 +275,7 @@ function cmd_start() {
   prepare_mode_context "${mode}" "true"
   require_host_ready
   verify_gpu_ready
-  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}" "${CUSTOM_CONTAINER_NAME}"
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
   ensure_env_generated "${mode}"
 
   echo ">>> Starting Apollo [Mode: ${mode}]..."
@@ -330,7 +307,7 @@ function cmd_status() {
   local mode="${1:-dev}"
   validate_mode "${mode}"
   prepare_mode_context "${mode}" "false"
-  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}" "${CUSTOM_CONTAINER_NAME}"
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
   ensure_env_generated "${mode}"
   $(get_cmd "${mode}") ps
 }
@@ -341,7 +318,7 @@ function cmd_update() {
   prepare_mode_context "${mode}" "true"
   require_host_ready
   verify_gpu_ready
-  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}" "${CUSTOM_CONTAINER_NAME}"
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
   ensure_env_generated "${mode}"
   echo ">>> Updating Apollo image and restarting [Mode: ${mode}]..."
   $(get_cmd "${mode}") pull

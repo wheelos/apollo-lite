@@ -2,28 +2,6 @@
 
 PROJECT_GLOBAL_ENV_NAME=".env.global"
 
-# Interactive prompt helper with timeout
-function prompt_with_default() {
-  local prompt_msg=$1
-  local default_val=$2
-  local timeout_sec=${3:-5}
-
-  # Non-interactive shell, just return default
-  if [[ ! -t 0 ]]; then
-    echo "${default_val}"
-    return
-  fi
-
-  # Interactive shell, read user input
-  local user_input
-  if read -t "${timeout_sec}" -rp "${prompt_msg} [${default_val}]: " user_input; then
-    echo "${user_input:-${default_val}}"
-  else
-    echo "" >&2
-    echo "${default_val}"
-  fi
-}
-
 function project_hash_suffix() {
   local project_root="$1"
   echo "$(echo "${project_root}" | md5sum | cut -c1-8)"
@@ -79,7 +57,7 @@ function mode_env_prefix() {
 function is_supported_project_env_key() {
   local key="$1"
   case "${key}" in
-    AUTO_BOOTSTRAP | DISPLAY | OS | TARGET_ARCH | WHL_DISPLAY | WHL_PORT_OFFSET | WHL_PROJECT_SUFFIX | DEV_APOLLO_IMAGE | DEV_BAZEL_CACHE_DIR | DEV_CONTAINER_NAME | DEV_SERVER_PORT | DEV_SHM_SIZE | DEV_USE_GPU | DEV_USE_GPU_HOST | TEST_APOLLO_IMAGE | TEST_BAZEL_CACHE_DIR | TEST_CONTAINER_NAME | TEST_CPUS | TEST_MEMORY | TEST_SERVER_PORT | TEST_SHM_SIZE | TEST_USE_GPU | TEST_USE_GPU_HOST | PROD_APOLLO_IMAGE | PROD_BAZEL_CACHE_DIR | PROD_CONTAINER_NAME | PROD_SERVER_PORT | PROD_SHM_SIZE | PROD_USE_GPU | PROD_USE_GPU_HOST)
+    AUTO_BOOTSTRAP | DISPLAY | OS | TARGET_ARCH | WHL_DISPLAY | WHL_PORT_OFFSET | WHL_PROJECT_SUFFIX | DEV_APOLLO_IMAGE | DEV_BAZEL_CACHE_DIR | DEV_SERVER_PORT | DEV_SHM_SIZE | DEV_USE_GPU | DEV_USE_GPU_HOST | TEST_APOLLO_IMAGE | TEST_BAZEL_CACHE_DIR | TEST_CPUS | TEST_MEMORY | TEST_SERVER_PORT | TEST_SHM_SIZE | TEST_USE_GPU | TEST_USE_GPU_HOST | PROD_APOLLO_IMAGE | PROD_BAZEL_CACHE_DIR | PROD_SERVER_PORT | PROD_SHM_SIZE | PROD_USE_GPU | PROD_USE_GPU_HOST)
       return 0
       ;;
     *)
@@ -282,17 +260,7 @@ function resolve_mode_image_override() {
 function resolve_mode_container_name() {
   local mode="$1"
   local project_hash="$2"
-  local custom_container_name="$3"
-  local container_name="apollo_${mode}_${USER}_${project_hash}"
-  local override_name
-  override_name="$(mode_override_value "${mode}" "CONTAINER_NAME")"
-  if [[ -n "${override_name}" ]]; then
-    container_name="${override_name}"
-  fi
-  if [[ -n "${custom_container_name}" ]]; then
-    container_name="${custom_container_name}"
-  fi
-  echo "${container_name}"
+  echo "apollo_${mode}_${USER}_${project_hash}"
 }
 
 function resolve_mode_server_port() {
@@ -355,7 +323,6 @@ function generate_env() {
   local project_root="$2"
   local docker_dir="$3"
   local apollo_image="$4"
-  local custom_container_name="$5"
 
   local env_file
   env_file="$(generated_runtime_env_path "${mode}" "${docker_dir}")"
@@ -364,7 +331,7 @@ function generate_env() {
   local project_hash
   project_hash="$(project_hash_suffix "${project_root}")"
   local container_name
-  container_name="$(resolve_mode_container_name "${mode}" "${project_hash}" "${custom_container_name}")"
+  container_name="$(resolve_mode_container_name "${mode}" "${project_hash}")"
   local prod_env_file="${docker_dir}/.env.prod"
   local prod_env_template="${docker_dir}/.env.prod.template"
 
