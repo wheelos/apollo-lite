@@ -10,7 +10,7 @@ services:
     working_dir: /apollo
     shm_size: ${SHM_SIZE}
     env_file:
-      - .env
+      - ${RUNTIME_ENV_FILE}
 
     environment:
       - USER_NAME=${USER_NAME}

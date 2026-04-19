@@ -99,7 +99,12 @@ yes | sudo bash docker/setup_host/setup_host.sh
 ```
 
 ### Environment and files
-- Generated env file used by `whl` is `docker/.env`. `whl` calls the internal `generate_env` step and verifies the file before launching.
+- User-maintained overrides live in the project-root `.env.global`.
+- Use mode-scoped keys such as `DEV_USE_GPU`, `DEV_BAZEL_CACHE_DIR`, `TEST_SERVER_PORT`, `TEST_CPUS`, `TEST_MEMORY`, `TEST_USE_GPU`, and `TEST_BAZEL_CACHE_DIR` so dev and test stay isolated and explicit.
+- Generated env files used by `whl` are `docker/.env.dev.local`, `docker/.env.test.local`, and `docker/.env.prod.local`. `whl` regenerates the requested mode file on every run from `.env.global` plus host auto-detection before launching.
+- Each mode also gets its own Compose project name, so `dev` and `test` can run side by side without recreating or stopping each other.
+- Container names are deterministic (`apollo_<mode>_<user>_<project-hash>`) and are intentionally not user-configurable.
+- `whl start <mode>` and `whl stop <mode>` are symmetric. Use `whl stop all` to tear down all managed modes.
 - Host-ready marker: `/etc/wheelos_setup_host.done`
 - `whl` helper location: `/usr/local/bin/whl`
 
