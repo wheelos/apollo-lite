@@ -29,6 +29,7 @@
 #include "cyber/cyber.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/util/message_util.h"
+#include "modules/common/util/proj_helper.h"
 #include "modules/common/util/time_conversion.h"
 #include "modules/drivers/gnss/parser/parser_factory.h"
 #include "modules/drivers/gnss/util/util.h"
@@ -64,17 +65,13 @@ DataParser::DataParser(const config::Config& config,
   if (!proj_context_) {
     AFATAL << "Failed to create PROJ context";
   }
-  proj_transform_ = proj_create_crs_to_crs(
-      proj_context_, WGS84_TEXT, config_.proj4_text().c_str(), nullptr);
-  PJ* normalized_transform =
-      proj_normalize_for_visualization(proj_context_, proj_transform_);
-  proj_destroy(proj_transform_);
-  proj_transform_ = normalized_transform;
+  std::string proj_error;
+  proj_transform_ = apollo::common::util::ProjHelper::CreateNormalizedCrsToCrs(
+      proj_context_, WGS84_TEXT, config_.proj4_text(), &proj_error);
   if (!proj_transform_) {
     proj_context_destroy(proj_context_);
     proj_context_ = nullptr;
-    AFATAL << "Failed to create PROJ transformation from " << WGS84_TEXT
-           << " to " << config_.proj4_text();
+    AFATAL << proj_error;
   }
 
   gnss_status_.set_solution_status(0);

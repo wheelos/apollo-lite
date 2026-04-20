@@ -6,6 +6,7 @@ export APOLLO_BAZEL_DIST_DIR="${APOLLO_CACHE_DIR}/distdir"
 export CYBER_PATH="${APOLLO_ROOT_DIR}/cyber"
 
 bazel_bin_path="${APOLLO_ROOT_DIR}/bazel-bin"
+proj_data_path="${bazel_bin_path}/external/proj~/data"
 mainboard_path="${bazel_bin_path}/cyber/mainboard"
 cyber_tool_path="${bazel_bin_path}/cyber/tools"
 recorder_path="${cyber_tool_path}/cyber_recorder"
@@ -26,6 +27,9 @@ for entry in "${mainboard_path}" \
     pathprepend "${entry}"
 done
 pathprepend "${HOME}/.local/bin" PATH
+
+# PROJ expects the directory that contains proj.db.
+export PROJ_DATA="${proj_data_path}"
 
 # Set up the Python environment
 # For cyber python

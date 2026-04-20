@@ -20,6 +20,7 @@
 #include <cmath>
 
 #include "absl/strings/str_cat.h"
+#include "modules/common/util/proj_helper.h"
 
 namespace apollo {
 namespace localization {
@@ -36,10 +37,8 @@ bool FrameTransform::LatlonToUtmXY(double lon_rad, double lat_rad,
   std::string utm_dst =
       absl::StrCat("+proj=utm +zone=", zone, " +ellps=GRS80 +units=m +no_defs");
 
-  PJ* tmp_pj = proj_create_crs_to_crs(PJ_DEFAULT_CTX, latlon_src.c_str(), utm_dst.c_str(), nullptr);
-  if (!tmp_pj) return false;
-  PJ* pj = proj_normalize_for_visualization(PJ_DEFAULT_CTX, tmp_pj);
-  proj_destroy(tmp_pj);
+  PJ* pj = apollo::common::util::ProjHelper::CreateNormalizedCrsToCrs(
+      PJ_DEFAULT_CTX, latlon_src, utm_dst);
   if (!pj) return false;
 
   PJ_COORD c;
@@ -66,10 +65,8 @@ bool FrameTransform::UtmXYToLatlon(double x, double y, int zone, bool southhemi,
       absl::StrCat("+proj=utm +zone=", zone, " +ellps=GRS80 +units=m +no_defs");
 
   // We are mapping from UTM to LatLon, so we invert the transformation.
-  PJ* tmp_pj = proj_create_crs_to_crs(PJ_DEFAULT_CTX, latlon_src.c_str(), utm_dst.c_str(), nullptr);
-  if (!tmp_pj) return false;
-  PJ* pj = proj_normalize_for_visualization(PJ_DEFAULT_CTX, tmp_pj);
-  proj_destroy(tmp_pj);
+  PJ* pj = apollo::common::util::ProjHelper::CreateNormalizedCrsToCrs(
+      PJ_DEFAULT_CTX, latlon_src, utm_dst);
   if (!pj) return false;
 
   PJ_COORD c;
@@ -93,10 +90,8 @@ bool FrameTransform::XYZToBlh(const Vector3d &xyz, Vector3d *blh) {
   std::string xyz_src = "+proj=geocent +datum=WGS84";
   std::string blh_dst = "+proj=latlong +datum=WGS84";
 
-  PJ* tmp_pj = proj_create_crs_to_crs(PJ_DEFAULT_CTX, xyz_src.c_str(), blh_dst.c_str(), nullptr);
-  if (!tmp_pj) return false;
-  PJ* pj = proj_normalize_for_visualization(PJ_DEFAULT_CTX, tmp_pj);
-  proj_destroy(tmp_pj);
+  PJ* pj = apollo::common::util::ProjHelper::CreateNormalizedCrsToCrs(
+      PJ_DEFAULT_CTX, xyz_src, blh_dst);
   if (!pj) return false;
 
   PJ_COORD c;
@@ -119,10 +114,8 @@ bool FrameTransform::BlhToXYZ(const Vector3d &blh, Vector3d *xyz) {
   std::string blh_src = "+proj=latlong +datum=WGS84";
   std::string xyz_dst = "+proj=geocent +datum=WGS84";
 
-  PJ* tmp_pj = proj_create_crs_to_crs(PJ_DEFAULT_CTX, blh_src.c_str(), xyz_dst.c_str(), nullptr);
-  if (!tmp_pj) return false;
-  PJ* pj = proj_normalize_for_visualization(PJ_DEFAULT_CTX, tmp_pj);
-  proj_destroy(tmp_pj);
+  PJ* pj = apollo::common::util::ProjHelper::CreateNormalizedCrsToCrs(
+      PJ_DEFAULT_CTX, blh_src, xyz_dst);
   if (!pj) return false;
 
   PJ_COORD c;
