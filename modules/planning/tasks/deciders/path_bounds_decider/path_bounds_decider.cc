@@ -1128,6 +1128,11 @@ bool PathBoundsDecider::GetBoundaryFromLanesAndADC(
   bool is_left_lane_boundary = true;
   bool is_right_lane_boundary = true;
   const double boundary_buffer = 0.05;  // meter
+  const bool include_adc_in_lane_bounds =
+      config_.path_bounds_decider_config().is_extend_lane_bounds_to_include_adc() ||
+      is_fallback_lanechange ||
+      (reference_line_info.is_path_lane_borrow() &&
+       lane_borrow_info == LaneBorrowInfo::NO_BORROW);
 
   // Go through every point, update the boundary based on lane info and
   // ADC's position.
@@ -1225,11 +1230,12 @@ bool PathBoundsDecider::GetBoundaryFromLanesAndADC(
     double curr_left_bound = 0.0;
     double curr_right_bound = 0.0;
 
-    if (config_.path_bounds_decider_config()
-            .is_extend_lane_bounds_to_include_adc() ||
-        is_fallback_lanechange) {
+    if (include_adc_in_lane_bounds) {
       // extend path bounds to include ADC in fallback or change lane path
-      // bounds.
+      // bounds. During an active lane-borrow scenario, also keep the self-lane
+      // candidate wide enough to include the current ADC position so planning
+      // can evaluate a return-to-self path instead of getting stuck on the
+      // borrowed path forever.
       double curr_left_bound_adc =
           std::fmax(adc_l_to_lane_center_,
                     adc_l_to_lane_center_ + ADC_speed_buffer) +

@@ -389,6 +389,7 @@ TEST(MergeLateralDecision, AllDecisions) {
 
   ObjectDecisionType decision_nudge;
   decision_nudge.mutable_nudge()->set_type(ObjectNudge::LEFT_NUDGE);
+  decision_nudge.mutable_nudge()->set_distance_l(0.5);
 
   EXPECT_TRUE(Obstacle::MergeLateralDecision(decision_nudge, decision_ignore)
                   .has_nudge());
@@ -398,9 +399,22 @@ TEST(MergeLateralDecision, AllDecisions) {
 
   ObjectDecisionType decision_nudge2;
   decision_nudge2.mutable_nudge()->set_type(ObjectNudge::LEFT_NUDGE);
+  decision_nudge2.mutable_nudge()->set_distance_l(0.8);
   EXPECT_TRUE(Obstacle::MergeLateralDecision(decision_nudge, decision_nudge2)
                   .has_nudge());
   decision_nudge2.mutable_nudge()->set_type(ObjectNudge::RIGHT_NUDGE);
+  decision_nudge2.mutable_nudge()->set_distance_l(-1.0);
+  EXPECT_EQ(Obstacle::MergeLateralDecision(decision_nudge, decision_nudge2)
+                .nudge()
+                .type(),
+            ObjectNudge::RIGHT_NUDGE);
+
+  ObjectDecisionType generic_nudge;
+  generic_nudge.mutable_nudge();
+  EXPECT_EQ(Obstacle::MergeLateralDecision(generic_nudge, decision_nudge)
+                .nudge()
+                .type(),
+            ObjectNudge::LEFT_NUDGE);
 }
 
 TEST(ObstacleMergeTest, add_decision_test) {
@@ -489,11 +503,18 @@ TEST(ObstacleMergeTest, add_decision_test) {
     ObjectDecisionType decision;
 
     decision.mutable_nudge()->set_type(ObjectNudge::LEFT_NUDGE);
+    decision.mutable_nudge()->set_distance_l(0.5);
     obstacle.AddLateralDecision("test_left_nudge", decision);
+
+    decision.mutable_nudge()->set_type(ObjectNudge::RIGHT_NUDGE);
+    decision.mutable_nudge()->set_distance_l(-1.0);
+    obstacle.AddLateralDecision("test_right_nudge", decision);
 
     EXPECT_TRUE(obstacle.HasLateralDecision());
     EXPECT_FALSE(obstacle.HasLongitudinalDecision());
     EXPECT_TRUE(obstacle.LateralDecision().has_nudge());
+    EXPECT_EQ(obstacle.LateralDecision().nudge().type(),
+              ObjectNudge::RIGHT_NUDGE);
   }
 
   // overtake and ignore

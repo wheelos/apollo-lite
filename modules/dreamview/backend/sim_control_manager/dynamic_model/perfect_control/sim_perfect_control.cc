@@ -16,6 +16,7 @@
 
 #include "modules/dreamview/backend/sim_control_manager/dynamic_model/perfect_control/sim_perfect_control.h"
 
+#include <cmath>
 #include <memory>
 
 #include "cyber/common/file.h"
@@ -46,6 +47,10 @@ using apollo::prediction::PredictionObstacles;
 using apollo::relative_map::NavigationInfo;
 using apollo::routing::RoutingRequest;
 using apollo::routing::RoutingResponse;
+using apollo::sim_control::SimControlPredictionMode;
+using apollo::sim_control::SimControlSpawnMode;
+using apollo::sim_control::SimControlStartSource;
+using apollo::sim_control::SimControlStatus;
 using Json = nlohmann::json;
 
 namespace {
@@ -64,6 +69,27 @@ void TransformToVRF(const Point3D &point_mrf, const Quaternion &orientation,
 bool IsSameHeader(const Header &lhs, const Header &rhs) {
   return lhs.sequence_num() == rhs.sequence_num() &&
          lhs.timestamp_sec() == rhs.timestamp_sec();
+}
+
+void NormalizePoint3D(Point3D* point, double default_x = 0.0,
+                      double default_y = 0.0, double default_z = 0.0) {
+  if (!std::isfinite(point->x())) {
+    point->set_x(default_x);
+  }
+  if (!std::isfinite(point->y())) {
+    point->set_y(default_y);
+  }
+  if (!std::isfinite(point->z())) {
+    point->set_z(default_z);
+  }
+}
+
+void NormalizePerceptionObstacle(perception::PerceptionObstacle* obstacle) {
+  NormalizePoint3D(obstacle->mutable_velocity());
+  NormalizePoint3D(obstacle->mutable_acceleration());
+  if (!obstacle->has_tracking_time() || !std::isfinite(obstacle->tracking_time())) {
+    obstacle->set_tracking_time(1.0);
+  }
 }
 
 }  // namespace
@@ -126,6 +152,8 @@ void SimPerfectControl::InitTimerAndIO() {
   chassis_writer_ = node_->CreateWriter<Chassis>(FLAGS_chassis_topic);
   prediction_writer_ =
       node_->CreateWriter<PredictionObstacles>(FLAGS_prediction_topic);
+  status_writer_ =
+      node_->CreateWriter<SimControlStatus>(FLAGS_sim_control_status_topic);
 
   // Start timer to publish localization and chassis messages.
   sim_control_timer_.reset(new cyber::Timer(
@@ -160,7 +188,8 @@ void SimPerfectControl::InitStartPoint(double x, double y,
   point.mutable_path_point()->set_theta(theta);
   point.set_v(start_velocity);
   point.set_a(start_acceleration);
-  SetStartPoint(point);
+  SetStartPoint(point, SimControlStartSource::SIM_CONTROL_START_SOURCE_EXPLICIT,
+                "start point initialized from explicit coordinates");
 }
 
 void SimPerfectControl::InitStartPoint(double start_velocity,
@@ -194,6 +223,10 @@ void SimPerfectControl::InitStartPoint(double start_velocity,
                                     pose.linear_acceleration().y());
       point.set_a(std::signbit(projection) ? -magnitude : magnitude);
       start_point_from_localization_ = true;
+      SetStartPoint(
+          point, SimControlStartSource::SIM_CONTROL_START_SOURCE_LOCALIZATION,
+          "start point initialized from localization");
+      return;
     }
   }
   if (!start_point_from_localization_) {
@@ -212,14 +245,23 @@ void SimPerfectControl::InitStartPoint(double start_velocity,
     point.mutable_path_point()->set_theta(theta);
     point.set_v(start_velocity);
     point.set_a(start_acceleration);
+    SetStartPoint(point, SimControlStartSource::SIM_CONTROL_START_SOURCE_MAP_DEFAULT,
+                  "start point initialized from map default");
+    return;
   }
-  SetStartPoint(point);
 }
 
-void SimPerfectControl::SetStartPoint(const TrajectoryPoint &start_point) {
+void SimPerfectControl::SetStartPoint(
+    const TrajectoryPoint& start_point, SimControlStartSource start_source,
+    const std::string& status_message) {
+  start_point_ = start_point;
   next_point_ = start_point;
   prev_point_index_ = next_point_index_ = 0;
   received_planning_ = false;
+  last_start_source_ = start_source;
+  if (!status_message.empty()) {
+    status_message_ = status_message;
+  }
 }
 
 void SimPerfectControl::Reset() {
@@ -233,7 +275,11 @@ void SimPerfectControl::Stop() {
   if (enabled_) {
     sim_control_timer_->Stop();
     sim_prediction_timer_->Stop();
+    sim_control_timer_started_ = false;
+    waiting_for_routing_start_ = false;
     enabled_ = false;
+    status_message_ = "sim control stopped";
+    WriteStatusLocked();
   }
 }
 
@@ -241,6 +287,7 @@ void SimPerfectControl::InternalReset() {
   current_routing_header_.Clear();
   re_routing_triggered_ = false;
   send_dummy_prediction_ = true;
+  route_start_applied_ = false;
   ClearPlanning();
 }
 
@@ -268,8 +315,12 @@ void SimPerfectControl::OnRoutingResponse(
     return;
   }
 
-  CHECK_GE(routing->routing_request().waypoint_size(), 2)
-      << "routing should have at least two waypoints";
+  if (routing->routing_request().waypoint_size() < 2) {
+    status_message_ = "routing response ignored because waypoint_size < 2";
+    AERROR << status_message_;
+    WriteStatusLocked();
+    return;
+  }
 
   current_routing_header_ = routing->header();
 
@@ -301,11 +352,27 @@ void SimPerfectControl::OnRoutingRequest(
     return;
   }
 
-  CHECK_GE(routing_request->waypoint_size(), 2)
-      << "routing should have at least two waypoints";
+  last_routing_waypoint_count_ = routing_request->waypoint_size();
+  if (routing_request->has_header()) {
+    last_routing_sequence_num_ = routing_request->header().sequence_num();
+    last_routing_module_name_ = routing_request->header().module_name();
+  } else {
+    last_routing_sequence_num_ = 0;
+    last_routing_module_name_.clear();
+  }
 
-  // Set parking info for PublishRelativePose
-  parking_info_ = routing_request->mutable_parking_info();
+  if (routing_request->waypoint_size() < 2) {
+    status_message_ = "routing request ignored because waypoint_size < 2";
+    AERROR << status_message_;
+    WriteStatusLocked();
+    return;
+  }
+
+  if (!ShouldApplyRoutingStart()) {
+    status_message_ = "routing request observed but spawn mode keeps current start point";
+    WriteStatusLocked();
+    return;
+  }
 
   const auto &start_pose = routing_request->waypoint(0).pose();
 
@@ -336,7 +403,12 @@ void SimPerfectControl::OnRoutingRequest(
   }
 
   point.mutable_path_point()->set_theta(theta);
-  SetStartPoint(point);
+  waiting_for_routing_start_ = false;
+  route_start_applied_ = true;
+  SetStartPoint(point, SimControlStartSource::SIM_CONTROL_START_SOURCE_ROUTING_REQUEST,
+                "start point updated from routing request");
+  StartSimulationTimerLocked();
+  WriteStatusLocked();
 }
 
 void SimPerfectControl::OnPredictionObstacles(
@@ -347,6 +419,11 @@ void SimPerfectControl::OnPredictionObstacles(
     return;
   }
 
+  if (configured_prediction_mode_ !=
+      SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_LEGACY) {
+    return;
+  }
+
   send_dummy_prediction_ = obstacles->header().module_name() == "SimPrediction";
 }
 
@@ -354,21 +431,43 @@ void SimPerfectControl::Start() {
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (!enabled_) {
+    configured_spawn_mode_ = ResolveSpawnMode();
+    configured_prediction_mode_ = ResolvePredictionMode();
+    waiting_for_routing_start_ = false;
+    sim_control_timer_started_ = false;
+    last_routing_waypoint_count_ = 0;
+    last_routing_sequence_num_ = 0;
+    last_routing_module_name_.clear();
+    status_message_.clear();
+
     // When there is no localization yet, Init(true) will use a
     // dummy point from the current map as an arbitrary start.
     // When localization is already available, we do not need to
     // reset/override the start point.
-    localization_reader_->Observe();
-    Json start_point_attr({});
-    start_point_attr["start_velocity"] =
-        next_point_.has_v() ? next_point_.v() : 0.0;
-    start_point_attr["start_acceleration"] =
-        next_point_.has_a() ? next_point_.a() : 0.0;
-    Init(true, start_point_attr);
+    if (configured_spawn_mode_ ==
+        SimControlSpawnMode::SIM_CONTROL_SPAWN_MODE_ROUTING_START) {
+      waiting_for_routing_start_ = true;
+      status_message_ = "waiting for routing request to initialize ego start";
+    } else {
+      localization_reader_->Observe();
+      Json start_point_attr({});
+      start_point_attr["start_velocity"] =
+          next_point_.has_v() ? next_point_.v() : 0.0;
+      start_point_attr["start_acceleration"] =
+          next_point_.has_a() ? next_point_.a() : 0.0;
+      Init(true, start_point_attr);
+    }
     InternalReset();
-    sim_control_timer_->Start();
+    LoadCustomPrediction();
+    if (waiting_for_routing_start_) {
+      status_message_ = "waiting for routing request to initialize ego start";
+    }
+    if (!waiting_for_routing_start_) {
+      StartSimulationTimerLocked();
+    }
     sim_prediction_timer_->Start();
     enabled_ = true;
+    WriteStatusLocked();
   }
 }
 
@@ -376,13 +475,24 @@ void SimPerfectControl::Start(double x, double y) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (!enabled_) {
+    configured_spawn_mode_ =
+        SimControlSpawnMode::SIM_CONTROL_SPAWN_MODE_EXPLICIT_START;
+    configured_prediction_mode_ = ResolvePredictionMode();
+    waiting_for_routing_start_ = false;
+    sim_control_timer_started_ = false;
+    last_routing_waypoint_count_ = 0;
+    last_routing_sequence_num_ = 0;
+    last_routing_module_name_.clear();
+    status_message_.clear();
     // Do not use localization info. use scenario start point to init start
     // point.
     InitStartPoint(x, y, 0, 0);
     InternalReset();
-    sim_control_timer_->Start();
+    LoadCustomPrediction();
+    StartSimulationTimerLocked();
     sim_prediction_timer_->Start();
     enabled_ = true;
+    WriteStatusLocked();
   }
 }
 
@@ -415,6 +525,9 @@ void SimPerfectControl::Freeze() {
 
 void SimPerfectControl::RunOnce() {
   std::lock_guard<std::mutex> lock(mutex_);
+  if (!sim_control_timer_started_) {
+    return;
+  }
 
   TrajectoryPoint trajectory_point;
   Chassis::GearPosition gear_position;
@@ -613,14 +726,247 @@ void SimPerfectControl::FillCommonLocalizationData(
 
 void SimPerfectControl::PublishDummyPrediction() {
   auto prediction = std::make_shared<PredictionObstacles>();
+  auto status = std::make_shared<SimControlStatus>();
+  bool should_publish_prediction = false;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!send_dummy_prediction_) {
+    if (!enabled_) {
       return;
     }
-    FillHeader("SimPrediction", prediction.get());
+    should_publish_prediction = ShouldPublishPredictionLocked();
+    if (should_publish_prediction && use_custom_prediction_) {
+      prediction->CopyFrom(custom_prediction_template_);
+      RefreshPredictionTimestamps(prediction.get(), Clock::NowInSeconds());
+    }
+    if (should_publish_prediction) {
+      FillHeader("SimPrediction", prediction.get());
+    }
+    FillStatusLocked(status.get());
   }
-  prediction_writer_->Write(prediction);
+  if (should_publish_prediction) {
+    prediction_writer_->Write(prediction);
+  }
+  status_writer_->Write(status);
+}
+
+bool SimPerfectControl::LoadCustomPrediction() {
+  configured_prediction_mode_ = ResolvePredictionMode();
+  use_custom_prediction_ = false;
+  custom_prediction_template_.Clear();
+  if (configured_prediction_mode_ ==
+      SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_EXTERNAL_PASSTHROUGH) {
+    status_message_ = "prediction mode uses external passthrough";
+    return true;
+  }
+  if (configured_prediction_mode_ ==
+      SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_EMPTY) {
+    status_message_ = "prediction mode publishes empty obstacles";
+    return true;
+  }
+
+  const bool should_load_custom_file =
+      configured_prediction_mode_ ==
+          SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_CUSTOM_FILE ||
+      (configured_prediction_mode_ ==
+           SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_LEGACY &&
+       FLAGS_enable_sim_control_custom_prediction);
+  if (!should_load_custom_file) {
+    status_message_ = "prediction mode publishes empty obstacles";
+    return false;
+  }
+  if (FLAGS_sim_control_custom_prediction_file.empty()) {
+    AWARN << "Custom sim control prediction is enabled but no file is set.";
+    status_message_ = "custom prediction file is not set; falling back to empty prediction";
+    return false;
+  }
+
+  SimControlUtil util;
+  std::string file_content;
+  cyber::common::GetContent(FLAGS_sim_control_custom_prediction_file,
+                            &file_content);
+  const bool looks_like_perception_obstacles =
+      file_content.find("perception_obstacle") != std::string::npos &&
+      file_content.find("prediction_obstacle") == std::string::npos;
+
+  if (looks_like_perception_obstacles) {
+    perception::PerceptionObstacles perception_obstacles;
+    if (!util.load_file_to_proto(FLAGS_sim_control_custom_prediction_file,
+                                 &perception_obstacles)) {
+      AERROR << "Failed to load custom perception obstacle file: "
+             << FLAGS_sim_control_custom_prediction_file;
+      status_message_ =
+          "failed to load custom perception obstacle file; falling back to empty prediction";
+      return false;
+    }
+    ConvertPerceptionObstaclesToPrediction(perception_obstacles,
+                                           &custom_prediction_template_);
+  } else if (!util.load_file_to_proto(FLAGS_sim_control_custom_prediction_file,
+                                      &custom_prediction_template_)) {
+    perception::PerceptionObstacles perception_obstacles;
+    if (!util.load_file_to_proto(FLAGS_sim_control_custom_prediction_file,
+                                 &perception_obstacles)) {
+      AERROR << "Failed to load custom prediction file: "
+             << FLAGS_sim_control_custom_prediction_file;
+      status_message_ =
+          "failed to load custom prediction file; falling back to empty prediction";
+      return false;
+    }
+    ConvertPerceptionObstaclesToPrediction(perception_obstacles,
+                                           &custom_prediction_template_);
+  }
+
+  if (custom_prediction_template_.prediction_obstacle_size() == 0) {
+    AWARN << "Custom prediction file contains no obstacles: "
+          << FLAGS_sim_control_custom_prediction_file;
+    custom_prediction_template_.Clear();
+    status_message_ =
+        "custom prediction file contains no obstacles; falling back to empty prediction";
+    return false;
+  }
+
+  use_custom_prediction_ = true;
+  status_message_ = "prediction mode publishes custom obstacles";
+  AINFO << "Loaded " << custom_prediction_template_.prediction_obstacle_size()
+        << " custom prediction obstacle(s) from "
+        << FLAGS_sim_control_custom_prediction_file;
+  return true;
+}
+
+void SimPerfectControl::StartSimulationTimerLocked() {
+  if (!sim_control_timer_started_) {
+    sim_control_timer_->Start();
+    sim_control_timer_started_ = true;
+  }
+}
+
+SimControlSpawnMode SimPerfectControl::ResolveSpawnMode() {
+  const auto mode = GetConfiguredSimControlSpawnMode();
+  if (mode == SimControlSpawnMode::SIM_CONTROL_SPAWN_MODE_UNKNOWN) {
+    AERROR << "Unknown sim_control_spawn_mode: "
+           << FLAGS_sim_control_spawn_mode << ". Falling back to legacy.";
+    return SimControlSpawnMode::SIM_CONTROL_SPAWN_MODE_LEGACY;
+  }
+  return mode;
+}
+
+SimControlPredictionMode SimPerfectControl::ResolvePredictionMode() {
+  const auto mode = GetConfiguredSimControlPredictionMode();
+  if (mode == SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_UNKNOWN) {
+    AERROR << "Unknown sim_control_prediction_mode: "
+           << FLAGS_sim_control_prediction_mode << ". Falling back to legacy.";
+    return SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_LEGACY;
+  }
+  return mode;
+}
+
+bool SimPerfectControl::ShouldApplyRoutingStart() const {
+  return configured_spawn_mode_ ==
+             SimControlSpawnMode::SIM_CONTROL_SPAWN_MODE_LEGACY ||
+         configured_spawn_mode_ ==
+             SimControlSpawnMode::SIM_CONTROL_SPAWN_MODE_ROUTING_START;
+}
+
+bool SimPerfectControl::ShouldPublishPredictionLocked() const {
+  switch (configured_prediction_mode_) {
+    case SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_EXTERNAL_PASSTHROUGH:
+      return false;
+    case SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_EMPTY:
+    case SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_CUSTOM_FILE:
+      return true;
+    case SimControlPredictionMode::SIM_CONTROL_PREDICTION_MODE_LEGACY:
+    default:
+      return send_dummy_prediction_;
+  }
+}
+
+void SimPerfectControl::FillStatusLocked(SimControlStatus* status) const {
+  FillHeader("SimControl", status);
+  status->set_enabled(enabled_);
+  status->set_dynamic_model_name(FLAGS_sim_perfect_control);
+  status->set_configured_spawn_mode(configured_spawn_mode_);
+  status->set_configured_prediction_mode(configured_prediction_mode_);
+  status->set_last_start_source(last_start_source_);
+  status->set_waiting_for_routing_start(waiting_for_routing_start_);
+  status->set_route_start_applied(route_start_applied_);
+  status->set_sim_control_timer_started(sim_control_timer_started_);
+  status->set_publishing_prediction(ShouldPublishPredictionLocked());
+  status->set_publishing_empty_prediction(ShouldPublishPredictionLocked() &&
+                                          !use_custom_prediction_);
+  status->set_publishing_custom_prediction(ShouldPublishPredictionLocked() &&
+                                           use_custom_prediction_);
+  status->set_custom_prediction_obstacle_count(
+      custom_prediction_template_.prediction_obstacle_size());
+  status->set_custom_prediction_file(FLAGS_sim_control_custom_prediction_file);
+  status->set_last_routing_waypoint_count(last_routing_waypoint_count_);
+  status->set_last_routing_sequence_num(last_routing_sequence_num_);
+  status->set_last_routing_module_name(last_routing_module_name_);
+  status->set_status_message(status_message_);
+
+  status->set_start_x(start_point_.path_point().x());
+  status->set_start_y(start_point_.path_point().y());
+  status->set_start_theta(start_point_.path_point().theta());
+  status->set_current_x(next_point_.path_point().x());
+  status->set_current_y(next_point_.path_point().y());
+  status->set_current_theta(next_point_.path_point().theta());
+}
+
+void SimPerfectControl::WriteStatusLocked() {
+  auto status = std::make_shared<SimControlStatus>();
+  FillStatusLocked(status.get());
+  status_writer_->Write(status);
+}
+
+void SimPerfectControl::ConvertPerceptionObstaclesToPrediction(
+    const perception::PerceptionObstacles &perception_obstacles,
+    PredictionObstacles *prediction_obstacles) {
+  prediction_obstacles->Clear();
+  for (const auto &obstacle : perception_obstacles.perception_obstacle()) {
+    auto sanitized_obstacle = obstacle;
+    NormalizePerceptionObstacle(&sanitized_obstacle);
+    const bool is_static =
+        std::hypot(sanitized_obstacle.velocity().x(),
+                   sanitized_obstacle.velocity().y()) < 1e-3;
+    auto *prediction_obstacle = prediction_obstacles->add_prediction_obstacle();
+    prediction_obstacle->mutable_perception_obstacle()->CopyFrom(
+        sanitized_obstacle);
+    prediction_obstacle->mutable_priority()->set_priority(
+        prediction::ObstaclePriority::NORMAL);
+    prediction_obstacle->mutable_intent()->set_type(
+        is_static ? prediction::ObstacleIntent::STATIONARY
+                  : prediction::ObstacleIntent::MOVING);
+    prediction_obstacle->set_is_static(is_static);
+    prediction_obstacle->set_predicted_period(0.0);
+  }
+}
+
+void SimPerfectControl::RefreshPredictionTimestamps(
+    PredictionObstacles *prediction_obstacles, double timestamp_sec) {
+  prediction_obstacles->set_start_timestamp(timestamp_sec);
+  prediction_obstacles->set_end_timestamp(timestamp_sec);
+  for (int i = 0; i < prediction_obstacles->prediction_obstacle_size(); ++i) {
+    auto *obstacle = prediction_obstacles->mutable_prediction_obstacle(i);
+    NormalizePerceptionObstacle(obstacle->mutable_perception_obstacle());
+    obstacle->set_timestamp(timestamp_sec);
+    if (!obstacle->has_predicted_period()) {
+      obstacle->set_predicted_period(0.0);
+    }
+    obstacle->mutable_perception_obstacle()->set_timestamp(timestamp_sec);
+    if (!obstacle->has_is_static()) {
+      const auto &perception_obstacle = obstacle->perception_obstacle();
+      obstacle->set_is_static(std::hypot(perception_obstacle.velocity().x(),
+                                         perception_obstacle.velocity().y()) <
+                              1e-3);
+    }
+    if (!obstacle->has_priority()) {
+      obstacle->mutable_priority()->set_priority(
+          prediction::ObstaclePriority::NORMAL);
+    }
+    if (!obstacle->has_intent()) {
+      obstacle->mutable_intent()->set_type(
+          obstacle->is_static() ? prediction::ObstacleIntent::STATIONARY
+                                : prediction::ObstacleIntent::MOVING);
+    }
+  }
 }
 
 }  // namespace dreamview

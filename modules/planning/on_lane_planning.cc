@@ -338,7 +338,8 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
   injector_->ego_info()->Update(stitching_trajectory.back(), vehicle_state);
   const uint32_t frame_num = static_cast<uint32_t>(seq_num_++);
   status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state);
-  AINFO << "Planning start frame sequence id = [" << frame_num << "]";
+  AINFO_EVERY(100) << "Planning start frame sequence id = [" << frame_num
+                   << "]";
   if (status.ok()) {
     injector_->ego_info()->CalculateFrontObstacleClearDistance(
         frame_->obstacles());

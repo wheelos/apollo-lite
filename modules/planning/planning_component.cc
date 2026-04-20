@@ -154,7 +154,6 @@ bool PlanningComponent::Proc(
   }
 
   if (!CheckInput()) {
-    AERROR << "Input check failed";
     return false;
   }
 
@@ -243,7 +242,7 @@ bool PlanningComponent::CheckInput() {
   }
 
   if (not_ready->has_reason()) {
-    AERROR << not_ready->reason() << "; skip the planning cycle.";
+    AWARN_EVERY(100) << not_ready->reason() << "; skip the planning cycle.";
     common::util::FillHeader(node_->Name(), &trajectory_pb);
     planning_writer_->Write(trajectory_pb);
     return false;
