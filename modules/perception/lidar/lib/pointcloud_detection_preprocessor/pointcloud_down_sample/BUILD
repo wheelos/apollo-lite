@@ -12,6 +12,9 @@ cc_library(
   hdrs = [
     "pointcloud_down_sample.h",
   ],
+  copts = [
+      '-DMODULE_NAME=\"perception\"',
+  ],
   deps = [
     "//modules/perception/base",
     "//modules/perception/common:perception_gflags",

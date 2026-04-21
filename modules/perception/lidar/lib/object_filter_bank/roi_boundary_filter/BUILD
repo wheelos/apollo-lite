@@ -7,6 +7,9 @@ cc_library(
     name = "roi_boundary_filter",
     srcs = ["roi_boundary_filter.cc"],
     hdrs = ["roi_boundary_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:point_cloud",

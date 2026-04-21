@@ -14,6 +14,9 @@ cc_library(
         "base_tracker.h",
         "base_type_fusion.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/fusion/base:base_forward_declaration",

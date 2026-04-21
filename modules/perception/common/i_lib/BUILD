@@ -5,6 +5,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "i_lib",
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/common/i_lib/algorithm:i_sort",
         "//modules/perception/common/i_lib/core",

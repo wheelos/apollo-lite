@@ -7,6 +7,9 @@ cc_library(
     name = "obj_mapper",
     srcs = ["obj_mapper.cc"],
     hdrs = ["obj_mapper.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/camera/common",

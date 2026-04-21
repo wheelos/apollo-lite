@@ -10,6 +10,7 @@ cc_library(
     hdrs = ["i_ground.h"],
     copts = if_x86_64([
         "-msse4.1",
+        '-DMODULE_NAME=\"perception\"',
     ]),
     deps = [
         ":i_struct_s",

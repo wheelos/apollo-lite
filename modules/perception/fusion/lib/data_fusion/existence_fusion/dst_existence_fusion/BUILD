@@ -7,6 +7,9 @@ cc_library(
     name = "dst_existence_fusion",
     srcs = ["dst_existence_fusion.cc"],
     hdrs = ["dst_existence_fusion.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/common/util",
         "//modules/perception/common/sensor_manager",

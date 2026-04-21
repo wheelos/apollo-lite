@@ -7,6 +7,9 @@ cc_library(
     name = "object_builder",
     srcs = ["object_builder.cc"],
     hdrs = ["object_builder.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/common/geometry:common",

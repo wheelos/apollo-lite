@@ -5,6 +5,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "interface",
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":base_bipartite_graph_matcher",
         ":base_classifier",

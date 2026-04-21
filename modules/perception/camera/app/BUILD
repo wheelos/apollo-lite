@@ -7,6 +7,9 @@ cc_library(
     name = "debug_info",
     srcs = ["debug_info.cc"],
     hdrs = ["debug_info.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",
@@ -19,6 +22,9 @@ cc_library(
     name = "obstacle_camera_perception",
     srcs = ["obstacle_camera_perception.cc"],
     hdrs = ["obstacle_camera_perception.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":debug_info",
         "//cyber",
@@ -52,6 +58,9 @@ cc_library(
     name = "obstacle_detection_camera",
     srcs = ["obstacle_detection_camera.cc"],
     hdrs = ["obstacle_detection_camera.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":debug_info",
         "//cyber",
@@ -88,6 +97,9 @@ cc_library(
     name = "traffic_light_camera_perception",
     srcs = ["traffic_light_camera_perception.cc"],
     hdrs = ["traffic_light_camera_perception.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",
@@ -105,6 +117,9 @@ cc_library(
     name = "lane_camera_perception",
     srcs = ["lane_camera_perception.cc"],
     hdrs = ["lane_camera_perception.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":debug_info",
         "//cyber",
@@ -131,6 +146,9 @@ cc_library(
     name = "cipv_camera",
     srcs = ["cipv_camera.cc"],
     hdrs = ["cipv_camera.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/configs:vehicle_config_helper",

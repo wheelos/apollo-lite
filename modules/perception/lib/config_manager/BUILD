@@ -21,6 +21,7 @@ cc_test(
     name = "config_manager_test",
     size = "small",
     srcs = ["config_manager_test.cc"],
+    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     data = [
         "//modules/perception:perception_testdata",

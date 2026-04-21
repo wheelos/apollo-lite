@@ -7,6 +7,9 @@ cc_test(
     name = "base_matcher_test",
     size = "small",
     srcs = ["base_matcher_test.cc"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":base_matcher",
         "//modules/perception/radar/lib/tracker/common:radar_track_manager",

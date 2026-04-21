@@ -7,6 +7,9 @@ cc_library(
     name = "multi_hm_bipartite_graph_matcher",
     srcs = ["multi_hm_bipartite_graph_matcher.cc"],
     hdrs = ["multi_hm_bipartite_graph_matcher.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common/graph:gated_hungarian_bigraph_matcher",

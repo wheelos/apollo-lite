@@ -12,6 +12,9 @@ cc_library(
   hdrs = [
     "pointcloud_get_objects.h",
   ],
+  copts = [
+      '-DMODULE_NAME=\"perception\"',
+  ],
   deps = [
     "//modules/perception/base:object",
     "//modules/perception/base:point",

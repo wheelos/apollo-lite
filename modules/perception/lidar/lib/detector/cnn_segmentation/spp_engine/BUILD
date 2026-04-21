@@ -7,6 +7,9 @@ cc_library(
     name = "spp_engine",
     srcs = ["spp_engine.cc"],
     hdrs = ["spp_engine.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":spp_cluster",
         ":spp_cluster_list",

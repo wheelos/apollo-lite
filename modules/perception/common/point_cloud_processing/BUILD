@@ -9,6 +9,9 @@ cc_library(
         "common.h",
         "downsampling.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:point_cloud",

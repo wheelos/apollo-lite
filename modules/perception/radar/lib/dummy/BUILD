@@ -7,6 +7,9 @@ cc_test(
     name = "dummy_algorithms_test",
     size = "small",
     srcs = ["dummy_algorithms_test.cc"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":dummy_algorithms",
         "@com_google_googletest//:gtest_main",

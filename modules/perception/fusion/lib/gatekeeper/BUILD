@@ -7,6 +7,9 @@ cc_library(
     name = "collect_fused_object",
     srcs = ["collect_fused_object.cc"],
     hdrs = ["collect_fused_object.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/common/util:string_util",

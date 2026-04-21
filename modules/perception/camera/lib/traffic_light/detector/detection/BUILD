@@ -13,6 +13,9 @@ cc_library(
         "detection.h",
         "yolo_single_stage_dector.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":cropbox",
         ":select",

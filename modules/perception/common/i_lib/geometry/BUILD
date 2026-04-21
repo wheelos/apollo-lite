@@ -10,6 +10,9 @@ cc_library(
         "i_plane.h",
         "i_util.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "@eigen",
     ],

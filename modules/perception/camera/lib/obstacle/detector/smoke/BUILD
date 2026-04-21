@@ -8,6 +8,9 @@ cuda_library(
     name = "smoke_region_output_cuda",
     srcs = ["region_output.cu"],
     hdrs = ["region_output.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":smoke_object_maintainer",
         "//modules/perception/base",

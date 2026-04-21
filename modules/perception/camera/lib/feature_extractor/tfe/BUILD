@@ -7,6 +7,9 @@ cc_library(
     name = "external_feature_extractor",
     srcs = ["external_feature_extractor.cc"],
     hdrs = ["external_feature_extractor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/camera/common",
@@ -24,6 +27,9 @@ cc_library(
     name = "project_feature",
     srcs = ["project_feature.cc"],
     hdrs = ["project_feature.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/camera/common",
@@ -40,6 +46,9 @@ cc_library(
     name = "tracking_feat_extractor",
     srcs = ["tracking_feat_extractor.cc"],
     hdrs = ["tracking_feat_extractor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",

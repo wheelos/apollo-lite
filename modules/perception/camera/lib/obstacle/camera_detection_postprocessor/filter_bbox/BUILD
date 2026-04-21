@@ -7,6 +7,9 @@ cc_library(
     name = "filter_bbox",
     srcs = ["filter_bbox.cc"],
     hdrs = ["filter_bbox.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/pipeline:data_frame",
         "//modules/perception/pipeline:plugin",

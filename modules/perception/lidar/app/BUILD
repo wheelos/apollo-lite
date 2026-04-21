@@ -5,6 +5,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "app",
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":lidar_obstacle_detection",
         ":lidar_obstacle_tracking",

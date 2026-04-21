@@ -13,6 +13,9 @@ cc_library(
     hdrs = [
         "lidar_inner_component_messages.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/lidar/common",

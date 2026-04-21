@@ -124,6 +124,7 @@ cc_test(
     name = "entropy_calibrator_test",
     size = "small",
     srcs = ["entropy_calibrator_test.cc"],
+    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     data = [
         "//modules/perception/inference:inference_test_data",

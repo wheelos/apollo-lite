@@ -13,6 +13,9 @@ cc_test(
     name = "hough_transfer_test",
     size = "small",
     srcs = ["hough_transfer_test.cc"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":hough_transfer",
         "@com_google_googletest//:gtest_main",
