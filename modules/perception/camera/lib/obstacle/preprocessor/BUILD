@@ -7,6 +7,9 @@ cc_library(
     name = "camera_detection_preprocessor",
     srcs = ["camera_detection_preprocessor.cc"],
     hdrs = ["camera_detection_preprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/camera/lib/obstacle/preprocessor/get_image_data",
         "//modules/perception/camera/lib/obstacle/preprocessor/resize_and_normalize",

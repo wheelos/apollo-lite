@@ -6,6 +6,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "track_object",
     hdrs = ["track_object.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":frame_list",
         "//modules/perception/base",

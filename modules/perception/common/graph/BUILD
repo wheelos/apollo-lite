@@ -5,6 +5,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "graph",
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":conditional_clustering",
         ":connected_component_analysis",

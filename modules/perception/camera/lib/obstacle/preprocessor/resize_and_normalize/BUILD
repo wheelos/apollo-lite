@@ -7,6 +7,9 @@ cc_library(
     name = "resize_and_normalize",
     srcs = ["resize_and_normalize.cc"],
     hdrs = ["resize_and_normalize.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
        "//modules/perception/pipeline:data_frame",
        "//modules/perception/pipeline:plugin",

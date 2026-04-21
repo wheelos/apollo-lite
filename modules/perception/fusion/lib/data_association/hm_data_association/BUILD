@@ -115,6 +115,7 @@ cc_test(
     name = "track_object_test",
     size = "small",
     srcs = ["track_object_test.cc"],
+    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     deps = [
         ":hm_tracks_objects_match",

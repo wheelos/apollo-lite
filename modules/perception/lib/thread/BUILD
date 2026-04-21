@@ -17,6 +17,9 @@ cc_library(
         "thread_pool.h",
         "thread_worker.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
     ],

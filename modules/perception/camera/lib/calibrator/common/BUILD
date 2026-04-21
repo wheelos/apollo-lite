@@ -7,6 +7,9 @@ cc_library(
     name = "histogram_estimator",
     srcs = ["histogram_estimator.cc"],
     hdrs = ["histogram_estimator.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common/i_lib/core",

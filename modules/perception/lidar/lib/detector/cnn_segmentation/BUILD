@@ -8,6 +8,9 @@ cc_library(
     name = "cnn_segmentation",
     srcs = ["cnn_segmentation.cc"],
     hdrs = ["cnn_segmentation.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":disjoint_set",
         ":feature_generator",

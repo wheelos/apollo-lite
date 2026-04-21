@@ -7,6 +7,9 @@ cc_test(
     name = "conti_ars_preprocessor_test",
     size = "small",
     srcs = ["conti_ars_preprocessor_test.cc"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":conti_ars_preprocessor",
         "@com_google_googletest//:gtest_main",

@@ -89,6 +89,7 @@ cc_test(
     name = "kalman_filter_test",
     size = "small",
     srcs = ["kalman_filter_test.cc"],
+    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     deps = [
         ":kalman_filter",

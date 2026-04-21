@@ -7,6 +7,9 @@ cc_library(
     name = "tracked_object",
     srcs = ["tracked_object.cc"],
     hdrs = ["tracked_object.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:object",

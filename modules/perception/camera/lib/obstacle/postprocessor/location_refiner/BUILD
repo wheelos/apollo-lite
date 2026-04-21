@@ -7,6 +7,9 @@ cc_library(
     name = "location_refiner_obstacle_postprocessor",
     srcs = ["location_refiner_obstacle_postprocessor.cc"],
     hdrs = ["location_refiner_obstacle_postprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":obj_postprocessor",
         "//cyber",

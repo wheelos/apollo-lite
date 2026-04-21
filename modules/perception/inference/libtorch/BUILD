@@ -7,6 +7,9 @@ cc_library(
     name = "torch_net",
     srcs = ["torch_net.cc"],
     hdrs = ["torch_net.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/inference:inference_lib",
         "@com_google_protobuf//:protobuf",

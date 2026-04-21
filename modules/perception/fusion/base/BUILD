@@ -5,6 +5,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "base",
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":base_forward_declaration",
         ":base_init_options",

@@ -17,6 +17,9 @@ cc_library(
     hdrs = [
         "point_pillars.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":anchor_mask_cuda",
         ":common",

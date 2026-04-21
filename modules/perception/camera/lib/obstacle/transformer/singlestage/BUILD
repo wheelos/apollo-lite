@@ -7,6 +7,9 @@ cc_library(
     name = "singlestage_obstacle_transformer",
     srcs = ["singlestage_obstacle_transformer.cc"],
     hdrs = ["singlestage_obstacle_transformer.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/camera/common",

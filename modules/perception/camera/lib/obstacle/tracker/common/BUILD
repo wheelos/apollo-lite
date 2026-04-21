@@ -8,6 +8,9 @@ cuda_library(
     name = "similar_cuda",
     srcs = ["similar.cu"],
     hdrs = ["similar.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/camera/common:camera_frame",

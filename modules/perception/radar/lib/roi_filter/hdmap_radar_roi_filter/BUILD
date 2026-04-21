@@ -7,6 +7,9 @@ cc_test(
     name = "hdmap_radar_roi_filter_test",
     size = "small",
     srcs = ["hdmap_radar_roi_filter_test.cc"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":hdmap_radar_roi_filter",
         "@com_google_googletest//:gtest_main",

@@ -8,6 +8,9 @@ cuda_library(
     name = "region_output_cuda",
     srcs = ["region_output.cu"],
     hdrs = ["region_output.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":object_maintainer",
         "//modules/perception/base",

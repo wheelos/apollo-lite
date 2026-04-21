@@ -7,6 +7,9 @@ cc_test(
     name = "adaptive_kalman_filter_test",
     size = "small",
     srcs = ["adaptive_kalman_filter_test.cc"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":adaptive_kalman_filter",
         "@com_google_googletest//:gtest_main",

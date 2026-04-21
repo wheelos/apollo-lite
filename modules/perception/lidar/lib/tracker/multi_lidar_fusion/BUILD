@@ -7,6 +7,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "mlf_base_filter",
     hdrs = ["mlf_base_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/lib/tracker/common:mlf_track_data_with_track_pool_types",

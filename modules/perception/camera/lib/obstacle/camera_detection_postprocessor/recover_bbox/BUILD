@@ -7,6 +7,9 @@ cc_library(
     name = "recover_bbox",
     srcs = ["recover_bbox.cc"],
     hdrs = ["recover_bbox.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/pipeline:data_frame",
         "//modules/perception/pipeline:plugin",

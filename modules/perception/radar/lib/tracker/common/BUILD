@@ -7,6 +7,9 @@ cc_test(
     name = "radar_track_manager_test",
     size = "small",
     srcs = ["radar_track_manager_test.cc"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":radar_track_manager",
         "@com_google_googletest//:gtest_main",

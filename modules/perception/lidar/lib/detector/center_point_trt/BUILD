@@ -8,6 +8,9 @@ cuda_library(
     name = "voxel_downsample_cuda",
     srcs = ["voxel_downsample.cu"],
     hdrs = ["voxel_downsample.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/base:point",
         "@cuda//:cuda_runtime",

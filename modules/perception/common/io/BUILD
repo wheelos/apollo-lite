@@ -24,6 +24,7 @@ cc_test(
     name = "io_util_test",
     size = "small",
     srcs = ["io_util_test.cc"],
+    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     data = [
         "//modules/perception:perception_testdata",

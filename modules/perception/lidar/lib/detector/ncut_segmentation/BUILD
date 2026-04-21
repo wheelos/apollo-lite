@@ -26,6 +26,7 @@ cc_library(
     hdrs = ["ncut_segmentation.h"],
     copts = [
         "-fopenmp",
+        '-DMODULE_NAME=\"perception\"',
     ],
     linkopts = [
         "-lgomp",

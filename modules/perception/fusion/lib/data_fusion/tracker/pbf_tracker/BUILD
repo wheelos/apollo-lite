@@ -23,6 +23,7 @@ cc_test(
     name = "pbf_tracker_test",
     size = "small",
     srcs = ["pbf_tracker_test.cc"],
+    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     deps = [
         ":pbf_tracker",

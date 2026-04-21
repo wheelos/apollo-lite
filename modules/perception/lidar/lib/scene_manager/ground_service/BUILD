@@ -6,6 +6,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "ground_struct",
     hdrs = ["ground_struct.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "@eigen",
     ],

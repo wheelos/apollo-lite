@@ -7,6 +7,9 @@ cc_library(
     name = "denseline_lane_postprocessor",
     srcs = ["denseline_lane_postprocessor.cc"],
     hdrs = ["denseline_lane_postprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",

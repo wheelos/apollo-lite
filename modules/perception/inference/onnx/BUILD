@@ -9,6 +9,9 @@ cc_library(
     hdrs = [
         "onnx_obstacle_detector.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/common:perception_gflags",
         "//modules/perception/inference:inference_lib",

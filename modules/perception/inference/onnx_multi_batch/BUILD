@@ -7,6 +7,9 @@ cc_library(
     name = "onnx_multi_batch_infer",
     srcs = ["onnx_multi_batch_infer.cc"],
     hdrs = ["onnx_multi_batch_infer.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/inference:inference_lib",

@@ -7,6 +7,7 @@ cc_test(
     name = "hm_matcher_test",
     size = "small",
     srcs = ["hm_matcher_test.cc"],
+    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     deps = [
         ":hm_matcher",

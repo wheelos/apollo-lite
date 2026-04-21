@@ -7,6 +7,9 @@ cc_library(
     name = "multi_camera_projection",
     srcs = ["multi_camera_projection.cc"],
     hdrs = ["multi_camera_projection.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         ":pose",
         "//cyber",

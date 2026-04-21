@@ -7,6 +7,9 @@ cc_library(
     name = "object_filter_bank",
     srcs = ["object_filter_bank.cc"],
     hdrs = ["object_filter_bank.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util",

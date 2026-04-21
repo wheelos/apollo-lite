@@ -7,6 +7,9 @@ cc_library(
     name = "camera_detection_postprocessor",
     srcs = ["camera_detection_postprocessor.cc"],
     hdrs = ["camera_detection_postprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//modules/perception/camera/lib/obstacle/camera_detection_postprocessor/camera_get_object",
         "//modules/perception/camera/lib/obstacle/camera_detection_postprocessor/filter_bbox",

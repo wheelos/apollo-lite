@@ -40,6 +40,7 @@ cc_library(
 #     name = "probabilistic_fusion_test",
 #     size = "small",
 #     srcs = ["probabilistic_fusion_test.cc"],
+'-DMODULE_NAME=\"perception\"',
 #     copts = ["-fno-access-control"],
 #     deps = [
 #         ":probabilistic_fusion",

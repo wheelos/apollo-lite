@@ -7,6 +7,9 @@ cc_library(
     name = "pointcloud_preprocessor",
     srcs = ["pointcloud_preprocessor.cc"],
     hdrs = ["pointcloud_preprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\"perception\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/configs:vehicle_config_helper",
