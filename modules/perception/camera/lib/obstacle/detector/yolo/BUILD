@@ -8,9 +8,6 @@ cuda_library(
     name = "region_output_cuda",
     srcs = ["region_output.cu"],
     hdrs = ["region_output.h"],
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     deps = [
         ":object_maintainer",
         "//modules/perception/base",
@@ -26,6 +23,9 @@ cc_library(
         "region_output.cc",
     ],
     hdrs = ["region_output.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":object_maintainer",
         ":region_output_cuda",
@@ -38,6 +38,9 @@ cc_library(
     name = "yolo_obstacle_detector",
     srcs = ["yolo_obstacle_detector.cc"],
     hdrs = ["yolo_obstacle_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":region_output",
         "//cyber",
@@ -64,6 +67,9 @@ cc_library(
     name = "object_maintainer",
     srcs = ["object_maintainer.cc"],
     hdrs = ["object_maintainer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",

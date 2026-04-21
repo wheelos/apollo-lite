@@ -8,7 +8,7 @@ cc_library(
     srcs = ["dst_existence_fusion.cc"],
     hdrs = ["dst_existence_fusion.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/common/util",

@@ -13,7 +13,7 @@ cc_library(
     "pointcloud_get_objects.h",
   ],
   copts = [
-      '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
   ],
   deps = [
     "//modules/perception/base:object",

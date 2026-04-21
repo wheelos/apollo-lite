@@ -8,7 +8,7 @@ cc_library(
     srcs = ["pointcloud_preprocessor.cc"],
     hdrs = ["pointcloud_preprocessor.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

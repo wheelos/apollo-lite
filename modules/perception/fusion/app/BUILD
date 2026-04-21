@@ -8,7 +8,7 @@ cc_library(
     srcs = ["obstacle_multi_sensor_fusion.cc"],
     hdrs = ["obstacle_multi_sensor_fusion.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

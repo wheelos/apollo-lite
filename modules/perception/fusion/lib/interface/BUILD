@@ -15,7 +15,7 @@ cc_library(
         "base_type_fusion.h",
     ],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",
@@ -29,6 +29,9 @@ cc_library(
 cc_library(
     name = "base_multisensor_fusion",
     hdrs = ["base_multisensor_fusion.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/fusion/base",
@@ -40,6 +43,9 @@ cc_library(
 cc_library(
     name = "base_fusion_system",
     hdrs = ["base_fusion_system.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:frame",

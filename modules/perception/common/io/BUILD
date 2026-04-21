@@ -7,6 +7,9 @@ cc_library(
     name = "io_util",
     srcs = ["io_util.cc"],
     hdrs = ["io_util.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:camera",
@@ -24,7 +27,6 @@ cc_test(
     name = "io_util_test",
     size = "small",
     srcs = ["io_util_test.cc"],
-    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     data = [
         "//modules/perception:perception_testdata",

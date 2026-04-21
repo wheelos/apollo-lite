@@ -8,7 +8,7 @@ cc_library(
     srcs = ["pbf_gatekeeper.cc"],
     hdrs = ["pbf_gatekeeper.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/common/util",

@@ -6,7 +6,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "graph",
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":conditional_clustering",
@@ -22,6 +22,9 @@ cc_library(
 cc_library(
     name = "disjoint_set",
     srcs = ["disjoint_set.cc"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     hdrs = ["disjoint_set.h"],
 )
 
@@ -39,6 +42,9 @@ cc_library(
     name = "graph_segmentor",
     srcs = ["graph_segmentor.cc"],
     hdrs = ["graph_segmentor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":disjoint_set",
         "//cyber",
@@ -59,6 +65,9 @@ cc_test(
 cc_library(
     name = "secure_matrix",
     hdrs = ["secure_matrix.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "@eigen",
     ],
@@ -78,6 +87,9 @@ cc_test(
 cc_library(
     name = "hungarian_optimizer",
     hdrs = ["hungarian_optimizer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "@eigen",
     ],
@@ -98,6 +110,9 @@ cc_library(
     name = "connected_component_analysis",
     srcs = ["connected_component_analysis.cc"],
     hdrs = ["connected_component_analysis.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
     ],
@@ -117,6 +132,9 @@ cc_test(
 cc_library(
     name = "conditional_clustering",
     hdrs = ["conditional_clustering.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base:point_cloud",
         "//modules/perception/common/geometry:basic",
@@ -138,6 +156,9 @@ cc_test(
 cc_library(
     name = "gated_hungarian_bigraph_matcher",
     hdrs = ["gated_hungarian_bigraph_matcher.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":connected_component_analysis",
         ":hungarian_optimizer",

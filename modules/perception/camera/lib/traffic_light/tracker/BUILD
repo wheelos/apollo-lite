@@ -8,7 +8,7 @@ cc_library(
     srcs = ["semantic_decision.cc"],
     hdrs = ["semantic_decision.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

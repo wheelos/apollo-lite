@@ -8,7 +8,7 @@ cc_library(
     srcs = ["object_builder.cc"],
     hdrs = ["object_builder.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/perception/base",

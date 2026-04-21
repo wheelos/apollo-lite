@@ -14,7 +14,7 @@ cc_library(
         "yolo_single_stage_dector.h",
     ],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":cropbox",
@@ -39,6 +39,9 @@ cc_library(
     name = "select",
     srcs = ["select.cc"],
     hdrs = ["select.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",
@@ -52,6 +55,9 @@ cc_library(
     name = "cropbox",
     srcs = ["cropbox.cc"],
     hdrs = ["cropbox.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/camera/common",

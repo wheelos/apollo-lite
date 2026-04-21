@@ -8,7 +8,7 @@ cc_library(
     srcs = ["msg_serializer.cc"],
     hdrs = ["msg_serializer.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

@@ -8,7 +8,7 @@ cc_library(
     srcs = ["get_image_data.cc"],
     hdrs = ["get_image_data.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/perception/pipeline:data_frame",

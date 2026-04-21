@@ -7,6 +7,9 @@ cc_library(
     name = "probabilistic_fusion",
     srcs = ["probabilistic_fusion.cc"],
     hdrs = ["probabilistic_fusion.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",
@@ -34,13 +37,12 @@ cc_library(
     alwayslink = True,
 )
 
-# ignore temporarily TODO:// need fix logic 
+# ignore temporarily TODO:// need fix logic
 
 # cc_test(
 #     name = "probabilistic_fusion_test",
 #     size = "small",
 #     srcs = ["probabilistic_fusion_test.cc"],
-'-DMODULE_NAME=\"perception\"',
 #     copts = ["-fno-access-control"],
 #     deps = [
 #         ":probabilistic_fusion",

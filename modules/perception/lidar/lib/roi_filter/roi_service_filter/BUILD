@@ -8,7 +8,7 @@ cc_library(
     srcs = ["roi_service_filter.cc"],
     hdrs = ["roi_service_filter.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

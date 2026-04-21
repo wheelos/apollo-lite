@@ -7,7 +7,6 @@ cc_test(
     name = "hm_matcher_test",
     size = "small",
     srcs = ["hm_matcher_test.cc"],
-    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     deps = [
         ":hm_matcher",
@@ -20,6 +19,9 @@ cc_library(
     name = "hm_matcher",
     srcs = ["hm_matcher.cc"],
     hdrs = ["hm_matcher.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",

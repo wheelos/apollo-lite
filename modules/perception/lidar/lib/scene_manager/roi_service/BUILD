@@ -8,7 +8,7 @@ cc_library(
     srcs = ["roi_service.cc"],
     hdrs = ["roi_service.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/common/util",

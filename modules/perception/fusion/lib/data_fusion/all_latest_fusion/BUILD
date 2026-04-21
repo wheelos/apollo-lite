@@ -8,7 +8,7 @@ cc_library(
     srcs = ["all_latest_fusion.cc"],
     hdrs = ["all_latest_fusion.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/common/util:util_tool",

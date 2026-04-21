@@ -8,7 +8,7 @@ cc_library(
     srcs = ["onnx_multi_batch_infer.cc"],
     hdrs = ["onnx_multi_batch_infer.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

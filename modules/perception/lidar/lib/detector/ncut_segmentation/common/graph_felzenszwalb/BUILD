@@ -5,9 +5,6 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "graph_felzenszwalb",
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     hdrs = [
         "convolve.h",
         "disjoint_set.h",
@@ -18,6 +15,9 @@ cc_library(
         "misc.h",
         "segment_graph.h",
         "segment_image.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
 )
 

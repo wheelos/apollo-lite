@@ -8,9 +8,6 @@ cuda_library(
     name = "smoke_region_output_cuda",
     srcs = ["region_output.cu"],
     hdrs = ["region_output.h"],
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     deps = [
         ":smoke_object_maintainer",
         "//modules/perception/base",
@@ -28,6 +25,9 @@ cc_library(
         ":smoke_region_output_cuda",
     ],
     hdrs = ["region_output.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":smoke_object_maintainer",
         "//cyber",
@@ -41,6 +41,9 @@ cc_library(
     name = "smoke_obstacle_detector",
     srcs = ["smoke_obstacle_detector.cc"],
     hdrs = ["smoke_obstacle_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":smoke_region_output",
         "//cyber",
@@ -69,6 +72,9 @@ cc_library(
     name = "smoke_object_maintainer",
     srcs = ["object_maintainer.cc"],
     hdrs = ["object_maintainer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",

@@ -8,7 +8,7 @@ cc_library(
     srcs = ["obj_mapper.cc"],
     hdrs = ["obj_mapper.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",
@@ -21,6 +21,9 @@ cc_library(
     name = "multicue_obstacle_transformer",
     srcs = ["multicue_obstacle_transformer.cc"],
     hdrs = ["multicue_obstacle_transformer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":obj_mapper",
         "//cyber",

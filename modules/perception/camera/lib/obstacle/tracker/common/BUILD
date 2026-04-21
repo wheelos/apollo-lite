@@ -8,9 +8,6 @@ cuda_library(
     name = "similar_cuda",
     srcs = ["similar.cu"],
     hdrs = ["similar.h"],
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     deps = [
         "//cyber",
         "//modules/perception/camera/common:camera_frame",
@@ -27,6 +24,9 @@ cc_library(
         ":similar_cuda",
     ],
     hdrs = ["similar.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/camera/common",
@@ -38,6 +38,9 @@ cc_library(
     name = "half_circle_angle",
     srcs = ["half_circle_angle.cc"],
     hdrs = ["half_circle_angle.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/camera/common",
     ],
@@ -47,6 +50,9 @@ cc_library(
     name = "kalman_filter",
     srcs = ["kalman_filter.cc"],
     hdrs = ["kalman_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",
@@ -56,6 +62,9 @@ cc_library(
 
 cc_library(
     name = "common",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":half_circle_angle",
         ":kalman_filter",

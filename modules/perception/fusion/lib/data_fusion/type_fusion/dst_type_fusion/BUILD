@@ -8,7 +8,7 @@ cc_library(
     srcs = ["dst_type_fusion.cc"],
     hdrs = ["dst_type_fusion.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

@@ -15,7 +15,7 @@ cc_library(
     srcs = ["motion_service.cc"],
     hdrs = ["motion_service.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

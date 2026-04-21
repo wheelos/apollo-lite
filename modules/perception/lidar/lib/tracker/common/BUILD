@@ -8,7 +8,7 @@ cc_library(
     srcs = ["tracked_object.cc"],
     hdrs = ["tracked_object.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",
@@ -24,6 +24,9 @@ cc_library(
     name = "track_data",
     srcs = ["track_data.cc"],
     hdrs = ["track_data.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":tracked_object",
         "//cyber",
@@ -40,6 +43,9 @@ cc_library(
     hdrs = [
         "mlf_track_data.h",
         "track_pool_types.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":track_data",

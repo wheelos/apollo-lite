@@ -7,7 +7,7 @@ cc_library(
     name = "i_sort",
     hdrs = ["i_sort.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

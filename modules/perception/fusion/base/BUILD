@@ -6,7 +6,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "base",
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":base_forward_declaration",
@@ -23,17 +23,26 @@ cc_library(
 cc_library(
     name = "base_forward_declaration",
     hdrs = ["base_forward_declaration.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "fusion_log",
     hdrs = ["fusion_log.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "base_init_options",
     srcs = ["base_init_options.cc"],
     hdrs = ["base_init_options.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/lib/config_manager",
     ],
@@ -44,6 +53,9 @@ cc_library(
   hdrs = [
     "fusion_frame.h",
   ],
+  copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
   deps = [
     ":scene",
     ":sensor",
@@ -56,6 +68,9 @@ cc_library(
     name = "scene",
     srcs = ["scene.cc"],
     hdrs = ["scene.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":track",
     ],
@@ -72,6 +87,9 @@ cc_library(
         "sensor.h",
         "sensor_frame.h",
         "sensor_object.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":base_forward_declaration",
@@ -119,6 +137,9 @@ cc_library(
     name = "sensor_data_manager",
     srcs = ["sensor_data_manager.cc"],
     hdrs = ["sensor_data_manager.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":sensor",
         "//modules/perception/base:frame",
@@ -145,6 +166,9 @@ cc_library(
     name = "track",
     srcs = ["track.cc"],
     hdrs = ["track.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":sensor",
         "//cyber",
@@ -167,6 +191,9 @@ cc_library(
     name = "track_pool_types",
     srcs = ["track_pool_types.cc"],
     hdrs = ["track_pool_types.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":track",
         "//modules/perception/base:object_pool",

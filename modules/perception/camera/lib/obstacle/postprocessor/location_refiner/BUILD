@@ -8,7 +8,7 @@ cc_library(
     srcs = ["location_refiner_obstacle_postprocessor.cc"],
     hdrs = ["location_refiner_obstacle_postprocessor.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":obj_postprocessor",
@@ -25,6 +25,9 @@ cc_library(
     name = "obj_postprocessor",
     srcs = ["obj_postprocessor.cc"],
     hdrs = ["obj_postprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/camera/common",
     ],

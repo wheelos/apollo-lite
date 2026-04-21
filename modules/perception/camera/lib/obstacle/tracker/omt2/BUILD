@@ -8,7 +8,7 @@ cc_library(
     srcs = ["omt_bev_tracker.cc"],
     hdrs = ["omt_bev_tracker.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

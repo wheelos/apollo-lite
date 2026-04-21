@@ -8,9 +8,6 @@ cuda_library(
     name = "voxel_downsample_cuda",
     srcs = ["voxel_downsample.cu"],
     hdrs = ["voxel_downsample.h"],
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     deps = [
         "//modules/perception/base:point",
         "@cuda//:cuda_runtime",
@@ -21,6 +18,9 @@ cc_library(
     name = "gpu_down_sample",
     srcs = ["gpu_down_sample.cc"],
     hdrs = ["gpu_down_sample.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":voxel_downsample_cuda",
         "//cyber",
@@ -45,6 +45,9 @@ cc_library(
     name = "center_point_trt",
     srcs = ["center_point_trt.cc"],
     hdrs = ["center_point_trt.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":center_point_trt_cuda",
         ":gpu_down_sample",

@@ -8,7 +8,7 @@ cc_library(
     srcs = ["collect_fused_object.cc"],
     hdrs = ["collect_fused_object.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/common/util:util_tool",

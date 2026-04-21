@@ -7,6 +7,9 @@ cc_library(
     name = "ncut",
     srcs = ["ncut.cc"],
     hdrs = ["ncut.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",
@@ -26,7 +29,7 @@ cc_library(
     hdrs = ["ncut_segmentation.h"],
     copts = [
         "-fopenmp",
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     linkopts = [
         "-lgomp",

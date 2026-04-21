@@ -13,7 +13,7 @@ cc_library(
     "pointcloud_down_sample.h",
   ],
   copts = [
-      '-DMODULE_NAME=\"perception\"',
+      '-DMODULE_NAME=\\"perception\\"',
   ],
   deps = [
     "//modules/perception/base",

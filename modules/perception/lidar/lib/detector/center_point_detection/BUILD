@@ -38,15 +38,18 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "common",
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     hdrs = ["common.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "params",
     hdrs = ["params.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cpplint()
