@@ -7,7 +7,7 @@ cc_library(
     name = "track_object",
     hdrs = ["track_object.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":frame_list",
@@ -19,6 +19,9 @@ cc_library(
     name = "target",
     srcs = ["target.cc"],
     hdrs = ["target.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":frame_list",
         ":track_object",
@@ -33,6 +36,9 @@ cc_library(
 cc_library(
     name = "frame_list",
     hdrs = ["frame_list.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/camera/common",
@@ -46,6 +52,9 @@ cc_library(
     name = "omt_obstacle_tracker",
     srcs = ["omt_obstacle_tracker.cc"],
     hdrs = ["omt_obstacle_tracker.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":frame_list",
         ":obstacle_reference",
@@ -65,6 +74,9 @@ cc_library(
     name = "obstacle_reference",
     srcs = ["obstacle_reference.cc"],
     hdrs = ["obstacle_reference.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":frame_list",
         ":target",

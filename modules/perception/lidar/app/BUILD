@@ -5,12 +5,12 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "app",
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     deps = [
         ":lidar_obstacle_detection",
         ":lidar_obstacle_tracking",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
 )
 
@@ -18,6 +18,9 @@ cc_library(
     name = "lidar_obstacle_detection",
     srcs = ["lidar_obstacle_detection.cc"],
     hdrs = ["lidar_obstacle_detection.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",
@@ -45,6 +48,9 @@ cc_library(
     name = "lidar_obstacle_tracking",
     srcs = ["lidar_obstacle_tracking.cc"],
     hdrs = ["lidar_obstacle_tracking.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util",

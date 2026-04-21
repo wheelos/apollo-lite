@@ -8,7 +8,7 @@ cc_library(
     srcs = ["pbf_shape_fusion.cc"],
     hdrs = ["pbf_shape_fusion.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/perception/fusion/base:scene",

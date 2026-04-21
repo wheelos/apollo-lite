@@ -8,7 +8,7 @@ cc_library(
     srcs = ["radar_util.cc"],
     hdrs = ["radar_util.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/perception/base",

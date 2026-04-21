@@ -6,6 +6,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "base_filter",
     hdrs = ["base_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "@eigen",
     ],
@@ -15,6 +18,9 @@ cc_library(
     name = "camera_util",
     srcs = ["camera_util.cc"],
     hdrs = ["camera_util.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base:camera",
         "//modules/perception/common/geometry:common",
@@ -38,6 +44,9 @@ cc_library(
     name = "dst_evidence",
     srcs = ["dst_evidence.cc"],
     hdrs = ["dst_evidence.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "@boost.format",
@@ -59,6 +68,9 @@ cc_library(
     name = "information_filter",
     srcs = ["information_filter.cc"],
     hdrs = ["information_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_filter",
     ],
@@ -79,6 +91,9 @@ cc_library(
     name = "kalman_filter",
     srcs = ["kalman_filter.cc"],
     hdrs = ["kalman_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_filter",
         "//cyber",
@@ -89,7 +104,6 @@ cc_test(
     name = "kalman_filter_test",
     size = "small",
     srcs = ["kalman_filter_test.cc"],
-    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     deps = [
         ":kalman_filter",

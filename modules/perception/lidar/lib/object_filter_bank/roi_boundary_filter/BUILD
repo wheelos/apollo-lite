@@ -8,7 +8,7 @@ cc_library(
     srcs = ["roi_boundary_filter.cc"],
     hdrs = ["roi_boundary_filter.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

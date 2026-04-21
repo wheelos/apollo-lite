@@ -8,7 +8,7 @@ cc_library(
     srcs = ["singlestage_obstacle_transformer.cc"],
     hdrs = ["singlestage_obstacle_transformer.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

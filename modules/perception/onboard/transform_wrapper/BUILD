@@ -12,7 +12,7 @@ cc_library(
     ],
     hdrs = ["transform_wrapper.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/common/util:util_tool",

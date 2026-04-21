@@ -8,7 +8,7 @@ cc_library(
     srcs = ["object_filter_bank.cc"],
     hdrs = ["object_filter_bank.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

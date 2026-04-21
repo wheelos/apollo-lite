@@ -165,10 +165,6 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::GRAPH_CLUSTER_SEGMENTER:
       stage_ptr.reset(new lidar::GraphClusterSegmenter());
       break;
-    // MaskPillars is not available in the current tree.
-    // case StageType::CENTER_POINT_DETECTION:
-    //   stage_ptr.reset(new lidar::CenterPointDetection());
-    //   break;
     case StageType::CENTER_POINT_TRT_DETECTION:
       stage_ptr.reset(new lidar::CenterPointTRT());
       break;

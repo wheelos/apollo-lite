@@ -8,7 +8,7 @@ cc_library(
     srcs = ["util.cc"],
     hdrs = ["util.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",
@@ -21,6 +21,9 @@ cc_library(
 cc_library(
     name = "type_fusion_interface",
     hdrs = ["type_fusion_interface.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base:object",
         "//modules/perception/lib/registerer",
@@ -33,6 +36,9 @@ cc_library(
     name = "ccrf_type_fusion",
     srcs = ["ccrf_type_fusion.cc"],
     hdrs = ["ccrf_type_fusion.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":type_fusion_interface",
         ":util",
@@ -52,6 +58,9 @@ cc_library(
     name = "fused_classifier",
     srcs = ["fused_classifier.cc"],
     hdrs = ["fused_classifier.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":type_fusion_interface",
         "//cyber",
@@ -70,6 +79,9 @@ cc_library(
 cc_library(
     name = "fused_classifier_test",
     srcs = ["fused_classifier_test.cc"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":fused_classifier",
         ":util",

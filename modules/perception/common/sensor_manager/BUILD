@@ -8,7 +8,7 @@ cc_library(
     srcs = ["sensor_manager.cc"],
     hdrs = ["sensor_manager.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

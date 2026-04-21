@@ -13,7 +13,7 @@ cc_library(
     "pointcloud_detection_preprocessor.h",
   ],
   copts = [
-      '-DMODULE_NAME=\"perception\"',
+      '-DMODULE_NAME=\\"perception\\"',
   ],
   deps = [
     "//modules/perception/lidar/lib/pointcloud_detection_preprocessor/pointcloud_down_sample",

@@ -7,9 +7,6 @@ cc_test(
     name = "conti_ars_detector_test",
     size = "small",
     srcs = ["conti_ars_detector_test.cc"],
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     deps = [
         ":conti_ars_detector",
         "@com_google_googletest//:gtest_main",
@@ -20,6 +17,9 @@ cc_library(
     name = "conti_ars_detector",
     srcs = ["conti_ars_detector.cc"],
     hdrs = ["conti_ars_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/common/geometry:roi_filter",

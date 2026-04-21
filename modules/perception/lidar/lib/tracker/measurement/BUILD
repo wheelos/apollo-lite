@@ -8,7 +8,7 @@ cc_library(
     srcs = ["measurement_collection.cc"],
     hdrs = ["measurement_collection.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/perception/common/geometry:basic",

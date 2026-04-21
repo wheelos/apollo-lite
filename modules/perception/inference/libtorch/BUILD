@@ -8,7 +8,7 @@ cc_library(
     srcs = ["torch_net.cc"],
     hdrs = ["torch_net.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/perception/inference:inference_lib",

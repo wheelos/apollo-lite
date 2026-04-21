@@ -7,6 +7,9 @@ cc_library(
     name = "config_manager",
     srcs = ["config_manager.cc"],
     hdrs = ["config_manager.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common:perception_gflags",
@@ -21,7 +24,6 @@ cc_test(
     name = "config_manager_test",
     size = "small",
     srcs = ["config_manager_test.cc"],
-    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     data = [
         "//modules/perception:perception_testdata",

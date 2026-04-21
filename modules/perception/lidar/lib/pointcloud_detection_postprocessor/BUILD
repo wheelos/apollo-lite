@@ -13,8 +13,8 @@ cc_library(
     "pointcloud_detection_postprocessor.h",
   ],
   copts = [
-      '-DMODULE_NAME=\"perception\"',
-  ],
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
   deps = [
     "//modules/perception/pipeline:stage",
     "//modules/perception/pipeline:plugin_factory",

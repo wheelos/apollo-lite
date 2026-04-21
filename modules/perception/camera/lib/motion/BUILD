@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["plane_motion.h"],
     copts = [
         "-Wno-deprecated",
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/perception/base",

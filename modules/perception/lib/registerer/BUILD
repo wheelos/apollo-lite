@@ -7,11 +7,11 @@ cc_library(
     name = "registerer",
     srcs = ["registerer.cc"],
     hdrs = ["registerer.h"],
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     deps = [
         "//cyber",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
 )
 

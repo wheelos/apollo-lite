@@ -124,6 +124,9 @@ cc_library(
     name = "lidar_detection_component",
     srcs = ["lidar_detection_component.cc"],
     hdrs = ["lidar_detection_component.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",
@@ -180,6 +183,9 @@ cc_library(
     name = "multi_sensor_fusion_component",
     srcs = ["multi_sensor_fusion_component.cc"],
     hdrs = ["multi_sensor_fusion_component.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",
@@ -210,6 +216,9 @@ cc_library(
     ],
     hdrs = [
         "radar_detection_component.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",
@@ -253,6 +262,9 @@ cc_library(
     hdrs = [
         "lidar_tracking_component.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",
@@ -278,6 +290,9 @@ cc_library(
     ],
     hdrs = [
         "lidar_output_component.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

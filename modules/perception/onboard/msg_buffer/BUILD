@@ -12,7 +12,7 @@ cc_library(
     srcs = ["msg_buffer.cc"],
     hdrs = ["msg_buffer.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

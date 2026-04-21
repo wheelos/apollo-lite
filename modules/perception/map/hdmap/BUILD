@@ -8,7 +8,7 @@ cc_library(
     srcs = ["hdmap_input.cc"],
     hdrs = ["hdmap_input.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

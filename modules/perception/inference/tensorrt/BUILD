@@ -10,6 +10,9 @@ cc_library(
         "rt_common.h",
         "rt_legacy.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":rt_common_without_protobuf",
         "//cyber",
@@ -27,6 +30,9 @@ cc_library(
     hdrs = [
         "rt_common_without_protobuf.h",
         "rt_legacy.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",
@@ -49,6 +55,9 @@ cc_library(
     name = "rt_utils",
     srcs = ["rt_utils.cc"],
     hdrs = ["rt_utils.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":rt_common",
         "//cyber",
@@ -74,6 +83,9 @@ cc_library(
     hdrs = [
         "entropy_calibrator.h",
         "rt_net.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":batch_stream",
@@ -110,6 +122,9 @@ cc_library(
     name = "entropy_calibrator",
     srcs = ["entropy_calibrator.cc"],
     hdrs = ["entropy_calibrator.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":batch_stream",
         ":rt_common",
@@ -124,7 +139,6 @@ cc_test(
     name = "entropy_calibrator_test",
     size = "small",
     srcs = ["entropy_calibrator_test.cc"],
-    '-DMODULE_NAME=\"perception\"',
     copts = ["-fno-access-control"],
     data = [
         "//modules/perception/inference:inference_test_data",
@@ -140,6 +154,9 @@ cc_library(
     name = "batch_stream",
     srcs = ["batch_stream.cc"],
     hdrs = ["batch_stream.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":rt_common",
         "//cyber",

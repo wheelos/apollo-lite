@@ -9,7 +9,7 @@ cc_library(
     srcs = ["common_flags.cc"],
     hdrs = ["common_flags.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "@com_github_gflags_gflags//:gflags",

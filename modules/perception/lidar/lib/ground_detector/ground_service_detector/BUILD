@@ -8,7 +8,7 @@ cc_library(
     srcs = ["ground_service_detector.cc"],
     hdrs = ["ground_service_detector.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",
@@ -30,7 +30,7 @@ cc_library(
     ],
 )
 
-# ignore temporarily TODO:// need fix logic 
+# ignore temporarily TODO:// need fix logic
 
 # cc_test(
 #     name = "ground_service_detector_test",

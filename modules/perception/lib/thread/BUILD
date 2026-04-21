@@ -18,7 +18,7 @@ cc_library(
         "thread_worker.h",
     ],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",
@@ -28,6 +28,9 @@ cc_library(
 cc_library(
     name = "concurrent_queue",
     hdrs = ["concurrent_queue.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_test(

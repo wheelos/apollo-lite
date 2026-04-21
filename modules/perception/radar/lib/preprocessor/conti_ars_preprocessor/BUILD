@@ -7,9 +7,6 @@ cc_test(
     name = "conti_ars_preprocessor_test",
     size = "small",
     srcs = ["conti_ars_preprocessor_test.cc"],
-    copts = [
-        '-DMODULE_NAME=\"perception\"',
-    ],
     deps = [
         ":conti_ars_preprocessor",
         "@com_google_googletest//:gtest_main",
@@ -20,6 +17,9 @@ cc_library(
     name = "conti_ars_preprocessor",
     srcs = ["conti_ars_preprocessor.cc"],
     hdrs = ["conti_ars_preprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/base",

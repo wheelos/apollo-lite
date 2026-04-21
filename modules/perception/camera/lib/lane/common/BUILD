@@ -8,7 +8,7 @@ cc_library(
     srcs = ["common_functions.cc"],
     hdrs = ["common_functions.h"],
     copts = [
-        '-DMODULE_NAME=\"perception\"',
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

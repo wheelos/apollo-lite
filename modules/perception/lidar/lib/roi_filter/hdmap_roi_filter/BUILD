@@ -54,6 +54,9 @@ cc_library(
 cc_library(
     name = "polygon_mask",
     hdrs = ["polygon_mask.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":bitmap2d",
         ":polygon_scan_cvter",
@@ -65,6 +68,9 @@ cc_library(
 cc_library(
     name = "polygon_scan_cvter",
     hdrs = ["polygon_scan_cvter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/lidar/common:lidar_log",
