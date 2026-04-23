@@ -1,0 +1,40 @@
+syntax = "proto2";
+
+package apollo.drivers.udas_ultrasonic_radar;
+
+message Sensor_dist_r_5c8 {
+  // Report Message
+  // [cm] [0|510]
+  optional double sensor_6_rf = 1;
+  // [cm] [0|510]
+  optional double sensor_5_re = 2;
+  // [cm] [0|510]
+  optional double sensor_4_rd = 3;
+  // [cm] [0|510]
+  optional double sensor_3_rc = 4;
+  // [cm] [0|510]
+  optional double sensor_2_rb = 5;
+  // [cm] [0|510]
+  optional double sensor_1_ra = 6;
+}
+
+message Sensor_dist_f_5c9 {
+  // Report Message
+  // [cm] [0|510]
+  optional double sensor_6_ff = 1;
+  // [cm] [0|510]
+  optional double sensor_5_fe = 2;
+  // [cm] [0|510]
+  optional double sensor_4_fd = 3;
+  // [cm] [0|510]
+  optional double sensor_3_fc = 4;
+  // [cm] [0|510]
+  optional double sensor_2_fb = 5;
+  // [cm] [0|510]
+  optional double sensor_1_fa = 6;
+}
+
+message Udas_ultrasonic_radar {
+  optional Sensor_dist_r_5c8 sensor_dist_r_5c8 = 1;  // report message
+  optional Sensor_dist_f_5c9 sensor_dist_f_5c9 = 2;  // report message
+}

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Live PointCloud</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07111d;
+        --panel: #0d1928;
+        --border: #1e3650;
+        --text: #e8eef7;
+        --muted: #90a7c3;
+        --accent: #53b9ff;
+        --ok: #48d88d;
+        --bad: #ff6f83;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: radial-gradient(circle at top, #0f2235, var(--bg) 55%); color: var(--text); font-family: "Segoe UI", "PingFang SC", sans-serif; }
+      .layout { display: grid; grid-template-columns: 340px 1fr; height: 100%; gap: 16px; padding: 16px; }
+      .panel { background: rgba(13, 25, 40, 0.92); border: 1px solid var(--border); border-radius: 20px; padding: 20px; overflow: hidden; }
+      .title { margin: 0 0 8px; font-size: 34px; }
+      .subtitle { margin: 0 0 18px; color: var(--muted); line-height: 1.5; }
+      .metric { margin-bottom: 14px; }
+      .metric-label { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+      .metric-value { font-size: 20px; word-break: break-all; }
+      .status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); margin-bottom: 16px; }
+      .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+      .status.running .status-dot { background: var(--ok); box-shadow: 0 0 18px rgba(72, 216, 141, 0.6); }
+      .status.error .status-dot { background: var(--bad); box-shadow: 0 0 18px rgba(255, 111, 131, 0.6); }
+      #canvas-root { position: relative; min-width: 0; }
+      #viewer { width: 100%; height: 100%; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); background: linear-gradient(180deg, rgba(9, 20, 31, 0.98), rgba(4, 11, 18, 0.98)); }
+      #overlay { position: absolute; left: 18px; top: 18px; padding: 10px 14px; border-radius: 12px; background: rgba(7, 17, 29, 0.72); backdrop-filter: blur(8px); border: 1px solid rgba(83, 185, 255, 0.15); color: var(--muted); }
+      #overlay strong { color: var(--text); }
+      @media (max-width: 980px) {
+        .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+        .panel { max-height: 42vh; overflow: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <section class="panel">
+        <h1 class="title">Live PointCloud</h1>
+        <p class="subtitle">Front-end is hosted by whl-toolbox. Point cloud frames are streamed directly from the C++ CivetWeb backend.</p>
+        <div id="status-pill" class="status">
+          <span class="status-dot"></span>
+          <span id="status-text">Connecting</span>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Channel</div>
+          <div class="metric-value" id="channel-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">IMU Frame</div>
+          <div class="metric-value" id="imu-frame-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Source Frame</div>
+          <div class="metric-value" id="source-frame-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Backend</div>
+          <div class="metric-value" id="backend-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Frames</div>
+          <div class="metric-value" id="frames-value">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Last Timestamp</div>
+          <div class="metric-value" id="timestamp-value">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Last Point Count</div>
+          <div class="metric-value" id="points-value">0</div>
+        </div>
+      </section>
+      <section id="canvas-root">
+        <div id="overlay"><strong>Tips:</strong> Left drag rotates, right drag pans, wheel zooms.</div>
+        <div id="viewer"></div>
+      </section>
+    </div>
+    <script src="/api/plugins/live_pointcloud/assets/three.min.js"></script>
+    <script src="/api/plugins/live_pointcloud/assets/OrbitControls.js"></script>
+    <script src="/static/live_pointcloud.js"></script>
+  </body>
+  </html>

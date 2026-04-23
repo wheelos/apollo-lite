@@ -1,0 +1,18 @@
+module_config {
+    module_library : "/apollo/bazel-bin/modules/mission/libmission_component.so"
+    components {
+        class_name : "MissionComponent"
+        config {
+            name : "mission"
+            config_file_path: "/apollo/modules/mission/conf/mission_config.pb.txt"
+            readers: [
+                {
+                    channel: "/apollo/mission_request"
+                    qos_profile: {
+                        depth : 10
+                    }
+                }
+            ]
+        }
+    }
+}

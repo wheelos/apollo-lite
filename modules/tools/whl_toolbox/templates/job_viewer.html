@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ job.plugin_id }} Viewer</title>
+    <link rel="stylesheet" href="/static/app.css">
+  </head>
+  <body class="viewer-shell">
+    <main class="viewer-layout">
+      <section class="panel viewer-side-panel">
+        <p class="eyebrow">Job Viewer</p>
+        <h1>{{ job.plugin_id }}</h1>
+        <p class="subtle">{{ job.action_id }} · {{ job.job_id }}</p>
+        <div class="viewer-meta">
+          <div class="viewer-meta-row">
+            <span>Status</span>
+            <strong>{{ job.status }}</strong>
+          </div>
+          <div class="viewer-meta-row">
+            <span>Stage</span>
+            <strong>{{ job.stage }}</strong>
+          </div>
+          {% if job.summary.get("result_dir") %}
+          <div class="viewer-meta-row viewer-meta-block">
+            <span>Result Dir</span>
+            <code>{{ job.summary.get("result_dir") }}</code>
+          </div>
+          {% endif %}
+          {% if job.summary.get("baseline_dir") %}
+          <div class="viewer-meta-row viewer-meta-block">
+            <span>Baseline Dir</span>
+            <code>{{ job.summary.get("baseline_dir") }}</code>
+          </div>
+          {% endif %}
+          {% if job.summary.get("viewer_dir") %}
+          <div class="viewer-meta-row viewer-meta-block">
+            <span>Viewer Dir</span>
+            <code>{{ job.summary.get("viewer_dir") }}</code>
+          </div>
+          {% endif %}
+        </div>
+        <div class="viewer-actions">
+          <a class="button-link" href="{{ iframe_url }}" target="_blank">Open Raw Viewer</a>
+        </div>
+        <div class="summary-box summary-box-tight">{{ job.summary | tojson(indent=2) }}</div>
+      </section>
+
+      <section class="panel viewer-main-panel">
+        <iframe class="viewer-frame" src="{{ iframe_url }}" title="viewer"></iframe>
+      </section>
+    </main>
+  </body>
+</html>

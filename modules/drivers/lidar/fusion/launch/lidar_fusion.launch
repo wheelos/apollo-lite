@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>lidar_fusion</name>
+        <dag_conf>/apollo/modules/drivers/lidar/fusion/dag/lidar_fusion.dag</dag_conf>
+        <process_name>lidar_fusion</process_name>
+    </module>
+</cyber>

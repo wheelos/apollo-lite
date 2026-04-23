@@ -1,0 +1,14 @@
+syntax = "proto2";
+
+package apollo.perception;
+
+import "modules/common_msgs/basic_msgs/header.proto";
+
+
+message CollisionWarning {
+  optional apollo.common.Header header = 1;
+
+  optional bool is_collision = 2 [default = false];
+  optional int32 points_num = 3;
+  optional int32 confirmed_frames = 4;
+}

@@ -1,0 +1,260 @@
+pipeline_type: LIDAR_DETECTION
+
+stage_type: POINTCLOUD_PREPROCESSOR
+stage_type: POINTCLOUD_DETECTION_PREPROCESSOR
+stage_type: HDMAP_CONTEXT_PROVIDER
+stage_type: POINTCLOUD_ROI_FILTER
+stage_type: GROUND_SEGMENTER
+stage_type: CENTER_POINT_TRT_DETECTION
+stage_type: POINTCLOUD_DETECTION_POSTPROCESSOR
+stage_type: OBJECT_GEOMETRY_BUILDER
+stage_type: OBJECT_POST_FILTER_BANK
+
+stage_config: {
+  stage_type: POINTCLOUD_PREPROCESSOR
+  enabled: true
+
+  pointcloud_preprocessor_config: {
+    filter_naninf_points: false
+    filter_nearby_box_points: false
+    box_forward_x: 2.0
+    box_backward_x: -2.0
+    box_forward_y: 2.0
+    box_backward_y: -2.0
+    filter_high_z_points: false
+    z_threshold: 5.0
+  }
+}
+
+stage_config: {
+  stage_type: POINTCLOUD_DETECTION_PREPROCESSOR
+  enabled: true
+
+  plugin_config: {
+    plugin_type: POINTCLOUD_DOWN_SAMPLE
+    enabled: true
+
+    pointcloud_downsample_config: {
+      enable_downsample_pointcloud : true
+      enable_downsample_beams : true
+      x_min_range : -74.88
+      x_max_range : 74.88
+      y_min_range : -74.88
+      y_max_range : 74.88
+      z_min_range : -2.0
+      z_max_range : 4.0
+    }
+  }
+
+  pointcloud_detection_preprocessor_config:{
+
+  }
+}
+
+stage_config: {
+  stage_type: HDMAP_CONTEXT_PROVIDER
+  enabled: true
+
+  hdmap_context_provider_config: {
+    update_pose: false
+    roi_search_distance: 120.0
+  }
+}
+
+stage_config: {
+  stage_type: POINTCLOUD_ROI_FILTER
+  enabled: true
+  pointcloud_roi_filter_config: {
+    range: 120.0
+    cell_size: 0.25
+    extend_dist: 0.0
+    no_edge_table: false
+    set_roi_service: true
+  }
+}
+
+stage_config: {
+  stage_type: GROUND_SEGMENTER
+  enabled: true
+  ground_segmenter_config: {
+    use_roi: true
+    use_ground_service: true
+
+    small_grid_size: 32
+    big_grid_size: 256
+    nr_smooth_iter: 5
+
+    roi_rad_x: 120.0
+    roi_rad_y: 120.0
+    roi_rad_z: 100.0
+    roi_near_rad: 32.0
+
+    sample_region_z_lower: -3.0
+    sample_region_z_upper: -1.0
+
+    planefit_orien_threshold: 5.0
+    planefit_dist_thres_near: 0.10
+    planefit_dist_thres_far: 0.20
+    z_compare_thres: 0.10
+    smooth_z_thres: 1.0
+    inliers_min_threshold: 6
+
+    near_range_dist: 10.0
+    near_range_ground_thres: 0.25
+    middle_range_dist: 20.0
+    middle_range_ground_thres: 0.25
+  }
+}
+
+stage_config: {
+  stage_type: CENTER_POINT_TRT_DETECTION
+  enabled: true
+
+  center_point_trt_detection_config: {
+    model_param: {
+      preprocess: { gpu_id: 0 enable_fp16: true }
+
+      # Paths are resolved under Cyber work_root (usually /apollo).
+      # Put your ONNX files under this directory (or change these paths).
+      pfn_onnx_file: "data/perception/lidar/models/detection/center_point_trt/cpdet_pfe.onnx"
+      backbone_onnx_file: "data/perception/lidar/models/detection/center_point_trt/cpdet_backbone.onnx"
+
+      # TensorRT binding names
+      input_voxels: "voxels"
+      pillar_feature_blob: "pillar_feature"
+      input_canvas_feature: "canvas_feature"
+      output_box: "bbox_preds"
+      output_cls: "scores"
+      output_dir: "dir_scores"
+    }
+
+    pre_process: {
+      # pointcloud_range / voxel_size
+      min_x_range: -51.2
+      max_x_range: 51.2
+      min_y_range: -51.2
+      max_y_range: 51.2
+      min_z_range: -3.5
+      max_z_range: 3.5
+      voxel_x_size: 0.2
+      voxel_y_size: 0.2
+      voxel_z_size: 7.0
+
+      point_dim: 4
+      enable_rotate_45degree: true
+      use_input_norm: true
+
+      # PFN feature generation
+      use_gpu_generate_feature: true
+      num_classes: 4
+      max_voxel_num: 160000
+      max_points_in_voxel: 30
+      voxel_feature_dim: 9
+      pillar_feature_dim: 48
+
+      # CNNSEG extra features
+      use_cnnseg_features: true
+      cnnseg_feature_dim: 16
+      height_bin_min_height: -3.0
+      height_bin_max_height: 2.0
+      height_bin_voxel_size: 0.5
+
+      # Use GPU voxel downsample
+      enable_downsample_pointcloud: false
+    }
+
+    gpu_down_sample: {
+      downsample_voxel_size_x: 0.09
+      downsample_voxel_size_y: 0.09
+      downsample_voxel_size_z: 0.09
+      downsample_use_centroid: false
+    }
+
+    post_process: {
+      # Stability-first thresholds (reduce flicker / ghosts).
+      task { sub_task { class_name: "Car" class_index: 0 score_thresh: 0.25 } }
+      task { sub_task { class_name: "Pedestrian" class_index: 1 score_thresh: 0.18 } }
+      task { sub_task { class_name: "Bicycle" class_index: 2 score_thresh: 0.40 } }
+      task { sub_task { class_name: "TrafficCone" class_index: 3 score_thresh: 0.35 } }
+
+      det_head { head_name: "reg" head_shape: 2 }
+      det_head { head_name: "hei" head_shape: 1 }
+      det_head { head_name: "dim" head_shape: 3 }
+      det_head { head_name: "rot" head_shape: 2 }
+
+      downsample_size: 4
+      nms_pre_max_size: 4096
+      nms_post_max_size: 500
+      score_thresh: 0.1
+      # First-stage NMS inside each task (rotated IoU threshold).
+      # Lower -> stronger suppression; too low may cause jitter when candidates are close.
+      nms_overlap_thresh: 0.20
+
+      top_enlarge_height: 0.25
+      bottom_enlarge_height: 0.25
+      width_enlarge_value: 0.10
+      length_enlarge_value: 0.10
+
+      # post-process (decode + rotated NMS + assign points).
+      use_cpu_get_objects: true
+      use_cpu_assign_points: true
+    }
+
+    filter_param: {
+      remove_semantic_ground: false
+      remove_raw_ground: false
+      point_unique: false
+      filter_by_semantic_type: false
+
+      inter_class_nms: true
+      class_nms_iou_thres: 0.30
+      nms_strategy: false
+      # Filter very sparse boxes for stability.
+      min_points_threshold: 3
+    }
+  }
+}
+
+stage_config: {
+  stage_type: POINTCLOUD_DETECTION_POSTPROCESSOR
+  enabled: true
+
+  plugin_config: {
+    plugin_type: POINTCLOUD_GET_OBJECTS
+    enabled: true
+
+    pointcloud_get_objects_config: {
+    }
+  }
+}
+
+stage_config: {
+  stage_type: OBJECT_GEOMETRY_BUILDER
+  enabled: true
+
+  object_geometry_builder_config: {
+  }
+}
+
+stage_config: {
+  stage_type: OBJECT_POST_FILTER_BANK
+  enabled: true
+
+  plugin_config: {
+    plugin_type: HDMAP_BOUNDARY_OBJECT_FILTER
+    enabled: true
+
+    hdmap_boundary_object_filter_config: {
+      distance_to_boundary_threshold: -1.0
+      confidence_threshold: 0.5
+      cross_roi_threshold: 0.6
+      inside_threshold: 1.0
+    }
+  }
+
+  object_post_filter_bank_config: {
+  }
+}
+
+lidar_detection_config: {
+}

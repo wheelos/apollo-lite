@@ -1,0 +1,11 @@
+module_config {
+    module_library : "/apollo/bazel-bin/modules/drivers/lidar/compensator/liblidar_compensator_component.so"
+    components {
+      class_name : "LidarCompensatorComponent"
+      config {
+        name : "lidar_compensator"
+        config_file_path : "/apollo/modules/drivers/lidar/compensator/conf/lidar_compensator_config.pb.txt"
+        readers {channel: "/apollo/sensor/vanjeelidar/up/PointCloud2"}
+      }
+    }
+}

@@ -1,0 +1,29 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "inner_component_messages",
+    hdrs = ["inner_component_messages.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
+)
+
+cc_library(
+    name = "lidar_inner_component_messages",
+    hdrs = [
+        "lidar_inner_component_messages.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
+    deps = [
+        "//cyber",
+        "//modules/perception/lidar/common",
+        "//modules/perception/onboard/inner_component_messages",
+    ],
+)
+
+cpplint()

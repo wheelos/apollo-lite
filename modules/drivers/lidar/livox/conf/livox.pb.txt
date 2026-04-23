@@ -1,0 +1,11 @@
+config_base {
+  scan_channel: "/apollo/sensor/livox/front/Scan"
+  point_cloud_channel: "/apollo/sensor/livox/front/PointCloud2"
+  frame_id: "livox_front"
+  source_type: ONLINE_LIDAR
+}
+
+# 3JEDNBF001FZ051
+# broadcast_code: "000000000000000001"
+enable_sdk_console_log: false
+integral_time: 0.1

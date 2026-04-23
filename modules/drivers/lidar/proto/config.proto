@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package apollo.drivers.lidar;
+
+import "modules/drivers/lidar/proto/velodyne_config.proto";
+import "modules/drivers/lidar/proto/lidar_parameter.proto";
+
+message config {
+  optional LidarParameter.LidarBrand brand = 1;
+  optional apollo.drivers.velodyne.Config velodyne = 4;
+}

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Apollo LiDAR Offline Viewer</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="panel">
+          <p class="eyebrow">Apollo Perception</p>
+          <h1>LiDAR Offline Viewer</h1>
+          <p class="subtle" id="dataset-meta">Loading manifest...</p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title-row">
+            <h2>Frame</h2>
+            <button id="reset-camera" class="ghost-button" type="button">Reset View</button>
+          </div>
+          <label class="stacked-field">
+            <span>Frame Index</span>
+            <input id="frame-slider" type="range" min="0" max="0" value="0">
+          </label>
+          <label class="stacked-field">
+            <span>Frame Selection</span>
+            <select id="frame-select"></select>
+          </label>
+        </div>
+
+        <div class="panel">
+          <h2>Layers</h2>
+          <div class="toggle-grid">
+            <label><input id="toggle-cloud" type="checkbox" checked>Cloud</label>
+            <label><input id="toggle-detection" type="checkbox" checked>Detections</label>
+            <label><input id="toggle-groundtruth" type="checkbox" checked>Groundtruth</label>
+            <label><input id="toggle-tp" type="checkbox" checked>TP</label>
+            <label><input id="toggle-fp" type="checkbox" checked>FP</label>
+            <label><input id="toggle-matched-gt" type="checkbox" checked>Matched GT</label>
+            <label><input id="toggle-fn" type="checkbox" checked>Missed GT</label>
+            <label><input id="toggle-underseg" type="checkbox" checked>Underseg GT</label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Legend</h2>
+          <div class="legend-list">
+            <div><span class="legend-swatch tp"></span>Detection TP</div>
+            <div><span class="legend-swatch fp"></span>Detection FP</div>
+            <div><span class="legend-swatch det"></span>Detection Only</div>
+            <div><span class="legend-swatch gt-match"></span>Matched GT</div>
+            <div><span class="legend-swatch gt-fn"></span>Missed GT</div>
+            <div><span class="legend-swatch gt-underseg"></span>Underseg GT</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Stats</h2>
+          <div class="stats-grid" id="stats-grid"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Selection</h2>
+          <pre id="selection-panel" class="selection-panel">Click a box center to inspect details.</pre>
+        </div>
+      </aside>
+
+      <main class="viewer-stage">
+        <canvas id="viewer-canvas"></canvas>
+        <div class="canvas-overlay top-left">
+          <strong id="frame-label">Frame</strong>
+          <span id="frame-summary"></span>
+        </div>
+        <div class="canvas-overlay bottom-left">
+          <span>Left drag: orbit</span>
+          <span>Right drag: pan</span>
+          <span>Wheel: zoom</span>
+        </div>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,84 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
+load("//tools:cpplint.bzl", "cpplint")
+
+package(default_visibility = ["//visibility:public"])
+
+cuda_library(
+    name = "smoke_region_output_cuda",
+    srcs = ["region_output.cu"],
+    hdrs = ["region_output.h"],
+    deps = [
+        ":smoke_object_maintainer",
+        "//modules/perception/base",
+        "//modules/perception/camera/common",
+        "//modules/perception/camera/common:temporary_transition_types",
+        "//modules/perception/camera/lib/obstacle/detector/smoke/proto:smoke_cc_proto",
+        "@cuda//:cuda_runtime",
+    ],
+)
+
+cc_library(
+    name = "smoke_region_output",
+    srcs = [
+        "region_output.cc",
+        ":smoke_region_output_cuda",
+    ],
+    hdrs = ["region_output.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
+    deps = [
+        ":smoke_object_maintainer",
+        "//cyber",
+        "//modules/perception/base",
+        "//modules/perception/camera/common",
+        "//modules/perception/camera/common:temporary_transition_types",
+    ],
+)
+
+cc_library(
+    name = "smoke_obstacle_detector",
+    srcs = ["smoke_obstacle_detector.cc"],
+    hdrs = ["smoke_obstacle_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
+    deps = [
+        ":smoke_region_output",
+        "//cyber",
+        "//modules/common/util:util_tool",
+        "//modules/perception/base",
+        "//modules/perception/camera/common",
+        "//modules/perception/camera/common:temporary_transition_types",
+        "//modules/perception/camera/lib/feature_extractor/tfe:external_feature_extractor",
+        "//modules/perception/camera/lib/feature_extractor/tfe:project_feature",
+        "//modules/perception/camera/lib/feature_extractor/tfe:tracking_feat_extractor",
+        "//modules/perception/camera/lib/interface",
+        "//modules/perception/camera/lib/obstacle/detector/smoke/proto:smoke_cc_proto",
+        "//modules/perception/camera/lib/obstacle/detector/yolo:region_output",
+        "//modules/perception/common/sensor_manager",
+        "//modules/perception/inference:inference_factory",
+        "//modules/perception/inference:inference_lib",
+        "//modules/perception/inference/utils:inference_resize_lib",
+        "//modules/perception/inference/utils:inference_util_lib",
+        "//modules/perception/pipeline:stage",
+        "@boost.algorithm",
+        "@opencv//:imgproc",
+    ],
+)
+
+cc_library(
+    name = "smoke_object_maintainer",
+    srcs = ["object_maintainer.cc"],
+    hdrs = ["object_maintainer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
+    deps = [
+        "//cyber",
+        "//modules/perception/base",
+    ],
+)
+
+cpplint()

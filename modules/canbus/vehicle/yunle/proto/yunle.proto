@@ -1,0 +1,188 @@
+syntax = "proto2";
+
+package apollo.canbus;
+
+message Bms_vol_cur_100 {
+  // Report Message
+  // [] [0|100]
+  optional double total_voltage = 1;
+  // [A] [-100|100]
+  optional double soc_current = 2;
+}
+
+message Bms_soc_101 {
+  // Report Message
+  // [%] [0|0]
+  optional int32 rsoc = 1;
+}
+
+message Scu_1_121 {
+  // Control Message
+  // 只针对个别车型使用，不适用所有车型 [] [0|1]
+  optional bool angular_speed_flag = 1;
+  // [] [0|255]
+  optional int32 scu_steering_wheel_angle_r = 2;
+  // [] [0|255]
+  optional int32 scu_steering_wheel_angle_f = 3;
+  // [] [0|3]
+  optional int32 gw_lowbeam_req = 4;
+  // [] [0|3]
+  optional int32 gw_position_light_req = 5;
+  // [] [0|3]
+  optional int32 gw_right_turn_light_req = 6;
+  // [] [0|3]
+  optional int32 gw_left_turn_light_req = 7;
+  // [] [0|1]
+  optional bool scu_brk_en = 8;
+  // [km/h] [0|51]
+  optional double scu_target_speed = 9;
+  // [] [0|3]
+  optional int32 scu_shiftlevel_req = 10;
+  // [] [0|3]
+  optional int32 scu_drive_mode_req = 11;
+}
+
+message Scu_tq_123 {
+  // Control Message
+  // Torque available calculated by inverterTorque available calculated by
+  // inverter [Nm] [0|0]
+  optional double torque_cmd_rear_r = 1;
+  // [Nm] [0|0]
+  optional double torque_cmd_rear_l = 2;
+  // Torque available calculated by inverterTorque available calculated by
+  // inverter [Nm] [0|0]
+  optional double torque_cmd_forward_r = 3;
+  // [Nm] [0|0]
+  optional double torque_cmd_forward_l = 4;
+}
+
+message Wheel_speed_feedback_rpm_168 {
+  // Report Message
+  // 右后轮-轮速 [rpm] [0|0]
+  optional double rear_right_rpm = 1;
+  // 左后轮-轮速 [rpm] [0|0]
+  optional double rear_left_rpm = 2;
+  // 右前轮-轮速 [rpm] [0|0]
+  optional double front_right_rpm = 3;
+  // 左前轮-轮速 [rpm] [0|0]
+  optional double front_left_rpm = 4;
+}
+
+message Bms_rt_soc_17904001 {
+  // Report Message
+  // [A] [3000|9553.5]
+  optional double bms_current_cur = 1;
+  // [V] [0|6553.5]
+  optional double bms_current_vol = 2;
+  // [V] [0|6553.5]
+  optional double bms_total_volbat = 3;
+  // 荷电状态 [%] [0|6553.5]
+  optional double bms_soc = 4;
+}
+
+message Ccu_status_51 {
+  // Report Message
+  // 自动驾驶模式刹车信号 [] [0|0]
+  optional bool scu_brake_singal = 1;
+  // 紧急制动按钮信号 [] [0|0]
+  optional bool emergency_brake = 2;
+  // 遥控器刹车信号 [] [0|0]
+  optional bool remote_brake = 3;
+  // 驾驶模式切换按钮 [] [0|0]
+  optional bool ccu_drive_mode_shift = 4;
+  // 刹车灯状态 [] [0|0]
+  optional bool position_light_sts = 5;
+  // 前轮转向角度方向，左正右负 [] [0|0]
+  optional bool steering_wheel_direction = 6;
+  // 右转向灯状态 [] [0|0]
+  optional bool right_turn_light_sts = 7;
+  // 近光灯状态 [] [0|0]
+  optional bool lowbeam_sts = 8;
+  // 左转向灯状态 [] [0|0]
+  optional bool left_turn_light_sts = 9;
+  // 底盘速度 [km/h] [0|51]
+  optional double ccu_vehicle_speed = 10;
+  // 前轮转向角度，120对应实际转角27° [] [0|120]
+  optional double ccu_steering_wheel_angle = 11;
+  // 底盘档位状态 [] [0|3]
+  optional int32 ccu_shiftlevel_sts = 12;
+  // 底盘刹车状态 [] [0|0]
+  optional bool ccu_p_sts = 13;
+  // VCU点火信号状态 [] [0|0]
+  optional int32 ccu_ignition_sts = 14;
+  // 底盘驾驶模式 [] [0|3]
+  optional int32 ccu_drive_mode = 15;
+}
+
+message Waring_level_77 {
+  // Report Message
+  // [] [0|0]
+  optional int32 mcu_vol_warning = 1;
+  // [] [0|0]
+  optional int32 turn_unstoppable_warning = 2;
+  // [] [0|0]
+  optional int32 turn_lock_warning = 3;
+  // [] [0|0]
+  optional int32 turn_disconnect_warning = 4;
+  // [] [0|0]
+  optional int32 mcu_temperature_warning = 5;
+  // [] [0|0]
+  optional int32 mcu_speed_warning = 6;
+  // [] [0|0]
+  optional int32 mcu_motor_warning = 7;
+  // [] [0|0]
+  optional int32 mcu_disconnect_warning = 8;
+  // [] [0|0]
+  optional int32 mcu_cur_warning = 9;
+  // [] [0|0]
+  optional int32 bms_temperature_warning = 10;
+  // [] [0|0]
+  optional int32 bms_soc_warning = 11;
+  // [] [0|0]
+  optional int32 bms_dischargecur_warning = 12;
+  // [] [0|0]
+  optional int32 bms_chargecur_warning = 13;
+}
+
+message Target_speed_feedback_7f1 {
+  // Report Message
+  // 实际平均轮速 [rpm] [0|0]
+  optional double target_speed_rpm = 1;
+  // 目标速度 [km/h] [0|0]
+  optional double target_speed = 2;
+  // 自动驾驶模式下发目标速度 [km/h] [0|0]
+  optional double scu_speed = 3;
+  // 硬件目标速度 [km/h] [0|0]
+  optional double hdw_speed = 4;
+}
+
+message Sas_angle_feedback_e1 {
+  // Report Message
+  // [] [-3276.8|3276.7]
+  optional double sas_angle_r = 1;
+  // [] [-3276.8|3276.7]
+  optional double sas_angle_f = 2;
+}
+
+message Yunle {
+  // report message
+  optional Bms_vol_cur_100 bms_vol_cur_100 = 1;
+  // report message
+  optional Bms_soc_101 bms_soc_101 = 2;
+  // control message
+  optional Scu_1_121 scu_1_121 = 3;
+  // control message
+  optional Scu_tq_123 scu_tq_123 = 4;
+  // report message
+  optional Wheel_speed_feedback_rpm_168 wheel_speed_feedback_rpm_168 = 5;
+  // report message
+  optional Bms_rt_soc_17904001 bms_rt_soc_17904001 = 6;
+  // report message
+  optional Ccu_status_51 ccu_status_51 = 7;
+  // report message
+  optional Waring_level_77 waring_level_77 = 8;
+  // report message
+  optional Target_speed_feedback_7f1 target_speed_feedback_7f1 = 9;
+  // report message
+  optional Sas_angle_feedback_e1 sas_angle_feedback_e1 = 10;
+}

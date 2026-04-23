@@ -1,0 +1,28 @@
+extrinsic_file {
+    frame_id: "base_link"
+    child_frame_id: "imu_link"
+    file_path: "/apollo/modules/transform/conf/base_link_imu_link_extrinsics.yaml"
+    enable: true
+}
+
+extrinsic_file {
+    frame_id: "base_link"
+    child_frame_id: "velodyne128"
+    file_path: "/apollo/modules/transform/conf/velodyne128_base_link_extrinsics.yaml"
+    enable: true
+}
+
+extrinsic_file {
+    frame_id: "velodyne128"
+    child_frame_id: "front_6mm"
+    file_path: "/apollo/modules/transform/conf/front_6mm_extrinsics.yaml"
+    enable: true
+}
+
+extrinsic_file {
+    frame_id: "velodyne128"
+    child_frame_id: "front_12mm"
+    file_path: "/apollo/modules/transform/conf/front_12mm_extrinsics.yaml"
+    enable: true
+}
+

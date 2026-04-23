@@ -1,0 +1,88 @@
+/******************************************************************************
+ * Copyright 2018 The Apollo Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *****************************************************************************/
+#pragma once
+
+#include <string>
+
+#include "gtest/gtest_prod.h"
+
+#include "modules/perception/base/hdmap_struct.h"
+#include "modules/perception/lidar/common/lidar_frame.h"
+#include "modules/perception/map/hdmap/hdmap_input.h"
+#include "modules/perception/pipeline/stage.h"
+
+namespace apollo {
+namespace perception {
+namespace lidar {
+
+struct HdmapContextProviderInitOptions {};
+
+struct HdmapContextProviderOptions {};
+
+// Provides HDMap context for the current lidar pose and optionally refines the
+// pose in the future. In the current pipeline this stage is used as an HDMap
+// context provider, not as a generic map management subsystem.
+class HdmapContextProvider final : public pipeline::Stage {
+ public:
+  using DataFrame = pipeline::DataFrame;
+  using Plugin = pipeline::Plugin;
+  using PluginType = pipeline::PluginType;
+  using StageConfig = pipeline::StageConfig;
+
+ public:
+  HdmapContextProvider() { name_ = "HdmapContextProvider"; }
+  ~HdmapContextProvider() = default;
+
+  bool Init(const HdmapContextProviderInitOptions& options =
+                HdmapContextProviderInitOptions());
+
+  // @brief: populate frame hdmap_struct around the current lidar2world pose.
+  // Optionally refine lidar2world_pose when pose refinement is implemented.
+  // @param [in]: options
+  // @param [in/out]: frame
+  // hdmap_struct should be filled, required,
+  // lidar2world_pose can be updated, optional,
+  bool Update(const HdmapContextProviderOptions& options, LidarFrame* frame);
+
+  bool QueryPose(Eigen::Affine3d* sensor2world_pose) const;
+
+  bool Init(const StageConfig& stage_config) override;
+
+  bool Process(DataFrame* data_frame) override;
+
+  bool IsEnabled() const override { return enable_; }
+
+  std::string Name() const override { return name_; }
+
+ private:
+  LidarFrame* cached_frame_ = nullptr;
+  map::HDMapInput* hdmap_input_ = nullptr;
+  // params
+  bool update_pose_ = false;
+  double roi_search_distance_ = 80.0;
+
+  HdmapContextProviderConfig hdmap_context_provider_config_;
+
+  FRIEND_TEST(LidarLibMapManagerTest, lidar_map_manager_test);
+};  // class HdmapContextProvider
+
+using MapManagerInitOptions = HdmapContextProviderInitOptions;
+using MapManagerOptions = HdmapContextProviderOptions;
+using MapManager = HdmapContextProvider;
+
+}  // namespace lidar
+}  // namespace perception
+}  // namespace apollo

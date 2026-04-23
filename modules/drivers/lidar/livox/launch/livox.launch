@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>livox</name>
+        <dag_conf>/apollo/modules/drivers/lidar/livox/dag/livox.dag</dag_conf>
+        <process_name>livox</process_name>
+    </module>
+</cyber>

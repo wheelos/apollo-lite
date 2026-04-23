@@ -1,0 +1,10 @@
+<cyber>
+    <module>
+        <name>lidar_driver</name>
+        <dag_conf>/apollo/modules/drivers/lidar/vanjeelidar/dag/vanjeelidar.dag</dag_conf>
+        <dag_conf>/apollo/modules/drivers/lidar/rslidar/dag/rslidar.dag</dag_conf>
+        <dag_conf>/apollo/modules/drivers/lidar/fusion/dag/lidar_fusion.dag</dag_conf>
+        <dag_conf>/apollo/modules/drivers/lidar/compensator/dag/lidar_compensator.dag</dag_conf>
+        <process_name>lidar_driver</process_name>
+    </module>
+</cyber>

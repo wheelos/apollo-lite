@@ -1,0 +1,66 @@
+syntax = "proto2";
+
+package apollo.perception.camera;
+
+enum TrafficLightDetectionBackend {
+  TL_DETECTION_CAFFE = 0;
+  TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR = 1;
+}
+
+message TLDetectionModelBlob {
+  optional string name = 1;
+  repeated int32 shape = 2;
+}
+
+message YoloSingleStageDectorTrafficLightDetectionConfig {
+  optional string model_root_dir = 1;
+  optional string onnx_file = 2;
+  optional bool enable_fp16 = 3 [default = true];
+
+  repeated TLDetectionModelBlob blobs = 10;
+
+  optional string input_name = 11 [default = "images"];
+  optional string output_name = 12 [default = "output0"];
+
+  optional int32 resize_image_height = 20 [default = 640];
+  optional int32 resize_image_width = 21 [default = 640];
+  optional float conf_threshold = 22 [default = 0.25];
+  optional float iou_nms_threshold = 23 [default = 0.45];
+  optional int32 pad_value = 24 [default = 114];
+  optional float scale = 25 [default = 0.00392157];
+  optional bool is_bgr = 26 [default = false];
+  optional int32 num_classes = 27 [default = 3];
+  optional int32 num_predictions = 28 [default = 8400];
+  optional int32 green_class_id = 29 [default = 0];
+  optional int32 red_class_id = 30 [default = 1];
+  optional int32 yellow_class_id = 31 [default = 2];
+  optional float projection_distance_weight = 32 [default = 0.15];
+  optional float min_box_area = 33 [default = 10.0];
+}
+
+message TrafficLightDetectionConfig {
+  optional int32 min_crop_size = 1 [default = 270];
+  optional int32 crop_method = 2 [default = 0];
+  optional float mean_b = 3 [default = 95];
+  optional float mean_g = 4 [default = 99];
+  optional float mean_r = 5 [default = 96];
+  optional bool is_bgr = 6 [default = true];
+  optional float crop_scale = 7 [default = 2.5];
+  optional string input_blob_name = 8;
+  optional string im_param_blob_name = 9;
+  optional string output_blob_name = 10;
+  optional string model_name = 11 [default = "RTNet"];
+  optional string model_type = 12 [default = "RTNet"];
+  optional string proto_file = 13 [default = "caffe.pt"];
+  optional string weight_file = 14 [default = "caffe.model"];
+  optional int32 max_batch_size = 15 [default = 1];
+  optional string traffic_light_detection_root_dir = 16
+      [default = "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_detection"];
+  optional int32 gpu_id = 17 [default = 0];
+
+  // Backend selection
+  optional TrafficLightDetectionBackend detector_type = 18
+      [default = TL_DETECTION_CAFFE];
+  optional YoloSingleStageDectorTrafficLightDetectionConfig
+      yolo_single_stage_dector_config = 19;
+}

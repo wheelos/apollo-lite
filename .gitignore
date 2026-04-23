@@ -1,0 +1,89 @@
+# Bazel
+bazel-*
+MODULE.bazel.lock
+
+# Temporary files
+*.pyc
+*.swp
+*.swo
+
+# Generated files
+*.result
+py_proto
+
+# Eclipse IDE files
+.project
+.cproject
+.settings
+.classpath
+
+# IntelliJ files
+.idea
+
+# VS Code files
+.vscode
+
+# Atom IDE files
+*.gch
+
+# Logs
+nohup.out
+*.bak
+*.stderr
+*.stdout
+
+# Editor configs
+.ycm_extra_conf.py
+
+# Data
+/data
+modules/tools/ota/update.ini
+modules/tools/ota/vehicle_info.pb.txt
+docker/build/syspkgs.txt
+
+# Localization
+modules/localization/msf/local_map/test_data/ndt_map/map_data
+
+# Doxygen
+cyber/doxy-docs/build
+cyber/doxy-docs/xml
+# Map data files
+modules/map/data/*
+!modules/map/data/borregas_ave
+# Map data files
+
+
+# python proto
+*_pb2.py
+
+# calibration files
+modules/calibration/data
+
+# Data bag
+docs/demo_guide/*.bag
+docs/demo_guide/*.record
+
+# Bash Environment
+.dev_bash_hist
+.bash_history
+
+# bazel cache and others
+.cache/
+.errors.log
+
+# Directory for binary distribution
+output
+modules/dreamview/frontend
+
+# Flamegraph files
+tools/FlameGraph
+
+# jetbrain profiler
+.DS_Store
+
+#WORKSPACE
+docker/.env
+docker/.env.prod
+modules/tools/whl_toolbox/runtime
+
+docs/context

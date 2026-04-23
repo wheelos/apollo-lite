@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>whl-toolbox</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="panel hero">
+        <p class="eyebrow">Wheel.OS Toolbox</p>
+        <h1>whl-toolbox</h1>
+        <p class="subtle">Apollo Pointcloud toolbox from Wheel.OS</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title-row">
+          <h2>Tools</h2>
+          <button id="refresh-btn" type="button">Refresh</button>
+        </div>
+        <div id="plugin-list" class="plugin-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title-row">
+          <h2>Jobs</h2>
+          <button id="job-refresh-btn" type="button">Reload</button>
+        </div>
+        <div id="job-list" class="job-list"></div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="panel" id="plugin-panel">
+        <div id="plugin-detail"></div>
+      </section>
+
+      <section class="panel hidden" id="job-panel">
+        <div class="panel-title-row">
+          <h2>Job Detail</h2>
+          <button id="job-panel-refresh" type="button">Update</button>
+        </div>
+        <div id="job-detail"></div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+
+</html>

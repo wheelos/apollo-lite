@@ -1,0 +1,20 @@
+services:
+  core:
+    container_name: ${CONTAINER_NAME}
+    privileged: false
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+    environment:
+      - USE_GPU_HOST=${USE_GPU_HOST}
+      - TEST_MODE=true
+
+    # Port mapping: Host machine dynamic port -> Container port 8888
+    # Do not write network_mode: host
+    ports:
+      - "${SERVER_PORT}:8888"
+
+    # Resource limits are test-scoped and come from TEST_* values in .env.global.
+    cpus: "${TEST_CPUS}"
+    mem_limit: "${TEST_MEMORY}"

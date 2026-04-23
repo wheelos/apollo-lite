@@ -1,0 +1,48 @@
+name: '❓ Question / Help'
+description: 'Ask for help with usage, configuration, or docs'
+title: '[Question]: '
+labels: ['question', 'help-wanted']
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Need help? Ask here! Provide details so we can assist quickly.
+
+  - type: textarea
+    id: system_info
+    attributes:
+      label: 'System Information / Logs'
+      description: |
+        Paste `whl-env` output **or** drag-and-drop logs/config files here.
+        GitHub will auto-upload and link them in the issue.
+      placeholder: |
+        Paste content here, or drag files into this box to attach them.
+    validations:
+      required: false
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 'Question'
+      description: 'Please describe your question or problem clearly'
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: 'What I Tried'
+      description: "Steps you've already taken or looked into (optional)"
+    validations:
+      required: false
+
+  - type: input
+    id: attachments
+    attributes:
+      label: 'Relevant Logs or Links'
+      description: |
+        Optional: Provide URLs to logs, screenshots, or related issues for reference.
+      placeholder: 'https://example.com/log.txt'
+    validations:
+      required: false

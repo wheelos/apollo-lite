@@ -1,0 +1,16 @@
+max_interval_ms: 50
+drop_expired_data : true
+fusion_channel: "/apollo/sensor/lidar16/fusion/PointCloud2"
+input_channel: [
+    "/apollo/sensor/lidar16/rear/left/PointCloud2",
+    "/apollo/sensor/lidar16/rear/right/PointCloud2"
+]
+
+# wait time after main channel receive msg, unit second
+wait_time_s: 0.02
+
+# if measurement time using system clock, default as false
+#use_system_clock: false
+
+# the target frame id, if not configured, use the main lidar frame as default
+#target_frame_id: "lidar16_top"

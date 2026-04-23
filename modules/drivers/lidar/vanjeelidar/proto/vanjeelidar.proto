@@ -1,0 +1,40 @@
+syntax = "proto2";
+
+package apollo.drivers.vanjee;
+
+import "modules/common_msgs/basic_msgs/header.proto";
+
+// deprecated
+message VanjeeScanPacket {
+  optional uint64 stamp = 1;
+  optional bytes data = 2;
+}
+
+// deprecated
+message VanjeeScan {
+  optional bool is_difop = 1;
+  optional bool is_frame_begin = 2;
+  optional bytes data = 3;
+}
+
+// keep consistent with Vanjee SDK ::vanjee::lidar::Packet
+message VanjeePacket {
+  optional double timestamp = 1;
+  optional uint32 seq = 2;
+  optional bytes data = 3;
+}
+
+// keep consistent with Vanjee SDK ::vanjee::lidar::ScanData
+message VanjeeScanData {
+  optional uint32 seq = 1;
+  optional double timestamp = 2;
+  optional float angle_min = 3;
+  optional float angle_max = 4;
+  optional float angle_increment = 5;
+  optional float time_increment = 6;
+  optional float scan_time = 7;
+  optional float range_min = 8;
+  optional float range_max = 9;
+  repeated float ranges = 10;
+  repeated float intensities = 11;
+}

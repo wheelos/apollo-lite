@@ -1,0 +1,11 @@
+module_config {
+    module_library : "/apollo/bazel-bin/modules/drivers/lidar/fusion/liblidar_fusion_component.so"
+    components {
+      class_name : "LidarFusionComponent"
+      config {
+        name : "lidar_fusion"
+        config_file_path : "/apollo/modules/drivers/lidar/fusion/conf/lidar_fusion_config.pb.txt"
+        readers {channel: "/apollo/sensor/vanjeelidar/up/PointCloud2"}
+      }
+    }
+}

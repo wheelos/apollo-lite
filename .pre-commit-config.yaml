@@ -1,0 +1,99 @@
+# Visit https://pre-commit.com/ for the latest version info
+minimum_pre_commit_version: 3.0.0
+
+default_language_version:
+  python: python3.10
+
+repos:
+  # General hooks for basic file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: detect-private-key
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-symlinks
+
+  # C++ Formatting: Clang-Format
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v18.1.0 # Ensure this matches your CI's clang-format version
+    hooks:
+      - id: clang-format
+        # Default behavior checks formatting; uncomment args: [-i] for auto-fix locally
+
+  # Python Formatting: Black
+  - repo: https://github.com/psf/black
+    rev: 24.4.2 # Recommend pinning to a specific version for consistency
+    hooks:
+      - id: black
+        language_version: python3.10
+        # Configuration should be in pyproject.toml (recommended)
+
+  # Python Import Sorting: isort
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.13.2
+    hooks:
+      - id: isort
+        language_version: python3.10
+        # Configuration should be in pyproject.toml or .isort.cfg
+
+  # Python Static Code Checking: Flake8
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        # Configuration should be in .flake8 or pyproject.toml
+
+  # JavaScript/TypeScript Static Code Checking: ESLint (Currently not in CI)
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.57.0
+    hooks:
+      - id: eslint
+        files: \.(js|jsx|ts|tsx)$
+        # Consider adding to CI for full consistency
+
+  # JavaScript/TypeScript/JSON/Markdown Formatting: Prettier (Currently not in CI)
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.2.5
+    hooks:
+      - id: prettier
+        types: [json, yaml, markdown, javascript, typescript]
+        # Consider adding to CI for full consistency
+
+  # Shell Script Linting: Shellcheck
+  - repo: https://github.com/shellcheck-py/shellcheck-precommit
+    rev: v0.9.0.5
+    hooks:
+      - id: shellcheck
+        args: [-x, --shell=bash]
+        files: (\.sh|bashrc)$
+
+  # Bazel File Formatting and Linting: Buildifier
+  - repo: https://github.com/bazelbuild/buildtools
+    rev: v8.2.1
+    hooks:
+      - id: buildifier
+        args: [--mode=check, --lint=warn]
+        files: \.(BUILD|bzl|bazelrc)$
+
+  # C++ Lint: Bazel cpplint (Local Custom Hook)
+  # Runs bazel test with --config=cpplint on fixed targets.
+  - repo: local
+    hooks:
+      - id: bazel-cpplint
+        name: Bazel C++ Lint
+        # Checks fixed targets: //modules/... and //cyber/...
+        entry: bash -c 'bazel test --config=cpplint //modules/... //cyber/...'
+        language: system
+        pass_filenames: false
+        files: \.(c|cc|cpp|h|hpp)$
+        types: [file]
+        always_run: true

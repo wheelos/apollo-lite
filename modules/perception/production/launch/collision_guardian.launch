@@ -1,0 +1,10 @@
+<cyber>
+    <desc>cyber modules list config</desc>
+    <version>1.0.0</version>
+    <module>
+        <name>perception_collision_guardian</name>
+        <dag_conf>/apollo/modules/perception/production/dag/dag_streaming_collision_guardian.dag</dag_conf>
+        <process_name>perception_collision_guardian</process_name>
+        <version>1.0.0</version>
+    </module>
+</cyber>
