@@ -122,6 +122,11 @@ function determine_build_targets_and_defines() {
         fi
       elif [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
         targets_all+=" //modules/${component}/..."
+      elif [[ -d "${APOLLO_ROOT_DIR}/${component}" ]]; then
+        targets_all+=" //${component}/..."
+      elif [[ $component =~ ^@ ]]; then
+        # keep target of deps
+        targets_all+=" ${component}"
       else
         error "Directory ${APOLLO_ROOT_DIR}/modules/${component} not found. Exiting ..."
         exit 1
