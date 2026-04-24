@@ -64,7 +64,8 @@ class ParkDecider : public ScenarioDecider {
   bool CheckDistanceToParkingSpot(
       const Frame* frame, const hdmap::Path& nearby_path,
       const double parking_start_range,
-      const hdmap::PathOverlap& parking_space_overlap);
+      const hdmap::PathOverlap& parking_space_overlap,
+      const apollo::routing::ParkingInfo* parking_info);
 };
 
 }  // namespace scenario

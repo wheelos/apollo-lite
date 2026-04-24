@@ -35,7 +35,7 @@ cc_test(
     srcs = ["safety_manager_test.cc"],
     deps = [
         ":safety_manager",
-        "@com_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest",
     ],
 )
 

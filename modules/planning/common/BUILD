@@ -191,6 +191,52 @@ cc_library(
 )
 
 cc_library(
+    name = "planning_semantics",
+    srcs = ["planning_semantics.cc"],
+    hdrs = ["planning_semantics.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        "@wheelos_common//modules/common/math",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_runtime_status_cc_proto",
+        "//modules/planning:planning_runtime_context",
+    ],
+)
+
+cc_test(
+    name = "planning_semantics_test",
+    size = "small",
+    srcs = ["planning_semantics_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":planning_semantics",
+    ],
+)
+
+cc_library(
+    name = "terminal_servo_guard",
+    srcs = ["terminal_servo_guard.cc"],
+    hdrs = ["terminal_servo_guard.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        ":planning_semantics",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "terminal_servo_guard_test",
+    size = "small",
+    srcs = ["terminal_servo_guard_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":terminal_servo_guard",
+    ],
+)
+
+cc_library(
     name = "path_decision",
     srcs = ["path_decision.cc"],
     hdrs = ["path_decision.h"],
@@ -294,6 +340,7 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_command_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "@wheelos_msgs//wheelos_msgs/storytelling_msgs:story_cc_proto",

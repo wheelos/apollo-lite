@@ -639,16 +639,25 @@ void GetAllLaneSegments(const routing::RoutingResponse &routing_response,
 bool ResolveTargetParkingSpotId(Frame *frame, std::string *parking_spot_id,
                                 std::string *error) {
   CHECK_NOTNULL(parking_spot_id);
-  const auto &routing_request = frame->local_view().routing->routing_request();
-  if (routing_request.has_parking_info() &&
-      routing_request.parking_info().has_parking_space_id()) {
-    *parking_spot_id = routing_request.parking_info().parking_space_id();
+  const auto& local_view = frame->local_view();
+  const routing::ParkingInfo* parking_info = nullptr;
+  if (local_view.planning_command != nullptr &&
+      local_view.planning_command->has_goal() &&
+      local_view.planning_command->goal().has_parking_goal()) {
+    parking_info = &local_view.planning_command->goal().parking_goal();
+  } else if (local_view.routing != nullptr &&
+             local_view.routing->routing_request().has_parking_info()) {
+    parking_info = &local_view.routing->routing_request().parking_info();
+  }
+  if (parking_info != nullptr && parking_info->has_parking_space_id() &&
+      !parking_info->parking_space_id().empty()) {
+    *parking_spot_id = parking_info->parking_space_id();
     *frame->mutable_open_space_info()->mutable_target_parking_spot_id() =
         *parking_spot_id;
     return true;
   }
   if (error != nullptr) {
-    *error = "failed to get parking space id from routing";
+    *error = "failed to get parking space id from command or routing";
   }
   return false;
 }

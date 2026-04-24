@@ -53,4 +53,30 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "planning_fault_test",
+    size = "small",
+    srcs = ["planning_fault_test.cc"],
+    data = ["//modules/control:test_data"],
+    deps = [
+        "@core//cyber",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/util:util_lib",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+        "//modules/control/common:control_gflags",
+        "//modules/control/common:dependency_injector",
+        "//modules/control/controller:controller_agent",
+        "//modules/control/proto:control_conf_cc_proto",
+        "//modules/control/proto:local_view_cc_proto",
+        "//modules/control/safety:safety_manager",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
 cpplint()
