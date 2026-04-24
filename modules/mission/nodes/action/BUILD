@@ -8,6 +8,7 @@ cc_library(
     deps = [
         ":charge_node",
         ":move_to_node",
+        ":park_in_node",
         ":station_wait_node"
     ],
 )
@@ -27,6 +28,18 @@ cc_library(
     name = "move_to_node",
     srcs = ["move_to_node.cc"],
     hdrs = ["move_to_node.h"],
+    deps = [
+        "//cyber",
+        "//modules/mission/common:mission_context",
+        "//modules/mission/common:bt_type_converters",
+        "@behaviortree_cpp//:behaviortree_cpp"
+    ],
+)
+
+cc_library(
+    name = "park_in_node",
+    srcs = ["park_in_node.cc"],
+    hdrs = ["park_in_node.h"],
     deps = [
         "//cyber",
         "//modules/mission/common:mission_context",

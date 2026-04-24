@@ -49,6 +49,7 @@ class OnLanePlanning : public PlanningBase {
    * @brief Planning name.
    */
   std::string Name() const override;
+  PlanningMode Mode() const override { return MODE_LANE_GRAPH; }
 
   /**
    * @brief module initialization function

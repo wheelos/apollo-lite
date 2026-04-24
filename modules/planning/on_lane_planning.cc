@@ -63,6 +63,25 @@ using apollo::hdmap::HDMapUtil;
 using apollo::planning_internal::SLFrameDebug;
 using apollo::planning_internal::SpeedPlan;
 using apollo::planning_internal::STGraphDebug;
+
+namespace {
+
+const apollo::routing::ParkingInfo* GetRequestedParkingInfo(
+    const apollo::planning::LocalView& local_view) {
+  if (local_view.planning_command != nullptr &&
+      local_view.planning_command->has_goal() &&
+      local_view.planning_command->goal().has_parking_goal()) {
+    return &local_view.planning_command->goal().parking_goal();
+  }
+  if (local_view.routing != nullptr &&
+      local_view.routing->routing_request().has_parking_info()) {
+    return &local_view.routing->routing_request().parking_info();
+  }
+  return nullptr;
+}
+
+}  // namespace
+
 void SetChartminmax(apollo::dreamview::Chart* chart, std::string label_name_x,
                     std::string label_name_y) {
   auto* options = chart->mutable_options();
@@ -171,14 +190,12 @@ Status OnLanePlanning::InitFrame(const uint32_t sequence_num,
     return Status(ErrorCode::PLANNING_ERROR, "Fail to init frame: nullptr.");
   }
 
-  // Get the parking space information from routing request of local view.
-  auto& routing_request = local_view_.routing->routing_request();
-  if (routing_request.has_parking_info() &&
-      routing_request.parking_info().has_parking_space_id()) {
+  const auto* parking_info = GetRequestedParkingInfo(local_view_);
+  if (parking_info != nullptr && parking_info->has_parking_space_id()) {
     *(frame_->mutable_open_space_info()->mutable_target_parking_spot_id()) =
-        routing_request.parking_info().parking_space_id();
+        parking_info->parking_space_id();
   } else {
-    ADEBUG << "No parking space id from routing";
+    ADEBUG << "No parking space id from command or routing";
   }
 
   std::list<ReferenceLine> reference_lines;

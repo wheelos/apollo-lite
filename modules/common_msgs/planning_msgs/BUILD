@@ -6,6 +6,50 @@ load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 package(default_visibility = ["//visibility:public"])
 
 cc_proto_library(
+    name = "planning_command_cc_proto",
+    deps = [
+        ":planning_command_proto",
+    ],
+)
+
+proto_library(
+    name = "planning_command_proto",
+    srcs = ["planning_command.proto"],
+    deps = [
+        "//modules/common_msgs/basic_msgs:geometry_proto",
+        "//modules/common_msgs/basic_msgs:header_proto",
+        "//modules/common_msgs/map_msgs:map_geometry_proto",
+        "//modules/common_msgs/routing_msgs:routing_proto",
+    ],
+)
+
+py_proto_library(
+    name = "planning_command_py_pb2",
+    deps = [":planning_command_proto"],
+)
+
+cc_proto_library(
+    name = "planning_runtime_status_cc_proto",
+    deps = [
+        ":planning_runtime_status_proto",
+    ],
+)
+
+proto_library(
+    name = "planning_runtime_status_proto",
+    srcs = ["planning_runtime_status.proto"],
+    deps = [
+        ":planning_command_proto",
+        "//modules/common_msgs/basic_msgs:header_proto",
+    ],
+)
+
+py_proto_library(
+    name = "planning_runtime_status_py_pb2",
+    deps = [":planning_runtime_status_proto"],
+)
+
+cc_proto_library(
     name = "planning_internal_cc_proto",
     deps = [
         ":planning_internal_proto",
@@ -18,6 +62,7 @@ proto_library(
     deps = [
         ":decision_proto",
         ":navigation_proto",
+        ":planning_command_proto",
         ":scenario_type_proto",
         ":sl_boundary_proto",
         "//modules/common_msgs/basic_msgs:geometry_proto",
@@ -112,6 +157,7 @@ proto_library(
     deps = [
         ":decision_proto",
         ":planning_internal_proto",
+        ":planning_runtime_status_proto",
         "//modules/common_msgs/basic_msgs:drive_state_proto",
         "//modules/common_msgs/basic_msgs:geometry_proto",
         "//modules/common_msgs/basic_msgs:header_proto",

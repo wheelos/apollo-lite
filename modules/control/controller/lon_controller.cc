@@ -26,6 +26,7 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/control/common/control_gflags.h"
+#include "modules/control/common/terminal_control_helper.h"
 #include "modules/localization/common/localization_gflags.h"
 
 namespace apollo {
@@ -119,15 +120,25 @@ Status LonController::ComputeControlCommand(
   chassis_ = chassis;
 
   trajectory_message_ = planning_published_trajectory;
+  const bool has_control_intent = trajectory_message_->has_control_intent();
+  const auto& control_intent = trajectory_message_->control_intent();
+  const bool trajectoryless_pose_servo =
+      IsTrajectorylessPoseServo(*trajectory_message_);
+  const auto terminal_longitudinal_adjustment =
+      trajectoryless_pose_servo
+          ? BuildTerminalLongitudinalControlAdjustment(control_intent,
+                                                      localization_, chassis_)
+          : TerminalLongitudinalControlAdjustment();
   if (!control_interpolation_) {
     AERROR << "Fail to initialize calibration table.";
     return Status(ErrorCode::CONTROL_COMPUTE_ERROR,
                   "Fail to initialize calibration table.");
   }
 
-  if (trajectory_analyzer_ == nullptr ||
-      trajectory_analyzer_->seq_num() !=
-          trajectory_message_->header().sequence_num()) {
+  if (!trajectoryless_pose_servo &&
+      (trajectory_analyzer_ == nullptr ||
+       trajectory_analyzer_->seq_num() !=
+           trajectory_message_->header().sequence_num())) {
     trajectory_analyzer_.reset(new TrajectoryAnalyzer(trajectory_message_));
   }
   const LonControllerConf &lon_controller_conf =
@@ -149,69 +160,88 @@ Status LonController::ComputeControlCommand(
     AERROR << error_msg;
     return Status(ErrorCode::CONTROL_COMPUTE_ERROR, error_msg);
   }
-  ComputeLongitudinalErrors(trajectory_analyzer_.get(), preview_time, ts,
-                            debug);
-
-  double station_error_limit = lon_controller_conf.station_error_limit();
   double station_error_limited = 0.0;
-  if (FLAGS_enable_speed_station_preview) {
-    station_error_limited =
-        common::math::Clamp(debug->preview_station_error(),
-                            -station_error_limit, station_error_limit);
-  } else {
-    station_error_limited = common::math::Clamp(
-        debug->station_error(), -station_error_limit, station_error_limit);
-  }
-
-  if (trajectory_message_->gear() == canbus::Chassis::GEAR_REVERSE) {
-    station_pid_controller_.SetPID(
-        lon_controller_conf.reverse_station_pid_conf());
-    speed_pid_controller_.SetPID(lon_controller_conf.reverse_speed_pid_conf());
-    if (enable_leadlag) {
-      station_leadlag_controller_.SetLeadlag(
-          lon_controller_conf.reverse_station_leadlag_conf());
-      speed_leadlag_controller_.SetLeadlag(
-          lon_controller_conf.reverse_speed_leadlag_conf());
-    }
-  } else if (injector_->vehicle_state()->linear_velocity() <=
-             lon_controller_conf.switch_speed()) {
-    station_pid_controller_.SetPID(lon_controller_conf.station_pid_conf());
-    speed_pid_controller_.SetPID(lon_controller_conf.low_speed_pid_conf());
-  } else {
-    station_pid_controller_.SetPID(lon_controller_conf.station_pid_conf());
-    speed_pid_controller_.SetPID(lon_controller_conf.high_speed_pid_conf());
-  }
-
-  double speed_offset =
-      station_pid_controller_.Control(station_error_limited, ts);
-  if (enable_leadlag) {
-    speed_offset = station_leadlag_controller_.Control(speed_offset, ts);
-  }
-
-  double speed_controller_input = 0.0;
-  double speed_controller_input_limit =
-      lon_controller_conf.speed_controller_input_limit();
+  double speed_offset = 0.0;
   double speed_controller_input_limited = 0.0;
-  if (FLAGS_enable_speed_station_preview) {
-    speed_controller_input = speed_offset + debug->preview_speed_error();
-  } else {
-    speed_controller_input = speed_offset + debug->speed_error();
-  }
-  speed_controller_input_limited =
-      common::math::Clamp(speed_controller_input, -speed_controller_input_limit,
-                          speed_controller_input_limit);
-
   double acceleration_cmd_closeloop = 0.0;
-
-  acceleration_cmd_closeloop =
-      speed_pid_controller_.Control(speed_controller_input_limited, ts);
-  debug->set_pid_saturation_status(
-      speed_pid_controller_.IntegratorSaturationStatus());
-  if (enable_leadlag) {
+  if (trajectoryless_pose_servo) {
+    debug->set_station_error(terminal_longitudinal_adjustment.signed_distance_m);
+    debug->set_preview_station_error(
+        terminal_longitudinal_adjustment.signed_distance_m);
+    debug->set_speed_reference(
+        terminal_longitudinal_adjustment.desired_speed_mps);
+    debug->set_preview_speed_reference(
+        terminal_longitudinal_adjustment.desired_speed_mps);
+    debug->set_current_speed(chassis_->speed_mps());
+    debug->set_speed_error(terminal_longitudinal_adjustment.desired_speed_mps -
+                           chassis_->speed_mps());
+    debug->set_preview_speed_error(debug->speed_error());
+    debug->set_path_remain(
+        std::abs(terminal_longitudinal_adjustment.signed_distance_m));
     acceleration_cmd_closeloop =
-        speed_leadlag_controller_.Control(acceleration_cmd_closeloop, ts);
-    debug->set_leadlag_saturation_status(
-        speed_leadlag_controller_.InnerstateSaturationStatus());
+        terminal_longitudinal_adjustment.desired_acceleration_mps2;
+    station_pid_controller_.Reset_integral();
+    speed_pid_controller_.Reset_integral();
+  } else {
+    ComputeLongitudinalErrors(trajectory_analyzer_.get(), preview_time, ts,
+                              debug);
+
+    double station_error_limit = lon_controller_conf.station_error_limit();
+    if (FLAGS_enable_speed_station_preview) {
+      station_error_limited =
+          common::math::Clamp(debug->preview_station_error(),
+                              -station_error_limit, station_error_limit);
+    } else {
+      station_error_limited = common::math::Clamp(
+          debug->station_error(), -station_error_limit, station_error_limit);
+    }
+
+    if (trajectory_message_->gear() == canbus::Chassis::GEAR_REVERSE) {
+      station_pid_controller_.SetPID(
+          lon_controller_conf.reverse_station_pid_conf());
+      speed_pid_controller_.SetPID(lon_controller_conf.reverse_speed_pid_conf());
+      if (enable_leadlag) {
+        station_leadlag_controller_.SetLeadlag(
+            lon_controller_conf.reverse_station_leadlag_conf());
+        speed_leadlag_controller_.SetLeadlag(
+            lon_controller_conf.reverse_speed_leadlag_conf());
+      }
+    } else if (injector_->vehicle_state()->linear_velocity() <=
+               lon_controller_conf.switch_speed()) {
+      station_pid_controller_.SetPID(lon_controller_conf.station_pid_conf());
+      speed_pid_controller_.SetPID(lon_controller_conf.low_speed_pid_conf());
+    } else {
+      station_pid_controller_.SetPID(lon_controller_conf.station_pid_conf());
+      speed_pid_controller_.SetPID(lon_controller_conf.high_speed_pid_conf());
+    }
+
+    speed_offset = station_pid_controller_.Control(station_error_limited, ts);
+    if (enable_leadlag) {
+      speed_offset = station_leadlag_controller_.Control(speed_offset, ts);
+    }
+
+    double speed_controller_input = 0.0;
+    double speed_controller_input_limit =
+        lon_controller_conf.speed_controller_input_limit();
+    if (FLAGS_enable_speed_station_preview) {
+      speed_controller_input = speed_offset + debug->preview_speed_error();
+    } else {
+      speed_controller_input = speed_offset + debug->speed_error();
+    }
+    speed_controller_input_limited = common::math::Clamp(
+        speed_controller_input, -speed_controller_input_limit,
+        speed_controller_input_limit);
+
+    acceleration_cmd_closeloop =
+        speed_pid_controller_.Control(speed_controller_input_limited, ts);
+    debug->set_pid_saturation_status(
+        speed_pid_controller_.IntegratorSaturationStatus());
+    if (enable_leadlag) {
+      acceleration_cmd_closeloop =
+          speed_leadlag_controller_.Control(acceleration_cmd_closeloop, ts);
+      debug->set_leadlag_saturation_status(
+          speed_leadlag_controller_.InnerstateSaturationStatus());
+    }
   }
 
   if (chassis->gear_location() == canbus::Chassis::GEAR_NEUTRAL) {
@@ -232,11 +262,23 @@ Status LonController::ComputeControlCommand(
       acceleration_cmd_closeloop + debug->preview_acceleration_reference() +
       FLAGS_enable_slope_offset * debug->slope_offset_compensation();
 
+  const bool suppress_large_steer =
+      has_control_intent && control_intent.suppress_large_steer();
+  const bool enforce_hold_stop =
+      has_control_intent &&
+      (control_intent.tracking_mode() ==
+           apollo::planning::TRACKING_MODE_STANDSTILL_HOLD ||
+       control_intent.longitudinal_intent() ==
+           apollo::planning::LON_INTENT_HOLD_STOP ||
+       control_intent.longitudinal_intent() ==
+           apollo::planning::LON_INTENT_MRM_STOP);
+
   // Check the steer command in reverse trajectory if the current steer target
   // is larger than previous target, free the acceleration command, wait for
   // the current steer target
-  if ((trajectory_message_->trajectory_type() ==
-       apollo::planning::ADCTrajectory::UNKNOWN) &&
+  if (((trajectory_message_->trajectory_type() ==
+        apollo::planning::ADCTrajectory::UNKNOWN) ||
+       suppress_large_steer) &&
       std::abs(cmd->steering_target() - chassis->steering_percentage()) >
           FLAGS_steer_cmd_interval) {
     acceleration_cmd = 0;
@@ -246,7 +288,9 @@ Status LonController::ComputeControlCommand(
   }
 
   debug->set_is_full_stop(false);
-  GetPathRemain(debug);
+  if (!trajectoryless_pose_servo) {
+    GetPathRemain(debug);
+  }
   // At near-stop stage, replace the brake control command with the standstill
   // acceleration if the former is even softer than the latter
   if ((trajectory_message_->trajectory_type() ==
@@ -255,7 +299,7 @@ Status LonController::ComputeControlCommand(
        apollo::planning::ADCTrajectory::SPEED_FALLBACK) ||
       (trajectory_message_->trajectory_type() ==
        apollo::planning::ADCTrajectory::UNKNOWN)) {
-    if (FLAGS_use_preview_reference_check &&
+    if (!trajectoryless_pose_servo && FLAGS_use_preview_reference_check &&
         (std::fabs(debug->preview_acceleration_reference()) <=
          control_conf_->max_acceleration_when_stopped()) &&
         std::fabs(debug->preview_speed_reference()) <=
@@ -264,12 +308,18 @@ Status LonController::ComputeControlCommand(
       ADEBUG << "Into full stop within preview acc and reference speed, "
              << "is_full_stop is " << debug->is_full_stop();
     }
-    if (std::abs(debug->path_remain()) <
+    if (!trajectoryless_pose_servo &&
+        std::abs(debug->path_remain()) <
         control_conf_->max_path_remain_when_stopped()) {
       debug->set_is_full_stop(true);
       ADEBUG << "Into full stop within path remain, "
              << "is_full_stop is " << debug->is_full_stop();
     }
+  }
+
+  if (enforce_hold_stop || terminal_longitudinal_adjustment.full_stop) {
+    debug->set_is_full_stop(true);
+    ADEBUG << "Into full stop by planning control intent.";
   }
 
   if (debug->is_full_stop()) {

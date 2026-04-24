@@ -11,6 +11,7 @@ import "modules/common_msgs/localization_msgs/localization.proto";
 import "modules/common_msgs/perception_msgs/traffic_light_detection.proto";
 import "modules/common_msgs/planning_msgs/decision.proto";
 import "modules/common_msgs/planning_msgs/navigation.proto";
+import "modules/common_msgs/planning_msgs/planning_command.proto";
 import "modules/common_msgs/planning_msgs/scenario_type.proto";
 import "modules/common_msgs/planning_msgs/sl_boundary.proto";
 import "modules/common_msgs/routing_msgs/routing.proto";
@@ -219,7 +220,28 @@ message LaneBorrowDebug {
   optional string transition_reason = 19;
 }
 
-// next ID: 32
+message RuntimeDebug {
+  optional string mission_id = 1;
+  optional string command_id = 2;
+  optional apollo.planning.PlanningSceneType active_scene = 3;
+  optional apollo.planning.PlanningMode requested_mode = 4;
+  optional apollo.planning.PlanningMode resolved_mode = 5;
+  optional bool has_lane_graph = 6;
+  optional bool has_route_semantics = 7;
+  optional bool has_local_corridor = 8;
+  optional bool has_drivable_area = 9;
+  optional bool has_parking_roi = 10;
+  optional bool has_goal_pose = 11;
+  optional bool has_stop_target = 12;
+  optional bool has_regulatory_context = 13;
+  optional double topology_confidence = 14;
+  optional double drivable_area_confidence = 15;
+  optional double target_geometry_confidence = 16;
+  repeated string blockers = 17;
+  optional string reason = 18;
+}
+
+// next ID: 33
 message PlanningData {
   // input
   optional apollo.localization.LocalizationEstimate adc_position = 7;
@@ -250,6 +272,7 @@ message PlanningData {
   optional PullOverDebug pull_over = 29;
   optional HybridModelDebug hybrid_model = 30;
   optional LaneBorrowDebug lane_borrow = 31;
+  optional RuntimeDebug runtime = 32;
 }
 
 message LatticeStPixel {

@@ -8,4 +8,10 @@ message MissionConfig {
 
   // Tick ​​frequency, default 100ms (10Hz)
   optional int32 tick_interval_ms = 2 [default = 100];
+
+  optional string planning_command_topic = 3
+      [default = "/apollo/planning/command"];
+
+  optional string planning_runtime_status_topic = 4
+      [default = "/apollo/planning/runtime_status"];
 }

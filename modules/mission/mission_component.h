@@ -26,6 +26,7 @@
 #include "modules/common_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
 #include "modules/common_msgs/mission_msgs/mission_request.pb.h"
+#include "modules/common_msgs/planning_msgs/planning_runtime_status.pb.h"
 #include "modules/common_msgs/routing_msgs/routing.pb.h"
 #include "modules/mission/proto/mission_config.pb.h"
 
@@ -58,6 +59,9 @@ class MissionComponent : public ::apollo::cyber::Component<MissionRequest> {
   std::shared_ptr<
       apollo::cyber::Reader<apollo::localization::LocalizationEstimate>>
       localization_reader_;
+  std::shared_ptr<
+      apollo::cyber::Reader<apollo::planning::PlanningRuntimeStatus>>
+      planning_runtime_status_reader_;
 
   std::unique_ptr<cyber::Timer> tick_timer_;
   std::mutex mutex_;

@@ -127,6 +127,17 @@ cc_library(
 )
 
 cc_library(
+    name = "terminal_control_helper",
+    srcs = ["terminal_control_helper.cc"],
+    hdrs = ["terminal_control_helper.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "//modules/common/math",
+        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
     name = "common",
     copts = CONTROL_COPTS,
     deps = [
@@ -136,6 +147,7 @@ cc_library(
         ":interpolation_2d",
         ":leadlag_controller",
         ":pid_controller",
+        ":terminal_control_helper",
         ":trajectory_analyzer",
     ],
 )
@@ -244,6 +256,16 @@ cc_test(
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:pid_conf_cc_proto",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "terminal_control_helper_test",
+    size = "small",
+    srcs = ["terminal_control_helper_test.cc"],
+    deps = [
+        ":terminal_control_helper",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 

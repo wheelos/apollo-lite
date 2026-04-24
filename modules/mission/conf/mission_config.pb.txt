@@ -1,2 +1,4 @@
 bt_tree_dir: "modules/mission/conf/bt_trees"
 tick_interval_ms: 100
+planning_command_topic: "/apollo/planning/command"
+planning_runtime_status_topic: "/apollo/planning/runtime_status"

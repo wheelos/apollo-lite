@@ -58,6 +58,7 @@ cc_library(
         "//modules/control/common:interpolation_1d",
         "//modules/control/common:leadlag_controller",
         "//modules/control/common:mrac_controller",
+        "//modules/control/common:terminal_control_helper",
         "//modules/control/common:trajectory_analyzer",
         "//modules/control/proto:calibration_table_cc_proto",
         "//modules/control/proto:control_conf_cc_proto",

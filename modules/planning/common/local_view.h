@@ -23,12 +23,17 @@
 #include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
 #include "modules/common_msgs/planning_msgs/navigation.pb.h"
 #include "modules/common_msgs/planning_msgs/pad_msg.pb.h"
+#include "modules/common_msgs/planning_msgs/planning_command.pb.h"
 #include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
 #include "modules/common_msgs/routing_msgs/routing.pb.h"
 #include "modules/common_msgs/storytelling_msgs/story.pb.h"
 
 namespace apollo {
 namespace planning {
+
+struct EnvironmentModel;
+struct CapabilitySet;
+struct PlanningCoordinatorState;
 
 /**
  * @struct local_view
@@ -43,6 +48,10 @@ struct LocalView {
   std::shared_ptr<routing::RoutingResponse> routing;
   std::shared_ptr<relative_map::MapMsg> relative_map;
   std::shared_ptr<PadMessage> pad_msg;
+  std::shared_ptr<PlanningCommand> planning_command;
+  std::shared_ptr<EnvironmentModel> environment_model;
+  std::shared_ptr<CapabilitySet> capability_set;
+  std::shared_ptr<PlanningCoordinatorState> planning_state;
   std::shared_ptr<storytelling::Stories> stories;
 };
 

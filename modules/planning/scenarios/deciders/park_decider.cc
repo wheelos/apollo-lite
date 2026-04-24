@@ -45,6 +45,33 @@ double ComputeEffectivePullOverMinDistance(
                    ComputePullOverPreparationDistance(config)});
 }
 
+const apollo::routing::ParkingInfo* GetRequestedParkingInfo(
+    const apollo::planning::scenario::DeciderContext& context) {
+  if (context.planning_command != nullptr &&
+      context.planning_command->has_goal() &&
+      context.planning_command->goal().has_parking_goal()) {
+    return &context.planning_command->goal().parking_goal();
+  }
+
+  const auto& routing = context.frame->local_view().routing;
+  if (routing != nullptr && routing->routing_request().has_parking_info()) {
+    return &routing->routing_request().parking_info();
+  }
+
+  return nullptr;
+}
+
+bool IsExplicitParkInCommand(
+    const apollo::planning::scenario::DeciderContext& context) {
+  return context.planning_command != nullptr &&
+         context.planning_command->has_action() &&
+         context.planning_command->action() !=
+             apollo::planning::COMMAND_CANCEL &&
+         context.planning_command->has_requested_scene() &&
+         context.planning_command->requested_scene() ==
+             apollo::planning::SCENE_PARK_IN;
+}
+
 }  // namespace
 
 namespace apollo {
@@ -74,6 +101,10 @@ ScenarioDecisionResult ParkDecider::CheckValetParking(
     const DeciderContext& context) {
   const auto& frame = context.frame;
 
+  if (!IsExplicitParkInCommand(context)) {
+    return ScenarioDecisionResult();
+  }
+
   // 0. Load Config
   const auto& config = config_.valet_parking_config();
   uint32_t scenario_entry_score = config.scenario_entry_score();
@@ -92,18 +123,17 @@ ScenarioDecisionResult ParkDecider::CheckValetParking(
   }
 
   // 2. Routing Check
-  const auto& routing = frame->local_view().routing;
-  if (!routing || !routing->routing_request().has_parking_info()) {
+  const auto* parking_info = GetRequestedParkingInfo(context);
+  if (parking_info == nullptr) {
     return ScenarioDecisionResult();
   }
 
-  const auto& parking_info = routing->routing_request().parking_info();
-  if (!parking_info.has_parking_space_id() ||
-      parking_info.parking_space_id().empty()) {
+  if (!parking_info->has_parking_space_id() ||
+      parking_info->parking_space_id().empty()) {
     return ScenarioDecisionResult();
   }
 
-  std::string target_parking_spot_id = parking_info.parking_space_id();
+  const std::string& target_parking_spot_id = parking_info->parking_space_id();
 
   // 3. Map Path Check
   if (frame->reference_line_info().empty()) {
@@ -123,7 +153,7 @@ ScenarioDecisionResult ParkDecider::CheckValetParking(
   // 5. Distance Check
   if (!CheckDistanceToParkingSpot(frame, nearby_path,
                                   parking_spot_range_to_start,
-                                  parking_space_overlap)) {
+                                  parking_space_overlap, parking_info)) {
     return ScenarioDecisionResult();
   }
 
@@ -148,7 +178,8 @@ bool ParkDecider::SearchTargetParkingSpotOnPath(
 bool ParkDecider::CheckDistanceToParkingSpot(
     const Frame* frame, const hdmap::Path& nearby_path,
     const double parking_start_range,
-    const hdmap::PathOverlap& parking_space_overlap) {
+    const hdmap::PathOverlap& parking_space_overlap,
+    const apollo::routing::ParkingInfo* parking_info) {
   // 1. Get Parking Spot from HDMap
   const hdmap::HDMap* hdmap = HDMapUtil::BaseMapPtr();
   hdmap::Id id;
@@ -166,17 +197,13 @@ bool ParkDecider::CheckDistanceToParkingSpot(
   common::math::Vec2d right_bottom_point =
       target_parking_spot_ptr->polygon().points().at(1);
 
-  // 3. Override with Routing info if available (Crucial for Cloud-based
-  // parking)
-  const auto& routing = frame->local_view().routing;
-  if (routing && routing->routing_request().has_parking_info()) {
-    const auto& p_info = routing->routing_request().parking_info();
-    if (p_info.has_corner_point() && p_info.corner_point().point_size() >= 2) {
-      left_bottom_point.set_x(p_info.corner_point().point(0).x());
-      left_bottom_point.set_y(p_info.corner_point().point(0).y());
-      right_bottom_point.set_x(p_info.corner_point().point(1).x());
-      right_bottom_point.set_y(p_info.corner_point().point(1).y());
-    }
+  // 3. Override with command/routing parking geometry when available.
+  if (parking_info != nullptr && parking_info->has_corner_point() &&
+      parking_info->corner_point().point_size() >= 2) {
+    left_bottom_point.set_x(parking_info->corner_point().point(0).x());
+    left_bottom_point.set_y(parking_info->corner_point().point(0).y());
+    right_bottom_point.set_x(parking_info->corner_point().point(1).x());
+    right_bottom_point.set_y(parking_info->corner_point().point(1).y());
   }
 
   // 4. Project points to Path to get s

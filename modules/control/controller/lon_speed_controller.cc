@@ -26,6 +26,7 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/control/common/control_gflags.h"
+#include "modules/control/common/terminal_control_helper.h"
 #include "modules/localization/common/localization_gflags.h"
 
 namespace apollo {
@@ -87,10 +88,20 @@ Status LonSpeedController::ComputeControlCommand(
   chassis_ = chassis;
 
   trajectory_message_ = planning_published_trajectory;
+  const bool has_control_intent = trajectory_message_->has_control_intent();
+  const auto& control_intent = trajectory_message_->control_intent();
+  const bool trajectoryless_pose_servo =
+      IsTrajectorylessPoseServo(*trajectory_message_);
+  const auto terminal_longitudinal_adjustment =
+      trajectoryless_pose_servo
+          ? BuildTerminalLongitudinalControlAdjustment(control_intent,
+                                                      localization_, chassis_)
+          : TerminalLongitudinalControlAdjustment();
 
-  if (trajectory_analyzer_ == nullptr ||
-      trajectory_analyzer_->seq_num() !=
-          trajectory_message_->header().sequence_num()) {
+  if (!trajectoryless_pose_servo &&
+      (trajectory_analyzer_ == nullptr ||
+       trajectory_analyzer_->seq_num() !=
+           trajectory_message_->header().sequence_num())) {
     trajectory_analyzer_ =
         std::make_unique<TrajectoryAnalyzer>(trajectory_message_);
   }
@@ -111,67 +122,123 @@ Status LonSpeedController::ComputeControlCommand(
     AERROR << error_msg;
     return Status(ErrorCode::CONTROL_COMPUTE_ERROR, error_msg);
   }
-  ComputeLongitudinalErrors(trajectory_analyzer_.get(), preview_time, ts,
-                            debug);
-
-  double station_error_limit = lon_controller_conf.station_error_limit();
   double station_error_limited = 0.0;
-  if (FLAGS_enable_speed_station_preview) {
-    station_error_limited =
-        common::math::Clamp(debug->preview_station_error(),
-                            -station_error_limit, station_error_limit);
-  } else {
-    station_error_limited = common::math::Clamp(
-        debug->station_error(), -station_error_limit, station_error_limit);
-  }
-
-  // Choose PID config
-  if (injector_->vehicle_state()->linear_velocity() <=
-      lon_controller_conf.switch_speed()) {
-    station_pid_controller_.SetPID(lon_controller_conf.low_speed_pid_conf());
-  } else {
-    station_pid_controller_.SetPID(lon_controller_conf.high_speed_pid_conf());
-  }
-
-  double speed_offset =
-      station_pid_controller_.Control(station_error_limited, ts);
-  if (enable_leadlag) {
-    speed_offset = station_leadlag_controller_.Control(speed_offset, ts);
-  }
-
+  double speed_offset = 0.0;
   double desired_speed_cmd = 0.0;
-  if (FLAGS_enable_speed_station_preview) {
-    desired_speed_cmd = debug->preview_speed_reference() + speed_offset;
+  if (trajectoryless_pose_servo) {
+    debug->set_station_error(terminal_longitudinal_adjustment.signed_distance_m);
+    debug->set_preview_station_error(
+        terminal_longitudinal_adjustment.signed_distance_m);
+    debug->set_speed_reference(
+        terminal_longitudinal_adjustment.desired_speed_mps);
+    debug->set_preview_speed_reference(
+        terminal_longitudinal_adjustment.desired_speed_mps);
+    debug->set_current_speed(chassis_->speed_mps());
+    debug->set_path_remain(
+        std::abs(terminal_longitudinal_adjustment.signed_distance_m));
+    desired_speed_cmd = terminal_longitudinal_adjustment.desired_speed_mps;
+    station_pid_controller_.Reset_integral();
   } else {
-    desired_speed_cmd = debug->speed_reference() + speed_offset;
+    ComputeLongitudinalErrors(trajectory_analyzer_.get(), preview_time, ts,
+                              debug);
+
+    double station_error_limit = lon_controller_conf.station_error_limit();
+    if (FLAGS_enable_speed_station_preview) {
+      station_error_limited =
+          common::math::Clamp(debug->preview_station_error(),
+                              -station_error_limit, station_error_limit);
+    } else {
+      station_error_limited = common::math::Clamp(
+          debug->station_error(), -station_error_limit, station_error_limit);
+    }
+
+    if (injector_->vehicle_state()->linear_velocity() <=
+        lon_controller_conf.switch_speed()) {
+      station_pid_controller_.SetPID(lon_controller_conf.low_speed_pid_conf());
+    } else {
+      station_pid_controller_.SetPID(lon_controller_conf.high_speed_pid_conf());
+    }
+
+    speed_offset = station_pid_controller_.Control(station_error_limited, ts);
+    if (enable_leadlag) {
+      speed_offset = station_leadlag_controller_.Control(speed_offset, ts);
+    }
+
+    if (FLAGS_enable_speed_station_preview) {
+      desired_speed_cmd = debug->preview_speed_reference() + speed_offset;
+    } else {
+      desired_speed_cmd = debug->speed_reference() + speed_offset;
+    }
   }
+
+  const bool suppress_large_steer =
+      has_control_intent && control_intent.suppress_large_steer();
+  const bool enforce_hold_stop =
+      has_control_intent &&
+      (control_intent.tracking_mode() ==
+           apollo::planning::TRACKING_MODE_STANDSTILL_HOLD ||
+       control_intent.longitudinal_intent() ==
+           apollo::planning::LON_INTENT_HOLD_STOP ||
+       control_intent.longitudinal_intent() ==
+           apollo::planning::LON_INTENT_MRM_STOP);
+  const bool slow_terminal_approach =
+      has_control_intent && control_intent.near_terminal() &&
+      (control_intent.longitudinal_intent() ==
+           apollo::planning::LON_INTENT_APPROACH_STOP ||
+        control_intent.longitudinal_intent() ==
+            apollo::planning::LON_INTENT_PRECISE_STOP);
 
   // Check the steer command in reverse trajectory if the current steer target
   // is larger than previous target, free the acceleration command, wait for
   // the current steer target
-  if ((trajectory_message_->trajectory_type() ==
-       apollo::planning::ADCTrajectory::UNKNOWN) &&
+  if (((trajectory_message_->trajectory_type() ==
+        apollo::planning::ADCTrajectory::UNKNOWN) ||
+       suppress_large_steer) &&
       std::abs(cmd->steering_target() - chassis->steering_percentage()) >
           FLAGS_steer_cmd_interval) {
-    // TODO(zero): parking controller should handle this case
-    // desired_speed_cmd = 0.0;
+    if (suppress_large_steer) {
+      desired_speed_cmd =
+          desired_speed_cmd > 0.0
+              ? std::min(desired_speed_cmd,
+                         control_conf_->low_speed_approach_speed())
+              : std::max(desired_speed_cmd,
+                         -control_conf_->low_speed_approach_speed());
+    }
     ADEBUG << "Steer cmd interval is larger than " << FLAGS_steer_cmd_interval;
     station_pid_controller_.Reset_integral();
   }
 
   debug->set_is_full_stop(false);
-  GetPathRemain(debug);
+  if (!trajectoryless_pose_servo) {
+    GetPathRemain(debug);
+  }
 
   // Adjust desired_speed_cmd based on path_remain and stopping state
   // If already in full stop state from previous cycle, or just entered it
-  if (debug->path_remain() <=
+  if (enforce_hold_stop || terminal_longitudinal_adjustment.full_stop) {
+    desired_speed_cmd = 0.0;
+    station_pid_controller_.Reset_integral();
+    debug->set_is_full_stop(true);
+    ADEBUG << "Commanding full stop by planning control intent.";
+  } else if (!trajectoryless_pose_servo &&
+             debug->path_remain() <=
       control_conf_->max_path_remain_when_stopped()) {  // Very close to 0
     desired_speed_cmd = 0.0;
     station_pid_controller_.Reset_integral();
     debug->set_is_full_stop(true);
     ADEBUG << "Commanding full stop (0 m/s) at path_remain: "
            << debug->path_remain();
-  } else if (debug->path_remain() <=
+  } else if (slow_terminal_approach) {
+    desired_speed_cmd =
+        desired_speed_cmd > 0.0
+            ? std::min(desired_speed_cmd,
+                       control_conf_->low_speed_approach_speed())
+            : std::max(desired_speed_cmd,
+                       -control_conf_->low_speed_approach_speed());
+    ADEBUG << "Commanding planning-intent low speed approach ("
+           << control_conf_->low_speed_approach_speed() << " m/s).";
+  } else if (!trajectoryless_pose_servo &&
+             debug->path_remain() <=
              control_conf_->low_speed_approach_distance()) {  // Creep
     desired_speed_cmd =
         desired_speed_cmd > 0

@@ -22,6 +22,17 @@ cc_binary(
 )
 
 cc_library(
+    name = "planning_runtime_context",
+    hdrs = ["planning_runtime_context.h"],
+    copts = [
+        "-DMODULE_NAME=\\\"planning\\\"",
+    ],
+    deps = [
+        "//modules/common_msgs/planning_msgs:planning_command_cc_proto",
+    ],
+)
+
+cc_library(
     name = "planning_component_lib",
     srcs = ["planning_component.cc"],
     hdrs = ["planning_component.h"],
@@ -29,21 +40,47 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        ":navi_planning",
-        ":on_lane_planning",
+        ":planning_coordinator",
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/common_msgs/localization_msgs:localization_cc_proto",
         "//modules/common_msgs/planning_msgs:navigation_cc_proto",
         "//modules/common_msgs/perception_msgs:traffic_light_detection_cc_proto",
+        "//modules/common_msgs/planning_msgs:planning_command_cc_proto",
+        "//modules/common_msgs/planning_msgs:planning_runtime_status_cc_proto",
         "//modules/planning/common:history",
         "//modules/planning/common:message_process",
+        "//modules/planning/common:planning_semantics",
+        "//modules/planning/common:terminal_servo_guard",
+        "//modules/planning/environment:capability_extractor",
+        "//modules/planning/environment:environment_model_builder",
+        "//modules/planning/validation:validation_supervisor",
         "//modules/common_msgs/planning_msgs:planning_cc_proto",
         "//modules/common_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "//modules/common_msgs/storytelling_msgs:story_cc_proto",
     ],
     alwayslink = True,
+)
+
+cc_library(
+    name = "planning_coordinator",
+    srcs = ["planning_coordinator.cc"],
+    hdrs = ["planning_coordinator.h"],
+    copts = [
+        "-DMODULE_NAME=\\\"planning\\\"",
+    ],
+    deps = [
+        "//modules/planning/mode:mode_resolution",
+        ":navi_planning",
+        ":on_lane_planning",
+        ":planning_runtime_context",
+        "//modules/common/status",
+        "//modules/planning/common:dependency_injector",
+        "//modules/planning/common:local_view",
+        "//modules/planning/environment:capability_extractor",
+        "//modules/planning/proto:planning_config_cc_proto",
+    ],
 )
 
 
@@ -76,6 +113,8 @@ cc_library(
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:publishable_trajectory",
+        "//modules/planning/environment:capability_extractor",
+        ":planning_runtime_context",
         "//modules/planning/planner:planner_dispatcher",
         "//modules/planning/planner",
         "//modules/planning/proto:planning_config_cc_proto",
@@ -211,7 +250,9 @@ install_files(
         "//modules/planning/proto:learning_data_py_pb2",
         "//modules/common_msgs/control_msgs:pad_msg_py_pb2",
         "//modules/common_msgs/planning_msgs:planning_internal_py_pb2",
+        "//modules/common_msgs/planning_msgs:planning_command_py_pb2",
         "//modules/common_msgs/planning_msgs:planning_py_pb2",
+        "//modules/common_msgs/planning_msgs:planning_runtime_status_py_pb2",
         "//modules/planning/proto:planning_semantic_map_config_py_pb2",
         "//modules/planning/proto:planning_stats_py_pb2",
         "//modules/planning/proto:planning_status_py_pb2",

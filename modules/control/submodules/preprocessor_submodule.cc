@@ -39,6 +39,18 @@ using apollo::cyber::Clock;
 using apollo::localization::LocalizationEstimate;
 using apollo::planning::ADCTrajectory;
 
+namespace {
+
+bool AllowsTrajectorylessPoseServo(const ADCTrajectory& trajectory) {
+  return trajectory.trajectory_point().empty() &&
+         trajectory.has_control_intent() &&
+         trajectory.control_intent().tracking_mode() ==
+             apollo::planning::TRACKING_MODE_POSE_SERVO &&
+         trajectory.control_intent().has_target_stop_point();
+}
+
+}  // namespace
+
 PreprocessorSubmodule::PreprocessorSubmodule()
     : monitor_logger_buffer_(common::monitor::MonitorMessageItem::CONTROL) {}
 
@@ -214,6 +226,11 @@ Status PreprocessorSubmodule::CheckInput(LocalView *local_view) {
 
   if (!local_view->trajectory().estop().is_estop() &&
       local_view->trajectory().trajectory_point().empty()) {
+    if (AllowsTrajectorylessPoseServo(local_view->trajectory())) {
+      injector_->vehicle_state()->Update(local_view->localization(),
+                                         local_view->chassis());
+      return Status::OK();
+    }
     AWARN_EVERY(100) << "planning has no trajectory point. ";
     const std::string msg =
         absl::StrCat("planning has no trajectory point. planning_seq_num: ",

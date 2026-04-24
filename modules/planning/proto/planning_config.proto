@@ -296,6 +296,10 @@ message TopicConfig {
   optional string story_telling_topic = 10;
   optional string traffic_light_detection_topic = 11;
   optional string planning_learning_data_topic = 12;
+  optional string planning_command_topic = 13
+      [default = "/apollo/planning/command"];
+  optional string planning_runtime_status_topic = 14
+      [default = "/apollo/planning/runtime_status"];
 }
 
 message PlanningConfig {

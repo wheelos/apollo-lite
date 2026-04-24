@@ -17,10 +17,14 @@
 
 #include "modules/control/safety/safety_manager.h"
 
+#include <cstdlib>
+#include <cstdio>
+
 #include <cmath>
 
 #include <gtest/gtest.h>
 
+#include "cyber/cyber.h"
 #include "modules/control/proto/control_conf.pb.h"
 
 #include "modules/common/configs/vehicle_config_helper.h"
@@ -30,6 +34,14 @@ namespace control {
 
 class SafetyManagerTest : public ::testing::Test {
  protected:
+  static void SetUpTestSuite() {
+    CHECK_EQ(setenv("CYBER_PATH", "/home/wfh/01code/apollo-lite-01/cyber", 1),
+             0);
+    apollo::cyber::Init("safety_manager_test");
+  }
+
+  static void TearDownTestSuite() {}
+
   /**
    * @brief SetUp runs before each test case.
    * Uses Static Injection to mock VehicleConfig without file I/O.
@@ -249,3 +261,10 @@ TEST_F(SafetyManagerTest, DebouncerResetsOnValidFrame) {
 
 }  // namespace control
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  const int result = RUN_ALL_TESTS();
+  std::fflush(nullptr);
+  _Exit(result);
+}

@@ -57,6 +57,10 @@ namespace {
 
 using apollo::planning::ScenarioType;
 
+bool HasReferenceLineContext(const apollo::planning::Frame& frame) {
+  return !frame.reference_line_info().empty();
+}
+
 bool IsTrafficLightScenario(const ScenarioType& type) {
   return type == ScenarioType::TRAFFIC_LIGHT_PROTECTED ||
          type == ScenarioType::TRAFFIC_LIGHT_UNPROTECTED_LEFT_TURN ||
@@ -201,8 +205,6 @@ void ScenarioManager::RegisterDeciders() {
 
 void ScenarioManager::Update(const common::TrajectoryPoint& ego_point,
                              const Frame& frame) {
-  ACHECK(!frame.reference_line_info().empty());
-
   // 1. Observe (Build lookup map) - Pass const ref
   Observe(frame);
 
@@ -220,6 +222,9 @@ void ScenarioManager::Update(const common::TrajectoryPoint& ego_point,
 
 void ScenarioManager::Observe(const Frame& frame) {
   first_encountered_overlap_map_.clear();
+  if (!HasReferenceLineContext(frame)) {
+    return;
+  }
   const auto& reference_line_info = frame.reference_line_info().front();
   const auto& first_encountered_overlaps =
       reference_line_info.FirstEncounteredOverlaps();
@@ -262,6 +267,9 @@ void ScenarioManager::ScenarioDispatch(const Frame& frame) {
   DeciderContext context;
   context.frame = &frame;
   context.current_scenario = current_scenario_.get();
+  context.planning_command = frame.local_view().planning_command.get();
+  context.capability_set = frame.local_view().capability_set.get();
+  context.planning_state = frame.local_view().planning_state.get();
   context.first_encountered_overlaps = &first_encountered_overlap_map_;
 
   // 3. Bidding
@@ -411,9 +419,30 @@ void ScenarioManager::UpdatePlanningContext(const Frame& frame,
                                             const ScenarioType& type) {
   ScenarioType current_running_type = current_scenario_->Type();
 
-  UpdateContextBareIntersection(type, current_running_type);
   UpdateContextEmergencyStop(type);
   UpdateContextPullOver(frame, type);
+
+  if (!HasReferenceLineContext(frame)) {
+    injector_->planning_context()
+        ->mutable_planning_status()
+        ->mutable_bare_intersection()
+        ->Clear();
+    injector_->planning_context()
+        ->mutable_planning_status()
+        ->mutable_stop_sign()
+        ->Clear();
+    injector_->planning_context()
+        ->mutable_planning_status()
+        ->mutable_traffic_light()
+        ->Clear();
+    injector_->planning_context()
+        ->mutable_planning_status()
+        ->mutable_yield_sign()
+        ->Clear();
+    return;
+  }
+
+  UpdateContextBareIntersection(type, current_running_type);
   UpdateContextStopSign(type, current_running_type);
   UpdateContextTrafficLight(frame, type, current_running_type);
   UpdateContextYieldSign(type, current_running_type);
@@ -552,7 +581,8 @@ void ScenarioManager::UpdateContextPullOver(const Frame& frame,
 
   if (pull_over->has_position()) {
     const auto& routing = frame.local_view().routing;
-    if (routing->routing_request().waypoint_size() >= 2) {
+    if (routing != nullptr && routing->routing_request().waypoint_size() >= 2 &&
+        HasReferenceLineContext(frame)) {
       const auto& reference_line_info = frame.reference_line_info().front();
       const auto& reference_line = reference_line_info.reference_line();
 

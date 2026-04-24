@@ -25,11 +25,18 @@
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
 #include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
 #include "modules/planning/common/message_process.h"
+#include "modules/planning/common/planning_semantics.h"
+#include "modules/planning/common/terminal_servo_guard.h"
 #include "modules/planning/common/planning_gflags.h"
-#include "modules/planning/planning_base.h"
+#include "modules/planning/environment/capability_extractor.h"
+#include "modules/planning/environment/environment_model_builder.h"
+#include "modules/planning/planning_coordinator.h"
+#include "modules/planning/validation/validation_supervisor.h"
 #include "modules/planning/proto/learning_data.pb.h"
 #include "modules/common_msgs/planning_msgs/pad_msg.pb.h"
+#include "modules/common_msgs/planning_msgs/planning_command.pb.h"
 #include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "modules/common_msgs/planning_msgs/planning_runtime_status.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 #include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
 #include "modules/common_msgs/routing_msgs/routing.pb.h"
@@ -55,19 +62,26 @@ class PlanningComponent final
             const std::shared_ptr<localization::LocalizationEstimate>&
                 localization_estimate) override;
 
- private:
+  private:
   void CheckRerouting();
-  bool CheckInput();
+  bool CheckInput(ValidationResult* validation_result);
+  void PublishRuntimeStatus(const PlanningSemanticSummary& semantic_summary,
+                            const ValidationResult& validation_result,
+                            const std::string& reason = "");
 
  private:
   std::shared_ptr<cyber::Reader<perception::TrafficLightDetection>>
       traffic_light_reader_;
   std::shared_ptr<cyber::Reader<routing::RoutingResponse>> routing_reader_;
   std::shared_ptr<cyber::Reader<planning::PadMessage>> pad_msg_reader_;
+  std::shared_ptr<cyber::Reader<planning::PlanningCommand>>
+      planning_command_reader_;
   std::shared_ptr<cyber::Reader<relative_map::MapMsg>> relative_map_reader_;
   std::shared_ptr<cyber::Reader<storytelling::Stories>> story_telling_reader_;
 
   std::shared_ptr<cyber::Writer<ADCTrajectory>> planning_writer_;
+  std::shared_ptr<cyber::Writer<PlanningRuntimeStatus>>
+      planning_runtime_status_writer_;
   std::shared_ptr<cyber::Writer<routing::RoutingRequest>> rerouting_writer_;
   std::shared_ptr<cyber::Writer<PlanningLearningData>>
       planning_learning_data_writer_;
@@ -76,16 +90,21 @@ class PlanningComponent final
   perception::TrafficLightDetection traffic_light_;
   routing::RoutingResponse routing_;
   planning::PadMessage pad_msg_;
+  planning::PlanningCommand planning_command_;
   relative_map::MapMsg relative_map_;
   storytelling::Stories stories_;
 
   LocalView local_view_;
 
-  std::unique_ptr<PlanningBase> planning_base_;
+  std::unique_ptr<PlanningCoordinator> planning_coordinator_;
   std::shared_ptr<DependencyInjector> injector_;
 
   PlanningConfig config_;
   MessageProcess message_process_;
+  CapabilityExtractor capability_extractor_;
+  EnvironmentModelBuilder environment_model_builder_;
+  ValidationSupervisor validation_supervisor_;
+  TerminalServoSessionState terminal_servo_session_state_;
 };
 
 CYBER_REGISTER_COMPONENT(PlanningComponent)

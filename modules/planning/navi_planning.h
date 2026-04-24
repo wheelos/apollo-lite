@@ -53,6 +53,7 @@ class NaviPlanning : public PlanningBase {
    * @brief Planning algorithm name.
    */
   std::string Name() const override;
+  PlanningMode Mode() const override { return MODE_CORRIDOR; }
 
   /**
    * @brief module initialization function

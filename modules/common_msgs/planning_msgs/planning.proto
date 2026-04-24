@@ -10,6 +10,7 @@ import "modules/common_msgs/basic_msgs/pnc_point.proto";
 import "modules/common_msgs/map_msgs/map_id.proto";
 import "modules/common_msgs/planning_msgs/decision.proto";
 import "modules/common_msgs/planning_msgs/planning_internal.proto";
+import "modules/common_msgs/planning_msgs/planning_runtime_status.proto";
 
 message EStop {
   // is_estop == true when emergency stop is required
@@ -49,7 +50,49 @@ message RSSInfo {
   optional double acc_lat_right_range_maximum = 9;
 }
 
-// next id: 24
+enum TrackingMode {
+  TRACKING_MODE_UNKNOWN = 0;
+  TRACKING_MODE_TRAJECTORY = 1;
+  TRACKING_MODE_PATH_SPEED = 2;
+  TRACKING_MODE_POSE_SERVO = 3;
+  TRACKING_MODE_STANDSTILL_HOLD = 4;
+}
+
+enum LongitudinalIntent {
+  LON_INTENT_UNKNOWN = 0;
+  LON_INTENT_CRUISE = 1;
+  LON_INTENT_APPROACH_STOP = 2;
+  LON_INTENT_PRECISE_STOP = 3;
+  LON_INTENT_YIELD_STOP = 4;
+  LON_INTENT_HOLD_STOP = 5;
+  LON_INTENT_MRM_STOP = 6;
+}
+
+enum LateralIntent {
+  LAT_INTENT_UNKNOWN = 0;
+  LAT_INTENT_TRACK_PATH = 1;
+  LAT_INTENT_STABILIZE_NEAR_STOP = 2;
+  LAT_INTENT_ALIGN_GOAL_HEADING = 3;
+  LAT_INTENT_MINIMIZE_STEER = 4;
+}
+
+message ControlIntent {
+  optional TrackingMode tracking_mode = 1;
+  optional LongitudinalIntent longitudinal_intent = 2;
+  optional LateralIntent lateral_intent = 3;
+  optional StopClass stop_class = 4;
+  optional bool near_terminal = 5;
+  optional bool suppress_large_steer = 6;
+  optional bool require_full_stop = 7;
+  optional apollo.common.PointENU target_stop_point = 8;
+  optional double target_stop_heading = 9;
+  optional double terminal_position_tolerance_m = 10;
+  optional double terminal_heading_tolerance_rad = 11;
+  optional double max_terminal_speed_mps = 12;
+  optional double terminal_servo_timeout_sec = 13;
+}
+
+// next id: 25
 message ADCTrajectory {
   optional apollo.common.Header header = 1;
 
@@ -116,6 +159,8 @@ message ADCTrajectory {
 
   // complete dead end flag
   optional bool car_in_dead_end = 24;
+
+  optional ControlIntent control_intent = 25;
 
   // output related to RSS
   optional RSSInfo rss_info = 100;

@@ -58,6 +58,16 @@ ScenarioDecisionResult MissionDecider::CheckMissionIdle(
     const DeciderContext& context) {
   const auto& frame = context.frame;
 
+  if (context.planning_command != nullptr) {
+    const auto& command = *context.planning_command;
+    if (command.has_action() && command.action() != COMMAND_CANCEL &&
+        command.has_requested_scene() &&
+        command.requested_scene() != SCENE_UNKNOWN &&
+        command.requested_scene() != SCENE_LANE_CRUISE) {
+      return ScenarioDecisionResult();
+    }
+  }
+
   // Safe check for routing availability
   if (!frame->local_view().routing ||
       frame->local_view().routing->routing_request().waypoint().empty()) {

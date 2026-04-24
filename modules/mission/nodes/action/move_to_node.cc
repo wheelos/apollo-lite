@@ -22,6 +22,33 @@
 namespace apollo {
 namespace mission {
 
+namespace {
+
+std::string BuildMoveToCommandId() {
+  const std::string mission_id = MissionContext::Instance()->GetCurrentMissionId();
+  if (mission_id.empty()) {
+    return "move_to";
+  }
+  return mission_id + "/move_to";
+}
+
+bool IsMoveToCommandDone(
+    const std::shared_ptr<apollo::planning::PlanningRuntimeStatus>& status) {
+  if (status == nullptr || !status->has_command_id() ||
+      status->command_id() != BuildMoveToCommandId()) {
+    return false;
+  }
+  if (status->has_completion() &&
+      status->completion().has_command_completed() &&
+      status->completion().command_completed()) {
+    return true;
+  }
+  return status->has_state() &&
+         status->state() == apollo::planning::RUNTIME_COMPLETED;
+}
+
+}  // namespace
+
 BT::NodeStatus MoveToNode::onStart() {
   apollo::common::PointENU target_pose;
 
@@ -32,11 +59,25 @@ BT::NodeStatus MoveToNode::onStart() {
     throw BT::RuntimeError("missing required input [goal]");
   }
 
+  planning::PlanningCommand command;
+  command.set_command_id(BuildMoveToCommandId());
+  command.set_action(planning::COMMAND_ACTIVATE);
+  command.set_requested_scene(planning::SCENE_LANE_CRUISE);
+  command.set_preferred_mode(planning::MODE_LANE_GRAPH);
+  command.set_preemptible(true);
+  *command.mutable_goal()->mutable_goal_pose() = target_pose;
+  MissionContext::Instance()->SendPlanningCommand(command);
   MissionContext::Instance()->SendRoutingRequest(target_pose);
   return BT::NodeStatus::RUNNING;
 }
 
 BT::NodeStatus MoveToNode::onRunning() {
+  auto runtime_status = MissionContext::Instance()->GetPlanningRuntimeStatus();
+  if (IsMoveToCommandDone(runtime_status)) {
+    AINFO << "MoveToNode: Completed by planning runtime status";
+    return BT::NodeStatus::SUCCESS;
+  }
+
   auto loc = MissionContext::Instance()->GetLocalization();
   if (!loc) {
     return BT::NodeStatus::RUNNING;
@@ -62,7 +103,12 @@ BT::NodeStatus MoveToNode::onRunning() {
 
 void MoveToNode::onHalted() {
   AINFO << "MoveToNode: Halted (Task Cancelled)";
-  // Clear Routing command here
+  planning::PlanningCommand command;
+  command.set_command_id(BuildMoveToCommandId());
+  command.set_action(planning::COMMAND_CANCEL);
+  command.set_requested_scene(planning::SCENE_LANE_CRUISE);
+  command.set_preferred_mode(planning::MODE_LANE_GRAPH);
+  MissionContext::Instance()->SendPlanningCommand(command);
 }
 
 }  // namespace mission

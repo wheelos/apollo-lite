@@ -49,6 +49,7 @@ class ValetParkingScenario : public Scenario {
       : Scenario(config, context, injector) {}
 
   void Init() override;
+  void OnEnter(Frame* frame) override;
 
   std::unique_ptr<Stage> CreateStage(
       const ScenarioConfig::StageConfig& stage_config,

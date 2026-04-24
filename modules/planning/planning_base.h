@@ -63,6 +63,7 @@ class PlanningBase {
   virtual apollo::common::Status Init(const PlanningConfig& config);
 
   virtual std::string Name() const = 0;
+  virtual PlanningMode Mode() const = 0;
 
   virtual void RunOnce(const LocalView& local_view,
                        ADCTrajectory* const adc_trajectory) = 0;

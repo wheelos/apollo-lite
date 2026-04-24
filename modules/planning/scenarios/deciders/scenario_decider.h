@@ -22,6 +22,7 @@
 #include <unordered_map>
 
 #include "modules/common_msgs/planning_msgs/scenario_type.pb.h"
+#include "modules/common_msgs/planning_msgs/planning_command.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 
 #include "modules/common/status/status.h"
@@ -33,6 +34,10 @@
 
 namespace apollo {
 namespace planning {
+
+struct CapabilitySet;
+struct PlanningCoordinatorState;
+
 namespace scenario {
 
 using FirstEncounteredOverlapMap =
@@ -44,6 +49,9 @@ using FirstEncounteredOverlapMap =
 struct DeciderContext {
   const Frame* frame = nullptr;
   Scenario* current_scenario = nullptr;
+  const PlanningCommand* planning_command = nullptr;
+  const CapabilitySet* capability_set = nullptr;
+  const PlanningCoordinatorState* planning_state = nullptr;
   const std::unordered_map<ReferenceLineInfo::OverlapType, hdmap::PathOverlap,
                            std::hash<int>>* first_encountered_overlaps =
       nullptr;

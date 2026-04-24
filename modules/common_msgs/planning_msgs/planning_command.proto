@@ -1,0 +1,83 @@
+syntax = "proto2";
+
+package apollo.planning;
+
+import "modules/common_msgs/basic_msgs/geometry.proto";
+import "modules/common_msgs/basic_msgs/header.proto";
+import "modules/common_msgs/map_msgs/map_geometry.proto";
+import "modules/common_msgs/routing_msgs/routing.proto";
+
+enum CommandAction {
+  COMMAND_UNKNOWN = 0;
+  COMMAND_ACTIVATE = 1;
+  COMMAND_UPDATE = 2;
+  COMMAND_CANCEL = 3;
+}
+
+enum PlanningSceneType {
+  SCENE_UNKNOWN = 0;
+  SCENE_LANE_CRUISE = 1;
+  SCENE_PARK_IN = 2;
+  SCENE_PULL_OUT = 3;
+  SCENE_PULL_OVER = 4;
+  SCENE_DOCK = 5;
+  SCENE_SUMMON = 6;
+  SCENE_EMERGENCY_STOP = 7;
+  SCENE_HOLD = 8;
+}
+
+enum PlanningMode {
+  MODE_UNKNOWN = 0;
+  MODE_LANE_GRAPH = 1;
+  MODE_CORRIDOR = 2;
+  MODE_OPEN_SPACE = 3;
+  MODE_FREE_SPACE = 4;
+  MODE_SAFETY_HOLD = 5;
+}
+
+message GoalSpec {
+  oneof target {
+    apollo.common.PointENU goal_pose = 1;
+    apollo.routing.ParkingInfo parking_goal = 2;
+    apollo.hdmap.Polygon target_polygon = 3;
+    string semantic_target_id = 4;
+  }
+
+  optional double goal_heading = 10;
+}
+
+message RouteHint {
+  repeated apollo.routing.LaneWaypoint waypoint = 1;
+  repeated apollo.routing.LaneSegment preferred_lane_segment = 2;
+}
+
+message CompletionCondition {
+  optional double position_tolerance_m = 1;
+  optional double heading_tolerance_rad = 2;
+  optional bool require_full_stop = 3;
+  optional double timeout_sec = 4;
+}
+
+message FallbackPolicy {
+  optional bool allow_mode_degradation = 1;
+  repeated PlanningMode allowed_degraded_modes = 2;
+  optional bool allow_hold = 3;
+  optional bool allow_mrm = 4;
+}
+
+message PlanningCommand {
+  optional apollo.common.Header header = 1;
+  optional string mission_id = 2;
+  optional string command_id = 3;
+  optional string replaces_command_id = 4;
+  optional CommandAction action = 5;
+  optional PlanningSceneType requested_scene = 6;
+  optional PlanningMode preferred_mode = 7;
+  optional uint32 priority = 8;
+  optional bool preemptible = 9;
+  optional GoalSpec goal = 10;
+  optional RouteHint route_hint = 11;
+  optional CompletionCondition completion = 12;
+  optional FallbackPolicy fallback = 13;
+  repeated string tags = 14;
+}

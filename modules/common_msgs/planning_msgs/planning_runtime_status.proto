@@ -1,0 +1,96 @@
+syntax = "proto2";
+
+package apollo.planning;
+
+import "modules/common_msgs/basic_msgs/header.proto";
+import "modules/common_msgs/planning_msgs/planning_command.proto";
+
+enum RuntimeState {
+  RUNTIME_UNKNOWN = 0;
+  RUNTIME_IDLE = 1;
+  RUNTIME_ACCEPTED = 2;
+  RUNTIME_RUNNING = 3;
+  RUNTIME_DEGRADED = 4;
+  RUNTIME_HOLDING = 5;
+  RUNTIME_COMPLETED = 6;
+  RUNTIME_REJECTED = 7;
+  RUNTIME_CANCELLED = 8;
+  RUNTIME_FAILED = 9;
+}
+
+message ModeTransition {
+  optional PlanningMode from_mode = 1;
+  optional PlanningMode to_mode = 2;
+  optional string trigger = 3;
+  optional bool approved = 4;
+}
+
+message CapabilitySummary {
+  optional bool has_lane_graph = 1;
+  optional bool has_route_semantics = 2;
+  optional bool has_local_corridor = 3;
+  optional bool has_drivable_area = 4;
+  optional bool has_parking_roi = 5;
+  optional bool has_goal_pose = 6;
+  optional bool has_stop_target = 7;
+  optional bool has_regulatory_context = 8;
+  optional double topology_confidence = 9;
+  optional double drivable_area_confidence = 10;
+  optional double target_geometry_confidence = 11;
+}
+
+message ValidationSummary {
+  optional bool trajectory_valid = 1;
+  optional bool command_admissible = 2;
+  optional bool fallback_active = 3;
+  optional string validation_reason = 4;
+}
+
+enum ExecutionPhase {
+  EXECUTION_UNKNOWN = 0;
+  EXECUTION_ENROUTE = 1;
+  EXECUTION_APPROACH = 2;
+  EXECUTION_TERMINAL_ALIGN = 3;
+  EXECUTION_STOPPING = 4;
+  EXECUTION_HOLDING = 5;
+  EXECUTION_COMPLETED = 6;
+}
+
+enum StopClass {
+  STOP_CLASS_UNKNOWN = 0;
+  STOP_CLASS_NONE = 1;
+  STOP_CLASS_TERMINAL_GOAL = 2;
+  STOP_CLASS_REGULATORY = 3;
+  STOP_CLASS_DYNAMIC_OBSTACLE = 4;
+  STOP_CLASS_STATIC_OBSTACLE = 5;
+  STOP_CLASS_PRE_MANEUVER = 6;
+  STOP_CLASS_SAFETY_HOLD = 7;
+  STOP_CLASS_MRM = 8;
+}
+
+message CompletionSummary {
+  optional bool command_completed = 1;
+  optional bool near_terminal = 2;
+  optional bool within_position_tolerance = 3;
+  optional bool within_heading_tolerance = 4;
+  optional bool full_stop_reached = 5;
+  optional string completion_reason = 6;
+}
+
+message PlanningRuntimeStatus {
+  optional apollo.common.Header header = 1;
+  optional string mission_id = 2;
+  optional string command_id = 3;
+  optional RuntimeState state = 4;
+  optional PlanningSceneType active_scene = 5;
+  optional PlanningMode active_mode = 6;
+  optional PlanningMode requested_mode = 7;
+  optional ModeTransition transition = 8;
+  optional CapabilitySummary capability = 9;
+  optional ValidationSummary validation = 10;
+  repeated string blockers = 11;
+  optional string reason = 12;
+  optional ExecutionPhase execution_phase = 13;
+  optional StopClass stop_class = 14;
+  optional CompletionSummary completion = 15;
+}

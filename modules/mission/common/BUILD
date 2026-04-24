@@ -10,9 +10,12 @@ cc_library(
     hdrs = ["mission_context.h"],
     deps = [
         "//cyber",
+        "//modules/common/util:util_tool",
         "//modules/common_msgs/basic_msgs:geometry_cc_proto",
         "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common_msgs/localization_msgs:localization_cc_proto",
+        "//modules/common_msgs/planning_msgs:planning_command_cc_proto",
+        "//modules/common_msgs/planning_msgs:planning_runtime_status_cc_proto",
         "//modules/common_msgs/routing_msgs:routing_cc_proto"
     ],
 )

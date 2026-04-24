@@ -28,6 +28,19 @@ namespace planning {
 namespace scenario {
 namespace valet_parking {
 
+namespace {
+
+bool ShouldEnterParkingStageDirectly(const Frame& frame) {
+  return frame.local_view().planning_command != nullptr &&
+         frame.local_view().planning_command->has_action() &&
+         frame.local_view().planning_command->action() != COMMAND_CANCEL &&
+         frame.local_view().planning_command->has_requested_scene() &&
+         frame.local_view().planning_command->requested_scene() ==
+             SCENE_PARK_IN;
+}
+
+}  // namespace
+
 using apollo::common::VehicleState;
 using apollo::common::math::Vec2d;
 using apollo::hdmap::ParkingSpaceInfoConstPtr;
@@ -54,6 +67,22 @@ void ValetParkingScenario::Init() {
 
   hdmap_ = hdmap::HDMapUtil::BaseMapPtr();
   CHECK_NOTNULL(hdmap_);
+}
+
+void ValetParkingScenario::OnEnter(Frame* frame) {
+  Scenario::OnEnter(frame);
+
+  if (frame == nullptr || !ShouldEnterParkingStageDirectly(*frame)) {
+    return;
+  }
+
+  const auto direct_stage = StageType::VALET_PARKING_PARKING;
+  if (stage_config_map_.find(direct_stage) == stage_config_map_.end()) {
+    AERROR << "Direct parking stage config not found for scenario " << Name();
+    return;
+  }
+
+  current_stage_ = CreateStage(*stage_config_map_[direct_stage], injector_);
 }
 
 void ValetParkingScenario::RegisterStages() {

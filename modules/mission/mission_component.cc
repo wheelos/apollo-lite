@@ -24,6 +24,7 @@
 #include "modules/mission/common/mission_context.h"
 #include "modules/mission/nodes/action/charge_node.h"
 #include "modules/mission/nodes/action/move_to_node.h"
+#include "modules/mission/nodes/action/park_in_node.h"
 #include "modules/mission/nodes/action/station_wait_node.h"
 #include "modules/mission/nodes/condition/check_battery.h"
 
@@ -32,6 +33,8 @@ namespace mission {
 
 using apollo::canbus::Chassis;
 using apollo::localization::LocalizationEstimate;
+using apollo::planning::PlanningCommand;
+using apollo::planning::PlanningRuntimeStatus;
 using apollo::routing::RoutingRequest;
 
 bool MissionComponent::Init() {
@@ -65,6 +68,7 @@ bool MissionComponent::RegisterBehaviorNodes() {
   // 1. Register C++ node type
   try {
     factory_.registerNodeType<MoveToNode>("MoveTo");
+    factory_.registerNodeType<ParkInNode>("ParkIn");
     factory_.registerNodeType<StationWaitNode>("StationWait");
     factory_.registerNodeType<CheckBatteryNode>("CheckBattery");
     factory_.registerNodeType<ChargeNode>("Charge");
@@ -128,6 +132,16 @@ bool MissionComponent::InitCyberCommunication() {
   auto routing_writer =
       node_->CreateWriter<RoutingRequest>(FLAGS_routing_request_topic);
   MissionContext::Instance()->SetRoutingWriter(routing_writer);
+
+  auto planning_command_writer =
+      node_->CreateWriter<PlanningCommand>(mission_config_.planning_command_topic());
+  MissionContext::Instance()->SetPlanningCommandWriter(planning_command_writer);
+
+  planning_runtime_status_reader_ = node_->CreateReader<PlanningRuntimeStatus>(
+      mission_config_.planning_runtime_status_topic(),
+      [](const std::shared_ptr<PlanningRuntimeStatus>& msg) {
+        MissionContext::Instance()->UpdatePlanningRuntimeStatus(msg);
+      });
 
   return true;
 }
