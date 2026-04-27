@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
 
@@ -41,10 +41,27 @@ cc_library(
 )
 
 cc_library(
+    name = "message_size_filter",
+    srcs = ["message_size_filter.cc"],
+    hdrs = ["message_size_filter.h"],
+)
+
+cc_test(
+    name = "message_size_filter_test",
+    size = "small",
+    srcs = ["message_size_filter_test.cc"],
+    deps = [
+        ":message_size_filter",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "recorder",
     srcs = ["recorder.cc"],
     hdrs = ["recorder.h"],
     deps = [
+        ":message_size_filter",
         "//cyber",
         "//cyber/common:log",
         "//cyber/proto:record_cc_proto",

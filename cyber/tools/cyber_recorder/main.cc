@@ -35,17 +35,49 @@ using apollo::cyber::common::StringToUnixSeconds;
 using apollo::cyber::common::UnixSecondsToString;
 using apollo::cyber::record::HeaderBuilder;
 using apollo::cyber::record::Info;
+using apollo::cyber::record::MessageSizeFilterConfig;
+using apollo::cyber::record::ParseMessageSizeBytes;
+using apollo::cyber::record::ParseMessageSizeFilterPolicy;
 using apollo::cyber::record::Player;
 using apollo::cyber::record::PlayParam;
 using apollo::cyber::record::Recorder;
 using apollo::cyber::record::Recoverer;
 using apollo::cyber::record::Spliter;
+using apollo::cyber::record::ValidateMessageSizeFilterConfig;
 
 const char INFO_OPTIONS[] = "h";
-const char RECORD_OPTIONS[] = "o:ac:k:i:m:h";
+const char RECORD_OPTIONS[] = "o:ac:k:i:m:f::h";
 const char PLAY_OPTIONS[] = "f:ac:k:lr:b:e:s:d:p:h";
 const char SPLIT_OPTIONS[] = "f:o:c:k:b:e:h";
 const char RECOVER_OPTIONS[] = "f:o:h";
+constexpr char kDefaultRecordFilterPolicy[] = "throttle=256@2,drop=1m";
+
+enum LongOnlyOptions {
+  kDropLargeMessageSizeOption = 256,
+  kThrottleLargeMessageSizeOption,
+  kThrottleLargeMessageRateOption,
+};
+
+bool ParsePositiveDoubleArg(const std::string& option_name, const char* arg,
+                            double* output) {
+  try {
+    size_t parsed = 0;
+    const std::string value(arg);
+    const auto parsed_value = std::stod(value, &parsed);
+    if (parsed != value.size() || parsed_value <= 0.0) {
+      throw std::invalid_argument("invalid value");
+    }
+    *output = parsed_value;
+    return true;
+  } catch (const std::invalid_argument&) {
+    std::cout << "Invalid argument: " << option_name << " "
+              << std::string(arg) << std::endl;
+  } catch (const std::out_of_range&) {
+    std::cout << "Argument is out of range: " << option_name << " "
+              << std::string(arg) << std::endl;
+  }
+  return false;
+}
 
 void DisplayUsage(const std::string& binary);
 void DisplayUsage(const std::string& binary, const std::string& command);
@@ -76,6 +108,27 @@ void DisplayUsage(const std::string& binary, const std::string& command) {
             << std::endl;
   if (command == "record") {
     DisplayUsage(binary, command, RECORD_OPTIONS);
+    std::cout << "\t\t\t\t\t-f uses default policy: "
+              << kDefaultRecordFilterPolicy << std::endl;
+    std::cout << "\t\t\t\t\tpolicy sizes default to KiB when unit is omitted"
+              << std::endl;
+    std::cout << "\t\t\t\texample: -f throttle=256@2,drop=1m" << std::endl;
+    std::cout << "\tAdvanced filter options:" << std::endl;
+    std::cout << "\t--drop <size>\t\t\tdrop messages at or above the size "
+              << "threshold" << std::endl;
+    std::cout << "\t--throttle <size>\t\trate limit messages at or above the "
+              << "size threshold" << std::endl;
+    std::cout << "\t--hz <rate>\t\t\trecord throttled large messages at the "
+              << "given max rate" << std::endl;
+    std::cout << "\tCompatibility aliases:" << std::endl;
+    std::cout << "\t--drop-large-message-size <bytes>\t"
+              << "drop messages at or above the size threshold" << std::endl;
+    std::cout << "\t--throttle-large-message-size <bytes>\t"
+              << "rate limit messages at or above the size threshold"
+              << std::endl;
+    std::cout << "\t--throttle-large-message-rate <hz>\t"
+              << "record throttled large messages at the given max rate"
+              << std::endl;
   } else if (command == "play") {
     DisplayUsage(binary, command, PLAY_OPTIONS);
   } else if (command == "split") {
@@ -93,7 +146,13 @@ void DisplayUsage(const std::string& binary, const std::string& command,
   for (char option : options) {
     switch (option) {
       case 'f':
-        std::cout << "\t-f, --file <file>\t\t\tinput record file" << std::endl;
+        if (command == "record") {
+          std::cout << "\t-f, --filter [policy]\t\tdefault filter or custom "
+                    << "policy" << std::endl;
+        } else {
+          std::cout << "\t-f, --file <file>\t\t\tinput record file"
+                    << std::endl;
+        }
         break;
       case 'o':
         std::cout << "\t-o, --output <file>\t\t\toutput record file"
@@ -170,12 +229,32 @@ int main(int argc, char** argv) {
   }
 
   int long_index = 0;
-  const std::string short_opts = "f:c:k:o:alr:b:e:s:d:p:i:m:h";
-  static const struct option long_opts[] = {
+  static const struct option kInfoLongOpts[] = {
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  static const struct option kRecordLongOpts[] = {
+      {"output", required_argument, nullptr, 'o'},
+      {"all", no_argument, nullptr, 'a'},
+      {"white-channel", required_argument, nullptr, 'c'},
+      {"black-channel", required_argument, nullptr, 'k'},
+      {"segment-interval", required_argument, nullptr, 'i'},
+      {"segment-size", required_argument, nullptr, 'm'},
+      {"filter", optional_argument, nullptr, 'f'},
+      {"drop", required_argument, nullptr, kDropLargeMessageSizeOption},
+      {"throttle", required_argument, nullptr, kThrottleLargeMessageSizeOption},
+      {"hz", required_argument, nullptr, kThrottleLargeMessageRateOption},
+      {"drop-large-message-size", required_argument, nullptr,
+       kDropLargeMessageSizeOption},
+      {"throttle-large-message-size", required_argument, nullptr,
+       kThrottleLargeMessageSizeOption},
+      {"throttle-large-message-rate", required_argument, nullptr,
+       kThrottleLargeMessageRateOption},
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  static const struct option kPlayLongOpts[] = {
       {"files", required_argument, nullptr, 'f'},
       {"white-channel", required_argument, nullptr, 'c'},
       {"black-channel", required_argument, nullptr, 'k'},
-      {"output", required_argument, nullptr, 'o'},
       {"all", no_argument, nullptr, 'a'},
       {"loop", no_argument, nullptr, 'l'},
       {"rate", required_argument, nullptr, 'r'},
@@ -184,9 +263,40 @@ int main(int argc, char** argv) {
       {"start", required_argument, nullptr, 's'},
       {"delay", required_argument, nullptr, 'd'},
       {"preload", required_argument, nullptr, 'p'},
-      {"segment-interval", required_argument, nullptr, 'i'},
-      {"segment-size", required_argument, nullptr, 'm'},
-      {"help", no_argument, nullptr, 'h'}};
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  static const struct option kSplitLongOpts[] = {
+      {"files", required_argument, nullptr, 'f'},
+      {"output", required_argument, nullptr, 'o'},
+      {"white-channel", required_argument, nullptr, 'c'},
+      {"black-channel", required_argument, nullptr, 'k'},
+      {"begin", required_argument, nullptr, 'b'},
+      {"end", required_argument, nullptr, 'e'},
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  static const struct option kRecoverLongOpts[] = {
+      {"files", required_argument, nullptr, 'f'},
+      {"output", required_argument, nullptr, 'o'},
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  const char* short_opts = "";
+  const struct option* long_opts = kInfoLongOpts;
+  if (command == "record") {
+    short_opts = RECORD_OPTIONS;
+    long_opts = kRecordLongOpts;
+  } else if (command == "play") {
+    short_opts = PLAY_OPTIONS;
+    long_opts = kPlayLongOpts;
+  } else if (command == "split") {
+    short_opts = SPLIT_OPTIONS;
+    long_opts = kSplitLongOpts;
+  } else if (command == "recover") {
+    short_opts = RECOVER_OPTIONS;
+    long_opts = kRecoverLongOpts;
+  } else if (command == "info") {
+    short_opts = INFO_OPTIONS;
+    long_opts = kInfoLongOpts;
+  }
 
   std::vector<std::string> opt_file_vec;
   std::vector<std::string> opt_output_vec;
@@ -201,15 +311,44 @@ int main(int argc, char** argv) {
   uint64_t opt_delay = 0;
   uint32_t opt_preload = 3;
   auto opt_header = HeaderBuilder::GetHeader();
+  MessageSizeFilterConfig opt_message_size_filter_config;
+  bool opt_has_filter_policy = false;
+  bool opt_has_explicit_filter_flags = false;
+  optind = 2;
 
   do {
-    int opt =
-        getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
+    int opt = getopt_long(argc, argv, short_opts, long_opts, &long_index);
     if (opt == -1) {
       break;
     }
     switch (opt) {
       case 'f':
+        if (command == "record") {
+          if (opt_has_filter_policy) {
+            std::cout << "Only one -f/--filter policy may be provided."
+                      << std::endl;
+            return -1;
+          }
+          std::string filter_policy;
+          if (optarg != nullptr) {
+            filter_policy = optarg;
+          } else if (optind < argc && argv[optind][0] != '-') {
+            filter_policy = argv[optind];
+            ++optind;
+          } else {
+            filter_policy = kDefaultRecordFilterPolicy;
+          }
+
+          std::string filter_error;
+          if (!ParseMessageSizeFilterPolicy(filter_policy,
+                                            &opt_message_size_filter_config,
+                                            &filter_error)) {
+            std::cout << filter_error << std::endl;
+            return -1;
+          }
+          opt_has_filter_policy = true;
+          break;
+        }
         opt_file_vec.emplace_back(std::string(optarg));
         for (int i = optind; i < argc; i++) {
           if (*argv[i] != '-') {
@@ -349,6 +488,40 @@ int main(int argc, char** argv) {
       case 'h':
         DisplayUsage(binary, command);
         return 0;
+      case kDropLargeMessageSizeOption:
+        opt_has_explicit_filter_flags = true;
+        {
+          std::string filter_error;
+          if (!ParseMessageSizeBytes(
+                  optarg,
+                  &opt_message_size_filter_config.drop_message_size_bytes,
+                  &filter_error)) {
+            std::cout << filter_error << std::endl;
+            return -1;
+          }
+        }
+        break;
+      case kThrottleLargeMessageSizeOption:
+        opt_has_explicit_filter_flags = true;
+        {
+          std::string filter_error;
+          if (!ParseMessageSizeBytes(
+                  optarg,
+                  &opt_message_size_filter_config.throttle_message_size_bytes,
+                  &filter_error)) {
+            std::cout << filter_error << std::endl;
+            return -1;
+          }
+        }
+        break;
+      case kThrottleLargeMessageRateOption:
+        opt_has_explicit_filter_flags = true;
+        if (!ParsePositiveDoubleArg("--hz", optarg,
+                                    &opt_message_size_filter_config
+                                         .throttle_rate_hz)) {
+          return -1;
+        }
+        break;
       default:
         break;
     }
@@ -422,10 +595,22 @@ int main(int argc, char** argv) {
           UnixSecondsToString(time(nullptr), "%Y%m%d%H%M%S") + ".record";
       opt_output_vec.push_back(default_output_file);
     }
+    if (opt_has_filter_policy && opt_has_explicit_filter_flags) {
+      std::cout << "Do not mix -f/--filter with explicit size-filter flags. "
+                << "Choose one configuration style." << std::endl;
+      return -1;
+    }
+    std::string message_size_filter_error;
+    if (!ValidateMessageSizeFilterConfig(opt_message_size_filter_config,
+                                         &message_size_filter_error)) {
+      std::cout << message_size_filter_error << std::endl;
+      return -1;
+    }
     ::apollo::cyber::Init(argv[0]);
     auto recorder = std::make_shared<Recorder>(opt_output_vec[0], opt_all,
                                                opt_white_channels,
-                                               opt_black_channels, opt_header);
+                                               opt_black_channels, opt_header,
+                                               opt_message_size_filter_config);
     bool record_result = recorder->Start();
     if (record_result) {
       while (!::apollo::cyber::IsShutdown()) {
