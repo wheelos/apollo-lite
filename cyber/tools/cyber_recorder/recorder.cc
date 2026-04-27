@@ -16,6 +16,8 @@
 
 #include "cyber/tools/cyber_recorder/recorder.h"
 
+#include <algorithm>
+
 #include "cyber/record/header_builder.h"
 
 namespace apollo {
@@ -42,6 +44,18 @@ Recorder::Recorder(const std::string& output, bool all_channels,
       black_channels_(black_channels),
       header_(header) {}
 
+Recorder::Recorder(const std::string& output, bool all_channels,
+                   const std::vector<std::string>& white_channels,
+                   const std::vector<std::string>& black_channels,
+                   const proto::Header& header,
+                   const MessageSizeFilterConfig& message_size_filter_config)
+    : output_(output),
+      all_channels_(all_channels),
+      white_channels_(white_channels),
+      black_channels_(black_channels),
+      header_(header),
+      message_size_filter_(message_size_filter_config) {}
+
 Recorder::~Recorder() { Stop(); }
 
 bool Recorder::Start() {
@@ -59,6 +73,12 @@ bool Recorder::Start() {
     AERROR << "Datafile open file error.";
     return false;
   }
+  {
+    std::lock_guard<std::mutex> lock(channel_reader_mutex_);
+    channel_reader_map_.clear();
+    channel_metadata_map_.clear();
+    written_channels_.clear();
+  }
   std::string node_name = "cyber_recorder_record_" + std::to_string(getpid());
   node_ = ::apollo::cyber::CreateNode(node_name);
   if (node_ == nullptr) {
@@ -69,9 +89,11 @@ bool Recorder::Start() {
     AERROR << " _init_readers error.";
     return false;
   }
-  message_count_ = 0;
-  message_time_ = 0;
-  is_started_ = true;
+  message_count_.store(0);
+  message_time_.store(0);
+  dropped_message_count_.store(0);
+  throttled_message_count_.store(0);
+  is_started_.store(true);
   display_thread_ =
       std::make_shared<std::thread>([this]() { this->ShowProgress(); });
   if (display_thread_ == nullptr) {
@@ -82,22 +104,25 @@ bool Recorder::Start() {
 }
 
 bool Recorder::Stop() {
-  if (!is_started_ || is_stopping_) {
+  if (!is_started_.load() || is_stopping_.exchange(true)) {
     return false;
   }
-  is_stopping_ = true;
   if (!FreeReadersImpl()) {
     AERROR << " _free_readers error.";
     return false;
   }
   writer_->Close();
   node_.reset();
+  {
+    std::lock_guard<std::mutex> lock(channel_reader_mutex_);
+    channel_reader_map_.clear();
+  }
   if (display_thread_ && display_thread_->joinable()) {
     display_thread_->join();
     display_thread_ = nullptr;
   }
-  is_started_ = false;
-  is_stopping_ = false;
+  is_started_.store(false);
+  is_stopping_.store(false);
   return true;
 }
 
@@ -139,14 +164,17 @@ void Recorder::FindNewChannel(const RoleAttributes& role_attr) {
     return;
   }
 
-  if (channel_reader_map_.find(role_attr.channel_name()) ==
-      channel_reader_map_.end()) {
-    if (!writer_->WriteChannel(role_attr.channel_name(),
-                               role_attr.message_type(),
-                               role_attr.proto_desc())) {
-      AERROR << "write channel fail, channel:" << role_attr.channel_name();
+  {
+    std::lock_guard<std::mutex> lock(channel_reader_mutex_);
+    if (channel_reader_map_.find(role_attr.channel_name()) !=
+        channel_reader_map_.end()) {
+      return;
     }
-    InitReaderImpl(role_attr.channel_name(), role_attr.message_type());
+    channel_metadata_map_[role_attr.channel_name()] = {
+        role_attr.message_type(), role_attr.proto_desc()};
+  }
+  if (!InitReaderImpl(role_attr.channel_name(), role_attr.message_type())) {
+    AERROR << "init reader fail, channel:" << role_attr.channel_name();
   }
 }
 
@@ -202,7 +230,10 @@ bool Recorder::InitReaderImpl(const std::string& channel_name,
       AERROR << "Create reader failed.";
       return false;
     }
-    channel_reader_map_[channel_name] = reader;
+    {
+      std::lock_guard<std::mutex> lock(channel_reader_mutex_);
+      channel_reader_map_[channel_name] = reader;
+    }
     return true;
   } catch (const std::bad_weak_ptr& e) {
     AERROR << e.what();
@@ -212,7 +243,7 @@ bool Recorder::InitReaderImpl(const std::string& channel_name,
 
 void Recorder::ReaderCallback(const std::shared_ptr<RawMessage>& message,
                               const std::string& channel_name) {
-  if (!is_started_ || is_stopping_) {
+  if (!is_started_.load() || is_stopping_.load()) {
     AERROR << "record procedure is not started or stopping.";
     return;
   }
@@ -222,25 +253,74 @@ void Recorder::ReaderCallback(const std::shared_ptr<RawMessage>& message,
     return;
   }
 
-  message_time_ = Time::Now().ToNanosecond();
-  if (!writer_->WriteMessage(channel_name, message, message_time_)) {
+  const uint64_t record_time_ns = Time::Now().ToNanosecond();
+  message_time_.store(record_time_ns);
+  const auto filter_decision = message_size_filter_.Evaluate(
+      channel_name, message->message.size(), record_time_ns);
+  if (!filter_decision.should_record) {
+    if (filter_decision.dropped_by_size) {
+      dropped_message_count_.fetch_add(1);
+    }
+    if (filter_decision.throttled_by_rate) {
+      throttled_message_count_.fetch_add(1);
+    }
+    return;
+  }
+
+  if (!EnsureChannelWritten(channel_name)) {
+    AERROR << "write channel metadata fail, channel: " << channel_name;
+    return;
+  }
+  if (!writer_->WriteMessage(channel_name, message, record_time_ns)) {
     AERROR << "write data fail, channel: " << channel_name;
     return;
   }
 
-  message_count_++;
+  message_count_.fetch_add(1);
 }
 
 void Recorder::ShowProgress() {
-  while (is_started_ && !is_stopping_) {
+  while (is_started_.load() && !is_stopping_.load()) {
     std::cout << "\r[RUNNING]  Record Time: " << std::setprecision(3)
-              << message_time_ / 1000000000
-              << "    Progress: " << channel_reader_map_.size() << " channels, "
-              << message_count_ << " messages";
+              << message_time_.load() / 1000000000
+              << "    Progress: " << ChannelCount() << " channels, "
+              << message_count_.load() << " messages, "
+              << dropped_message_count_.load() << " dropped, "
+              << throttled_message_count_.load() << " throttled";
     std::cout.flush();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   std::cout << std::endl;
+}
+
+size_t Recorder::ChannelCount() const {
+  std::lock_guard<std::mutex> lock(channel_reader_mutex_);
+  return channel_reader_map_.size();
+}
+
+bool Recorder::EnsureChannelWritten(const std::string& channel_name) {
+  ChannelMetadata metadata;
+  {
+    std::lock_guard<std::mutex> lock(channel_reader_mutex_);
+    if (written_channels_.find(channel_name) != written_channels_.end()) {
+      return true;
+    }
+    const auto metadata_it = channel_metadata_map_.find(channel_name);
+    if (metadata_it == channel_metadata_map_.end()) {
+      AERROR << "channel metadata not found, channel: " << channel_name;
+      return false;
+    }
+    metadata = metadata_it->second;
+  }
+
+  if (!writer_->WriteChannel(channel_name, metadata.message_type,
+                             metadata.proto_desc)) {
+    return false;
+  }
+
+  std::lock_guard<std::mutex> lock(channel_reader_mutex_);
+  written_channels_.insert(channel_name);
+  return true;
 }
 
 }  // namespace record
