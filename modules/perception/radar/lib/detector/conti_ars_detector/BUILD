@@ -17,6 +17,9 @@ cc_library(
     name = "conti_ars_detector",
     srcs = ["conti_ars_detector.cc"],
     hdrs = ["conti_ars_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/common/geometry:roi_filter",

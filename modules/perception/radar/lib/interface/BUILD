@@ -18,6 +18,9 @@ cc_library(
     name = "base_matcher",
     srcs = ["base_matcher.cc"],
     hdrs = ["base_matcher.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/lib/config_manager",
@@ -33,11 +36,17 @@ cc_library(
 cc_library(
     name = "base_filter",
     hdrs = ["base_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "base_detector",
     hdrs = ["base_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common_msgs/sensor_msgs:conti_radar_cc_proto",
     ],
@@ -46,6 +55,9 @@ cc_library(
 cc_library(
     name = "base_preprocessor",
     hdrs = ["base_preprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common_msgs/sensor_msgs:conti_radar_cc_proto",
     ],
@@ -54,16 +66,25 @@ cc_library(
 cc_library(
     name = "base_radar_obstacle_perception",
     hdrs = ["base_radar_obstacle_perception.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "base_roi_filter",
     hdrs = ["base_roi_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "base_tracker",
     hdrs = ["base_tracker.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cpplint()

@@ -11,6 +11,9 @@ cc_library(
         "transform_wrapper.cc",
     ],
     hdrs = ["transform_wrapper.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/common/sensor_manager",

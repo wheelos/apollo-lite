@@ -46,6 +46,7 @@ install(
         "//modules/dreamview/backend/hmi:install",
         "//modules/dreamview/backend/map:install",
         "//modules/dreamview/backend:install",
+        "//modules/dreamview/backend/sim_control_manager:install",
         "//modules/dreamview/backend/sim_control_manager/common:install"
     ],
 )

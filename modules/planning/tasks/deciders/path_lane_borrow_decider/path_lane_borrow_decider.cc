@@ -32,6 +32,60 @@ using apollo::common::Status;
 constexpr double kIntersectionClearanceDist = 20.0;
 constexpr double kJunctionClearanceDist = 15.0;
 
+namespace {
+
+void PopulateDecidedSidePassDirections(
+    const PathDeciderStatus& path_decider_status,
+    planning_internal::LaneBorrowDebug* lane_borrow_debug) {
+  lane_borrow_debug->clear_decided_side_pass_direction();
+  for (const auto& lane_borrow_direction :
+       path_decider_status.decided_side_pass_direction()) {
+    if (lane_borrow_direction == PathDeciderStatus::LEFT_BORROW) {
+      lane_borrow_debug->add_decided_side_pass_direction(
+          planning_internal::LaneBorrowDebug::LEFT_BORROW);
+    } else if (lane_borrow_direction == PathDeciderStatus::RIGHT_BORROW) {
+      lane_borrow_debug->add_decided_side_pass_direction(
+          planning_internal::LaneBorrowDebug::RIGHT_BORROW);
+    }
+  }
+}
+
+void PopulateLaneBorrowStatusDebug(const Frame& frame,
+                                   const ReferenceLineInfo& reference_line_info,
+                                   const PlanningContext& planning_context,
+                                   planning_internal::LaneBorrowDebug* debug) {
+  const auto& path_decider_status = planning_context.planning_status().path_decider();
+  debug->set_is_path_lane_borrow(reference_line_info.is_path_lane_borrow());
+  debug->set_is_in_path_lane_borrow_scenario(
+      path_decider_status.is_in_path_lane_borrow_scenario());
+  debug->set_front_static_obstacle_id(
+      path_decider_status.front_static_obstacle_id());
+  debug->set_front_static_obstacle_cycle_counter(
+      path_decider_status.front_static_obstacle_cycle_counter());
+  debug->set_able_to_use_self_lane_counter(
+      path_decider_status.able_to_use_self_lane_counter());
+  debug->set_adc_speed(frame.PlanningStartPoint().v());
+  debug->set_lane_borrow_max_speed(FLAGS_lane_borrow_max_speed);
+  PopulateDecidedSidePassDirections(path_decider_status, debug);
+}
+
+double ComputeLaneBorrowLookforwardDistance(
+    const ReferenceLineInfo& reference_line_info,
+    const Obstacle* blocking_obstacle, const double adc_end_s) {
+  static constexpr double kDefaultLookforwardDistance = 100.0;
+  const double default_lookforward_s = std::min(
+      adc_end_s + kDefaultLookforwardDistance,
+      reference_line_info.reference_line().Length());
+  if (blocking_obstacle == nullptr) {
+    return default_lookforward_s;
+  }
+  return std::min(default_lookforward_s,
+                  std::max(adc_end_s,
+                           blocking_obstacle->PerceptionSLBoundary().end_s()));
+}
+
+}  // namespace
+
 PathLaneBorrowDecider::PathLaneBorrowDecider(
     const TaskConfig& config,
     const std::shared_ptr<DependencyInjector>& injector)
@@ -42,11 +96,21 @@ Status PathLaneBorrowDecider::Process(
   // Sanity checks.
   CHECK_NOTNULL(frame);
   CHECK_NOTNULL(reference_line_info);
+  auto* lane_borrow_debug = reference_line_info->mutable_debug()
+                                ->mutable_planning_data()
+                                ->mutable_lane_borrow();
+  lane_borrow_debug->Clear();
+  lane_borrow_debug->set_transition(
+      planning_internal::LaneBorrowDebug::NO_TRANSITION);
+  PopulateLaneBorrowStatusDebug(*frame, *reference_line_info,
+                                *injector_->planning_context(),
+                                lane_borrow_debug);
 
   // skip path_lane_borrow_decider if reused path
   if (FLAGS_enable_skip_path_tasks && reference_line_info->path_reusable()) {
     // for debug
-    AINFO << "skip due to reusing path";
+    AINFO_EVERY(100) << "skip due to reusing path";
+    lane_borrow_debug->set_transition_reason("path reusable");
     return Status::OK();
   }
 
@@ -55,17 +119,23 @@ Status PathLaneBorrowDecider::Process(
   // Check if lane-borrowing is needed, if so, borrow lane.
   if (Decider::config_.path_lane_borrow_decider_config()
           .allow_lane_borrowing() &&
-      IsNecessaryToBorrowLane(*frame, *reference_line_info)) {
+      IsNecessaryToBorrowLane(*frame, reference_line_info)) {
     reference_line_info->set_is_path_lane_borrow(true);
   }
+  PopulateLaneBorrowStatusDebug(*frame, *reference_line_info,
+                                *injector_->planning_context(),
+                                lane_borrow_debug);
   return Status::OK();
 }
 
 bool PathLaneBorrowDecider::IsNecessaryToBorrowLane(
-    const Frame& frame, const ReferenceLineInfo& reference_line_info) {
+    const Frame& frame, ReferenceLineInfo* const reference_line_info) {
   auto* mutable_path_decider_status = injector_->planning_context()
                                           ->mutable_planning_status()
                                           ->mutable_path_decider();
+  auto* lane_borrow_debug = reference_line_info->mutable_debug()
+                                ->mutable_planning_data()
+                                ->mutable_lane_borrow();
   if (mutable_path_decider_status->is_in_path_lane_borrow_scenario()) {
     // If originally borrowing neighbor lane:
     if (mutable_path_decider_status->able_to_use_self_lane_counter() >= 6) {
@@ -73,31 +143,70 @@ bool PathLaneBorrowDecider::IsNecessaryToBorrowLane(
       // non-lane-borrowing.
       mutable_path_decider_status->set_is_in_path_lane_borrow_scenario(false);
       mutable_path_decider_status->clear_decided_side_pass_direction();
+      lane_borrow_debug->set_transition(
+          planning_internal::LaneBorrowDebug::EXIT_LANE_BORROW);
+      lane_borrow_debug->set_transition_reason(
+          "able_to_use_self_lane_counter >= 6");
       AINFO << "Switch from LANE-BORROW path to SELF-LANE path.";
+    } else {
+      lane_borrow_debug->set_transition_reason(
+          "lane-borrow scenario remains active");
     }
   } else {
     // If originally not borrowing neighbor lane:
     ADEBUG << "Blocking obstacle ID["
            << mutable_path_decider_status->front_static_obstacle_id() << "]";
     // ADC requirements check for lane-borrowing:
-    if (!HasSingleReferenceLine(frame)) {
+    const bool has_single_reference_line = HasSingleReferenceLine(frame);
+    lane_borrow_debug->set_has_single_reference_line(has_single_reference_line);
+    if (!has_single_reference_line) {
+      lane_borrow_debug->set_transition_reason("multiple reference lines");
       return false;
     }
-    if (!IsWithinSidePassingSpeedADC(frame)) {
+    const bool is_within_side_passing_speed_adc =
+        IsWithinSidePassingSpeedADC(frame);
+    lane_borrow_debug->set_is_within_side_passing_speed_adc(
+        is_within_side_passing_speed_adc);
+    if (!is_within_side_passing_speed_adc) {
+      lane_borrow_debug->set_transition_reason(
+          "adc speed exceeds lane_borrow_max_speed");
       return false;
     }
 
     // Obstacle condition check for lane-borrowing:
-    if (!IsBlockingObstacleFarFromIntersection(reference_line_info)) {
+    const bool is_blocking_obstacle_far_from_intersection =
+        IsBlockingObstacleFarFromIntersection(*reference_line_info);
+    lane_borrow_debug->set_is_blocking_obstacle_far_from_intersection(
+        is_blocking_obstacle_far_from_intersection);
+    if (!is_blocking_obstacle_far_from_intersection) {
+      lane_borrow_debug->set_transition_reason(
+          "blocking obstacle is too close to intersection");
       return false;
     }
-    if (!IsLongTermBlockingObstacle()) {
+    const bool is_long_term_blocking_obstacle = IsLongTermBlockingObstacle();
+    lane_borrow_debug->set_is_long_term_blocking_obstacle(
+        is_long_term_blocking_obstacle);
+    if (!is_long_term_blocking_obstacle) {
+      lane_borrow_debug->set_transition_reason(
+          "blocking obstacle is not long-term");
       return false;
     }
-    if (!IsBlockingObstacleWithinDestination(reference_line_info)) {
+    const bool is_blocking_obstacle_within_destination =
+        IsBlockingObstacleWithinDestination(*reference_line_info);
+    lane_borrow_debug->set_is_blocking_obstacle_within_destination(
+        is_blocking_obstacle_within_destination);
+    if (!is_blocking_obstacle_within_destination) {
+      lane_borrow_debug->set_transition_reason(
+          "blocking obstacle is beyond destination");
       return false;
     }
-    if (!IsSidePassableObstacle(reference_line_info)) {
+    const bool is_side_passable_obstacle =
+        IsSidePassableObstacle(*reference_line_info);
+    lane_borrow_debug->set_is_side_passable_obstacle(
+        is_side_passable_obstacle);
+    if (!is_side_passable_obstacle) {
+      lane_borrow_debug->set_transition_reason(
+          "blocking obstacle is not side-passable");
       return false;
     }
 
@@ -109,9 +218,13 @@ bool PathLaneBorrowDecider::IsNecessaryToBorrowLane(
       // first time init decided_side_pass_direction
       bool left_borrowable;
       bool right_borrowable;
-      CheckLaneBorrow(reference_line_info, &left_borrowable, &right_borrowable);
+      CheckLaneBorrow(*reference_line_info, &left_borrowable,
+                      &right_borrowable);
+      lane_borrow_debug->set_left_borrowable(left_borrowable);
+      lane_borrow_debug->set_right_borrowable(right_borrowable);
       if (!left_borrowable && !right_borrowable) {
         mutable_path_decider_status->set_is_in_path_lane_borrow_scenario(false);
+        lane_borrow_debug->set_transition_reason("no borrowable neighbor lane");
         return false;
       } else {
         mutable_path_decider_status->set_is_in_path_lane_borrow_scenario(true);
@@ -123,6 +236,9 @@ bool PathLaneBorrowDecider::IsNecessaryToBorrowLane(
           mutable_path_decider_status->add_decided_side_pass_direction(
               PathDeciderStatus::RIGHT_BORROW);
         }
+        lane_borrow_debug->set_transition(
+            planning_internal::LaneBorrowDebug::ENTER_LANE_BORROW);
+        lane_borrow_debug->set_transition_reason("lane-borrow gates satisfied");
       }
     }
 
@@ -272,10 +388,18 @@ void PathLaneBorrowDecider::CheckLaneBorrow(
   *left_neighbor_lane_borrowable = true;
   *right_neighbor_lane_borrowable = true;
 
-  static constexpr double kLookforwardDistance = 100.0;
   double check_s = reference_line_info.AdcSlBoundary().end_s();
-  const double lookforward_distance =
-      std::min(check_s + kLookforwardDistance, reference_line.Length());
+  const auto& path_decider_status =
+      injector_->planning_context()->planning_status().path_decider();
+  const std::string& blocking_obstacle_id =
+      path_decider_status.front_static_obstacle_id();
+  const Obstacle* blocking_obstacle = nullptr;
+  if (!blocking_obstacle_id.empty()) {
+    blocking_obstacle = reference_line_info.path_decision().obstacles().Find(
+        blocking_obstacle_id);
+  }
+  const double lookforward_distance = ComputeLaneBorrowLookforwardDistance(
+      reference_line_info, blocking_obstacle, check_s);
   while (check_s < lookforward_distance) {
     auto ref_point = reference_line.GetNearestReferencePoint(check_s);
     if (ref_point.lane_waypoints().empty()) {

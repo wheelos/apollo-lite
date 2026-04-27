@@ -93,6 +93,7 @@ cc_library(
     hdrs = ["pj_transformer.h"],
     deps = [
         "//cyber",
+        "//modules/common/util:proj_helper",
         "@proj",
     ],
 )

@@ -650,8 +650,15 @@ ObjectDecisionType Obstacle::MergeLateralDecision(
     if (lhs.has_ignore()) {
       return rhs;
     } else if (lhs.has_nudge()) {
-      DCHECK(lhs.nudge().type() == rhs.nudge().type())
-          << "could not merge left nudge and right nudge";
+      if (lhs.nudge().has_type() != rhs.nudge().has_type()) {
+        return lhs.nudge().has_type() ? lhs : rhs;
+      }
+      if (lhs.nudge().has_type() && rhs.nudge().has_type() &&
+          lhs.nudge().type() != rhs.nudge().type()) {
+        AWARN << "Conflicting lateral nudge directions, prefer the decision "
+                 "with larger lateral clearance. lhs="
+              << lhs.ShortDebugString() << ", rhs=" << rhs.ShortDebugString();
+      }
       return std::fabs(lhs.nudge().distance_l()) >
                      std::fabs(rhs.nudge().distance_l())
                  ? lhs

@@ -1,7 +1,15 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
+
+install(
+    name = "install",
+    runtime_dest = "dreamview/bin",
+    targets = [":sim_control"],
+    visibility = ["//visibility:public"],
+)
 
 cc_library(
     name = "sim_control_manager",
@@ -16,8 +24,17 @@ cc_library(
         "//cyber",
         "//modules/dreamview/backend/sim_control_manager/core:dynamic_model_factory",
         "//modules/dreamview/backend/sim_control_manager/core:sim_control_base",
-        "//modules/common/configs:config_gflags",
         "@com_github_nlohmann_json//:json",
+    ],
+)
+
+cc_binary(
+    name = "sim_control",
+    srcs = ["main.cc"],
+    copts = ['-DMODULE_NAME=\\"sim_control\\"'],
+    deps = [
+        ":sim_control_manager",
+        "//cyber",
     ],
 )
 

@@ -5,6 +5,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "common",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":cloud_mask",
         ":lidar_error_code",
@@ -21,6 +24,9 @@ cc_library(
     name = "cloud_mask",
     srcs = ["cloud_mask.cc"],
     hdrs = ["cloud_mask.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base:point_cloud",
     ],
@@ -40,6 +46,9 @@ cc_test(
 cc_library(
     name = "lidar_log",
     hdrs = ["lidar_log.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
     ],
@@ -48,6 +57,9 @@ cc_library(
 cc_library(
     name = "feature_descriptor",
     hdrs = ["feature_descriptor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:point_cloud",
@@ -61,6 +73,9 @@ cc_library(
         "lidar_frame.h",
         "lidar_frame_pool.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":lidar_log",
         "//modules/perception/base",
@@ -71,6 +86,9 @@ cc_library(
     name = "lidar_object_util",
     srcs = ["lidar_object_util.cc"],
     hdrs = ["lidar_object_util.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":lidar_log",
         "//modules/perception/base",
@@ -80,21 +98,33 @@ cc_library(
 cc_library(
     name = "lidar_point_label",
     hdrs = ["lidar_point_label.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "lidar_timer",
     hdrs = ["lidar_timer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "lidar_error_code",
     hdrs = ["lidar_error_code.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "pcl_util",
     hdrs = ["pcl_util.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":lidar_log",
         "//modules/perception/base",
@@ -108,6 +138,9 @@ cc_library(
     name = "object_sequence",
     srcs = ["object_sequence.cc"],
     hdrs = ["object_sequence.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:object",

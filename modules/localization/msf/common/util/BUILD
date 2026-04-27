@@ -43,6 +43,7 @@ cc_library(
     hdrs = ["frame_transform.h"],
     deps = [
         "//cyber",
+        "//modules/common/util:proj_helper",
         "@com_google_absl//absl/strings",
         "@eigen",
         "@proj",

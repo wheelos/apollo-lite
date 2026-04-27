@@ -17,6 +17,7 @@ limitations under the License.
 #include <cmath>
 
 #include "glog/logging.h"
+#include "modules/common/util/proj_helper.h"
 
 namespace apollo {
 namespace hdmap {
@@ -46,24 +47,11 @@ Status CoordinateConvertTool::SetConvertParam(const std::string& source_param,
     pj_ = nullptr;
   }
 
-  PJ* tmp_pj =
-      proj_create_crs_to_crs(PJ_DEFAULT_CTX, source_convert_param_.c_str(),
-                             dst_convert_param_.c_str(), nullptr);
-  if (!tmp_pj) {
-    std::string err_msg =
-        "Fail to proj_create_crs_to_crs with: " + source_convert_param_ +
-        " and " + dst_convert_param_;
-    return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, err_msg);
-  }
-
-  // Normalize to use (longitude, latitude) axis order instead of strict EPSG
-  // order if applicable
-  pj_ = proj_normalize_for_visualization(PJ_DEFAULT_CTX, tmp_pj);
-  proj_destroy(tmp_pj);
-
+  std::string proj_error;
+  pj_ = apollo::common::util::ProjHelper::CreateNormalizedCrsToCrs(
+      PJ_DEFAULT_CTX, source_convert_param_, dst_convert_param_, &proj_error);
   if (!pj_) {
-    std::string err_msg = "Fail to proj_normalize_for_visualization";
-    return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, err_msg);
+    return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, proj_error);
   }
 
   return Status::OK();

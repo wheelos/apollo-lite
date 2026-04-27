@@ -48,7 +48,72 @@ This repository stores durable, reusable project context in `docs/context/`. The
 
 ## Authoring Rules
 
-1. Keep one topic per file and use a kebab-case filename.
-2. Put the document in the narrowest category that fits; prefer `knowledge/` for stable subsystem conclusions.
-3. Update this index and the relevant category `README.md` whenever you add or move a document.
-4. Prefer source-backed notes that point to concrete code paths, configs, or commands.
+### Purpose
+- Ensure host is prepared (Docker, NVIDIA runtime, OS tuning) and provide a simple workflow to start the Apollo container using the `whl` helper.
+
+### Summary (recommended flow)
+1. Run the host setup script (interactive): installs Docker, NVIDIA toolkit and then runs system configuration steps interactively.
+
+```bash
+sudo bash docker/setup_host/setup_host.sh
+```
+
+- `setup_host.sh` will install `whl` (system command linked at `/usr/local/bin/whl`) before running system configuration.
+- After completing, the installer writes `/etc/wheelos_setup_host.done` to indicate host readiness.
+
+2. Start or enter the container with `whl`:
+
+```bash
+# start in dev mode
+whl start
+
+# enter the dev container (starts it if needed)
+whl enter
+```
+
+### Notes about interactive system configuration
+- `config_system.sh` (invoked by `setup_host.sh`) is interactive: for each optional system tuning step (NTP/ptp/udev/uvcvideo/CAN/Jetson tuning/headless/autostart) it will ask you whether to apply it (Y/n). Hardware-related tuning defaults to conservative choices.
+
+### Automation / non-interactive runs
+- `config_system.sh` and `setup_host.sh` detect non-interactive stdin and use sensible defaults. To run unattended and accept defaults, redirect stdin from `/dev/null`:
+
+```bash
+sudo bash docker/setup_host/setup_host.sh < /dev/null
+```
+
+- If you need to fully automate and explicitly choose Yes/No for every prompt, use an automation tool or supply answers via stdin (careful: using `yes` will force all answers to `y`). Example (force yes for all prompts):
+
+```bash
+yes | sudo bash docker/setup_host/setup_host.sh
+```
+
+### Environment and files
+- User-maintained overrides live in the project-root `.env.global`.
+- Use mode-scoped keys such as `DEV_USE_GPU`, `DEV_BAZEL_CACHE_DIR`, `TEST_SERVER_PORT`, `TEST_CPUS`, `TEST_MEMORY`, `TEST_USE_GPU`, and `TEST_BAZEL_CACHE_DIR` so dev and test stay isolated and explicit.
+- Generated env files used by `whl` are `docker/.env.dev.local`, `docker/.env.test.local`, and `docker/.env.prod.local`. `whl` regenerates the requested mode file on every run from `.env.global` plus host auto-detection before launching.
+- Each mode also gets its own Compose project name, so `dev` and `test` can run side by side without recreating or stopping each other.
+- Container names are deterministic (`apollo_<mode>_<user>_<project-hash>`) and are intentionally not user-configurable.
+- `whl start <mode>` and `whl stop <mode>` are symmetric. Use `whl stop all` to tear down all managed modes.
+- Host-ready marker: `/etc/wheelos_setup_host.done`
+- `whl` helper location: `/usr/local/bin/whl`
+
+---
+
+## Copyright and License
+
+Apollo-Lite is licensed under the [Apache License 2.0](LICENSE). Please comply
+with the license terms when using or contributing to this project.
+
+---
+
+## Connect with Us
+
+- ⭐ Star and Fork to support the project!
+- 💬 Join our [community discussion group](http://apollo.auto/community) to chat
+  with developers.
+- 📧 For collaboration or business inquiries, contact: daohu527@gmail.com
+
+---
+
+Thank you for being part of Apollo-Lite's journey towards autonomous driving
+innovation!

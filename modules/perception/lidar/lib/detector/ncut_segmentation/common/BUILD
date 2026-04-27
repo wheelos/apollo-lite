@@ -11,11 +11,17 @@ cc_library(
         "//cyber",
         "//modules/perception/base",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "lr_classifier",
     hdrs = ["lr_classifier.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",

@@ -53,6 +53,7 @@ cc_library(
         ":parser_factory",
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
+        "//modules/common/util:proj_helper",
         "//modules/common/util:util_tool",
         "//modules/common_msgs/localization_msgs:gps_cc_proto",
         "//modules/common_msgs/localization_msgs:imu_cc_proto",

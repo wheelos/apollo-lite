@@ -7,6 +7,9 @@ cc_library(
     name = "spp_engine",
     srcs = ["spp_engine.cc"],
     hdrs = ["spp_engine.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":spp_cluster",
         ":spp_cluster_list",
@@ -22,6 +25,9 @@ cc_library(
 cc_library(
     name = "spp_cluster",
     hdrs = ["spp_cluster.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
     ],
@@ -31,6 +37,9 @@ cc_library(
     name = "spp_cluster_list",
     srcs = ["spp_cluster_list.cc"],
     hdrs = ["spp_cluster_list.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":spp_cluster",
         ":spp_label_image",
@@ -52,6 +61,9 @@ cc_library(
     name = "spp_label_image",
     srcs = ["spp_label_image.cc"],
     hdrs = ["spp_label_image.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":spp_cluster",
         ":spp_pool_types",
@@ -66,6 +78,9 @@ cc_library(
     name = "spp_pool_types",
     srcs = ["spp_pool_types.cc"],
     hdrs = ["spp_pool_types.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":spp_cluster",
         "//modules/perception/base",
@@ -77,6 +92,9 @@ cc_library(
     name = "spp_seg_cc_2d",
     srcs = ["spp_seg_cc_2d.cc"],
     hdrs = ["spp_seg_cc_2d.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":spp_label_image",
         "//cyber",
@@ -92,6 +110,9 @@ cc_library(
     name = "spp_struct",
     srcs = ["spp_struct.cc"],
     hdrs = ["spp_struct.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
     ],

@@ -24,6 +24,9 @@ cc_library(
 cc_library(
     name = "i_struct_s",
     hdrs = ["i_struct_s.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = if_aarch64([
         "@sse2neon",
     ]),
@@ -32,6 +35,9 @@ cc_library(
 cc_library(
     name = "i_util",
     hdrs = ["i_util.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cpplint()

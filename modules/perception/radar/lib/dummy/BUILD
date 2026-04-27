@@ -17,6 +17,9 @@ cc_library(
     name = "dummy_algorithms",
     srcs = ["dummy_algorithms.cc"],
     hdrs = ["dummy_algorithms.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/common/geometry:roi_filter",

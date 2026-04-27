@@ -7,6 +7,9 @@ cc_library(
     name = "classify",
     srcs = ["classify.cc"],
     hdrs = ["classify.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/camera/common",
@@ -29,6 +32,9 @@ cc_library(
     hdrs = [
         "efficient_net_recognizer.h",
         "recognition.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":classify",

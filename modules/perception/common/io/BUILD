@@ -7,6 +7,9 @@ cc_library(
     name = "io_util",
     srcs = ["io_util.cc"],
     hdrs = ["io_util.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:camera",

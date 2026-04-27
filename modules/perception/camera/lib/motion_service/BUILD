@@ -14,6 +14,9 @@ cc_library(
     name = "motion_service_lib",
     srcs = ["motion_service.cc"],
     hdrs = ["motion_service.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/math",

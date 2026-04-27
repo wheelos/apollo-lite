@@ -234,6 +234,22 @@ Status PathAssessmentDecider::Process(
           PathDeciderStatus::LEFT_BORROW);
     }
   }
+  auto* lane_borrow_debug = reference_line_info->mutable_debug()
+                                ->mutable_planning_data()
+                                ->mutable_lane_borrow();
+  lane_borrow_debug->set_selected_path_label(
+      reference_line_info->path_data().path_label());
+  lane_borrow_debug->clear_decided_side_pass_direction();
+  for (const auto& lane_borrow_direction :
+       mutable_path_decider_status->decided_side_pass_direction()) {
+    if (lane_borrow_direction == PathDeciderStatus::LEFT_BORROW) {
+      lane_borrow_debug->add_decided_side_pass_direction(
+          planning_internal::LaneBorrowDebug::LEFT_BORROW);
+    } else if (lane_borrow_direction == PathDeciderStatus::RIGHT_BORROW) {
+      lane_borrow_debug->add_decided_side_pass_direction(
+          planning_internal::LaneBorrowDebug::RIGHT_BORROW);
+    }
+  }
   const auto& end_time4 = std::chrono::system_clock::now();
   diff = end_time4 - end_time3;
   ADEBUG << "Time for FSM state updating: " << diff.count() * 1000 << " msec.";

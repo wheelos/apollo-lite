@@ -6,6 +6,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "base_lane_postprocessor",
     hdrs = ["base_lane_postprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/camera/common",
@@ -17,6 +20,9 @@ cc_library(
 cc_library(
     name = "base_calibrator",
     hdrs = ["base_calibrator.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//cyber",
@@ -29,6 +35,9 @@ cc_library(
 cc_library(
     name = "base_cipv",
     hdrs = ["base_cipv.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         ":base_init_options",
@@ -41,6 +50,9 @@ cc_library(
 cc_library(
     name = "base_tl_preprocessor",
     hdrs = ["base_tl_preprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         ":base_init_options",
@@ -53,6 +65,9 @@ cc_library(
 cc_library(
     name = "base_lane_detector",
     hdrs = ["base_lane_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/base",
@@ -65,6 +80,9 @@ cc_library(
 cc_library(
     name = "base_landmark_detector",
     hdrs = ["base_landmark_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/camera/common",
@@ -76,6 +94,9 @@ cc_library(
 cc_library(
     name = "base_calibration_service",
     hdrs = ["base_calibration_service.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/common/util:util_tool",
@@ -88,6 +109,9 @@ cc_library(
 cc_library(
     name = "base_obstacle_postprocessor",
     hdrs = ["base_obstacle_postprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/pipeline:stage",
     ],
@@ -96,6 +120,9 @@ cc_library(
 cc_library(
     name = "base_obstacle_tracker",
     hdrs = ["base_obstacle_tracker.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/camera/common",
@@ -107,6 +134,9 @@ cc_library(
 cc_library(
     name = "base_obstacle_transformer",
     hdrs = ["base_obstacle_transformer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/camera/common",
@@ -118,6 +148,9 @@ cc_library(
 cc_library(
     name = "base_scene_parser",
     hdrs = ["base_scene_parser.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/camera/common",
@@ -129,6 +162,9 @@ cc_library(
 cc_library(
     name = "base_lane_tracker",
     hdrs = ["base_lane_tracker.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/camera/common",
@@ -140,6 +176,9 @@ cc_library(
 cc_library(
     name = "base_traffic_light_detector",
     hdrs = ["base_traffic_light_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/base",
@@ -152,11 +191,17 @@ cc_library(
 cc_library(
     name = "base_init_options",
     hdrs = ["base_init_options.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "base_obstacle_detector",
     hdrs = ["base_obstacle_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/base",
@@ -169,6 +214,9 @@ cc_library(
 cc_library(
     name = "base_traffic_light_tracker",
     hdrs = ["base_traffic_light_tracker.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/camera/common",
@@ -180,6 +228,9 @@ cc_library(
 cc_library(
     name = "base_feature_extractor",
     hdrs = ["base_feature_extractor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/base",
@@ -192,6 +243,9 @@ cc_library(
 cc_library(
     name = "base_inference_engine",
     hdrs = ["base_inference_engine.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/base",
@@ -204,6 +258,9 @@ cc_library(
 cc_library(
     name = "base_camera_perception",
     hdrs = ["base_camera_perception.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_init_options",
         "//modules/perception/camera/common",
@@ -234,6 +291,9 @@ cc_library(
         ":base_traffic_light_tracker",
         ":base_cipv",
         ":base_tl_preprocessor",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
 )
 

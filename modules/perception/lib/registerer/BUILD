@@ -10,6 +10,9 @@ cc_library(
     deps = [
         "//cyber",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_test(

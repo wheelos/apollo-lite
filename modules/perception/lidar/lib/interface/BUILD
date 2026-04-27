@@ -14,11 +14,17 @@ cc_library(
         ":base_lidar_detector",
         ":base_pointcloud_preprocessor",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "base_bipartite_graph_matcher",
     hdrs = ["base_bipartite_graph_matcher.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/common/graph:secure_matrix",
         "//modules/perception/lib/registerer",
@@ -29,6 +35,9 @@ cc_library(
 cc_library(
     name = "base_lidar_detector",
     hdrs = ["base_lidar_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/lib/registerer",
@@ -40,6 +49,9 @@ cc_library(
 cc_library(
     name = "base_lidar_obstacle_detection",
     hdrs = ["base_lidar_obstacle_detection.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
@@ -54,6 +66,9 @@ cc_library(
 cc_library(
     name = "base_lidar_obstacle_tracking",
     hdrs = ["base_lidar_obstacle_tracking.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/lib/registerer",
@@ -66,6 +81,9 @@ cc_library(
 cc_library(
     name = "base_pointcloud_preprocessor",
     hdrs = ["base_pointcloud_preprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
@@ -78,6 +96,9 @@ cc_library(
 cc_library(
     name = "base_classifier",
     hdrs = ["base_classifier.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",
@@ -88,6 +109,9 @@ cc_library(
 cc_library(
     name = "base_ground_detector",
     hdrs = ["base_ground_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",
@@ -98,6 +122,9 @@ cc_library(
 cc_library(
     name = "base_multi_target_tracker",
     hdrs = ["base_multi_target_tracker.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",
@@ -108,6 +135,9 @@ cc_library(
 cc_library(
     name = "base_object_filter",
     hdrs = ["base_object_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",
@@ -118,6 +148,9 @@ cc_library(
 cc_library(
     name = "base_roi_filter",
     hdrs = ["base_roi_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",

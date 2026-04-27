@@ -6,12 +6,18 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "inner_component_messages",
     hdrs = ["inner_component_messages.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "lidar_inner_component_messages",
     hdrs = [
         "lidar_inner_component_messages.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",

@@ -9,6 +9,9 @@ cc_library(
         "common.h",
         "downsampling.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:point_cloud",
@@ -21,6 +24,9 @@ cc_library(
     srcs = [
         "common_test.cc",
         "downsampling_test.cc",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":point_cloud_processing",

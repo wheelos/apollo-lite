@@ -8,6 +8,9 @@ cc_library(
     name = "cnn_segmentation",
     srcs = ["cnn_segmentation.cc"],
     hdrs = ["cnn_segmentation.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":disjoint_set",
         ":feature_generator",
@@ -39,6 +42,9 @@ cc_library(
 cc_library(
     name = "disjoint_set",
     hdrs = ["disjoint_set.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
@@ -48,6 +54,9 @@ cc_library(
         ":feature_generator_cuda",
     ],
     hdrs = ["feature_generator.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":util",
         "//modules/perception/base",
@@ -74,6 +83,9 @@ cuda_library(
 cc_library(
     name = "util",
     hdrs = ["util.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_test(

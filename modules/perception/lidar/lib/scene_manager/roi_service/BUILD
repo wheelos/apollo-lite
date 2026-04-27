@@ -7,6 +7,9 @@ cc_library(
     name = "roi_service",
     srcs = ["roi_service.cc"],
     hdrs = ["roi_service.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util",
         "//modules/perception/lib/config_manager",

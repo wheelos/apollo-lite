@@ -27,6 +27,9 @@ cc_library(
     name = "radar_track_manager",
     srcs = ["radar_track_manager.cc"],
     hdrs = ["radar_track_manager.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":radar_track",
         "@eigen",
@@ -38,6 +41,9 @@ cc_library(
     name = "radar_track",
     srcs = ["radar_track.cc"],
     hdrs = ["radar_track.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/radar/common:types",

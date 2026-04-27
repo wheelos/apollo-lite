@@ -7,6 +7,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "params",
     hdrs = ["params.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
@@ -16,6 +19,9 @@ cc_library(
     ],
     hdrs = [
         "point_pillars.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":anchor_mask_cuda",
@@ -42,6 +48,9 @@ cc_library(
     hdrs = [
         "point_pillars_detection.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":point_pillars",
         "//cyber",
@@ -65,6 +74,9 @@ cc_library(
     hdrs = [
         "preprocess_points.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":common",
         ":preprocess_points_cuda",
@@ -74,6 +86,9 @@ cc_library(
 cc_library(
     name = "common",
     hdrs = ["common.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cuda_library(

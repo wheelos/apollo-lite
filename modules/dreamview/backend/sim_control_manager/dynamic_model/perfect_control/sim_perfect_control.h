@@ -26,6 +26,7 @@
 #include "gtest/gtest_prod.h"
 
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
+#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "modules/common_msgs/planning_msgs/navigation.pb.h"
 #include "modules/common_msgs/planning_msgs/planning.pb.h"
 #include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
@@ -81,7 +82,18 @@ class SimPerfectControl final : public SimControlBase {
 
   void RunOnce() override;
 
- private:
+  private:
+  void WriteStatusLocked();
+  void FillStatusLocked(apollo::sim_control::SimControlStatus* status) const;
+  void SetStartPoint(const apollo::common::TrajectoryPoint& point,
+                     apollo::sim_control::SimControlStartSource start_source,
+                     const std::string& status_message = "");
+  bool ShouldApplyRoutingStart() const;
+  bool ShouldPublishPredictionLocked() const;
+  void StartSimulationTimerLocked();
+  apollo::sim_control::SimControlPredictionMode ResolvePredictionMode();
+  apollo::sim_control::SimControlSpawnMode ResolveSpawnMode();
+
   void OnPlanning(
       const std::shared_ptr<apollo::planning::ADCTrajectory> &trajectory);
   void OnRoutingResponse(
@@ -110,6 +122,13 @@ class SimPerfectControl final : public SimControlBase {
       std::shared_ptr<apollo::localization::LocalizationEstimate> local_ptr);
 
   void PublishDummyPrediction();
+  bool LoadCustomPrediction();
+  static void ConvertPerceptionObstaclesToPrediction(
+      const apollo::perception::PerceptionObstacles& perception_obstacles,
+      apollo::prediction::PredictionObstacles* prediction_obstacles);
+  static void RefreshPredictionTimestamps(
+      apollo::prediction::PredictionObstacles* prediction_obstacles,
+      double timestamp_sec);
 
   void InitTimerAndIO();
 
@@ -132,8 +151,6 @@ class SimPerfectControl final : public SimControlBase {
 
   // Reset the start point, which can be a dummy point on the map, a current
   // localization pose, or a start position received from the routing module.
-  void SetStartPoint(const apollo::common::TrajectoryPoint &point);
-
   void Freeze();
 
   void ClearPlanning();
@@ -166,6 +183,8 @@ class SimPerfectControl final : public SimControlBase {
   std::shared_ptr<cyber::Writer<apollo::canbus::Chassis>> chassis_writer_;
   std::shared_ptr<cyber::Writer<apollo::prediction::PredictionObstacles>>
       prediction_writer_;
+  std::shared_ptr<cyber::Writer<apollo::sim_control::SimControlStatus>>
+      status_writer_;
 
   // The timer to publish simulated localization and chassis messages.
   std::unique_ptr<cyber::Timer> sim_control_timer_;
@@ -195,10 +214,14 @@ class SimPerfectControl final : public SimControlBase {
 
   // Whether to send dummy predictions
   bool send_dummy_prediction_ = true;
+  bool use_custom_prediction_ = false;
 
   // The header of the routing planning is following.
   apollo::common::Header current_routing_header_;
 
+  apollo::prediction::PredictionObstacles custom_prediction_template_;
+
+  apollo::common::TrajectoryPoint start_point_;
   apollo::common::TrajectoryPoint prev_point_;
   apollo::common::TrajectoryPoint next_point_;
 
@@ -210,10 +233,21 @@ class SimPerfectControl final : public SimControlBase {
   std::normal_distribution<double> pos_noise_z_;
   std::normal_distribution<double> heading_noise_;
 
-  apollo::routing::ParkingInfo *parking_info_;
-
   bool need_calc_origin_;
   Eigen::Isometry3d origin_;
+  bool waiting_for_routing_start_ = false;
+  bool route_start_applied_ = false;
+  bool sim_control_timer_started_ = false;
+  apollo::sim_control::SimControlSpawnMode configured_spawn_mode_ =
+      apollo::sim_control::SIM_CONTROL_SPAWN_MODE_LEGACY;
+  apollo::sim_control::SimControlPredictionMode configured_prediction_mode_ =
+      apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_LEGACY;
+  apollo::sim_control::SimControlStartSource last_start_source_ =
+      apollo::sim_control::SIM_CONTROL_START_SOURCE_NONE;
+  uint32_t last_routing_waypoint_count_ = 0;
+  uint32_t last_routing_sequence_num_ = 0;
+  std::string last_routing_module_name_;
+  std::string status_message_;
 
   // Linearize reader/timer callbacks and external operations.
   std::mutex mutex_;

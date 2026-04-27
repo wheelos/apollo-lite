@@ -6,6 +6,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "onnx_obstacle_detector",
     srcs = ["onnx_obstacle_detector.cc"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     hdrs = [
         "onnx_obstacle_detector.h",
     ],
@@ -22,6 +25,9 @@ cc_library(
     srcs = ["libtorch_obstacle_detector.cc"],
     hdrs = [
         "libtorch_obstacle_detector.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//cyber",
