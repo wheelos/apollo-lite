@@ -16,13 +16,14 @@
 
 /**
  * @file
- * @brief Define lane sequence predictor
+ * @brief Define free-move predictor
  */
 
 #pragma once
 
 #include <vector>
 
+#include "Eigen/Core"
 #include "modules/prediction/container/obstacles/obstacles_container.h"
 #include "modules/prediction/predictor/predictor.h"
 
@@ -68,8 +69,9 @@ class FreeMovePredictor : public Predictor {
    */
   void DrawFreeMoveTrajectoryPoints(
       const Eigen::Vector2d& position, const Eigen::Vector2d& velocity,
-      const Eigen::Vector2d& acc, const double theta, const double start_time,
-      const double total_time, const double period,
+      const Eigen::Vector2d& acc, const double theta, const double yaw_rate,
+      const double history_time, const double max_speed,
+      const double start_time, const double total_time, const double period,
       std::vector<apollo::common::TrajectoryPoint>* points);
 };
 

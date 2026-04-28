@@ -16,6 +16,8 @@
 
 #include "modules/prediction/predictor/free_move/free_move_predictor.h"
 
+#include <algorithm>
+#include <cmath>
 #include "modules/prediction/common/prediction_gflags.h"
 #include "modules/prediction/common/prediction_util.h"
 #include "modules/prediction/proto/prediction_conf.pb.h"
@@ -364,30 +366,34 @@ bool FreeMovePredictor::Predict(
     for (int i = 0; i < feature.predicted_trajectory_size(); ++i) {
       Trajectory* trajectory =
           obstacle->mutable_latest_feature()->mutable_predicted_trajectory(i);
-      int traj_size = trajectory->trajectory_point_size();
+      const int traj_size = trajectory->trajectory_point_size();
       if (traj_size == 0) {
         AERROR << "Empty predicted trajectory found";
         continue;
       }
+
       std::vector<TrajectoryPoint> points;
       const TrajectoryPoint& last_point =
           trajectory->trajectory_point(traj_size - 1);
-      double theta = last_point.path_point().theta();
-      Eigen::Vector2d position(last_point.path_point().x(),
-                               last_point.path_point().y());
-      Eigen::Vector2d velocity(last_point.v() * std::cos(theta),
-                               last_point.v() * std::sin(theta));
-      Eigen::Vector2d acc(last_point.a() * std::cos(theta),
-                          last_point.a() * std::sin(theta));
-      double last_relative_time = last_point.relative_time();
+      double start_theta = last_point.path_point().theta();
+      if (std::fabs(AngleDiff(start_theta, motion.smoothed_theta)) <=
+          kHeadingAgreementThreshold) {
+        start_theta = motion.smoothed_theta;
+      }
+      const Eigen::Vector2d traj_position(last_point.path_point().x(),
+                                          last_point.path_point().y());
+      const Eigen::Vector2d traj_velocity(last_point.v() * std::cos(start_theta),
+                                          last_point.v() * std::sin(start_theta));
+      const Eigen::Vector2d traj_acc(last_point.a() * std::cos(start_theta),
+                                     last_point.a() * std::sin(start_theta));
+      const double last_relative_time = last_point.relative_time();
       DrawFreeMoveTrajectoryPoints(
-          position, velocity, acc, theta, last_relative_time,
+          traj_position, traj_velocity, traj_acc, start_theta, motion.yaw_rate,
+          motion.history_time, motion.max_speed, last_relative_time,
           prediction_total_time - last_relative_time,
           FLAGS_prediction_trajectory_time_resolution, &points);
-      // The following for-loop starts from index 1 because the vector points
-      // includes the last point in the existing predicted trajectory
-      for (size_t i = 1; i < points.size(); ++i) {
-        trajectory->add_trajectory_point()->CopyFrom(points[i]);
+      for (size_t j = 1; j < points.size(); ++j) {
+        trajectory->add_trajectory_point()->CopyFrom(points[j]);
       }
     }
   }
@@ -396,33 +402,101 @@ bool FreeMovePredictor::Predict(
 
 void FreeMovePredictor::DrawFreeMoveTrajectoryPoints(
     const Eigen::Vector2d& position, const Eigen::Vector2d& velocity,
-    const Eigen::Vector2d& acc, const double theta, const double start_time,
+    const Eigen::Vector2d& acc, const double theta, const double yaw_rate,
+    const double history_time, const double max_speed, const double start_time,
     const double total_time, const double period,
     std::vector<TrajectoryPoint>* points) {
-  Eigen::Matrix<double, 6, 1> state;
-  state.setZero();
-  state(0, 0) = 0.0;
-  state(1, 0) = 0.0;
-  state(2, 0) = velocity(0);
-  state(3, 0) = velocity(1);
-  state(4, 0) = common::math::Clamp(acc(0), FLAGS_vehicle_min_linear_acc,
-                                    FLAGS_vehicle_max_linear_acc);
-  state(5, 0) = common::math::Clamp(acc(1), FLAGS_vehicle_min_linear_acc,
-                                    FLAGS_vehicle_max_linear_acc);
+  // New along-heading extrapolation with lateral damping and CTRV fallback.
+  points->clear();
 
-  Eigen::Matrix<double, 6, 6> transition;
-  transition.setIdentity();
-  transition(0, 2) = period;
-  transition(0, 4) = 0.5 * period * period;
-  transition(1, 3) = period;
-  transition(1, 5) = 0.5 * period * period;
-  transition(2, 4) = period;
-  transition(3, 5) = period;
+  const double heading = theta;  // already smoothed by caller when available
+
+  const double vx = velocity(0);
+  const double vy = velocity(1);
+  const double ax = acc(0);
+  const double ay = acc(1);
+
+  // Decompose into longitudinal and lateral components in heading frame
+  double v_long = vx * std::cos(heading) + vy * std::sin(heading);
+  double v_lat = -vx * std::sin(heading) + vy * std::cos(heading);
+  double a_long = ax * std::cos(heading) + ay * std::sin(heading);
+  double a_lat = -ax * std::sin(heading) + ay * std::cos(heading);
+
+  // Clamp longitudinal acceleration to reasonable bounds and let lateral
+  // dynamics decay quickly for low-confidence history.
+  a_long = std::max(-3.0, std::min(2.0, a_long));
+  v_long = std::max(0.0, std::min(max_speed, v_long));
 
   size_t num = static_cast<size_t>(total_time / period);
-  ::apollo::prediction::predictor_util::GenerateFreeMoveTrajectoryPoints(
-      &state, transition, theta, start_time, num, period, points);
 
+  double curr_x = 0.0;
+  double curr_y = 0.0;
+
+  // initial point (relative coordinates, will translate at the end)
+  apollo::common::PathPoint path_point0;
+  apollo::common::TrajectoryPoint tp0;
+  path_point0.set_x(curr_x);
+  path_point0.set_y(curr_y);
+  path_point0.set_z(0.0);
+  path_point0.set_theta(heading);
+  tp0.mutable_path_point()->CopyFrom(path_point0);
+  tp0.set_v(v_long);
+  tp0.set_a(a_long);
+  tp0.set_relative_time(start_time);
+  points->push_back(tp0);
+
+  for (size_t i = 1; i <= num; ++i) {
+    const double t = static_cast<double>(i) * period;
+    const double prev_t = static_cast<double>(i - 1) * period;
+    const double theta_t =
+        std::fabs(yaw_rate) > kStraightYawRateThreshold ? heading + yaw_rate * t
+                                                        : heading;
+    const double v_long_t =
+        std::max(0.0, std::min(max_speed, v_long + a_long * t));
+    if (std::fabs(yaw_rate) <= kStraightYawRateThreshold) {
+      const double s_long =
+          IntegrateCappedLongitudinalDisplacement(v_long, a_long, t, max_speed);
+      double s_lat = v_lat * t + 0.5 * a_lat * t * t;
+      if (history_time < kMinReliableHistorySec) {
+        s_lat *= std::pow(0.5, static_cast<double>(i));
+      } else {
+        s_lat = 0.0;
+      }
+      curr_x = s_long * std::cos(heading) - s_lat * std::sin(heading);
+      curr_y = s_long * std::sin(heading) + s_lat * std::cos(heading);
+    } else {
+      const double mid_t = 0.5 * (prev_t + t);
+      const double theta_mid = heading + yaw_rate * mid_t;
+      const double v_long_mid =
+          std::max(0.0, std::min(max_speed, v_long + a_long * mid_t));
+      double v_lat_mid = v_lat + a_lat * mid_t;
+      if (history_time < kMinReliableHistorySec) {
+        v_lat_mid *= std::pow(0.5, mid_t / period);
+      } else {
+        v_lat_mid = 0.0;
+      }
+      curr_x +=
+          (v_long_mid * std::cos(theta_mid) - v_lat_mid * std::sin(theta_mid)) *
+          period;
+      curr_y +=
+          (v_long_mid * std::sin(theta_mid) + v_lat_mid * std::cos(theta_mid)) *
+          period;
+    }
+
+    apollo::common::PathPoint p;
+    apollo::common::TrajectoryPoint point;
+    p.set_x(curr_x);
+    p.set_y(curr_y);
+    p.set_z(0.0);
+    p.set_theta(theta_t);
+    point.mutable_path_point()->CopyFrom(p);
+    point.set_v(v_long_t);
+    point.set_a(a_long);
+    point.set_relative_time(start_time + t);
+    points->push_back(point);
+  }
+
+  // Translate to absolute coordinates
   for (size_t i = 0; i < points->size(); ++i) {
     ::apollo::prediction::predictor_util::TranslatePoint(
         position[0], position[1], &(points->operator[](i)));

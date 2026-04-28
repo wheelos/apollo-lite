@@ -15,6 +15,14 @@ cc_library(
     alwayslink = True,
 )
 
+cc_library(
+    name = "gtest_exit_main",
+    srcs = ["gtest_exit_main.cc"],
+    deps = [
+        "@com_google_googletest//:gtest",
+    ],
+)
+
 install(
     name = "install",
     library_dest = "prediction/lib",
