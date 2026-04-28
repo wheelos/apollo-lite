@@ -23,6 +23,297 @@
 namespace apollo {
 namespace prediction {
 
+namespace {
+
+constexpr double kHistoryWindowSec = 1.0;
+constexpr double kMinReliableHistorySec = 0.2;
+constexpr double kLowSpeedHeadingFallbackThreshold = 0.1;
+constexpr double kHeadingAgreementThreshold = M_PI / 12.0;
+constexpr double kStraightYawRateThreshold = 0.05;
+constexpr double kYawRateEmaAlpha = 0.2;
+constexpr double kSpeedEmaAlpha = 0.4;
+
+struct FreeMoveMotionEstimate {
+  double smoothed_theta = 0.0;
+  double yaw_rate = 0.0;
+  double history_time = 0.0;
+  double max_speed = 0.0;
+  Eigen::Vector2d position = Eigen::Vector2d::Zero();
+  Eigen::Vector2d velocity = Eigen::Vector2d::Zero();
+  Eigen::Vector2d acc = Eigen::Vector2d::Zero();
+};
+
+double NormalizeAngle(const double angle) {
+  return std::atan2(std::sin(angle), std::cos(angle));
+}
+
+double AngleDiff(const double from, const double to) {
+  return NormalizeAngle(to - from);
+}
+
+bool HasValidPosition(const Feature& feature) {
+  return feature.has_position() && feature.position().has_x() &&
+         feature.position().has_y();
+}
+
+std::vector<const Feature*> CollectRecentHistory(const Obstacle& obstacle) {
+  std::vector<const Feature*> history;
+  if (obstacle.history_size() == 0) {
+    return history;
+  }
+
+  const double latest_timestamp = obstacle.latest_feature().timestamp();
+  for (size_t i = obstacle.history_size(); i > 0; --i) {
+    const Feature& feature = obstacle.feature(i - 1);
+    if (!HasValidPosition(feature)) {
+      continue;
+    }
+    if (latest_timestamp - feature.timestamp() > kHistoryWindowSec) {
+      continue;
+    }
+    history.push_back(&feature);
+  }
+  return history;
+}
+
+double AlignHeadingToReference(const double heading,
+                               const Eigen::Vector2d& reference_direction) {
+  if (reference_direction.squaredNorm() <= 1e-6) {
+    return heading;
+  }
+  Eigen::Vector2d heading_direction(std::cos(heading), std::sin(heading));
+  if (heading_direction.dot(reference_direction) >= 0.0) {
+    return heading;
+  }
+  return NormalizeAngle(heading + M_PI);
+}
+
+double FitHeadingFromHistory(const std::vector<const Feature*>& history,
+                             const double fallback_heading,
+                             const Eigen::Vector2d& reference_direction) {
+  if (history.size() < 2) {
+    return fallback_heading;
+  }
+
+  Eigen::MatrixXd samples(2, history.size());
+  for (size_t i = 0; i < history.size(); ++i) {
+    samples(0, i) = history[i]->position().x();
+    samples(1, i) = history[i]->position().y();
+  }
+  const Eigen::Vector2d mean = samples.rowwise().mean();
+  samples.colwise() -= mean;
+  const Eigen::Matrix2d covariance =
+      samples * samples.transpose() / static_cast<double>(history.size() - 1);
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eigen_solver(covariance);
+  double fitted_heading = std::atan2(eigen_solver.eigenvectors()(1, 1),
+                                     eigen_solver.eigenvectors()(0, 1));
+  fitted_heading = AlignHeadingToReference(fitted_heading, reference_direction);
+
+  if (std::fabs(AngleDiff(fallback_heading, fitted_heading)) <=
+      kHeadingAgreementThreshold) {
+    return fitted_heading;
+  }
+  return fallback_heading;
+}
+
+double MaxSpeedByObstacleType(const apollo::perception::PerceptionObstacle::Type type) {
+  if (type == apollo::perception::PerceptionObstacle::PEDESTRIAN) {
+    return FLAGS_pedestrian_max_speed;
+  }
+  return FLAGS_vehicle_max_speed;
+}
+
+double IntegrateCappedLongitudinalDisplacement(const double v_long,
+                                               const double a_long,
+                                               const double t,
+                                               const double max_speed) {
+  if (t <= 0.0) {
+    return 0.0;
+  }
+  if (a_long <= 1e-6 || v_long >= max_speed) {
+    return std::max(0.0, v_long * t + 0.5 * a_long * t * t);
+  }
+
+  const double time_to_cap = (max_speed - v_long) / a_long;
+  if (time_to_cap <= 0.0 || time_to_cap >= t) {
+    return std::max(0.0, v_long * t + 0.5 * a_long * t * t);
+  }
+
+  const double capped_displacement =
+      v_long * time_to_cap + 0.5 * a_long * time_to_cap * time_to_cap;
+  return capped_displacement + max_speed * (t - time_to_cap);
+}
+
+double ComputeHistoryTime(const std::vector<const Feature*>& history) {
+  if (history.size() < 2) {
+    return 0.0;
+  }
+  return std::max(0.0, history.back()->timestamp() - history.front()->timestamp());
+}
+
+double EstimateScalarSpeedFromHistory(const std::vector<const Feature*>& history,
+                                      const double fallback_speed) {
+  if (history.size() < 2) {
+    return fallback_speed;
+  }
+
+  bool initialized = false;
+  double filtered_speed = fallback_speed;
+  for (size_t i = 1; i < history.size(); ++i) {
+    const auto& prev_position = history[i - 1]->position();
+    const auto& curr_position = history[i]->position();
+    const double delta_t = history[i]->timestamp() - history[i - 1]->timestamp();
+    if (delta_t <= 1e-3) {
+      continue;
+    }
+
+    const double segment_speed =
+        std::hypot(curr_position.x() - prev_position.x(),
+                   curr_position.y() - prev_position.y()) /
+        delta_t;
+    filtered_speed =
+        initialized ? kSpeedEmaAlpha * segment_speed +
+                           (1.0 - kSpeedEmaAlpha) * filtered_speed
+                    : segment_speed;
+    initialized = true;
+  }
+  return initialized ? filtered_speed : fallback_speed;
+}
+
+double EstimateLongitudinalAccelerationFromHistory(
+    const std::vector<const Feature*>& history, const double fallback_acc) {
+  if (history.size() < 3) {
+    return fallback_acc;
+  }
+
+  double first_speed = -1.0;
+  double last_speed = -1.0;
+  double first_time = 0.0;
+  double last_time = 0.0;
+  for (size_t i = 1; i < history.size(); ++i) {
+    const auto& prev_position = history[i - 1]->position();
+    const auto& curr_position = history[i]->position();
+    const double delta_t = history[i]->timestamp() - history[i - 1]->timestamp();
+    if (delta_t <= 1e-3) {
+      continue;
+    }
+    const double segment_speed =
+        std::hypot(curr_position.x() - prev_position.x(),
+                   curr_position.y() - prev_position.y()) /
+        delta_t;
+    if (first_speed < 0.0) {
+      first_speed = segment_speed;
+      first_time = history[i]->timestamp();
+    }
+    last_speed = segment_speed;
+    last_time = history[i]->timestamp();
+  }
+
+  if (first_speed < 0.0 || last_speed < 0.0 || last_time - first_time <= 1e-3) {
+    return fallback_acc;
+  }
+  return (last_speed - first_speed) / (last_time - first_time);
+}
+
+double EstimateYawRateFromHistory(const std::vector<const Feature*>& history) {
+  if (history.size() < 3) {
+    return 0.0;
+  }
+
+  bool initialized = false;
+  double filtered_yaw_rate = 0.0;
+  double previous_heading = 0.0;
+  bool has_previous_heading = false;
+
+  for (size_t i = 1; i < history.size(); ++i) {
+    const auto& prev_position = history[i - 1]->position();
+    const auto& curr_position = history[i]->position();
+    const double delta_x = curr_position.x() - prev_position.x();
+    const double delta_y = curr_position.y() - prev_position.y();
+    const double delta_t = history[i]->timestamp() - history[i - 1]->timestamp();
+    if (delta_t <= 1e-3 || std::hypot(delta_x, delta_y) <= 1e-3) {
+      continue;
+    }
+
+    const double segment_heading = std::atan2(delta_y, delta_x);
+    if (!has_previous_heading) {
+      previous_heading = segment_heading;
+      has_previous_heading = true;
+      continue;
+    }
+
+    const double raw_yaw_rate =
+        AngleDiff(previous_heading, segment_heading) / delta_t;
+    filtered_yaw_rate =
+        initialized ? kYawRateEmaAlpha * raw_yaw_rate +
+                          (1.0 - kYawRateEmaAlpha) * filtered_yaw_rate
+                    : raw_yaw_rate;
+    initialized = true;
+    previous_heading =
+        previous_heading + AngleDiff(previous_heading, segment_heading);
+  }
+  return filtered_yaw_rate;
+}
+
+FreeMoveMotionEstimate EstimateFreeMoveMotion(const Obstacle& obstacle) {
+  FreeMoveMotionEstimate estimate;
+  const Feature& feature = obstacle.latest_feature();
+
+  estimate.smoothed_theta = feature.velocity_heading();
+  estimate.yaw_rate = 0.0;
+  estimate.velocity =
+      Eigen::Vector2d(feature.velocity().x(), feature.velocity().y());
+  estimate.acc =
+      Eigen::Vector2d(feature.acceleration().x(), feature.acceleration().y());
+  estimate.position =
+      Eigen::Vector2d(feature.position().x(), feature.position().y());
+  estimate.max_speed = MaxSpeedByObstacleType(obstacle.type());
+
+  const auto history = CollectRecentHistory(obstacle);
+  estimate.history_time = ComputeHistoryTime(history);
+  const double fallback_speed = estimate.velocity.norm();
+  Eigen::Vector2d reference_direction = estimate.velocity;
+  if (reference_direction.squaredNorm() <= 1e-6 && history.size() >= 2) {
+    reference_direction = Eigen::Vector2d(
+        history.back()->position().x() - history.front()->position().x(),
+        history.back()->position().y() - history.front()->position().y());
+  }
+  if (fallback_speed <= kLowSpeedHeadingFallbackThreshold &&
+      reference_direction.squaredNorm() > 1e-6) {
+    estimate.smoothed_theta =
+        std::atan2(reference_direction.y(), reference_direction.x());
+  }
+  estimate.smoothed_theta =
+      FitHeadingFromHistory(history, estimate.smoothed_theta, reference_direction);
+  estimate.yaw_rate = EstimateYawRateFromHistory(history);
+
+  if (estimate.history_time < kMinReliableHistorySec) {
+    estimate.smoothed_theta = feature.velocity_heading();
+    estimate.yaw_rate = 0.0;
+    estimate.acc *= 0.5;
+  } else if (std::fabs(estimate.yaw_rate) < kStraightYawRateThreshold) {
+    estimate.yaw_rate = 0.0;
+  }
+
+  if (estimate.history_time >= kMinReliableHistorySec) {
+    const double history_speed = std::min(
+        estimate.max_speed, EstimateScalarSpeedFromHistory(history, fallback_speed));
+    const double heading_cos = std::cos(estimate.smoothed_theta);
+    const double heading_sin = std::sin(estimate.smoothed_theta);
+    const double fallback_long_acc =
+        estimate.acc(0) * heading_cos + estimate.acc(1) * heading_sin;
+    const double history_long_acc =
+        EstimateLongitudinalAccelerationFromHistory(history, fallback_long_acc);
+    estimate.velocity =
+        Eigen::Vector2d(history_speed * heading_cos, history_speed * heading_sin);
+    estimate.acc = Eigen::Vector2d(history_long_acc * heading_cos,
+                                   history_long_acc * heading_sin);
+  }
+  return estimate;
+}
+
+}  // namespace
+
 using apollo::common::TrajectoryPoint;
 using apollo::perception::PerceptionObstacle;
 
@@ -54,16 +345,16 @@ bool FreeMovePredictor::Predict(
     prediction_total_time = FLAGS_prediction_trajectory_time_length;
   }
 
+  const FreeMoveMotionEstimate motion = EstimateFreeMoveMotion(*obstacle);
+
   if (feature.predicted_trajectory().empty()) {
     std::vector<TrajectoryPoint> points;
-    Eigen::Vector2d position(feature.position().x(), feature.position().y());
-    Eigen::Vector2d velocity(feature.velocity().x(), feature.velocity().y());
-    Eigen::Vector2d acc(feature.acceleration().x(), feature.acceleration().y());
-    double theta = feature.velocity_heading();
-
-    DrawFreeMoveTrajectoryPoints(
-        position, velocity, acc, theta, 0.0, prediction_total_time,
-        FLAGS_prediction_trajectory_time_resolution, &points);
+    DrawFreeMoveTrajectoryPoints(motion.position, motion.velocity, motion.acc,
+                                 motion.smoothed_theta, motion.yaw_rate,
+                                 motion.history_time, motion.max_speed, 0.0,
+                                 prediction_total_time,
+                                 FLAGS_prediction_trajectory_time_resolution,
+                                 &points);
 
     Trajectory trajectory = GenerateTrajectory(points);
     obstacle->mutable_latest_feature()->add_predicted_trajectory()->CopyFrom(

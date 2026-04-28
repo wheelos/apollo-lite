@@ -29,6 +29,8 @@
 namespace apollo {
 namespace prediction {
 
+class FreeMovePredictorEvalTest;
+
 class FreeMovePredictor : public Predictor {
  public:
   /**
@@ -53,6 +55,7 @@ class FreeMovePredictor : public Predictor {
                ObstaclesContainer* obstacles_container) override;
 
  private:
+  friend class FreeMovePredictorEvalTest;
   /**
    * @brief Generate free move trajectory
    * @param Position
