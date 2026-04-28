@@ -1,0 +1,53 @@
+syntax = "proto2";
+
+package apollo.drivers.camera_gst.config;
+
+message CameraSourceConfig {
+  optional string name = 1;
+  optional string uri = 2;
+  optional uint32 width = 3 [default = 1280];
+  optional uint32 height = 4 [default = 720];
+  optional double fps = 5 [default = 30.0];
+  optional string fourcc = 6 [default = "MJPG"];
+}
+
+message LayoutSlot {
+  optional string source_name = 1;
+  optional uint32 row = 2;
+  optional uint32 col = 3;
+}
+
+message PublishConfig {
+  optional string channel_name = 1;
+  optional string frame_id = 2 [default = "camera_gst"];
+}
+
+message StreamConfig {
+  optional bool enable = 1 [default = false];
+  optional bool auto_start = 2 [default = false];
+  optional string gst_launch_command = 3 [default = "gst-launch-1.0"];
+  optional string pipeline_suffix = 4;
+  optional uint32 queue_size = 5 [default = 3];
+  optional uint32 write_timeout_ms = 6 [default = 20];
+  optional string pixel_format = 7 [default = "bgr"];
+  optional string branch_pipeline = 8;
+  optional uint32 publish_queue_size = 9 [default = 1];
+  optional uint32 ingest_queue_size = 10 [default = 3];
+  optional bool emit_eos_on_detach = 11 [default = true];
+  optional bool force_keyframe_on_attach = 12 [default = true];
+  optional string keyframe_element_name = 13;
+}
+
+message Config {
+  repeated CameraSourceConfig sources = 1;
+  repeated LayoutSlot layout_slots = 2;
+  optional uint32 rows = 3 [default = 1];
+  optional uint32 cols = 4 [default = 1];
+  optional uint32 tile_width = 5 [default = 1280];
+  optional uint32 tile_height = 6 [default = 720];
+  optional double fps = 7 [default = 30.0];
+  optional uint32 capture_retry_ms = 8 [default = 20];
+  optional double publish_rate = 9 [default = 30.0];
+  optional PublishConfig publish = 10;
+  optional StreamConfig stream = 11;
+}
