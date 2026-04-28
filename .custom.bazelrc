@@ -1,1 +1,2 @@
-build --define vehicle=devkit
+startup --output_user_root=/tmp/bazel
+build --repository_cache=/tmp/bazel/repo_cache
