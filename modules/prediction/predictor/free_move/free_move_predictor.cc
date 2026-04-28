@@ -32,8 +32,12 @@ constexpr double kMinReliableHistorySec = 0.2;
 constexpr double kLowSpeedHeadingFallbackThreshold = 0.1;
 constexpr double kHeadingAgreementThreshold = M_PI / 12.0;
 constexpr double kStraightYawRateThreshold = 0.05;
-constexpr double kYawRateEmaAlpha = 0.2;
 constexpr double kSpeedEmaAlpha = 0.4;
+constexpr double kStraightLateralAccThreshold = 0.5;
+constexpr double kMaxTurningLateralAcc = 2.0;
+constexpr double kMinSpeedForTurnConstraint = 1.0;
+constexpr double kReliableHeadingLinearityRatio = 8.0;
+constexpr double kStraightModeAccelerationDamping = 0.5;
 
 struct FreeMoveMotionEstimate {
   double smoothed_theta = 0.0;
@@ -107,12 +111,16 @@ double FitHeadingFromHistory(const std::vector<const Feature*>& history,
   const Eigen::Matrix2d covariance =
       samples * samples.transpose() / static_cast<double>(history.size() - 1);
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eigen_solver(covariance);
+  const double principal = std::max(0.0, eigen_solver.eigenvalues()(1));
+  const double minor = std::max(1e-4, eigen_solver.eigenvalues()(0));
+  const double linearity_ratio = principal / minor;
   double fitted_heading = std::atan2(eigen_solver.eigenvectors()(1, 1),
                                      eigen_solver.eigenvectors()(0, 1));
   fitted_heading = AlignHeadingToReference(fitted_heading, reference_direction);
 
   if (std::fabs(AngleDiff(fallback_heading, fitted_heading)) <=
-      kHeadingAgreementThreshold) {
+          kHeadingAgreementThreshold ||
+      linearity_ratio >= kReliableHeadingLinearityRatio) {
     return fitted_heading;
   }
   return fallback_heading;
@@ -144,6 +152,15 @@ double IntegrateCappedLongitudinalDisplacement(const double v_long,
   const double capped_displacement =
       v_long * time_to_cap + 0.5 * a_long * time_to_cap * time_to_cap;
   return capped_displacement + max_speed * (t - time_to_cap);
+}
+
+double IntegrateDecayedYawTime(const double t, const double history_time,
+                               const double period) {
+  if (t <= 0.0) {
+    return 0.0;
+  }
+  const double decay_window = std::max(period, history_time);
+  return decay_window * (1.0 - std::exp(-t / decay_window));
 }
 
 double ComputeHistoryTime(const std::vector<const Feature*>& history) {
@@ -223,9 +240,10 @@ double EstimateYawRateFromHistory(const std::vector<const Feature*>& history) {
   }
 
   bool initialized = false;
-  double filtered_yaw_rate = 0.0;
-  double previous_heading = 0.0;
-  bool has_previous_heading = false;
+  double first_heading = 0.0;
+  double last_heading = 0.0;
+  double first_time = 0.0;
+  double last_time = 0.0;
 
   for (size_t i = 1; i < history.size(); ++i) {
     const auto& prev_position = history[i - 1]->position();
@@ -238,23 +256,27 @@ double EstimateYawRateFromHistory(const std::vector<const Feature*>& history) {
     }
 
     const double segment_heading = std::atan2(delta_y, delta_x);
-    if (!has_previous_heading) {
-      previous_heading = segment_heading;
-      has_previous_heading = true;
-      continue;
+    if (!initialized) {
+      first_heading = segment_heading;
+      first_time = history[i]->timestamp();
+      initialized = true;
     }
-
-    const double raw_yaw_rate =
-        AngleDiff(previous_heading, segment_heading) / delta_t;
-    filtered_yaw_rate =
-        initialized ? kYawRateEmaAlpha * raw_yaw_rate +
-                          (1.0 - kYawRateEmaAlpha) * filtered_yaw_rate
-                    : raw_yaw_rate;
-    initialized = true;
-    previous_heading =
-        previous_heading + AngleDiff(previous_heading, segment_heading);
+    last_heading = segment_heading;
+    last_time = history[i]->timestamp();
   }
-  return filtered_yaw_rate;
+  if (!initialized || last_time - first_time <= 1e-3) {
+    return 0.0;
+  }
+  return AngleDiff(first_heading, last_heading) / (last_time - first_time);
+}
+
+double ClampYawRateByLateralAcceleration(const double yaw_rate,
+                                         const double speed) {
+  if (speed <= kMinSpeedForTurnConstraint) {
+    return yaw_rate;
+  }
+  const double max_yaw_rate = kMaxTurningLateralAcc / speed;
+  return std::max(-max_yaw_rate, std::min(max_yaw_rate, yaw_rate));
 }
 
 FreeMoveMotionEstimate EstimateFreeMoveMotion(const Obstacle& obstacle) {
@@ -274,13 +296,20 @@ FreeMoveMotionEstimate EstimateFreeMoveMotion(const Obstacle& obstacle) {
   const auto history = CollectRecentHistory(obstacle);
   estimate.history_time = ComputeHistoryTime(history);
   const double fallback_speed = estimate.velocity.norm();
-  Eigen::Vector2d reference_direction = estimate.velocity;
-  if (reference_direction.squaredNorm() <= 1e-6 && history.size() >= 2) {
+  Eigen::Vector2d reference_direction = Eigen::Vector2d::Zero();
+  if (history.size() >= 2) {
     reference_direction = Eigen::Vector2d(
         history.back()->position().x() - history.front()->position().x(),
         history.back()->position().y() - history.front()->position().y());
   }
-  if (fallback_speed <= kLowSpeedHeadingFallbackThreshold &&
+  if (reference_direction.squaredNorm() <= 1e-6) {
+    reference_direction = estimate.velocity;
+  }
+  if (estimate.history_time >= kMinReliableHistorySec &&
+      reference_direction.squaredNorm() > 1e-6) {
+    estimate.smoothed_theta =
+        std::atan2(reference_direction.y(), reference_direction.x());
+  } else if (fallback_speed <= kLowSpeedHeadingFallbackThreshold &&
       reference_direction.squaredNorm() > 1e-6) {
     estimate.smoothed_theta =
         std::atan2(reference_direction.y(), reference_direction.x());
@@ -310,6 +339,14 @@ FreeMoveMotionEstimate EstimateFreeMoveMotion(const Obstacle& obstacle) {
         Eigen::Vector2d(history_speed * heading_cos, history_speed * heading_sin);
     estimate.acc = Eigen::Vector2d(history_long_acc * heading_cos,
                                    history_long_acc * heading_sin);
+  }
+
+  const double constrained_speed = std::max(fallback_speed, estimate.velocity.norm());
+  estimate.yaw_rate =
+      ClampYawRateByLateralAcceleration(estimate.yaw_rate, constrained_speed);
+  if (std::fabs(estimate.yaw_rate) * constrained_speed <
+      kStraightLateralAccThreshold) {
+    estimate.yaw_rate = 0.0;
   }
   return estimate;
 }
@@ -426,6 +463,10 @@ void FreeMovePredictor::DrawFreeMoveTrajectoryPoints(
   // dynamics decay quickly for low-confidence history.
   a_long = std::max(-3.0, std::min(2.0, a_long));
   v_long = std::max(0.0, std::min(max_speed, v_long));
+  if (std::fabs(yaw_rate) <= kStraightYawRateThreshold &&
+      history_time >= kMinReliableHistorySec) {
+    a_long *= kStraightModeAccelerationDamping;
+  }
 
   size_t num = static_cast<size_t>(total_time / period);
 
@@ -448,9 +489,10 @@ void FreeMovePredictor::DrawFreeMoveTrajectoryPoints(
   for (size_t i = 1; i <= num; ++i) {
     const double t = static_cast<double>(i) * period;
     const double prev_t = static_cast<double>(i - 1) * period;
-    const double theta_t =
-        std::fabs(yaw_rate) > kStraightYawRateThreshold ? heading + yaw_rate * t
-                                                        : heading;
+    const double theta_t = std::fabs(yaw_rate) > kStraightYawRateThreshold
+                               ? heading + yaw_rate * IntegrateDecayedYawTime(
+                                                        t, history_time, period)
+                               : heading;
     const double v_long_t =
         std::max(0.0, std::min(max_speed, v_long + a_long * t));
     if (std::fabs(yaw_rate) <= kStraightYawRateThreshold) {
@@ -466,7 +508,10 @@ void FreeMovePredictor::DrawFreeMoveTrajectoryPoints(
       curr_y = s_long * std::sin(heading) + s_lat * std::cos(heading);
     } else {
       const double mid_t = 0.5 * (prev_t + t);
-      const double theta_mid = heading + yaw_rate * mid_t;
+      const double theta_mid =
+          heading + yaw_rate * 0.5 *
+                        (IntegrateDecayedYawTime(prev_t, history_time, period) +
+                         IntegrateDecayedYawTime(t, history_time, period));
       const double v_long_mid =
           std::max(0.0, std::min(max_speed, v_long + a_long * mid_t));
       double v_lat_mid = v_lat + a_lat * mid_t;

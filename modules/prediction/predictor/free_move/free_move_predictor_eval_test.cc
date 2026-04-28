@@ -1,4 +1,4 @@
-// Copyright 2025 WheelOS. All Rights Reserved.
+// Copyright 2026 WheelOS. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,6 +52,8 @@ class FreeMovePredictorEvalTest : public KMLMapBasedTest {
       Obstacle* obstacle_ptr) const;
   apollo::perception::PerceptionObstacles MakeTurningFrame(
       double timestamp, double yaw, double speed, double yaw_rate) const;
+  apollo::perception::PerceptionObstacles MakeStraightFrame(
+      int obstacle_id, double timestamp, double x, double y, double speed) const;
 
   apollo::perception::PerceptionObstacles frame_1_;
   apollo::perception::PerceptionObstacles frame_2_;
@@ -65,9 +67,13 @@ constexpr double kMinReliableHistorySec = 0.2;
 constexpr double kLowSpeedHeadingFallbackThreshold = 0.1;
 constexpr double kHeadingAgreementThreshold = M_PI / 12.0;
 constexpr double kStraightYawRateThreshold = 0.05;
-constexpr double kYawRateEmaAlpha = 0.2;
 constexpr double kSpeedEmaAlpha = 0.4;
+constexpr double kStraightLateralAccThreshold = 0.5;
+constexpr double kMaxTurningLateralAcc = 2.0;
+constexpr double kMinSpeedForTurnConstraint = 1.0;
+constexpr double kReliableHeadingLinearityRatio = 8.0;
 constexpr int kTurningObstacleId = 42;
+constexpr int kStraightObstacleId = 43;
 
 struct FreeMoveMotionEstimate {
   double smoothed_theta = 0.0;
@@ -141,11 +147,15 @@ double FitHeadingFromHistoryForTest(
   const Eigen::Matrix2d covariance =
       samples * samples.transpose() / static_cast<double>(history.size() - 1);
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eigen_solver(covariance);
+  const double principal = std::max(0.0, eigen_solver.eigenvalues()(1));
+  const double minor = std::max(1e-4, eigen_solver.eigenvalues()(0));
+  const double linearity_ratio = principal / minor;
   double fitted_heading = std::atan2(eigen_solver.eigenvectors()(1, 1),
                                      eigen_solver.eigenvectors()(0, 1));
   fitted_heading = AlignHeadingToReference(fitted_heading, reference_direction);
   if (std::fabs(AngleDiff(fallback_heading, fitted_heading)) <=
-      kHeadingAgreementThreshold) {
+          kHeadingAgreementThreshold ||
+      linearity_ratio >= kReliableHeadingLinearityRatio) {
     return fitted_heading;
   }
   return fallback_heading;
@@ -238,9 +248,10 @@ double EstimateYawRateFromHistoryForTest(
   }
 
   bool initialized = false;
-  bool has_previous_heading = false;
-  double filtered_yaw_rate = 0.0;
-  double previous_heading = 0.0;
+  double first_heading = 0.0;
+  double last_heading = 0.0;
+  double first_time = 0.0;
+  double last_time = 0.0;
   for (size_t i = 1; i < history.size(); ++i) {
     const auto& prev_position = history[i - 1]->position();
     const auto& curr_position = history[i]->position();
@@ -252,23 +263,27 @@ double EstimateYawRateFromHistoryForTest(
     }
 
     const double segment_heading = std::atan2(delta_y, delta_x);
-    if (!has_previous_heading) {
-      previous_heading = segment_heading;
-      has_previous_heading = true;
-      continue;
+    if (!initialized) {
+      first_heading = segment_heading;
+      first_time = history[i]->timestamp();
+      initialized = true;
     }
-
-    const double raw_yaw_rate =
-        AngleDiff(previous_heading, segment_heading) / delta_t;
-    filtered_yaw_rate = initialized
-                            ? kYawRateEmaAlpha * raw_yaw_rate +
-                                  (1.0 - kYawRateEmaAlpha) * filtered_yaw_rate
-                            : raw_yaw_rate;
-    initialized = true;
-    previous_heading =
-        previous_heading + AngleDiff(previous_heading, segment_heading);
+    last_heading = segment_heading;
+    last_time = history[i]->timestamp();
   }
-  return filtered_yaw_rate;
+  if (!initialized || last_time - first_time <= 1e-3) {
+    return 0.0;
+  }
+  return AngleDiff(first_heading, last_heading) / (last_time - first_time);
+}
+
+double ClampYawRateByLateralAccelerationForTest(const double yaw_rate,
+                                                const double speed) {
+  if (speed <= kMinSpeedForTurnConstraint) {
+    return yaw_rate;
+  }
+  const double max_yaw_rate = kMaxTurningLateralAcc / speed;
+  return std::max(-max_yaw_rate, std::min(max_yaw_rate, yaw_rate));
 }
 
 FreeMoveMotionEstimate EstimateFreeMoveMotionForTest(const Obstacle& obstacle) {
@@ -286,13 +301,20 @@ FreeMoveMotionEstimate EstimateFreeMoveMotionForTest(const Obstacle& obstacle) {
   const auto history = CollectRecentHistoryForTest(obstacle);
   estimate.history_time = ComputeHistoryTimeForTest(history);
   const double fallback_speed = estimate.velocity.norm();
-  Eigen::Vector2d reference_direction = estimate.velocity;
-  if (reference_direction.squaredNorm() <= 1e-6 && history.size() >= 2) {
+  Eigen::Vector2d reference_direction = Eigen::Vector2d::Zero();
+  if (history.size() >= 2) {
     reference_direction = Eigen::Vector2d(
         history.back()->position().x() - history.front()->position().x(),
         history.back()->position().y() - history.front()->position().y());
   }
-  if (fallback_speed <= kLowSpeedHeadingFallbackThreshold &&
+  if (reference_direction.squaredNorm() <= 1e-6) {
+    reference_direction = estimate.velocity;
+  }
+  if (estimate.history_time >= kMinReliableHistorySec &&
+      reference_direction.squaredNorm() > 1e-6) {
+    estimate.smoothed_theta =
+        std::atan2(reference_direction.y(), reference_direction.x());
+  } else if (fallback_speed <= kLowSpeedHeadingFallbackThreshold &&
       reference_direction.squaredNorm() > 1e-6) {
     estimate.smoothed_theta =
         std::atan2(reference_direction.y(), reference_direction.x());
@@ -323,6 +345,15 @@ FreeMoveMotionEstimate EstimateFreeMoveMotionForTest(const Obstacle& obstacle) {
         Eigen::Vector2d(history_speed * heading_cos, history_speed * heading_sin);
     estimate.acc = Eigen::Vector2d(history_long_acc * heading_cos,
                                    history_long_acc * heading_sin);
+  }
+
+  const double constrained_speed =
+      std::max(fallback_speed, estimate.velocity.norm());
+  estimate.yaw_rate = ClampYawRateByLateralAccelerationForTest(
+      estimate.yaw_rate, constrained_speed);
+  if (std::fabs(estimate.yaw_rate) * constrained_speed <
+      kStraightLateralAccThreshold) {
+    estimate.yaw_rate = 0.0;
   }
   return estimate;
 }
@@ -571,6 +602,63 @@ TEST_F(FreeMovePredictorEvalTest, TurningHistoryProducesSmoothMonotonicHeading) 
   EXPECT_TRUE(saw_turning);
 }
 
+TEST_F(FreeMovePredictorEvalTest, HighSpeedTurnIsConstrainedByLateralAcceleration) {
+  ObstaclesContainer container;
+  constexpr double kSpeed = 12.0;
+  constexpr double kYawRate = 0.6;
+  constexpr double kDt = 0.2;
+  for (int i = 0; i < 6; ++i) {
+    container.Insert(MakeTurningFrame(i * kDt, i * kYawRate * kDt, kSpeed,
+                                      kYawRate));
+  }
+
+  Obstacle* obstacle_ptr = container.GetObstacle(kTurningObstacleId);
+  ASSERT_NE(obstacle_ptr, nullptr);
+  ASSERT_GE(obstacle_ptr->history_size(), 5U);
+
+  const auto points = BuildNewTrajectory(obstacle_ptr);
+  ASSERT_GE(points.size(), 3U);
+
+  const double dt = points[1].relative_time() - points[0].relative_time();
+  ASSERT_GT(dt, 0.0);
+  const double max_expected_delta_theta =
+      kMaxTurningLateralAcc / kSpeed * dt + 1e-3;
+
+  bool saw_turning = false;
+  for (size_t i = 1; i < points.size(); ++i) {
+    const double delta_theta = AngleDiff(points[i - 1].path_point().theta(),
+                                         points[i].path_point().theta());
+    EXPECT_GE(delta_theta, -1e-6);
+    EXPECT_LE(delta_theta, max_expected_delta_theta);
+    saw_turning = saw_turning || delta_theta > 1e-4;
+  }
+  EXPECT_TRUE(saw_turning);
+}
+
+TEST_F(FreeMovePredictorEvalTest, NoisyStraightHistorySuppressesSpuriousTurning) {
+  ObstaclesContainer container;
+  constexpr double kSpeed = 8.0;
+  constexpr double kDt = 0.2;
+  const std::vector<double> y_offsets = {0.00, 0.04, -0.03, 0.02, -0.01, 0.01};
+  for (size_t i = 0; i < y_offsets.size(); ++i) {
+    container.Insert(MakeStraightFrame(kStraightObstacleId, i * kDt,
+                                       kSpeed * i * kDt, y_offsets[i], kSpeed));
+  }
+
+  Obstacle* obstacle_ptr = container.GetObstacle(kStraightObstacleId);
+  ASSERT_NE(obstacle_ptr, nullptr);
+  ASSERT_GE(obstacle_ptr->history_size(), 5U);
+
+  const auto points = BuildNewTrajectory(obstacle_ptr);
+  ASSERT_GE(points.size(), 3U);
+
+  for (size_t i = 1; i < points.size(); ++i) {
+    const double delta_theta = AngleDiff(points[i - 1].path_point().theta(),
+                                         points[i].path_point().theta());
+    EXPECT_NEAR(delta_theta, 0.0, 1e-6);
+  }
+}
+
 }  // namespace
 
 std::vector<apollo::common::TrajectoryPoint>
@@ -607,6 +695,24 @@ apollo::perception::PerceptionObstacles FreeMovePredictorEvalTest::MakeTurningFr
   obstacle->mutable_velocity()->set_y(speed * std::sin(yaw));
   obstacle->mutable_acceleration()->set_x(-speed * yaw_rate * std::sin(yaw));
   obstacle->mutable_acceleration()->set_y(speed * yaw_rate * std::cos(yaw));
+  return frame;
+}
+
+apollo::perception::PerceptionObstacles FreeMovePredictorEvalTest::MakeStraightFrame(
+    int obstacle_id, double timestamp, double x, double y, double speed) const {
+  apollo::perception::PerceptionObstacles frame;
+  frame.mutable_header()->set_timestamp_sec(timestamp);
+  auto* obstacle = frame.add_perception_obstacle();
+  obstacle->set_id(obstacle_id);
+  obstacle->set_type(apollo::perception::PerceptionObstacle::VEHICLE);
+  obstacle->set_theta(0.0);
+  obstacle->set_timestamp(timestamp);
+  obstacle->mutable_position()->set_x(x);
+  obstacle->mutable_position()->set_y(y);
+  obstacle->mutable_velocity()->set_x(speed);
+  obstacle->mutable_velocity()->set_y(0.0);
+  obstacle->mutable_acceleration()->set_x(0.0);
+  obstacle->mutable_acceleration()->set_y(0.0);
   return frame;
 }
 
