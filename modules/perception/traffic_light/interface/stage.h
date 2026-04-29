@@ -8,25 +8,22 @@ namespace apollo {
 namespace perception {
 namespace traffic_light {
 
-struct StageConfig {
-  std::string name;
-  bool optional = false;
-  // std::string model_path;
-  // float threshold等可以通过 proto 注入，这里用占位符
-};
-
-// 认知步骤抽象基类，所有流水线的算法节点都要继承它
 class BaseStage {
  public:
+  explicit BaseStage(bool optional = false) : optional_(optional) {}
   virtual ~BaseStage() = default;
 
   virtual std::string Name() const = 0;
-
-  // 可以在此拉起 TensorRT engine，加载 config 等
-  virtual bool Init(const StageConfig& config) = 0;
-
-  // 核心处理逻辑，通过 context 黑板取自己需要的数据，并将产出写回 context
+  virtual bool Init() { return true; }
   virtual bool Process(PipelineContext* context) = 0;
+
+  bool optional() const { return optional_; }
+
+ protected:
+  void set_optional(bool optional) { optional_ = optional; }
+
+ private:
+  bool optional_ = false;
 };
 
 }  // namespace traffic_light

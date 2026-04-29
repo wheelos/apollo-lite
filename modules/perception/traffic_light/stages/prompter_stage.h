@@ -1,7 +1,8 @@
 #pragma once
 
 #include <algorithm>
-#include <cmath>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "modules/perception/traffic_light/interface/stage.h"
@@ -10,158 +11,219 @@ namespace apollo {
 namespace perception {
 namespace traffic_light {
 
-// Step 1: 意图与区域 (Attention ROI)
-// 职责: 结合历史Track结果和导航，输出接下来希望检测器重点抠图扫描的 ROI 区域
 class PrompterStage : public BaseStage {
-public:
-    PrompterStage() = default;
-    ~PrompterStage() override = default;
+ public:
+  explicit PrompterStage(const PrompterOptions& options)
+      : BaseStage(false), options_(options) {}
 
-    std::string Name() const override { return "PrompterStage"; }
+  std::string Name() const override { return "PrompterStage"; }
 
-    bool Init(const StageConfig& config) override {
-        (void)config;
-        return true;
+  bool Process(PipelineContext* context) override {
+    if (context == nullptr) {
+      return false;
     }
 
-    bool Process(PipelineContext* context) override {
-        if (!context) return false;
-        std::lock_guard<std::mutex> lock(context->rw_mutex);
+    std::lock_guard<std::mutex> lock(context->rw_mutex);
+    const int frame_width = GetFrameWidth(*context);
+    const int frame_height = GetFrameHeight(*context);
+    std::vector<PromptRegion> prompts;
+    context->metrics.prompter = StageRuntimeMetrics();
 
-        std::vector<PromptRegion> new_prompts;
-        const int frame_width = GetFrameWidth(*context);
-        const int frame_height = GetFrameHeight(*context);
-
-        // 1) 根据当前帧 Track 生成 Prompt (高优权重)
-        for (const auto& track : context->tracked_lights) {
-            PromptRegion p;
-            p.roi_box = track.current_state.visual_light.bbox;
-            ExpandBox(p.roi_box, 1.4f, frame_width, frame_height);
-            p.weight = 0.9f;
-            p.source = 1; // 1: History
-            p.signal_id = track.current_state.visual_light.signal_id;
-            new_prompts.push_back(p);
+    if (context->runtime_state != nullptr) {
+      for (const auto& track : context->runtime_state->tracked_memory) {
+        if (!track.confirmed ||
+            (track.current_state.visual_light.camera_name !=
+                 context->primary_camera_name &&
+             !track.current_state.visual_light.camera_name.empty())) {
+          continue;
         }
-
-        // 2) 根据跨帧记忆补充 Prompt（对短时遮挡更稳）
-        if (context->runtime_state != nullptr && new_prompts.empty()) {
-            for (const auto& tracked : context->runtime_state->tracked_memory) {
-                PromptRegion p;
-                p.roi_box = tracked.current_state.visual_light.bbox;
-                ExpandBox(p.roi_box, 1.6f, frame_width, frame_height);
-                p.weight = 0.75f;
-                p.source = 1;
-                p.signal_id = tracked.current_state.visual_light.signal_id;
-                new_prompts.push_back(p);
-            }
-        }
-
-        // 3) 使用 HDMap 信号候选生成几何先验 Prompt
-        const std::vector<SignalCandidate>& candidates =
-            SelectSignalCandidates(*context);
-        for (const auto& signal : candidates) {
-            PromptRegion p;
-            p.roi_box = signal.projection_roi;
-            ExpandBox(p.roi_box, 1.25f, frame_width, frame_height);
-            p.weight = 0.7f + 0.2f * std::max(0.0f, std::min(1.0f, signal.confidence));
-            p.source = 2; // 2: Nav/Map
-            p.signal_id = signal.signal_id;
-            new_prompts.push_back(p);
-        }
-
-        // 4) 冷启动: 在进入路口前固定区域做弱先验扫描
-        if (new_prompts.empty() && context->nav_topology.distance_to_intersection < 120.0) {
-            PromptRegion p;
-            const float w = static_cast<float>(frame_width);
-            const float h = static_cast<float>(frame_height);
-            p.roi_box = Rect2f{0.2f * w, 0.05f * h, 0.6f * w, 0.45f * h};
-            p.weight = 0.5f;
-            p.source = 2; // 2: Nav Topology
-            new_prompts.push_back(p);
-        }
-
-        // 5) Fallback: 全图兜底，保证不丢检
-        PromptRegion fallback;
-        fallback.roi_box = Rect2f{0.0f, 0.0f,
-                                  static_cast<float>(frame_width),
-                                  static_cast<float>(frame_height)};
-        fallback.weight = 0.1f;
-        fallback.source = 3;
-        new_prompts.push_back(fallback);
-
-        context->prompts = std::move(new_prompts);
-        return true;
+        PromptRegion prompt;
+        prompt.roi_box = track.current_state.visual_light.bbox;
+        ExpandBox(&prompt.roi_box, options_.history_expand_ratio, frame_width,
+                  frame_height);
+        prompt.weight = options_.history_weight;
+        prompt.source = PromptSource::HISTORY;
+        prompt.signal_id = track.current_state.visual_light.signal_id;
+        prompt.camera_name = track.current_state.visual_light.camera_name;
+        prompt.intended_movement = track.current_state.bound_intent;
+        prompt.movement_mask = track.current_state.signal_movement_mask;
+        prompts.push_back(prompt);
+      }
     }
 
-private:
-    int GetFrameWidth(const PipelineContext& context) const {
-        if (!context.camera_frames.empty()) {
-            const int width = context.camera_frames.front().image.cols;
-            if (width > 0) {
-                return width;
-            }
-        }
-        if (context.image_tele.cols > 0) {
-            return context.image_tele.cols;
-        }
-        if (context.image_wide.cols > 0) {
-            return context.image_wide.cols;
-        }
-        return 1920;
+    const std::vector<SignalCandidate>& candidates =
+        SelectSignalCandidates(*context);
+    for (const auto& signal : candidates) {
+      if (!signal.camera_name.empty() &&
+          signal.camera_name != context->primary_camera_name) {
+        continue;
+      }
+      if (!signal.projection_roi.IsValid()) {
+        continue;
+      }
+      PromptRegion prompt;
+      prompt.roi_box = signal.projection_roi;
+      ExpandBox(&prompt.roi_box, options_.map_expand_ratio, frame_width,
+                frame_height);
+      prompt.weight = std::max(options_.map_weight_floor, signal.confidence);
+      prompt.source = PromptSource::MAP;
+      prompt.signal_id = signal.signal_id;
+      prompt.camera_name = signal.camera_name;
+      prompt.intended_movement = signal.intended_movement;
+      prompt.movement_mask = signal.movement_mask;
+      prompts.push_back(prompt);
     }
 
-    int GetFrameHeight(const PipelineContext& context) const {
-        if (!context.camera_frames.empty()) {
-            const int height = context.camera_frames.front().image.rows;
-            if (height > 0) {
-                return height;
-            }
-        }
-        if (context.image_tele.rows > 0) {
-            return context.image_tele.rows;
-        }
-        if (context.image_wide.rows > 0) {
-            return context.image_wide.rows;
-        }
-        return 1080;
+    if (prompts.empty() &&
+        context->nav_topology.distance_to_intersection_m > 0.0 &&
+        context->nav_topology.distance_to_intersection_m <=
+            options_.cold_start_distance_to_intersection_m) {
+      PromptRegion prompt;
+      const float width = static_cast<float>(frame_width);
+      const float height = static_cast<float>(frame_height);
+      prompt.roi_box =
+          Rect2f{0.2f * width, 0.05f * height, 0.6f * width, 0.45f * height};
+      prompt.weight = 0.5f;
+      prompt.source = PromptSource::NAVIGATION;
+      prompt.camera_name = context->primary_camera_name;
+      prompt.intended_movement = context->nav_topology.ego_lane_intent;
+      prompt.movement_mask =
+          MovementMaskFromLaneIntent(context->nav_topology.ego_lane_intent);
+      prompts.push_back(prompt);
     }
 
-    const std::vector<SignalCandidate>& SelectSignalCandidates(
-        PipelineContext& context) const {
-        if (!context.map_signals.empty()) {
-            if (context.runtime_state != nullptr) {
-                context.runtime_state->cached_signals = context.map_signals;
-                context.runtime_state->last_signals_ts_sec =
-                    static_cast<double>(context.timestamp) * 1e-9;
-            }
-            return context.map_signals;
-        }
-        if (context.runtime_state != nullptr) {
-            return context.runtime_state->cached_signals;
-        }
-        return context.map_signals;
+    if (prompts.empty() || options_.always_add_full_frame_fallback) {
+      PromptRegion fallback;
+      fallback.roi_box = Rect2f{
+          0.0f, 0.0f, static_cast<float>(frame_width),
+          static_cast<float>(frame_height),
+      };
+      fallback.weight = options_.full_frame_weight;
+      fallback.source = PromptSource::FULL_FRAME;
+      fallback.camera_name = context->primary_camera_name;
+      fallback.intended_movement = context->nav_topology.ego_lane_intent;
+      fallback.movement_mask =
+          MovementMaskFromLaneIntent(context->nav_topology.ego_lane_intent);
+      prompts.push_back(fallback);
+      context->status.using_full_frame_fallback = true;
+      context->metrics.prompter.fallback_used = true;
     }
 
-    void ExpandBox(Rect2f& box, float ratio, int frame_width,
-                   int frame_height) const {
-        float cx = box.x + box.width / 2.0f;
-        float cy = box.y + box.height / 2.0f;
-        box.width *= ratio;
-        box.height *= ratio;
-        box.x = cx - box.width / 2.0f;
-        box.y = cy - box.height / 2.0f;
+    std::sort(prompts.begin(), prompts.end(),
+              [](const PromptRegion& lhs, const PromptRegion& rhs) {
+                return lhs.weight > rhs.weight;
+              });
+    context->prompts = Deduplicate(prompts);
+    context->metrics.prompter.input_count = static_cast<int>(candidates.size());
+    context->metrics.prompter.output_count =
+        static_cast<int>(context->prompts.size());
+    context->metrics.prompter.note =
+        context->status.using_full_frame_fallback ? "full-frame fallback active"
+                                                  : "map/history guided";
+    return !context->prompts.empty();
+  }
 
-        box.x = std::max(0.0f, box.x);
-        box.y = std::max(0.0f, box.y);
-        box.width = std::max(0.0f,
-                             std::min(box.width,
-                                      static_cast<float>(frame_width) - box.x));
-        box.height = std::max(0.0f,
-                              std::min(box.height,
-                                       static_cast<float>(frame_height) - box.y));
+ private:
+  static int GetFrameWidth(const PipelineContext& context) {
+    for (const auto& frame : context.camera_frames) {
+      if (frame.camera_name == context.primary_camera_name &&
+          frame.image.cols > 0) {
+        return frame.image.cols;
+      }
     }
+    if (!context.camera_frames.empty() && context.camera_frames.front().image.cols > 0) {
+      return context.camera_frames.front().image.cols;
+    }
+    if (context.image_tele.cols > 0) {
+      return context.image_tele.cols;
+    }
+    return 1920;
+  }
+
+  static int GetFrameHeight(const PipelineContext& context) {
+    for (const auto& frame : context.camera_frames) {
+      if (frame.camera_name == context.primary_camera_name &&
+          frame.image.rows > 0) {
+        return frame.image.rows;
+      }
+    }
+    if (!context.camera_frames.empty() && context.camera_frames.front().image.rows > 0) {
+      return context.camera_frames.front().image.rows;
+    }
+    if (context.image_tele.rows > 0) {
+      return context.image_tele.rows;
+    }
+    return 1080;
+  }
+
+  const std::vector<SignalCandidate>& SelectSignalCandidates(
+      const PipelineContext& context) const {
+    if (!context.map_signals.empty()) {
+      return context.map_signals;
+    }
+    if (context.runtime_state != nullptr) {
+      return context.runtime_state->cached_signals;
+    }
+    return context.map_signals;
+  }
+
+  static void ExpandBox(Rect2f* box, float ratio, int frame_width,
+                        int frame_height) {
+    if (box == nullptr || !box->IsValid()) {
+      return;
+    }
+    const float center_x = box->x + box->width * 0.5f;
+    const float center_y = box->y + box->height * 0.5f;
+    box->width *= ratio;
+    box->height *= ratio;
+    box->x = std::max(0.0f, center_x - box->width * 0.5f);
+    box->y = std::max(0.0f, center_y - box->height * 0.5f);
+    box->width = std::max(
+        0.0f, std::min(box->width, static_cast<float>(frame_width) - box->x));
+    box->height = std::max(
+        0.0f, std::min(box->height, static_cast<float>(frame_height) - box->y));
+  }
+
+  static float ComputeIou(const Rect2f& lhs, const Rect2f& rhs) {
+    const float x1 = std::max(lhs.x, rhs.x);
+    const float y1 = std::max(lhs.y, rhs.y);
+    const float x2 = std::min(lhs.x + lhs.width, rhs.x + rhs.width);
+    const float y2 = std::min(lhs.y + lhs.height, rhs.y + rhs.height);
+    const float width = std::max(0.0f, x2 - x1);
+    const float height = std::max(0.0f, y2 - y1);
+    const float inter = width * height;
+    const float uni = lhs.Area() + rhs.Area() - inter;
+    return uni > 1e-6f ? inter / uni : 0.0f;
+  }
+
+  static std::vector<PromptRegion> Deduplicate(
+      const std::vector<PromptRegion>& prompts) {
+    std::vector<PromptRegion> deduped;
+    for (const auto& prompt : prompts) {
+      bool merged = false;
+      for (auto& existing : deduped) {
+        const bool same_signal = !prompt.signal_id.empty() &&
+                                 prompt.signal_id == existing.signal_id;
+        const bool same_box = ComputeIou(prompt.roi_box, existing.roi_box) > 0.9f;
+        if (!same_signal && !same_box) {
+          continue;
+        }
+        if (prompt.weight > existing.weight) {
+          existing = prompt;
+        }
+        merged = true;
+        break;
+      }
+      if (!merged) {
+        deduped.push_back(prompt);
+      }
+    }
+    return deduped;
+  }
+
+  PrompterOptions options_;
 };
 
-} // namespace traffic_light
-} // namespace perception
-} // namespace apollo
+}  // namespace traffic_light
+}  // namespace perception
+}  // namespace apollo

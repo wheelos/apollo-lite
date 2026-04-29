@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -9,23 +10,20 @@ namespace apollo {
 namespace perception {
 namespace traffic_light {
 
-// Reusable query abstraction so map port can directly wrap real HDMap service.
 class IHDMapSignalQuerier {
  public:
   virtual ~IHDMapSignalQuerier() = default;
-
   virtual bool QuerySignals(uint64_t timestamp_ns,
                             std::vector<SignalCandidate>* signals) = 0;
 };
 
-// Generic HDMap-backed map provider with cache fallback policy.
 class HdMapProviderPort final : public IMapProviderPort {
  public:
   explicit HdMapProviderPort(IHDMapSignalQuerier* querier)
       : querier_(querier) {}
 
   void SetValidCacheWindowSec(double valid_cache_window_sec) {
-    valid_cache_window_sec_ = valid_cache_window_sec;
+    valid_cache_window_sec_ = std::max(0.0, valid_cache_window_sec);
   }
 
   bool PopulateSignals(PipelineContext* context) override {
@@ -54,17 +52,13 @@ class HdMapProviderPort final : public IMapProviderPort {
       if (dt >= 0.0 && dt <= valid_cache_window_sec_) {
         context->map_signals = context->runtime_state->cached_signals;
         context->status.hdmap_available = true;
-        if (context->status.degrade_reason.empty()) {
-          context->status.degrade_reason = "hdmap fallback cache";
-        }
+        context->AppendDegradeReason("hdmap fallback cache");
         return true;
       }
     }
 
     context->status.hdmap_available = false;
-    if (context->status.degrade_reason.empty()) {
-      context->status.degrade_reason = "hdmap unavailable";
-    }
+    context->AppendDegradeReason("hdmap unavailable");
     return false;
   }
 

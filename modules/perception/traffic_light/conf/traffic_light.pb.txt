@@ -1,32 +1,91 @@
+cameras {
+  camera_name: "front_6mm"
+  channel_name: "/apollo/sensor/camera/front_6mm/image"
+  image_width: 1920
+  image_height: 1080
+  is_primary: true
+}
+
 tl_tf2_frame_id: "world"
 tl_tf2_child_frame_id: "novatel"
-
-camera_name_list: "front_6mm"
-camera_channel_name_list: "/apollo/sensor/camera/front_6mm/image"
-
-max_process_image_fps: 8
+tf2_timeout_second: 0.01
+max_process_image_fps: 8.0
 query_tf_interval_seconds: 0.3
-valid_hdmap_interval: 1.5
+valid_hdmap_interval_seconds: 1.5
 image_sys_ts_diff_threshold: 0.5
-sync_interval_seconds: 0.5
-default_image_border_size: 100
-
-pipeline_config_root_dir: "/apollo/modules/perception/pipeline/config"
-pipeline_config_file: "trafficlights_perception.pb.txt"
+frame_cache_tolerance_sec: 0.2
 
 traffic_light_output_channel_name: "/apollo/perception/traffic_light"
-simulation_channel_name: "/perception/traffic_light_simulation"
+debug_output_channel_name: "/apollo/perception/traffic_light/debug"
+debug_image_channel_name: "/apollo/perception/traffic_light/debug/image"
 v2x_trafficlights_input_channel_name: "/apollo/v2x/traffic_light"
-v2x_sync_interval_seconds: 0.1
-max_v2x_msg_buff_size: 50
+v2x_sync_interval_seconds: 0.3
+max_v2x_msg_buff_size: 64
 
-tl_preprocessor_name: "TrafficLightPreprocessorStage"
-enable_undistortion: false
-image_width: 1920
-image_height: 1080
-image_channel_num: 3
-check_image_status_interval_thresh: 1.0
-observability_output_dir: "/apollo/debug_vis"
-enable_debug_visualization: false
-health_log_interval_seconds: 5.0
+enable_debug_recording: true
+enable_debug_image_stream: true
 enable_perf_logging: true
+enable_heuristic_stage: true
+
+prompter {
+  history_expand_ratio: 1.4
+  history_weight: 0.9
+  memory_expand_ratio: 1.6
+  memory_weight: 0.75
+  map_expand_ratio: 1.25
+  map_weight_floor: 0.7
+  cold_start_distance_to_intersection_m: 120.0
+  full_frame_weight: 0.2
+  always_add_full_frame_fallback: true
+}
+
+detector {
+  backend: TL_DETECTOR_YOLO
+  min_prompt_weight: 0.12
+  min_bright_pixel_ratio: 0.01
+  min_color_ratio: 0.45
+  min_roi_area: 36.0
+  sample_grid_divisor: 16
+  map_overlap_bonus: 0.2
+  history_bonus: 0.15
+  allow_unknown_output: false
+  glare_white_ratio_threshold: 0.35
+  glare_penalty: 0.35
+  min_signal_overlap_for_glare_override: 0.45
+  min_objectness: 0.25
+  min_semantic_confidence: 0.25
+  prefer_raw_yolo_candidates: true
+}
+
+binder {
+  min_bind_score: 0.15
+  require_intent_match: true
+  min_signal_overlap: 0.2
+  max_center_distance_ratio: 1.2
+  min_topology_confidence: 0.35
+}
+
+tracker {
+  max_lost_frames: 12
+  min_iou_match: 0.2
+  belief_decay: 0.85
+  measurement_gain: 0.65
+  min_confirmed_visible_count: 2
+}
+
+heuristic {
+  max_distance_to_intersection_m: 100.0
+  min_starting_agents: 2
+  green_probability: 0.85
+  red_hold_probability: 0.65
+}
+
+fusion {
+  weak_vision_threshold: 0.6
+  strong_v2x_threshold: 0.7
+  heuristic_trigger_threshold: 0.4
+  heuristic_accept_threshold: 0.92
+  v2x_sync_window_sec: 0.3
+  prefer_ego_intent: true
+  min_conflict_override_margin: 0.25
+}

@@ -1,0 +1,112 @@
+syntax = "proto2";
+
+package apollo.perception.trafficlight;
+
+enum TrafficLightDetectorBackend {
+  TL_DETECTOR_HEURISTIC = 0;
+  TL_DETECTOR_YOLO = 1;
+}
+
+message CameraSourceConfig {
+  optional string camera_name = 1;
+  optional string channel_name = 2;
+  optional int32 image_width = 3 [default = 1920];
+  optional int32 image_height = 4 [default = 1080];
+  optional bool is_primary = 5 [default = false];
+}
+
+message PrompterConfig {
+  optional float history_expand_ratio = 1 [default = 1.4];
+  optional float history_weight = 2 [default = 0.9];
+  optional float memory_expand_ratio = 3 [default = 1.6];
+  optional float memory_weight = 4 [default = 0.75];
+  optional float map_expand_ratio = 5 [default = 1.25];
+  optional float map_weight_floor = 6 [default = 0.7];
+  optional double cold_start_distance_to_intersection_m = 7 [default = 120.0];
+  optional float full_frame_weight = 8 [default = 0.2];
+  optional bool always_add_full_frame_fallback = 9 [default = true];
+}
+
+message DetectorConfig {
+  optional TrafficLightDetectorBackend backend = 1
+      [default = TL_DETECTOR_YOLO];
+  optional float min_prompt_weight = 2 [default = 0.12];
+  optional float min_bright_pixel_ratio = 3 [default = 0.01];
+  optional float min_color_ratio = 4 [default = 0.45];
+  optional float min_roi_area = 5 [default = 36.0];
+  optional int32 sample_grid_divisor = 6 [default = 16];
+  optional float map_overlap_bonus = 7 [default = 0.2];
+  optional float history_bonus = 8 [default = 0.15];
+  optional bool allow_unknown_output = 9 [default = false];
+  optional float glare_white_ratio_threshold = 10 [default = 0.35];
+  optional float glare_penalty = 11 [default = 0.35];
+  optional float min_signal_overlap_for_glare_override = 12 [default = 0.45];
+  optional float min_objectness = 13 [default = 0.25];
+  optional float min_semantic_confidence = 14 [default = 0.25];
+  optional bool prefer_raw_yolo_candidates = 15 [default = true];
+}
+
+message BinderConfig {
+  optional float min_bind_score = 1 [default = 0.15];
+  optional bool require_intent_match = 2 [default = true];
+  optional float min_signal_overlap = 3 [default = 0.2];
+  optional float max_center_distance_ratio = 4 [default = 1.2];
+  optional float min_topology_confidence = 5 [default = 0.35];
+}
+
+message TrackerConfig {
+  optional int32 max_lost_frames = 1 [default = 12];
+  optional float min_iou_match = 2 [default = 0.2];
+  optional float belief_decay = 3 [default = 0.85];
+  optional float measurement_gain = 4 [default = 0.65];
+  optional int32 min_confirmed_visible_count = 5 [default = 2];
+}
+
+message HeuristicConfig {
+  optional double max_distance_to_intersection_m = 1 [default = 100.0];
+  optional int32 min_starting_agents = 2 [default = 2];
+  optional float green_probability = 3 [default = 0.85];
+  optional float red_hold_probability = 4 [default = 0.65];
+}
+
+message FusionConfig {
+  optional float weak_vision_threshold = 1 [default = 0.6];
+  optional float strong_v2x_threshold = 2 [default = 0.7];
+  optional float heuristic_trigger_threshold = 3 [default = 0.4];
+  optional float heuristic_accept_threshold = 4 [default = 0.92];
+  optional double v2x_sync_window_sec = 5 [default = 0.3];
+  optional bool prefer_ego_intent = 6 [default = true];
+  optional float min_conflict_override_margin = 7 [default = 0.25];
+}
+
+message TrafficLightComponentConfig {
+  repeated CameraSourceConfig cameras = 1;
+  optional string tl_tf2_frame_id = 2 [default = "world"];
+  optional string tl_tf2_child_frame_id = 3 [default = "novatel"];
+  optional double tf2_timeout_second = 4 [default = 0.01];
+  optional double max_process_image_fps = 5 [default = 8.0];
+  optional double query_tf_interval_seconds = 6 [default = 0.3];
+  optional double valid_hdmap_interval_seconds = 7 [default = 1.5];
+  optional double image_sys_ts_diff_threshold = 8 [default = 0.5];
+  optional double frame_cache_tolerance_sec = 9 [default = 0.2];
+  optional string traffic_light_output_channel_name = 10
+      [default = "/apollo/perception/traffic_light"];
+  optional string debug_output_channel_name = 11
+      [default = "/apollo/perception/traffic_light/debug"];
+  optional string debug_image_channel_name = 12
+      [default = "/apollo/perception/traffic_light/debug/image"];
+  optional string v2x_trafficlights_input_channel_name = 13
+      [default = "/apollo/v2x/traffic_light"];
+  optional double v2x_sync_interval_seconds = 14 [default = 0.3];
+  optional int32 max_v2x_msg_buff_size = 15 [default = 64];
+  optional bool enable_debug_recording = 16 [default = true];
+  optional bool enable_debug_image_stream = 17 [default = true];
+  optional bool enable_perf_logging = 18 [default = true];
+  optional bool enable_heuristic_stage = 19 [default = true];
+  optional PrompterConfig prompter = 30;
+  optional DetectorConfig detector = 31;
+  optional BinderConfig binder = 32;
+  optional TrackerConfig tracker = 33;
+  optional HeuristicConfig heuristic = 34;
+  optional FusionConfig fusion = 35;
+}

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <deque>
+#include <map>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -15,13 +17,23 @@ namespace traffic_light {
 class InMemoryDataProviderPort : public IDataProviderPort,
                                  public IFrameInputPort {
  public:
+  void SetFrameStalenessToleranceSec(double tolerance_sec) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    frame_staleness_tolerance_sec_ = std::max(0.0, tolerance_sec);
+  }
+
+  void SetCameraOrder(const std::vector<std::string>& camera_order) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    camera_order_ = camera_order;
+  }
+
   bool PushCameraFrame(uint64_t frame_id,
                        const CameraFrameState& frame) override {
+    std::lock_guard<std::mutex> lock(mutex_);
     frame_id_ = frame_id;
     timestamp_ns_ = frame.timestamp_ns;
     primary_camera_name_ = frame.camera_name;
-    camera_frames_.clear();
-    camera_frames_.push_back(frame);
+    latest_frames_[frame.camera_name] = frame;
     return true;
   }
 
@@ -29,39 +41,84 @@ class InMemoryDataProviderPort : public IDataProviderPort,
     if (context == nullptr) {
       return false;
     }
+
+    std::lock_guard<std::mutex> lock(mutex_);
     context->frame_id = frame_id_;
     context->timestamp = timestamp_ns_;
     context->primary_camera_name = primary_camera_name_;
-    context->image_wide = Image();
-    context->image_tele = Image();
-    context->camera_frames = camera_frames_;
-    if (context->primary_camera_name.empty() &&
-        !context->camera_frames.empty()) {
-      context->primary_camera_name = context->camera_frames.front().camera_name;
+    context->camera_frames.clear();
+
+    if (primary_camera_name_.empty()) {
+      if (!camera_order_.empty()) {
+        context->primary_camera_name = camera_order_.front();
+      } else if (!latest_frames_.empty()) {
+        context->primary_camera_name = latest_frames_.begin()->first;
+      }
     }
+
+    const double latest_ts_sec = static_cast<double>(timestamp_ns_) * 1e-9;
+    auto append_if_fresh = [&](const std::string& camera_name) {
+      const auto it = latest_frames_.find(camera_name);
+      if (it == latest_frames_.end()) {
+        return;
+      }
+      const double frame_ts_sec =
+          static_cast<double>(it->second.timestamp_ns) * 1e-9;
+      if (latest_ts_sec > 0.0 &&
+          latest_ts_sec - frame_ts_sec > frame_staleness_tolerance_sec_) {
+        return;
+      }
+      context->camera_frames.push_back(it->second);
+    };
+
+    if (!context->primary_camera_name.empty()) {
+      append_if_fresh(context->primary_camera_name);
+    }
+    for (const auto& camera_name : camera_order_) {
+      if (camera_name == context->primary_camera_name) {
+        continue;
+      }
+      append_if_fresh(camera_name);
+    }
+    for (const auto& item : latest_frames_) {
+      if (item.first == context->primary_camera_name ||
+          std::find(camera_order_.begin(), camera_order_.end(), item.first) !=
+              camera_order_.end()) {
+        continue;
+      }
+      append_if_fresh(item.first);
+    }
+
     if (!context->camera_frames.empty()) {
-      // Keep legacy single-image fields in sync for transitional stages.
       context->image_tele = context->camera_frames.front().image;
+    } else {
+      context->image_tele = Image();
     }
+    context->image_wide = Image();
     context->status.image_healthy = !context->camera_frames.empty();
     return context->status.image_healthy;
   }
 
  private:
+  std::mutex mutex_;
   uint64_t frame_id_ = 0;
   uint64_t timestamp_ns_ = 0;
+  double frame_staleness_tolerance_sec_ = 0.2;
   std::string primary_camera_name_;
-  std::vector<CameraFrameState> camera_frames_;
+  std::vector<std::string> camera_order_;
+  std::map<std::string, CameraFrameState> latest_frames_;
 };
 
-// 适用于第一阶段：把 pose 查询从 component/stage 中剥离为独立端口。
 class StaticPoseProviderPort : public IPoseProviderPort {
  public:
   void SetEgoState(const VehicleState& ego_state) { ego_state_ = ego_state; }
 
   void SetCameraPoses(
-      std::vector<std::pair<std::string, Pose3d>> camera_poses) {
-    camera_poses_ = std::move(camera_poses);
+      const std::vector<std::pair<std::string, Pose3d>>& camera_poses) {
+    camera_poses_.clear();
+    for (const auto& item : camera_poses) {
+      camera_poses_[item.first] = item.second;
+    }
   }
 
   bool PopulatePose(PipelineContext* context) override {
@@ -70,31 +127,31 @@ class StaticPoseProviderPort : public IPoseProviderPort {
     }
     context->ego_state = ego_state_;
     for (auto& camera_frame : context->camera_frames) {
-      for (const auto& item : camera_poses_) {
-        if (item.first == camera_frame.camera_name) {
-          camera_frame.camera_pose = item.second;
-          break;
-        }
+      const auto it = camera_poses_.find(camera_frame.camera_name);
+      if (it != camera_poses_.end()) {
+        camera_frame.camera_pose = it->second;
       }
     }
     context->status.tf_available = context->ego_state.pose.valid;
-    if (!context->status.tf_available &&
-        context->status.degrade_reason.empty()) {
-      context->status.degrade_reason = "pose unavailable";
+    if (!context->status.tf_available) {
+      context->AppendDegradeReason("pose unavailable");
     }
     return context->status.tf_available;
   }
 
  private:
   VehicleState ego_state_;
-  std::vector<std::pair<std::string, Pose3d>> camera_poses_;
+  std::map<std::string, Pose3d> camera_poses_;
 };
 
-// 第一阶段/第二阶段都可用：提供静态或缓存式 HDMap 候选信号。
 class CachedMapProviderPort : public IMapProviderPort {
  public:
   void SetSignals(std::vector<SignalCandidate> signals) {
     signals_ = std::move(signals);
+  }
+
+  void SetValidCacheWindowSec(double valid_cache_window_sec) {
+    valid_cache_window_sec_ = std::max(0.0, valid_cache_window_sec);
   }
 
   bool PopulateSignals(PipelineContext* context) override {
@@ -111,27 +168,49 @@ class CachedMapProviderPort : public IMapProviderPort {
       }
       return true;
     }
+
     if (context->runtime_state != nullptr &&
         !context->runtime_state->cached_signals.empty()) {
-      context->map_signals = context->runtime_state->cached_signals;
-      context->status.hdmap_available = true;
-      if (context->status.degrade_reason.empty()) {
-        context->status.degrade_reason = "hdmap fallback cache";
+      const double frame_ts_sec =
+          static_cast<double>(context->timestamp) * 1e-9;
+      const double dt =
+          frame_ts_sec - context->runtime_state->last_signals_ts_sec;
+      if (dt >= 0.0 && dt <= valid_cache_window_sec_) {
+        context->map_signals = context->runtime_state->cached_signals;
+        context->status.hdmap_available = true;
+        context->AppendDegradeReason("hdmap fallback cache");
+        return true;
       }
-      return true;
     }
+
     context->status.hdmap_available = false;
-    if (context->status.degrade_reason.empty()) {
-      context->status.degrade_reason = "hdmap unavailable";
-    }
+    context->AppendDegradeReason("hdmap unavailable");
     return false;
   }
 
  private:
+  double valid_cache_window_sec_ = 1.5;
   std::vector<SignalCandidate> signals_;
 };
 
-// 适用于在线/离线混合场景：异步推送 V2X，按帧快照注入当前上下文。
+class StaticDetectorProviderPort : public IDetectorProviderPort {
+ public:
+  void SetDetections(std::vector<YoloLightCandidate> detections) {
+    detections_ = std::move(detections);
+  }
+
+  bool PopulateDetections(PipelineContext* context) override {
+    if (context == nullptr) {
+      return false;
+    }
+    context->raw_yolo_lights = detections_;
+    return !context->raw_yolo_lights.empty();
+  }
+
+ private:
+  std::vector<YoloLightCandidate> detections_;
+};
+
 class BufferedV2XProviderPort : public IV2XProviderPort, public IV2XInputPort {
  public:
   void SetMaxBufferSize(size_t max_buffer_size) {
@@ -146,11 +225,6 @@ class BufferedV2XProviderPort : public IV2XProviderPort, public IV2XInputPort {
     TrimLocked();
   }
 
-  void Clear() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    buffer_.clear();
-  }
-
   bool PopulateV2X(PipelineContext* context) override {
     if (context == nullptr) {
       return false;
@@ -159,15 +233,12 @@ class BufferedV2XProviderPort : public IV2XProviderPort, public IV2XInputPort {
     std::lock_guard<std::mutex> lock(mutex_);
     context->v2x_lights.assign(buffer_.begin(), buffer_.end());
     if (context->runtime_state != nullptr) {
-      for (const auto& evidence : buffer_) {
-        context->runtime_state->v2x_buffer.push_back(evidence);
-      }
+      context->runtime_state->v2x_buffer.assign(buffer_.begin(), buffer_.end());
       context->runtime_state->TrimV2XBuffer(max_buffer_size_);
     }
     context->status.v2x_available = !context->v2x_lights.empty();
-    if (!context->status.v2x_available &&
-        context->status.degrade_reason.empty()) {
-      context->status.degrade_reason = "v2x unavailable";
+    if (!context->status.v2x_available) {
+      context->AppendDegradeReason("v2x unavailable");
     }
     return context->status.v2x_available;
   }

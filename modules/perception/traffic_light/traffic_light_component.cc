@@ -3,14 +3,16 @@
 #include <functional>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "cyber/common/log.h"
+#include "cyber/time/clock.h"
 #include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
 #include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/common_msgs/v2x_msgs/v2x_traffic_light.pb.h"
-
-#include "cyber/common/log.h"
 #include "modules/perception/traffic_light/ports/default_provider_ports.h"
+#include "modules/perception/traffic_light/proto/traffic_light_component.pb.h"
 
 namespace apollo {
 namespace perception {
@@ -47,11 +49,11 @@ apollo::perception::TrafficLightDetection::CameraID ConvertCameraId(
           {"front_fisheye",
            apollo::perception::TrafficLightDetection::CAMERA_FRONT_WIDE},
       };
-  auto iter = kCameraIdMap.find(camera_name);
-  if (iter == kCameraIdMap.end()) {
+  const auto it = kCameraIdMap.find(camera_name);
+  if (it == kCameraIdMap.end()) {
     return apollo::perception::TrafficLightDetection::CAMERA_FRONT_SHORT;
   }
-  return iter->second;
+  return it->second;
 }
 
 void FillBox(const Rect2f& roi, apollo::perception::TrafficLightBox* box) {
@@ -64,60 +66,207 @@ void FillBox(const Rect2f& roi, apollo::perception::TrafficLightBox* box) {
   box->set_height(static_cast<int32_t>(roi.height));
 }
 
+LaneIntent ConvertV2XType(apollo::v2x::SingleTrafficLight::Type type) {
+  switch (type) {
+    case apollo::v2x::SingleTrafficLight::LEFT:
+      return LaneIntent::LEFT;
+    case apollo::v2x::SingleTrafficLight::RIGHT:
+      return LaneIntent::RIGHT;
+    case apollo::v2x::SingleTrafficLight::U_TURN:
+      return LaneIntent::U_TURN;
+    case apollo::v2x::SingleTrafficLight::STRAIGHT:
+    default:
+      return LaneIntent::STRAIGHT;
+  }
+}
+
+DetectorBackendType ConvertDetectorBackend(
+    apollo::perception::trafficlight::TrafficLightDetectorBackend backend) {
+  switch (backend) {
+    case apollo::perception::trafficlight::TL_DETECTOR_HEURISTIC:
+      return DetectorBackendType::HEURISTIC;
+    case apollo::perception::trafficlight::TL_DETECTOR_YOLO:
+    default:
+      return DetectorBackendType::YOLO;
+  }
+}
+
+LightColor ConvertV2XColor(apollo::v2x::SingleTrafficLight::Color color) {
+  switch (color) {
+    case apollo::v2x::SingleTrafficLight::RED:
+      return LightColor::RED;
+    case apollo::v2x::SingleTrafficLight::YELLOW:
+      return LightColor::YELLOW;
+    case apollo::v2x::SingleTrafficLight::GREEN:
+    case apollo::v2x::SingleTrafficLight::FLASH_GREEN:
+      return LightColor::GREEN;
+    case apollo::v2x::SingleTrafficLight::BLACK:
+      return LightColor::BLACK;
+    default:
+      return LightColor::UNKNOWN;
+  }
+}
+
+ComponentOptions ToOptions(
+    const apollo::perception::trafficlight::TrafficLightComponentConfig& proto) {
+  ComponentOptions options;
+  options.tf2_frame_id = proto.tl_tf2_frame_id();
+  options.tf2_child_frame_id = proto.tl_tf2_child_frame_id();
+  options.tf2_timeout_second = proto.tf2_timeout_second();
+  options.max_process_image_fps = proto.max_process_image_fps();
+  options.query_tf_interval_seconds = proto.query_tf_interval_seconds();
+  options.valid_hdmap_interval_seconds = proto.valid_hdmap_interval_seconds();
+  options.image_sys_ts_diff_threshold = proto.image_sys_ts_diff_threshold();
+  options.frame_cache_tolerance_sec = proto.frame_cache_tolerance_sec();
+  options.output_channel_name = proto.traffic_light_output_channel_name();
+  options.debug_output_channel_name = proto.debug_output_channel_name();
+  options.debug_image_channel_name = proto.debug_image_channel_name();
+  options.v2x_channel_name = proto.v2x_trafficlights_input_channel_name();
+  options.v2x_sync_interval_seconds = proto.v2x_sync_interval_seconds();
+  options.max_v2x_msg_buff_size = proto.max_v2x_msg_buff_size();
+  options.enable_debug_recording = proto.enable_debug_recording();
+  options.enable_debug_image_stream = proto.enable_debug_image_stream();
+  options.enable_perf_logging = proto.enable_perf_logging();
+  options.enable_heuristic_stage = proto.enable_heuristic_stage();
+
+  for (int i = 0; i < proto.cameras_size(); ++i) {
+    const auto& camera = proto.cameras(i);
+    CameraSourceOptions camera_option;
+    camera_option.camera_name = camera.camera_name();
+    camera_option.channel_name = camera.channel_name();
+    camera_option.image_width = camera.image_width();
+    camera_option.image_height = camera.image_height();
+    camera_option.is_primary = camera.is_primary();
+    options.cameras.push_back(camera_option);
+  }
+  if (!options.cameras.empty() &&
+      std::none_of(options.cameras.begin(), options.cameras.end(),
+                   [](const CameraSourceOptions& option) {
+                     return option.is_primary;
+                   })) {
+    options.cameras.front().is_primary = true;
+  }
+
+  if (proto.has_prompter()) {
+    const auto& cfg = proto.prompter();
+    options.prompter.history_expand_ratio = cfg.history_expand_ratio();
+    options.prompter.history_weight = cfg.history_weight();
+    options.prompter.memory_expand_ratio = cfg.memory_expand_ratio();
+    options.prompter.memory_weight = cfg.memory_weight();
+    options.prompter.map_expand_ratio = cfg.map_expand_ratio();
+    options.prompter.map_weight_floor = cfg.map_weight_floor();
+    options.prompter.cold_start_distance_to_intersection_m =
+        cfg.cold_start_distance_to_intersection_m();
+    options.prompter.full_frame_weight = cfg.full_frame_weight();
+    options.prompter.always_add_full_frame_fallback =
+        cfg.always_add_full_frame_fallback();
+  }
+  if (proto.has_detector()) {
+    const auto& cfg = proto.detector();
+    options.detector.backend = ConvertDetectorBackend(cfg.backend());
+    options.detector.min_prompt_weight = cfg.min_prompt_weight();
+    options.detector.min_bright_pixel_ratio = cfg.min_bright_pixel_ratio();
+    options.detector.min_color_ratio = cfg.min_color_ratio();
+    options.detector.min_roi_area = cfg.min_roi_area();
+    options.detector.sample_grid_divisor = cfg.sample_grid_divisor();
+    options.detector.map_overlap_bonus = cfg.map_overlap_bonus();
+    options.detector.history_bonus = cfg.history_bonus();
+    options.detector.allow_unknown_output = cfg.allow_unknown_output();
+    options.detector.glare_white_ratio_threshold =
+        cfg.glare_white_ratio_threshold();
+    options.detector.glare_penalty = cfg.glare_penalty();
+    options.detector.min_signal_overlap_for_glare_override =
+        cfg.min_signal_overlap_for_glare_override();
+    options.detector.min_objectness = cfg.min_objectness();
+    options.detector.min_semantic_confidence = cfg.min_semantic_confidence();
+    options.detector.prefer_raw_yolo_candidates =
+        cfg.prefer_raw_yolo_candidates();
+  }
+  if (proto.has_binder()) {
+    const auto& cfg = proto.binder();
+    options.binder.min_bind_score = cfg.min_bind_score();
+    options.binder.require_intent_match = cfg.require_intent_match();
+    options.binder.min_signal_overlap = cfg.min_signal_overlap();
+    options.binder.max_center_distance_ratio = cfg.max_center_distance_ratio();
+    options.binder.min_topology_confidence = cfg.min_topology_confidence();
+  }
+  if (proto.has_tracker()) {
+    const auto& cfg = proto.tracker();
+    options.tracker.max_lost_frames = cfg.max_lost_frames();
+    options.tracker.min_iou_match = cfg.min_iou_match();
+    options.tracker.belief_decay = cfg.belief_decay();
+    options.tracker.measurement_gain = cfg.measurement_gain();
+    options.tracker.min_confirmed_visible_count =
+        cfg.min_confirmed_visible_count();
+  }
+  if (proto.has_heuristic()) {
+    const auto& cfg = proto.heuristic();
+    options.heuristic.max_distance_to_intersection_m =
+        cfg.max_distance_to_intersection_m();
+    options.heuristic.min_starting_agents = cfg.min_starting_agents();
+    options.heuristic.green_probability = cfg.green_probability();
+    options.heuristic.red_hold_probability = cfg.red_hold_probability();
+  }
+  if (proto.has_fusion()) {
+    const auto& cfg = proto.fusion();
+    options.fusion.weak_vision_threshold = cfg.weak_vision_threshold();
+    options.fusion.strong_v2x_threshold = cfg.strong_v2x_threshold();
+    options.fusion.heuristic_trigger_threshold =
+        cfg.heuristic_trigger_threshold();
+    options.fusion.heuristic_accept_threshold =
+        cfg.heuristic_accept_threshold();
+    options.fusion.v2x_sync_window_sec = cfg.v2x_sync_window_sec();
+    options.fusion.prefer_ego_intent = cfg.prefer_ego_intent();
+    options.fusion.min_conflict_override_margin =
+        cfg.min_conflict_override_margin();
+  }
+  return options;
+}
+
 void PopulateDebugInfo(const PipelineContext& context,
                        apollo::perception::TrafficLightDebug* debug) {
   if (debug == nullptr) {
     return;
   }
 
-  debug->set_signal_num(static_cast<int32_t>(context.tracked_lights.size()));
+  debug->set_signal_num(static_cast<int32_t>(context.final_lights.size()));
   debug->set_valid_pos(context.status.tf_available ? 1 : 0);
-  debug->set_project_error(context.status.hdmap_available ? 0 : 1);
-
+  debug->set_project_error(
+      (context.status.hdmap_available && !context.status.glare_detected) ? 0 : 1);
+  if (context.primary_decision.stopline_distance_m >= 0.0) {
+    debug->set_distance_to_stop_line(context.primary_decision.stopline_distance_m);
+  }
+  debug->set_ts_diff_sys(context.primary_decision.freshness_sec);
   if (context.runtime_state != nullptr &&
-      context.runtime_state->last_processed_ts_sec > 0.0) {
-    const double frame_ts_sec = static_cast<double>(context.timestamp) * 1e-9;
-    debug->set_ts_diff_sys(frame_ts_sec -
-                           context.runtime_state->last_processed_ts_sec);
+      context.runtime_state->last_signals_ts_sec > 0.0) {
+    debug->set_ts_diff_pos(static_cast<double>(context.timestamp) * 1e-9 -
+                           context.runtime_state->last_signals_ts_sec);
   }
 
   for (const auto& prompt : context.prompts) {
     FillBox(prompt.roi_box, debug->add_debug_roi());
   }
-
-  for (const auto& map_signal : context.map_signals) {
-    FillBox(map_signal.projection_roi, debug->add_projected_roi());
+  for (const auto& signal : context.map_signals) {
+    FillBox(signal.projection_roi, debug->add_projected_roi());
   }
-
-  for (const auto& visual : context.visual_lights) {
+  for (const auto& visual_light : context.visual_lights) {
     auto* box = debug->add_box();
-    FillBox(visual.bbox, box);
-    box->set_color(ConvertToProtoColor(visual.color));
+    FillBox(visual_light.bbox, box);
+    box->set_color(ConvertToProtoColor(visual_light.color));
     box->set_selected(false);
-    box->set_camera_name(visual.camera_name);
+    box->set_camera_name(visual_light.camera_name);
   }
-
-  for (const auto& tracked : context.tracked_lights) {
-    const auto& tracked_box = tracked.current_state.visual_light.bbox;
+  for (const auto& tracked_light : context.tracked_lights) {
     auto* rectified = debug->add_rectified_roi();
-    FillBox(tracked_box, rectified);
-    rectified->set_color(
-        ConvertToProtoColor(tracked.current_state.visual_light.color));
+    FillBox(tracked_light.current_state.visual_light.bbox, rectified);
+    rectified->set_color(ConvertToProtoColor(tracked_light.stabilized_color));
     rectified->set_selected(true);
-
-    auto* selected_box = debug->add_box();
-    FillBox(tracked_box, selected_box);
-    selected_box->set_color(
-        ConvertToProtoColor(tracked.current_state.visual_light.color));
-    selected_box->set_selected(true);
-    selected_box->set_camera_name(
-        tracked.current_state.visual_light.camera_name);
   }
 }
 
 class CyberTrafficLightResultWriter final : public IResultWriterPort {
  public:
-  explicit CyberTrafficLightResultWriter(
+  CyberTrafficLightResultWriter(
       std::shared_ptr<
           apollo::cyber::Writer<apollo::perception::TrafficLightDetection>>
           writer,
@@ -136,22 +285,31 @@ class CyberTrafficLightResultWriter final : public IResultWriterPort {
     header->set_timestamp_sec(static_cast<double>(context.timestamp) * 1e-9);
     header->set_camera_timestamp(context.timestamp);
 
-    message->set_contain_lights(result.color != LightColor::UNKNOWN);
     message->set_camera_id(ConvertCameraId(context.primary_camera_name));
-
-    if (result.color != LightColor::UNKNOWN) {
+    message->set_contain_lights(
+        !context.final_lights.empty() &&
+        context.primary_decision.existence_confidence > 0.10f);
+    const std::vector<TrafficLightResult>* lights =
+        context.final_lights.empty() ? nullptr : &context.final_lights;
+    if (lights == nullptr && result.color != LightColor::UNKNOWN) {
       auto* light = message->add_traffic_light();
       light->set_id(result.signal_id);
       light->set_confidence(result.confidence);
       light->set_blink(result.blink);
       light->set_color(ConvertToProtoColor(result.color));
+    } else if (lights != nullptr) {
+      for (const auto& item : *lights) {
+        auto* light = message->add_traffic_light();
+        light->set_id(item.signal_id);
+        light->set_confidence(item.confidence);
+        light->set_blink(item.blink);
+        light->set_color(ConvertToProtoColor(item.color));
+      }
     }
 
     if (include_debug_) {
-      auto* debug = message->mutable_traffic_light_debug();
-      PopulateDebugInfo(context, debug);
+      PopulateDebugInfo(context, message->mutable_traffic_light_debug());
     }
-
     writer_->Write(message);
     return true;
   }
@@ -185,25 +343,12 @@ class FanoutResultWriter final : public IResultWriterPort {
   std::vector<std::shared_ptr<IResultWriterPort>> delegates_;
 };
 
-LightColor ConvertV2XColor(apollo::v2x::SingleTrafficLight::Color color) {
-  switch (color) {
-    case apollo::v2x::SingleTrafficLight::RED:
-      return LightColor::RED;
-    case apollo::v2x::SingleTrafficLight::YELLOW:
-      return LightColor::YELLOW;
-    case apollo::v2x::SingleTrafficLight::GREEN:
-    case apollo::v2x::SingleTrafficLight::FLASH_GREEN:
-      return LightColor::GREEN;
-    case apollo::v2x::SingleTrafficLight::BLACK:
-      return LightColor::BLACK;
-    default:
-      return LightColor::UNKNOWN;
-  }
-}
-
 }  // namespace
 
 bool TrafficLightComponent::Init() {
+  if (!LoadOptions()) {
+    return false;
+  }
   pipeline_ = std::make_unique<PerceptionPipeline>();
   RegisterDefaultStages();
   if (!pipeline_->InitAll()) {
@@ -215,16 +360,37 @@ bool TrafficLightComponent::Init() {
   return InitReaders();
 }
 
-bool TrafficLightComponent::InitDefaultPorts() {
-  if (data_provider_ == nullptr) {
-    data_provider_ = std::make_shared<InMemoryDataProviderPort>();
-  }
-  frame_input_port_ =
-      std::dynamic_pointer_cast<IFrameInputPort>(data_provider_);
-  if (frame_input_port_ == nullptr) {
-    AERROR << "Configured data_provider does not implement IFrameInputPort";
+bool TrafficLightComponent::LoadOptions() {
+  apollo::perception::trafficlight::TrafficLightComponentConfig config;
+  if (!GetProtoConfig(&config)) {
+    AERROR << "Failed to load traffic_light config proto";
     return false;
   }
+  options_ = ToOptions(config);
+  if (options_.cameras.empty()) {
+    AERROR << "At least one camera must be configured";
+    return false;
+  }
+  return true;
+}
+
+bool TrafficLightComponent::InitDefaultPorts() {
+  if (data_provider_ == nullptr) {
+    auto provider = std::make_shared<InMemoryDataProviderPort>();
+    provider->SetFrameStalenessToleranceSec(options_.frame_cache_tolerance_sec);
+    std::vector<std::string> camera_order;
+    for (const auto& camera : options_.cameras) {
+      camera_order.push_back(camera.camera_name);
+    }
+    provider->SetCameraOrder(camera_order);
+    data_provider_ = provider;
+  }
+  frame_input_port_ = std::dynamic_pointer_cast<IFrameInputPort>(data_provider_);
+  if (frame_input_port_ == nullptr) {
+    AERROR << "Configured data provider does not implement frame input";
+    return false;
+  }
+
   if (pose_provider_ == nullptr) {
     auto pose_provider = std::make_shared<StaticPoseProviderPort>();
     VehicleState ego_state;
@@ -232,74 +398,106 @@ bool TrafficLightComponent::InitDefaultPorts() {
     pose_provider->SetEgoState(ego_state);
     pose_provider_ = pose_provider;
   }
+
   if (map_provider_ == nullptr) {
-    map_provider_ = std::make_shared<CachedMapProviderPort>();
+    auto map_provider = std::make_shared<CachedMapProviderPort>();
+    map_provider->SetValidCacheWindowSec(options_.valid_hdmap_interval_seconds);
+    map_provider_ = map_provider;
   }
+
   if (v2x_provider_ == nullptr) {
-    v2x_provider_ = std::make_shared<BufferedV2XProviderPort>();
+    auto provider = std::make_shared<BufferedV2XProviderPort>();
+    provider->SetMaxBufferSize(options_.max_v2x_msg_buff_size);
+    v2x_provider_ = provider;
   }
   v2x_input_port_ = std::dynamic_pointer_cast<IV2XInputPort>(v2x_provider_);
   if (v2x_input_port_ == nullptr) {
-    AERROR << "Configured v2x_provider does not implement IV2XInputPort";
+    AERROR << "Configured V2X provider does not implement input port";
     return false;
   }
-  if (result_writer_ == nullptr) {
-    auto writer =
-        node_->CreateWriter<apollo::perception::TrafficLightDetection>(
-            output_channel_name_);
-    auto main_writer =
-        std::make_shared<CyberTrafficLightResultWriter>(writer, false);
 
-    if (enable_debug_recording_) {
+  if (result_writer_ == nullptr) {
+    auto main_writer =
+        std::make_shared<CyberTrafficLightResultWriter>(
+            node_->CreateWriter<apollo::perception::TrafficLightDetection>(
+                options_.output_channel_name),
+            false);
+    if (options_.enable_debug_recording) {
       auto debug_writer =
-          node_->CreateWriter<apollo::perception::TrafficLightDetection>(
-              debug_output_channel_name_);
-      auto rich_debug_writer =
-          std::make_shared<CyberTrafficLightResultWriter>(debug_writer, true);
+          std::make_shared<CyberTrafficLightResultWriter>(
+              node_->CreateWriter<apollo::perception::TrafficLightDetection>(
+                  options_.debug_output_channel_name),
+              true);
       result_writer_ = std::make_shared<FanoutResultWriter>(
           std::vector<std::shared_ptr<IResultWriterPort>>{main_writer,
-                                                          rich_debug_writer});
+                                                          debug_writer});
     } else {
       result_writer_ = main_writer;
     }
   }
 
-  if (enable_debug_image_stream_ && debug_image_writer_ == nullptr) {
+  if (options_.enable_debug_image_stream && debug_image_writer_ == nullptr) {
     debug_image_writer_ =
-        node_->CreateWriter<apollo::drivers::Image>(debug_image_channel_name_);
+        node_->CreateWriter<apollo::drivers::Image>(
+            options_.debug_image_channel_name);
   }
   return true;
+}
+
+bool TrafficLightComponent::InitReaders() {
+  for (const auto& camera : options_.cameras) {
+    if (camera.camera_name.empty() || camera.channel_name.empty()) {
+      AERROR << "Invalid camera config";
+      return false;
+    }
+    node_->CreateReader<apollo::drivers::Image>(
+        camera.channel_name,
+        std::bind(&TrafficLightComponent::OnReceiveImage, this,
+                  std::placeholders::_1, camera.camera_name));
+  }
+  if (!options_.v2x_channel_name.empty()) {
+    node_->CreateReader<apollo::v2x::IntersectionTrafficLightData>(
+        options_.v2x_channel_name,
+        std::bind(&TrafficLightComponent::OnReceiveV2XMsg, this,
+                  std::placeholders::_1));
+  }
+  return true;
+}
+
+bool TrafficLightComponent::ProcessOnceFromPorts() {
+  if (pipeline_ == nullptr || data_provider_ == nullptr) {
+    return false;
+  }
+
+  PipelineContext context;
+  context.runtime_state = &runtime_state_;
+  if (!data_provider_->PopulateFrameData(&context)) {
+    return false;
+  }
+  if (pose_provider_ != nullptr) {
+    pose_provider_->PopulatePose(&context);
+  }
+  if (map_provider_ != nullptr) {
+    map_provider_->PopulateSignals(&context);
+  }
+  if (detector_provider_ != nullptr) {
+    detector_provider_->PopulateDetections(&context);
+  }
+  if (v2x_provider_ != nullptr) {
+    v2x_provider_->PopulateV2X(&context);
+  }
+  for (const auto& frame : context.camera_frames) {
+    runtime_state_.last_camera_timestamps_sec[frame.camera_name] =
+        static_cast<double>(frame.timestamp_ns) * 1e-9;
+  }
+  return ProcessFrame(&context);
 }
 
 bool TrafficLightComponent::PublishDecision(const PipelineContext& context) {
   if (result_writer_ == nullptr) {
     return true;
   }
-  return result_writer_->Write(context, context.final_decision);
-}
-
-bool TrafficLightComponent::InitReaders() {
-  if (camera_names_.size() != camera_channel_names_.size() ||
-      camera_names_.empty()) {
-    AERROR << "Invalid camera config, camera_names size: "
-           << camera_names_.size()
-           << ", camera_channel_names size: " << camera_channel_names_.size();
-    return false;
-  }
-
-  for (size_t i = 0; i < camera_names_.size(); ++i) {
-    const auto& camera_name = camera_names_[i];
-    const auto& camera_channel_name = camera_channel_names_[i];
-    node_->CreateReader<apollo::drivers::Image>(
-        camera_channel_name,
-        std::bind(&TrafficLightComponent::OnReceiveImage, this,
-                  std::placeholders::_1, camera_name));
-  }
-
-  node_->CreateReader<apollo::v2x::IntersectionTrafficLightData>(
-      v2x_channel_name_, std::bind(&TrafficLightComponent::OnReceiveV2XMsg,
-                                   this, std::placeholders::_1));
-  return true;
+  return result_writer_->Write(context, context.primary_decision);
 }
 
 void TrafficLightComponent::OnReceiveImage(
@@ -310,8 +508,21 @@ void TrafficLightComponent::OnReceiveImage(
     return;
   }
 
+  const double now_sec = apollo::cyber::Clock::NowInSeconds();
+  const double& last_camera_process_ts =
+      last_process_wall_ts_by_camera_sec_[camera_name];
+  if (options_.max_process_image_fps > 0.0 && last_camera_process_ts > 0.0 &&
+      now_sec - last_camera_process_ts <
+          1.0 / options_.max_process_image_fps) {
+    ++runtime_state_.dropped_frame_count;
+    return;
+  }
+
+  auto storage = std::make_shared<std::vector<uint8_t>>(
+      image->data().begin(), image->data().end());
   Image frame_image;
-  frame_image.data = const_cast<char*>(image->data().data());
+  frame_image.storage = storage;
+  frame_image.data = storage->empty() ? nullptr : storage->data();
   frame_image.rows = static_cast<int>(image->height());
   frame_image.cols = static_cast<int>(image->width());
   frame_image.channels = 3;
@@ -326,11 +537,12 @@ void TrafficLightComponent::OnReceiveImage(
   if (!frame_input_port_->PushCameraFrame(++frame_counter_, camera_frame)) {
     return;
   }
-
-  if (enable_debug_image_stream_ && debug_image_writer_ != nullptr) {
+  if (options_.enable_debug_image_stream && debug_image_writer_ != nullptr) {
     debug_image_writer_->Write(image);
   }
 
+  last_process_wall_ts_sec_ = now_sec;
+  last_process_wall_ts_by_camera_sec_[camera_name] = now_sec;
   ProcessOnceFromPorts();
 }
 
@@ -352,6 +564,16 @@ void TrafficLightComponent::OnReceiveV2XMsg(
           single.color() == apollo::v2x::SingleTrafficLight::FLASH_GREEN;
       evidence.confidence = static_cast<float>(v2x_msg->confidence());
       evidence.timestamp_sec = v2x_msg->header().timestamp_sec();
+      if (single.traffic_light_type_size() > 0) {
+        evidence.movement = ConvertV2XType(single.traffic_light_type(0));
+        uint32_t movement_mask = kMovementMaskNone;
+        for (int type_index = 0; type_index < single.traffic_light_type_size();
+             ++type_index) {
+          movement_mask |= MovementMaskFromLaneIntent(
+              ConvertV2XType(single.traffic_light_type(type_index)));
+        }
+        evidence.movement_mask = movement_mask;
+      }
       v2x_input_port_->PushV2XEvidence(evidence);
     }
   }
