@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "modules/common/math/math_utils.h"
+#include "modules/common/math/quaternion.h"
 
 namespace apollo {
 namespace control {
@@ -16,10 +17,15 @@ constexpr double kSuppressLargeSteerLimitPct = 35.0;
 constexpr double kSuppressLargeSteerRateLimitPct = 10.0;
 constexpr double kTerminalHeadingCorrectionGain = 0.3;
 constexpr double kTerminalHeadingCorrectionLimitPct = 10.0;
+constexpr double kLateralHoldCorrectionGainPctPerM = 18.0;
+constexpr double kLateralHoldCorrectionLimitPct = 12.0;
 constexpr double kTerminalServoSpeedGain = 0.8;
 constexpr double kTerminalServoAccelGain = 1.5;
 constexpr double kTerminalServoAccelLimit = 1.0;
 constexpr double kTerminalServoDecelLimit = 1.5;
+constexpr double kPrimitiveSpeedAccelGain = 1.2;
+constexpr double kPrimitiveSpeedAccelLimit = 1.0;
+constexpr double kPrimitiveSpeedDecelLimit = 1.5;
 
 double CurrentHeading(
     const apollo::localization::LocalizationEstimate* localization) {
@@ -44,22 +50,83 @@ double HeadingErrorToSteerPct(double heading_error, double steer_ratio,
          steer_single_direction_max_degree * 100.0;
 }
 
+bool HasReferenceLineTarget(const apollo::planning::ControlIntent& control_intent) {
+  return control_intent.has_reference_line_point() &&
+         control_intent.has_reference_line_heading();
+}
+
+double SignedLateralErrorToReferenceLine(
+    const apollo::planning::ControlIntent& control_intent,
+    const apollo::localization::LocalizationEstimate* localization) {
+  if (localization == nullptr || !localization->has_pose() ||
+      !HasReferenceLineTarget(control_intent)) {
+    return 0.0;
+  }
+  const double dx = localization->pose().position().x() -
+                    control_intent.reference_line_point().x();
+  const double dy = localization->pose().position().y() -
+                    control_intent.reference_line_point().y();
+  const double signed_lateral_position =
+      -std::sin(control_intent.reference_line_heading()) * dx +
+      std::cos(control_intent.reference_line_heading()) * dy;
+  const double target_offset =
+      control_intent.has_target_lateral_offset_m()
+          ? control_intent.target_lateral_offset_m()
+          : 0.0;
+  return signed_lateral_position - target_offset;
+}
+
 }  // namespace
+
+bool IsTrajectorylessControlPrimitive(
+    const apollo::planning::ADCTrajectory& trajectory) {
+  if (!trajectory.trajectory_point().empty() || !trajectory.has_control_intent()) {
+    return false;
+  }
+  const auto& control_intent = trajectory.control_intent();
+  if (control_intent.primitive_type() ==
+      apollo::planning::CONTROL_PRIMITIVE_POSE_SERVO) {
+    return control_intent.has_target_stop_point();
+  }
+  if (control_intent.tracking_mode() ==
+          apollo::planning::TRACKING_MODE_POSE_SERVO &&
+      control_intent.has_target_stop_point()) {
+    return true;
+  }
+  switch (control_intent.primitive_type()) {
+    case apollo::planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD:
+      return true;
+    case apollo::planning::CONTROL_PRIMITIVE_HEADING_HOLD:
+      return control_intent.has_target_stop_heading();
+    case apollo::planning::CONTROL_PRIMITIVE_LATERAL_HOLD:
+      return HasReferenceLineTarget(control_intent);
+    case apollo::planning::CONTROL_PRIMITIVE_POSE_SERVO:
+      return control_intent.has_target_stop_point();
+    case apollo::planning::CONTROL_PRIMITIVE_NONE:
+    default:
+      return false;
+  }
+}
 
 bool IsTrajectorylessPoseServo(
     const apollo::planning::ADCTrajectory& trajectory) {
-  return trajectory.trajectory_point().empty() &&
+  return IsTrajectorylessControlPrimitive(trajectory) &&
          trajectory.has_control_intent() &&
-         trajectory.control_intent().tracking_mode() ==
-             apollo::planning::TRACKING_MODE_POSE_SERVO &&
-         trajectory.control_intent().has_target_stop_point();
+         ((trajectory.control_intent().tracking_mode() ==
+               apollo::planning::TRACKING_MODE_POSE_SERVO &&
+           trajectory.control_intent().has_target_stop_point()) ||
+          trajectory.control_intent().primitive_type() ==
+              apollo::planning::CONTROL_PRIMITIVE_POSE_SERVO);
 }
 
 TerminalLateralControlAdjustment BuildTerminalLateralControlAdjustment(
     const apollo::planning::ControlIntent& control_intent,
+    const apollo::localization::LocalizationEstimate* localization,
     double current_heading, double steer_ratio,
     double steer_single_direction_max_degree) {
   TerminalLateralControlAdjustment adjustment;
+  adjustment.primitive_active =
+      control_intent.primitive_type() != apollo::planning::CONTROL_PRIMITIVE_NONE;
   adjustment.suppress_large_steer = control_intent.suppress_large_steer();
 
   if (adjustment.suppress_large_steer) {
@@ -68,11 +135,19 @@ TerminalLateralControlAdjustment BuildTerminalLateralControlAdjustment(
   }
 
   const bool wants_terminal_align =
+      control_intent.primitive_type() ==
+          apollo::planning::CONTROL_PRIMITIVE_HEADING_HOLD ||
+      control_intent.primitive_type() ==
+          apollo::planning::CONTROL_PRIMITIVE_POSE_SERVO ||
       control_intent.tracking_mode() ==
           apollo::planning::TRACKING_MODE_POSE_SERVO ||
       control_intent.lateral_intent() ==
           apollo::planning::LAT_INTENT_ALIGN_GOAL_HEADING;
-  if (!wants_terminal_align || !control_intent.has_target_stop_heading()) {
+  const bool wants_lateral_hold =
+      control_intent.primitive_type() ==
+          apollo::planning::CONTROL_PRIMITIVE_LATERAL_HOLD &&
+      control_intent.has_reference_line_heading();
+  if (!wants_terminal_align && !wants_lateral_hold) {
     return adjustment;
   }
 
@@ -82,13 +157,31 @@ TerminalLateralControlAdjustment BuildTerminalLateralControlAdjustment(
   adjustment.max_steer_rate_pct =
       std::min(adjustment.max_steer_rate_pct, kTerminalAlignSteerRateLimitPct);
 
-  const double heading_error = common::math::NormalizeAngle(
-      control_intent.target_stop_heading() - current_heading);
-  adjustment.heading_correction_pct = common::math::Clamp(
+  double target_heading = current_heading;
+  if (wants_lateral_hold) {
+    target_heading = control_intent.reference_line_heading();
+    adjustment.lateral_hold_active = true;
+    adjustment.lateral_error_m =
+        SignedLateralErrorToReferenceLine(control_intent, localization);
+  } else if (control_intent.has_target_stop_heading()) {
+    target_heading = control_intent.target_stop_heading();
+  } else {
+    return adjustment;
+  }
+
+  const double heading_error =
+      common::math::NormalizeAngle(target_heading - current_heading);
+  adjustment.heading_correction_pct =
       HeadingErrorToSteerPct(heading_error, steer_ratio,
                              steer_single_direction_max_degree) *
-          kTerminalHeadingCorrectionGain,
-      -kTerminalHeadingCorrectionLimitPct,
+      kTerminalHeadingCorrectionGain;
+  if (adjustment.lateral_hold_active) {
+    adjustment.heading_correction_pct += common::math::Clamp(
+        -adjustment.lateral_error_m * kLateralHoldCorrectionGainPctPerM,
+        -kLateralHoldCorrectionLimitPct, kLateralHoldCorrectionLimitPct);
+  }
+  adjustment.heading_correction_pct = common::math::Clamp(
+      adjustment.heading_correction_pct, -kTerminalHeadingCorrectionLimitPct,
       kTerminalHeadingCorrectionLimitPct);
   return adjustment;
 }
@@ -98,10 +191,43 @@ TerminalLongitudinalControlAdjustment BuildTerminalLongitudinalControlAdjustment
     const apollo::localization::LocalizationEstimate* localization,
     const apollo::canbus::Chassis* chassis) {
   TerminalLongitudinalControlAdjustment adjustment;
+  adjustment.primitive_active =
+      control_intent.primitive_type() != apollo::planning::CONTROL_PRIMITIVE_NONE;
   adjustment.pose_servo_active =
-      control_intent.tracking_mode() == apollo::planning::TRACKING_MODE_POSE_SERVO;
+      control_intent.tracking_mode() == apollo::planning::TRACKING_MODE_POSE_SERVO ||
+      control_intent.primitive_type() ==
+          apollo::planning::CONTROL_PRIMITIVE_POSE_SERVO;
   adjustment.trajectory_optional =
       adjustment.pose_servo_active && control_intent.has_target_stop_point();
+
+  if (control_intent.primitive_type() ==
+      apollo::planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD) {
+    adjustment.trajectory_optional = true;
+    adjustment.full_stop = true;
+    return adjustment;
+  }
+
+  if (!adjustment.trajectory_optional &&
+      (control_intent.primitive_type() ==
+           apollo::planning::CONTROL_PRIMITIVE_HEADING_HOLD ||
+       control_intent.primitive_type() ==
+           apollo::planning::CONTROL_PRIMITIVE_LATERAL_HOLD)) {
+    adjustment.trajectory_optional = true;
+    if (chassis == nullptr) {
+      return adjustment;
+    }
+    const double desired_speed =
+        control_intent.has_primitive_speed_mps()
+            ? control_intent.primitive_speed_mps()
+            : 0.0;
+    adjustment.desired_speed_mps = desired_speed;
+    adjustment.desired_acceleration_mps2 = common::math::Clamp(
+        (desired_speed - chassis->speed_mps()) * kPrimitiveSpeedAccelGain,
+        -kPrimitiveSpeedDecelLimit, kPrimitiveSpeedAccelLimit);
+    adjustment.full_stop = std::abs(desired_speed) <= 1e-3;
+    return adjustment;
+  }
+
   if (!adjustment.trajectory_optional || localization == nullptr ||
       chassis == nullptr || !localization->has_pose()) {
     return adjustment;

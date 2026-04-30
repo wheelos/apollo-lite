@@ -263,10 +263,10 @@ message PlannerNaviConfig {
 }
 
 enum PlannerType {
-  RTK = 0;
+  RTK = 0;          // legacy replay/tooling planner
   PUBLIC_ROAD = 1;  // public road planner
   NAVI = 2;         // navigation planner
-  LATTICE = 3;      // lattice planner
+  LATTICE = 3;      // legacy reference-line planner
 }
 
 message RtkPlanningConfig {
@@ -274,12 +274,12 @@ message RtkPlanningConfig {
 }
 
 message StandardPlanningConfig {
-  repeated PlannerType planner_type = 1;  // supported planners
+  repeated PlannerType planner_type = 1;  // legacy candidate list; only index 0 is honored
   optional PlannerPublicRoadConfig planner_public_road_config = 2;
 }
 
 message NavigationPlanningConfig {
-  repeated PlannerType planner_type = 1;  // supported planners
+  repeated PlannerType planner_type = 1;  // legacy candidate list; only index 0 is honored
   optional PlannerNaviConfig planner_navi_config = 4;
 }
 

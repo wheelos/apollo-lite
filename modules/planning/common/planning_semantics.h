@@ -17,12 +17,15 @@ struct PlanningSemanticInput {
   const localization::LocalizationEstimate* localization = nullptr;
   const ADCTrajectory* trajectory = nullptr;
   bool validation_should_hold = false;
+  std::string validation_reason;
 };
 
 struct PlanningSemanticSummary {
   RuntimeState runtime_state = RUNTIME_UNKNOWN;
   ExecutionPhase execution_phase = EXECUTION_UNKNOWN;
   StopClass stop_class = STOP_CLASS_UNKNOWN;
+  bool has_stop_reason_code = false;
+  StopReasonCode stop_reason_code = STOP_REASON_DESTINATION;
   bool command_completed = false;
   bool near_terminal = false;
   bool has_position_tolerance = false;
@@ -41,6 +44,7 @@ struct PlanningSemanticSummary {
   double terminal_heading_tolerance_rad = 0.0;
   double max_terminal_speed_mps = 0.0;
   double terminal_servo_timeout_sec = 0.0;
+  std::string control_reason;
   std::string completion_reason;
 };
 

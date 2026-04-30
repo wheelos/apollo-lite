@@ -35,6 +35,7 @@ class ParkInNode : public BT::StatefulActionNode {
         BT::InputPort<double>("goal_heading"),
         BT::InputPort<apollo::common::PointENU>("left_bottom_corner"),
         BT::InputPort<apollo::common::PointENU>("right_bottom_corner"),
+        BT::InputPort<bool>("whole_open_space_shell"),
         BT::InputPort<double>("position_tolerance_m"),
     };
   }
@@ -42,6 +43,9 @@ class ParkInNode : public BT::StatefulActionNode {
   BT::NodeStatus onStart() override;
   BT::NodeStatus onRunning() override;
   void onHalted() override;
+
+ private:
+  std::string current_command_id_;
 };
 
 }  // namespace mission

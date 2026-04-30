@@ -24,6 +24,10 @@ struct ModeResolutionResult {
   std::vector<std::string> blockers;
 };
 
+bool HasCapabilityForMode(PlanningMode mode, const CapabilitySet* capability);
+std::string ModeCapabilityUnavailableReason(PlanningMode mode,
+                                            const CapabilitySet* capability);
+
 class ModeResolution {
  public:
   static PlanningMode InferRequestedMode(const PlanningCommand* command,

@@ -40,6 +40,35 @@ CapabilitySet CapabilityExtractor::Extract(const EnvironmentModel& model) const 
       model.source_health.localization_ready && model.source_health.chassis_ready;
   capability.has_regulatory_context =
       model.regulatory.has_traffic_light || model.regulatory.has_storytelling;
+  capability.has_known_open_space_environment = model.open_space.known_environment;
+  capability.can_run_on_lane_shell = capability.has_lane_graph;
+  capability.can_run_corridor_shell =
+      model.source_health.relative_map_ready &&
+      model.source_health.localization_ready &&
+      model.source_health.chassis_ready &&
+      model.local_topology.has_navigation_path &&
+      model.drivable_area.has_map_geometry;
+  capability.can_run_structured_mapless_shell =
+      model.source_health.relative_map_ready &&
+      model.source_health.localization_ready &&
+      model.source_health.chassis_ready &&
+      (model.local_topology.has_navigation_path ||
+       model.local_topology.has_lane_markers ||
+       model.drivable_area.has_lane_marker_geometry);
+  capability.can_run_open_space_shell =
+      model.source_health.localization_ready &&
+      model.source_health.chassis_ready && capability.has_goal_pose &&
+      capability.has_known_open_space_environment &&
+      (model.parking.has_parking_roi_hint ||
+       model.drivable_area.has_map_geometry ||
+       model.drivable_area.has_lane_marker_geometry);
+  capability.can_run_safety_hold_shell = capability.has_stop_target;
+  capability.has_structured_mapless_context =
+      capability.can_run_structured_mapless_shell;
+  capability.supports_open_space_exploration =
+      model.open_space.allow_exploration &&
+      model.source_health.localization_ready &&
+      model.source_health.chassis_ready && capability.has_goal_pose;
 
   switch (model.local_topology.topology_source) {
     case TopologySource::HYBRID:

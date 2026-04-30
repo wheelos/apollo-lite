@@ -24,9 +24,12 @@
 #include "modules/planning/common/dependency_injector.h"
 #include "modules/planning/common/local_view.h"
 #include "modules/planning/mode/mode_resolution.h"
+#include "modules/planning/mode/shell_transition_policy.h"
+#include "modules/planning/open_space_planning.h"
 #include "modules/planning/planning_base.h"
 #include "modules/planning/planning_runtime_context.h"
 #include "modules/planning/proto/planning_config.pb.h"
+#include "modules/planning/shells/planning_shell_registry.h"
 
 namespace apollo {
 namespace planning {
@@ -37,6 +40,8 @@ class PlanningCoordinator {
       const std::shared_ptr<DependencyInjector>& injector);
 
   common::Status Init(const PlanningConfig& config, bool use_navigation_mode);
+
+  PlanningCoordinatorState PreviewState(const LocalView& local_view) const;
 
   void RunOnce(const LocalView& local_view,
                ADCTrajectory* const adc_trajectory);
@@ -54,9 +59,9 @@ class PlanningCoordinator {
   bool use_navigation_mode_ = false;
   PlanningConfig config_;
   PlanningCoordinatorState state_;
+  mutable ShellTransitionPolicyState shell_transition_state_;
   std::shared_ptr<DependencyInjector> injector_;
-  std::unique_ptr<PlanningBase> lane_graph_planner_;
-  std::unique_ptr<PlanningBase> corridor_planner_;
+  PlanningShellRegistry shell_registry_;
 };
 
 }  // namespace planning

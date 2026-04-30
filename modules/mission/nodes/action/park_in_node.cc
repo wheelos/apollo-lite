@@ -14,9 +14,10 @@
 
 #include "modules/mission/nodes/action/park_in_node.h"
 
-#include <cmath>
+#include <sstream>
 
 #include "cyber/common/log.h"
+#include "cyber/time/time.h"
 
 namespace apollo {
 namespace mission {
@@ -24,21 +25,20 @@ namespace mission {
 namespace {
 
 std::string BuildParkInCommandId(const std::string& parking_space_id) {
-  const std::string mission_id = MissionContext::Instance()->GetCurrentMissionId();
-  if (mission_id.empty()) {
-    return "park_in/" + parking_space_id;
+  const std::string mission_id =
+      MissionContext::Instance()->GetCurrentMissionId();
+  std::ostringstream oss;
+  if (!mission_id.empty()) {
+    oss << mission_id << "/";
   }
-  return mission_id + "/park_in/" + parking_space_id;
+  oss << "park_in/" << parking_space_id << "/"
+      << apollo::cyber::Time::Now().ToNanosecond();
+  return oss.str();
 }
 
-double GetPositionTolerance(const ParkInNode* node) {
-  double tolerance = 1.0;
-  node->getInput("position_tolerance_m", tolerance);
-  return tolerance;
-}
-
-bool IsParkInCommandDone(const std::shared_ptr<apollo::planning::PlanningRuntimeStatus>& status,
-                         const std::string& command_id) {
+bool IsParkInCommandDone(
+    const std::shared_ptr<apollo::planning::PlanningRuntimeStatus>& status,
+    const std::string& command_id) {
   if (status == nullptr || !status->has_command_id() ||
       status->command_id() != command_id) {
     return false;
@@ -52,18 +52,6 @@ bool IsParkInCommandDone(const std::shared_ptr<apollo::planning::PlanningRuntime
          status->state() == apollo::planning::RUNTIME_COMPLETED;
 }
 
-bool IsParkInCommandFailed(
-    const std::shared_ptr<apollo::planning::PlanningRuntimeStatus>& status,
-    const std::string& command_id) {
-  if (status == nullptr || !status->has_command_id() ||
-      status->command_id() != command_id || !status->has_state()) {
-    return false;
-  }
-  return status->state() == apollo::planning::RUNTIME_REJECTED ||
-         status->state() == apollo::planning::RUNTIME_CANCELLED ||
-         status->state() == apollo::planning::RUNTIME_FAILED;
-}
-
 }  // namespace
 
 BT::NodeStatus ParkInNode::onStart() {
@@ -74,11 +62,18 @@ BT::NodeStatus ParkInNode::onStart() {
   }
 
   planning::PlanningCommand command;
-  command.set_command_id(BuildParkInCommandId(parking_space_id));
+  current_command_id_ = BuildParkInCommandId(parking_space_id);
+  command.set_command_id(current_command_id_);
   command.set_action(planning::COMMAND_ACTIVATE);
   command.set_requested_scene(planning::SCENE_PARK_IN);
-  command.set_preferred_mode(planning::MODE_OPEN_SPACE);
   command.set_preemptible(false);
+
+  bool whole_open_space_shell = false;
+  if (getInput("whole_open_space_shell", whole_open_space_shell) &&
+      whole_open_space_shell) {
+    command.mutable_open_space()->set_navigation_type(
+        planning::OPEN_SPACE_NAV_GLOBAL_GUIDED);
+  }
 
   auto* parking_goal = command.mutable_goal()->mutable_parking_goal();
   parking_goal->set_parking_space_id(parking_space_id);
@@ -121,36 +116,25 @@ BT::NodeStatus ParkInNode::onRunning() {
     AERROR << "ParkInNode: Missing required input [parking_space_id]";
     return BT::NodeStatus::FAILURE;
   }
-
-  const std::string command_id = BuildParkInCommandId(parking_space_id);
-  auto runtime_status = MissionContext::Instance()->GetPlanningRuntimeStatus();
-  if (IsParkInCommandFailed(runtime_status, command_id)) {
-    AERROR << "ParkInNode: Planning rejected or failed park-in command";
+  if (current_command_id_.empty()) {
+    AERROR << "ParkInNode: Missing active command_id while running";
     return BT::NodeStatus::FAILURE;
   }
-  if (IsParkInCommandDone(runtime_status, command_id)) {
+
+  const auto command_status =
+      MissionContext::Instance()->GetCommandLifecycleStatus(
+          current_command_id_);
+  if (command_status.state == CommandLifecycleState::kFailed ||
+      command_status.state == CommandLifecycleState::kCancelled) {
+    AERROR << "ParkInNode: Command lifecycle failed: " << command_status.reason;
+    return BT::NodeStatus::FAILURE;
+  }
+  if (command_status.state == CommandLifecycleState::kCompleted) {
     return BT::NodeStatus::SUCCESS;
   }
 
-  common::PointENU parking_point;
-  if (!getInput("parking_point", parking_point)) {
-    return BT::NodeStatus::RUNNING;
-  }
-
-  auto loc = MissionContext::Instance()->GetLocalization();
-  if (!loc) {
-    return BT::NodeStatus::RUNNING;
-  }
-
-  const double dx = loc->pose().position().x() - parking_point.x();
-  const double dy = loc->pose().position().y() - parking_point.y();
-  const double distance = std::sqrt(dx * dx + dy * dy);
-
-  auto chassis = MissionContext::Instance()->GetChassis();
-  const double speed =
-      chassis != nullptr ? std::abs(chassis->speed_mps()) : 0.0;
-
-  if (distance <= GetPositionTolerance(this) && speed < 0.2) {
+  auto runtime_status = MissionContext::Instance()->GetPlanningRuntimeStatus();
+  if (IsParkInCommandDone(runtime_status, current_command_id_)) {
     return BT::NodeStatus::SUCCESS;
   }
 
@@ -164,13 +148,17 @@ void ParkInNode::onHalted() {
     AERROR << "ParkInNode: Missing required input [parking_space_id] on halt";
     return;
   }
+  if (current_command_id_.empty()) {
+    AERROR << "ParkInNode: Missing active command_id on halt";
+    return;
+  }
 
   planning::PlanningCommand command;
-  command.set_command_id(BuildParkInCommandId(parking_space_id));
+  command.set_command_id(current_command_id_);
   command.set_action(planning::COMMAND_CANCEL);
   command.set_requested_scene(planning::SCENE_PARK_IN);
-  command.set_preferred_mode(planning::MODE_OPEN_SPACE);
   MissionContext::Instance()->SendPlanningCommand(command);
+  current_command_id_.clear();
 }
 
 }  // namespace mission

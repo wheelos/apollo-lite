@@ -38,6 +38,10 @@ class EnvironmentModelBuilder {
   ParkingContext BuildParkingContext(const MissionContextSnapshot& mission,
                                      const RouteContext& route,
                                      const LocalTopology& local_topology) const;
+  OpenSpaceContext BuildOpenSpaceContext(
+      const MissionContextSnapshot& mission,
+      const DrivableAreaModel& drivable_area,
+      const ParkingContext& parking) const;
   RegulatoryContext BuildRegulatoryContext(const LocalView& local_view) const;
   DynamicObjectContext BuildDynamicObjectContext(
       const LocalView& local_view) const;
