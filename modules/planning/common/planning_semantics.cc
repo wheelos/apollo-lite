@@ -59,6 +59,49 @@ const MainDecision* GetMainDecision(const ADCTrajectory* trajectory) {
   return &trajectory->decision().main_decision();
 }
 
+std::string DescribeStopReasonCode(StopReasonCode reason_code) {
+  switch (reason_code) {
+    case STOP_REASON_HEAD_VEHICLE:
+      return "stop for leading vehicle";
+    case STOP_REASON_DESTINATION:
+      return "stop for destination goal";
+    case STOP_REASON_PEDESTRIAN:
+      return "stop for pedestrian";
+    case STOP_REASON_OBSTACLE:
+      return "stop for obstacle";
+    case STOP_REASON_PREPARKING:
+      return "stop for pre-parking preparation";
+    case STOP_REASON_SIGNAL:
+      return "stop for traffic signal";
+    case STOP_REASON_STOP_SIGN:
+      return "stop for stop sign";
+    case STOP_REASON_YIELD_SIGN:
+      return "stop for yield sign";
+    case STOP_REASON_CLEAR_ZONE:
+      return "stop for keep-clear zone";
+    case STOP_REASON_CROSSWALK:
+      return "stop for crosswalk";
+    case STOP_REASON_CREEPER:
+      return "stop for creeper";
+    case STOP_REASON_REFERENCE_END:
+      return "stop for reference line end";
+    case STOP_REASON_YELLOW_SIGNAL:
+      return "stop for yellow signal";
+    case STOP_REASON_PULL_OVER:
+      return "stop for pull-over target";
+    case STOP_REASON_SIDEPASS_SAFETY:
+      return "stop for side-pass safety";
+    case STOP_REASON_PRE_OPEN_SPACE_STOP:
+      return "stop for open-space preparation";
+    case STOP_REASON_LANE_CHANGE_URGENCY:
+      return "stop for lane change urgency";
+    case STOP_REASON_EMERGENCY:
+      return "stop for emergency";
+    default:
+      return "";
+  }
+}
+
 void PopulateStopTargetFromDecision(const MainDecision* main_decision,
                                     PlanningSemanticSummary* summary) {
   if (main_decision == nullptr || summary == nullptr) {
@@ -91,6 +134,75 @@ void PopulateStopTargetFromDecision(const MainDecision* main_decision,
   if (stop.has_stop_heading()) {
     summary->has_target_stop_heading = true;
     summary->target_stop_heading = stop.stop_heading();
+  }
+}
+
+void PopulateStopReasonFromDecision(const PlanningSemanticInput& input,
+                                    const MainDecision* main_decision,
+                                    PlanningSemanticSummary* summary) {
+  if (summary == nullptr) {
+    return;
+  }
+  if (input.trajectory != nullptr && input.trajectory->has_estop() &&
+      input.trajectory->estop().is_estop()) {
+    summary->has_stop_reason_code = true;
+    summary->stop_reason_code = STOP_REASON_EMERGENCY;
+    if (input.trajectory->estop().has_reason()) {
+      summary->control_reason = input.trajectory->estop().reason();
+    }
+    return;
+  }
+  if (main_decision == nullptr) {
+    if (input.validation_should_hold && !input.validation_reason.empty()) {
+      summary->control_reason = input.validation_reason;
+    } else if (input.planning_state != nullptr &&
+               !input.planning_state->reason.empty()) {
+      summary->control_reason = input.planning_state->reason;
+    } else if (input.planning_state != nullptr &&
+               input.planning_state->resolved_mode == MODE_SAFETY_HOLD) {
+      summary->control_reason = "planning safety hold active";
+    }
+    return;
+  }
+  if (main_decision->has_mission_complete()) {
+    summary->has_stop_reason_code = true;
+    summary->stop_reason_code = STOP_REASON_DESTINATION;
+    summary->control_reason = "stop for mission destination";
+    return;
+  }
+  if (main_decision->has_estop()) {
+    summary->has_stop_reason_code = true;
+    summary->stop_reason_code = STOP_REASON_EMERGENCY;
+    if (main_decision->estop().has_reason()) {
+      summary->control_reason = main_decision->estop().reason();
+    }
+    return;
+  }
+  if (main_decision->has_stop()) {
+    const auto& stop = main_decision->stop();
+    if (stop.has_reason_code()) {
+      summary->has_stop_reason_code = true;
+      summary->stop_reason_code = stop.reason_code();
+      summary->control_reason = DescribeStopReasonCode(stop.reason_code());
+    }
+    if (stop.has_reason() && !stop.reason().empty()) {
+      summary->control_reason = stop.reason();
+    }
+    return;
+  }
+  if (main_decision->has_not_ready()) {
+    summary->control_reason = main_decision->not_ready().reason();
+    if (summary->control_reason.empty() && input.planning_state != nullptr &&
+        !input.planning_state->reason.empty()) {
+      summary->control_reason = input.planning_state->reason;
+    }
+    return;
+  }
+  if (input.validation_should_hold && !input.validation_reason.empty()) {
+    summary->control_reason = input.validation_reason;
+  } else if (input.planning_state != nullptr &&
+             !input.planning_state->reason.empty()) {
+    summary->control_reason = input.planning_state->reason;
   }
 }
 
@@ -274,6 +386,7 @@ PlanningSemanticSummary InferPlanningSemantics(
   const MainDecision* main_decision = GetMainDecision(input.trajectory);
   summary.stop_class = InferStopClass(input, main_decision);
   PopulateStopTargetFromDecision(main_decision, &summary);
+  PopulateStopReasonFromDecision(input, main_decision, &summary);
 
   if (summary.has_target_stop_point) {
     apollo::common::PointENU stop_point;
@@ -352,6 +465,18 @@ void ApplyPlanningSemanticsToTrajectory(const PlanningSemanticSummary& summary,
   control_intent->set_longitudinal_intent(
       InferLongitudinalIntent(summary));
   control_intent->set_lateral_intent(InferLateralIntent(summary));
+  if (control_intent->tracking_mode() == TRACKING_MODE_POSE_SERVO) {
+    control_intent->set_primitive_type(CONTROL_PRIMITIVE_POSE_SERVO);
+  } else if (control_intent->tracking_mode() == TRACKING_MODE_STANDSTILL_HOLD ||
+             control_intent->longitudinal_intent() == LON_INTENT_HOLD_STOP ||
+             control_intent->longitudinal_intent() == LON_INTENT_MRM_STOP) {
+    control_intent->set_primitive_type(CONTROL_PRIMITIVE_STANDSTILL_HOLD);
+  } else if (control_intent->lateral_intent() == LAT_INTENT_ALIGN_GOAL_HEADING &&
+             summary.has_target_stop_heading && summary.near_terminal) {
+    control_intent->set_primitive_type(CONTROL_PRIMITIVE_HEADING_HOLD);
+  } else {
+    control_intent->set_primitive_type(CONTROL_PRIMITIVE_NONE);
+  }
   control_intent->set_stop_class(summary.stop_class);
   control_intent->set_near_terminal(summary.near_terminal);
   control_intent->set_suppress_large_steer(
@@ -368,6 +493,12 @@ void ApplyPlanningSemanticsToTrajectory(const PlanningSemanticSummary& summary,
   control_intent->set_max_terminal_speed_mps(summary.max_terminal_speed_mps);
   control_intent->set_terminal_servo_timeout_sec(
       summary.terminal_servo_timeout_sec);
+  if (!summary.control_reason.empty()) {
+    control_intent->set_reason(summary.control_reason);
+  }
+  if (summary.has_stop_reason_code) {
+    control_intent->set_stop_reason_code(summary.stop_reason_code);
+  }
   if (summary.has_target_stop_point) {
     auto* stop_point = control_intent->mutable_target_stop_point();
     stop_point->set_x(summary.target_stop_x);

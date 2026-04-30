@@ -59,6 +59,28 @@ void PlanningBase::FillPlanningPb(const double timestamp,
         local_view_.routing->header());
   }
 
+  auto* execution = trajectory_pb->mutable_execution();
+  execution->Clear();
+  if (local_view_.planning_state != nullptr) {
+    if (!local_view_.planning_state->mission_id.empty()) {
+      execution->set_mission_id(local_view_.planning_state->mission_id);
+    }
+    if (!local_view_.planning_state->command_id.empty()) {
+      execution->set_command_id(local_view_.planning_state->command_id);
+    }
+    execution->set_active_scene(local_view_.planning_state->active_scene);
+    execution->set_requested_mode(local_view_.planning_state->requested_mode);
+    execution->set_active_mode(local_view_.planning_state->resolved_mode);
+    execution->set_active_shell(local_view_.planning_state->active_shell);
+    execution->set_active_domain(local_view_.planning_state->active_domain);
+    if (!local_view_.planning_state->reason.empty()) {
+      execution->set_reason(local_view_.planning_state->reason);
+    }
+    for (const auto& blocker : local_view_.planning_state->blockers) {
+      execution->add_blockers(blocker);
+    }
+  }
+
   auto* planning_data = trajectory_pb->mutable_debug()->mutable_planning_data();
   auto* runtime = planning_data->mutable_runtime();
 
@@ -72,6 +94,7 @@ void PlanningBase::FillPlanningPb(const double timestamp,
     runtime->set_active_scene(local_view_.planning_state->active_scene);
     runtime->set_requested_mode(local_view_.planning_state->requested_mode);
     runtime->set_resolved_mode(local_view_.planning_state->resolved_mode);
+    runtime->set_active_domain(local_view_.planning_state->active_domain);
     if (!local_view_.planning_state->reason.empty()) {
       runtime->set_reason(local_view_.planning_state->reason);
     }
@@ -93,6 +116,22 @@ void PlanningBase::FillPlanningPb(const double timestamp,
     runtime->set_has_stop_target(local_view_.capability_set->has_stop_target);
     runtime->set_has_regulatory_context(
         local_view_.capability_set->has_regulatory_context);
+    runtime->set_can_run_on_lane_shell(
+        local_view_.capability_set->can_run_on_lane_shell);
+    runtime->set_can_run_corridor_shell(
+        local_view_.capability_set->can_run_corridor_shell);
+    runtime->set_can_run_safety_hold_shell(
+        local_view_.capability_set->can_run_safety_hold_shell);
+    runtime->set_has_structured_mapless_context(
+        local_view_.capability_set->has_structured_mapless_context);
+    runtime->set_can_run_structured_mapless_shell(
+        local_view_.capability_set->can_run_structured_mapless_shell);
+    runtime->set_can_run_open_space_shell(
+        local_view_.capability_set->can_run_open_space_shell);
+    runtime->set_has_known_open_space_environment(
+        local_view_.capability_set->has_known_open_space_environment);
+    runtime->set_supports_open_space_exploration(
+        local_view_.capability_set->supports_open_space_exploration);
     runtime->set_topology_confidence(
         local_view_.capability_set->topology_confidence);
     runtime->set_drivable_area_confidence(

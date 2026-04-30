@@ -49,11 +49,17 @@ struct MissionContextSnapshot {
   CommandAction action = COMMAND_UNKNOWN;
   PlanningSceneType requested_scene = SCENE_UNKNOWN;
   PlanningMode preferred_mode = MODE_UNKNOWN;
+  PlanningOperatingDomain preferred_domain = DOMAIN_UNKNOWN;
   bool preemptible = false;
   bool has_goal_pose = false;
   common::PointENU goal_pose;
   bool has_parking_goal = false;
   routing::ParkingInfo parking_goal;
+  bool has_target_polygon = false;
+  hdmap::Polygon target_polygon;
+  OpenSpaceNavigationType open_space_navigation_type = OPEN_SPACE_NAV_UNKNOWN;
+  bool open_space_environment_known = false;
+  bool allow_open_space_exploration = false;
 };
 
 struct RouteContext {
@@ -86,6 +92,13 @@ struct ParkingContext {
   std::string parking_space_id;
 };
 
+struct OpenSpaceContext {
+  bool has_target_polygon = false;
+  bool known_environment = false;
+  bool allow_exploration = false;
+  OpenSpaceNavigationType navigation_type = OPEN_SPACE_NAV_UNKNOWN;
+};
+
 struct RegulatoryContext {
   bool has_traffic_light = false;
   int traffic_light_count = 0;
@@ -116,6 +129,7 @@ struct EnvironmentModel {
   LocalTopology local_topology;
   DrivableAreaModel drivable_area;
   ParkingContext parking;
+  OpenSpaceContext open_space;
   RegulatoryContext regulatory;
   DynamicObjectContext objects;
   SourceHealth source_health;

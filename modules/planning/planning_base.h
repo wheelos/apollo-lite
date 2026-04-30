@@ -39,7 +39,6 @@
 #include "modules/planning/common/local_view.h"
 #include "modules/planning/common/trajectory/publishable_trajectory.h"
 #include "modules/planning/planner/planner.h"
-#include "modules/planning/planner/planner_dispatcher.h"
 
 /**
  * @namespace apollo::planning
@@ -91,7 +90,6 @@ class PlanningBase {
   std::unique_ptr<Frame> frame_;
   std::unique_ptr<Planner> planner_;
   std::unique_ptr<PublishableTrajectory> last_publishable_trajectory_;
-  std::unique_ptr<PlannerDispatcher> planner_dispatcher_;
   std::shared_ptr<DependencyInjector> injector_;
 };
 

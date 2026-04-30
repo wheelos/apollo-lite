@@ -1,5 +1,7 @@
 #include "modules/planning/validation/validation_supervisor.h"
 
+#include "modules/planning/mode/mode_resolution.h"
+
 namespace apollo {
 namespace planning {
 
@@ -85,33 +87,20 @@ ValidationResult ValidationSupervisor::Validate(
   if (input.local_view->capability_set != nullptr &&
       input.planning_state != nullptr) {
     const auto& capability = *input.local_view->capability_set;
-    switch (input.planning_state->resolved_mode) {
-      case MODE_LANE_GRAPH:
-        if (!capability.has_lane_graph) {
-          return GateResult(input.local_view, true,
-                            "lane-graph capability unavailable");
-        }
-        break;
-      case MODE_CORRIDOR:
-        if (!capability.has_local_corridor) {
-          return GateResult(input.local_view, true,
-                            "corridor capability unavailable");
-        }
-        break;
-      case MODE_OPEN_SPACE:
-        if (!capability.has_parking_roi || !capability.has_goal_pose) {
-          return GateResult(input.local_view, true,
-                            "open-space capability unavailable");
-        }
-        break;
-      case MODE_FREE_SPACE:
-        if (!capability.has_drivable_area || !capability.has_goal_pose) {
-          return GateResult(input.local_view, true,
-                            "free-space capability unavailable");
-        }
-        break;
-      default:
-        break;
+    if (!HasCapabilityForMode(input.planning_state->resolved_mode, &capability)) {
+      switch (input.planning_state->resolved_mode) {
+        case MODE_LANE_GRAPH:
+        case MODE_CORRIDOR:
+        case MODE_OPEN_SPACE:
+        case MODE_FREE_SPACE:
+        case MODE_SAFETY_HOLD:
+          return GateResult(
+              input.local_view, true,
+              ModeCapabilityUnavailableReason(input.planning_state->resolved_mode,
+                                              &capability));
+        default:
+          break;
+      }
     }
   }
 

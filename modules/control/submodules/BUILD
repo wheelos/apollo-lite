@@ -53,6 +53,7 @@ cc_library(
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/control/common:control_gflags",
         "//modules/control/common:dependency_injector",
+        "//modules/control/common:terminal_control_helper",
         "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
         "//modules/control/proto:control_common_conf_cc_proto",
         "//modules/common_msgs/control_msgs:pad_msg_cc_proto",

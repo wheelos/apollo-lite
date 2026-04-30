@@ -205,6 +205,7 @@ void ScenarioManager::RegisterDeciders() {
 
 void ScenarioManager::Update(const common::TrajectoryPoint& ego_point,
                              const Frame& frame) {
+  (void)ego_point;
   // 1. Observe (Build lookup map) - Pass const ref
   Observe(frame);
 
@@ -213,11 +214,6 @@ void ScenarioManager::Update(const common::TrajectoryPoint& ego_point,
 
   // 3. Update Context (Environment Info) - Pass const ref
   UpdatePlanningContext(frame, current_scenario_->Type());
-
-  // 4. Process (Execution)
-  // Scenario::Process requires Frame* because it modifies the frame.
-  // This is the ONLY place where we cast away const.
-  current_scenario_->Process(const_cast<Frame*>(&frame));
 }
 
 void ScenarioManager::Observe(const Frame& frame) {

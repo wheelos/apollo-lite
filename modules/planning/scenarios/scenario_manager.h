@@ -51,7 +51,8 @@ class ScenarioManager final {
   bool Init(const PlanningConfig& planning_config);
 
   /**
-   * @brief Main entry point for every planning frame.
+   * @brief Main entry point for scenario observation, dispatch, and context
+   * update before the active scenario executes.
    */
   void Update(const common::TrajectoryPoint& ego_point, const Frame& frame);
 

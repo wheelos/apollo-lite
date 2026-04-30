@@ -40,6 +40,8 @@ DEFINE_string(pad_topic, "/apollo/control/pad",
               "control pad message topic name");
 DEFINE_string(control_command_topic, "/apollo/control",
               "control command topic name");
+DEFINE_string(control_runtime_status_topic, "/apollo/control/runtime_status",
+              "control runtime status topic name");
 DEFINE_string(control_preprocessor_topic, "/apollo/control/preprocessor",
               "control preprocessor topic name");
 DEFINE_string(control_local_view_topic, "/apollo/control/localview",

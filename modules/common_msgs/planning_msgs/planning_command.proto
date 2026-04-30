@@ -14,6 +14,16 @@ enum CommandAction {
   COMMAND_CANCEL = 3;
 }
 
+message RecoveryPolicy {
+  optional bool require_operator_ack = 1 [default = true];
+  optional bool allow_resume = 2 [default = true];
+  optional bool allow_retry = 3 [default = false];
+  optional bool allow_abort = 4 [default = true];
+  optional bool allow_mrm = 5 [default = true];
+  optional uint32 retry_budget = 6 [default = 0];
+  optional double recovery_timeout_sec = 7;
+}
+
 enum PlanningSceneType {
   SCENE_UNKNOWN = 0;
   SCENE_LANE_CRUISE = 1;
@@ -33,6 +43,76 @@ enum PlanningMode {
   MODE_OPEN_SPACE = 3;
   MODE_FREE_SPACE = 4;
   MODE_SAFETY_HOLD = 5;
+}
+
+enum PlanningShellType {
+  PLANNING_SHELL_UNKNOWN = 0;
+  PLANNING_SHELL_ON_LANE = 1;
+  PLANNING_SHELL_CORRIDOR = 2;
+  PLANNING_SHELL_SAFETY_HOLD = 3;
+  PLANNING_SHELL_STRUCTURED_MAPLESS = 4;
+  PLANNING_SHELL_OPEN_SPACE = 5;
+}
+
+enum PlanningOperatingDomain {
+  DOMAIN_UNKNOWN = 0;
+  DOMAIN_HDMAP_ROUTED = 1;
+  DOMAIN_STRUCTURED_MAPLESS = 2;
+  DOMAIN_OPEN_SPACE = 3;
+  DOMAIN_SAFETY_HOLD = 4;
+}
+
+enum OpenSpaceNavigationType {
+  OPEN_SPACE_NAV_UNKNOWN = 0;
+  OPEN_SPACE_NAV_ROI_ONLY = 1;
+  OPEN_SPACE_NAV_GLOBAL_GUIDED = 2;
+  OPEN_SPACE_NAV_EXPLORATION = 3;
+}
+
+enum HybridManeuverType {
+  HYBRID_MANEUVER_NONE = 0;
+  HYBRID_MANEUVER_PARK_IN = 1;
+  HYBRID_MANEUVER_PULL_OVER = 2;
+  HYBRID_MANEUVER_PULL_OUT = 3;
+}
+
+enum ManeuverSegmentType {
+  MANEUVER_SEGMENT_NONE = 0;
+  MANEUVER_SEGMENT_GUIDED_APPROACH = 1;
+  MANEUVER_SEGMENT_PREPARE_ENTRY = 2;
+  MANEUVER_SEGMENT_LOCAL_MANEUVER = 3;
+  MANEUVER_SEGMENT_HANDOFF_EXIT = 4;
+  MANEUVER_SEGMENT_GUIDED_RESUME = 5;
+  MANEUVER_SEGMENT_TERMINAL_HOLD = 6;
+}
+
+enum HandoffState {
+  HANDOFF_STATE_NONE = 0;
+  HANDOFF_STATE_PREPARING = 1;
+  HANDOFF_STATE_PENDING_APPROVAL = 2;
+  HANDOFF_STATE_READY = 3;
+  HANDOFF_STATE_COMMITTED = 4;
+  HANDOFF_STATE_ROLLBACK = 5;
+}
+
+message HybridManeuverStatus {
+  optional HybridManeuverType active_maneuver = 1;
+  optional ManeuverSegmentType active_segment = 2;
+  optional HandoffState handoff_state = 3;
+  optional string handoff_reason = 4;
+}
+
+message PlanningExecutionContext {
+  optional string mission_id = 1;
+  optional string command_id = 2;
+  optional PlanningSceneType active_scene = 3;
+  optional PlanningMode requested_mode = 4;
+  optional PlanningMode active_mode = 5;
+  optional PlanningShellType active_shell = 6;
+  optional string reason = 7;
+  repeated string blockers = 8;
+  optional PlanningOperatingDomain active_domain = 9;
+  optional HybridManeuverStatus hybrid_maneuver = 10;
 }
 
 message GoalSpec {
@@ -65,6 +145,20 @@ message FallbackPolicy {
   optional bool allow_mrm = 4;
 }
 
+message DomainPolicy {
+  optional PlanningOperatingDomain preferred_domain = 1;
+  optional bool allow_guided_route = 2 [default = true];
+  optional bool allow_structured_mapless = 3 [default = true];
+  optional bool allow_open_space = 4 [default = true];
+}
+
+message OpenSpaceCommandContext {
+  optional OpenSpaceNavigationType navigation_type = 1;
+  optional bool environment_is_known = 2;
+  optional bool allow_exploration = 3;
+  optional bool allow_reverse_recovery = 4 [default = true];
+}
+
 message PlanningCommand {
   optional apollo.common.Header header = 1;
   optional string mission_id = 2;
@@ -80,4 +174,7 @@ message PlanningCommand {
   optional CompletionCondition completion = 12;
   optional FallbackPolicy fallback = 13;
   repeated string tags = 14;
+  optional RecoveryPolicy recovery = 15;
+  optional DomainPolicy domain_policy = 16;
+  optional OpenSpaceCommandContext open_space = 17;
 }

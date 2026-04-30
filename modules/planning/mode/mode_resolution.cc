@@ -45,21 +45,39 @@ std::string PlanningModeName(PlanningMode mode) {
   }
 }
 
+bool RequestsWholeOpenSpaceShell(const PlanningCommand* command) {
+  if (command == nullptr || !command->has_open_space() ||
+      !command->open_space().has_navigation_type()) {
+    return false;
+  }
+  switch (command->open_space().navigation_type()) {
+    case OPEN_SPACE_NAV_GLOBAL_GUIDED:
+    case OPEN_SPACE_NAV_EXPLORATION:
+      return true;
+    case OPEN_SPACE_NAV_ROI_ONLY:
+    case OPEN_SPACE_NAV_UNKNOWN:
+    default:
+      return false;
+  }
+}
+
+}  // namespace
+
 bool HasCapabilityForMode(PlanningMode mode, const CapabilitySet* capability) {
   if (capability == nullptr) {
     return false;
   }
   switch (mode) {
     case MODE_LANE_GRAPH:
-      return capability->has_lane_graph;
+      return capability->can_run_on_lane_shell;
     case MODE_CORRIDOR:
-      return capability->has_local_corridor;
+      return capability->can_run_corridor_shell;
     case MODE_OPEN_SPACE:
-      return capability->has_parking_roi && capability->has_goal_pose;
+      return capability->can_run_open_space_shell;
     case MODE_FREE_SPACE:
-      return capability->has_drivable_area && capability->has_goal_pose;
+      return capability->can_run_structured_mapless_shell;
     case MODE_SAFETY_HOLD:
-      return capability->has_stop_target;
+      return capability->can_run_safety_hold_shell;
     case MODE_UNKNOWN:
     default:
       return false;
@@ -85,17 +103,66 @@ bool IsModeAvailable(PlanningMode mode,
   }
 }
 
-std::string ModeCapabilityUnavailableReason(PlanningMode mode) {
+namespace {
+
+std::string MissingShellContractReason(PlanningMode mode) {
   switch (mode) {
     case MODE_LANE_GRAPH:
+      return "on-lane shell input contract unavailable";
+    case MODE_CORRIDOR:
+      return "corridor shell input contract unavailable";
+    case MODE_OPEN_SPACE:
+      return "open-space shell input contract unavailable";
+    case MODE_FREE_SPACE:
+      return "structured-mapless shell input contract unavailable";
+    case MODE_SAFETY_HOLD:
+      return "safety-hold shell input contract unavailable";
+    case MODE_UNKNOWN:
+    default:
+      return "planning shell input contract unavailable";
+  }
+}
+
+}  // namespace
+
+std::string ModeCapabilityUnavailableReason(PlanningMode mode,
+                                            const CapabilitySet* capability) {
+  switch (mode) {
+    case MODE_LANE_GRAPH:
+      if (capability != nullptr && capability->has_lane_graph &&
+          !capability->can_run_on_lane_shell) {
+        return MissingShellContractReason(mode);
+      }
       return "lane-graph capability unavailable";
     case MODE_CORRIDOR:
+      if (capability != nullptr && capability->has_local_corridor &&
+          !capability->can_run_corridor_shell) {
+        return MissingShellContractReason(mode);
+      }
       return "corridor capability unavailable";
     case MODE_OPEN_SPACE:
+      if (capability != nullptr && capability->supports_open_space_exploration &&
+          !capability->can_run_open_space_shell &&
+          !capability->has_known_open_space_environment) {
+        return "open-space exploration requested but current shell still requires known-environment geometry";
+      }
+      if (capability != nullptr &&
+          capability->has_known_open_space_environment &&
+          capability->has_goal_pose && !capability->can_run_open_space_shell) {
+        return MissingShellContractReason(mode);
+      }
       return "open-space capability unavailable";
     case MODE_FREE_SPACE:
+      if (capability != nullptr && capability->has_structured_mapless_context &&
+          !capability->can_run_structured_mapless_shell) {
+        return MissingShellContractReason(mode);
+      }
       return "free-space capability unavailable";
     case MODE_SAFETY_HOLD:
+      if (capability != nullptr && capability->has_stop_target &&
+          !capability->can_run_safety_hold_shell) {
+        return MissingShellContractReason(mode);
+      }
       return "safety-hold capability unavailable";
     case MODE_UNKNOWN:
     default:
@@ -151,8 +218,6 @@ std::vector<PlanningMode> BuildFallbackModes(const PlanningCommand* command,
   return fallback_modes;
 }
 
-}  // namespace
-
 PlanningMode ModeResolution::InferRequestedMode(const PlanningCommand* command,
                                                 PlanningMode legacy_mode) {
   if (command != nullptr) {
@@ -162,6 +227,8 @@ PlanningMode ModeResolution::InferRequestedMode(const PlanningCommand* command,
     if (command->has_requested_scene()) {
       switch (command->requested_scene()) {
         case SCENE_PARK_IN:
+          return RequestsWholeOpenSpaceShell(command) ? MODE_OPEN_SPACE
+                                                      : legacy_mode;
         case SCENE_PULL_OUT:
           return MODE_OPEN_SPACE;
         case SCENE_DOCK:
@@ -197,7 +264,8 @@ ModeResolutionResult ModeResolution::Resolve(
   if (!IsModeAvailable(result.requested_mode, availability)) {
     requested_mode_reason = ModeShellUnavailableReason(result.requested_mode);
   } else {
-    requested_mode_reason = ModeCapabilityUnavailableReason(result.requested_mode);
+    requested_mode_reason =
+        ModeCapabilityUnavailableReason(result.requested_mode, capability);
   }
   AddUniqueBlocker(requested_mode_reason, &result.blockers);
 

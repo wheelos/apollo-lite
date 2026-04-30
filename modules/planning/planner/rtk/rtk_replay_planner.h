@@ -35,10 +35,11 @@ namespace planning {
 
 /**
  * @class RTKReplayPlanner
- * @brief RTKReplayPlanner is a derived class of Planner.
+ * @brief RTKReplayPlanner is a legacy replay-oriented planner.
  *        It reads a recorded trajectory from a trajectory file and
  *        outputs proper segment of the trajectory according to vehicle
- * position.
+ * position. It should be treated as tooling/offline logic rather than a
+ * production online planner.
  */
 class RTKReplayPlanner : public PlannerWithReferenceLine {
  public:

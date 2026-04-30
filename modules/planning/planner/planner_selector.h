@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2018 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,44 +17,34 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 #include "modules/common/status/status.h"
-#include "modules/common/util/factory.h"
+#include "modules/planning/common/dependency_injector.h"
 #include "modules/planning/planner/planner.h"
 
-/**
- * @namespace apollo::planning
- * @brief apollo::planning
- */
 namespace apollo {
 namespace planning {
 
-/**
- * @class planning
- *
- * @brief PlannerDispatcher module main class.
- */
-class PlannerDispatcher {
+class PlannerSelector {
  public:
-  PlannerDispatcher() = default;
-  virtual ~PlannerDispatcher() = default;
-
-  virtual common::Status Init() {
-    RegisterPlanners();
-    return common::Status::OK();
-  }
-
-  virtual std::unique_ptr<Planner> DispatchPlanner(
+  static common::Status CreateStandardPlanner(
       const PlanningConfig& planning_config,
-      const std::shared_ptr<DependencyInjector>& injector) = 0;
+      const std::shared_ptr<DependencyInjector>& injector,
+      std::unique_ptr<Planner>* planner);
 
- protected:
-  void RegisterPlanners();
+  static common::Status CreateNavigationPlanner(
+      const PlanningConfig& planning_config,
+      const std::shared_ptr<DependencyInjector>& injector,
+      std::unique_ptr<Planner>* planner);
 
-  common::util::Factory<
-      PlannerType, Planner,
-      Planner* (*)(const std::shared_ptr<DependencyInjector>& injector)>
-      planner_factory_;
+  static PlannerType ResolveStandardPlannerType(
+      const PlanningConfig& planning_config);
+  static PlannerType ResolveNavigationPlannerType(
+      const PlanningConfig& planning_config);
+
+  static bool IsLegacyPlannerType(PlannerType planner_type);
+  static std::string PlannerTypeName(PlannerType planner_type);
 };
 
 }  // namespace planning

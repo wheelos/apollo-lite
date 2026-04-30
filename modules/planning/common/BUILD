@@ -62,6 +62,29 @@ filegroup(
 )
 
 cc_library(
+    name = "hybrid_maneuver_supervisor",
+    srcs = ["hybrid_maneuver_supervisor.cc"],
+    hdrs = ["hybrid_maneuver_supervisor.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        "//modules/common_msgs/planning_msgs:planning_command_cc_proto",
+        "//modules/common_msgs/planning_msgs:planning_runtime_status_cc_proto",
+        "//modules/planning:planning_runtime_context",
+        "//modules/planning/proto:planning_status_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "hybrid_maneuver_supervisor_test",
+    size = "small",
+    srcs = ["hybrid_maneuver_supervisor_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":hybrid_maneuver_supervisor",
+    ],
+)
+
+cc_library(
     name = "obstacle_decider",
     srcs = ["obstacle_decider.cc"],
     hdrs = ["obstacle_decider.h"],
@@ -139,6 +162,27 @@ cc_library(
     name = "path_boundary",
     srcs = ["path_boundary.cc"],
     hdrs = ["path_boundary.h"],
+)
+
+cc_library(
+    name = "published_trajectory_gear",
+    srcs = ["published_trajectory_gear.cc"],
+    hdrs = ["published_trajectory_gear.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
+        "//modules/common_msgs/planning_msgs:planning_command_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "published_trajectory_gear_test",
+    size = "small",
+    srcs = ["published_trajectory_gear_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":published_trajectory_gear",
+    ],
 )
 
 cc_library(

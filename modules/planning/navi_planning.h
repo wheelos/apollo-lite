@@ -24,8 +24,7 @@
 #include "modules/common_msgs/planning_msgs/pad_msg.pb.h"
 
 #include "modules/common/util/future.h"
-#include "modules/planning/planner/navi_planner_dispatcher.h"
-#include "modules/planning/planner/planner_dispatcher.h"
+#include "modules/planning/planner/planner_selector.h"
 #include "modules/planning/planning_base.h"
 
 /**
@@ -44,9 +43,7 @@ namespace planning {
 class NaviPlanning : public PlanningBase {
  public:
   explicit NaviPlanning(const std::shared_ptr<DependencyInjector>& injector)
-      : PlanningBase(injector) {
-    planner_dispatcher_ = std::make_unique<NaviPlannerDispatcher>();
-  }
+      : PlanningBase(injector) {}
   virtual ~NaviPlanning();
 
   /**

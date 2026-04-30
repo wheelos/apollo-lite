@@ -16,11 +16,16 @@
 
 #include "modules/planning/planning_coordinator.h"
 
+#include "cyber/common/log.h"
 #include "cyber/time/clock.h"
+#include "modules/map/hdmap/hdmap_util.h"
+#include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/published_trajectory_gear.h"
 #include "modules/planning/environment/capability_extractor.h"
 #include "modules/planning/navi_planning.h"
 #include "modules/planning/on_lane_planning.h"
-#include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/open_space_planning.h"
+#include "modules/planning/planning_shell_bridge.h"
 
 namespace apollo {
 namespace planning {
@@ -39,14 +44,88 @@ common::Status PlanningCoordinator::Init(const PlanningConfig& config,
                                          bool use_navigation_mode) {
   config_ = config;
   use_navigation_mode_ = use_navigation_mode;
+  shell_registry_.Clear();
 
-  if (use_navigation_mode_) {
-    corridor_planner_ = std::make_unique<NaviPlanning>(injector_);
-    return corridor_planner_->Init(config_);
+  std::vector<std::string> init_errors;
+  auto register_shell = [this, &init_errors](
+                            PlanningMode mode, PlanningShellType shell,
+                            PlanningOperatingDomain domain,
+                            const std::string& shell_name,
+                            std::unique_ptr<PlanningBase> planner) {
+    if (shell_registry_.Register(mode, shell, domain, shell_name,
+                                 std::move(planner))) {
+      return true;
+    }
+    init_errors.emplace_back("failed to register shell: " + shell_name);
+    AWARN << init_errors.back();
+    return false;
+  };
+
+  if (apollo::hdmap::HDMapUtil::BaseMapPtr() != nullptr) {
+    auto lane_graph_planner = std::make_unique<OnLanePlanning>(injector_);
+    auto lane_graph_status = lane_graph_planner->Init(config_);
+    if (lane_graph_status.ok()) {
+      register_shell(MODE_LANE_GRAPH, PLANNING_SHELL_ON_LANE,
+                     DOMAIN_HDMAP_ROUTED, "OnLanePlanningShell",
+                     std::move(lane_graph_planner));
+    } else {
+      init_errors.emplace_back("lane_graph init failed: " +
+                               lane_graph_status.error_message());
+      AWARN << init_errors.back();
+    }
+  } else {
+    AWARN
+        << "HDMap unavailable during planning init; lane-graph shell disabled";
   }
 
-  lane_graph_planner_ = std::make_unique<OnLanePlanning>(injector_);
-  return lane_graph_planner_->Init(config_);
+  auto open_space_planner = std::make_unique<OpenSpacePlanning>(injector_);
+  auto open_space_status = open_space_planner->Init(config_);
+  if (open_space_status.ok()) {
+    register_shell(MODE_OPEN_SPACE, PLANNING_SHELL_OPEN_SPACE,
+                   DOMAIN_OPEN_SPACE, "OpenSpacePlanningShell",
+                   std::move(open_space_planner));
+  } else {
+    init_errors.emplace_back("open_space init failed: " +
+                             open_space_status.error_message());
+    AWARN << init_errors.back();
+  }
+
+  auto corridor_planner = std::make_unique<NaviPlanning>(injector_);
+  auto corridor_status = corridor_planner->Init(config_);
+  if (corridor_status.ok()) {
+    auto* corridor_planner_raw = corridor_planner.get();
+    auto structured_mapless_planner = std::make_unique<PlanningShellBridge>(
+        injector_, MODE_FREE_SPACE, "StructuredMaplessPlanningShell",
+        corridor_planner_raw);
+    if (register_shell(MODE_CORRIDOR, PLANNING_SHELL_CORRIDOR,
+                       DOMAIN_HDMAP_ROUTED, "CorridorPlanningShell",
+                       std::move(corridor_planner))) {
+      register_shell(MODE_FREE_SPACE, PLANNING_SHELL_STRUCTURED_MAPLESS,
+                     DOMAIN_STRUCTURED_MAPLESS,
+                     "StructuredMaplessPlanningShell",
+                     std::move(structured_mapless_planner));
+    }
+  } else {
+    init_errors.emplace_back("corridor init failed: " +
+                             corridor_status.error_message());
+    AWARN << init_errors.back();
+  }
+
+  if (!shell_registry_.HasShell(MODE_LANE_GRAPH) &&
+      !shell_registry_.HasShell(MODE_CORRIDOR) &&
+      !shell_registry_.HasShell(MODE_OPEN_SPACE)) {
+    return common::Status(common::ErrorCode::PLANNING_ERROR,
+                          init_errors.empty()
+                              ? "failed to initialize any planning shell"
+                              : init_errors.front());
+  }
+
+  return common::Status::OK();
+}
+
+PlanningCoordinatorState PlanningCoordinator::PreviewState(
+    const LocalView& local_view) const {
+  return BuildState(local_view);
 }
 
 void PlanningCoordinator::RunOnce(const LocalView& local_view,
@@ -74,12 +153,37 @@ void PlanningCoordinator::RunOnce(const LocalView& local_view,
 PlanningCoordinatorState PlanningCoordinator::BuildState(
     const LocalView& local_view) const {
   PlanningCoordinatorState state;
+  const auto availability = BuildModeShellAvailability();
+  state.previous_shell = state_.active_shell;
+  state.previous_mode = state_.resolved_mode;
+
+  std::string command_id;
+  PlanningSceneType active_scene = SCENE_LANE_CRUISE;
+  if (local_view.planning_command != nullptr) {
+    const auto& command = *local_view.planning_command;
+    if (command.has_command_id()) {
+      command_id = command.command_id();
+    }
+    if (command.has_requested_scene()) {
+      active_scene = command.requested_scene();
+    }
+  }
+
   const auto resolution = ModeResolution::Resolve(
       local_view.planning_command.get(), local_view.capability_set.get(),
-      BuildModeShellAvailability(), ResolveLegacyMode());
+      availability, ResolveLegacyMode());
   state.requested_mode = resolution.requested_mode;
-  state.resolved_mode = resolution.resolved_mode;
-  state.reason = resolution.reason;
+  const auto transition = ShellTransitionPolicy::Apply(
+      resolution, state_, command_id, active_scene,
+      local_view.capability_set.get(), availability, &shell_transition_state_);
+  state.desired_mode = transition.desired_mode;
+  state.desired_shell = transition.desired_shell;
+  state.resolved_mode = transition.active_mode;
+  state.active_shell = transition.active_shell;
+  state.active_domain = ResolveOperatingDomainForMode(state.resolved_mode);
+  state.transition_pending = transition.transition_pending;
+  state.continuity_hold = transition.continuity_hold;
+  state.reason = transition.reason;
   state.blockers = resolution.blockers;
 
   if (local_view.planning_command != nullptr) {
@@ -87,12 +191,8 @@ PlanningCoordinatorState PlanningCoordinator::BuildState(
     if (command.has_mission_id()) {
       state.mission_id = command.mission_id();
     }
-    if (command.has_command_id()) {
-      state.command_id = command.command_id();
-    }
-    if (command.has_requested_scene()) {
-      state.active_scene = command.requested_scene();
-    }
+    state.command_id = command_id;
+    state.active_scene = active_scene;
   }
 
   if (state.resolved_mode != MODE_UNKNOWN &&
@@ -104,9 +204,7 @@ PlanningCoordinatorState PlanningCoordinator::BuildState(
 }
 
 ModeShellAvailability PlanningCoordinator::BuildModeShellAvailability() const {
-  ModeShellAvailability availability;
-  availability.lane_graph_available = lane_graph_planner_ != nullptr;
-  availability.corridor_available = corridor_planner_ != nullptr;
+  ModeShellAvailability availability = shell_registry_.BuildAvailability();
   availability.safety_hold_available = true;
   return availability;
 }
@@ -142,9 +240,9 @@ void PlanningCoordinator::GenerateSafetyHoldTrajectory(
     path_point->set_s(0.0);
   }
 
-  if (local_view.chassis != nullptr) {
-    adc_trajectory->set_gear(local_view.chassis->gear_location());
-  }
+  adc_trajectory->set_gear(ResolvePublishedGear(PublishedGearInput{
+      MODE_SAFETY_HOLD, local_view.chassis.get(), canbus::Chassis::GEAR_NONE,
+      canbus::Chassis::GEAR_NONE, false, true}));
   if (local_view.planning_command != nullptr &&
       local_view.planning_command->has_requested_scene() &&
       local_view.planning_command->requested_scene() == SCENE_EMERGENCY_STOP) {
@@ -159,13 +257,7 @@ PlanningMode PlanningCoordinator::ResolveLegacyMode() const {
 }
 
 PlanningBase* PlanningCoordinator::GetPlannerForMode(PlanningMode mode) const {
-  if (lane_graph_planner_ != nullptr && lane_graph_planner_->Mode() == mode) {
-    return lane_graph_planner_.get();
-  }
-  if (corridor_planner_ != nullptr && corridor_planner_->Mode() == mode) {
-    return corridor_planner_.get();
-  }
-  return nullptr;
+  return shell_registry_.GetPlannerForMode(mode);
 }
 
 }  // namespace planning

@@ -27,6 +27,7 @@
 #include "modules/common/latency_recorder/latency_recorder.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/control/common/control_gflags.h"
+#include "modules/control/common/terminal_control_helper.h"
 
 namespace apollo {
 namespace control {
@@ -38,18 +39,6 @@ using apollo::common::VehicleStateProvider;
 using apollo::cyber::Clock;
 using apollo::localization::LocalizationEstimate;
 using apollo::planning::ADCTrajectory;
-
-namespace {
-
-bool AllowsTrajectorylessPoseServo(const ADCTrajectory& trajectory) {
-  return trajectory.trajectory_point().empty() &&
-         trajectory.has_control_intent() &&
-         trajectory.control_intent().tracking_mode() ==
-             apollo::planning::TRACKING_MODE_POSE_SERVO &&
-         trajectory.control_intent().has_target_stop_point();
-}
-
-}  // namespace
 
 PreprocessorSubmodule::PreprocessorSubmodule()
     : monitor_logger_buffer_(common::monitor::MonitorMessageItem::CONTROL) {}
@@ -226,7 +215,7 @@ Status PreprocessorSubmodule::CheckInput(LocalView *local_view) {
 
   if (!local_view->trajectory().estop().is_estop() &&
       local_view->trajectory().trajectory_point().empty()) {
-    if (AllowsTrajectorylessPoseServo(local_view->trajectory())) {
+    if (IsTrajectorylessControlPrimitive(local_view->trajectory())) {
       injector_->vehicle_state()->Update(local_view->localization(),
                                          local_view->chassis());
       return Status::OK();

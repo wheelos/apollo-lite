@@ -239,6 +239,15 @@ message RuntimeDebug {
   optional double target_geometry_confidence = 16;
   repeated string blockers = 17;
   optional string reason = 18;
+  optional bool can_run_on_lane_shell = 19;
+  optional bool can_run_corridor_shell = 20;
+  optional bool can_run_safety_hold_shell = 21;
+  optional bool has_structured_mapless_context = 22;
+  optional apollo.planning.PlanningOperatingDomain active_domain = 23;
+  optional bool can_run_structured_mapless_shell = 24;
+  optional bool can_run_open_space_shell = 25;
+  optional bool has_known_open_space_environment = 26;
+  optional bool supports_open_space_exploration = 27;
 }
 
 // next ID: 33

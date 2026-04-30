@@ -47,6 +47,10 @@ TEST(PlanningSemanticsTest, MissionCompletePublishesCompletedTerminalIntent) {
 
   ApplyPlanningSemanticsToTrajectory(summary, &trajectory);
   ASSERT_TRUE(trajectory.has_control_intent());
+  EXPECT_TRUE(trajectory.control_intent().has_stop_reason_code());
+  EXPECT_EQ(trajectory.control_intent().stop_reason_code(),
+            STOP_REASON_DESTINATION);
+  EXPECT_EQ(trajectory.control_intent().reason(), "stop for mission destination");
   EXPECT_EQ(trajectory.control_intent().tracking_mode(),
             TRACKING_MODE_STANDSTILL_HOLD);
   EXPECT_EQ(trajectory.control_intent().longitudinal_intent(),
@@ -63,6 +67,7 @@ TEST(PlanningSemanticsTest, SafetyHoldPublishesHoldIntent) {
 
   PlanningCoordinatorState planning_state;
   planning_state.resolved_mode = MODE_SAFETY_HOLD;
+  planning_state.reason = "stop for traffic signal";
 
   auto input = BaseInput();
   input.trajectory = &trajectory;
@@ -76,6 +81,8 @@ TEST(PlanningSemanticsTest, SafetyHoldPublishesHoldIntent) {
   EXPECT_TRUE(summary.full_stop_reached);
 
   ApplyPlanningSemanticsToTrajectory(summary, &trajectory);
+  EXPECT_EQ(trajectory.control_intent().reason(), "stop for traffic signal");
+  EXPECT_FALSE(trajectory.control_intent().has_stop_reason_code());
   EXPECT_EQ(trajectory.control_intent().tracking_mode(),
             TRACKING_MODE_STANDSTILL_HOLD);
   EXPECT_EQ(trajectory.control_intent().longitudinal_intent(),
@@ -151,6 +158,10 @@ TEST(PlanningSemanticsTest, NearTerminalHeadingMismatchPublishesTerminalAlign) {
   EXPECT_TRUE(summary.terminal_servo_authorized);
 
   ApplyPlanningSemanticsToTrajectory(summary, &trajectory);
+  EXPECT_EQ(trajectory.control_intent().reason(), "stop for destination goal");
+  ASSERT_TRUE(trajectory.control_intent().has_stop_reason_code());
+  EXPECT_EQ(trajectory.control_intent().stop_reason_code(),
+            STOP_REASON_DESTINATION);
   EXPECT_EQ(trajectory.control_intent().tracking_mode(),
             TRACKING_MODE_POSE_SERVO);
   EXPECT_EQ(trajectory.control_intent().lateral_intent(),

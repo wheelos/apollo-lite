@@ -30,6 +30,14 @@ struct CapabilitySet {
   bool has_goal_pose = false;
   bool has_stop_target = false;
   bool has_regulatory_context = false;
+  bool can_run_on_lane_shell = false;
+  bool can_run_corridor_shell = false;
+  bool can_run_safety_hold_shell = false;
+  bool has_structured_mapless_context = false;
+  bool can_run_structured_mapless_shell = false;
+  bool can_run_open_space_shell = false;
+  bool has_known_open_space_environment = false;
+  bool supports_open_space_exploration = false;
   double topology_confidence = 0.0;
   double drivable_area_confidence = 0.0;
   double target_geometry_confidence = 0.0;

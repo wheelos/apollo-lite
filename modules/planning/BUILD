@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
 load("//tools/platform:build_defs.bzl", "if_gpu")
 load("//tools:cpplint.bzl", "cpplint")
@@ -50,6 +50,7 @@ cc_library(
         "//modules/common_msgs/planning_msgs:planning_command_cc_proto",
         "//modules/common_msgs/planning_msgs:planning_runtime_status_cc_proto",
         "//modules/planning/common:history",
+        "//modules/planning/common:hybrid_maneuver_supervisor",
         "//modules/planning/common:message_process",
         "//modules/planning/common:planning_semantics",
         "//modules/planning/common:terminal_servo_guard",
@@ -64,6 +65,19 @@ cc_library(
 )
 
 cc_library(
+    name = "planning_shell_registry",
+    srcs = ["shells/planning_shell_registry.cc"],
+    hdrs = ["shells/planning_shell_registry.h"],
+    copts = [
+        "-DMODULE_NAME=\\\"planning\\\"",
+    ],
+    deps = [
+        ":planning_base",
+        "//modules/planning/mode:mode_resolution",
+    ],
+)
+
+cc_library(
     name = "planning_coordinator",
     srcs = ["planning_coordinator.cc"],
     hdrs = ["planning_coordinator.h"],
@@ -72,14 +86,31 @@ cc_library(
     ],
     deps = [
         "//modules/planning/mode:mode_resolution",
+        "//modules/planning/mode:shell_transition_policy",
         ":navi_planning",
+        ":open_space_planning",
         ":on_lane_planning",
+        ":planning_shell_registry",
+        ":planning_shell_bridge",
         ":planning_runtime_context",
         "//modules/common/status",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:local_view",
+        "//modules/planning/common:published_trajectory_gear",
         "//modules/planning/environment:capability_extractor",
         "//modules/planning/proto:planning_config_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "planning_shell_bridge",
+    hdrs = ["planning_shell_bridge.h"],
+    copts = [
+        "-DMODULE_NAME=\\\"planning\\\"",
+    ],
+    deps = [
+        ":planning_base",
+        "//cyber",
     ],
 )
 
@@ -115,11 +146,40 @@ cc_library(
         "//modules/planning/common/trajectory:publishable_trajectory",
         "//modules/planning/environment:capability_extractor",
         ":planning_runtime_context",
-        "//modules/planning/planner:planner_dispatcher",
         "//modules/planning/planner",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/proto:traffic_rule_config_cc_proto",
         "//modules/planning/tasks:task_factory",
+    ],
+)
+
+cc_library(
+    name = "open_space_planning",
+    srcs = ["open_space_planning.cc"],
+    hdrs = ["open_space_planning.h"],
+    copts = [
+        "-fopenmp",
+        "-DMODULE_NAME=\\\"planning\\\"",
+    ],
+    deps = [
+        ":planning_base",
+        "//cyber",
+        "//modules/common_msgs/planning_msgs:planning_internal_cc_proto",
+        "//modules/common_msgs/routing_msgs:routing_cc_proto",
+        "//modules/common/vehicle_state:vehicle_state_provider",
+        "//modules/map/hdmap:hdmap_util",
+        "//modules/planning/common:ego_info",
+        "//modules/planning/common:history",
+        "//modules/planning/common:planning_context",
+        "//modules/planning/common:planning_gflags",
+        "//modules/planning/common:published_trajectory_gear",
+        "//modules/planning/common:trajectory_stitcher",
+        "//modules/planning/common/util:util_lib",
+        "//modules/planning/scenarios:scenario",
+        "//modules/planning/scenarios:stage",
+        "//modules/planning/scenarios/park/park_and_go:park_and_go_scenario",
+        "//modules/planning/scenarios/park/pull_over:pull_over_scenario",
+        "//modules/planning/scenarios/park/valet_parking",
     ],
 )
 
@@ -143,11 +203,11 @@ cc_library(
         "//modules/planning/common:history",
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
+        "//modules/planning/common:published_trajectory_gear",
         "//modules/planning/common:trajectory_stitcher",
         "//modules/planning/common/util:util_lib",
-        "//modules/planning/planner:planner_dispatcher",
+        "//modules/planning/planner:planner_selector",
         "//modules/planning/planner/navi:navi_planner",
-        "//modules/planning/planner/rtk:rtk_planner",
         "//modules/planning/reference_line:reference_line_provider",
         "//modules/planning/traffic_rules:traffic_decider",
         "@com_google_protobuf//:protobuf",
@@ -156,8 +216,14 @@ cc_library(
 
 cc_library(
     name = "on_lane_planning",
-    srcs = ["on_lane_planning.cc"],
-    hdrs = ["on_lane_planning.h"],
+    srcs = [
+        "on_lane_debug_exporter.cc",
+        "on_lane_planning.cc",
+    ],
+    hdrs = [
+        "on_lane_debug_exporter.h",
+        "on_lane_planning.h",
+    ],
     copts = [
         "-fopenmp",
         "-DMODULE_NAME=\\\"planning\\\"",
@@ -174,19 +240,43 @@ cc_library(
         "//modules/planning/common:history",
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
+        "//modules/planning/common:published_trajectory_gear",
         "//modules/planning/common:trajectory_stitcher",
         "//modules/planning/common/smoothers:smoother",
         "//modules/planning/common/util:util_lib",
         "//modules/planning/learning_based/img_feature_renderer:birdview_img_feature_renderer",
-        "//modules/planning/planner:planner_dispatcher",
-        "//modules/planning/planner/rtk:rtk_planner",
+        "//modules/planning/planner:planner_selector",
         "//modules/planning/proto:planning_semantic_map_config_cc_proto",
         "//modules/planning/reference_line:reference_line_provider",
         "//modules/planning/tasks:task_factory",
         "//modules/planning/traffic_rules:traffic_decider",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "planning_shell_registry_test",
+    size = "small",
+    srcs = ["shells/planning_shell_registry_test.cc"],
+    linkopts = ["-lgomp"],
+    deps = [
+        ":planning_shell_registry",
         "@com_google_googletest//:gtest_main",
     ],
+    linkstatic = True,
+)
+
+cc_test(
+    name = "open_space_planning_test",
+    size = "small",
+    srcs = ["open_space_planning_test.cc"],
+    linkopts = ["-lgomp"],
+    deps = [
+        ":open_space_planning",
+        "//cyber/common:file",
+        "@com_google_googletest//:gtest_main",
+    ],
+    linkstatic = True,
 )
 
 filegroup(
@@ -223,11 +313,7 @@ install(
     ),
     data = [
         ":runtime_data",
-
-    ] + if_gpu(
-        ["planning-gpu.BUILD"],
-        ["planning.BUILD"]
-    ),
+    ],
     targets = [
         ":libplanning_component.so",
     ],

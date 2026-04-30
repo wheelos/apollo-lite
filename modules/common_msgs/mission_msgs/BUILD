@@ -27,3 +27,22 @@ py_proto_library(
     deps = [":mission_request_proto"],
 )
 
+cc_proto_library(
+    name = "mission_runtime_status_cc_proto",
+    deps = [
+        ":mission_runtime_status_proto",
+    ],
+)
+
+proto_library(
+    name = "mission_runtime_status_proto",
+    srcs = ["mission_runtime_status.proto"],
+    deps = [
+        "//modules/common_msgs/basic_msgs:header_proto",
+    ],
+)
+
+py_proto_library(
+    name = "mission_runtime_status_py_pb2",
+    deps = [":mission_runtime_status_proto"],
+)

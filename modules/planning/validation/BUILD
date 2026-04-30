@@ -12,6 +12,7 @@ cc_library(
         "//modules/common_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:local_view",
         "//modules/planning/environment:capability_extractor",
+        "//modules/planning/mode:mode_resolution",
         "//modules/planning:planning_runtime_context",
     ],
 )

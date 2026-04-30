@@ -72,6 +72,7 @@ TEST(ValidationSupervisorTest, AcceptsSafetyHoldFallbackWhenAllowed) {
       MODE_SAFETY_HOLD);
   local_view.capability_set = std::make_shared<CapabilitySet>();
   local_view.capability_set->has_stop_target = true;
+  local_view.capability_set->can_run_safety_hold_shell = true;
 
   PlanningCoordinatorState planning_state;
   planning_state.requested_mode = MODE_FREE_SPACE;

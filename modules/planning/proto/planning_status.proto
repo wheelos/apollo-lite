@@ -139,7 +139,10 @@ message YieldSignStatus {
   repeated string wait_for_obstacle_id = 3;
 }
 
-// note: please keep this one as minimal as possible. do NOT pollute it.
+// PlanningStatus is planner-internal persistent state. Keep it limited to
+// cross-frame planner/scenario memory that belongs to planning logic itself.
+// Do not use it as a catch-all for command lifecycle, runtime publication, or
+// component orchestration state.
 message PlanningStatus {
   optional BareIntersectionStatus bare_intersection = 1;
   optional ChangeLaneStatus change_lane = 2;

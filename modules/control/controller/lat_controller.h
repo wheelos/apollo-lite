@@ -125,6 +125,7 @@ class LatController : public Controller {
   void ProcessLogs(const SimpleLateralDebug *debug,
                    const canbus::Chassis *chassis);
   TerminalLateralControlAdjustment BuildTerminalLateralAdjustment(
+      const localization::LocalizationEstimate* localization,
       const planning::ADCTrajectory& planning_published_trajectory,
       double current_heading) const;
 

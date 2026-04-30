@@ -22,6 +22,7 @@
 
 #include "modules/common_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/common_msgs/control_msgs/control_cmd.pb.h"
+#include "modules/common_msgs/control_msgs/control_runtime_status.pb.h"
 #include "modules/common_msgs/control_msgs/pad_msg.pb.h"
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
 #include "modules/common_msgs/planning_msgs/planning.pb.h"
@@ -65,7 +66,11 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
 
   // Core Logic
   void InitReaders();
-  common::Status ProduceControlCommand(ControlCommand *control_command);
+  common::Status ProduceControlCommand(ControlCommand *control_command,
+                                       bool *used_previous_command);
+  void PublishRuntimeStatus(const ControlCommand &control_command,
+                            const common::Status &status,
+                            bool used_previous_command);
   void ResetAndProduceZeroControlCommand(ControlCommand *control_command);
 
  private:
@@ -99,6 +104,8 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
       trajectory_reader_;
 
   std::shared_ptr<cyber::Writer<ControlCommand>> control_cmd_writer_;
+  std::shared_ptr<cyber::Writer<ControlRuntimeStatus>>
+      control_runtime_status_writer_;
 };
 
 CYBER_REGISTER_COMPONENT(ControlComponent)

@@ -267,13 +267,15 @@ void LatController::LoadLatGainScheduler(
 }
 
 TerminalLateralControlAdjustment LatController::BuildTerminalLateralAdjustment(
+    const localization::LocalizationEstimate* localization,
     const planning::ADCTrajectory& planning_published_trajectory,
     double current_heading) const {
   if (!planning_published_trajectory.has_control_intent()) {
     return TerminalLateralControlAdjustment();
   }
   return BuildTerminalLateralControlAdjustment(
-      planning_published_trajectory.control_intent(), current_heading,
+      planning_published_trajectory.control_intent(), localization,
+      current_heading,
       steer_ratio_, steer_single_direction_max_degree_);
 }
 
@@ -357,7 +359,7 @@ Status LatController::ComputeControlCommand(
     }
   }
 
-  if (IsTrajectorylessPoseServo(*planning_published_trajectory)) {
+  if (IsTrajectorylessControlPrimitive(*planning_published_trajectory)) {
     if (localization->pose().has_heading()) {
       driving_orientation_ = localization->pose().heading();
     } else {
@@ -367,7 +369,7 @@ Status LatController::ComputeControlCommand(
                                             orientation.qy(), orientation.qz());
     }
     const auto terminal_adjustment = BuildTerminalLateralAdjustment(
-        *planning_published_trajectory, driving_orientation_);
+        localization, *planning_published_trajectory, driving_orientation_);
     double steer_limit =
         terminal_adjustment.suppress_large_steer ||
                 terminal_adjustment.terminal_align_active
@@ -549,7 +551,7 @@ Status LatController::ComputeControlCommand(
                 steer_angle_feedback_augment;
 
   const auto terminal_adjustment = BuildTerminalLateralAdjustment(
-      *planning_published_trajectory, driving_orientation_);
+      localization, *planning_published_trajectory, driving_orientation_);
   if (terminal_adjustment.terminal_align_active) {
     steer_angle += terminal_adjustment.heading_correction_pct;
   }

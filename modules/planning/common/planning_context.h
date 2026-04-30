@@ -39,9 +39,13 @@ class PlanningContext {
   void Init();
 
   /*
-   * please put all status info inside PlanningStatus for easy maintenance.
-   * do NOT create new struct at this level.
-   * */
+   * PlanningStatus stores planner-internal persistent status that must survive
+   * across frames, such as scenario/stage progress and planner-owned memory.
+   *
+   * Keep command/session lifecycle state, runtime publication state, and other
+   * component-owned orchestration data outside PlanningContext so reset
+   * boundaries stay explicit.
+   */
   const PlanningStatus& planning_status() const { return planning_status_; }
   PlanningStatus* mutable_planning_status() { return &planning_status_; }
 

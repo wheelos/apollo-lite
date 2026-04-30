@@ -31,10 +31,10 @@
 #include "modules/planning/common/history.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/published_trajectory_gear.h"
 #include "modules/planning/common/trajectory_stitcher.h"
 #include "modules/planning/common/util/util.h"
 #include "modules/planning/planner/navi/navi_planner.h"
-#include "modules/planning/planner/rtk/rtk_replay_planner.h"
 #include "modules/planning/reference_line/reference_line_provider.h"
 #include "modules/planning/traffic_rules/traffic_decider.h"
 
@@ -69,8 +69,6 @@ Status NaviPlanning::Init(const PlanningConfig& config) {
 
   PlanningBase::Init(config_);
 
-  planner_dispatcher_->Init();
-
   ACHECK(apollo::cyber::common::GetProtoFromFile(
       FLAGS_traffic_rule_config_filename, &traffic_rule_configs_))
       << "Failed to load traffic rule config file "
@@ -82,11 +80,13 @@ Status NaviPlanning::Init(const PlanningConfig& config) {
   // clear planning status
   injector_->planning_context()->mutable_planning_status()->Clear();
 
-  planner_ = planner_dispatcher_->DispatchPlanner(config_, injector_);
-  if (!planner_) {
-    return Status(
-        ErrorCode::PLANNING_ERROR,
-        "planning is not initialized with config : " + config_.DebugString());
+  auto planner_status =
+      PlannerSelector::CreateNavigationPlanner(config_, injector_, &planner_);
+  if (!planner_status.ok() || !planner_) {
+    return planner_status.ok()
+               ? Status(ErrorCode::PLANNING_ERROR,
+                        "failed to create planner for navigation shell")
+               : planner_status;
   }
 
   return planner_->Init(config_);
@@ -185,8 +185,8 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
     AERROR << msg;
     not_ready->set_reason(msg);
     status.Save(trajectory_pb->mutable_header()->mutable_status());
-    // TODO(all): integrate reverse gear
-    trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
+    trajectory_pb->set_gear(ResolvePublishedGear(
+        PublishedGearInput{Mode(), local_view_.chassis.get()}));
     FillPlanningPb(start_timestamp, trajectory_pb);
     return;
   }
@@ -208,8 +208,8 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
     AERROR << msg;
     not_ready->set_reason(msg);
     status.Save(trajectory_pb->mutable_header()->mutable_status());
-    // TODO(all): integrate reverse gear
-    trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
+    trajectory_pb->set_gear(ResolvePublishedGear(
+        PublishedGearInput{Mode(), local_view_.chassis.get()}));
     FillPlanningPb(start_timestamp, trajectory_pb);
     return;
   }
@@ -233,8 +233,8 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
       estop->set_is_estop(true);
       estop->set_reason(status.error_message());
       status.Save(estop_trajectory.mutable_header()->mutable_status());
-      // TODO(all): integrate reverse gear
-      trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
+      trajectory_pb->set_gear(ResolvePublishedGear(
+          PublishedGearInput{Mode(), local_view_.chassis.get()}));
       FillPlanningPb(start_timestamp, &estop_trajectory);
     } else {
       trajectory_pb->mutable_decision()
@@ -242,8 +242,8 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
           ->mutable_not_ready()
           ->set_reason(status.ToString());
       status.Save(trajectory_pb->mutable_header()->mutable_status());
-      // TODO(all): integrate reverse gear
-      trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
+      trajectory_pb->set_gear(ResolvePublishedGear(
+          PublishedGearInput{Mode(), local_view_.chassis.get()}));
       FillPlanningPb(start_timestamp, trajectory_pb);
     }
 
@@ -304,8 +304,8 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
   }
 
   trajectory_pb->set_is_replan(stitching_trajectory.size() == 1);
-  // TODO(all): integrate reverse gear
-  trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
+  trajectory_pb->set_gear(ResolvePublishedGear(
+      PublishedGearInput{Mode(), local_view_.chassis.get()}));
   FillPlanningPb(start_timestamp, trajectory_pb);
   ADEBUG << "Planning pb:" << trajectory_pb->header().DebugString();
 
@@ -607,9 +607,9 @@ bool NaviPlanning::CheckPlanningConfig(const PlanningConfig& config) {
   if (!config.has_navigation_planning_config()) {
     return false;
   }
-  // TODO(All): check other config params
-
-  return true;
+  const auto planner_type =
+      PlannerSelector::ResolveNavigationPlannerType(config);
+  return planner_type == PlannerType::NAVI || planner_type == PlannerType::RTK;
 }
 
 }  // namespace planning

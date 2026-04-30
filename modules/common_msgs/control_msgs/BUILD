@@ -32,6 +32,31 @@ py_proto_library(
 )
 
 cc_proto_library(
+    name = "control_runtime_status_cc_proto",
+    deps = [
+        ":control_runtime_status_proto",
+    ],
+)
+
+proto_library(
+    name = "control_runtime_status_proto",
+    srcs = ["control_runtime_status.proto"],
+    deps = [
+        "//modules/common_msgs/basic_msgs:header_proto",
+        "//modules/common_msgs/chassis_msgs:chassis_proto",
+        "//modules/common_msgs/planning_msgs:decision_proto",
+        "//modules/common_msgs/planning_msgs:planning_command_proto",
+        "//modules/common_msgs/planning_msgs:planning_proto",
+        "//modules/common_msgs/planning_msgs:planning_runtime_status_proto",
+    ],
+)
+
+py_proto_library(
+    name = "control_runtime_status_py_pb2",
+    deps = [":control_runtime_status_proto"],
+)
+
+cc_proto_library(
     name = "pad_msg_cc_proto",
     deps = [
         ":pad_msg_proto",

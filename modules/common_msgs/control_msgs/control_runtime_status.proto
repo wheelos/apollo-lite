@@ -1,0 +1,59 @@
+syntax = "proto2";
+
+package apollo.control;
+
+import "modules/common_msgs/basic_msgs/header.proto";
+import "modules/common_msgs/chassis_msgs/chassis.proto";
+import "modules/common_msgs/planning_msgs/decision.proto";
+import "modules/common_msgs/planning_msgs/planning_command.proto";
+import "modules/common_msgs/planning_msgs/planning.proto";
+import "modules/common_msgs/planning_msgs/planning_runtime_status.proto";
+
+enum ControlRuntimeState {
+  CONTROL_RUNTIME_UNKNOWN = 0;
+  CONTROL_RUNTIME_MANUAL = 1;
+  CONTROL_RUNTIME_WAITING_INPUT = 2;
+  CONTROL_RUNTIME_RUNNING = 3;
+  CONTROL_RUNTIME_HOLDING = 4;
+  CONTROL_RUNTIME_DEGRADED = 5;
+  CONTROL_RUNTIME_SOFT_STOP = 6;
+  CONTROL_RUNTIME_ESTOP = 7;
+  CONTROL_RUNTIME_FAULTED = 8;
+}
+
+enum ControlSafetyState {
+  CONTROL_SAFETY_UNKNOWN = 0;
+  CONTROL_SAFETY_NORMAL = 1;
+  CONTROL_SAFETY_WARNING = 2;
+  CONTROL_SAFETY_SOFT_STOP = 3;
+  CONTROL_SAFETY_HARD_ESTOP = 4;
+  CONTROL_SAFETY_FATAL = 5;
+}
+
+message ControlRuntimeStatus {
+  optional apollo.common.Header header = 1;
+  optional string mission_id = 2;
+  optional string command_id = 3;
+  optional apollo.planning.PlanningSceneType active_scene = 4;
+  optional apollo.planning.PlanningMode active_mode = 5;
+  optional apollo.planning.PlanningShellType active_shell = 22;
+  optional ControlRuntimeState state = 6;
+  optional ControlSafetyState safety_state = 7;
+  optional apollo.canbus.Chassis.DrivingMode driving_mode = 8;
+  optional apollo.planning.TrackingMode tracking_mode = 9;
+  optional apollo.planning.LongitudinalIntent longitudinal_intent = 10;
+  optional apollo.planning.LateralIntent lateral_intent = 11;
+  optional apollo.planning.StopClass stop_class = 12;
+  optional apollo.planning.StopReasonCode stop_reason_code = 13;
+  optional string reason = 14;
+  optional bool using_previous_command = 15;
+  optional bool input_ready = 16;
+  optional bool trajectory_available = 17;
+  optional bool trajectory_point_available = 18;
+  optional bool estop_active = 19;
+  optional bool manual_mode = 20;
+  optional bool parking_brake_applied = 21;
+  optional apollo.planning.ControlPrimitiveType primitive_type = 23;
+  optional bool primitive_active = 24;
+  optional bool trajectory_optional = 25;
+}

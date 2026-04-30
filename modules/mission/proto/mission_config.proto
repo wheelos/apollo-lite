@@ -14,4 +14,10 @@ message MissionConfig {
 
   optional string planning_runtime_status_topic = 4
       [default = "/apollo/planning/runtime_status"];
+
+  optional string control_runtime_status_topic = 5
+      [default = "/apollo/control/runtime_status"];
+
+  optional string mission_runtime_status_topic = 6
+      [default = "/apollo/mission/runtime_status"];
 }

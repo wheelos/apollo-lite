@@ -23,6 +23,9 @@ message ModeTransition {
   optional PlanningMode to_mode = 2;
   optional string trigger = 3;
   optional bool approved = 4;
+  optional PlanningShellType from_shell = 5;
+  optional PlanningShellType to_shell = 6;
+  optional bool continuity_hold = 7;
 }
 
 message CapabilitySummary {
@@ -37,6 +40,14 @@ message CapabilitySummary {
   optional double topology_confidence = 9;
   optional double drivable_area_confidence = 10;
   optional double target_geometry_confidence = 11;
+  optional bool can_run_on_lane_shell = 12;
+  optional bool can_run_corridor_shell = 13;
+  optional bool can_run_safety_hold_shell = 14;
+  optional bool has_structured_mapless_context = 15;
+  optional bool can_run_structured_mapless_shell = 16;
+  optional bool can_run_open_space_shell = 17;
+  optional bool has_known_open_space_environment = 18;
+  optional bool supports_open_space_exploration = 19;
 }
 
 message ValidationSummary {
@@ -93,4 +104,7 @@ message PlanningRuntimeStatus {
   optional ExecutionPhase execution_phase = 13;
   optional StopClass stop_class = 14;
   optional CompletionSummary completion = 15;
+  optional PlanningShellType active_shell = 16;
+  optional PlanningOperatingDomain active_domain = 17;
+  optional HybridManeuverStatus hybrid_maneuver = 18;
 }

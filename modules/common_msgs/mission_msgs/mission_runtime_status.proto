@@ -1,0 +1,62 @@
+syntax = "proto2";
+
+package apollo.mission;
+
+import "modules/common_msgs/basic_msgs/header.proto";
+
+enum MissionRuntimeState {
+  MISSION_RUNTIME_UNKNOWN = 0;
+  MISSION_RUNTIME_IDLE = 1;
+  MISSION_RUNTIME_RUNNING = 2;
+  MISSION_RUNTIME_WAITING_COMMAND = 3;
+  MISSION_RUNTIME_FAILED = 4;
+  MISSION_RUNTIME_COMPLETED = 5;
+  MISSION_RUNTIME_RECOVERY_REQUIRED = 6;
+}
+
+enum MissionCommandState {
+  MISSION_COMMAND_UNKNOWN = 0;
+  MISSION_COMMAND_DISPATCHED = 1;
+  MISSION_COMMAND_ACCEPTED = 2;
+  MISSION_COMMAND_RUNNING = 3;
+  MISSION_COMMAND_HOLDING = 4;
+  MISSION_COMMAND_QUEUED = 5;
+  MISSION_COMMAND_CANCELLING = 6;
+  MISSION_COMMAND_COMPLETED = 7;
+  MISSION_COMMAND_FAILED = 8;
+  MISSION_COMMAND_CANCELLED = 9;
+}
+
+enum MissionRecoveryAction {
+  MISSION_RECOVERY_ACTION_NONE = 0;
+  MISSION_RECOVERY_ACTION_ACKNOWLEDGE = 1;
+  MISSION_RECOVERY_ACTION_RESUME = 2;
+  MISSION_RECOVERY_ACTION_RETRY = 3;
+  MISSION_RECOVERY_ACTION_ABORT = 4;
+  MISSION_RECOVERY_ACTION_ESCALATE_MRM = 5;
+}
+
+message MissionRuntimeStatus {
+  optional apollo.common.Header header = 1;
+  optional string mission_id = 2;
+  optional string task_name = 3;
+  optional string active_command_id = 4;
+  optional MissionRuntimeState state = 5;
+  optional MissionCommandState active_command_state = 6;
+  repeated string queued_command_id = 7;
+  optional string reason = 8;
+  optional bool operator_recovery_required = 9;
+  optional string last_terminal_command_id = 10;
+  optional MissionCommandState last_terminal_command_state = 11;
+  optional string last_terminal_reason = 12;
+  optional uint32 queued_command_count = 13;
+  optional uint32 active_dispatch_count = 14;
+  optional bool operator_acknowledged = 15;
+  repeated MissionRecoveryAction allowed_recovery_action = 16;
+  optional MissionRecoveryAction recommended_recovery_action = 17;
+  optional string recovery_reason = 18;
+  optional uint32 retry_count = 19;
+  optional uint32 retry_budget_remaining = 20;
+  optional double recovery_deadline_sec = 21;
+  optional bool recovery_timeout_expired = 22;
+}

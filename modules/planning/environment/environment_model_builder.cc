@@ -56,6 +56,8 @@ EnvironmentModel EnvironmentModelBuilder::Build(
   model.drivable_area = BuildDrivableAreaModel(local_view);
   model.parking =
       BuildParkingContext(model.mission, model.route, model.local_topology);
+  model.open_space =
+      BuildOpenSpaceContext(model.mission, model.drivable_area, model.parking);
   model.regulatory = BuildRegulatoryContext(local_view);
   model.objects = BuildDynamicObjectContext(local_view);
   model.source_health = BuildSourceHealth(local_view);
@@ -107,6 +109,10 @@ MissionContextSnapshot EnvironmentModelBuilder::BuildMissionContextSnapshot(
   if (command.has_preferred_mode()) {
     snapshot.preferred_mode = command.preferred_mode();
   }
+  if (command.has_domain_policy() &&
+      command.domain_policy().has_preferred_domain()) {
+    snapshot.preferred_domain = command.domain_policy().preferred_domain();
+  }
   if (command.has_preemptible()) {
     snapshot.preemptible = command.preemptible();
   }
@@ -119,6 +125,24 @@ MissionContextSnapshot EnvironmentModelBuilder::BuildMissionContextSnapshot(
     if (goal.has_parking_goal()) {
       snapshot.has_parking_goal = true;
       snapshot.parking_goal = goal.parking_goal();
+    }
+    if (goal.has_target_polygon()) {
+      snapshot.has_target_polygon = true;
+      snapshot.target_polygon = goal.target_polygon();
+    }
+  }
+  if (command.has_open_space()) {
+    if (command.open_space().has_navigation_type()) {
+      snapshot.open_space_navigation_type =
+          command.open_space().navigation_type();
+    }
+    if (command.open_space().has_environment_is_known()) {
+      snapshot.open_space_environment_known =
+          command.open_space().environment_is_known();
+    }
+    if (command.open_space().has_allow_exploration()) {
+      snapshot.allow_open_space_exploration =
+          command.open_space().allow_exploration();
     }
   }
   return snapshot;
@@ -197,6 +221,20 @@ ParkingContext EnvironmentModelBuilder::BuildParkingContext(
     context.parking_space_id = route.parking_info.parking_space_id();
   }
 
+  return context;
+}
+
+OpenSpaceContext EnvironmentModelBuilder::BuildOpenSpaceContext(
+    const MissionContextSnapshot& mission,
+    const DrivableAreaModel& drivable_area,
+    const ParkingContext& parking) const {
+  OpenSpaceContext context;
+  context.has_target_polygon = mission.has_target_polygon;
+  context.navigation_type = mission.open_space_navigation_type;
+  context.allow_exploration = mission.allow_open_space_exploration;
+  context.known_environment =
+      mission.open_space_environment_known || mission.has_target_polygon ||
+      parking.has_parking_roi_hint || drivable_area.has_map_geometry;
   return context;
 }
 

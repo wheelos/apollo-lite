@@ -25,6 +25,7 @@
 #include "modules/common/latency_recorder/latency_recorder.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/control/common/control_gflags.h"
+#include "modules/control/common/terminal_control_helper.h"
 
 namespace apollo {
 namespace control {
@@ -36,6 +37,75 @@ using apollo::common::VehicleStateProvider;
 using apollo::cyber::Clock;
 using apollo::localization::LocalizationEstimate;
 using apollo::planning::ADCTrajectory;
+
+namespace {
+
+bool IsHoldingIntent(const apollo::planning::ControlIntent &intent) {
+  return intent.tracking_mode() ==
+             apollo::planning::TRACKING_MODE_STANDSTILL_HOLD ||
+         intent.longitudinal_intent() ==
+             apollo::planning::LON_INTENT_HOLD_STOP ||
+         intent.longitudinal_intent() == apollo::planning::LON_INTENT_MRM_STOP;
+}
+
+struct TrajectoryRuntimeContext {
+  std::string mission_id;
+  std::string command_id;
+  apollo::planning::PlanningSceneType active_scene =
+      apollo::planning::SCENE_UNKNOWN;
+  apollo::planning::PlanningMode active_mode = apollo::planning::MODE_UNKNOWN;
+  apollo::planning::PlanningShellType active_shell =
+      apollo::planning::PLANNING_SHELL_UNKNOWN;
+  bool has_control_intent = false;
+  apollo::planning::ControlIntent control_intent;
+};
+
+TrajectoryRuntimeContext ExtractTrajectoryRuntimeContext(
+    const ADCTrajectory &trajectory) {
+  TrajectoryRuntimeContext context;
+  if (trajectory.has_control_intent()) {
+    context.has_control_intent = true;
+    context.control_intent = trajectory.control_intent();
+  }
+  if (trajectory.has_execution()) {
+    const auto &execution = trajectory.execution();
+    if (execution.has_mission_id()) {
+      context.mission_id = execution.mission_id();
+    }
+    if (execution.has_command_id()) {
+      context.command_id = execution.command_id();
+    }
+    if (execution.has_active_scene()) {
+      context.active_scene = execution.active_scene();
+    }
+    if (execution.has_active_mode()) {
+      context.active_mode = execution.active_mode();
+    }
+    if (execution.has_active_shell()) {
+      context.active_shell = execution.active_shell();
+    }
+  }
+  return context;
+}
+
+ControlSafetyState TranslateSafetyState(SafetyState state) {
+  switch (state) {
+    case SafetyState::kNormal:
+      return CONTROL_SAFETY_NORMAL;
+    case SafetyState::kWarning:
+      return CONTROL_SAFETY_WARNING;
+    case SafetyState::kSoftStop:
+      return CONTROL_SAFETY_SOFT_STOP;
+    case SafetyState::kHardEstop:
+      return CONTROL_SAFETY_HARD_ESTOP;
+    case SafetyState::kFatal:
+      return CONTROL_SAFETY_FATAL;
+    default:
+      return CONTROL_SAFETY_UNKNOWN;
+  }
+}
+
+}  // namespace
 
 ControlComponent::ControlComponent()
     : monitor_logger_buffer_(common::monitor::MonitorMessageItem::CONTROL) {}
@@ -69,6 +139,8 @@ bool ControlComponent::Init() {
   // 4. Initialize Writers
   control_cmd_writer_ =
       node_->CreateWriter<ControlCommand>(FLAGS_control_command_topic);
+  control_runtime_status_writer_ = node_->CreateWriter<ControlRuntimeStatus>(
+      FLAGS_control_runtime_status_topic);
 
   // 5. Wait for system stabilization (e.g., CAN bus readiness)
   // TODO(zero): To prevent entering estop state during startup.
@@ -131,8 +203,8 @@ void ControlComponent::OnLocalization(
   latest_localization_.CopyFrom(*localization);
 }
 
-Status ControlComponent::ProduceControlCommand(
-    ControlCommand *control_command) {
+Status ControlComponent::ProduceControlCommand(ControlCommand *control_command,
+                                               bool *used_previous_command) {
   // 1. Update Vehicle State Estimation
   // This is a prerequisite for control computation.
   injector_->vehicle_state()->Update(local_view_.localization(),
@@ -180,6 +252,10 @@ Status ControlComponent::ProduceControlCommand(
     controller_agent_.Reset();
   }
 
+  if (used_previous_command != nullptr) {
+    *used_previous_command = use_previous_cmd;
+  }
+
   // 6. Apply Safety Policy (The Override)
   // This is the final authority. It overrides the command based on the FSM
   // state (Normal, SoftStop, HardEstop).
@@ -189,6 +265,121 @@ Status ControlComponent::ProduceControlCommand(
   previous_cmd_ = *control_command;
 
   return status;
+}
+
+void ControlComponent::PublishRuntimeStatus(
+    const ControlCommand &control_command, const Status &status,
+    bool used_previous_command) {
+  if (control_runtime_status_writer_ == nullptr) {
+    return;
+  }
+
+  ControlRuntimeStatus runtime_status;
+  common::util::FillHeader(node_->Name(), &runtime_status);
+
+  const auto runtime_context =
+      ExtractTrajectoryRuntimeContext(local_view_.trajectory());
+  if (!runtime_context.mission_id.empty()) {
+    runtime_status.set_mission_id(runtime_context.mission_id);
+  }
+  if (!runtime_context.command_id.empty()) {
+    runtime_status.set_command_id(runtime_context.command_id);
+  }
+  runtime_status.set_active_scene(runtime_context.active_scene);
+  runtime_status.set_active_mode(runtime_context.active_mode);
+  runtime_status.set_active_shell(runtime_context.active_shell);
+  runtime_status.set_driving_mode(local_view_.chassis().driving_mode());
+  runtime_status.set_input_ready(local_view_.chassis().has_header() &&
+                                 local_view_.localization().has_header());
+  runtime_status.set_trajectory_available(
+      local_view_.trajectory().has_header());
+  runtime_status.set_trajectory_point_available(
+      local_view_.trajectory().trajectory_point_size() > 0);
+  runtime_status.set_using_previous_command(used_previous_command);
+  runtime_status.set_estop_active(local_view_.trajectory().has_estop() &&
+                                  local_view_.trajectory().estop().is_estop());
+  runtime_status.set_manual_mode(local_view_.chassis().driving_mode() !=
+                                 Chassis::COMPLETE_AUTO_DRIVE);
+  runtime_status.set_parking_brake_applied(control_command.parking_brake());
+
+  const SafetyState safety_state = safety_manager_ != nullptr
+                                       ? safety_manager_->GetState()
+                                       : SafetyState::kNormal;
+  const auto control_safety_state = TranslateSafetyState(safety_state);
+  runtime_status.set_safety_state(control_safety_state);
+
+  if (runtime_context.has_control_intent) {
+    runtime_status.set_tracking_mode(
+        runtime_context.control_intent.tracking_mode());
+    runtime_status.set_longitudinal_intent(
+        runtime_context.control_intent.longitudinal_intent());
+    runtime_status.set_lateral_intent(
+        runtime_context.control_intent.lateral_intent());
+    runtime_status.set_stop_class(runtime_context.control_intent.stop_class());
+    runtime_status.set_primitive_type(
+        runtime_context.control_intent.primitive_type());
+    runtime_status.set_primitive_active(
+        runtime_context.control_intent.primitive_type() !=
+        apollo::planning::CONTROL_PRIMITIVE_NONE);
+    runtime_status.set_trajectory_optional(
+        IsTrajectorylessControlPrimitive(local_view_.trajectory()));
+    if (runtime_context.control_intent.has_stop_reason_code()) {
+      runtime_status.set_stop_reason_code(
+          runtime_context.control_intent.stop_reason_code());
+    }
+  }
+
+  std::string reason;
+  if (!status.ok()) {
+    reason = status.error_message();
+  } else if (runtime_context.has_control_intent &&
+             runtime_context.control_intent.has_reason()) {
+    reason = runtime_context.control_intent.reason();
+  }
+
+  if (runtime_status.manual_mode()) {
+    runtime_status.set_state(CONTROL_RUNTIME_MANUAL);
+    if (reason.empty()) {
+      reason = "chassis not in auto-drive";
+    }
+  } else if (control_safety_state == CONTROL_SAFETY_HARD_ESTOP ||
+             control_safety_state == CONTROL_SAFETY_FATAL ||
+             runtime_status.estop_active()) {
+    runtime_status.set_state(CONTROL_RUNTIME_ESTOP);
+    if (reason.empty()) {
+      reason = "control safety estop active";
+    }
+  } else if (control_safety_state == CONTROL_SAFETY_SOFT_STOP) {
+    runtime_status.set_state(CONTROL_RUNTIME_SOFT_STOP);
+    if (reason.empty()) {
+      reason = "control safety soft-stop active";
+    }
+  } else if (!runtime_status.input_ready() ||
+             (!runtime_status.trajectory_point_available() &&
+              !IsTrajectorylessControlPrimitive(local_view_.trajectory()))) {
+    runtime_status.set_state(CONTROL_RUNTIME_WAITING_INPUT);
+    if (reason.empty()) {
+      reason = "control inputs not ready";
+    }
+  } else if (!status.ok() && used_previous_command) {
+    runtime_status.set_state(CONTROL_RUNTIME_FAULTED);
+  } else if (control_safety_state == CONTROL_SAFETY_WARNING) {
+    runtime_status.set_state(CONTROL_RUNTIME_DEGRADED);
+    if (reason.empty()) {
+      reason = "control warning policy active";
+    }
+  } else if (runtime_context.has_control_intent &&
+             IsHoldingIntent(runtime_context.control_intent)) {
+    runtime_status.set_state(CONTROL_RUNTIME_HOLDING);
+  } else {
+    runtime_status.set_state(CONTROL_RUNTIME_RUNNING);
+  }
+
+  if (!reason.empty()) {
+    runtime_status.set_reason(reason);
+  }
+
+  control_runtime_status_writer_->Write(runtime_status);
 }
 
 bool ControlComponent::Proc() {
@@ -239,14 +430,16 @@ bool ControlComponent::Proc() {
   // 3. Main Control Loop
   ControlCommand control_command;
   Status status;
+  bool used_previous_command = false;
 
   // Check driving mode
   if (local_view_.chassis().driving_mode() ==
       apollo::canbus::Chassis::COMPLETE_AUTO_DRIVE) {
-    status = ProduceControlCommand(&control_command);
+    status = ProduceControlCommand(&control_command, &used_previous_command);
   } else {
     // In Manual Mode, reset algorithms and produce neutral command.
     ResetAndProduceZeroControlCommand(&control_command);
+    status = Status::OK();
 
     // Note: Manual mode does not bypass SafetyManager state entirely,
     // but the Reset command ensures no actuator conflict.
@@ -278,6 +471,7 @@ bool ControlComponent::Proc() {
   control_command.mutable_latency_stats()->set_total_time_ms(time_diff_ms);
 
   // 5. Publish
+  PublishRuntimeStatus(control_command, status, used_previous_command);
   if (!control_conf_.is_control_test_mode()) {
     control_cmd_writer_->Write(control_command);
   }

@@ -156,6 +156,7 @@ proto_library(
     srcs = ["planning.proto"],
     deps = [
         ":decision_proto",
+        ":planning_command_proto",
         ":planning_internal_proto",
         ":planning_runtime_status_proto",
         "//modules/common_msgs/basic_msgs:drive_state_proto",

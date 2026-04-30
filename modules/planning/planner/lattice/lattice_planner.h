@@ -33,6 +33,8 @@
 namespace apollo {
 namespace planning {
 
+// Legacy reference-line planner for structured lane scenarios. Keep only as an
+// experimental/compatibility planner; do not treat it as a shell-level planner.
 class LatticePlanner : public PlannerWithReferenceLine {
  public:
   LatticePlanner() = delete;

@@ -91,7 +91,7 @@ Status LonSpeedController::ComputeControlCommand(
   const bool has_control_intent = trajectory_message_->has_control_intent();
   const auto& control_intent = trajectory_message_->control_intent();
   const bool trajectoryless_pose_servo =
-      IsTrajectorylessPoseServo(*trajectory_message_);
+      IsTrajectorylessControlPrimitive(*trajectory_message_);
   const auto terminal_longitudinal_adjustment =
       trajectoryless_pose_servo
           ? BuildTerminalLongitudinalControlAdjustment(control_intent,

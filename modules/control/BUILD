@@ -19,6 +19,7 @@ cc_library(
         "//modules/control/common",
         "//modules/control/controller",
         "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
+        "//modules/common_msgs/control_msgs:control_runtime_status_cc_proto",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/common_msgs/control_msgs:pad_msg_cc_proto",
         "//modules/control/proto:preprocessor_cc_proto",

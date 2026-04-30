@@ -8,14 +8,18 @@ namespace apollo {
 namespace control {
 
 struct TerminalLateralControlAdjustment {
+  bool primitive_active = false;
   bool terminal_align_active = false;
+  bool lateral_hold_active = false;
   bool suppress_large_steer = false;
   double max_abs_steer_pct = 100.0;
   double max_steer_rate_pct = 100.0;
   double heading_correction_pct = 0.0;
+  double lateral_error_m = 0.0;
 };
 
 struct TerminalLongitudinalControlAdjustment {
+  bool primitive_active = false;
   bool pose_servo_active = false;
   bool trajectory_optional = false;
   bool full_stop = false;
@@ -24,11 +28,15 @@ struct TerminalLongitudinalControlAdjustment {
   double desired_acceleration_mps2 = 0.0;
 };
 
+bool IsTrajectorylessControlPrimitive(
+    const apollo::planning::ADCTrajectory& trajectory);
+
 bool IsTrajectorylessPoseServo(
     const apollo::planning::ADCTrajectory& trajectory);
 
 TerminalLateralControlAdjustment BuildTerminalLateralControlAdjustment(
     const apollo::planning::ControlIntent& control_intent,
+    const apollo::localization::LocalizationEstimate* localization,
     double current_heading, double steer_ratio,
     double steer_single_direction_max_degree);
 
