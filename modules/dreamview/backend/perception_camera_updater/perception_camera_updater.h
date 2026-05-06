@@ -62,6 +62,7 @@ class PerceptionCameraUpdater {
 
  private:
   static constexpr double kImageScale = 0.6;
+  static constexpr size_t kMaxLocalizationQueueSize = 200;
   std::vector<std::string> channels_;
   void InitReaders();
   void OnCompressedImage(
@@ -79,18 +80,19 @@ class PerceptionCameraUpdater {
    */
   void GetImageLocalization(std::vector<double> *localization);
 
-    apollo::transform::TransformQuery transform_query_;
+  apollo::transform::TransformQuery transform_query_;
   bool QueryStaticTF(const std::string &frame_id,
                      const std::string &child_frame_id,
                      Eigen::Matrix4d *matrix);
   void GetLocalization2CameraTF(std::vector<double> *localization2camera_tf);
+  void ResetCache();
 
   WebSocketHandler *websocket_;
   CameraUpdate camera_update_;
 
   bool enabled_ = false;
   bool perception_obstacle_enable_ = false;
-  double current_image_timestamp_;
+  double current_image_timestamp_ = 0.0;
   std::string curr_channel_name = "";
 
   std::unique_ptr<cyber::Node> node_;
@@ -107,6 +109,8 @@ class PerceptionCameraUpdater {
   std::mutex localization_mutex_;
   std::mutex obstacle_mutex_;
   DvCallback callback_api_;
+
+  friend class PerceptionCameraUpdaterTestPeer;
 };
 
 }  // namespace dreamview

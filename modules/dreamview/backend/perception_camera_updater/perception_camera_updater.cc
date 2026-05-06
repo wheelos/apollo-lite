@@ -72,18 +72,36 @@ PerceptionCameraUpdater::PerceptionCameraUpdater(WebSocketHandler* websocket)
 
 void PerceptionCameraUpdater::Start(DvCallback callback_api) {
   callback_api_ = callback_api;
-  enabled_ = true;
   camera_update_.set_k_image_scale(kImageScale);
 }
 
 void PerceptionCameraUpdater::Stop() {
   if (enabled_) {
-    localization_queue_.clear();
-    image_buffer_.clear();
-    tf_static_.clear();
-    current_image_timestamp_ = 0.0;
+    ResetCache();
   }
   enabled_ = false;
+}
+
+void PerceptionCameraUpdater::ResetCache() {
+  std::lock(image_mutex_, localization_mutex_, obstacle_mutex_);
+  std::lock_guard<std::mutex> image_lock(image_mutex_, std::adopt_lock);
+  std::lock_guard<std::mutex> localization_lock(localization_mutex_,
+                                                std::adopt_lock);
+  std::lock_guard<std::mutex> obstacle_lock(obstacle_mutex_, std::adopt_lock);
+  localization_queue_.clear();
+  image_buffer_.clear();
+  tf_static_.clear();
+  bbox2ds.clear();
+  obstacle_id.clear();
+  obstacle_sub_type.clear();
+  perception_obstacle_enable_ = false;
+  current_image_timestamp_ = 0.0;
+  camera_update_.clear_image();
+  camera_update_.clear_localization();
+  camera_update_.clear_localization2camera_tf();
+  camera_update_.clear_bbox2d();
+  camera_update_.clear_obstacles_id();
+  camera_update_.clear_obstacles_sub_type();
 }
 
 void PerceptionCameraUpdater::GetImageLocalization(
@@ -185,14 +203,17 @@ void PerceptionCameraUpdater::OnCompressedImage(
     next_image_timestamp = compressed_image->header().timestamp_sec();
   }
 
-  std::lock_guard<std::mutex> lock(image_mutex_);
+  std::lock(image_mutex_, localization_mutex_);
+  std::lock_guard<std::mutex> image_lock(image_mutex_, std::adopt_lock);
+  std::lock_guard<std::mutex> localization_lock(localization_mutex_,
+                                                std::adopt_lock);
   if (next_image_timestamp < current_image_timestamp_) {
     // If replay different bags, the timestamp may jump to earlier time and
     // we need to clear the localization queue
     localization_queue_.clear();
   }
   current_image_timestamp_ = next_image_timestamp;
-  camera_update_.set_image(&(tmp_buffer[0]), tmp_buffer.size());
+  camera_update_.set_image(tmp_buffer.data(), tmp_buffer.size());
   camera_update_.set_image_aspect_ratio(static_cast<double>(width) / height);
 }
 
@@ -215,12 +236,15 @@ void PerceptionCameraUpdater::OnImage(
   } else {
     next_image_timestamp = image->header().timestamp_sec();
   }
-  std::lock_guard<std::mutex> lock(image_mutex_);
+  std::lock(image_mutex_, localization_mutex_);
+  std::lock_guard<std::mutex> image_lock(image_mutex_, std::adopt_lock);
+  std::lock_guard<std::mutex> localization_lock(localization_mutex_,
+                                                std::adopt_lock);
   if (next_image_timestamp < current_image_timestamp_) {
     localization_queue_.clear();
   }
   current_image_timestamp_ = next_image_timestamp;
-  camera_update_.set_image(&(image_buffer_[0]), image_buffer_.size());
+  camera_update_.set_image(image_buffer_.data(), image_buffer_.size());
 }
 
 void PerceptionCameraUpdater::OnLocalization(
@@ -231,6 +255,9 @@ void PerceptionCameraUpdater::OnLocalization(
 
   std::lock_guard<std::mutex> lock(localization_mutex_);
   localization_queue_.push_back(localization);
+  while (localization_queue_.size() > kMaxLocalizationQueueSize) {
+    localization_queue_.pop_front();
+  }
 }
 
 void PerceptionCameraUpdater::OnObstacles(
@@ -288,7 +315,6 @@ void PerceptionCameraUpdater::GetUpdate(std::string* camera_update) {
 }
 void PerceptionCameraUpdater::GetChannelMsg(
     std::vector<std::string>* channels) {
-  enabled_ = true;
   auto channelManager =
       apollo::cyber::service_discovery::TopologyManager::Instance()
           ->channel_manager();
@@ -321,6 +347,8 @@ bool PerceptionCameraUpdater::ChangeChannel(std::string channel) {
     AERROR << "update current camera channel fail";
     return false;
   }
+  ResetCache();
+  enabled_ = true;
   return true;
 }
 }  // namespace dreamview

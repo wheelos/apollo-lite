@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
@@ -66,6 +67,7 @@ class SimulationWorldUpdater {
    * @param routing_from_file whether to read initial routing from file.
    */
   SimulationWorldUpdater(WebSocketHandler *websocket, WebSocketHandler *map_ws,
+                         WebSocketHandler *point_cloud_ws,
                          WebSocketHandler *camera_ws,
                          SimControlManager *sim_control_manager,
                          WebSocketHandler *plugin_ws,
@@ -83,7 +85,9 @@ class SimulationWorldUpdater {
   // frontend.
   static constexpr double kSimWorldTimeIntervalMs = 100;
 
-  double LastAdcTimestampSec() { return last_pushed_adc_timestamp_sec_; }
+  double LastAdcTimestampSec() const {
+    return last_pushed_adc_timestamp_sec_.load(std::memory_order_relaxed);
+  }
 
  private:
   /**
@@ -177,6 +181,7 @@ class SimulationWorldUpdater {
   const MapService *map_service_ = nullptr;
   WebSocketHandler *websocket_ = nullptr;
   WebSocketHandler *map_ws_ = nullptr;
+  WebSocketHandler *point_cloud_ws_ = nullptr;
   WebSocketHandler *camera_ws_ = nullptr;
   WebSocketHandler *plugin_ws_ = nullptr;
   SimControlManager *sim_control_manager_ = nullptr;
@@ -206,7 +211,8 @@ class SimulationWorldUpdater {
 
   std::unique_ptr<cyber::Timer> timer_;
 
-  volatile double last_pushed_adc_timestamp_sec_ = 0.0f;
+  std::atomic<double> last_pushed_adc_timestamp_sec_{0.0};
+  bool cached_outputs_cleared_ = false;
 
   std::unique_ptr<PluginManager> plugin_manager_;
 };
