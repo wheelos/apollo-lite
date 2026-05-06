@@ -61,6 +61,13 @@ void WebSocketHandler::handleClose(CivetServer *server,
         << ": Connection closed. Total connections: " << connections_.size();
 }
 
+bool WebSocketHandler::HasConnections() const { return ConnectionCount() > 0; }
+
+size_t WebSocketHandler::ConnectionCount() const {
+  std::unique_lock<std::mutex> lock(mutex_);
+  return connections_.size();
+}
+
 bool WebSocketHandler::BroadcastData(const std::string &data, bool skippable) {
   std::vector<Connection *> connections_to_send;
   {

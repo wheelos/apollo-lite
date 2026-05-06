@@ -135,6 +135,9 @@ class WebSocketHandler : public CivetWebSocketHandler {
   bool SendBinaryData(Connection *conn, const std::string &data,
                       bool skippable = false);
 
+  bool HasConnections() const;
+  size_t ConnectionCount() const;
+
   /**
    * @brief Add a new message handler for a message type.
    * @param type The name/key to identify the message type.
