@@ -31,6 +31,10 @@ using apollo::canbus::Chassis;
 
 HardBrakeTrigger::HardBrakeTrigger() { trigger_name_ = "HardBrakeTrigger"; }
 
+std::set<std::string> HardBrakeTrigger::GetObservedChannels() const {
+  return {FLAGS_chassis_topic};
+}
+
 void HardBrakeTrigger::Pull(const cyber::record::RecordMessage& msg) {
   if (!trigger_obj_->enabled()) {
     return;

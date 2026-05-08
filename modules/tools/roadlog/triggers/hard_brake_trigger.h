@@ -35,9 +35,7 @@ class HardBrakeTrigger : public TriggerBase {
   HardBrakeTrigger();
 
   void Pull(const cyber::record::RecordMessage& msg) override;
-  bool ShouldRestore(const cyber::record::RecordMessage& msg) const override {
-    return false;
-  };
+  std::set<std::string> GetObservedChannels() const override;
 
   virtual ~HardBrakeTrigger() = default;
 
@@ -52,8 +50,8 @@ class HardBrakeTrigger : public TriggerBase {
   const float noisy_diff_ = 20.0f;
   std::deque<float> history_speed_queue_;
   std::deque<float> current_speed_queue_;
-  float history_total_;
-  float current_total_;
+  float history_total_ = 0.0f;
+  float current_total_ = 0.0f;
 };
 
 }  // namespace data

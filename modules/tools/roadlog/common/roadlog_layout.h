@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2019 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,23 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/tools/roadlog/triggers/small_topics_trigger.h"
+#pragma once
 
-#include <set>
 #include <string>
-
-#include "cyber/common/log.h"
-#include "modules/tools/roadlog/common/channel_pool.h"
 
 namespace apollo {
 namespace data {
 
-SmallTopicsTrigger::SmallTopicsTrigger() {
-  trigger_name_ = "SmallTopicsTrigger";
-}
+struct RoadlogLayout {
+  std::string root_dir;
+  std::string ring_dir;
+  std::string events_dir;
+  std::string meta_dir;
+  std::string ring_file_prefix;
+  std::string trigger_log_path;
+};
 
-bool SmallTopicsTrigger::ShouldRestore(
-    const cyber::record::RecordMessage& msg) const {
-  const std::set<std::string>& small_channels =
-      ChannelPool::Instance()->GetSmallChannels();
-  return trigger_obj_->enabled() &&
-         small_channels.find(msg.channel_name) != small_channels.end();
-}
+RoadlogLayout BuildRoadlogLayout(const std::string& root_dir);
 
 }  // namespace data
 }  // namespace apollo

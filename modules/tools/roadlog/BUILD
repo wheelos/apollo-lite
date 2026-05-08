@@ -1,7 +1,16 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
+
+install(
+    name = "install",
+    runtime_dest = "tools/roadlog",
+    targets = [
+        ":smart_recorder",
+    ],
+)
 
 cc_binary(
     name = "smart_recorder",
@@ -9,8 +18,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":smart_recorder_gflags",
-        "//modules/tools/roadlog/processor:post_record_processor",
-        "//modules/tools/roadlog/processor:realtime_record_processor",
+        "//modules/tools/roadlog/processor:roadlog_runtime",
     ],
 )
 

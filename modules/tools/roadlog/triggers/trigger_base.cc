@@ -17,17 +17,14 @@
 #include "modules/tools/roadlog/triggers/trigger_base.h"
 
 #include "cyber/common/log.h"
-#include "modules/tools/roadlog/common/interval_pool.h"
 
 namespace apollo {
 namespace data {
 
-bool TriggerBase::Init(const SmartRecordTrigger& trigger_conf) {
+bool TriggerBase::Init(const SmartRecordTrigger& trigger_conf,
+                       TriggerEventHandler event_handler) {
   LockTrigger(trigger_conf);
-  if (trigger_obj_ == nullptr) {
-    AERROR << "failed to lock trigger " << GetTriggerName();
-    return false;
-  }
+  event_handler_ = std::move(event_handler);
   return true;
 }
 
@@ -43,6 +40,12 @@ void TriggerBase::LockTrigger(const SmartRecordTrigger& trigger_conf) {
       break;
     }
   }
+  if (trigger_obj_ == nullptr) {
+    Trigger disabled_trigger;
+    disabled_trigger.set_trigger_name(trigger_name_);
+    disabled_trigger.set_enabled(false);
+    trigger_obj_ = std::make_unique<Trigger>(disabled_trigger);
+  }
 }
 
 uint64_t TriggerBase::GetValidValueInRange(const double desired_value,
@@ -56,16 +59,30 @@ uint64_t TriggerBase::GetValidValueInRange(const double desired_value,
 void TriggerBase::TriggerIt(const uint64_t msg_time) const {
   static constexpr float kMaxBackwardTime = 80.0;
   static constexpr float kMaxForwardTime = 80.0;
+  static constexpr float kMaxCooldownTime = 300.0;
   static constexpr uint64_t kZero = 0.0;
   const uint64_t backward_time = GetValidValueInRange(
       trigger_obj_->backward_time(), kZero, kMaxBackwardTime);
   const uint64_t forward_time = GetValidValueInRange(
       trigger_obj_->forward_time(), kZero, kMaxForwardTime);
-  IntervalPool::Instance()->AddInterval(msg_time - backward_time,
-                                        msg_time + forward_time);
-  IntervalPool::Instance()->LogIntervalEvent(
-      trigger_obj_->trigger_name(), trigger_obj_->description(), msg_time,
-      backward_time, forward_time);
+  const uint64_t cooldown_time = GetValidValueInRange(
+      trigger_obj_->cooldown_time(), kZero, kMaxCooldownTime);
+  if (event_handler_ == nullptr) {
+    AERROR << "missing trigger event handler for " << trigger_name_;
+    return;
+  }
+  TriggerEvent trigger_event;
+  trigger_event.trigger_name = trigger_obj_->trigger_name();
+  trigger_event.description = trigger_obj_->description();
+  trigger_event.group = IsPeriodicTrigger() ? TriggerGroup::kPeriodicSnapshot
+                                            : TriggerGroup::kIncident;
+  trigger_event.trigger_time = msg_time;
+  trigger_event.backward_time = backward_time;
+  trigger_event.forward_time = forward_time;
+  trigger_event.cooldown_time = cooldown_time;
+  trigger_event.begin_time = msg_time - backward_time;
+  trigger_event.end_time = msg_time + forward_time;
+  event_handler_(trigger_event);
 }
 
 }  // namespace data

@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2019 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,40 +16,46 @@
 
 #pragma once
 
+#include <deque>
 #include <memory>
+#include <mutex>
+#include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "modules/tools/roadlog/proto/smart_recorder_triggers.pb.h"
 
-#include "cyber/record/record_message.h"
-#include "cyber/record/record_writer.h"
+#include "cyber/cyber.h"
 #include "modules/tools/roadlog/triggers/trigger_base.h"
 
 namespace apollo {
 namespace data {
 
-/**
- * @class RecordProcessor
- * @brief Process messages and apply the rules based on configured triggers
- */
-class RecordProcessor {
+class RoadlogTriggerManager {
  public:
-  RecordProcessor(const std::string& source_record_dir,
-                  const std::string& restored_output_dir);
-  virtual bool Init(const SmartRecordTrigger& trigger_conf);
-  virtual bool Process() = 0;
-  virtual std::string GetDefaultOutputFile() const = 0;
-  virtual ~RecordProcessor() { writer_->Close(); }
+  bool Init(const SmartRecordTrigger& trigger_conf,
+            const std::shared_ptr<apollo::cyber::Node>& node);
+  void TickPassiveTriggers();
+  std::deque<TriggerEvent> DrainPendingEvents();
+  std::set<std::string> GetRequiredChannels() const;
 
- protected:
+ private:
   bool InitTriggers(const SmartRecordTrigger& trigger_conf);
-  bool ShouldRestore(const cyber::record::RecordMessage& msg) const;
+  bool InitTriggerReaders();
+  void HandleTriggerMessage(
+      const std::string& channel_name,
+      const std::shared_ptr<apollo::cyber::message::RawMessage>& message);
+  void HandleTriggerEvent(const TriggerEvent& trigger_event);
 
-  const std::string source_record_dir_;
-  const std::string restored_output_dir_;
+  std::shared_ptr<apollo::cyber::Node> node_ = nullptr;
   std::vector<std::unique_ptr<TriggerBase>> triggers_;
-  std::unique_ptr<cyber::record::RecordWriter> writer_ = nullptr;
+  std::vector<std::shared_ptr<apollo::cyber::ReaderBase>> trigger_readers_;
+  std::unordered_map<std::string, std::vector<TriggerBase*>> channel_triggers_;
+  std::vector<TriggerBase*> passive_triggers_;
+  std::mutex trigger_mutex_;
+  std::mutex event_mutex_;
+  std::deque<TriggerEvent> pending_trigger_events_;
 };
 
 }  // namespace data

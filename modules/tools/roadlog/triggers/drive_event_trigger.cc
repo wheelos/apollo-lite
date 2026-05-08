@@ -16,17 +16,17 @@
 
 #include "modules/tools/roadlog/triggers/drive_event_trigger.h"
 
-#include "modules/common_msgs/basic_msgs/drive_event.pb.h"
-
 #include "cyber/common/log.h"
 #include "modules/common/adapters/adapter_gflags.h"
 
 namespace apollo {
 namespace data {
 
-using apollo::common::DriveEvent;
-
 DriveEventTrigger::DriveEventTrigger() { trigger_name_ = "DriveEventTrigger"; }
+
+std::set<std::string> DriveEventTrigger::GetObservedChannels() const {
+  return {FLAGS_drive_event_topic};
+}
 
 void DriveEventTrigger::Pull(const cyber::record::RecordMessage& msg) {
   if (!trigger_obj_->enabled()) {
@@ -34,13 +34,9 @@ void DriveEventTrigger::Pull(const cyber::record::RecordMessage& msg) {
   }
   // Simply check the channel
   if (msg.channel_name == FLAGS_drive_event_topic) {
-    DriveEvent drive_event_msg;
-    drive_event_msg.ParseFromString(msg.content);
-    const uint64_t header_time = static_cast<uint64_t>(
-        SecondsToNanoSeconds(drive_event_msg.header().timestamp_sec()));
-    AINFO << "drive event trigger is pulled: " << header_time << " - "
+    AINFO << "drive event trigger is pulled: " << msg.time << " - "
           << msg.channel_name;
-    TriggerIt(header_time);
+    TriggerIt(msg.time);
   }
 }
 

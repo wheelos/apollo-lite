@@ -31,6 +31,7 @@
 #include "cyber/proto/record.pb.h"
 #include "cyber/proto/topology_change.pb.h"
 #include "cyber/record/record_writer.h"
+#include "cyber/tools/cyber_recorder/channel_rate_filter.h"
 #include "cyber/tools/cyber_recorder/message_size_filter.h"
 
 using apollo::cyber::Node;
@@ -61,6 +62,12 @@ class Recorder : public std::enable_shared_from_this<Recorder> {
            const std::vector<std::string>& black_channels,
            const proto::Header& header,
            const MessageSizeFilterConfig& message_size_filter_config);
+  Recorder(const std::string& output, bool all_channels,
+           const std::vector<std::string>& white_channels,
+           const std::vector<std::string>& black_channels,
+           const proto::Header& header,
+           const MessageSizeFilterConfig& message_size_filter_config,
+           const ChannelRateFilterConfig& channel_rate_filter_config);
   ~Recorder();
   bool Start();
   bool Stop();
@@ -83,6 +90,7 @@ class Recorder : public std::enable_shared_from_this<Recorder> {
   std::vector<std::string> black_channels_;
   proto::Header header_;
   MessageSizeFilter message_size_filter_;
+  ChannelRateFilter channel_rate_filter_;
   mutable std::mutex channel_reader_mutex_;
   std::unordered_map<std::string, ChannelMetadata> channel_metadata_map_;
   std::unordered_set<std::string> written_channels_;

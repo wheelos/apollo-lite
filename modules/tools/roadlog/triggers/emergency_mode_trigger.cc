@@ -30,6 +30,10 @@ EmergencyModeTrigger::EmergencyModeTrigger() {
   trigger_name_ = "EmergencyModeTrigger";
 }
 
+std::set<std::string> EmergencyModeTrigger::GetObservedChannels() const {
+  return {FLAGS_chassis_topic};
+}
+
 void EmergencyModeTrigger::Pull(const cyber::record::RecordMessage& msg) {
   if (!trigger_obj_->enabled()) {
     return;
