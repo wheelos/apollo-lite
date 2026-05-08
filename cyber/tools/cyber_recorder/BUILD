@@ -41,6 +41,22 @@ cc_library(
 )
 
 cc_library(
+    name = "channel_rate_filter",
+    srcs = ["channel_rate_filter.cc"],
+    hdrs = ["channel_rate_filter.h"],
+)
+
+cc_test(
+    name = "channel_rate_filter_test",
+    size = "small",
+    srcs = ["channel_rate_filter_test.cc"],
+    deps = [
+        ":channel_rate_filter",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "message_size_filter",
     srcs = ["message_size_filter.cc"],
     hdrs = ["message_size_filter.h"],
@@ -61,6 +77,7 @@ cc_library(
     srcs = ["recorder.cc"],
     hdrs = ["recorder.h"],
     deps = [
+        ":channel_rate_filter",
         ":message_size_filter",
         "//cyber",
         "//cyber/common:log",

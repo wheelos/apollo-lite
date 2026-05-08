@@ -32,9 +32,7 @@ class DriveEventTrigger : public TriggerBase {
   DriveEventTrigger();
 
   void Pull(const cyber::record::RecordMessage& msg) override;
-  bool ShouldRestore(const cyber::record::RecordMessage& msg) const override {
-    return false;
-  };
+  std::set<std::string> GetObservedChannels() const override;
 
   virtual ~DriveEventTrigger() = default;
 };

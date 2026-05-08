@@ -33,6 +33,10 @@ constexpr float MIN_STEER_PER = -100.0;
 
 SwerveTrigger::SwerveTrigger() { trigger_name_ = "SwerveTrigger"; }
 
+std::set<std::string> SwerveTrigger::GetObservedChannels() const {
+  return {FLAGS_chassis_topic};
+}
+
 void SwerveTrigger::Pull(const cyber::record::RecordMessage& msg) {
   if (!trigger_obj_->enabled()) {
     return;

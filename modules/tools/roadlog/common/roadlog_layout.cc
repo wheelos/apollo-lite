@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2019 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,34 +14,23 @@
  * limitations under the License.
  *****************************************************************************/
 
-#pragma once
+#include "modules/tools/roadlog/common/roadlog_layout.h"
 
-#include <set>
-#include <string>
-
-#include "cyber/common/macros.h"
+#include "absl/strings/str_cat.h"
 
 namespace apollo {
 namespace data {
 
-/**
- * @class ChannelPool
- * @brief Provides helper functions to offer different channels
- */
-class ChannelPool {
- public:
-  // Getters
-  const std::set<std::string>& GetSmallChannels() { return small_channels_; }
-  const std::set<std::string>& GetLargeChannels() { return large_channels_; }
-  const std::set<std::string>& GetAllChannels() { return all_channels_; }
-
- private:
-  std::set<std::string> small_channels_;
-  std::set<std::string> large_channels_;
-  std::set<std::string> all_channels_;
-
-  DECLARE_SINGLETON(ChannelPool)
-};
+RoadlogLayout BuildRoadlogLayout(const std::string& root_dir) {
+  RoadlogLayout layout;
+  layout.root_dir = root_dir;
+  layout.ring_dir = absl::StrCat(root_dir, "/ring");
+  layout.events_dir = absl::StrCat(root_dir, "/events");
+  layout.meta_dir = absl::StrCat(root_dir, "/meta");
+  layout.ring_file_prefix = absl::StrCat(layout.ring_dir, "/roadlog.record");
+  layout.trigger_log_path = absl::StrCat(layout.meta_dir, "/trigger_events.log");
+  return layout;
+}
 
 }  // namespace data
 }  // namespace apollo

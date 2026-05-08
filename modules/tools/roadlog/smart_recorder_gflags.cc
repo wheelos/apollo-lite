@@ -16,10 +16,9 @@
 
 #include "modules/tools/roadlog/smart_recorder_gflags.h"
 
-DEFINE_string(source_records_dir, "", "The source dir with original records.");
-DEFINE_string(restored_output_dir, "", "The output dir after processing.");
+DEFINE_string(roadlog_root_dir, "",
+              "Root directory for roadlog runtime artifacts.");
 DEFINE_string(smart_recorder_config_filename,
               "/apollo/modules/tools/roadlog/conf/"
               "smart_recorder_config.pb.txt",
               "The config file.");
-DEFINE_bool(real_time_trigger, true, "Whether to use realtime trigger.");

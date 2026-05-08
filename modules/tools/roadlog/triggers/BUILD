@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -10,7 +10,6 @@ cc_library(
     deps = [
         ":trigger_base",
         "//modules/common/adapters:adapter_gflags",
-        "//modules/common_msgs/basic_msgs:drive_event_cc_proto",
     ],
 )
 
@@ -20,8 +19,8 @@ cc_library(
     hdrs = ["emergency_mode_trigger.h"],
     deps = [
         ":trigger_base",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
+        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
     ],
 )
@@ -32,8 +31,8 @@ cc_library(
     hdrs = ["bumper_crash_trigger.h"],
     deps = [
         ":trigger_base",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
+        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
     ],
 )
 
@@ -43,19 +42,9 @@ cc_library(
     hdrs = ["hard_brake_trigger.h"],
     deps = [
         ":trigger_base",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
+        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
-    ],
-)
-
-cc_library(
-    name = "small_topics_trigger",
-    srcs = ["small_topics_trigger.cc"],
-    hdrs = ["small_topics_trigger.h"],
-    deps = [
-        "//modules/tools/roadlog/common:channel_pool",
-        ":trigger_base",
     ],
 )
 
@@ -65,8 +54,8 @@ cc_library(
     hdrs = ["swerve_trigger.h"],
     deps = [
         ":trigger_base",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
+        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
     ],
 )
@@ -86,8 +75,18 @@ cc_library(
     hdrs = ["trigger_base.h"],
     deps = [
         "//cyber",
-        "//modules/tools/roadlog/common:interval_pool",
+        "//modules/tools/roadlog/common:trigger_types",
         "//modules/tools/roadlog/proto:smart_recorder_triggers_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "trigger_base_test",
+    size = "small",
+    srcs = ["trigger_base_test.cc"],
+    deps = [
+        ":trigger_base",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 

@@ -32,6 +32,7 @@ Run with '--help' to see more options.
 import argparse
 import datetime
 import os
+import shlex
 import subprocess
 import sys
 
@@ -122,38 +123,47 @@ class Recorder(object):
         """Stop recording."""
         shell_cmd('pkill --signal=SIGINT -f "smart_recorder"')
 
+    @staticmethod
+    def find_recorder_executable():
+        """Return the first available smart_recorder binary and env requirement."""
+        candidates = [
+            ('/apollo/bazel-bin/modules/tools/roadlog/smart_recorder', True),
+            ('/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/roadlog/smart_recorder', False),
+            ('/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/smart_recorder/smart_recorder', False),
+        ]
+        for recorder_exe, needs_runtime_env in candidates:
+            if Path(recorder_exe).exists():
+                return recorder_exe, needs_runtime_env
+        return None, None
+
     def record_task(self, disk):
         """
-        Save the full data into <disk>/data/bag/ReusedRecordsPool,
-        which will be cleared every time the smart recorder get started.
-        Meanwhile, restore the messages we are interested in to <disk>/data/bag/<task_id> directory.
+        Save roadlog runtime artifacts under a task-scoped root directory.
         """
-        flags_package_management = False
-        reuse_pool_dir = os.path.join(disk, 'data', 'ReusedRecordsPool')
         task_id = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-        task_dir = os.path.join(disk, 'data/smart_recorder', task_id)
-        print('Recording bag to {}'.format(task_dir))
+        task_dir = os.path.join(disk, 'data/roadlog', task_id)
+        print('Recording roadlog to {}'.format(task_dir))
         log_dir = '/apollo/data/log'
         if not Path(log_dir).exists():
             os.makedirs(log_dir, exist_ok=True)
         log_file = '/apollo/data/log/smart_recorder.out'
-        recorder_exe = '/apollo/bazel-bin/modules/data/tools/smart_recorder/smart_recorder'
-        if not Path(recorder_exe).exists():
-            flags_package_management = True
-        recorder_exe = "/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/smart_recorder/smart_recorder"
-        if not Path(recorder_exe).exists():
+        recorder_exe, needs_runtime_env = Recorder.find_recorder_executable()
+        if recorder_exe is None:
             print("can't find smart_recorder! Have you installed apollo-data-dev package or built it?")
-            exit(-1)
-        if not flags_package_management:
+            sys.exit(-1)
+        recorder_exe = shlex.quote(recorder_exe)
+        task_dir = shlex.quote(task_dir)
+        log_file = shlex.quote(log_file)
+        if needs_runtime_env:
             cmd = '''
                 source /apollo/scripts/apollo_base.sh
                 source /apollo/cyber/setup.bash
-                nohup {} --source_records_dir={} --restored_output_dir={} > {} 2>&1 &
-            '''.format(recorder_exe, reuse_pool_dir, task_dir, log_file)
+                nohup {} --roadlog_root_dir={} > {} 2>&1 &
+            '''.format(recorder_exe, task_dir, log_file)
         else:
             cmd = '''
-            nohup {} --source_records_dir={} --restored_output_dir={} > {} 2>&1 &
-            '''.format(recorder_exe, reuse_pool_dir, task_dir, log_file)
+            nohup {} --roadlog_root_dir={} > {} 2>&1 &
+            '''.format(recorder_exe, task_dir, log_file)
         shell_cmd(cmd)
 
     @staticmethod

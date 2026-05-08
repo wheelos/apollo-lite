@@ -56,6 +56,20 @@ Recorder::Recorder(const std::string& output, bool all_channels,
       header_(header),
       message_size_filter_(message_size_filter_config) {}
 
+Recorder::Recorder(const std::string& output, bool all_channels,
+                   const std::vector<std::string>& white_channels,
+                   const std::vector<std::string>& black_channels,
+                   const proto::Header& header,
+                   const MessageSizeFilterConfig& message_size_filter_config,
+                   const ChannelRateFilterConfig& channel_rate_filter_config)
+    : output_(output),
+      all_channels_(all_channels),
+      white_channels_(white_channels),
+      black_channels_(black_channels),
+      header_(header),
+      message_size_filter_(message_size_filter_config),
+      channel_rate_filter_(channel_rate_filter_config) {}
+
 Recorder::~Recorder() { Stop(); }
 
 bool Recorder::Start() {
@@ -266,7 +280,14 @@ void Recorder::ReaderCallback(const std::shared_ptr<RawMessage>& message,
     }
     return;
   }
-
+  const auto channel_rate_decision =
+      channel_rate_filter_.Evaluate(channel_name, record_time_ns);
+  if (!channel_rate_decision.should_record) {
+    if (channel_rate_decision.throttled_by_rate) {
+      throttled_message_count_.fetch_add(1);
+    }
+    return;
+  }
   if (!EnsureChannelWritten(channel_name)) {
     AERROR << "write channel metadata fail, channel: " << channel_name;
     return;

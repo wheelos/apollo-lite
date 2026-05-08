@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2019 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,26 @@
  * limitations under the License.
  *****************************************************************************/
 
-#pragma once
+#include "modules/tools/roadlog/common/roadlog_layout.h"
 
-#include "modules/tools/roadlog/proto/smart_recorder_triggers.pb.h"
-
-#include "modules/tools/roadlog/triggers/trigger_base.h"
+#include "gtest/gtest.h"
 
 namespace apollo {
 namespace data {
+namespace {
 
-/**
- * @class SmallTopicsTrigger
- * @brief
- * A specialized trigger that does not trigger anything but indicates
- * what small topics need to be restored
- */
-class SmallTopicsTrigger : public TriggerBase {
- public:
-  SmallTopicsTrigger();
+TEST(RoadlogLayoutTest, BuildsDerivedDirectoriesFromRoot) {
+  const auto layout = BuildRoadlogLayout("/tmp/roadlog/task-001");
 
-  void Pull(const cyber::record::RecordMessage& msg) override{};
-  bool ShouldRestore(const cyber::record::RecordMessage& msg) const override;
+  EXPECT_EQ("/tmp/roadlog/task-001", layout.root_dir);
+  EXPECT_EQ("/tmp/roadlog/task-001/ring", layout.ring_dir);
+  EXPECT_EQ("/tmp/roadlog/task-001/events", layout.events_dir);
+  EXPECT_EQ("/tmp/roadlog/task-001/meta", layout.meta_dir);
+  EXPECT_EQ("/tmp/roadlog/task-001/ring/roadlog.record", layout.ring_file_prefix);
+  EXPECT_EQ("/tmp/roadlog/task-001/meta/trigger_events.log",
+            layout.trigger_log_path);
+}
 
-  virtual ~SmallTopicsTrigger() = default;
-};
-
+}  // namespace
 }  // namespace data
 }  // namespace apollo

@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2019 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,30 +16,22 @@
 
 #pragma once
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/tools/roadlog/proto/smart_recorder_triggers.pb.h"
+#include <string>
 
-#include "modules/tools/roadlog/triggers/trigger_base.h"
+#include "modules/tools/roadlog/processor/roadlog_runtime_types.h"
 
 namespace apollo {
 namespace data {
 
-/**
- * @class EmergencyModeTrigger
- * @brief EmergencyMode trigger that fires when emergency mode is engaged
- */
-class EmergencyModeTrigger : public TriggerBase {
+class RoadlogEventExporter {
  public:
-  EmergencyModeTrigger();
-
-  void Pull(const cyber::record::RecordMessage& msg) override;
-  std::set<std::string> GetObservedChannels() const override;
-
-  virtual ~EmergencyModeTrigger() = default;
+  bool Export(const RoadlogEventExportPlan& plan) const;
 
  private:
-  apollo::canbus::Chassis::DrivingMode cur_driving_mode_ =
-      apollo::canbus::Chassis::COMPLETE_MANUAL;
+  bool ExportSegment(const std::string& source_path,
+                     const std::string& target_path) const;
+  bool CopyFile(const std::string& source_path,
+                const std::string& target_path) const;
 };
 
 }  // namespace data

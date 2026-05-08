@@ -16,52 +16,39 @@
 
 #include <memory>
 
-#include "absl/strings/str_cat.h"
-
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
-#include "modules/tools/roadlog/processor/post_record_processor.h"
-#include "modules/tools/roadlog/processor/realtime_record_processor.h"
+#include "modules/tools/roadlog/processor/roadlog_runtime.h"
 #include "modules/tools/roadlog/smart_recorder_gflags.h"
 
 using apollo::cyber::common::GetProtoFromFile;
-using apollo::data::PostRecordProcessor;
-using apollo::data::RealtimeRecordProcessor;
-using apollo::data::RecordProcessor;
+using apollo::data::RoadlogRuntime;
 using apollo::data::SmartRecordTrigger;
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
-  if (FLAGS_restored_output_dir.empty()) {
-    FLAGS_restored_output_dir =
-        absl::StrCat(FLAGS_source_records_dir, "_restored");
+  if (FLAGS_roadlog_root_dir.empty()) {
+    AERROR << "roadlog_root_dir must be provided";
+    return -1;
   }
-  AINFO << "input dir: " << FLAGS_source_records_dir
-        << ". output dir: " << FLAGS_restored_output_dir
+  AINFO << "roadlog root dir: " << FLAGS_roadlog_root_dir
         << ". config file: " << FLAGS_smart_recorder_config_filename
         << ". program name: " << argv[0];
 
-  std::unique_ptr<RecordProcessor> processor;
-  if (FLAGS_real_time_trigger) {
-    processor = std::make_unique<RealtimeRecordProcessor>(
-        FLAGS_source_records_dir, FLAGS_restored_output_dir);
-  } else {
-    processor = std::make_unique<PostRecordProcessor>(
-        FLAGS_source_records_dir, FLAGS_restored_output_dir);
-  }
+  RoadlogRuntime runtime(FLAGS_roadlog_root_dir);
 
   SmartRecordTrigger trigger_conf;
   ACHECK(GetProtoFromFile(FLAGS_smart_recorder_config_filename, &trigger_conf))
       << "Failed to load triggers config file "
       << FLAGS_smart_recorder_config_filename;
 
-  if (!processor->Init(trigger_conf)) {
-    AERROR << "failed to init record processor";
+  if (!runtime.Init(trigger_conf)) {
+    AERROR << "failed to init roadlog runtime";
     return -1;
   }
 
-  if (!processor->Process()) {
-    AERROR << "failed to process records";
+  if (!runtime.Run()) {
+    AERROR << "failed to run roadlog runtime";
     return -1;
   }
 

@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2019 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,34 +16,34 @@
 
 #pragma once
 
+#include <set>
 #include <string>
 #include <vector>
 
-#include "modules/tools/roadlog/proto/smart_recorder_triggers.pb.h"
-
-#include "modules/tools/roadlog/processor/record_processor.h"
+#include "modules/tools/roadlog/common/trigger_arbiter.h"
 
 namespace apollo {
 namespace data {
 
-/**
- * @class PostRecordProcessor
- * @brief Post processor against recorded tasks that have been completed
- */
-class PostRecordProcessor : public RecordProcessor {
- public:
-  PostRecordProcessor(const std::string& source_record_dir,
-                      const std::string& restored_output_dir)
-      : RecordProcessor(source_record_dir, restored_output_dir) {}
-  bool Init(const SmartRecordTrigger& trigger_conf) override;
-  bool Process() override;
-  std::string GetDefaultOutputFile() const override;
-  virtual ~PostRecordProcessor() = default;
+struct RoadlogSegmentInfo {
+  std::string path;
+  uint64_t begin_time = 0;
+  uint64_t end_time = 0;
+  uint64_t bytes = 0;
+  size_t pin_count = 0;
+};
 
- private:
-  void LoadSourceRecords();
+struct RoadlogEventState {
+  ArbitratedEvent metadata;
+  bool exporting = false;
+  std::set<std::string> segment_paths;
+};
 
-  std::vector<std::string> source_record_files_;
+struct RoadlogEventExportPlan {
+  ArbitratedEvent metadata;
+  bool partial = false;
+  std::string output_dir;
+  std::vector<RoadlogSegmentInfo> segments;
 };
 
 }  // namespace data
