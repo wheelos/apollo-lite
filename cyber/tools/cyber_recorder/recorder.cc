@@ -275,9 +275,6 @@ void Recorder::ReaderCallback(const std::shared_ptr<RawMessage>& message,
     if (filter_decision.dropped_by_size) {
       dropped_message_count_.fetch_add(1);
     }
-    if (filter_decision.throttled_by_rate) {
-      throttled_message_count_.fetch_add(1);
-    }
     return;
   }
   const auto channel_rate_decision =

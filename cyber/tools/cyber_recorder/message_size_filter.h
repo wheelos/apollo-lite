@@ -20,9 +20,7 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <mutex>
 #include <string>
-#include <unordered_map>
 
 namespace apollo {
 namespace cyber {
@@ -30,14 +28,11 @@ namespace record {
 
 struct MessageSizeFilterConfig {
   uint64_t drop_message_size_bytes = 0;
-  uint64_t throttle_message_size_bytes = 0;
-  double throttle_rate_hz = 0.0;
 };
 
 struct MessageSizeFilterDecision {
   bool should_record = true;
   bool dropped_by_size = false;
-  bool throttled_by_rate = false;
 };
 
 bool ParseMessageSizeBytes(const std::string& value, uint64_t* output,
@@ -60,9 +55,6 @@ class MessageSizeFilter {
 
  private:
   MessageSizeFilterConfig config_;
-  uint64_t throttle_interval_ns_ = 0;
-  std::mutex mutex_;
-  std::unordered_map<std::string, uint64_t> last_record_time_ns_;
 };
 
 }  // namespace record

@@ -72,6 +72,20 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "recorder_filter_integration_test",
+    size = "medium",
+    srcs = ["recorder_filter_integration_test.cc"],
+    deps = [
+        ":channel_rate_filter",
+        ":message_size_filter",
+        "//cyber/record:header_builder",
+        "//cyber/record:record_reader",
+        "//cyber/record:record_writer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "recorder",
     srcs = ["recorder.cc"],

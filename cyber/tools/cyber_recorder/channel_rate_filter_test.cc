@@ -21,6 +21,36 @@ namespace cyber {
 namespace record {
 namespace {
 
+TEST(ChannelRateFilterTest, ParsesChannelRateLimitRule) {
+  ChannelRateLimitRule rule;
+  std::string error;
+  EXPECT_TRUE(ParseChannelRateLimitRule("/apollo/lidar@2", &rule, &error));
+  EXPECT_EQ("/apollo/lidar", rule.channel_name);
+  EXPECT_DOUBLE_EQ(2.0, rule.max_rate_hz);
+}
+
+TEST(ChannelRateFilterTest, RejectsInvalidChannelRateLimitRule) {
+  ChannelRateLimitRule rule;
+  std::string error;
+  EXPECT_FALSE(ParseChannelRateLimitRule("/apollo/lidar", &rule, &error));
+  EXPECT_FALSE(error.empty());
+  EXPECT_FALSE(ParseChannelRateLimitRule("@2", &rule, &error));
+  EXPECT_FALSE(error.empty());
+}
+
+TEST(ChannelRateFilterTest, ValidatesChannelRateFilterConfig) {
+  ChannelRateFilterConfig config;
+  config.rules.push_back({"/apollo/lidar", 1.0});
+  config.rules.push_back({"/apollo/camera", 2.0});
+  std::string error;
+  EXPECT_TRUE(ValidateChannelRateFilterConfig(config, &error));
+  EXPECT_TRUE(error.empty());
+
+  config.rules.push_back({"/apollo/lidar", 3.0});
+  EXPECT_FALSE(ValidateChannelRateFilterConfig(config, &error));
+  EXPECT_FALSE(error.empty());
+}
+
 TEST(ChannelRateFilterTest, AllowsUnconfiguredChannel) {
   ChannelRateFilter filter;
   const auto decision = filter.Evaluate("/apollo/chatter", 100);

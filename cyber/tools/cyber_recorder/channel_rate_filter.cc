@@ -15,7 +15,10 @@
 #include "cyber/tools/cyber_recorder/channel_rate_filter.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <stdexcept>
+#include <unordered_set>
 
 namespace apollo {
 namespace cyber {
@@ -25,7 +28,115 @@ namespace {
 
 constexpr double kNanosecondsPerSecond = 1000000000.0;
 
+std::string TrimCopy(const std::string& value) {
+  const auto begin = std::find_if_not(value.begin(), value.end(), [](char ch) {
+    return std::isspace(static_cast<unsigned char>(ch)) != 0;
+  });
+  const auto end = std::find_if_not(value.rbegin(), value.rend(), [](char ch) {
+                     return std::isspace(static_cast<unsigned char>(ch)) != 0;
+                   }).base();
+  if (begin >= end) {
+    return "";
+  }
+  return std::string(begin, end);
+}
+
+bool ParsePositiveRateHz(const std::string& value, double* output,
+                         std::string* error) {
+  std::string normalized = TrimCopy(value);
+  if (normalized.size() >= 2 &&
+      normalized.substr(normalized.size() - 2) == "hz") {
+    normalized = TrimCopy(normalized.substr(0, normalized.size() - 2));
+  }
+
+  try {
+    size_t parsed = 0;
+    const auto parsed_value = std::stod(normalized, &parsed);
+    if (parsed != normalized.size() || parsed_value <= 0.0) {
+      throw std::invalid_argument("invalid value");
+    }
+    *output = parsed_value;
+    return true;
+  } catch (const std::invalid_argument&) {
+    if (error != nullptr) {
+      *error = "Invalid rate value: " + value + ".";
+    }
+  } catch (const std::out_of_range&) {
+    if (error != nullptr) {
+      *error = "Rate value is out of range: " + value + ".";
+    }
+  }
+  return false;
+}
+
 }  // namespace
+
+bool ParseChannelRateLimitRule(const std::string& value,
+                               ChannelRateLimitRule* rule,
+                               std::string* error) {
+  if (rule == nullptr) {
+    if (error != nullptr) {
+      *error = "Channel rate limit rule output must not be null.";
+    }
+    return false;
+  }
+
+  const std::string normalized = TrimCopy(value);
+  const size_t at_pos = normalized.rfind('@');
+  if (at_pos == std::string::npos) {
+    if (error != nullptr) {
+      *error = "Channel rate limit must use <channel>@<hz>, for example "
+               "/apollo/lidar@1.";
+    }
+    return false;
+  }
+
+  const std::string channel_name = TrimCopy(normalized.substr(0, at_pos));
+  if (channel_name.empty()) {
+    if (error != nullptr) {
+      *error = "Channel rate limit must specify a channel name.";
+    }
+    return false;
+  }
+
+  ChannelRateLimitRule parsed_rule;
+  parsed_rule.channel_name = channel_name;
+  if (!ParsePositiveRateHz(normalized.substr(at_pos + 1),
+                           &parsed_rule.max_rate_hz, error)) {
+    return false;
+  }
+
+  *rule = parsed_rule;
+  return true;
+}
+
+bool ValidateChannelRateFilterConfig(const ChannelRateFilterConfig& config,
+                                     std::string* error) {
+  std::unordered_set<std::string> configured_channels;
+  for (const auto& rule : config.rules) {
+    if (rule.channel_name.empty()) {
+      if (error != nullptr) {
+        *error = "Channel rate limit rule must specify channel_name.";
+      }
+      return false;
+    }
+    if (rule.max_rate_hz <= 0.0) {
+      if (error != nullptr) {
+        *error = "Channel rate limit max_rate_hz must be positive for " +
+                 rule.channel_name + ".";
+      }
+      return false;
+    }
+    if (!configured_channels.insert(rule.channel_name).second) {
+      if (error != nullptr) {
+        *error = "Duplicate channel rate limit rule for " + rule.channel_name +
+                 ".";
+      }
+      return false;
+    }
+  }
+  return true;
+}
 
 ChannelRateFilter::ChannelRateFilter(const ChannelRateFilterConfig& config) {
   for (const auto& rule : config.rules) {

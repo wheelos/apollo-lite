@@ -26,24 +26,10 @@ namespace record {
 
 TEST(MessageSizeFilterTest, ValidatesConfigRelationships) {
   MessageSizeFilterConfig config;
-  config.throttle_message_size_bytes = 1024;
-  config.throttle_rate_hz = 0.0;
   std::string error;
-  EXPECT_FALSE(ValidateMessageSizeFilterConfig(config, &error));
-  EXPECT_FALSE(error.empty());
-
-  config = {};
-  config.throttle_rate_hz = 1.0;
-  EXPECT_FALSE(ValidateMessageSizeFilterConfig(config, &error));
-
-  config = {};
-  config.throttle_message_size_bytes = 1024;
-  config.throttle_rate_hz = 2.0;
-  config.drop_message_size_bytes = 1024;
-  EXPECT_FALSE(ValidateMessageSizeFilterConfig(config, &error));
-
   config.drop_message_size_bytes = 2048;
   EXPECT_TRUE(ValidateMessageSizeFilterConfig(config, &error));
+  EXPECT_TRUE(error.empty());
 }
 
 TEST(MessageSizeFilterTest, ParsesHumanReadableMessageSizes) {
@@ -70,10 +56,7 @@ TEST(MessageSizeFilterTest, ParsesCompactPolicyString) {
   MessageSizeFilterConfig config;
   std::string error;
 
-  EXPECT_TRUE(ParseMessageSizeFilterPolicy("throttle=256@2,drop=1m", &config,
-                                           &error));
-  EXPECT_EQ(config.throttle_message_size_bytes, 256ULL * 1024ULL);
-  EXPECT_DOUBLE_EQ(config.throttle_rate_hz, 2.0);
+  EXPECT_TRUE(ParseMessageSizeFilterPolicy("drop=1m", &config, &error));
   EXPECT_EQ(config.drop_message_size_bytes, 1024ULL * 1024ULL);
 }
 
@@ -84,7 +67,7 @@ TEST(MessageSizeFilterTest, RejectsInvalidPolicyString) {
   EXPECT_FALSE(ParseMessageSizeFilterPolicy("filter=1m", &config, &error));
   EXPECT_FALSE(error.empty());
 
-  EXPECT_FALSE(ParseMessageSizeFilterPolicy("throttle=256k", &config, &error));
+  EXPECT_FALSE(ParseMessageSizeFilterPolicy("throttle=256k@2", &config, &error));
   EXPECT_FALSE(error.empty());
 }
 
@@ -95,44 +78,15 @@ TEST(MessageSizeFilterTest, DropsOversizedMessages) {
   const auto decision = filter.Evaluate("/apollo/test", 2048, 1000);
   EXPECT_FALSE(decision.should_record);
   EXPECT_TRUE(decision.dropped_by_size);
-  EXPECT_FALSE(decision.throttled_by_rate);
 }
 
-TEST(MessageSizeFilterTest, SmallMessagesBypassThrottle) {
+TEST(MessageSizeFilterTest, SmallMessagesAlwaysPass) {
   MessageSizeFilterConfig config;
   config.drop_message_size_bytes = 4096;
-  config.throttle_message_size_bytes = 2048;
-  config.throttle_rate_hz = 2.0;
   MessageSizeFilter filter(config);
 
   EXPECT_TRUE(filter.Evaluate("/apollo/test", 1024, 1000).should_record);
   EXPECT_TRUE(filter.Evaluate("/apollo/test", 1024, 1001).should_record);
-}
-
-TEST(MessageSizeFilterTest, ThrottlesLargeMessagesPerChannel) {
-  MessageSizeFilterConfig config;
-  config.drop_message_size_bytes = 4096;
-  config.throttle_message_size_bytes = 2048;
-  config.throttle_rate_hz = 2.0;
-  MessageSizeFilter filter(config);
-
-  const uint64_t kFirstTime = 1000000000ULL;
-  const uint64_t kBeforeInterval = 1200000000ULL;
-  const uint64_t kAfterInterval = 1500000000ULL;
-
-  EXPECT_TRUE(filter.Evaluate("/apollo/channel_a", 2048, kFirstTime)
-                  .should_record);
-
-  auto throttled =
-      filter.Evaluate("/apollo/channel_a", 2048, kBeforeInterval);
-  EXPECT_FALSE(throttled.should_record);
-  EXPECT_TRUE(throttled.throttled_by_rate);
-  EXPECT_FALSE(throttled.dropped_by_size);
-
-  EXPECT_TRUE(filter.Evaluate("/apollo/channel_a", 2048, kAfterInterval)
-                  .should_record);
-  EXPECT_TRUE(filter.Evaluate("/apollo/channel_b", 2048, kBeforeInterval)
-                  .should_record);
 }
 
 }  // namespace record
