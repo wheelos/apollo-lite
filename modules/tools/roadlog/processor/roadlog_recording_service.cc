@@ -173,16 +173,6 @@ bool RoadlogRecordingService::BuildLargeMessageFilterConfig(
             error)) {
       return false;
     }
-    if (config->throttle_message_size_bytes > 0 ||
-        config->throttle_rate_hz > 0.0) {
-      if (error != nullptr) {
-        *error =
-            "roadlog legacy_message_size_filter_policy no longer supports "
-            "throttle clauses. Use channel_rate_limits for frequency control "
-            "and large_message_policy.drop_message_size_bytes for size drops.";
-      }
-      return false;
-    }
   }
 
   return ValidateMessageSizeFilterConfig(*config, error);

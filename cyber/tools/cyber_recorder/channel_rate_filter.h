@@ -39,6 +39,13 @@ struct ChannelRateFilterDecision {
   bool throttled_by_rate = false;
 };
 
+bool ParseChannelRateLimitRule(const std::string& value,
+                               ChannelRateLimitRule* rule,
+                               std::string* error);
+
+bool ValidateChannelRateFilterConfig(const ChannelRateFilterConfig& config,
+                                     std::string* error);
+
 class ChannelRateFilter {
  public:
   explicit ChannelRateFilter(const ChannelRateFilterConfig& config = {});

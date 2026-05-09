@@ -55,9 +55,6 @@ TEST(RoadlogRecordingServiceTest, BuildsRecorderOptionsFromPolicy) {
       1.0, options.channel_rate_filter_config.rules.front().max_rate_hz);
   EXPECT_EQ(5ULL * 1000000000ULL, options.header.segment_interval());
   EXPECT_EQ(64ULL * 1024ULL * 1024ULL, options.header.segment_raw_size());
-  EXPECT_EQ(0ULL,
-            options.message_size_filter_config.throttle_message_size_bytes);
-  EXPECT_DOUBLE_EQ(0.0, options.message_size_filter_config.throttle_rate_hz);
   EXPECT_EQ(1ULL * 1024ULL * 1024ULL,
             options.message_size_filter_config.drop_message_size_bytes);
 }

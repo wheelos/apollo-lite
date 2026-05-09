@@ -19,16 +19,14 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cmath>
 #include <limits>
+#include <stdexcept>
 
 namespace apollo {
 namespace cyber {
 namespace record {
 
 namespace {
-
-constexpr double kNanosecondsPerSecond = 1000000000.0;
 
 std::string TrimCopy(const std::string& value) {
   const auto begin = std::find_if_not(value.begin(), value.end(), [](char ch) {
@@ -49,34 +47,6 @@ std::string ToLowerCopy(const std::string& value) {
     return static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
   });
   return lower;
-}
-
-bool ParsePositiveRateHz(const std::string& value, double* output,
-                         std::string* error) {
-  std::string normalized = ToLowerCopy(TrimCopy(value));
-  if (normalized.size() >= 2 &&
-      normalized.substr(normalized.size() - 2) == "hz") {
-    normalized = TrimCopy(normalized.substr(0, normalized.size() - 2));
-  }
-
-  try {
-    size_t parsed = 0;
-    const auto parsed_value = std::stod(normalized, &parsed);
-    if (parsed != normalized.size() || parsed_value <= 0.0) {
-      throw std::invalid_argument("invalid value");
-    }
-    *output = parsed_value;
-    return true;
-  } catch (const std::invalid_argument&) {
-    if (error != nullptr) {
-      *error = "Invalid rate value: " + value + ".";
-    }
-  } catch (const std::out_of_range&) {
-    if (error != nullptr) {
-      *error = "Rate value is out of range: " + value + ".";
-    }
-  }
-  return false;
 }
 
 bool ParseMessageSizeBytesInternal(const std::string& value,
@@ -203,36 +173,10 @@ bool ParseMessageSizeFilterPolicy(const std::string& policy,
                                          error)) {
         return false;
       }
-    } else if (key == "throttle") {
-      if (parsed_config.throttle_message_size_bytes != 0 ||
-          parsed_config.throttle_rate_hz > 0.0) {
-        if (error != nullptr) {
-          *error = "Duplicate throttle clause in filter policy.";
-        }
-        return false;
-      }
-      const size_t at_pos = value.find('@');
-      if (at_pos == std::string::npos) {
-        if (error != nullptr) {
-          *error =
-              "Throttle clause must use throttle=<size>@<rate>, for example "
-              "throttle=256@2.";
-        }
-        return false;
-      }
-      if (!ParseMessageSizeBytesInternal(
-              value.substr(0, at_pos), 1024ULL,
-              &parsed_config.throttle_message_size_bytes, error)) {
-        return false;
-      }
-      if (!ParsePositiveRateHz(value.substr(at_pos + 1),
-                               &parsed_config.throttle_rate_hz, error)) {
-        return false;
-      }
     } else {
       if (error != nullptr) {
         *error = "Unknown filter clause key: " + key +
-                 ". Supported keys are drop and throttle.";
+                 ". Supported keys are drop.";
       }
       return false;
     }
@@ -252,45 +196,19 @@ bool ParseMessageSizeFilterPolicy(const std::string& policy,
 
 bool ValidateMessageSizeFilterConfig(const MessageSizeFilterConfig& config,
                                      std::string* error) {
-  if (config.throttle_message_size_bytes > 0 &&
-      config.throttle_rate_hz <= 0.0) {
-    if (error != nullptr) {
-      *error = "Throttle rate must be greater than zero when a throttle "
-               "message-size threshold is set.";
-    }
-    return false;
-  }
-  if (config.throttle_message_size_bytes == 0 && config.throttle_rate_hz > 0.0) {
-    if (error != nullptr) {
-      *error = "A throttle message-size threshold must be set when a "
-               "throttle rate is provided.";
-    }
-    return false;
-  }
-  if (config.drop_message_size_bytes > 0 &&
-      config.throttle_message_size_bytes > 0 &&
-      config.drop_message_size_bytes <= config.throttle_message_size_bytes) {
-    if (error != nullptr) {
-      *error = "Drop message-size threshold must be greater than throttle "
-               "message-size threshold.";
-    }
-    return false;
-  }
+  (void)config;
+  (void)error;
   return true;
 }
 
 MessageSizeFilter::MessageSizeFilter(const MessageSizeFilterConfig& config)
-    : config_(config) {
-  if (config_.throttle_rate_hz > 0.0) {
-    throttle_interval_ns_ = std::max<uint64_t>(
-        1, static_cast<uint64_t>(
-               std::llround(kNanosecondsPerSecond / config_.throttle_rate_hz)));
-  }
-}
+    : config_(config) {}
 
 MessageSizeFilterDecision MessageSizeFilter::Evaluate(
     const std::string& channel_name, size_t payload_size,
     uint64_t record_time_ns) {
+  (void)channel_name;
+  (void)record_time_ns;
   if (config_.drop_message_size_bytes > 0 &&
       payload_size >= config_.drop_message_size_bytes) {
     MessageSizeFilterDecision decision;
@@ -298,27 +216,6 @@ MessageSizeFilterDecision MessageSizeFilter::Evaluate(
     decision.dropped_by_size = true;
     return decision;
   }
-
-  if (config_.throttle_message_size_bytes == 0 || throttle_interval_ns_ == 0 ||
-      payload_size < config_.throttle_message_size_bytes) {
-    return {};
-  }
-
-  std::lock_guard<std::mutex> lock(mutex_);
-  uint64_t& last_record_time_ns = last_record_time_ns_[channel_name];
-  if (last_record_time_ns != 0) {
-    const uint64_t elapsed_ns =
-        record_time_ns > last_record_time_ns ? record_time_ns - last_record_time_ns
-                                             : 0;
-    if (elapsed_ns < throttle_interval_ns_) {
-      MessageSizeFilterDecision decision;
-      decision.should_record = false;
-      decision.throttled_by_rate = true;
-      return decision;
-    }
-  }
-
-  last_record_time_ns = record_time_ns;
   return {};
 }
 
