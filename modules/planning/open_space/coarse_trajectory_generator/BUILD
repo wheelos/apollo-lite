@@ -26,6 +26,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
         "-fopenmp",
     ],
+    linkopts = ["-lgomp"],
     deps = [
         "//cyber",
         "//modules/common/configs:vehicle_config_helper",
@@ -109,7 +110,7 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":hybrid_a_star",
-        "@com_google_googletest//:gtest_main",
+        "//modules/planning/testing:gtest_exit_main",
     ],
 )
 

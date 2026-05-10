@@ -43,14 +43,21 @@ message PlannerOpenSpaceConfig {
 }
 
 message ROIConfig {
+  enum ParkingApproachPreference {
+    PARKING_APPROACH_AUTO = 0;
+    PARKING_APPROACH_PREFER_HEAD_IN = 1;
+    PARKING_APPROACH_PREFER_TAIL_IN = 2;
+  }
   // longitudinal range of parking roi backward
   optional double roi_longitudinal_range_start = 1 [default = 10.0];
   // longitudinal range of parking roi forward
   optional double roi_longitudinal_range_end = 2 [default = 10.0];
   // parking spot range detection threshold
   optional double parking_start_range = 3 [default = 7.0];
-  // Parking orientation for reverse parking
+  // Deprecated legacy override. True maps to head-in, false maps to tail-in.
   optional bool parking_inwards = 4 [default = false];
+  optional ParkingApproachPreference parking_approach_preference = 5
+      [default = PARKING_APPROACH_AUTO];
 }
 
 message WarmStartConfig {

@@ -20,6 +20,7 @@
 
 #include "modules/planning/open_space/coarse_trajectory_generator/hybrid_a_star.h"
 
+#include <cmath>
 #include <limits>
 #include <unordered_set>
 
@@ -31,6 +32,57 @@ namespace planning {
 using apollo::common::math::Box2d;
 using apollo::common::math::Vec2d;
 using apollo::cyber::Clock;
+
+namespace {
+
+class HybridExpansionReedShepp : public ReedShepp {
+ public:
+  HybridExpansionReedShepp(const common::VehicleParam& vehicle_param,
+                           const PlannerOpenSpaceConfig& open_space_conf)
+      : ReedShepp(vehicle_param, open_space_conf) {}
+
+  using ReedShepp::GenerateRSPs;
+  using ReedShepp::GenerateLocalConfigurations;
+};
+
+double ComputeReedSheppPathCost(const std::shared_ptr<Node3d>& start_node,
+                                const ReedSheppPath& path,
+                                const double traj_forward_penalty,
+                                const double traj_back_penalty,
+                                const double traj_gear_switch_penalty,
+                                const double traj_steer_penalty) {
+  double start_dire = start_node->GetDirec() ? 1.0 : -1.0;
+  double cost = 0.0;
+  for (size_t j = 0; j < path.segs_lengths.size(); ++j) {
+    if (path.segs_types[j] == 'S') {
+      if (path.segs_lengths[j] < 0.0) {
+        cost += -path.segs_lengths[j] * traj_back_penalty;
+      } else {
+        cost += path.segs_lengths[j] * traj_forward_penalty;
+      }
+    } else {
+      if (path.segs_lengths[j] < 0.0) {
+        cost +=
+            -path.segs_lengths[j] * traj_steer_penalty * traj_back_penalty;
+      } else {
+        cost += path.segs_lengths[j] * traj_steer_penalty *
+                traj_forward_penalty;
+      }
+    }
+    if (j > 0 && path.segs_lengths[j] * path.segs_lengths[j - 1] < 0.0) {
+      cost += cost + traj_gear_switch_penalty;
+    }
+    if (j == 0 && start_dire * path.segs_lengths[j] < 0.0) {
+      cost += cost + traj_gear_switch_penalty;
+    }
+    if (std::fabs(path.segs_lengths[j]) < 2.0) {
+      cost += 50.0;
+    }
+  }
+  return cost;
+}
+
+}  // namespace
 
 HybridAStar::HybridAStar(const PlannerOpenSpaceConfig& open_space_conf) {
   planner_open_space_config_.CopyFrom(open_space_conf);
@@ -105,18 +157,45 @@ HybridAStar::HybridAStar(const PlannerOpenSpaceConfig& open_space_conf) {
 bool HybridAStar::AnalyticExpansion(
     std::shared_ptr<Node3d> current_node,
     std::shared_ptr<Node3d>* candidate_final_node) {
-  std::shared_ptr<ReedSheppPath> reeds_shepp_to_check =
-      std::make_shared<ReedSheppPath>();
-  if (!reed_shepp_generator_->ShortestRSP(current_node, end_node_,
-                                          reeds_shepp_to_check)) {
+  HybridExpansionReedShepp expansion_reed_shepp(vehicle_param_,
+                                                planner_open_space_config_);
+  std::vector<ReedSheppPath> reeds_shepp_paths;
+  if (!expansion_reed_shepp.GenerateRSPs(current_node, end_node_,
+                                         &reeds_shepp_paths) ||
+      reeds_shepp_paths.empty()) {
     return false;
   }
-  if (!RSPCheck(reeds_shepp_to_check)) {
-    return false;
+  for (auto& path : reeds_shepp_paths) {
+    if (path.segs_lengths.empty() || path.segs_types.empty() ||
+        path.total_length <= 0.0) {
+      path.cost = std::numeric_limits<double>::infinity();
+      continue;
+    }
+    path.cost = ComputeReedSheppPathCost(
+        current_node, path, traj_forward_penalty_, traj_back_penalty_,
+        traj_gear_switch_penalty_, traj_steer_penalty_);
   }
-  // load the whole RSP as nodes and add to the close set
-  *candidate_final_node = LoadRSPinCS(reeds_shepp_to_check, current_node);
-  return true;
+  std::sort(reeds_shepp_paths.begin(), reeds_shepp_paths.end(),
+            [](const ReedSheppPath& lhs, const ReedSheppPath& rhs) {
+              return std::tie(lhs.cost, lhs.total_length) <
+                     std::tie(rhs.cost, rhs.total_length);
+            });
+  for (auto reeds_shepp_path : reeds_shepp_paths) {
+    if (!std::isfinite(reeds_shepp_path.cost) ||
+        !expansion_reed_shepp.GenerateLocalConfigurations(
+            current_node, end_node_, &reeds_shepp_path)) {
+      continue;
+    }
+    auto reeds_shepp_to_check = std::make_shared<ReedSheppPath>(
+        std::move(reeds_shepp_path));
+    if (!RSPCheck(reeds_shepp_to_check)) {
+      continue;
+    }
+    // load the whole RSP as nodes and add to the close set
+    *candidate_final_node = LoadRSPinCS(reeds_shepp_to_check, current_node);
+    return true;
+  }
+  return false;
 }
 
 bool HybridAStar::RSPCheck(

@@ -173,6 +173,30 @@ class OpenSpaceInfo {
     return &open_space_end_pose_;
   }
 
+  const std::vector<common::math::Vec2d> &roi_parking_boundary_polygon() const {
+    return roi_parking_boundary_polygon_;
+  }
+
+  std::vector<common::math::Vec2d> *mutable_roi_parking_boundary_polygon() {
+    return &roi_parking_boundary_polygon_;
+  }
+
+  double roi_parking_area() const { return roi_parking_area_; }
+
+  void set_roi_parking_area(const double area) { roi_parking_area_ = area; }
+
+  double roi_parking_aisle_width() const { return roi_parking_aisle_width_; }
+
+  void set_roi_parking_aisle_width(const double aisle_width) {
+    roi_parking_aisle_width_ = aisle_width;
+  }
+
+  bool parking_head_in() const { return parking_head_in_; }
+
+  void set_parking_head_in(const bool parking_head_in) {
+    parking_head_in_ = parking_head_in;
+  }
+
   const DiscretizedTrajectory &optimizer_trajectory_data() const {
     return optimizer_trajectory_data_;
   }
@@ -285,12 +309,20 @@ class OpenSpaceInfo {
 
   const apollo::planning_internal::Debug &debug() const { return *debug_; }
 
-  const apollo::planning_internal::Debug debug_instance() const {
+  const apollo::planning_internal::Debug& debug_instance() const {
     return debug_instance_;
   }
 
   apollo::planning_internal::Debug *mutable_debug_instance() {
     return &debug_instance_;
+  }
+
+  const apollo::planning_internal::OpenSpaceDebug &parking_debug() const {
+    return parking_debug_;
+  }
+
+  apollo::planning_internal::OpenSpaceDebug *mutable_parking_debug() {
+    return &parking_debug_;
   }
 
   void sync_debug_instance() {
@@ -337,6 +369,14 @@ class OpenSpaceInfo {
   // Speed is set to be always zero now for parking
   std::vector<double> open_space_end_pose_;
 
+  std::vector<common::math::Vec2d> roi_parking_boundary_polygon_;
+
+  double roi_parking_area_ = 0.0;
+
+  double roi_parking_aisle_width_ = 0.0;
+
+  bool parking_head_in_ = false;
+
   // @brief vector storing the vertices of obstacles in counter-clock-wise order
   std::vector<std::vector<common::math::Vec2d>> obstacles_vertices_vec_;
 
@@ -379,11 +419,12 @@ class OpenSpaceInfo {
       publishable_trajectory_data_;
 
   // the pointer from ADCtrajectory
-  apollo::planning_internal::Debug *debug_;
+  apollo::planning_internal::Debug *debug_ = nullptr;
 
   // the instance inside debug,
   // if ADCtrajectory is NULL, blank; else same to ADCtrajectory
   apollo::planning_internal::Debug debug_instance_;
+  apollo::planning_internal::OpenSpaceDebug parking_debug_;
 
   double time_latency_ = 0.0;
 };

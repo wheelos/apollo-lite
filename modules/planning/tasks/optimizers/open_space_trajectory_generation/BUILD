@@ -61,7 +61,7 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":open_space_trajectory_provider",
-        "@com_google_googletest//:gtest_main",
+        "//modules/planning/testing:gtest_exit_main",
     ],
 )
 

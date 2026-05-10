@@ -162,6 +162,47 @@ message OpenSpaceDebug {
   optional double time_latency = 18 [default = 0.0];  // ms
   optional apollo.common.PointENU origin_point = 19;  // meter
   optional double origin_heading_rad = 20;
+  repeated ParkingPoseCandidateDebug parking_pose_candidates = 21;
+  optional ParkingRoiDebug parking_roi = 22;
+  optional string selected_parking_pose = 23;
+}
+
+message ParkingPoseCandidateDebug {
+  optional string name = 1;
+  optional bool feasible = 2;
+  optional double score = 3;
+  optional string rejection_reason = 4;
+  optional apollo.common.TrajectoryPoint end_point = 5;
+  optional double reverse_distance = 6;
+  optional uint32 gear_switch_count = 7;
+  optional double aisle_width = 8;
+  optional double path_length = 9;
+  optional double min_clearance = 10;
+  optional uint32 collision_path_index = 11;
+  optional uint32 collision_boundary_index = 12;
+  optional apollo.common.TrajectoryPoint collision_point = 13;
+  optional apollo.common.PointENU collision_boundary_start = 14;
+  optional apollo.common.PointENU collision_boundary_end = 15;
+  optional bool was_probed = 16;
+}
+
+message ParkingRoiDebug {
+  repeated apollo.common.PointENU corridor_polygon = 1;
+  repeated apollo.common.PointENU slot_polygon = 2;
+  repeated apollo.common.PointENU union_polygon = 3;
+  optional double area = 4;
+  optional bool is_valid = 5;
+  optional string invalid_reason = 6;
+  optional double min_aisle_width = 7;
+  optional double goal_clearance = 8;
+  repeated apollo.common.PointENU bridge_polygon = 9;
+  repeated apollo.common.PointENU attachment_polygon = 10;
+  repeated apollo.common.PointENU connector_slice = 11;
+  repeated apollo.common.PointENU outer_bridge_slice = 12;
+  optional uint32 connection_start_index = 13;
+  optional uint32 connection_end_index = 14;
+  optional uint32 slot_side_boundary_size = 15;
+  optional uint32 connector_boundary_size = 16;
 }
 
 message SmootherDebug {
