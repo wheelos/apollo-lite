@@ -46,8 +46,8 @@ int GridFrameStitcher::output_height() const {
 }
 
 bool GridFrameStitcher::Stitch(const std::vector<CapturedFrame>& frames,
-                               cv::Mat* stitched_bgr) const {
-  if (!valid_ || stitched_bgr == nullptr) {
+                               cv::Mat* stitched_rgb) const {
+  if (!valid_ || stitched_rgb == nullptr) {
     return false;
   }
 
@@ -56,30 +56,30 @@ bool GridFrameStitcher::Stitch(const std::vector<CapturedFrame>& frames,
     frame_index.emplace(frame.source_name, &frame);
   }
 
-  stitched_bgr->create(output_height(), output_width(), CV_8UC3);
-  stitched_bgr->setTo(cv::Scalar::all(0));
+  stitched_rgb->create(output_height(), output_width(), CV_8UC3);
+  stitched_rgb->setTo(cv::Scalar::all(0));
   for (const auto& slot : slots_) {
     auto iter = frame_index.find(slot.source_name);
-    if (iter == frame_index.end() || iter->second->image_bgr.empty()) {
+    if (iter == frame_index.end() || iter->second->image_rgb.empty()) {
       AERROR << "Missing frame for stitch slot source " << slot.source_name;
       return false;
     }
 
     cv::Mat tile;
-    if (iter->second->image_bgr.cols != static_cast<int>(config_.tile_width()) ||
-        iter->second->image_bgr.rows !=
+    if (iter->second->image_rgb.cols != static_cast<int>(config_.tile_width()) ||
+        iter->second->image_rgb.rows !=
             static_cast<int>(config_.tile_height())) {
-      cv::resize(iter->second->image_bgr, tile,
+      cv::resize(iter->second->image_rgb, tile,
                  cv::Size(config_.tile_width(), config_.tile_height()));
     } else {
-      tile = iter->second->image_bgr;
+      tile = iter->second->image_rgb;
     }
 
     cv::Rect roi(slot.col * static_cast<int>(config_.tile_width()),
                  slot.row * static_cast<int>(config_.tile_height()),
                  static_cast<int>(config_.tile_width()),
                  static_cast<int>(config_.tile_height()));
-    tile.copyTo((*stitched_bgr)(roi));
+    tile.copyTo((*stitched_rgb)(roi));
   }
   return true;
 }

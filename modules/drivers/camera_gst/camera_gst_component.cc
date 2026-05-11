@@ -16,81 +16,113 @@
 
 #include "modules/drivers/camera_gst/camera_gst_component.h"
 
-#include <chrono>
-
 namespace apollo {
 namespace drivers {
 namespace camera_gst {
+
+namespace {
+
+config::PublishConfig NormalizePublishConfig(
+    const config::PublishConfig& publish_config,
+    const std::string& default_frame_id) {
+  config::PublishConfig normalized = publish_config;
+  if (normalized.frame_id().empty()) {
+    normalized.set_frame_id(default_frame_id);
+  }
+  return normalized;
+}
+
+}  // namespace
+
+bool CameraGstComponent::InitSourcePublishers() {
+  source_publishers_.clear();
+  for (const auto& source_config : config_.sources()) {
+    if (!source_config.has_publish() ||
+        source_config.publish().channel_name().empty()) {
+      continue;
+    }
+
+    SourcePublisher publisher;
+    publisher.publish_config = NormalizePublishConfig(source_config.publish(),
+                                                     source_config.name());
+    publisher.writer =
+        node_->CreateWriter<Image>(publisher.publish_config.channel_name());
+    source_publishers_.emplace(source_config.name(), std::move(publisher));
+  }
+  return true;
+}
 
 bool CameraGstComponent::Init() {
   if (!GetProtoConfig(&config_)) {
     AERROR << "Parse config file failed: " << ConfigFilePath();
     return false;
   }
-  if (config_.publish().channel_name().empty()) {
-    AERROR << "camera_gst publish.channel_name must be configured.";
+
+  if (!InitSourcePublishers()) {
+    AERROR << "camera_gst failed to initialize source publishers.";
     return false;
   }
 
-  writer_ = node_->CreateWriter<Image>(config_.publish().channel_name());
-  if (config_.publish_rate() > 0.0) {
-    rate_limiter_.reset(
-        new apollo::cyber::common::TokenBucket(config_.publish_rate(), 10.0));
+  if (config_.has_publish() && !config_.publish().channel_name().empty()) {
+    stitched_publish_config_ =
+        NormalizePublishConfig(config_.publish(), "camera_gst");
+    stitched_writer_ =
+        node_->CreateWriter<Image>(stitched_publish_config_.channel_name());
+  }
+
+  if (source_publishers_.empty() && stitched_writer_ == nullptr &&
+      !config_.stream().enable()) {
+    AERROR << "camera_gst requires at least one source publish channel, a "
+           << "stitched publish channel, or an enabled stream branch.";
+    return false;
   }
 
   driver_.reset(new CameraGstDriver());
-  auto publish_callback =
-      [this](CameraGstStreamer::PublishedFrame&& frame) {
-        if (rate_limiter_ != nullptr && !rate_limiter_->TryConsume()) {
-          return;
-        }
-        writer_->Write(BuildImageMessage(frame));
-      };
-  if (!driver_->Init(config_, std::move(publish_callback))) {
+  CameraGstDriver::SourcePublishCallback source_publish_callback;
+  if (!source_publishers_.empty()) {
+    source_publish_callback =
+        [this](const std::string& source_name,
+               CameraGstStreamer::PublishedFrame&& frame) {
+          auto iter = source_publishers_.find(source_name);
+          if (iter == source_publishers_.end()) {
+            return;
+          }
+          iter->second.writer->Write(
+              BuildImageMessage(std::move(frame), iter->second.publish_config));
+        };
+  }
+
+  CameraGstStreamer::PublishCallback stitched_publish_callback;
+  if (stitched_writer_ != nullptr) {
+    stitched_publish_callback =
+        [this](CameraGstStreamer::PublishedFrame&& frame) {
+          stitched_writer_->Write(
+              BuildImageMessage(std::move(frame), stitched_publish_config_));
+        };
+  }
+
+  if (!driver_->Init(config_, std::move(source_publish_callback),
+                     std::move(stitched_publish_callback))) {
     AERROR << "Failed to initialize camera_gst driver.";
     return false;
   }
-
-  running_.store(true);
-  async_result_ = cyber::Async(&CameraGstComponent::Run, this);
   return true;
 }
 
-void CameraGstComponent::Run() {
-  while (running_.load() && !cyber::IsShutdown()) {
-    cv::Mat stitched_bgr;
-    double measurement_time = 0.0;
-    if (!driver_->CaptureStitchedFrame(&stitched_bgr, &measurement_time)) {
-      cyber::SleepFor(std::chrono::milliseconds(config_.capture_retry_ms()));
-      continue;
-    }
-    if (!driver_->SubmitFrame(stitched_bgr, measurement_time)) {
-      AWARN_EVERY(100) << "camera_gst failed to submit frame to pipeline.";
-    }
-  }
-}
-
 std::shared_ptr<Image> CameraGstComponent::BuildImageMessage(
-    const CameraGstStreamer::PublishedFrame& frame) const {
+    CameraGstStreamer::PublishedFrame frame,
+    const config::PublishConfig& publish_config) const {
   auto image = std::make_shared<Image>();
-  image->mutable_header()->set_frame_id(config_.publish().frame_id());
+  image->mutable_header()->set_frame_id(publish_config.frame_id());
   image->mutable_header()->set_timestamp_sec(frame.measurement_time);
-  image->set_frame_id(config_.publish().frame_id());
+  image->set_frame_id(publish_config.frame_id());
   image->set_measurement_time(frame.measurement_time);
-  image->set_width(static_cast<uint32_t>(frame.image_rgb.cols));
-  image->set_height(static_cast<uint32_t>(frame.image_rgb.rows));
-  image->set_encoding("rgb8");
-  image->set_step(static_cast<uint32_t>(frame.image_rgb.step));
-  image->set_data(reinterpret_cast<const char*>(frame.image_rgb.data),
-                  static_cast<int>(frame.image_rgb.step *
-                                   frame.image_rgb.rows));
+  image->set_width(frame.width);
+  image->set_height(frame.height);
+  image->set_encoding(frame.encoding.empty() ? "rgb8" : frame.encoding);
+  image->set_step(frame.step);
+  *image->mutable_data() = std::move(frame.data);
   return image;
-}
-
-CameraGstComponent::~CameraGstComponent() {
-  if (running_.exchange(false) && async_result_.valid()) {
-    async_result_.wait();
-  }
 }
 
 }  // namespace camera_gst

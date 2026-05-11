@@ -18,10 +18,7 @@
 
 #include <functional>
 #include <memory>
-#include <vector>
 
-#include "modules/drivers/camera_gst/frame_source.h"
-#include "modules/drivers/camera_gst/frame_stitcher.h"
 #include "modules/drivers/camera_gst/proto/config.pb.h"
 #include "modules/drivers/camera_gst/streamer.h"
 
@@ -32,14 +29,15 @@ namespace camera_gst {
 class CameraGstDriver {
  public:
   using PublishCallback = CameraGstStreamer::PublishCallback;
+  using SourcePublishCallback = CameraGstStreamer::SourcePublishCallback;
 
   explicit CameraGstDriver(
       std::unique_ptr<CameraGstStreamer> streamer = nullptr);
   ~CameraGstDriver();
 
-  bool Init(const config::Config& config, PublishCallback publish_callback);
-  bool CaptureStitchedFrame(cv::Mat* stitched_bgr, double* measurement_time);
-  bool SubmitFrame(const cv::Mat& stitched_bgr, double measurement_time);
+  bool Init(const config::Config& config,
+            SourcePublishCallback source_publish_callback,
+            PublishCallback stitched_publish_callback);
 
   void StartStreaming();
   void StopStreaming();
@@ -49,8 +47,6 @@ class CameraGstDriver {
 
  private:
   config::Config config_;
-  std::vector<std::unique_ptr<FrameSource>> sources_;
-  std::unique_ptr<GridFrameStitcher> stitcher_;
   std::unique_ptr<CameraGstStreamer> streamer_;
   bool stream_enabled_ = false;
   bool stream_started_ = false;

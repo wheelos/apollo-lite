@@ -31,14 +31,10 @@ cc_library(
     name = "camera_gst_core",
     srcs = [
         "camera_gst_driver.cc",
-        "frame_source.cc",
-        "frame_stitcher.cc",
         "streamer.cc",
     ],
     hdrs = [
         "camera_gst_driver.h",
-        "frame_source.h",
-        "frame_stitcher.h",
         "streamer.h",
     ],
     copts = CAMERA_GST_COPTS,
@@ -46,9 +42,6 @@ cc_library(
         "//cyber",
         "//modules/drivers/camera_gst/proto:config_cc_proto",
         "@gstreamer//:gstreamer",
-        "@opencv//:core",
-        "@opencv//:imgproc",
-        "@opencv//:videoio",
     ],
 )
 
@@ -60,7 +53,6 @@ cc_library(
     deps = [
         ":camera_gst_core",
         "//cyber",
-        "//modules/common/util:rate_limiter",
         "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
         "@gstreamer//:gstreamer",
     ],
@@ -72,26 +64,6 @@ cc_binary(
     linkshared = True,
     linkstatic = True,
     deps = [":camera_gst_component_lib"],
-)
-
-cc_test(
-    name = "frame_stitcher_test",
-    size = "small",
-    srcs = ["frame_stitcher_test.cc"],
-    deps = [
-        ":camera_gst_core",
-        "//modules/planning/common:gtest_exit_main",
-    ],
-)
-
-cc_test(
-    name = "streamer_test",
-    size = "small",
-    srcs = ["streamer_test.cc"],
-    deps = [
-        ":camera_gst_core",
-        "//modules/planning/common:gtest_exit_main",
-    ],
 )
 
 cpplint()

@@ -1,44 +1,58 @@
 ## camera_gst
 
-`camera_gst` reads multiple camera inputs, stitches them into a single frame,
-publishes an Apollo `drivers::Image`, and isolates an optional streaming path so
-slow downstream viewers do not block the capture loop.
+`camera_gst` builds one in-process GStreamer graph for 1-n cameras, publishes one
+Apollo `sensor_msgs::Image` per selected source in `rgb8`, and can also stitch a
+selected subset of those sources for optional stitched publish and GPU-native
+stream output.
 
 ### Design summary
 
-1. Capture each source independently with OpenCV/V4L2-friendly ingestion.
-2. Stitch frames into a deterministic grid layout.
-3. Feed the stitched `bgr` frame into an in-process GStreamer pipeline through
-   `appsrc`.
-4. Split the pipeline with `tee`: a static publish branch terminates at
-   `appsink`, and an optional dynamic stream branch is attached / detached with
-   request pads and idle pad probes.
-5. Publish `rgb8` on Cyber from the static publish branch.
+1. Build one GPU-first capture graph instead of polling each source into CPU memory.
+2. Decode and normalize every source into `NVMM` memory, then fan out each source
+   with `tee`.
+3. Keep the stitch path on GPU with `nvcompositor`; only the Cyber publish branch
+   converts to CPU `rgb8` at its final `appsink`.
+4. Publish each configured source directly on its own Cyber channel without a
+   software rate limiter, so cadence follows the camera.
+5. Select the stitched/streamed subset by `layout_slots[*]`; sources not listed
+   there can still publish independently.
+6. Keep the stream branch on GPU from compositor output to encoder/sink.
 
-The runtime path is now fully in-process. The stream branch is described by
-config and can use software elements on generic Linux hosts or Jetson NVENC
-elements on NVIDIA hardware.
+The runtime path stays fully in-process. On Jetson-style deployments the intended
+hot path is `nvarguscamerasrc` or `v4l2src` plus `nvv4l2decoder`, `nvvidconv`,
+`nvcompositor`, and NVENC. The only required CPU crossing is the final Cyber
+publish copy into `sensor_msgs::Image`.
 
-### Output channel
+### Output channels
 
-- `/apollo/sensor/camera/stitched/image`
+- `sources[*].publish.channel_name` for each camera
+- optional `publish.channel_name` for stitched output
 
 ### Start the driver
 
 ```bash
-cd /apollo && cyber_launch start modules/drivers/camera_gst/launch/camera_gst.launch
+cd /apollo
+source cyber/setup.bash
+cyber_launch start modules/drivers/camera_gst/launch/camera_gst.launch
 ```
 
 ### Config notes
 
-- `sources[*].uri` can be a V4L2 node such as `/dev/video0` or a numeric camera
-  index.
-- `layout_slots[*]` maps each source to one cell in a grid.
-- `stream.branch_pipeline` should begin with a `queue` and contain the encoder,
-  payloader, and sink chain for the dynamic stream branch.
-- `stream.force_keyframe_on_attach` sends a `GstForceKeyUnit` event after the
-  stream branch is linked.
+- `sources[*].uri` can be a V4L2 node such as `/dev/video0`, a numeric camera
+  index, or `csi://0` / `argus://0` for Jetson CSI cameras.
+- `sources[*].publish.channel_name` enables per-camera RGB publishing.
+- `sources[*].capture_pipeline` overrides the built-in source head when a
+  deployment needs a custom GPU-capable source graph. The custom graph must end
+  at a raw frame stream and must not include its own sink.
+- `layout_slots[*]` selects which cameras participate in stitched publish or
+  streaming. It no longer has to cover all configured sources.
+- `publish_rate` is intentionally not applied in the hot path; publish cadence
+  follows capture cadence.
+- `stream.branch_pipeline` should begin with a `queue` and consume stitched
+  `video/x-raw(memory:NVMM),format=NV12`. A production branch can be NVENC + RTP,
+  or a `webrtcbin` branch if the surrounding system provides signaling.
+- For autonomous driving efficiency, the recommended deployment is: per-source
+  Cyber publish for inference, stitched GPU branch for operator stream, and no
+  CPU copies anywhere else in the graph.
 - The repo expects GStreamer development packages to be installed under `/usr`
   so the `@gstreamer` local repository can resolve headers and libraries.
-- On Jetson, replace the sample `x264enc` branch with `nvv4l2h264enc` or
-  `nvv4l2h265enc` when those plugins are available.

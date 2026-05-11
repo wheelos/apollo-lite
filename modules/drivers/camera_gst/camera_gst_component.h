@@ -16,12 +16,11 @@
 
 #pragma once
 
-#include <atomic>
-#include <future>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 #include "cyber/cyber.h"
-#include "modules/common/util/rate_limiter.h"
 #include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/drivers/camera_gst/camera_gst_driver.h"
 #include "modules/drivers/camera_gst/proto/config.pb.h"
@@ -33,19 +32,23 @@ namespace camera_gst {
 class CameraGstComponent : public apollo::cyber::Component<> {
  public:
   bool Init() override;
-  ~CameraGstComponent();
 
  private:
-  void Run();
+  struct SourcePublisher {
+    config::PublishConfig publish_config;
+    std::shared_ptr<apollo::cyber::Writer<Image>> writer;
+  };
+
+  bool InitSourcePublishers();
   std::shared_ptr<Image> BuildImageMessage(
-      const CameraGstStreamer::PublishedFrame& frame) const;
+    CameraGstStreamer::PublishedFrame frame,
+      const config::PublishConfig& publish_config) const;
 
   config::Config config_;
-  std::shared_ptr<apollo::cyber::Writer<Image>> writer_;
+  config::PublishConfig stitched_publish_config_;
+  std::shared_ptr<apollo::cyber::Writer<Image>> stitched_writer_;
+  std::unordered_map<std::string, SourcePublisher> source_publishers_;
   std::unique_ptr<CameraGstDriver> driver_;
-  std::future<void> async_result_;
-  std::atomic<bool> running_ = {false};
-  std::unique_ptr<apollo::cyber::common::TokenBucket> rate_limiter_;
 };
 
 CYBER_REGISTER_COMPONENT(CameraGstComponent)

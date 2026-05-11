@@ -36,7 +36,7 @@ class GridFrameStitcher {
   int output_width() const;
   int output_height() const;
   bool Stitch(const std::vector<CapturedFrame>& frames,
-              cv::Mat* stitched_bgr) const;
+              cv::Mat* stitched_rgb) const;
 
  private:
   struct LayoutSlot {

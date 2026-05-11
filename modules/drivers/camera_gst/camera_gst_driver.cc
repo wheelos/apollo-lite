@@ -16,8 +16,6 @@
 
 #include "modules/drivers/camera_gst/camera_gst_driver.h"
 
-#include <algorithm>
-
 #include "cyber/cyber.h"
 
 namespace apollo {
@@ -31,71 +29,34 @@ CameraGstDriver::CameraGstDriver(std::unique_ptr<CameraGstStreamer> streamer)
   }
 }
 
-CameraGstDriver::~CameraGstDriver() { StopStreaming(); }
+CameraGstDriver::~CameraGstDriver() {
+  if (streamer_ != nullptr) {
+    streamer_->Stop();
+  }
+}
 
 bool CameraGstDriver::Init(const config::Config& config,
-                           PublishCallback publish_callback) {
+                           SourcePublishCallback source_publish_callback,
+                           PublishCallback stitched_publish_callback) {
   config_ = config;
   if (config_.sources_size() == 0) {
     AERROR << "camera_gst requires at least one source.";
     return false;
   }
-
-  stitcher_.reset(new GridFrameStitcher(config_));
-  if (!stitcher_->valid()) {
-    AERROR << "camera_gst stitcher configuration is invalid.";
-    return false;
-  }
-
-  sources_.clear();
-  sources_.reserve(static_cast<size_t>(config_.sources_size()));
-  for (const auto& source_config : config_.sources()) {
-    auto source = CreateFrameSource(source_config);
-    if (source == nullptr) {
-      AERROR << "Failed to create source for " << source_config.name();
-      return false;
-    }
-    sources_.emplace_back(std::move(source));
-  }
-
   stream_enabled_ = config_.stream().enable();
-  if (!streamer_->Start(output_width(), output_height(), config_.fps(),
-                        config_.stream(), std::move(publish_callback))) {
-    AERROR << "camera_gst failed to start in-process GStreamer pipeline.";
+
+  if (!streamer_->Start(config_, std::move(source_publish_callback),
+                        std::move(stitched_publish_callback))) {
+    AERROR << "camera_gst failed to start the GPU capture graph.";
     return false;
   }
+
   stream_started_ = streamer_->streaming_active();
   return true;
 }
 
-bool CameraGstDriver::CaptureStitchedFrame(cv::Mat* stitched_bgr,
-                                           double* measurement_time) {
-  if (stitched_bgr == nullptr || measurement_time == nullptr) {
-    return false;
-  }
-
-  std::vector<CapturedFrame> frames;
-  frames.reserve(sources_.size());
-  *measurement_time = 0.0;
-  for (const auto& source : sources_) {
-    CapturedFrame frame;
-    if (!source->Read(&frame)) {
-      AWARN_EVERY(100) << "Failed to read frame from source " << source->name();
-      return false;
-    }
-    *measurement_time = std::max(*measurement_time, frame.measurement_time);
-    frames.emplace_back(std::move(frame));
-  }
-  return stitcher_->Stitch(frames, stitched_bgr);
-}
-
-bool CameraGstDriver::SubmitFrame(const cv::Mat& stitched_bgr,
-                                  double measurement_time) {
-  return streamer_->Submit(stitched_bgr, measurement_time);
-}
-
 void CameraGstDriver::StartStreaming() {
-  if (!stream_enabled_ || stream_started_) {
+  if (!stream_enabled_ || stream_started_ || streamer_ == nullptr) {
     return;
   }
   if (!streamer_->StartStreaming()) {
@@ -106,7 +67,7 @@ void CameraGstDriver::StartStreaming() {
 }
 
 void CameraGstDriver::StopStreaming() {
-  if (!stream_started_) {
+  if (!stream_started_ || streamer_ == nullptr) {
     return;
   }
   streamer_->StopStreaming();
@@ -114,11 +75,11 @@ void CameraGstDriver::StopStreaming() {
 }
 
 int CameraGstDriver::output_width() const {
-  return stitcher_ == nullptr ? 0 : stitcher_->output_width();
+  return streamer_ == nullptr ? 0 : streamer_->output_width();
 }
 
 int CameraGstDriver::output_height() const {
-  return stitcher_ == nullptr ? 0 : stitcher_->output_height();
+  return streamer_ == nullptr ? 0 : streamer_->output_height();
 }
 
 }  // namespace camera_gst

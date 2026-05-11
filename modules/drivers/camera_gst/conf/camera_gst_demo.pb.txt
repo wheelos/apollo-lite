@@ -1,19 +1,25 @@
 sources {
   name: "left"
-  uri: "/dev/video0"
-  width: 1280
-  height: 720
+  uri: "csi://0"
+  width: 1920
+  height: 1080
   fps: 30.0
-  fourcc: "MJPG"
+  publish {
+    channel_name: "/apollo/sensor/camera/left/image"
+    frame_id: "left_camera"
+  }
 }
 
 sources {
   name: "right"
-  uri: "/dev/video1"
-  width: 1280
-  height: 720
+  uri: "csi://1"
+  width: 1920
+  height: 1080
   fps: 30.0
-  fourcc: "MJPG"
+  publish {
+    channel_name: "/apollo/sensor/camera/right/image"
+    frame_id: "right_camera"
+  }
 }
 
 layout_slots {
@@ -30,16 +36,10 @@ layout_slots {
 
 rows: 1
 cols: 2
-tile_width: 1280
-tile_height: 720
+tile_width: 1920
+tile_height: 1080
 fps: 30.0
 capture_retry_ms: 20
-publish_rate: 30.0
-
-publish {
-  channel_name: "/apollo/sensor/camera/stitched/image"
-  frame_id: "camera_gst"
-}
 
 stream {
   enable: true
@@ -50,5 +50,5 @@ stream {
   emit_eos_on_detach: true
   force_keyframe_on_attach: true
   keyframe_element_name: "stream_encoder"
-  branch_pipeline: "queue name=stream_queue leaky=downstream max-size-buffers=3 ! x264enc name=stream_encoder tune=zerolatency speed-preset=ultrafast key-int-max=30 ! rtph264pay config-interval=1 pt=96 ! udpsink host=127.0.0.1 port=5600 sync=false async=false"
+  branch_pipeline: "queue name=stream_queue leaky=downstream max-size-buffers=3 ! nvv4l2h264enc name=stream_encoder insert-sps-pps=true iframeinterval=30 idrinterval=30 bitrate=4000000 ! tcpserversink host=0.0.0.0 port=5600 sync=false"
 }

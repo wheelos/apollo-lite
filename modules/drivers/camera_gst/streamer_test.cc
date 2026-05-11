@@ -62,8 +62,8 @@ class PublishedFrameCollector {
   std::vector<CameraGstStreamer::PublishedFrame> frames_;
 };
 
-cv::Mat MakeBgrFrame(uint8_t b, uint8_t g, uint8_t r) {
-  return cv::Mat(1, 1, CV_8UC3, cv::Scalar(b, g, r)).clone();
+cv::Mat MakeRgbFrame(uint8_t r, uint8_t g, uint8_t b) {
+  return cv::Mat(1, 1, CV_8UC3, cv::Scalar(r, g, b)).clone();
 }
 
 config::StreamConfig BuildConfig(bool enable, bool auto_start,
@@ -92,7 +92,7 @@ TEST(CameraGstStreamerTest, PublishesSubmittedFramesThroughAppsinkBranch) {
       [&collector](CameraGstStreamer::PublishedFrame&& frame) {
         collector.OnFrame(std::move(frame));
       }));
-  ASSERT_TRUE(streamer.Submit(MakeBgrFrame(50, 100, 150), 12.25));
+  ASSERT_TRUE(streamer.Submit(MakeRgbFrame(150, 100, 50), 12.25));
   ASSERT_TRUE(collector.WaitForFrames(1));
 
   const auto frame = collector.LatestFrame();
@@ -120,13 +120,31 @@ TEST(CameraGstStreamerTest, AttachesAndDetachesDynamicStreamBranchSafely) {
 
   ASSERT_TRUE(streamer.StartStreaming());
   EXPECT_TRUE(streamer.streaming_active());
-  ASSERT_TRUE(streamer.Submit(MakeBgrFrame(10, 20, 30), 1.0));
+  ASSERT_TRUE(streamer.Submit(MakeRgbFrame(30, 20, 10), 1.0));
   ASSERT_TRUE(collector.WaitForFrames(1));
 
   ASSERT_TRUE(streamer.StopStreaming());
   EXPECT_FALSE(streamer.streaming_active());
   ASSERT_TRUE(streamer.StartStreaming());
   EXPECT_TRUE(streamer.streaming_active());
+
+  streamer.Stop();
+}
+
+TEST(CameraGstStreamerTest, RunsStreamOnlyPipelineWithoutPublishCallback) {
+  CameraGstStreamer streamer;
+
+  ASSERT_TRUE(streamer.Start(
+      1, 1, 30.0,
+      BuildConfig(true, false,
+                  "queue name=stream_queue leaky=downstream "
+                  "max-size-buffers=1 ! identity name=stream_identity silent=true "
+                  "! fakesink name=stream_sink sync=false async=false"),
+      CameraGstStreamer::PublishCallback()));
+  EXPECT_FALSE(streamer.streaming_active());
+  ASSERT_TRUE(streamer.StartStreaming());
+  EXPECT_TRUE(streamer.streaming_active());
+  ASSERT_TRUE(streamer.Submit(MakeRgbFrame(1, 2, 3), 2.0));
 
   streamer.Stop();
 }

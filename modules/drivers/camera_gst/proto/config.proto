@@ -9,6 +9,9 @@ message CameraSourceConfig {
   optional uint32 height = 4 [default = 720];
   optional double fps = 5 [default = 30.0];
   optional string fourcc = 6 [default = "MJPG"];
+  optional PublishConfig publish = 7;
+  optional string capture_pipeline = 8;
+  optional uint32 read_timeout_ms = 9 [default = 1000];
 }
 
 message LayoutSlot {

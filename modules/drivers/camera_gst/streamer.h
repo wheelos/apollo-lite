@@ -16,18 +16,16 @@
 
 #pragma once
 
-#include <atomic>
-#include <condition_variable>
-#include <deque>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
+#include <vector>
 
 #include "gst/app/gstappsink.h"
-#include "gst/app/gstappsrc.h"
 #include "gst/gst.h"
-#include "opencv2/core/mat.hpp"
 
 #include "modules/drivers/camera_gst/proto/config.pb.h"
 
@@ -38,69 +36,86 @@ namespace camera_gst {
 class CameraGstStreamer {
  public:
   struct PublishedFrame {
-    cv::Mat image_rgb;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t step = 0;
     double measurement_time = 0.0;
+    std::string encoding = "rgb8";
+    std::string data;
   };
 
   using PublishCallback = std::function<void(PublishedFrame&&)>;
+  using SourcePublishCallback =
+      std::function<void(const std::string&, PublishedFrame&&)>;
 
   CameraGstStreamer() = default;
   ~CameraGstStreamer();
 
-  bool Start(int width, int height, double fps,
-             const config::StreamConfig& config,
-             PublishCallback publish_callback);
+  bool Start(const config::Config& config,
+             SourcePublishCallback source_publish_callback,
+             PublishCallback stitched_publish_callback);
   void Stop();
-  bool Submit(const cv::Mat& frame_bgr, double measurement_time);
   bool StartStreaming();
   bool StopStreaming();
   bool streaming_active() const;
+  int output_width() const { return output_width_; }
+  int output_height() const { return output_height_; }
 
  private:
-  struct PendingFrame {
-    cv::Mat image_bgr;
-    double measurement_time = 0.0;
+  struct LayoutSlot {
+    std::string source_name;
+    size_t pad_index = 0;
+    int row = 0;
+    int col = 0;
   };
 
-  static GstFlowReturn OnNewSample(GstAppSink* appsink, gpointer user_data);
-  static GstPadProbeReturn OnStreamPadIdle(GstPad* pad, GstPadProbeInfo* info,
-                                           gpointer user_data);
+  struct SinkContext {
+    CameraGstStreamer* owner = nullptr;
+    std::string source_name;
+    bool stitched = false;
+  };
 
+  static GstFlowReturn OnSourceSample(GstAppSink* appsink, gpointer user_data);
+  static GstFlowReturn OnStitchedSample(GstAppSink* appsink,
+                                        gpointer user_data);
   bool BuildPipelineLocked();
+  bool ValidateConfigLocked();
   bool StartStreamBranchLocked();
   void StopStreamBranchDirectLocked();
   void ReleasePipelineLocked();
-  bool PushFrameToPipeline(const PendingFrame& frame);
   bool ForceKeyFrameLocked();
-  std::string StreamBranchDescription() const;
-  void FeedLoop();
-  void CompleteIdleDetach(GstPad* tee_pad);
-
-  int width_ = 0;
-  int height_ = 0;
-  double fps_ = 0.0;
-  config::StreamConfig config_;
-  PublishCallback publish_callback_;
-  size_t max_pending_frames_ = 3;
+  void BusLoop();
+  PublishedFrame ExtractFrame(GstSample* sample) const;
+  std::string StreamBranchDescriptionLocked() const;
+  std::string BuildPipelineDescriptionLocked() const;
+  std::string BuildCompositorDescriptionLocked() const;
+  std::string BuildSourceDescriptionLocked(
+      size_t source_index, const config::CameraSourceConfig& source_config,
+      const LayoutSlot* layout_slot) const;
+  const LayoutSlot* FindLayoutSlotLocked(const std::string& source_name) const;
+  std::string SourceTeeName(size_t source_index) const;
+  std::string SourcePublishSinkName(size_t source_index) const;
 
   mutable std::mutex mutex_;
-  std::condition_variable condition_;
-  std::deque<PendingFrame> pending_frames_;
-  std::thread worker_;
+  config::Config config_;
+  std::vector<LayoutSlot> layout_slots_;
+  SourcePublishCallback source_publish_callback_;
+  PublishCallback stitched_publish_callback_;
+  std::vector<std::unique_ptr<SinkContext>> source_sink_contexts_;
+  std::unique_ptr<SinkContext> stitched_sink_context_;
+  std::thread bus_thread_;
   bool running_ = false;
   bool stop_requested_ = false;
+  bool stream_enabled_ = false;
   bool stream_attached_ = false;
-  bool stream_detach_requested_ = false;
+  int output_width_ = 0;
+  int output_height_ = 0;
 
   GstElement* pipeline_ = nullptr;
-  GstElement* appsrc_ = nullptr;
-  GstElement* tee_ = nullptr;
-  GstElement* publish_queue_ = nullptr;
-  GstElement* publish_convert_ = nullptr;
-  GstElement* publish_capsfilter_ = nullptr;
-  GstElement* appsink_ = nullptr;
+  GstElement* stitched_tee_ = nullptr;
+  GstElement* stitched_publish_sink_ = nullptr;
   GstElement* stream_branch_bin_ = nullptr;
-  GstPad* publish_tee_pad_ = nullptr;
+  GstBus* bus_ = nullptr;
   GstPad* stream_tee_pad_ = nullptr;
   GstPad* stream_sink_pad_ = nullptr;
 };

@@ -52,7 +52,7 @@ config::Config BuildConfig() {
 CapturedFrame MakeFrame(const std::string& name, const cv::Scalar& color) {
   CapturedFrame frame;
   frame.source_name = name;
-  frame.image_bgr = cv::Mat(2, 2, CV_8UC3, color).clone();
+  frame.image_rgb = cv::Mat(2, 2, CV_8UC3, color).clone();
   return frame;
 }
 
