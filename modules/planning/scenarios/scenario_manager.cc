@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "modules/common/util/util.h"
+#include "modules/planning/common/util/util.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/scenarios/cruise/lane_follow/lane_follow_scenario.h"
 #include "modules/planning/scenarios/cruise/lane_keeping/lane_keeping_scenario.h"
@@ -201,21 +202,27 @@ void ScenarioManager::RegisterDeciders() {
 
 void ScenarioManager::Update(const common::TrajectoryPoint& ego_point,
                              const Frame& frame) {
-  ACHECK(!frame.reference_line_info().empty());
+  const bool direct_valet_parking = ShouldEnterDirectValetParking(frame);
+  if (!direct_valet_parking) {
+    ACHECK(!frame.reference_line_info().empty());
 
-  // 1. Observe (Build lookup map) - Pass const ref
-  Observe(frame);
+    // 1. Observe (Build lookup map) - Pass const ref
+    Observe(frame);
 
-  // 2. Dispatch (Decision Making) - Pass const ref
-  ScenarioDispatch(frame);
+    // 2. Dispatch (Decision Making) - Pass const ref
+    ScenarioDispatch(frame);
+  } else {
+    first_encountered_overlap_map_.clear();
+    if (current_scenario_->Type() != ScenarioType::VALET_PARKING) {
+      SwitchToScenario(ScenarioType::VALET_PARKING, frame);
+    }
+  }
 
   // 3. Update Context (Environment Info) - Pass const ref
   UpdatePlanningContext(frame, current_scenario_->Type());
 
-  // 4. Process (Execution)
-  // Scenario::Process requires Frame* because it modifies the frame.
-  // This is the ONLY place where we cast away const.
-  current_scenario_->Process(const_cast<Frame*>(&frame));
+  // Scenario execution is owned by the planner. Update only selects the active
+  // scenario and refreshes scenario context so each frame runs the stage once.
 }
 
 void ScenarioManager::Observe(const Frame& frame) {
@@ -419,6 +426,14 @@ void ScenarioManager::UpdatePlanningContext(const Frame& frame,
   UpdateContextYieldSign(type, current_running_type);
 }
 
+bool ScenarioManager::ShouldEnterDirectValetParking(const Frame& frame) const {
+  const auto config_it = config_map_.find(ScenarioType::VALET_PARKING);
+  return config_it != config_map_.end() &&
+         util::ShouldUseDirectValetParkingMode(
+             util::SupportsDirectValetParkingEntry(config_it->second),
+             frame.local_view().routing);
+}
+
 void ScenarioManager::UpdateContextBareIntersection(
     const ScenarioType& type, const ScenarioType& current_running_type) {
   auto* status = injector_->planning_context()
@@ -506,6 +521,11 @@ void ScenarioManager::UpdateContextTrafficLight(
     return;
   }
 
+  if (frame.reference_line_info().empty()) {
+    status->Clear();
+    return;
+  }
+
   std::string current_id =
       first_encountered_overlap_map_[ReferenceLineInfo::SIGNAL].object_id;
 
@@ -550,8 +570,15 @@ void ScenarioManager::UpdateContextPullOver(const Frame& frame,
 
   pull_over->set_plan_pull_over_path(false);
 
+  if (frame.reference_line_info().empty()) {
+    return;
+  }
+
   if (pull_over->has_position()) {
     const auto& routing = frame.local_view().routing;
+    if (!routing) {
+      return;
+    }
     if (routing->routing_request().waypoint_size() >= 2) {
       const auto& reference_line_info = frame.reference_line_info().front();
       const auto& reference_line = reference_line_info.reference_line();

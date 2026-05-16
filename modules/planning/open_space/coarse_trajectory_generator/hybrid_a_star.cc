@@ -20,6 +20,8 @@
 
 #include "modules/planning/open_space/coarse_trajectory_generator/hybrid_a_star.h"
 
+#include <algorithm>
+#include <cmath>
 #include <limits>
 #include <unordered_set>
 
@@ -31,6 +33,121 @@ namespace planning {
 using apollo::common::math::Box2d;
 using apollo::common::math::Vec2d;
 using apollo::cyber::Clock;
+
+namespace {
+
+class HybridExpansionReedShepp : public ReedShepp {
+ public:
+  HybridExpansionReedShepp(const common::VehicleParam& vehicle_param,
+                           const PlannerOpenSpaceConfig& open_space_conf)
+      : ReedShepp(vehicle_param, open_space_conf) {}
+
+  using ReedShepp::GenerateRSPs;
+  using ReedShepp::GenerateLocalConfigurations;
+};
+
+double ComputeReedSheppPathCost(const std::shared_ptr<Node3d>& start_node,
+                                 const ReedSheppPath& path,
+                                 const double traj_forward_penalty,
+                                 const double traj_back_penalty,
+                                 const double traj_gear_switch_penalty,
+                                 const double traj_steer_penalty,
+                                 const double traj_steer_change_penalty) {
+  double start_dire = start_node->GetDirec() ? 1.0 : -1.0;
+  double cost = 0.0;
+  int previous_steer = 0;
+  for (size_t j = 0; j < path.segs_lengths.size(); ++j) {
+    const int current_steer =
+        path.segs_types[j] == 'L' ? 1 : (path.segs_types[j] == 'R' ? -1 : 0);
+    if (path.segs_types[j] == 'S') {
+      if (path.segs_lengths[j] < 0.0) {
+        cost += -path.segs_lengths[j] * traj_back_penalty;
+      } else {
+        cost += path.segs_lengths[j] * traj_forward_penalty;
+      }
+    } else {
+      if (path.segs_lengths[j] < 0.0) {
+        cost +=
+            -path.segs_lengths[j] * traj_steer_penalty * traj_back_penalty;
+      } else {
+        cost += path.segs_lengths[j] * traj_steer_penalty *
+                traj_forward_penalty;
+      }
+    }
+    if (j > 0 && path.segs_lengths[j] * path.segs_lengths[j - 1] < 0.0) {
+      cost += traj_gear_switch_penalty;
+    }
+    if (j == 0 && start_dire * path.segs_lengths[j] < 0.0) {
+      cost += traj_gear_switch_penalty;
+    }
+    if (j > 0 && current_steer != previous_steer) {
+      cost += traj_steer_change_penalty *
+              (current_steer * previous_steer < 0 ? 2.0 : 1.0);
+    }
+    if (std::fabs(path.segs_lengths[j]) < 1.0) {
+      cost += traj_steer_change_penalty * 0.5;
+    }
+    previous_steer = current_steer;
+  }
+  return cost;
+}
+
+bool ComputeTerminalGearForward(const std::vector<double>& x,
+                                 const std::vector<double>& y,
+                                 const std::vector<double>& phi,
+                                 bool* terminal_forward) {
+  if (terminal_forward == nullptr || x.size() < 2U || x.size() != y.size() ||
+      x.size() != phi.size()) {
+    return false;
+  }
+  for (std::size_t index = x.size() - 1U; index > 0U; --index) {
+    const Vec2d delta(x[index] - x[index - 1U], y[index] - y[index - 1U]);
+    if (delta.Length() <= common::math::kMathEpsilon) {
+      continue;
+    }
+    *terminal_forward =
+        std::abs(common::math::AngleDiff(delta.Angle(), phi[index])) < M_PI_2;
+    return true;
+  }
+  return false;
+}
+
+int GearSwitchCount(const std::shared_ptr<Node3d>& node) {
+  if (node == nullptr) {
+    return 0;
+  }
+  std::vector<std::shared_ptr<Node3d>> nodes;
+  for (auto current = node; current != nullptr; current = current->GetPreNode()) {
+    nodes.push_back(current);
+  }
+  std::reverse(nodes.begin(), nodes.end());
+
+  int previous_sign = 0;
+  int switches = 0;
+  for (const auto& current : nodes) {
+    const auto& xs = current->GetXs();
+    const auto& ys = current->GetYs();
+    const auto& phis = current->GetPhis();
+    if (xs.size() != ys.size() || xs.size() != phis.size()) {
+      continue;
+    }
+    for (std::size_t index = 1; index < xs.size(); ++index) {
+      const Vec2d delta(xs[index] - xs[index - 1], ys[index] - ys[index - 1]);
+      if (delta.Length() <= common::math::kMathEpsilon) {
+        continue;
+      }
+      const Vec2d heading(std::cos(phis[index - 1]), std::sin(phis[index - 1]));
+      const int sign = delta.InnerProd(heading) >= 0.0 ? 1 : -1;
+      if (previous_sign != 0 && previous_sign != sign) {
+        ++switches;
+      }
+      previous_sign = sign;
+    }
+  }
+  return switches;
+}
+
+}  // namespace
 
 HybridAStar::HybridAStar(const PlannerOpenSpaceConfig& open_space_conf) {
   planner_open_space_config_.CopyFrom(open_space_conf);
@@ -105,18 +222,54 @@ HybridAStar::HybridAStar(const PlannerOpenSpaceConfig& open_space_conf) {
 bool HybridAStar::AnalyticExpansion(
     std::shared_ptr<Node3d> current_node,
     std::shared_ptr<Node3d>* candidate_final_node) {
-  std::shared_ptr<ReedSheppPath> reeds_shepp_to_check =
-      std::make_shared<ReedSheppPath>();
-  if (!reed_shepp_generator_->ShortestRSP(current_node, end_node_,
-                                          reeds_shepp_to_check)) {
+  HybridExpansionReedShepp expansion_reed_shepp(vehicle_param_,
+                                                planner_open_space_config_);
+  std::vector<ReedSheppPath> reeds_shepp_paths;
+  if (!expansion_reed_shepp.GenerateRSPs(current_node, end_node_,
+                                         &reeds_shepp_paths) ||
+      reeds_shepp_paths.empty()) {
     return false;
   }
-  if (!RSPCheck(reeds_shepp_to_check)) {
-    return false;
+  for (auto& path : reeds_shepp_paths) {
+    if (path.segs_lengths.empty() || path.segs_types.empty() ||
+        path.total_length <= 0.0) {
+      path.cost = std::numeric_limits<double>::infinity();
+      continue;
+    }
+    path.cost = ComputeReedSheppPathCost(
+        current_node, path, traj_forward_penalty_, traj_back_penalty_,
+        traj_gear_switch_penalty_, traj_steer_penalty_,
+        traj_steer_change_penalty_);
   }
-  // load the whole RSP as nodes and add to the close set
-  *candidate_final_node = LoadRSPinCS(reeds_shepp_to_check, current_node);
-  return true;
+  std::sort(reeds_shepp_paths.begin(), reeds_shepp_paths.end(),
+            [](const ReedSheppPath& lhs, const ReedSheppPath& rhs) {
+              return std::tie(lhs.cost, lhs.total_length) <
+                     std::tie(rhs.cost, rhs.total_length);
+            });
+  for (auto reeds_shepp_path : reeds_shepp_paths) {
+    if (!std::isfinite(reeds_shepp_path.cost) ||
+        !expansion_reed_shepp.GenerateLocalConfigurations(
+            current_node, end_node_, &reeds_shepp_path)) {
+      continue;
+    }
+    bool terminal_forward = true;
+    if (has_required_final_gear_ &&
+        (!ComputeTerminalGearForward(reeds_shepp_path.x, reeds_shepp_path.y,
+                                     reeds_shepp_path.phi,
+                                     &terminal_forward) ||
+         terminal_forward != required_final_gear_forward_)) {
+      continue;
+    }
+    auto reeds_shepp_to_check = std::make_shared<ReedSheppPath>(
+        std::move(reeds_shepp_path));
+    if (!RSPCheck(reeds_shepp_to_check)) {
+      continue;
+    }
+    // load the whole RSP as nodes and add to the close set
+    *candidate_final_node = LoadRSPinCS(reeds_shepp_to_check, current_node);
+    return true;
+  }
+  return false;
 }
 
 bool HybridAStar::RSPCheck(
@@ -688,12 +841,15 @@ bool HybridAStar::Plan(
     double sx, double sy, double sphi, double ex, double ey, double ephi,
     const std::vector<double>& XYbounds,
     const std::vector<std::vector<common::math::Vec2d>>& obstacles_vertices_vec,
-    HybridAStartResult* result) {
+    HybridAStartResult* result, const bool has_required_final_gear,
+    const bool required_final_gear_forward) {
   // clear containers
   open_set_.clear();
   close_set_.clear();
   open_pq_ = decltype(open_pq_)();
   final_node_ = nullptr;
+  has_required_final_gear_ = has_required_final_gear;
+  required_final_gear_forward_ = required_final_gear_forward;
   std::vector<std::vector<common::math::LineSegment2d>>
       obstacles_linesegments_vec;
   for (const auto& obstacle_vertices : obstacles_vertices_vec) {
@@ -778,6 +934,9 @@ bool HybridAStar::Plan(
   double node_generator_time = 0.0;
   double validity_check_time = 0.0;
   size_t max_explored_num = 1000;
+  constexpr size_t kMaxExploredNumForShiftQuality = 5000;
+  constexpr int kTargetParkingGearSwitchCount = 2;
+  int best_gear_switch_count = std::numeric_limits<int>::max();
   static constexpr int kMaxNodeNum = 200000;
   std::vector<std::shared_ptr<Node3d>> candidate_final_nodes;
   while (!open_pq_.empty() && open_pq_.size() < kMaxNodeNum &&
@@ -787,10 +946,16 @@ bool HybridAStar::Plan(
     const double rs_start_time = Clock::NowInSeconds();
     std::shared_ptr<Node3d> final_node = nullptr;
     if (AnalyticExpansion(current_node, &final_node)) {
-      if (final_node_ == nullptr ||
-          final_node_->GetTrajCost() > final_node->GetTrajCost()) {
+      const int gear_switch_count = GearSwitchCount(final_node);
+      if (gear_switch_count > kTargetParkingGearSwitchCount) {
+        max_explored_num = kMaxExploredNumForShiftQuality;
+      }
+      if (final_node_ == nullptr || gear_switch_count < best_gear_switch_count ||
+          (gear_switch_count == best_gear_switch_count &&
+           final_node_->GetTrajCost() > final_node->GetTrajCost())) {
         ADEBUG << "get result" << final_node->GetTrajCost();
         final_node_ = final_node;
+        best_gear_switch_count = gear_switch_count;
       }
       available_result_num++;
     }
@@ -830,8 +995,17 @@ bool HybridAStar::Plan(
       }
     }
     open_set_.insert(temp_set.begin(), temp_set.end());
+    if (final_node_ != nullptr &&
+        best_gear_switch_count <= kTargetParkingGearSwitchCount &&
+        !open_pq_.empty() &&
+        open_pq_.top().second >= final_node_->GetTrajCost()) {
+      break;
+    }
   }
   AINFO << "explored node num is " << explored_node_num;
+  if (best_gear_switch_count != std::numeric_limits<int>::max()) {
+    AINFO << "best gear switch count is " << best_gear_switch_count;
+  }
   AINFO << "cal node time is " << heuristic_time << "validity_check_time "
         << validity_check_time << "node_generator_time " << node_generator_time;
   AINFO << "reed shepp time is " << rs_time;

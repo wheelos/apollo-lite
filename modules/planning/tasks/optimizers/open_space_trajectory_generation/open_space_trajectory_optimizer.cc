@@ -57,7 +57,8 @@ Status OpenSpaceTrajectoryOptimizer::Plan(
     const Eigen::MatrixXi& obstacles_edges_num,
     const Eigen::MatrixXd& obstacles_A, const Eigen::MatrixXd& obstacles_b,
     const std::vector<std::vector<Vec2d>>& obstacles_vertices_vec,
-    double* time_latency) {
+    double* time_latency, const bool has_required_final_gear,
+    const bool required_final_gear_forward) {
   if (XYbounds.empty() || end_pose.empty() || obstacles_edges_num.cols() == 0 ||
       obstacles_A.cols() == 0 || obstacles_b.cols() == 0) {
     ADEBUG << "OpenSpaceTrajectoryOptimizer input data not ready";
@@ -103,7 +104,8 @@ Status OpenSpaceTrajectoryOptimizer::Plan(
 
   if (warm_start_->Plan(init_x, init_y, init_phi, end_pose[0], end_pose[1],
                         end_pose[2], XYbounds, obstacles_vertices_vec,
-                        &result)) {
+                        &result, has_required_final_gear,
+                        required_final_gear_forward)) {
     ADEBUG << "State warm start problem solved successfully!";
   } else {
     AERROR << "State warm start problem failed to solve";
@@ -183,11 +185,20 @@ Status OpenSpaceTrajectoryOptimizer::Plan(
                 xWS_vec[i], last_time_u(1, 0), init_v, obstacles_vertices_vec,
                 &state_result_ds_vec[i], &control_result_ds_vec[i],
                 &time_result_ds_vec[i])) {
-          AERROR << "Smoother fail at " << i << "th trajectory";
+          AERROR << "Smoother fail at " << i
+                 << "th trajectory, fallback to distance approach smoother";
           AERROR << i << "th trajectory size is " << xWS_vec[i].cols();
-          return Status(
-              ErrorCode::PLANNING_ERROR,
-              "iterative anchoring smoothing problem failed to solve");
+          if (!GenerateDistanceApproachTraj(
+                  xWS_vec[i], uWS_vec[i], XYbounds, obstacles_edges_num,
+                  obstacles_A, obstacles_b, obstacles_vertices_vec, last_time_u,
+                  init_v, &state_result_ds_vec[i], &control_result_ds_vec[i],
+                  &time_result_ds_vec[i], &l_warm_up_vec[i], &n_warm_up_vec[i],
+                  &dual_l_result_ds_vec[i], &dual_n_result_ds_vec[i])) {
+            return Status(
+                ErrorCode::PLANNING_ERROR,
+                "iterative anchoring and distance approach smoothing "
+                "problems failed to solve");
+          }
         }
       } else {
         const double start_system_timestamp =

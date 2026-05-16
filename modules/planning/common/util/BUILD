@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -16,10 +16,23 @@ cc_library(
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "//modules/common_msgs/routing_msgs:routing_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:reference_line_info",
         "//modules/common_msgs/planning_msgs:planning_cc_proto",
         "@boost.filesystem",
+    ],
+)
+
+cc_test(
+    name = "util_test",
+    size = "small",
+    srcs = ["util_test.cc"],
+    copts = PLANNING_COPTS,
+    deps = [
+        ":util_lib",
+        "//modules/common_msgs/routing_msgs:routing_cc_proto",
+        "//modules/planning/testing:gtest_exit_main",
     ],
 )
 

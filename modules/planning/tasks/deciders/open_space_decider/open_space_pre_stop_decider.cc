@@ -19,6 +19,7 @@
  **/
 
 #include "modules/planning/tasks/deciders/open_space_decider/open_space_pre_stop_decider.h"
+#include "modules/planning/common/util/common.h"
 
 #include <memory>
 #include <string>
@@ -31,6 +32,7 @@
 
 namespace apollo {
 namespace planning {
+
 
 using apollo::common::ErrorCode;
 using apollo::common::Status;
@@ -97,55 +99,45 @@ bool OpenSpacePreStopDecider::CheckPullOverPreStop(
 bool OpenSpacePreStopDecider::CheckParkingSpotPreStop(
     Frame* const frame, ReferenceLineInfo* const reference_line_info,
     double* target_s) {
-  const auto& routing_request = frame->local_view().routing->routing_request();
-  auto corner_point = routing_request.parking_info().corner_point();
   const auto& target_parking_spot_id =
       frame->open_space_info().target_parking_spot_id();
-  const auto& nearby_path = reference_line_info->reference_line().map_path();
   if (target_parking_spot_id.empty()) {
     AERROR << "no target parking spot id found when setting pre stop fence";
     return false;
   }
 
-  double target_area_center_s = 0.0;
-  bool target_area_found = false;
-  const auto& parking_space_overlaps = nearby_path.parking_space_overlaps();
-  ParkingSpaceInfoConstPtr target_parking_spot_ptr;
   const hdmap::HDMap* hdmap = hdmap::HDMapUtil::BaseMapPtr();
-  for (const auto& parking_overlap : parking_space_overlaps) {
-    if (parking_overlap.object_id == target_parking_spot_id) {
-      // TODO(Jinyun) parking overlap s are wrong on map, not usable
-      // target_area_center_s =
-      //     (parking_overlap.start_s + parking_overlap.end_s) / 2.0;
-      hdmap::Id id;
-      id.set_id(parking_overlap.object_id);
-      target_parking_spot_ptr = hdmap->GetParkingSpaceById(id);
-      Vec2d left_bottom_point =
-          target_parking_spot_ptr->polygon().points().at(0);
-      Vec2d right_bottom_point =
-          target_parking_spot_ptr->polygon().points().at(1);
-      left_bottom_point.set_x(corner_point.point().at(0).x());
-      left_bottom_point.set_y(corner_point.point().at(0).y());
-      right_bottom_point.set_x(corner_point.point().at(1).x());
-      right_bottom_point.set_y(corner_point.point().at(1).y());
-      double left_bottom_point_s = 0.0;
-      double left_bottom_point_l = 0.0;
-      double right_bottom_point_s = 0.0;
-      double right_bottom_point_l = 0.0;
-      nearby_path.GetNearestPoint(left_bottom_point, &left_bottom_point_s,
-                                  &left_bottom_point_l);
-      nearby_path.GetNearestPoint(right_bottom_point, &right_bottom_point_s,
-                                  &right_bottom_point_l);
-      target_area_center_s = (left_bottom_point_s + right_bottom_point_s) / 2.0;
-      target_area_found = true;
-    }
-  }
-
-  if (!target_area_found) {
-    AERROR << "no target parking spot found on reference line";
+  CHECK_NOTNULL(hdmap);
+  hdmap::Id id;
+  id.set_id(target_parking_spot_id);
+  ParkingSpaceInfoConstPtr target_parking_spot_ptr =
+      hdmap->GetParkingSpaceById(id);
+  if (target_parking_spot_ptr == nullptr) {
+    AERROR << "no target parking spot found in HDMap";
     return false;
   }
-  *target_s = target_area_center_s;
+  if (target_parking_spot_ptr->polygon().points().empty()) {
+    AERROR << "target parking spot polygon is empty";
+    return false;
+  }
+
+  Vec2d parking_spot_center;
+  if (!apollo::planning::util::GetParkingSpotCenterFromRouting(*frame, &parking_spot_center)) {
+    parking_spot_center = apollo::planning::util::GetParkingSpotCenterFromMap(target_parking_spot_ptr);
+  }
+
+  common::PointENU center_point;
+  center_point.set_x(parking_spot_center.x());
+  center_point.set_y(parking_spot_center.y());
+  common::SLPoint center_sl;
+  if (!reference_line_info->reference_line().XYToSL(center_point, &center_sl)) {
+    AERROR << "Failed to project parking spot center onto reference line "
+           << "when setting pre-stop fence. Parking spot center: ("
+           << parking_spot_center.x() << ", " << parking_spot_center.y()
+           << ")";
+    return false;
+  }
+  *target_s = center_sl.s();
   return true;
 }
 

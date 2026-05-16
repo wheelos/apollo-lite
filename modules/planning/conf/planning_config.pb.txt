@@ -329,10 +329,25 @@ default_task_config: {
 default_task_config: {
   task_type: OPEN_SPACE_ROI_DECIDER
   open_space_roi_decider_config {
-    roi_longitudinal_range_start: 15
-    roi_longitudinal_range_end: 15
+    roi_longitudinal_range_start: 25
+    roi_longitudinal_range_end: 25
     parking_start_range: 20.0
-    parking_inwards: false
+    parking_approach_preference: PARKING_APPROACH_PREFER_TAIL_IN
+    candidate_path_step_size: 0.25
+    candidate_warm_start_config {
+      xy_grid_resolution: 0.3
+      phi_grid_resolution: 0.1
+      next_node_num: 10
+      step_size: 0.25
+      traj_forward_penalty: 1.0
+      traj_back_penalty: 1.0
+      traj_gear_switch_penalty: 10.0
+      traj_steer_penalty: 0.0
+      traj_steer_change_penalty: 0.0
+      grid_a_star_xy_resolution: 0.25
+      node_radius: 0.5
+      traj_kappa_contraint_ratio: 0.7
+    }
     enable_perception_obstacles: true
     parking_depth_buffer: 0.2
     roi_line_segment_min_angle: 0.15

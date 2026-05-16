@@ -24,6 +24,7 @@
 #include <string>
 
 #include "modules/common_msgs/map_msgs/map_id.pb.h"
+#include "modules/common_msgs/routing_msgs/routing.pb.h"
 
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
@@ -56,16 +57,21 @@ class ValetParkingScenario : public Scenario {
 
   ScenarioGrade Grade() const override { return ScenarioGrade::MISSION; }
 
+  static bool SupportsDirectParkingEntry(const ScenarioConfig& config);
+  static bool HasParkingRoutingCommand(
+      const routing::RoutingResponse& routing_response);
+  bool IsTransferable(const Frame& frame, double parking_start_range);
+
  private:
   static void RegisterStages();
   bool GetScenarioConfig();
-  static bool SearchTargetParkingSpotOnPath(
-      const hdmap::Path& nearby_path, const std::string& target_parking_id,
-      hdmap::PathOverlap* parking_space_overlap);
+  static bool GetTargetParkingSpotById(
+      const std::string& target_parking_id,
+      hdmap::ParkingSpaceInfoConstPtr* target_parking_spot);
   static bool CheckDistanceToParkingSpot(
       const Frame& frame, const common::VehicleState& vehicle_state,
-      const hdmap::Path& nearby_path, const double parking_start_range,
-      const hdmap::PathOverlap& parking_space_overlap);
+      const double parking_start_range,
+      const hdmap::ParkingSpaceInfoConstPtr& target_parking_spot);
 
  private:
   bool init_ = false;

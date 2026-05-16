@@ -21,6 +21,7 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 
 namespace apollo {
@@ -44,6 +45,38 @@ TEST_F(StageParkingTest, Init) {
   StageParking stage_parking(config_, injector_);
   EXPECT_EQ(stage_parking.Name(),
             StageType_Name(StageType::VALET_PARKING_PARKING));
+}
+
+TEST_F(StageParkingTest, FinishScenarioWhenDestinationReached) {
+  StageParking stage_parking(config_, injector_);
+  Frame frame(0, LocalView{}, common::TrajectoryPoint{},
+              common::VehicleState{}, nullptr);
+  frame.mutable_open_space_info()->set_destination_reached(true);
+
+  Stage* stage = &stage_parking;
+  const auto status = stage->Process(common::TrajectoryPoint{}, &frame);
+
+  EXPECT_EQ(status, Stage::FINISHED);
+  EXPECT_EQ(stage_parking.NextStage(), StageType::NO_STAGE);
+  EXPECT_TRUE(frame.open_space_info().is_on_open_space_trajectory());
+}
+
+TEST_F(StageParkingTest, PreserveCompletionAfterNoStageTransition) {
+  StageParking stage_parking(config_, injector_);
+  Frame first_frame(0, LocalView{}, common::TrajectoryPoint{},
+                    common::VehicleState{}, nullptr);
+  first_frame.mutable_open_space_info()->set_destination_reached(true);
+
+  Stage* stage = &stage_parking;
+  EXPECT_EQ(stage->Process(common::TrajectoryPoint{}, &first_frame),
+            Stage::FINISHED);
+
+  Frame next_frame(1, LocalView{}, common::TrajectoryPoint{},
+                   common::VehicleState{}, nullptr);
+  EXPECT_EQ(stage->Process(common::TrajectoryPoint{}, &next_frame),
+            Stage::FINISHED);
+  EXPECT_TRUE(next_frame.open_space_info().destination_reached());
+  EXPECT_TRUE(next_frame.open_space_info().is_on_open_space_trajectory());
 }
 
 }  // namespace valet_parking

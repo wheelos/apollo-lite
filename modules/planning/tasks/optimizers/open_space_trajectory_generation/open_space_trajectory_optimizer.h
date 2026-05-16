@@ -57,7 +57,8 @@ class OpenSpaceTrajectoryOptimizer {
       const Eigen::MatrixXd& obstacles_A, const Eigen::MatrixXd& obstacles_b,
       const std::vector<std::vector<common::math::Vec2d>>&
           obstacles_vertices_vec,
-      double* time_latency);
+      double* time_latency, bool has_required_final_gear = false,
+      bool required_final_gear_forward = true);
 
   void GetStitchingTrajectory(
       std::vector<common::TrajectoryPoint>* stitching_trajectory) {

@@ -29,10 +29,27 @@ Stage::StageStatus StageParking::Process(
   // Open space planning doesn't use planning_init_point from upstream because
   // of different stitching strategy
   frame->mutable_open_space_info()->set_is_on_open_space_trajectory(true);
+  if (NextStage() == StageType::NO_STAGE) {
+    frame->mutable_open_space_info()->set_destination_reached(true);
+    AINFO << "Valet parking destination already reached.";
+    return StageStatus::FINISHED;
+  }
+  if (frame->open_space_info().destination_reached()) {
+    AINFO << "Valet parking destination reached before task execution.";
+    return FinishScenario();
+  }
   bool plan_ok = ExecuteTaskOnOpenSpace(frame);
   if (!plan_ok) {
+    if (frame->open_space_info().destination_reached()) {
+      AINFO << "Valet parking destination reached during task execution.";
+      return FinishScenario();
+    }
     AERROR << "StageParking planning error";
     return StageStatus::ERROR;
+  }
+  if (frame->open_space_info().destination_reached()) {
+    AINFO << "Valet parking destination reached.";
+    return FinishScenario();
   }
   return StageStatus::RUNNING;
 }

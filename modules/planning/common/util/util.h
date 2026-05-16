@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,7 @@
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/reference_line_info.h"
 #include "modules/planning/common/util/print_debug_info.h"
+#include "modules/planning/proto/planning_config.pb.h"
 
 namespace apollo {
 namespace planning {
@@ -37,6 +39,21 @@ bool IsVehicleStateValid(const apollo::common::VehicleState& vehicle_state);
 
 bool IsDifferentRouting(const apollo::routing::RoutingResponse& first,
                         const apollo::routing::RoutingResponse& second);
+
+bool HasSameRoutingRequest(const apollo::routing::RoutingResponse& first,
+                           const apollo::routing::RoutingResponse& second);
+
+bool HasParkingRoutingCommand(
+    const apollo::routing::RoutingResponse& routing_response);
+
+bool HasParkingSpaceIdRoutingCommand(
+    const apollo::routing::RoutingResponse& routing_response);
+
+bool SupportsDirectValetParkingEntry(const ScenarioConfig& config);
+
+bool ShouldUseDirectValetParkingMode(
+    bool supports_direct_valet_parking_entry,
+    const std::shared_ptr<apollo::routing::RoutingResponse>& routing_response);
 
 double GetADCStopDeceleration(
     apollo::common::VehicleStateProvider* vehicle_state,

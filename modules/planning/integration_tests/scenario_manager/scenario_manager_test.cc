@@ -55,6 +55,25 @@ class ScenarioManagerTest : public ::testing::TestWithParam<ScenarioCase> {
   ScenarioBuilder builder_;
 };
 
+class ScenarioManagerDirectParkingTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    injector_ = std::make_shared<DependencyInjector>();
+
+    config_ = PlanningConfig();
+    ASSERT_TRUE(cyber::common::GetProtoFromFile(
+        ResolveTestDataPath("modules/planning/conf/planning_config.pb.txt"),
+        &config_));
+
+    scenario_manager_ = std::make_unique<ScenarioManager>(injector_);
+    ASSERT_TRUE(scenario_manager_->Init(config_));
+  }
+
+  std::unique_ptr<ScenarioManager> scenario_manager_;
+  std::shared_ptr<DependencyInjector> injector_;
+  PlanningConfig config_;
+};
+
 TEST_P(ScenarioManagerTest, VerifyScenarioTransitions) {
   const auto& test_case = GetParam();
   SCOPED_TRACE("Testing Case ID: " + test_case.id + " - " +
@@ -87,6 +106,46 @@ TEST_P(ScenarioManagerTest, VerifyScenarioTransitions) {
   ASSERT_NE(current_scen, nullptr);
   EXPECT_EQ(ScenarioType_Name(current_scen->Type()),
             test_case.expected.scenario);
+}
+
+TEST_F(ScenarioManagerDirectParkingTest,
+       DetectsParkingRouteWithoutReferenceLine) {
+  LocalView local_view;
+  local_view.prediction_obstacles =
+      std::make_shared<prediction::PredictionObstacles>();
+  local_view.routing = std::make_shared<routing::RoutingResponse>();
+  auto* parking_info =
+      local_view.routing->mutable_routing_request()->mutable_parking_info();
+  parking_info->set_parking_space_id("test_parking_spot");
+
+  common::TrajectoryPoint start_point;
+  common::VehicleState vehicle_state;
+  auto frame = std::make_unique<Frame>(1, local_view, start_point,
+                                       vehicle_state);
+
+  EXPECT_TRUE(frame->reference_line_info().empty());
+  EXPECT_TRUE(scenario_manager_->ShouldEnterDirectValetParking(*frame));
+}
+
+TEST_F(ScenarioManagerDirectParkingTest,
+       RejectsCornerOnlyDirectParkingWithoutReferenceLine) {
+  LocalView local_view;
+  local_view.prediction_obstacles =
+      std::make_shared<prediction::PredictionObstacles>();
+  local_view.routing = std::make_shared<routing::RoutingResponse>();
+  auto* corner_point = local_view.routing->mutable_routing_request()
+                           ->mutable_parking_info()
+                           ->mutable_corner_point();
+  corner_point->add_point()->set_x(0.0);
+  corner_point->add_point()->set_x(1.0);
+
+  common::TrajectoryPoint start_point;
+  common::VehicleState vehicle_state;
+  auto frame = std::make_unique<Frame>(1, local_view, start_point,
+                                       vehicle_state);
+
+  EXPECT_TRUE(frame->reference_line_info().empty());
+  EXPECT_FALSE(scenario_manager_->ShouldEnterDirectValetParking(*frame));
 }
 
 // Ensure you use the correct Loader method name

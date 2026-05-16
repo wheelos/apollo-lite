@@ -48,7 +48,6 @@
 #include "modules/common_msgs/planning_msgs/planning_internal.pb.h"
 #include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
 #include "modules/common_msgs/storytelling_msgs/story.pb.h"
-#include "modules/common_msgs/task_manager_msgs/task_manager.pb.h"
 #include "modules/dreamview/proto/simulation_world.pb.h"
 
 #include "cyber/common/log.h"
@@ -149,8 +148,6 @@ class SimulationWorldService {
       const std::shared_ptr<apollo::relative_map::NavigationInfo> &);
   void PublishRoutingRequest(
       const std::shared_ptr<apollo::routing::RoutingRequest> &);
-
-  void PublishTask(const std::shared_ptr<apollo::task_manager::Task> &);
 
   void PublishMissionRequest(
       const std::shared_ptr<apollo::mission::MissionRequest> &);
@@ -411,7 +408,6 @@ class SimulationWorldService {
       storytelling_reader_;
   std::shared_ptr<cyber::Reader<apollo::audio::AudioDetection>>
       audio_detection_reader_;
-  std::shared_ptr<cyber::Reader<apollo::task_manager::Task>> task_reader_;
 
   // Writers.
   std::shared_ptr<cyber::Writer<apollo::relative_map::NavigationInfo>>
@@ -420,7 +416,6 @@ class SimulationWorldService {
       routing_request_writer_;
   std::shared_ptr<cyber::Writer<apollo::routing::RoutingResponse>>
       routing_response_writer_;
-  std::shared_ptr<cyber::Writer<apollo::task_manager::Task>> task_writer_;
   std::shared_ptr<cyber::Writer<apollo::mission::MissionRequest>>
       mission_request_writer_;
 

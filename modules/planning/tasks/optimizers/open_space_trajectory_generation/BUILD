@@ -18,6 +18,7 @@ cc_library(
     ],
     deps = [
         ":open_space_trajectory_optimizer",
+        "//modules/common/math",
         "//modules/common/status",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:planning_gflags",
@@ -25,6 +26,7 @@ cc_library(
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/tasks:task",
         "//modules/planning/tasks/optimizers:trajectory_optimizer",
+        "//modules/map/hdmap:hdmap_util",
     ],
 )
 
@@ -61,7 +63,7 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":open_space_trajectory_provider",
-        "@com_google_googletest//:gtest_main",
+        "//modules/planning/testing:gtest_exit_main",
     ],
 )
 
