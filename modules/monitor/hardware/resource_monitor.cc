@@ -47,9 +47,11 @@ namespace {
 bool GetPIDByCmdLine(const std::string& process_dag_path, int* pid) {
   const std::string system_proc_path = "/proc";
   const std::string proc_cmdline_path = "/cmdline";
-  const auto dirs = cyber::common::ListSubPaths(system_proc_path);
+  const auto dirs = cyber::common::ListSubPaths(
+      system_proc_path, cyber::common::FileTypeFilter::Directories);
   std::string cmd_line;
-  for (const auto& dir_name : dirs) {
+  for (const auto& dir_path : dirs) {
+    const std::string dir_name = dir_path.filename().string();
     if (!std::all_of(dir_name.begin(), dir_name.end(), isdigit)) {
       continue;
     }

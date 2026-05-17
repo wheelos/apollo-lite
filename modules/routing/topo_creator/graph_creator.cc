@@ -19,7 +19,9 @@
 #include <vector>
 
 #include "absl/strings/match.h"
+
 #include "cyber/common/file.h"
+#include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/map/hdmap/adapter/opendrive_adapter.h"

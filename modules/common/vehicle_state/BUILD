@@ -48,8 +48,8 @@ cc_test(
         "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common_msgs/localization_msgs:localization_cc_proto",
         "//modules/common/configs:config_gflags",
+        "//modules/planning/common:gtest_exit_main",
         "@eigen",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

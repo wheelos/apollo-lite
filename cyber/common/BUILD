@@ -24,7 +24,6 @@ cc_library(
     deps = [
         "//cyber/common:log",
         "@com_google_protobuf//:protobuf",
-        "@com_github_nlohmann_json//:json",
     ],
 )
 
@@ -35,7 +34,7 @@ cc_test(
     deps = [
         "//cyber",
         "//cyber/proto:unit_test_cc_proto",
-        "@com_google_googletest//:gtest_main",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 

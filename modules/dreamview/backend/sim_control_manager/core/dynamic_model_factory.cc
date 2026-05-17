@@ -15,6 +15,8 @@
  *****************************************************************************/
 #include "modules/dreamview/backend/sim_control_manager/core/dynamic_model_factory.h"
 
+#include <dirent.h>
+
 #include "modules/dreamview/backend/sim_control_manager/proto/dynamic_model_conf.pb.h"
 
 #include "cyber/class_loader/shared_library/exceptions.h"
@@ -228,7 +230,7 @@ bool DynamicModelFactory::UnregisterDynamicModel(
   if (count_iter->second == 1) {
     std::string lib_path =
         home_path_ + FLAGS_dynamic_model_library_path + library_name;
-    cyber::common::DeleteFile(lib_path);
+    cyber::common::Remove(lib_path);
     s_dm_lib_count_.erase(library_name);
   } else {
     s_dm_lib_count_[library_name]--;

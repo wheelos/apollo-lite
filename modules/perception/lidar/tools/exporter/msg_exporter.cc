@@ -25,9 +25,10 @@
 #include "absl/strings/str_split.h"
 #include "pcl/io/pcd_io.h"
 
+#include "modules/common_msgs/transform_msgs/transform.pb.h"
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
-#include "modules/common_msgs/transform_msgs/transform.pb.h"
 
 namespace apollo {
 namespace perception {
@@ -43,9 +44,9 @@ MsgExporter::MsgExporter(std::shared_ptr<apollo::cyber::Node> node,
       apollo::perception::onboard::FLAGS_obs_vehicle2world_tf2_child_frame_id;
   auto create_folder = [](const std::string& folder) {
     if (cyber::common::DirectoryExists(folder)) {
-      cyber::common::DeleteFile(folder);
+      cyber::common::Remove(folder);
     }
-    cyber::common::CreateDir(folder);
+    cyber::common::CreateDirectories(folder);
   };
   // bind channels
   for (std::size_t i = 0; i < _channels.size(); ++i) {

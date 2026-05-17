@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
   }
 
   if (!apollo::cyber::common::DirectoryExists(output_dir)) {
-    if (!apollo::cyber::common::CreateDir(output_dir)) {
+    if (!apollo::cyber::common::CreateDirectories(output_dir)) {
       std::cerr << "Failed to create output dir: " << output_dir << "\n";
       return 1;
     }

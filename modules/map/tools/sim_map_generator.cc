@@ -42,7 +42,10 @@ DEFINE_int32(steep_turn_downsample_distance, 1,
 using apollo::common::PointENU;
 using apollo::common::util::DownsampleByAngle;
 using apollo::common::util::DownsampleByDistance;
+using apollo::cyber::common::GetAbsolutePath;
 using apollo::cyber::common::GetProtoFromFile;
+using apollo::cyber::common::SetProtoToASCIIFile;
+using apollo::cyber::common::SetProtoToBinaryFile;
 using apollo::hdmap::Curve;
 using apollo::hdmap::Map;
 using apollo::hdmap::adapter::OpendriveAdapter;
@@ -93,15 +96,10 @@ static void DownsampleMap(Map* map_pb) {
 }
 
 static void OutputMap(const Map& map_pb) {
-  std::ofstream map_txt_file(FLAGS_output_dir + "/sim_map.txt");
-  map_txt_file << map_pb.DebugString();
-  map_txt_file.close();
-
-  std::ofstream map_bin_file(FLAGS_output_dir + "/sim_map.bin");
-  std::string map_str;
-  map_pb.SerializeToString(&map_str);
-  map_bin_file << map_str;
-  map_bin_file.close();
+  SetProtoToASCIIFile(map_pb,
+                      GetAbsolutePath(FLAGS_output_dir, "/sim_map.txt"));
+  SetProtoToBinaryFile(map_pb,
+                       GetAbsolutePath(FLAGS_output_dir, "/sim_map.bin"));
 }
 
 int main(int32_t argc, char** argv) {

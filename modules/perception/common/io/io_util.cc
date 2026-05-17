@@ -16,6 +16,7 @@
 #include "modules/perception/common/io/io_util.h"
 
 #include <boost/filesystem.hpp>
+#include <fstream>
 
 #include "absl/strings/match.h"
 #include "yaml-cpp/yaml.h"

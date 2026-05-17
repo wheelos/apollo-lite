@@ -573,9 +573,10 @@ bool NDTLocalization::LoadZoneIdFromFolder(const std::string& folder_path,
     return false;
   }
 
-  auto folder_list = cyber::common::ListSubPaths(map_zone_id_folder);
+  auto folder_list = cyber::common::ListSubPaths(
+      map_zone_id_folder, cyber::common::FileTypeFilter::Directories);
   for (auto itr = folder_list.begin(); itr != folder_list.end(); ++itr) {
-    *zone_id = std::stoi(*itr);
+    *zone_id = std::stoi(itr->filename().string());
     return true;
   }
   return false;

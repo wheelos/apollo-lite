@@ -16,10 +16,15 @@
 
 #include "modules/common/vehicle_model/vehicle_model.h"
 
+#include <cstdlib>
+
 #include "gtest/gtest.h"
 
-#include "cyber/common/file.h"
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
+
+#include "cyber/common/file.h"
+#include "cyber/common/log.h"
+#include "modules/common/configs/config_gflags.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 
 namespace apollo {
@@ -28,22 +33,43 @@ namespace common {
 using apollo::canbus::Chassis;
 using apollo::localization::LocalizationEstimate;
 
+namespace {
+
+std::string RunfilePath(const std::string& relative_path) {
+  const char* test_srcdir = std::getenv("TEST_SRCDIR");
+  const char* test_workspace = std::getenv("TEST_WORKSPACE");
+  if (test_srcdir != nullptr && test_workspace != nullptr) {
+    return std::string(test_srcdir) + "/" + test_workspace + "/" +
+           relative_path;
+  }
+  return relative_path;
+}
+
+}  // namespace
+
 class VehicleModelTest : public ::testing::Test {
  public:
   virtual void SetUp() {
+    FLAGS_vehicle_model_config_filename =
+        RunfilePath(
+            "modules/common/vehicle_model/conf/vehicle_model_config.pb.txt");
     std::string localization_pre_file =
-        "modules/common/vehicle_model/testdata/localization_pre.pb.txt";
+        RunfilePath("modules/common/vehicle_model/testdata/"
+                    "localization_pre.pb.txt");
     ACHECK(cyber::common::GetProtoFromFile(localization_pre_file,
                                            &localization_pre_));
     std::string localization_post_file =
-        "modules/common/vehicle_model/testdata/localization_post.pb.txt";
+        RunfilePath("modules/common/vehicle_model/testdata/"
+                    "localization_post.pb.txt");
     ACHECK(cyber::common::GetProtoFromFile(localization_post_file,
                                            &localization_post_));
     const std::string chassis_pre_file =
-        "modules/common/vehicle_model/testdata/chassis_pre.pb.txt";
+        RunfilePath("modules/common/vehicle_model/testdata/"
+                    "chassis_pre.pb.txt");
     ACHECK(cyber::common::GetProtoFromFile(chassis_pre_file, &chassis_pre_));
     const std::string chassis_post_file =
-        "modules/common/vehicle_model/testdata/chassis_post.pb.txt";
+        RunfilePath("modules/common/vehicle_model/testdata/"
+                    "chassis_post.pb.txt");
     ACHECK(cyber::common::GetProtoFromFile(chassis_post_file, &chassis_post_));
   }
 

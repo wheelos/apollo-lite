@@ -39,8 +39,8 @@ namespace {
 using apollo::common::Header;
 using apollo::monitor::MonitorManager;
 using cyber::CreateNode;
+using cyber::common::ClearDirectory;
 using cyber::common::EnsureDirectory;
-using cyber::common::RemoveAllFiles;
 
 }  // namespace
 
@@ -111,7 +111,7 @@ bool RoadlogRuntime::PrepareRuntimeDirectories() const {
            << layout_.root_dir;
     return false;
   }
-  if (!RemoveAllFiles(layout_.ring_dir) || !RemoveAllFiles(layout_.meta_dir)) {
+  if (!ClearDirectory(layout_.ring_dir) || !ClearDirectory(layout_.meta_dir)) {
     AERROR << "unable to clean roadlog runtime directories under "
            << layout_.root_dir;
     return false;
