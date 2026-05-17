@@ -64,7 +64,8 @@ class HybridAStar {
             double ephi, const std::vector<double>& XYbounds,
             const std::vector<std::vector<common::math::Vec2d>>&
                 obstacles_vertices_vec,
-            HybridAStartResult* result);
+            HybridAStartResult* result, bool has_required_final_gear = false,
+            bool required_final_gear_forward = true);
   bool TrajectoryPartition(const HybridAStartResult& result,
                            std::vector<HybridAStartResult>* partitioned_result);
 
@@ -121,6 +122,8 @@ class HybridAStar {
   double max_reverse_acc_ = 0.0;
   double max_acc_jerk_ = 0.0;
   double arc_length_ = 0.0;
+  bool has_required_final_gear_ = false;
+  bool required_final_gear_forward_ = true;
   std::vector<double> XYbounds_;
   std::shared_ptr<Node3d> start_node_;
   std::shared_ptr<Node3d> end_node_;

@@ -43,7 +43,13 @@ Status PublicRoadPlanner::Plan(const TrajectoryPoint& planning_start_point,
                               ->mutable_scenario();
     scenario_debug->set_scenario_type(scenario_->Type());
     scenario_debug->set_stage_type(scenario_->GetStageType());
-    scenario_debug->set_msg(scenario_->GetMsg());
+    if (scenario_->Type() == ScenarioType::VALET_PARKING &&
+        (frame->open_space_info().destination_reached() ||
+         result == scenario::Scenario::STATUS_DONE)) {
+      scenario_debug->set_msg("parking_completed");
+    } else {
+      scenario_debug->set_msg(scenario_->GetMsg());
+    }
   }
 
   if (result == scenario::Scenario::STATUS_DONE) {

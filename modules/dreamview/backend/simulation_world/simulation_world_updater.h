@@ -31,7 +31,6 @@
 #include "absl/strings/str_cat.h"
 
 #include "modules/common_msgs/routing_msgs/poi.pb.h"
-#include "modules/common_msgs/task_manager_msgs/task_manager.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/cyber.h"
@@ -115,19 +114,8 @@ class SimulationWorldUpdater {
       const nlohmann::json &start, const nlohmann::json &end);
 
   /**
-   * @brief The function to construct a parking routing task from the given
-   * json,
-   * @param json that contains start, end, waypoint, parking info, lane width,
-   * @param parking_routing_task
-   * @return True if parking routing task is constructed successfully
-   */
-  bool ConstructParkingRoutingTask(
-      const nlohmann::json &json,
-      apollo::task_manager::ParkingRoutingTask *parking_routing_task);
-
-  /**
-   * @brief The function to construct a lane waypoint from the given json,
-   * @param json that contains x, y, heading
+    * @brief The function to construct a lane waypoint from the given json,
+    * @param json that contains x, y, heading
    * @param lanewaypoint, description
    * @return True if lane waypoint is constructed successfully
    */

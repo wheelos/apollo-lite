@@ -79,12 +79,7 @@ OpenSpaceTrajectoryPartition::OpenSpaceTrajectoryPartition(
 void OpenSpaceTrajectoryPartition::Restart() {
   auto* current_gear_status =
       frame_->mutable_open_space_info()->mutable_gear_switch_states();
-  current_gear_status->gear_switching_flag = false;
-  current_gear_status->gear_shift_period_finished = true;
-  current_gear_status->gear_shift_period_started = true;
-  current_gear_status->gear_shift_period_time = 0.0;
-  current_gear_status->gear_shift_start_time = 0.0;
-  current_gear_status->gear_shift_position = canbus::Chassis::GEAR_DRIVE;
+  InitializeGearSwitchState(current_gear_status);
 }
 
 Status OpenSpaceTrajectoryPartition::Process() {
@@ -571,6 +566,8 @@ bool OpenSpaceTrajectoryPartition::CheckReachTrajectoryEnd(
       if (trajectories_index + 1 >= trajectories_size) {
         *current_trajectory_index = trajectories_size - 1;
         *current_trajectory_point_index = trajectory_size - 1;
+        ADEBUG << "Reach the end of the final trajectory";
+        return false;
       } else {
         *current_trajectory_index = trajectories_index + 1;
         *current_trajectory_point_index = 0;
@@ -674,11 +671,14 @@ bool OpenSpaceTrajectoryPartition::InsertGearShiftTrajectory(
     const std::vector<TrajGearPair>& partitioned_trajectories,
     TrajGearPair* gear_switch_idle_time_trajectory) {
   const auto* last_frame = injector_->frame_history()->Latest();
-  const auto& last_gear_status =
-      last_frame->open_space_info().gear_switch_states();
   auto* current_gear_status =
       frame_->mutable_open_space_info()->mutable_gear_switch_states();
-  *(current_gear_status) = last_gear_status;
+  if (last_frame == nullptr) {
+    InitializeGearSwitchState(current_gear_status);
+  } else {
+    *(current_gear_status) =
+        last_frame->open_space_info().gear_switch_states();
+  }
 
   if (flag_change_to_next || !current_gear_status->gear_shift_period_finished) {
     current_gear_status->gear_shift_period_finished = false;
@@ -704,6 +704,17 @@ bool OpenSpaceTrajectoryPartition::InsertGearShiftTrajectory(
   }
 
   return true;
+}
+
+void OpenSpaceTrajectoryPartition::InitializeGearSwitchState(
+    GearSwitchStates* gear_switch_state) {
+  CHECK_NOTNULL(gear_switch_state);
+  gear_switch_state->gear_switching_flag = false;
+  gear_switch_state->gear_shift_period_finished = true;
+  gear_switch_state->gear_shift_period_started = true;
+  gear_switch_state->gear_shift_period_time = 0.0;
+  gear_switch_state->gear_shift_start_time = 0.0;
+  gear_switch_state->gear_shift_position = canbus::Chassis::GEAR_DRIVE;
 }
 
 void OpenSpaceTrajectoryPartition::GenerateGearShiftTrajectory(

@@ -88,6 +88,8 @@ class OpenSpaceTrajectoryPartition : public TrajectoryOptimizer {
       const std::vector<TrajGearPair>& partitioned_trajectories,
       TrajGearPair* gear_switch_idle_time_trajectory);
 
+  static void InitializeGearSwitchState(GearSwitchStates* gear_switch_state);
+
   void GenerateGearShiftTrajectory(
       const canbus::Chassis::GearPosition& gear_position,
       TrajGearPair* gear_switch_idle_time_trajectory);

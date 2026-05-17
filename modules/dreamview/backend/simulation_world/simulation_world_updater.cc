@@ -16,6 +16,8 @@
 
 #include "modules/dreamview/backend/simulation_world/simulation_world_updater.h"
 
+#include <cmath>
+
 #include "google/protobuf/util/json_util.h"
 
 #include "modules/common_msgs/mission_msgs/mission_request.pb.h"
@@ -40,15 +42,126 @@ using apollo::hdmap::EndWayPointFile;
 using apollo::hdmap::ParkGoRoutingFile;
 using apollo::relative_map::NavigationInfo;
 using apollo::routing::LaneWaypoint;
+using apollo::routing::ParkingSpaceType;
 using apollo::routing::RoutingRequest;
-using apollo::task_manager::CycleRoutingTask;
-using apollo::task_manager::ParkGoRoutingTask;
-using apollo::task_manager::ParkingRoutingTask;
-using apollo::task_manager::Task;
 
 using Json = nlohmann::json;
 using google::protobuf::util::JsonStringToMessage;
 using google::protobuf::util::MessageToJsonString;
+
+namespace {
+
+bool NeedsParkingInfoSupplement(const apollo::routing::RoutingRequest& request) {
+  if (!request.has_parking_info() ||
+      !request.parking_info().has_parking_space_id()) {
+    return false;
+  }
+  const auto& parking_info = request.parking_info();
+  return !parking_info.has_parking_point() ||
+         !parking_info.has_parking_space_type() ||
+         parking_info.corner_point().point_size() < 4;
+}
+
+bool SupplementParkingRoutingRequest(apollo::routing::RoutingRequest* request) {
+  if (!NeedsParkingInfoSupplement(*request)) {
+    return true;
+  }
+  auto* hdmap = hdmap::HDMapUtil::BaseMapPtr();
+  if (hdmap == nullptr) {
+    AERROR << "Failed to supplement parking routing request: hdmap unavailable.";
+    return false;
+  }
+  const auto parking_space_id =
+      hdmap::MakeMapId(request->parking_info().parking_space_id());
+  const auto parking_space_info = hdmap->GetParkingSpaceById(parking_space_id);
+  if (parking_space_info == nullptr) {
+    AERROR << "Failed to supplement parking routing request for parking space "
+           << request->parking_info().parking_space_id();
+    return false;
+  }
+  const auto& points = parking_space_info->polygon().points();
+  if (points.size() < 4) {
+    AERROR << "Failed to supplement parking routing request for parking space "
+           << request->parking_info().parking_space_id()
+           << ": polygon corner count is " << points.size();
+    return false;
+  }
+
+  double center_x = 0.0;
+  double center_y = 0.0;
+  for (const auto& point : points) {
+    center_x += point.x();
+    center_y += point.y();
+  }
+  center_x /= static_cast<double>(points.size());
+  center_y /= static_cast<double>(points.size());
+
+  apollo::common::PointENU center_enu;
+  center_enu.set_x(center_x);
+  center_enu.set_y(center_y);
+  apollo::hdmap::LaneInfoConstPtr nearest_lane;
+  double nearest_s = 0.0;
+  double nearest_l = 0.0;
+  if (0 != hdmap->GetNearestLane(center_enu, &nearest_lane, &nearest_s,
+                                 &nearest_l) ||
+      nearest_lane == nullptr) {
+    AERROR << "Failed to supplement parking routing request for parking space "
+           << request->parking_info().parking_space_id()
+           << ": cannot find nearest lane.";
+    return false;
+  }
+
+  auto* request_parking_info = request->mutable_parking_info();
+  request_parking_info->mutable_parking_point()->set_x(center_x);
+  request_parking_info->mutable_parking_point()->set_y(center_y);
+  request_parking_info->mutable_parking_point()->set_z(0.0);
+  request_parking_info->clear_corner_point();
+  for (size_t i = 0; i < 4; ++i) {
+    auto* corner = request_parking_info->mutable_corner_point()->add_point();
+    corner->set_x(points[i].x());
+    corner->set_y(points[i].y());
+  }
+
+  const double lane_heading = nearest_lane->Heading(nearest_s);
+  const double parking_heading = parking_space_info->parking_space().heading();
+  const double diff_angle = std::atan2(std::sin(lane_heading - parking_heading),
+                                       std::cos(lane_heading - parking_heading));
+  request_parking_info->set_parking_space_type(
+      std::fabs(diff_angle) < M_PI / 3.0 ? ParkingSpaceType::PARALLEL_PARKING
+                                         : ParkingSpaceType::VERTICAL_PLOT);
+
+  if (request->waypoint_size() == 0) {
+    AERROR << "Failed to supplement parking routing request for parking space "
+           << request->parking_info().parking_space_id()
+           << ": request has no waypoint.";
+    return false;
+  }
+  const auto last_waypoint = request->waypoint(request->waypoint_size() - 1);
+  static constexpr double kExtendParkingLength = 20.0;
+  apollo::common::PointENU extend_point;
+  extend_point.set_x(last_waypoint.pose().x() +
+                     kExtendParkingLength * std::cos(lane_heading));
+  extend_point.set_y(last_waypoint.pose().y() +
+                     kExtendParkingLength * std::sin(lane_heading));
+  if (0 != hdmap->GetNearestLaneWithHeading(extend_point, 20.0, lane_heading,
+                                            M_PI_2, &nearest_lane, &nearest_s,
+                                            &nearest_l) ||
+      nearest_lane == nullptr) {
+    AERROR << "Failed to extend parking routing request for parking space "
+           << request->parking_info().parking_space_id()
+           << ": cannot project extended waypoint to lane.";
+    return false;
+  }
+  extend_point = nearest_lane->GetSmoothPoint(nearest_s);
+  auto* extend_waypoint = request->add_waypoint();
+  extend_waypoint->mutable_pose()->set_x(extend_point.x());
+  extend_waypoint->mutable_pose()->set_y(extend_point.y());
+  extend_waypoint->set_id(nearest_lane->id().id());
+  extend_waypoint->set_s(nearest_s);
+  return true;
+}
+
+}  // namespace
 
 SimulationWorldUpdater::SimulationWorldUpdater(
     WebSocketHandler *websocket, WebSocketHandler *map_ws,
@@ -205,25 +318,22 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
   websocket_->RegisterMessageHandler(
       "SendDefaultCycleRoutingRequest",
       [this](const Json &json, WebSocketHandler::Connection *conn) {
-        auto task = std::make_shared<Task>();
-        auto *cycle_routing_task = task->mutable_cycle_routing_task();
-        auto *routing_request = cycle_routing_task->mutable_routing_request();
-        if (!ContainsKey(json, "cycleNumber") ||
-            !json.find("cycleNumber")->is_number()) {
-          AERROR << "Failed to prepare a cycle routing request: Invalid cycle "
-                    "number";
-          return;
+        auto routing_request = std::make_shared<RoutingRequest>();
+        if (ContainsKey(json, "cycleNumber") &&
+            json.find("cycleNumber")->is_number()) {
+          AINFO << "Ignoring cycleNumber="
+                << json.find("cycleNumber")->get<int>()
+                << " because task_manager was removed.";
         }
-        bool succeed = ConstructRoutingRequest(json, routing_request);
+        bool succeed = ConstructRoutingRequest(json, routing_request.get());
         if (succeed) {
-          cycle_routing_task->set_cycle_num(
-              static_cast<int>(json["cycleNumber"]));
-          task->set_task_name("cycle_routing_task");
-          task->set_task_type(apollo::task_manager::TaskType::CYCLE_ROUTING);
-          sim_world_service_.PublishTask(task);
-          AINFO << "The task is : " << task->DebugString();
+          sim_world_service_.PublishRoutingRequest(routing_request);
+          AINFO << "Direct cycle routing request sent without task_manager:\n"
+                << routing_request->DebugString();
           sim_world_service_.PublishMonitorMessage(
-              MonitorMessageItem::INFO, "Default cycle routing request sent.");
+              MonitorMessageItem::WARN,
+              "Default cycle routing request sent once. task_manager was "
+              "removed, so automatic repeated cycling is disabled.");
         } else {
           sim_world_service_.PublishMonitorMessage(
               MonitorMessageItem::ERROR,
@@ -234,25 +344,19 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
   websocket_->RegisterMessageHandler(
       "SendParkGoRoutingRequest",
       [this](const Json &json, WebSocketHandler::Connection *conn) {
-        auto task = std::make_shared<Task>();
-        auto *park_go_routing_task = task->mutable_park_go_routing_task();
-        if (!ContainsKey(json, "parkTime") ||
-            !json.find("parkTime")->is_number()) {
-          AERROR << "Failed to prepare a park go routing request: Invalid park "
-                    "time";
-          return;
+        if (ContainsKey(json, "parkTime") &&
+            json.find("parkTime")->is_number()) {
+          AINFO << "Ignoring parkTime=" << json.find("parkTime")->get<double>()
+                << " because task_manager was removed.";
         }
-        bool succeed = ConstructRoutingRequest(
-            json, park_go_routing_task->mutable_routing_request());
+        auto routing_request = std::make_shared<RoutingRequest>();
+        bool succeed = ConstructRoutingRequest(json, routing_request.get());
         if (succeed) {
-          park_go_routing_task->set_park_time(
-              static_cast<int>(json["parkTime"]));
-          task->set_task_name("park_go_routing_task");
-          task->set_task_type(apollo::task_manager::TaskType::PARK_GO_ROUTING);
-          sim_world_service_.PublishTask(task);
-          AINFO << "The task is : " << task->DebugString();
+          sim_world_service_.PublishRoutingRequest(routing_request);
           sim_world_service_.PublishMonitorMessage(
-              MonitorMessageItem::INFO, "Park go routing request sent.");
+              MonitorMessageItem::WARN,
+              "Park-go routing task_manager flow was removed. Sent a direct "
+              "routing request only, without park-time automation.");
         } else {
           sim_world_service_.PublishMonitorMessage(
               MonitorMessageItem::ERROR,
@@ -263,20 +367,18 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
   websocket_->RegisterMessageHandler(
       "SendParkingRoutingRequest",
       [this](const Json &json, WebSocketHandler::Connection *conn) {
-        auto task = std::make_shared<Task>();
-        auto *parking_routing_task = task->mutable_parking_routing_task();
-        bool succeed = ConstructParkingRoutingTask(json, parking_routing_task);
+        auto routing_request = std::make_shared<RoutingRequest>();
+        bool succeed = ConstructRoutingRequest(json, routing_request.get());
         if (succeed) {
-          task->set_task_name("parking_routing_task");
-          task->set_task_type(apollo::task_manager::TaskType::PARKING_ROUTING);
-          sim_world_service_.PublishTask(task);
-          AINFO << task->DebugString();
+          sim_world_service_.PublishRoutingRequest(routing_request);
+          AINFO << "Parking routing request sent directly:\n"
+                << routing_request->DebugString();
           sim_world_service_.PublishMonitorMessage(
-              MonitorMessageItem::INFO, "parking routing task sent.");
+              MonitorMessageItem::INFO, "Parking routing request sent.");
         } else {
           sim_world_service_.PublishMonitorMessage(
               MonitorMessageItem::ERROR,
-              "Failed to send a parking routing task to task manager module.");
+              "Failed to send a parking routing request.");
         }
       });
 
@@ -701,6 +803,11 @@ bool SimulationWorldUpdater::ConstructRoutingRequest(
       return false;
     }
   }
+  if (!SupplementParkingRoutingRequest(routing_request)) {
+    AERROR << "Failed to prepare a routing request: unable to supplement "
+              "parking info.";
+    return false;
+  }
 
   AINFO << "Constructed RoutingRequest to be sent:\n"
         << routing_request->DebugString();
@@ -714,14 +821,6 @@ Json SimulationWorldUpdater::GetConstructRoutingRequestJson(
   result["start"] = start;
   result["end"] = end;
   return result;
-}
-
-bool SimulationWorldUpdater::ConstructParkingRoutingTask(
-    const Json &json, ParkingRoutingTask *parking_routing_task) {
-  // set parking Space
-  auto *routing_request = parking_routing_task->mutable_routing_request();
-  bool succeed = ConstructRoutingRequest(json, routing_request);
-  return succeed;
 }
 
 bool SimulationWorldUpdater::ValidateCoordinate(const nlohmann::json &json) {

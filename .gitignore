@@ -50,8 +50,6 @@ cyber/doxy-docs/xml
 # Map data files
 modules/map/data/*
 !modules/map/data/borregas_ave
-# Map data files
-
 
 # python proto
 *_pb2.py

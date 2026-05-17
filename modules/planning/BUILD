@@ -143,6 +143,7 @@ cc_library(
         "//modules/planning/planner/rtk:rtk_planner",
         "//modules/planning/proto:planning_semantic_map_config_cc_proto",
         "//modules/planning/reference_line:reference_line_provider",
+        "//modules/planning/scenarios/park/valet_parking",
         "//modules/planning/tasks:task_factory",
         "//modules/planning/traffic_rules:traffic_decider",
         "@com_google_absl//absl/strings",

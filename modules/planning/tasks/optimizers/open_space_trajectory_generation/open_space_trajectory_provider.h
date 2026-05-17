@@ -39,6 +39,8 @@ struct OpenSpaceTrajectoryThreadData {
   std::vector<common::TrajectoryPoint> stitching_trajectory;
   std::vector<double> end_pose;
   std::vector<double> XYbounds;
+  bool has_required_final_gear = false;
+  bool required_final_gear_forward = true;
   double rotate_angle;
   apollo::common::math::Vec2d translate_origin;
   Eigen::MatrixXi obstacles_edges_num;
@@ -79,6 +81,8 @@ class OpenSpaceTrajectoryProvider : public TrajectoryOptimizer {
   void ReuseLastFrameResult(const Frame* last_frame,
                             DiscretizedTrajectory* const trajectory_data);
 
+  void ReuseCachedResult(DiscretizedTrajectory* const trajectory_data);
+
   void ReuseLastFrameDebug(const Frame* last_frame);
 
  private:
@@ -97,6 +101,9 @@ class OpenSpaceTrajectoryProvider : public TrajectoryOptimizer {
   std::atomic<bool> trajectory_error_{false};
   std::atomic<bool> trajectory_skipped_{false};
   bool is_planned_ = false;
+  bool has_cached_trajectory_ = false;
+  DiscretizedTrajectory last_successful_trajectory_;
+  double latest_time_latency_ = 0.0;
   std::mutex open_space_mutex_;
 };
 

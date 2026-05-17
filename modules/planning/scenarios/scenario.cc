@@ -96,6 +96,9 @@ Scenario::ScenarioStatus Scenario::Process(Frame* frame) {
     AERROR << "Current stage is null in scenario " << Name();
     return STATUS_UNKNOWN;
   }
+  if (scenario_status_ == STATUS_DONE) {
+    return scenario_status_;
+  }
 
   // 1. Check if scenario is finished by Logic (e.g. Stage NO_STAGE)
   if (current_stage_->stage_type() == StageType::NO_STAGE) {
