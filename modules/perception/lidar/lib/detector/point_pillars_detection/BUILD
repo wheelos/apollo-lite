@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -7,6 +7,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "params",
     hdrs = ["params.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
@@ -16,6 +19,9 @@ cc_library(
     ],
     hdrs = [
         "point_pillars.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":anchor_mask_cuda",
@@ -29,7 +35,6 @@ cc_library(
         "//cyber",
         "//modules/perception/common:perception_gflags",
         "@libtorch_gpu",
-        "@local_config_cuda//cuda:cudart",
         "@local_config_tensorrt//:tensorrt",
     ],
     alwayslink = True,
@@ -43,6 +48,9 @@ cc_library(
     hdrs = [
         "point_pillars_detection.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":point_pillars",
         "//cyber",
@@ -50,8 +58,8 @@ cc_library(
         "//modules/perception/lib/thread",
         "//modules/perception/lidar/common",
         "//modules/perception/lidar/lib/interface:base_lidar_detector",
-        "//modules/perception/pipeline/proto/stage:point_pillars_detection_config_cc_proto",
         "//modules/perception/pipeline:stage",
+        "//modules/perception/pipeline/proto/stage:point_pillars_detection_config_cc_proto",
         "@eigen",
         "@local_config_pcl//:common",
     ],
@@ -66,6 +74,9 @@ cc_library(
     hdrs = [
         "preprocess_points.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":common",
         ":preprocess_points_cuda",
@@ -75,6 +86,9 @@ cc_library(
 cc_library(
     name = "common",
     hdrs = ["common.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cuda_library(
@@ -83,7 +97,7 @@ cuda_library(
     hdrs = ["anchor_mask_cuda.h"],
     deps = [
         ":common",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -93,7 +107,7 @@ cuda_library(
     hdrs = ["nms_cuda.h"],
     deps = [
         ":common",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -103,7 +117,7 @@ cuda_library(
     hdrs = ["pfe_cuda.h"],
     deps = [
         ":common",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -114,7 +128,7 @@ cuda_library(
     deps = [
         ":common",
         ":nms_cuda",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -124,7 +138,7 @@ cuda_library(
     hdrs = ["preprocess_points_cuda.h"],
     deps = [
         ":common",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -134,7 +148,7 @@ cuda_library(
     hdrs = ["scatter_cuda.h"],
     deps = [
         ":common",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 

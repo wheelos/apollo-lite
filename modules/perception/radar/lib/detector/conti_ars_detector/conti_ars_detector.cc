@@ -38,18 +38,18 @@ void ContiArsDetector::RawObs2Frame(
     const drivers::ContiRadar& corrected_obstacles,
     const DetectorOptions& options, base::FramePtr radar_frame) {
   const Eigen::Matrix4d& radar2world = *(options.radar2world_pose);
-  const Eigen::Matrix4d& radar2novatel = *(options.radar2novatel_trans);
+  const Eigen::Matrix4d& radar2vehicle = *(options.radar2vehicle_trans);
   const Eigen::Vector3f& angular_speed = options.car_angular_speed;
-  Eigen::Matrix3d rotation_novatel;
-  rotation_novatel << 0, -angular_speed(2), angular_speed(1), angular_speed(2),
+  Eigen::Matrix3d rotation_vehicle;
+  rotation_vehicle << 0, -angular_speed(2), angular_speed(1), angular_speed(2),
       0, -angular_speed(0), -angular_speed(1), angular_speed(0), 0;
-  Eigen::Matrix3d rotation_radar = radar2novatel.topLeftCorner(3, 3).inverse() *
-                                   rotation_novatel *
-                                   radar2novatel.topLeftCorner(3, 3);
+  Eigen::Matrix3d rotation_radar = radar2vehicle.topLeftCorner(3, 3).inverse() *
+                                   rotation_vehicle *
+                                   radar2vehicle.topLeftCorner(3, 3);
   Eigen::Matrix3d radar2world_rotate = radar2world.block<3, 3>(0, 0);
   Eigen::Matrix3d radar2world_rotate_t = radar2world_rotate.transpose();
   // Eigen::Vector3d radar2world_translation = radar2world.block<3, 1>(0, 3);
-  ADEBUG << "radar2novatel: " << radar2novatel;
+  ADEBUG << "radar2vehicle: " << radar2vehicle;
   ADEBUG << "angular_speed: " << angular_speed;
   ADEBUG << "rotation_radar: " << rotation_radar;
   for (const auto radar_obs : corrected_obstacles.contiobs()) {

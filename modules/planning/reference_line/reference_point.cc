@@ -20,7 +20,7 @@
 
 #include "modules/planning/reference_line/reference_point.h"
 
-#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 
 #include "modules/common/util/point_factory.h"
 
@@ -46,8 +46,8 @@ double ReferencePoint::kappa() const { return kappa_; }
 double ReferencePoint::dkappa() const { return dkappa_; }
 
 std::string ReferencePoint::DebugString() const {
-  return absl::StrCat("{x: ", x(), ", y: ", y(), ", theta: ", heading(),
-                      ", kappa: ", kappa(), ", dkappa: ", dkappa(), "}");
+  return absl::StrFormat("%.6f, %.6f, %.6f, %.6f, %.6f\n", x(), y(), heading(),
+                         kappa(), dkappa());
 }
 
 void ReferencePoint::RemoveDuplicates(std::vector<ReferencePoint>* points) {

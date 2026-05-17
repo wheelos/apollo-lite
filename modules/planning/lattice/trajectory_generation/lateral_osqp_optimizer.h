@@ -20,10 +20,11 @@
 
 #pragma once
 
+#include <cstddef>
 #include <utility>
 #include <vector>
 
-#include "osqp/osqp.h"
+#include <osqp.h>
 
 #include "modules/planning/common/trajectory1d/piecewise_jerk_trajectory1d.h"
 #include "modules/planning/lattice/trajectory_generation/lateral_qp_optimizer.h"
@@ -43,9 +44,9 @@ class LateralOSQPOptimizer : public LateralQPOptimizer {
 
  private:
   void CalculateKernel(const std::vector<std::pair<double, double>>& d_bounds,
-                       std::vector<c_float>* P_data,
-                       std::vector<c_int>* P_indices,
-                       std::vector<c_int>* P_indptr);
+                       std::vector<OSQPFloat>* P_data,
+                       std::vector<OSQPInt>* P_indices,
+                       std::vector<OSQPInt>* P_indptr);
 };
 
 }  // namespace planning

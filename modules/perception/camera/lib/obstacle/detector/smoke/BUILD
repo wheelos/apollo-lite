@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -14,7 +14,7 @@ cuda_library(
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",
         "//modules/perception/camera/lib/obstacle/detector/smoke/proto:smoke_cc_proto",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -25,13 +25,15 @@ cc_library(
         ":smoke_region_output_cuda",
     ],
     hdrs = ["region_output.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":smoke_object_maintainer",
         "//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",
-        "@local_config_cuda//cuda:cudart",
     ],
 )
 
@@ -39,6 +41,9 @@ cc_library(
     name = "smoke_obstacle_detector",
     srcs = ["smoke_obstacle_detector.cc"],
     hdrs = ["smoke_obstacle_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":smoke_region_output",
         "//cyber",
@@ -59,6 +64,7 @@ cc_library(
         "//modules/perception/inference/utils:inference_util_lib",
         "//modules/perception/pipeline:stage",
         "@boost.algorithm",
+        "@opencv//:imgproc",
     ],
 )
 
@@ -66,6 +72,9 @@ cc_library(
     name = "smoke_object_maintainer",
     srcs = ["object_maintainer.cc"],
     hdrs = ["object_maintainer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",

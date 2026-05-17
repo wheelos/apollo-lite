@@ -7,6 +7,9 @@ cc_library(
     name = "pbf_tracker",
     srcs = ["pbf_tracker.cc"],
     hdrs = ["pbf_tracker.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/common/util:string_util",

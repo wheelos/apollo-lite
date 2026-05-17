@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package apollo.mission;
+
+message MissionConfig {
+  // The root directory of the behavior tree XML file
+  optional string bt_tree_dir = 1;
+
+  // Tick ​​frequency, default 100ms (10Hz)
+  optional int32 tick_interval_ms = 2 [default = 100];
+}

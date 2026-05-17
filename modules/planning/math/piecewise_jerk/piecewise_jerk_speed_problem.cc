@@ -16,6 +16,10 @@
 
 #include "modules/planning/math/piecewise_jerk/piecewise_jerk_speed_problem.h"
 
+#include <algorithm>
+#include <utility>
+#include <vector>
+
 #include "cyber/common/log.h"
 #include "modules/planning/common/planning_gflags.h"
 
@@ -41,13 +45,13 @@ void PiecewiseJerkSpeedProblem::set_penalty_dx(std::vector<double> penalty_dx) {
   penalty_dx_ = std::move(penalty_dx);
 }
 
-void PiecewiseJerkSpeedProblem::CalculateKernel(std::vector<c_float>* P_data,
-                                                std::vector<c_int>* P_indices,
-                                                std::vector<c_int>* P_indptr) {
+void PiecewiseJerkSpeedProblem::CalculateKernel(
+    std::vector<OSQPFloat>* P_data, std::vector<OSQPInt>* P_indices,
+    std::vector<OSQPInt>* P_indptr) {
   const int n = static_cast<int>(num_of_knots_);
   const int kNumParam = 3 * n;
   const int kNumValue = 4 * n - 1;
-  std::vector<std::vector<std::pair<c_int, c_float>>> columns;
+  std::vector<std::vector<std::pair<OSQPInt, OSQPFloat>>> columns;
   columns.resize(kNumParam);
   int value_index = 0;
 
@@ -95,11 +99,12 @@ void PiecewiseJerkSpeedProblem::CalculateKernel(std::vector<c_float>* P_data,
           (scale_factor_[2] * scale_factor_[2]));
   ++value_index;
 
-  // -2 * w_dddx / delta_s^2 * x(i)'' * x(i + 1)''
+  // OSQP 1.0 expects P in CSC upper-triangular form only.
+  // Store the x(i)'' * x(i + 1)'' cross term in column i+1 with row i.
   for (int i = 0; i < n - 1; ++i) {
-    columns[2 * n + i].emplace_back(2 * n + i + 1,
-                                    -2.0 * weight_dddx_ / delta_s_square /
-                                        (scale_factor_[2] * scale_factor_[2]));
+    columns[2 * n + i + 1].emplace_back(
+        2 * n + i, -2.0 * weight_dddx_ / delta_s_square /
+                         (scale_factor_[2] * scale_factor_[2]));
     ++value_index;
   }
 
@@ -107,9 +112,16 @@ void PiecewiseJerkSpeedProblem::CalculateKernel(std::vector<c_float>* P_data,
 
   int ind_p = 0;
   for (int i = 0; i < kNumParam; ++i) {
+    std::sort(columns[i].begin(), columns[i].end(),
+              [](const std::pair<OSQPInt, OSQPFloat>& lhs,
+                 const std::pair<OSQPInt, OSQPFloat>& rhs) {
+                return lhs.first < rhs.first;
+              });
     P_indptr->push_back(ind_p);
     for (const auto& row_data_pair : columns[i]) {
-      P_data->push_back(row_data_pair.second * 2.0);
+      const bool is_diagonal_entry = row_data_pair.first == i;
+      P_data->push_back(is_diagonal_entry ? row_data_pair.second * 2.0
+                                          : row_data_pair.second);
       P_indices->push_back(row_data_pair.first);
       ++ind_p;
     }
@@ -117,7 +129,7 @@ void PiecewiseJerkSpeedProblem::CalculateKernel(std::vector<c_float>* P_data,
   P_indptr->push_back(ind_p);
 }
 
-void PiecewiseJerkSpeedProblem::CalculateOffset(std::vector<c_float>* q) {
+void PiecewiseJerkSpeedProblem::CalculateOffset(std::vector<OSQPFloat>* q) {
   CHECK_NOTNULL(q);
   const int n = static_cast<int>(num_of_knots_);
   const int kNumParam = 3 * n;
@@ -143,14 +155,15 @@ void PiecewiseJerkSpeedProblem::CalculateOffset(std::vector<c_float>* q) {
 
 OSQPSettings* PiecewiseJerkSpeedProblem::SolverDefaultSettings() {
   // Define Solver default settings
-  OSQPSettings* settings =
-      reinterpret_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
-  osqp_set_default_settings(settings);
+  OSQPSettings* settings = OSQPSettings_new();
+  if (settings == nullptr) {
+    return nullptr;
+  }
   settings->eps_abs = 1e-4;
   settings->eps_rel = 1e-4;
   settings->eps_prim_inf = 1e-5;
   settings->eps_dual_inf = 1e-5;
-  settings->polish = true;
+  settings->polishing = true;
   settings->verbose = FLAGS_enable_osqp_debug;
   settings->scaled_termination = true;
 

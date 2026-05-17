@@ -17,7 +17,7 @@
 
 #include <vector>
 
-#include "cyber/common/time_conversion.h"
+#include "modules/common/util/time_conversion.h"
 #include "modules/map/tools/map_datachecker/server/pose_collection.h"
 
 namespace apollo {
@@ -40,7 +40,7 @@ void PoseCollectionAgent::OnBestgnssposCallback(
     sp_pose_collection_ = std::make_shared<PoseCollection>(sp_conf_);
   }
 
-  double time_stamp = apollo::cyber::common::GpsToUnixSeconds(
+  double time_stamp = apollo::common::util::GpsToUnixSeconds(
       bestgnsspos->measurement_time());  // in seconds
   FramePose pose;
   if (sp_conf_->use_system_time) {

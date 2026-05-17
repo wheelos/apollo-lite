@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-#include "opencv2/opencv.hpp"
+#include "opencv2/core.hpp"
 
 #include "cyber/common/log.h"
 #include "modules/common/math/math_utils.h"

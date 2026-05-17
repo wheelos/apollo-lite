@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/pc_vcu_205.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

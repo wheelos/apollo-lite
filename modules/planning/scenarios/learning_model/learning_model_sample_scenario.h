@@ -28,6 +28,7 @@
 namespace apollo {
 namespace planning {
 namespace scenario {
+namespace learning_model {
 
 // stage context
 struct LearningModelSampleContext {
@@ -37,7 +38,7 @@ struct LearningModelSampleContext {
 class LearningModelSampleScenario : public Scenario {
  public:
   LearningModelSampleScenario(
-      const ScenarioConfig& config, const ScenarioContext* context,
+      const ScenarioConfig& config, ScenarioContext* context,
       const std::shared_ptr<DependencyInjector>& injector)
       : Scenario(config, context, injector) {}
 
@@ -46,6 +47,8 @@ class LearningModelSampleScenario : public Scenario {
   std::unique_ptr<Stage> CreateStage(
       const ScenarioConfig::StageConfig& stage_config,
       const std::shared_ptr<DependencyInjector>& injector) override;
+
+  ScenarioGrade Grade() const override { return ScenarioGrade::CRUISE; }
 
  private:
   static void RegisterStages();
@@ -61,6 +64,7 @@ class LearningModelSampleScenario : public Scenario {
   LearningModelSampleContext context_;
 };
 
+}  // namespace learning_model
 }  // namespace scenario
 }  // namespace planning
 }  // namespace apollo

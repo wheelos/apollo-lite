@@ -8,6 +8,10 @@ cc_library(
     srcs = ["rt_common.cc"],
     hdrs = [
         "rt_common.h",
+        "rt_legacy.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":rt_common_without_protobuf",
@@ -16,7 +20,7 @@ cc_library(
         "//modules/perception/proto:rt_cc_proto",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
-        "@local_config_cuda//cuda:cudnn_header",
+        "@local_config_tensorrt//:tensorrt",
     ],
 )
 
@@ -27,10 +31,13 @@ cc_library(
         "rt_common_without_protobuf.h",
         "rt_legacy.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base:common",
-        "@local_config_cuda//cuda:cudnn_header",
+        "@local_config_tensorrt//:tensorrt",
     ],
 )
 
@@ -48,6 +55,9 @@ cc_library(
     name = "rt_utils",
     srcs = ["rt_utils.cc"],
     hdrs = ["rt_utils.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":rt_common",
         "//cyber",
@@ -60,11 +70,11 @@ cc_test(
     name = "rt_utils_test",
     size = "small",
     srcs = ["rt_utils_test.cc"],
+    linkstatic = True,
     deps = [
         ":rt_utils",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -73,6 +83,9 @@ cc_library(
     hdrs = [
         "entropy_calibrator.h",
         "rt_net.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":batch_stream",
@@ -96,26 +109,27 @@ cc_test(
     data = [
         "//modules/perception/inference:inference_test_data",
     ],
+    linkstatic = True,
     tags = ["exclude"],
     deps = [
         ":rt_net",
         "//modules/perception/inference/utils:inference_util_cuda_lib",
-        "@atlas//:cblas",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
     name = "entropy_calibrator",
     srcs = ["entropy_calibrator.cc"],
     hdrs = ["entropy_calibrator.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":batch_stream",
-        ":rt_utils",
         ":rt_common",
+        ":rt_utils",
         "@com_google_protobuf//:protobuf",
-        "@local_config_cuda//cuda:cudart",
         "@local_config_tensorrt//:tensorrt",
         "@opencv//:imgcodecs",
     ],
@@ -129,17 +143,20 @@ cc_test(
     data = [
         "//modules/perception/inference:inference_test_data",
     ],
+    linkstatic = True,
     deps = [
         ":entropy_calibrator",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
     name = "batch_stream",
     srcs = ["batch_stream.cc"],
     hdrs = ["batch_stream.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":rt_common",
         "//cyber",
@@ -158,11 +175,11 @@ cc_test(
     data = [
         "//modules/perception/inference:inference_test_data",
     ],
+    linkstatic = True,
     deps = [
         ":batch_stream",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

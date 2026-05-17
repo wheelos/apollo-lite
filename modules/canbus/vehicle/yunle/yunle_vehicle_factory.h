@@ -23,6 +23,7 @@
 #include <memory>
 
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
+
 #include "modules/canbus/vehicle/abstract_vehicle_factory.h"
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/drivers/canbus/can_comm/message_manager.h"
@@ -43,8 +44,8 @@ namespace canbus {
 class YunleVehicleFactory : public AbstractVehicleFactory {
  public:
   /**
-  * @brief destructor
-  */
+   * @brief destructor
+   */
   virtual ~YunleVehicleFactory() = default;
 
   /**
@@ -63,5 +64,3 @@ class YunleVehicleFactory : public AbstractVehicleFactory {
 
 }  // namespace canbus
 }  // namespace apollo
-
-

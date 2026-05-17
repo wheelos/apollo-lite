@@ -16,8 +16,6 @@
 
 #include "modules/drivers/lidar/common/driver_factory/lidar_driver_factory.h"
 
-#include "modules/drivers/lidar/hesai/driver/driver.h"
-// #include "modules/drivers/lidar/robosense/driver/driver.h"
 #include "modules/drivers/lidar/velodyne/driver/driver.h"
 
 namespace apollo {
@@ -28,18 +26,6 @@ LidarDriverFactory::LidarDriverFactory() {}
 LidarDriverFactory::LidarDriverFactory(
     const apollo::drivers::lidar::config& config) {}
 void LidarDriverFactory::RegisterLidarClients() {
-  Register(LidarParameter::HESAI,
-           [](const std::shared_ptr<::apollo::cyber::Node>& node,
-              const apollo::drivers::lidar::config& config) -> LidarDriver* {
-             return new hesai::HesaiDriver(node, config);
-           });
-  //  Register(LidarParameter::ROBOSENSE,
-  //           [](const std::shared_ptr<::apollo::cyber::Node>& node,
-  //              const apollo::drivers::lidar::config& config) -> LidarDriver*
-  //              {
-  //             return new robosense::RobosenseDriver(node, config);
-  //           });
-  //
   Register(LidarParameter::VELODYNE,
            [](const std::shared_ptr<::apollo::cyber::Node>& node,
               const apollo::drivers::lidar::config& config) -> LidarDriver* {

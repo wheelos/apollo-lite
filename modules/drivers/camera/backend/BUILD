@@ -27,6 +27,9 @@ cc_library(
         "//modules/drivers/camera/proto:config_cc_proto",
         "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
         "@ffmpeg//:avcodec",
+        "@ffmpeg//:avformat",
+        "@ffmpeg//:avutil",
+        "@ffmpeg//:swscale",
         "@opencv//:imgcodecs",
     ]
 )

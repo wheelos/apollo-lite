@@ -11,10 +11,14 @@ cc_library(
         "transform_wrapper.cc",
     ],
     hdrs = ["transform_wrapper.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/common/sensor_manager",
-        "//modules/transform:buffer",
+        "//modules/transform:timed_transform_resolver",
+        "//modules/transform:transform_query",
         "@com_github_gflags_gflags//:gflags",
         "@eigen",
     ],

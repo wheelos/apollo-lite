@@ -25,6 +25,7 @@ namespace inference {
 TEST(RTReshapeDimsTest, test) {
   nvinfer1::DimsCHW dims;
   nvinfer1::DimsCHW input_dims;
+
   dims.d[2] = -1;
   dims.d[1] = 0;
   dims.d[0] = 3;
@@ -34,6 +35,7 @@ TEST(RTReshapeDimsTest, test) {
   input_dims.d[2] = 4;
 
   auto outdims = apollo::perception::inference::ReshapeDims(dims, input_dims);
+
   EXPECT_EQ(outdims.d[0], 2);
   EXPECT_EQ(outdims.d[1], 3);
   EXPECT_EQ(outdims.d[2], 2);

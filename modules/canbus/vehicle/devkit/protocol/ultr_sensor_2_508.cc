@@ -17,6 +17,8 @@
 #include "modules/canbus/vehicle/devkit/protocol/ultr_sensor_2_508.h"
 
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,16 +33,16 @@ const int32_t Ultrsensor2508::ID = 0x508;
 
 void Ultrsensor2508::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_ultr_sensor_2_508()
       ->set_uiuss9_tof_indirect(uiuss9_tof_indirect(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_ultr_sensor_2_508()
       ->set_uiuss8_tof_indirect(uiuss8_tof_indirect(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_ultr_sensor_2_508()
       ->set_uiuss11_tof_indirect(uiuss11_tof_indirect(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_ultr_sensor_2_508()
       ->set_uiuss10_tof_indirect(uiuss10_tof_indirect(bytes, length));
 }

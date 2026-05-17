@@ -1,0 +1,51 @@
+syntax = "proto2";
+
+package apollo.data;
+
+message RecordSegmentSetting {
+  // Segmentation of restored records in size or time
+  optional int32 size_segment = 1 [default = 500];
+  optional int32 time_segment = 2 [default = 180];
+}
+
+message Trigger {
+  optional string trigger_name = 1;
+  optional bool enabled = 2;
+  optional double backward_time = 3;
+  optional double forward_time = 4;
+  optional string description = 5;
+  optional double cooldown_time = 6 [default = 5.0];
+}
+
+message ChannelRateLimit {
+  // Recorder-plane per-topic max saved rate.
+  optional string channel_name = 1;
+  optional double max_rate_hz = 2;
+}
+
+message LargeMessagePolicy {
+  reserved 1, 2;
+  reserved "sample_message_size_bytes", "sample_rate_hz";
+  // Payloads at or above this threshold are dropped outright.
+  optional uint64 drop_message_size_bytes = 3;
+}
+
+message RecorderPolicy {
+  // Optional allowlist. When unset, the recorder subscribes to all channels.
+  repeated string include_channels = 1;
+  // Recorder-plane blacklist for heavy or unactionable channels.
+  repeated string exclude_channels = 2;
+  // Recorder-plane per-topic sampling for channels that remain eligible.
+  repeated ChannelRateLimit channel_rate_limits = 3;
+  // Compatibility parser for legacy message-size policy strings.
+  optional string legacy_message_size_filter_policy = 4;
+  // Preferred explicit size-based drop policy.
+  optional LargeMessagePolicy large_message_policy = 5;
+}
+
+message SmartRecordTrigger {
+  optional RecordSegmentSetting segment_setting = 1;
+  repeated Trigger triggers = 2;
+  optional int32 ring_segment_count = 3 [default = 24];
+  optional RecorderPolicy recorder_policy = 4;
+}

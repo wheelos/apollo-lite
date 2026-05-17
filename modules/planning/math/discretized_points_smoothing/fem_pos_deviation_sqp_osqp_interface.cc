@@ -29,6 +29,23 @@
 
 namespace apollo {
 namespace planning {
+namespace {
+
+bool HasUsableSolutionStatus(const OSQPInt status) {
+  return status == OSQP_SOLVED || status == OSQP_SOLVED_INACCURATE;
+}
+
+OSQPCscMatrix* CscMatrix(OSQPInt m, OSQPInt n,
+                         std::vector<OSQPFloat>* values,
+                         std::vector<OSQPInt>* indices,
+                         std::vector<OSQPInt>* indptr) {
+  return OSQPCscMatrix_new(m, n, values->size(),
+                           values->empty() ? nullptr : values->data(),
+                           indices->empty() ? nullptr : indices->data(),
+                           indptr->data());
+}
+
+}  // namespace
 
 bool FemPosDeviationSqpOsqpInterface::Solve() {
   // Sanity Check
@@ -65,70 +82,80 @@ bool FemPosDeviationSqpOsqpInterface::Solve() {
       num_of_variable_constraints_ + num_of_curvature_constraints_;
 
   // Set primal warm start
-  std::vector<c_float> primal_warm_start;
+  std::vector<OSQPFloat> primal_warm_start;
   SetPrimalWarmStart(ref_points_, &primal_warm_start);
 
   // Calculate kernel
-  std::vector<c_float> P_data;
-  std::vector<c_int> P_indices;
-  std::vector<c_int> P_indptr;
+  std::vector<OSQPFloat> P_data;
+  std::vector<OSQPInt> P_indices;
+  std::vector<OSQPInt> P_indptr;
   CalculateKernel(&P_data, &P_indices, &P_indptr);
 
   // Calculate offset
-  std::vector<c_float> q;
+  std::vector<OSQPFloat> q;
   CalculateOffset(&q);
 
   // Calculate affine constraints
-  std::vector<c_float> A_data;
-  std::vector<c_int> A_indices;
-  std::vector<c_int> A_indptr;
-  std::vector<c_float> lower_bounds;
-  std::vector<c_float> upper_bounds;
+  std::vector<OSQPFloat> A_data;
+  std::vector<OSQPInt> A_indices;
+  std::vector<OSQPInt> A_indptr;
+  std::vector<OSQPFloat> lower_bounds;
+  std::vector<OSQPFloat> upper_bounds;
   CalculateAffineConstraint(ref_points_, &A_data, &A_indices, &A_indptr,
                             &lower_bounds, &upper_bounds);
 
-  // Load matrices and vectors into OSQPData
-  OSQPData* data = reinterpret_cast<OSQPData*>(c_malloc(sizeof(OSQPData)));
-  data->n = num_of_variables_;
-  data->m = num_of_constraints_;
-  data->P = csc_matrix(data->n, data->n, P_data.size(), P_data.data(),
-                       P_indices.data(), P_indptr.data());
-  data->q = q.data();
-  data->A = csc_matrix(data->m, data->n, A_data.size(), A_data.data(),
-                       A_indices.data(), A_indptr.data());
-  data->l = lower_bounds.data();
-  data->u = upper_bounds.data();
-
   // Define osqp solver settings
-  OSQPSettings* settings =
-      reinterpret_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
-  osqp_set_default_settings(settings);
+  OSQPSettings* settings = OSQPSettings_new();
+  if (settings == nullptr) {
+    return false;
+  }
   settings->max_iter = max_iter_;
   settings->time_limit = time_limit_;
   settings->verbose = verbose_;
   settings->scaled_termination = scaled_termination_;
-  settings->warm_start = warm_start_;
-  settings->polish = true;
+  settings->warm_starting = warm_start_;
+  settings->polishing = true;
   settings->eps_abs = 1e-5;
   settings->eps_rel = 1e-5;
   settings->eps_prim_inf = 1e-5;
   settings->eps_dual_inf = 1e-5;
 
-  // Define osqp workspace
-  OSQPWorkspace* work = nullptr;
-  // osqp_setup(&work, data, settings);
-  work = osqp_setup(data, settings);
+  OSQPCscMatrix* P_matrix = CscMatrix(
+      static_cast<OSQPInt>(num_of_variables_),
+      static_cast<OSQPInt>(num_of_variables_), &P_data, &P_indices, &P_indptr);
+  OSQPCscMatrix* A_matrix = CscMatrix(
+      static_cast<OSQPInt>(num_of_constraints_),
+      static_cast<OSQPInt>(num_of_variables_), &A_data, &A_indices, &A_indptr);
+  if (P_matrix == nullptr || A_matrix == nullptr) {
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
+  }
+
+  OSQPSolver* work = nullptr;
+  if (osqp_setup(&work, P_matrix, q.data(), A_matrix, lower_bounds.data(),
+                 upper_bounds.data(), static_cast<OSQPInt>(num_of_constraints_),
+                 static_cast<OSQPInt>(num_of_variables_), settings) != 0 ||
+      work == nullptr) {
+    if (work != nullptr) {
+      osqp_cleanup(work);
+    }
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
+  }
+  OSQPCscMatrix_free(A_matrix);
+  OSQPCscMatrix_free(P_matrix);
 
   // Initial solution
-  bool initial_solve_res = OptimizeWithOsqp(primal_warm_start, &work);
+  bool initial_solve_res = OptimizeWithOsqp(primal_warm_start, work);
 
   if (!initial_solve_res) {
     AERROR << "initial iteration solving fails";
     osqp_cleanup(work);
-    c_free(data->A);
-    c_free(data->P);
-    c_free(data);
-    c_free(settings);
+    OSQPSettings_free(settings);
     return false;
   }
 
@@ -148,20 +175,29 @@ bool FemPosDeviationSqpOsqpInterface::Solve() {
       CalculateOffset(&q);
       CalculateAffineConstraint(opt_xy_, &A_data, &A_indices, &A_indptr,
                                 &lower_bounds, &upper_bounds);
-      osqp_update_lin_cost(work, q.data());
-      osqp_update_A(work, A_data.data(), OSQP_NULL, A_data.size());
-      osqp_update_bounds(work, lower_bounds.data(), upper_bounds.data());
+      const OSQPInt update_vec_status =
+          osqp_update_data_vec(work, q.data(), lower_bounds.data(),
+                               upper_bounds.data());
+      const OSQPInt update_mat_status = osqp_update_data_mat(
+          work, nullptr, nullptr, 0, A_data.data(), nullptr,
+          static_cast<OSQPInt>(A_data.size()));
+      if (update_vec_status != 0 || update_mat_status != 0) {
+        AERROR << "failed to update osqp data, vec status: "
+               << update_vec_status << ", mat status: "
+               << update_mat_status;
+        weight_curvature_constraint_slack_var_ = original_slack_penalty;
+        osqp_cleanup(work);
+        OSQPSettings_free(settings);
+        return false;
+      }
 
-      bool iterative_solve_res = OptimizeWithOsqp(primal_warm_start, &work);
+      bool iterative_solve_res = OptimizeWithOsqp(primal_warm_start, work);
       if (!iterative_solve_res) {
         AERROR << "iteration at " << sub_itr
                << ", solving fails with max sub iter " << sqp_sub_max_iter_;
         weight_curvature_constraint_slack_var_ = original_slack_penalty;
         osqp_cleanup(work);
-        c_free(data->A);
-        c_free(data->P);
-        c_free(data);
-        c_free(settings);
+        OSQPSettings_free(settings);
         return false;
       }
 
@@ -184,10 +220,7 @@ bool FemPosDeviationSqpOsqpInterface::Solve() {
       AERROR << "Max number of iteration reached";
       weight_curvature_constraint_slack_var_ = original_slack_penalty;
       osqp_cleanup(work);
-      c_free(data->A);
-      c_free(data->P);
-      c_free(data);
-      c_free(settings);
+      OSQPSettings_free(settings);
       return false;
     }
 
@@ -201,10 +234,7 @@ bool FemPosDeviationSqpOsqpInterface::Solve() {
              << ", under max_ctol " << sqp_ctol_;
       weight_curvature_constraint_slack_var_ = original_slack_penalty;
       osqp_cleanup(work);
-      c_free(data->A);
-      c_free(data->P);
-      c_free(data);
-      c_free(settings);
+      OSQPSettings_free(settings);
       return true;
     }
 
@@ -217,16 +247,13 @@ bool FemPosDeviationSqpOsqpInterface::Solve() {
          << ", higher than max_ctol " << sqp_ctol_;
   weight_curvature_constraint_slack_var_ = original_slack_penalty;
   osqp_cleanup(work);
-  c_free(data->A);
-  c_free(data->P);
-  c_free(data);
-  c_free(settings);
+  OSQPSettings_free(settings);
   return true;
 }
 
 void FemPosDeviationSqpOsqpInterface::CalculateKernel(
-    std::vector<c_float>* P_data, std::vector<c_int>* P_indices,
-    std::vector<c_int>* P_indptr) {
+    std::vector<OSQPFloat>* P_data, std::vector<OSQPInt>* P_indices,
+    std::vector<OSQPInt>* P_indptr) {
   CHECK_GT(num_of_points_, 2);
 
   // Three quadratic penalties are involved:
@@ -249,7 +276,7 @@ void FemPosDeviationSqpOsqpInterface::CalculateKernel(
   // |0,     0,       0,       0,       0,       0,       0, 0, 0,       ...|
   // |0,     0,       0,       0,       0,       0,       0, 0, 0, 0,       ...|
   // Only upper triangle needs to be filled
-  std::vector<std::vector<std::pair<c_int, c_float>>> columns;
+  std::vector<std::vector<std::pair<OSQPInt, OSQPFloat>>> columns;
   columns.resize(num_of_variables_);
   int col_num = 0;
 
@@ -326,7 +353,8 @@ void FemPosDeviationSqpOsqpInterface::CalculateKernel(
   P_indptr->push_back(ind_p);
 }
 
-void FemPosDeviationSqpOsqpInterface::CalculateOffset(std::vector<c_float>* q) {
+void FemPosDeviationSqpOsqpInterface::CalculateOffset(
+    std::vector<OSQPFloat>* q) {
   q->resize(num_of_variables_);
   for (int i = 0; i < num_of_points_; ++i) {
     const auto& ref_point_xy = ref_points_[i];
@@ -370,9 +398,9 @@ FemPosDeviationSqpOsqpInterface::CalculateLinearizedFemPosParams(
 
 void FemPosDeviationSqpOsqpInterface::CalculateAffineConstraint(
     const std::vector<std::pair<double, double>>& points,
-    std::vector<c_float>* A_data, std::vector<c_int>* A_indices,
-    std::vector<c_int>* A_indptr, std::vector<c_float>* lower_bounds,
-    std::vector<c_float>* upper_bounds) {
+    std::vector<OSQPFloat>* A_data, std::vector<OSQPInt>* A_indices,
+    std::vector<OSQPInt>* A_indptr, std::vector<OSQPFloat>* lower_bounds,
+    std::vector<OSQPFloat>* upper_bounds) {
   const double scale_factor = 1;
 
   std::vector<std::vector<double>> lin_cache;
@@ -380,7 +408,7 @@ void FemPosDeviationSqpOsqpInterface::CalculateAffineConstraint(
     lin_cache.push_back(CalculateLinearizedFemPosParams(points, i));
   }
 
-  std::vector<std::vector<std::pair<c_int, c_float>>> columns;
+  std::vector<std::vector<std::pair<OSQPInt, OSQPFloat>>> columns;
   columns.resize(num_of_variables_);
 
   for (int i = 0; i < num_of_variables_; ++i) {
@@ -454,7 +482,7 @@ void FemPosDeviationSqpOsqpInterface::CalculateAffineConstraint(
 
 void FemPosDeviationSqpOsqpInterface::SetPrimalWarmStart(
     const std::vector<std::pair<double, double>>& points,
-    std::vector<c_float>* primal_warm_start) {
+    std::vector<OSQPFloat>* primal_warm_start) {
   CHECK_EQ(points.size(), static_cast<size_t>(num_of_points_));
   CHECK_GT(points.size(), 1U);
 
@@ -485,21 +513,16 @@ void FemPosDeviationSqpOsqpInterface::SetPrimalWarmStart(
 }
 
 bool FemPosDeviationSqpOsqpInterface::OptimizeWithOsqp(
-    const std::vector<c_float>& primal_warm_start, OSQPWorkspace** work) {
-  osqp_warm_start_x(*work, primal_warm_start.data());
+    const std::vector<OSQPFloat>& primal_warm_start, OSQPSolver* solver) {
+  osqp_warm_start(solver, primal_warm_start.data(), nullptr);
 
   // Solve Problem
-  osqp_solve(*work);
+  osqp_solve(solver);
 
-  auto status = (*work)->info->status_val;
+  auto status = solver->info->status_val;
 
-  if (status < 0) {
-    AERROR << "failed optimization status:\t" << (*work)->info->status;
-    return false;
-  }
-
-  if (status != 1 && status != 2) {
-    AERROR << "failed optimization status:\t" << (*work)->info->status;
+  if (!HasUsableSolutionStatus(status)) {
+    AERROR << "failed optimization status:\t" << solver->info->status;
     return false;
   }
 
@@ -508,12 +531,12 @@ bool FemPosDeviationSqpOsqpInterface::OptimizeWithOsqp(
   slack_.resize(num_of_slack_variables_);
   for (int i = 0; i < num_of_points_; ++i) {
     int index = i * 2;
-    opt_xy_.at(i) = std::make_pair((*work)->solution->x[index],
-                                   (*work)->solution->x[index + 1]);
+    opt_xy_.at(i) = std::make_pair(solver->solution->x[index],
+                                   solver->solution->x[index + 1]);
   }
 
   for (int i = 0; i < num_of_slack_variables_; ++i) {
-    slack_.at(i) = (*work)->solution->x[num_of_pos_variables_ + i];
+    slack_.at(i) = solver->solution->x[num_of_pos_variables_ + i];
   }
 
   return true;

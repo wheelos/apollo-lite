@@ -22,9 +22,11 @@
 
 #include <memory>
 
-#include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
+#include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/canbus/vehicle/vehicle_controller.h"
+#include "modules/common/util/registry.h"
 #include "modules/drivers/canbus/can_comm/message_manager.h"
 
 /**
@@ -65,11 +67,14 @@ class AbstractVehicleFactory {
   /**
    * @brief set VehicleParameter.
    */
-  void SetVehicleParameter(const VehicleParameter &vehicle_paramter);
+  void SetVehicleParameter(const VehicleParameter& vehicle_paramter);
 
  private:
   VehicleParameter vehicle_parameter_;
 };
+
+DECLARE_FACTORY_MANAGER_BY_KEY(AbstractVehicleFactory,
+                               apollo::common::VehicleBrand);
 
 }  // namespace canbus
 }  // namespace apollo

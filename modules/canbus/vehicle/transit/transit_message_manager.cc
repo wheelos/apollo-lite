@@ -18,11 +18,10 @@ limitations under the License.
 #include "modules/canbus/vehicle/transit/protocol/adc_auxiliarycontrol_110.h"
 #include "modules/canbus/vehicle/transit/protocol/adc_motioncontrol1_10.h"
 #include "modules/canbus/vehicle/transit/protocol/adc_motioncontrollimits1_12.h"
-#include "modules/canbus/vehicle/transit/protocol/llc_diag_brakecontrol_721.h"
-#include "modules/canbus/vehicle/transit/protocol/llc_diag_steeringcontrol_722.h"
-
 #include "modules/canbus/vehicle/transit/protocol/llc_auxiliaryfeedback_120.h"
+#include "modules/canbus/vehicle/transit/protocol/llc_diag_brakecontrol_721.h"
 #include "modules/canbus/vehicle/transit/protocol/llc_diag_fault_620.h"
+#include "modules/canbus/vehicle/transit/protocol/llc_diag_steeringcontrol_722.h"
 #include "modules/canbus/vehicle/transit/protocol/llc_motioncommandfeedback1_22.h"
 #include "modules/canbus/vehicle/transit/protocol/llc_motionfeedback1_20.h"
 #include "modules/canbus/vehicle/transit/protocol/llc_motionfeedback2_21.h"

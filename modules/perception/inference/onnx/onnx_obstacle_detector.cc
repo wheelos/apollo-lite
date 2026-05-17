@@ -17,6 +17,7 @@
 #include "modules/perception/inference/onnx/onnx_obstacle_detector.h"
 
 #include <cuda_runtime_api.h>
+
 #include "cyber/common/log.h"
 
 namespace apollo {
@@ -25,8 +26,10 @@ namespace inference {
 
 using apollo::perception::base::Blob;
 
-#define GPU_CHECK(ans) \
-  { GPUAssert((ans), __FILE__, __LINE__); }
+#define GPU_CHECK(ans)                    \
+  {                                       \
+    GPUAssert((ans), __FILE__, __LINE__); \
+  }
 inline void GPUAssert(cudaError_t code, const char* file, int line,
                       bool abort = true) {
   if (code != cudaSuccess) {
@@ -37,22 +40,18 @@ inline void GPUAssert(cudaError_t code, const char* file, int line,
 }
 
 OnnxObstacleDetector::OnnxObstacleDetector(
-  const std::string &model_file,
-  const float score_threshold,
-  const std::vector<std::string> &outputs,
-  const std::vector<std::string> &inputs)
-  : model_file_(model_file),
-    score_threshold_(score_threshold),
-    output_names_(outputs),
-    input_names_(inputs) {}
+    const std::string& model_file, const float score_threshold,
+    const std::vector<std::string>& outputs,
+    const std::vector<std::string>& inputs)
+    : model_file_(model_file),
+      score_threshold_(score_threshold),
+      output_names_(outputs),
+      input_names_(inputs) {}
 
 OnnxObstacleDetector::OnnxObstacleDetector(
-  const std::string &model_file,
-  const std::vector<std::string> &outputs,
-  const std::vector<std::string> &inputs)
-  : model_file_(model_file),
-    output_names_(outputs),
-    input_names_(inputs) {}
+    const std::string& model_file, const std::vector<std::string>& outputs,
+    const std::vector<std::string>& inputs)
+    : model_file_(model_file), output_names_(outputs), input_names_(inputs) {}
 
 OnnxObstacleDetector::~OnnxObstacleDetector() {}
 
@@ -62,10 +61,10 @@ void OnnxObstacleDetector::OnnxToTRTModel(
   int verbosity = static_cast<int>(nvinfer1::ILogger::Severity::kWARNING);
   kBatchSize = 1;
 
-  // create the builder
+  // create the builder (use explicit batch flag for modern TensorRT)
   const auto explicit_batch =
-      static_cast<uint32_t>(kBatchSize) << static_cast<uint32_t>(
-          nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
+      (1U << static_cast<uint32_t>(
+           nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH));
   nvinfer1::IBuilder* builder = nvinfer1::createInferBuilder(g_logger_);
   nvinfer1::INetworkDefinition* network =
       builder->createNetworkV2(explicit_batch);
@@ -78,26 +77,59 @@ void OnnxObstacleDetector::OnnxToTRTModel(
     exit(EXIT_FAILURE);
   }
 
-  // Build the engine
-  builder->setMaxBatchSize(kBatchSize);
+  // Build the engine (TensorRT 10 API replacements)
   nvinfer1::IBuilderConfig* config = builder->createBuilderConfig();
+#if NV_TENSORRT_MAJOR >= 10
+  // Set workspace memory limit
+  config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE,
+                             static_cast<size_t>(1ULL << 30));
+
+  // Build a serialized network and then deserialize into engine
+  auto plan = builder->buildSerializedNetwork(*network, *config);
+  if (!plan) {
+    std::string msg("failed to build serialized network");
+    g_logger_.log(nvinfer1::ILogger::Severity::kERROR, msg.c_str());
+    exit(EXIT_FAILURE);
+  }
+  auto runtime = nvinfer1::createInferRuntime(g_logger_);
+  if (!runtime) {
+    std::string msg("failed to create TensorRT runtime");
+    g_logger_.log(nvinfer1::ILogger::Severity::kERROR, msg.c_str());
+    exit(EXIT_FAILURE);
+  }
+  nvinfer1::ICudaEngine* engine =
+      runtime->deserializeCudaEngine(plan->data(), plan->size());
+  if (!engine) {
+    std::string msg("failed to deserialize CUDA engine");
+    g_logger_.log(nvinfer1::ILogger::Severity::kERROR, msg.c_str());
+    exit(EXIT_FAILURE);
+  }
+  *engine_ptr = engine;
+  // Cleanup
+  delete runtime;
+  delete plan;
+  delete parser;
+  delete network;
+  delete config;
+  delete builder;
+#else
+  // TensorRT < 10 fallback
+  builder->setMaxBatchSize(kBatchSize);
   config->setMaxWorkspaceSize(1 << 20);
   nvinfer1::ICudaEngine* engine =
       builder->buildEngineWithConfig(*network, *config);
-
   *engine_ptr = engine;
   parser->destroy();
   network->destroy();
   config->destroy();
   builder->destroy();
+#endif
 }
 
-void OnnxObstacleDetector::inference() {
-  AINFO << "Do Inference";
-}
+void OnnxObstacleDetector::inference() { AINFO << "Do Inference"; }
 
-bool OnnxObstacleDetector::Init(const std::map<std::string,
-                                std::vector<int>> &shapes) {
+bool OnnxObstacleDetector::Init(
+    const std::map<std::string, std::vector<int>>& shapes) {
   // create a TensorRT model from the onnx model and load it into an engine
   OnnxToTRTModel(model_file_, &engine_);
   if (engine_ == nullptr) {
@@ -127,11 +159,9 @@ bool OnnxObstacleDetector::Init(const std::map<std::string,
   return true;
 }
 
-void OnnxObstacleDetector::Infer() {
-  std::cout << "Infer" << std::endl;
-}
+void OnnxObstacleDetector::Infer() { std::cout << "Infer" << std::endl; }
 
-BlobPtr OnnxObstacleDetector::get_blob(const std::string &name) {
+BlobPtr OnnxObstacleDetector::get_blob(const std::string& name) {
   auto iter = blobs_.find(name);
   if (iter == blobs_.end()) {
     return nullptr;

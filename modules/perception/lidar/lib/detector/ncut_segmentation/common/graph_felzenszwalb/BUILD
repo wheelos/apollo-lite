@@ -16,6 +16,9 @@ cc_library(
         "segment_graph.h",
         "segment_image.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cpplint()

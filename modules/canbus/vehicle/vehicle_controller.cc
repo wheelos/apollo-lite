@@ -101,25 +101,35 @@ ErrorCode VehicleController::Update(const ControlCommand &control_command) {
   if (control_command.has_pad_msg() && control_command.pad_msg().has_action()) {
     AINFO << "Canbus received pad msg: "
           << control_command.pad_msg().ShortDebugString();
-    Chassis::DrivingMode mode = Chassis::COMPLETE_MANUAL;
-    switch (control_command.pad_msg().action()) {
-      case control::DrivingAction::START: {
-        mode = Chassis::COMPLETE_AUTO_DRIVE;
-        break;
+    if (control_command.pad_msg().action() == control::DrivingAction::VIN_REQ) {
+      if (!VerifyID()) {
+        AINFO << "Response vid failed, please request again.";
+      } else {
+        AINFO << "Response vid success!";
       }
-      case control::DrivingAction::STOP:
-      case control::DrivingAction::RESET: {
-        // In COMPLETE_MANUAL mode
-        break;
+    } else {
+      Chassis::DrivingMode mode = Chassis::COMPLETE_MANUAL;
+      switch (control_command.pad_msg().action()) {
+        case control::DrivingAction::START: {
+          mode = Chassis::COMPLETE_AUTO_DRIVE;
+          break;
+        }
+        case control::DrivingAction::STOP:
+        case control::DrivingAction::RESET: {
+          // In COMPLETE_MANUAL mode
+          break;
+        }
+        default: {
+          AERROR << "No response for this action.";
+          break;
+        }
       }
-      default: {
-        AERROR << "No response for this action.";
-        break;
+      auto error_code = SetDrivingMode(mode);
+      if (error_code != ErrorCode::OK) {
+        AERROR << "Failed to set driving mode.";
+      } else {
+        AINFO << "Set driving mode success.";
       }
-    }
-    auto error_code = SetDrivingMode(mode);
-    if (error_code != ErrorCode::OK) {
-      AERROR << "Failed to set driving mode.";
     }
   }
 
@@ -136,8 +146,7 @@ ErrorCode VehicleController::Update(const ControlCommand &control_command) {
 
   if (driving_mode() == Chassis::COMPLETE_AUTO_DRIVE ||
       driving_mode() == Chassis::AUTO_STEER_ONLY) {
-    const double steering_rate_threshold = 1.0;
-    if (control_command.steering_rate() > steering_rate_threshold) {
+    if (control_command.has_steering_rate()) {
       Steer(control_command.steering_target(), control_command.steering_rate());
     } else {
       Steer(control_command.steering_target());

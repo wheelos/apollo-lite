@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_bcs_3_308.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,38 +36,102 @@ TEST_F(Scubcs3308Test, reset) {
   uint8_t bytes[8] = {0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14};
 
   scubcs3308.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_rrwheelspdvd(),
-                   0);  //
   EXPECT_DOUBLE_EQ(
-      chassis_detail.ge3().scu_bcs_3_308().bcs_rrwheeldirectionvd(), 1);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_rlwheelspdvd(),
-                   1);  //
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_rrwheelspdvd(),
+      0);  //
   EXPECT_DOUBLE_EQ(
-      chassis_detail.ge3().scu_bcs_3_308().bcs_rlwheeldirectionvd(), 0);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_frwheelspdvd(),
-                   0);  //
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_rrwheeldirectionvd(),
+      1);  //
   EXPECT_DOUBLE_EQ(
-      chassis_detail.ge3().scu_bcs_3_308().bcs_frwheeldirectionvd(), 1);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_flwheelspdvd(),
-                   1);  //
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_rlwheelspdvd(),
+      1);  //
   EXPECT_DOUBLE_EQ(
-      chassis_detail.ge3().scu_bcs_3_308().bcs_flwheeldirectionvd(), 0);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_rrwheelspd(),
-                   34.3125);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_rrwheeldirection(),
-                   0);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_rlwheelspd(),
-                   30.7125);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_rlwheeldirection(),
-                   0);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_frwheelspd(),
-                   5.4);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_frwheeldirection(),
-                   0);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_flwheelspd(),
-                   1.8);  //
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_bcs_3_308().bcs_flwheeldirection(),
-                   0);  //
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_rlwheeldirectionvd(),
+      0);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_frwheelspdvd(),
+      0);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_frwheeldirectionvd(),
+      1);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_flwheelspdvd(),
+      1);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_flwheeldirectionvd(),
+      0);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_rrwheelspd(),
+      34.3125);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_rrwheeldirection(),
+      0);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_rlwheelspd(),
+      30.7125);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_rlwheeldirection(),
+      0);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_frwheelspd(),
+      5.4);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_frwheeldirection(),
+      0);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_flwheelspd(),
+      1.8);  //
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_bcs_3_308()
+          .bcs_flwheeldirection(),
+      0);  //
 }
 
 }  // namespace ge3

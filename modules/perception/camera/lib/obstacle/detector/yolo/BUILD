@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -13,7 +13,7 @@ cuda_library(
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -23,12 +23,14 @@ cc_library(
         "region_output.cc",
     ],
     hdrs = ["region_output.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":object_maintainer",
         ":region_output_cuda",
         "//cyber",
         "//modules/perception/camera/common:temporary_transition_types",
-        "@local_config_cuda//cuda:cudart",
     ],
 )
 
@@ -36,6 +38,9 @@ cc_library(
     name = "yolo_obstacle_detector",
     srcs = ["yolo_obstacle_detector.cc"],
     hdrs = ["yolo_obstacle_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":region_output",
         "//cyber",
@@ -62,6 +67,9 @@ cc_library(
     name = "object_maintainer",
     srcs = ["object_maintainer.cc"],
     hdrs = ["object_maintainer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",

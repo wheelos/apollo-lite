@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -37,37 +38,43 @@ uint32_t Waringlevel77::GetPeriod() const {
 
 void Waringlevel77::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_yunle()->mutable_waring_level_77()->set_mcu_vol_warning(
-      mcu_vol_warning(bytes, length));
-  chassis->mutable_yunle()
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_waring_level_77()
+      ->set_mcu_vol_warning(mcu_vol_warning(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
       ->mutable_waring_level_77()
       ->set_turn_unstoppable_warning(turn_unstoppable_warning(bytes, length));
-  chassis->mutable_yunle()->mutable_waring_level_77()->set_turn_lock_warning(
-      turn_lock_warning(bytes, length));
-  chassis->mutable_yunle()
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_waring_level_77()
+      ->set_turn_lock_warning(turn_lock_warning(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
       ->mutable_waring_level_77()
       ->set_turn_disconnect_warning(turn_disconnect_warning(bytes, length));
-  chassis->mutable_yunle()
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
       ->mutable_waring_level_77()
       ->set_mcu_temperature_warning(mcu_temperature_warning(bytes, length));
-  chassis->mutable_yunle()->mutable_waring_level_77()->set_mcu_speed_warning(
-      mcu_speed_warning(bytes, length));
-  chassis->mutable_yunle()->mutable_waring_level_77()->set_mcu_motor_warning(
-      mcu_motor_warning(bytes, length));
-  chassis->mutable_yunle()
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_waring_level_77()
+      ->set_mcu_speed_warning(mcu_speed_warning(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_waring_level_77()
+      ->set_mcu_motor_warning(mcu_motor_warning(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
       ->mutable_waring_level_77()
       ->set_mcu_disconnect_warning(mcu_disconnect_warning(bytes, length));
-  chassis->mutable_yunle()->mutable_waring_level_77()->set_mcu_cur_warning(
-      mcu_cur_warning(bytes, length));
-  chassis->mutable_yunle()
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_waring_level_77()
+      ->set_mcu_cur_warning(mcu_cur_warning(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
       ->mutable_waring_level_77()
       ->set_bms_temperature_warning(bms_temperature_warning(bytes, length));
-  chassis->mutable_yunle()->mutable_waring_level_77()->set_bms_soc_warning(
-      bms_soc_warning(bytes, length));
-  chassis->mutable_yunle()
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
+      ->mutable_waring_level_77()
+      ->set_bms_soc_warning(bms_soc_warning(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
       ->mutable_waring_level_77()
       ->set_bms_dischargecur_warning(bms_dischargecur_warning(bytes, length));
-  chassis->mutable_yunle()
+  MutableChassisExtension<::apollo::canbus::Yunle>(chassis)
       ->mutable_waring_level_77()
       ->set_bms_chargecur_warning(bms_chargecur_warning(bytes, length));
 }

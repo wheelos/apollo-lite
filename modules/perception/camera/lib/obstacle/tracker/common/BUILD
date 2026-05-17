@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@local_config_cuda//cuda:build_defs.bzl", "cuda_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -13,7 +13,7 @@ cuda_library(
         "//modules/perception/camera/common:camera_frame",
         "//modules/perception/camera/common:util",
         "//modules/perception/inference/utils:inference_gemm_lib",
-        "@local_config_cuda//cuda:cudart",
+        "@cuda//:cuda_runtime",
     ],
 )
 
@@ -24,6 +24,9 @@ cc_library(
         ":similar_cuda",
     ],
     hdrs = ["similar.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/camera/common",
@@ -35,6 +38,9 @@ cc_library(
     name = "half_circle_angle",
     srcs = ["half_circle_angle.cc"],
     hdrs = ["half_circle_angle.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/camera/common",
     ],
@@ -44,15 +50,21 @@ cc_library(
     name = "kalman_filter",
     srcs = ["kalman_filter.cc"],
     hdrs = ["kalman_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
+        "//modules/common/util:util_tool",
         "@eigen",
-        "//modules/common/util:util_tool"
     ],
 )
 
 cc_library(
     name = "common",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":half_circle_angle",
         ":kalman_filter",

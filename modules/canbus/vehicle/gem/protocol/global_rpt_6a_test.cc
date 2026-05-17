@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace gem {
@@ -33,14 +35,48 @@ TEST_F(Globalrpt6aTest, reset) {
   ChassisDetail chassis_detail;
   uint8_t bytes[8] = {0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14};
   globalrpt.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().global_rpt_6a().pacmod_status(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().global_rpt_6a().override_status(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().global_rpt_6a().veh_can_timeout(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().global_rpt_6a().str_can_timeout(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().global_rpt_6a().brk_can_timeout(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().global_rpt_6a().usr_can_timeout(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.gem().global_rpt_6a().usr_can_read_errors(),
-                   4884);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .global_rpt_6a()
+          .pacmod_status(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .global_rpt_6a()
+          .override_status(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .global_rpt_6a()
+          .veh_can_timeout(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .global_rpt_6a()
+          .str_can_timeout(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .global_rpt_6a()
+          .brk_can_timeout(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .global_rpt_6a()
+          .usr_can_timeout(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .global_rpt_6a()
+          .usr_can_read_errors(),
+      4884);
 }
 
 }  // namespace gem

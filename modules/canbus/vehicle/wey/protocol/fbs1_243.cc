@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,16 +33,21 @@ const int32_t Fbs1243::ID = 0x243;
 
 void Fbs1243::Parse(const std::uint8_t* bytes, int32_t length,
                     ChassisDetail* chassis) const {
-  chassis->mutable_wey()->mutable_fbs1_243()->set_longitudeacce(
-      longitudeacce(bytes, length));
-  chassis->mutable_wey()->mutable_fbs1_243()->set_lateralacce(
-      lateralacce(bytes, length));
-  chassis->mutable_wey()->mutable_fbs1_243()->set_vehdynyawrate(
-      vehdynyawrate(bytes, length));
-  chassis->mutable_wey()->mutable_fbs1_243()->set_flwheelspd(
-      flwheelspd(bytes, length));
-  chassis->mutable_wey()->mutable_fbs1_243()->set_frwheeldirection(
-      frwheeldirection(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs1_243()
+      ->set_longitudeacce(longitudeacce(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs1_243()
+      ->set_lateralacce(lateralacce(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs1_243()
+      ->set_vehdynyawrate(vehdynyawrate(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs1_243()
+      ->set_flwheelspd(flwheelspd(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fbs1_243()
+      ->set_frwheeldirection(frwheeldirection(bytes, length));
 }
 
 // config detail: {'description': 'Longitude acceleration', 'offset': -21.592,

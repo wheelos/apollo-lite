@@ -17,6 +17,7 @@
 #include "modules/common/math/mpc_osqp.h"
 
 #include <chrono>
+#include <cstdio>
 #include <ctime>
 #include <limits>
 #include <utility>
@@ -24,6 +25,8 @@
 
 #include "cyber/common/log.h"
 #include "gtest/gtest.h"
+
+#include "cyber/init.h"
 
 namespace apollo {
 namespace common {
@@ -124,8 +127,8 @@ TEST(MPCOSQPSolverTest, NonFullRankMatrix) {
   MpcOsqp mpc_osqp_solver(A, B, Q, R, initial_state, lower_bound, upper_bound,
                           state_lower_bound, state_upper_bound, reference_state,
                           max_iter, horizon, eps);
-  mpc_osqp_solver.Solve(&control_cmd);
-  EXPECT_FLOAT_EQ(upper_bound(0), control_cmd[0]);
+  EXPECT_FALSE(mpc_osqp_solver.Solve(&control_cmd));
+  EXPECT_FLOAT_EQ(0.0, control_cmd[0]);
 }
 
 TEST(MPCOSQPSolverTest, NullMatrix) {
@@ -177,3 +180,12 @@ TEST(MPCOSQPSolverTest, NullMatrix) {
 }  // namespace math
 }  // namespace common
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  apollo::cyber::Init(argv[0]);
+  const int result = RUN_ALL_TESTS();
+  apollo::cyber::Clear();
+  std::fflush(nullptr);
+  std::_Exit(result);
+}

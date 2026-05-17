@@ -1,0 +1,48 @@
+syntax = "proto2";
+
+package apollo.mission;
+
+import "modules/common_msgs/basic_msgs/header.proto";
+import "modules/common_msgs/basic_msgs/geometry.proto";
+
+// Mission parameters: Used to inject data into the Behavior Tree (BT)
+// Blackboard
+message MissionParam {
+  // Parameter key, e.g., "duration", "target_name"
+  optional string key = 1;
+
+  // Parameter value, using oneof for type flexibility
+  oneof value {
+    string string_value = 2;
+    double double_value = 3;
+    bool bool_value = 4;
+    int32 int_value = 5;
+  }
+}
+
+// A specific geographical point of interest or destination for the mission
+message MissionWaypoint {
+  // Waypoint ID or name, e.g., "Station_A", "Charger_1"
+  optional string name = 1;
+
+  // Map coordinates (East-North-Up)
+  optional apollo.common.PointENU pose = 2;
+
+  // Expected heading/orientation at the waypoint (in radians)
+  optional double heading = 3;
+}
+
+message MissionRequest {
+  optional apollo.common.Header header = 1;
+
+  // Mission ID for tracking and cancellation purposes
+  optional string mission_id = 2;
+
+  optional string task_name = 3;
+
+  optional bool enable_loop = 4;
+
+  repeated MissionParam parameters = 5;
+
+  repeated MissionWaypoint waypoints = 6;
+}

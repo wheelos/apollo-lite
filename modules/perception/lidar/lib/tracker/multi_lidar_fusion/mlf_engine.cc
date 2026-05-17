@@ -331,7 +331,7 @@ void MlfEngine::CollectTrackedResult(LidarFrame* frame) {
   //    localization.mutable_pose()->mutable_linear_velocity()->set_x(0.0f);
   //    localization.mutable_pose()->mutable_linear_velocity()->set_y(0.0f);
   //    localization.mutable_pose()->mutable_linear_velocity()->set_z(0.0f);
-  //    convertPoseToLoc(frame->novatel2world_pose, &localization);
+  //    convertPoseToLoc(frame->vehicle2world_pose, &localization);
   //    pose_container_.Insert(localization);
   //    obstacle_container_.InsertPerceptionObstacle(
   //        *(pose_container_.ToPerceptionObstacle()), lidar_ts);

@@ -1,0 +1,21 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("//tools:cpplint.bzl", "cpplint")
+
+package(default_visibility = ["//visibility:public"])
+
+PLANNING_COPTS = ["-DMODULE_NAME=\\\"planning\\\""]
+
+
+cc_library(
+    name = "escape_scenario",
+    srcs = ["escape_scenario.cc"],
+    hdrs = ["escape_scenario.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        "//cyber",
+        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "//modules/planning/scenarios:scenario",
+    ],
+)
+
+cpplint()

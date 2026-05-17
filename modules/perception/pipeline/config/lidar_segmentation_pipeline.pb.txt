@@ -1,0 +1,140 @@
+pipeline_type: LIDAR_DETECTION
+
+# Shared front-end for point-cloud segmentation.
+stage_type: POINTCLOUD_PREPROCESSOR
+stage_type: HDMAP_CONTEXT_PROVIDER
+stage_type: POINTCLOUD_ROI_FILTER
+stage_type: GROUND_SEGMENTER
+stage_type: GRAPH_CLUSTER_SEGMENTER
+stage_type: OBJECT_GEOMETRY_BUILDER
+stage_type: OBJECT_POST_FILTER_BANK
+
+stage_config: {
+  stage_type: POINTCLOUD_PREPROCESSOR
+  enabled: true
+
+  pointcloud_preprocessor_config: {
+    filter_naninf_points: true
+    filter_nearby_box_points: true
+    box_forward_x: 2.0
+    box_backward_x: -2.0
+    box_forward_y: 2.0
+    box_backward_y: -2.0
+    filter_high_z_points: false
+    z_threshold: 5.0
+  }
+}
+
+stage_config: {
+  stage_type: HDMAP_CONTEXT_PROVIDER
+  enabled: true
+
+  hdmap_context_provider_config: {
+    update_pose: false
+    roi_search_distance: 120.0
+  }
+}
+
+stage_config: {
+  stage_type: POINTCLOUD_ROI_FILTER
+  enabled: true
+
+  pointcloud_roi_filter_config: {
+    range: 120.0
+    cell_size: 0.25
+    extend_dist: 0.0
+    no_edge_table: false
+    set_roi_service: true
+  }
+}
+
+stage_config: {
+  stage_type: GROUND_SEGMENTER
+  enabled: true
+
+  ground_segmenter_config: {
+    use_roi: true
+    use_ground_service: true
+
+    small_grid_size: 32
+    big_grid_size: 256
+    nr_smooth_iter: 5
+
+    roi_rad_x: 120.0
+    roi_rad_y: 120.0
+    roi_rad_z: 100.0
+    roi_near_rad: 32.0
+
+    sample_region_z_lower: -3.0
+    sample_region_z_upper: -1.0
+
+    planefit_orien_threshold: 5.0
+    planefit_dist_thres_near: 0.10
+    planefit_dist_thres_far: 0.20
+    z_compare_thres: 0.10
+    smooth_z_thres: 1.0
+    inliers_min_threshold: 6
+
+    near_range_dist: 10.0
+    near_range_ground_thres: 0.25
+    middle_range_dist: 20.0
+    middle_range_ground_thres: 0.25
+  }
+}
+
+stage_config: {
+  stage_type: GRAPH_CLUSTER_SEGMENTER
+  enabled: true
+
+  graph_cluster_segmenter_config: {
+    resolution: 0.6
+    threshold: 2.0
+    min_pt_number: 60
+    search_radius: 2
+    height_threshold: 2.0
+    xmin: -120.0
+    xmax: 120.0
+    ymin: -120.0
+    ymax: 120.0
+    semantic_cost: 1.0
+    car_xmin: -0.35
+    car_xmax: 0.35
+    car_ymin: -0.45
+    car_ymax: 0.45
+    car_zmax: 0.56
+    min_radius: 0.5
+    z_min_from_ground: 0.05
+    split_aspect_ratio: 15.0
+    split_distance: 5.0
+  }
+}
+
+stage_config: {
+  stage_type: OBJECT_GEOMETRY_BUILDER
+  enabled: true
+
+  object_geometry_builder_config: {
+
+  }
+}
+
+stage_config: {
+  stage_type: OBJECT_POST_FILTER_BANK
+  enabled: true
+
+  plugin_config: {
+    plugin_type: HDMAP_BOUNDARY_OBJECT_FILTER
+    enabled: true
+
+    hdmap_boundary_object_filter_config: {
+      distance_to_boundary_threshold: -1.0
+      confidence_threshold: 0.5
+      cross_roi_threshold: 0.6
+      inside_threshold: 1.0
+    }
+  }
+
+  object_post_filter_bank_config: {
+
+  }
+}

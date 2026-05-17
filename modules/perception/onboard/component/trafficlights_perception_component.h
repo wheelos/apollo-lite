@@ -33,7 +33,7 @@
 #include "modules/perception/map/hdmap/hdmap_input.h"
 #include "modules/perception/onboard/proto/trafficlights_perception_component.pb.h"
 #include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
-#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
 // #include "modules/v2x/common/v2x_proxy_gflags.h"
 // #include "modules/perception/pipeline/proto/traffic_light_config.pb.h"
 #include "modules/perception/pipeline/proto/pipeline_config.pb.h"
@@ -127,7 +127,7 @@ class TrafficLightsPerceptionComponent : public apollo::cyber::Component<> {
   std::string tf2_child_frame_id_;
   double tf2_timeout_second_ = 0.01;
 
-  Buffer* tf2_buffer_ = Buffer::Instance();
+    apollo::transform::TransformQuery transform_query_;
 
   std::vector<std::string> camera_names_;
   std::vector<std::string> input_camera_channel_names_;

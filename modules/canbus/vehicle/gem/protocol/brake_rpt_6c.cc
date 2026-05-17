@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,14 +33,18 @@ const int32_t Brakerpt6c::ID = 0x6C;
 
 void Brakerpt6c::Parse(const std::uint8_t* bytes, int32_t length,
                        ChassisDetail* chassis) const {
-  chassis->mutable_gem()->mutable_brake_rpt_6c()->set_manual_input(
-      manual_input(bytes, length));
-  chassis->mutable_gem()->mutable_brake_rpt_6c()->set_commanded_value(
-      commanded_value(bytes, length));
-  chassis->mutable_gem()->mutable_brake_rpt_6c()->set_output_value(
-      output_value(bytes, length));
-  chassis->mutable_gem()->mutable_brake_rpt_6c()->set_brake_on_off(
-      brake_on_off(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_brake_rpt_6c()
+      ->set_manual_input(manual_input(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_brake_rpt_6c()
+      ->set_commanded_value(commanded_value(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_brake_rpt_6c()
+      ->set_output_value(output_value(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_brake_rpt_6c()
+      ->set_brake_on_off(brake_on_off(bytes, length));
 }
 
 // config detail: {'name': 'manual_input', 'offset': 0.0, 'precision': 0.001,

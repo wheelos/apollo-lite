@@ -3,10 +3,13 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+PERCEPTION_COPTS = ['-DMODULE_NAME=\\"perception\\"']
+
 cc_library(
     name = "bitmap2d",
     srcs = ["bitmap2d.cc"],
     hdrs = ["bitmap2d.h"],
+    copts = PERCEPTION_COPTS,
     deps = [
         "//cyber",
         "//modules/perception/lidar/common:lidar_log",
@@ -19,6 +22,7 @@ cc_library(
     name = "hdmap_roi_filter",
     srcs = ["hdmap_roi_filter.cc"],
     hdrs = ["hdmap_roi_filter.h"],
+    copts = PERCEPTION_COPTS,
     deps = [
         ":bitmap2d",
         ":polygon_mask",
@@ -50,6 +54,9 @@ cc_library(
 cc_library(
     name = "polygon_mask",
     hdrs = ["polygon_mask.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":bitmap2d",
         ":polygon_scan_cvter",
@@ -61,6 +68,9 @@ cc_library(
 cc_library(
     name = "polygon_scan_cvter",
     hdrs = ["polygon_scan_cvter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/lidar/common:lidar_log",

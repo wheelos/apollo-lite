@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,10 +33,10 @@ const int32_t Llcvehiclelimits24::ID = 0x24;
 
 void Llcvehiclelimits24::Parse(const std::uint8_t* bytes, int32_t length,
                                ChassisDetail* chassis) const {
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_vehiclelimits_24()
       ->set_llc_fbk_maxsteeringangle(llc_fbk_maxsteeringangle(bytes, length));
-  chassis->mutable_transit()
+  MutableChassisExtension<::apollo::canbus::Transit>(chassis)
       ->mutable_llc_vehiclelimits_24()
       ->set_llc_fbk_maxbrakepercent(llc_fbk_maxbrakepercent(bytes, length));
 }

@@ -29,6 +29,7 @@
 #include "cyber/cyber.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/util/message_util.h"
+#include "modules/common/util/proj_helper.h"
 #include "modules/common/util/time_conversion.h"
 #include "modules/drivers/gnss/parser/parser_factory.h"
 #include "modules/drivers/gnss/util/util.h"
@@ -41,7 +42,6 @@ using ::apollo::localization::CorrectedImu;
 using ::apollo::localization::Gps;
 
 using apollo::common::util::GpsToUnixSeconds;
-using apollo::transform::TransformStamped;
 
 namespace {
 
@@ -60,22 +60,18 @@ static constexpr boost::array<double, 36> POSE_COVAR = {
 
 DataParser::DataParser(const config::Config& config,
                        const std::shared_ptr<apollo::cyber::Node>& node)
-    : config_(config), tf_broadcaster_(node), node_(node) {
+  : config_(config), node_(node) {
   proj_context_ = proj_context_create();
   if (!proj_context_) {
     AFATAL << "Failed to create PROJ context";
   }
-  proj_transform_ = proj_create_crs_to_crs(
-      proj_context_, WGS84_TEXT, config_.proj4_text().c_str(), nullptr);
-  PJ* normalized_transform =
-      proj_normalize_for_visualization(proj_context_, proj_transform_);
-  proj_destroy(proj_transform_);
-  proj_transform_ = normalized_transform;
+  std::string proj_error;
+  proj_transform_ = apollo::common::util::ProjHelper::CreateNormalizedCrsToCrs(
+      proj_context_, WGS84_TEXT, config_.proj4_text(), &proj_error);
   if (!proj_transform_) {
     proj_context_destroy(proj_context_);
     proj_context_ = nullptr;
-    AFATAL << "Failed to create PROJ transformation from " << WGS84_TEXT
-           << " to " << config_.proj4_text();
+    AFATAL << proj_error;
   }
 
   gnss_status_.set_solution_status(0);
@@ -377,12 +373,6 @@ void DataParser::PublishOdometry(const Parser::ProtoMessagePtr& msg_ptr) {
   gps_msg->mutable_linear_velocity()->set_z(ins->linear_velocity().z());
 
   gps_writer_->Write(gps);  // Using shared_ptr for created message
-  if (config_.tf().enable()) {
-    TransformStamped transform;
-    // Pass by reference as GpsToTransformStamped modifies the object
-    GpsToTransformStamped(gps, &transform);
-    tf_broadcaster_.SendTransform(transform);
-  }
 }
 
 void DataParser::PublishCorrimu(const Parser::ProtoMessagePtr& msg_ptr) {
@@ -474,25 +464,6 @@ void DataParser::PublishHeading(const Parser::ProtoMessagePtr& msg_ptr) {
   // Create message directly and publish
   common::util::FillHeader("gnss", heading_ptr.get());
   heading_writer_->Write(heading_ptr);  // Use const& overload
-}
-
-void DataParser::GpsToTransformStamped(const std::shared_ptr<Gps>& gps,
-                                       TransformStamped* transform) {
-  CHECK_NOTNULL(gps);
-  CHECK_NOTNULL(transform);
-
-  transform->mutable_header()->set_timestamp_sec(gps->header().timestamp_sec());
-  transform->mutable_header()->set_frame_id(config_.tf().frame_id());
-  transform->set_child_frame_id(config_.tf().child_frame_id());
-  auto translation = transform->mutable_transform()->mutable_translation();
-  translation->set_x(gps->localization().position().x());
-  translation->set_y(gps->localization().position().y());
-  translation->set_z(gps->localization().position().z());
-  auto rotation = transform->mutable_transform()->mutable_rotation();
-  rotation->set_qx(gps->localization().orientation().qx());
-  rotation->set_qy(gps->localization().orientation().qy());
-  rotation->set_qz(gps->localization().orientation().qz());
-  rotation->set_qw(gps->localization().orientation().qw());
 }
 
 }  // namespace gnss

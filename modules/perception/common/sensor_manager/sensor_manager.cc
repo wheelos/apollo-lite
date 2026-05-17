@@ -17,11 +17,12 @@
 
 #include <utility>
 
+#include "modules/perception/proto/sensor_meta_schema.pb.h"
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/perception/common/io/io_util.h"
 #include "modules/perception/lib/config_manager/config_manager.h"
-#include "modules/perception/proto/sensor_meta_schema.pb.h"
 
 namespace apollo {
 namespace perception {
@@ -60,7 +61,9 @@ bool SensorManager::Init() {
     sensor_info.type = static_cast<SensorType>(sensor_meta_proto.type());
     sensor_info.orientation =
         static_cast<SensorOrientation>(sensor_meta_proto.orientation());
-    sensor_info.frame_id = sensor_meta_proto.name();
+    sensor_info.frame_id = sensor_meta_proto.has_frame_id()
+                   ? sensor_meta_proto.frame_id()
+                   : sensor_meta_proto.name();
 
     auto pair = sensor_info_map_.insert(
         make_pair(sensor_meta_proto.name(), sensor_info));
@@ -72,7 +75,7 @@ bool SensorManager::Init() {
     if (this->IsCamera(sensor_info.type)) {
       std::shared_ptr<BrownCameraDistortionModel> distort_model(
           new BrownCameraDistortionModel());
-      auto intrinsic_file = IntrinsicPath(sensor_info.frame_id);
+      auto intrinsic_file = IntrinsicPath(sensor_info.name);
       if (!LoadBrownCameraIntrinsic(intrinsic_file, distort_model.get())) {
         AERROR << "Failed to load camera intrinsic:" << intrinsic_file;
         return false;

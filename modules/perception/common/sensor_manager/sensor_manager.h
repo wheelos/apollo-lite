@@ -66,9 +66,10 @@ class SensorManager {
   std::string GetFrameId(const std::string& name) const;
 
  private:
-  inline std::string IntrinsicPath(const std::string& frame_id) {
+    inline std::string IntrinsicPath(const std::string& sensor_name) {
     std::string intrinsics =
-        FLAGS_obs_sensor_intrinsic_path + "/" + frame_id + "_intrinsics.yaml";
+                FLAGS_obs_sensor_intrinsic_path + "/" + sensor_name +
+                "_intrinsics.yaml";
     return intrinsics;
   }
 

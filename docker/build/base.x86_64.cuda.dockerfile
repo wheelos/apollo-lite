@@ -1,5 +1,4 @@
-ARG BASE_IMAGE=nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
-FROM ${BASE_IMAGE}
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 
 ARG TENSORRT_VERSION="8.6.1.6"
 ARG PATCH_SUFFIX="-1+cuda11.8"
@@ -30,6 +29,7 @@ RUN apt-get update && \
         libnvparsers-dev="${TENSORRT_VERSION}${PATCH_SUFFIX}" \
         python3-libnvinfer="${TENSORRT_VERSION}${PATCH_SUFFIX}" && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /usr/lib/x86_64-linux-gnu/libnvinfer_static.a
 
 ENV TENSORRT_VERSION=${TENSORRT_VERSION}

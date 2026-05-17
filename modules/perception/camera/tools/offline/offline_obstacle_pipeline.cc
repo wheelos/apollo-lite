@@ -20,7 +20,7 @@
 #include <opencv2/highgui/highgui_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 #include "absl/strings/str_split.h"
 
@@ -288,13 +288,14 @@ int work() {
       pose.setIdentity();
     }
 
-    Eigen::Affine3d c2n;
-    if (!transform_server.QueryTransform(camera_name, "novatel", &c2n)) {
+        Eigen::Affine3d c2vehicle;
+        if (!transform_server.QueryTransform(camera_name, "base_link",
+                                         &c2vehicle)) {
       AINFO << "Failed to query transform from " << camera_name
-            << " to novatel";
+        << " to base_link";
       return -1;
     }
-    frame.camera2world_pose = pose * c2n;
+    frame.camera2world_pose = pose * c2vehicle;
     frame.data_provider->FillImageData(image.rows, image.cols,
                                        (const uint8_t *)(image.data), "bgr8");
     perception.GetCalibrationService(&frame.calibration_service);

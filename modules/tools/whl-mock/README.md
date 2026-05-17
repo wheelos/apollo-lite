@@ -31,9 +31,15 @@ source cyber/setup.bash
 
 ```shell
 # Example:
-python modules/tools/whl-mock/publisher.py --publish -i PredictionObstacles_template.txt -t /apollo/prediction
+## prediction
+cd modules/tools/whl-mock/
+python publisher.py --publish -i PredictionObstacles_template.txt -t /apollo/prediction
+
+## planning
+python publisher.py --publish -i ADCTrajectory_template.txt -t /apollo/planning
+
 # General usage:
-# python modules/tools/whl-mock/publisher.py --publish -i your_message_template.txt -t /your_topic -p 0.1
+# python publisher.py --publish -i your_message_template.txt -t /your_topic -p 0.1
 ```
 
 3. In another terminal, run:
@@ -54,5 +60,11 @@ To publish a different message type:
 ```shell
 python modules/tools/whl-mock/publisher.py --gen
 ```
+3. Use log info
 
-3. Edit the generated `<your_msg_template>.txt` file as needed.
+log-level have five choices :"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+
+```shell
+python modules/tools/whl-mock/publisher.py --gen --log-level DEBUG
+```
+4. Edit the generated `<your_msg_template>.txt` file as needed.

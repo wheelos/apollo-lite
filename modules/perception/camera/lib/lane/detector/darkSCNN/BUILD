@@ -7,6 +7,9 @@ cc_library(
     name = "darkSCNN_lane_detector",
     srcs = ["darkSCNN_lane_detector.cc"],
     hdrs = ["darkSCNN_lane_detector.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/camera/common",
@@ -18,6 +21,7 @@ cc_library(
         "//modules/perception/lib/registerer",
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:darkSCNN_cc_proto",
+        "@opencv//:imgcodecs",
     ],
     alwayslink = True,
 )

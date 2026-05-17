@@ -1,18 +1,20 @@
-/******************************************************************************
- * Copyright 2018 The Apollo Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *****************************************************************************/
+// Copyright 2026 WheelOS. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//  Created Date: 2026-04-18
+//  Author: daohu527
+
 #include "modules/dreamview/backend/sim_control_manager/sim_control_manager.h"
 
 #include "nlohmann/json.hpp"
@@ -20,9 +22,6 @@
 namespace apollo {
 namespace dreamview {
 
-using apollo::canbus::Chassis;
-using apollo::common::ErrorCode;
-using apollo::control::ControlCommand;
 using Json = nlohmann::json;
 
 std::string SimControlManager::Name() const {
@@ -76,8 +75,9 @@ bool SimControlManager::ChangeDynamicModel(
   model_ptr_ = next_model_ptr_;
   next_model_ptr_ = nullptr;
   model_ptr_->Start();
+  enabled_ = model_ptr_->IsEnabled();
   current_dynamic_model_ = dynamic_model_name;
-  return true;
+  return enabled_;
 }
 
 bool SimControlManager::DeleteDynamicModel(
@@ -87,23 +87,62 @@ bool SimControlManager::DeleteDynamicModel(
 }
 
 void SimControlManager::Start() {
-  // enabled_仅承担开关作用
-  if (!enabled_) {
-    enabled_ = true;
+  if (enabled_ && model_ptr_ != nullptr) {
+    return;
   }
+
+  auto *model_factory = DynamicModelFactory::Instance();
+  if (!model_ptr_) {
+    model_ptr_ = model_factory->GetModelType(FLAGS_sim_perfect_control);
+  }
+  if (!model_ptr_) {
+    AERROR << "Failed to get default sim control model: "
+           << FLAGS_sim_perfect_control;
+    return;
+  }
+
+  current_dynamic_model_ = FLAGS_sim_perfect_control;
+  model_ptr_->Start();
+  enabled_ = model_ptr_->IsEnabled();
+}
+
+void SimControlManager::Start(double x, double y) {
+  if (enabled_ && model_ptr_ != nullptr) {
+    return;
+  }
+
+  auto *model_factory = DynamicModelFactory::Instance();
+  if (!model_ptr_) {
+    model_ptr_ = model_factory->GetModelType(FLAGS_sim_perfect_control);
+  }
+  if (!model_ptr_) {
+    AERROR << "Failed to get default sim control model: "
+           << FLAGS_sim_perfect_control;
+    return;
+  }
+
+  current_dynamic_model_ = FLAGS_sim_perfect_control;
+  model_ptr_->Start(x, y);
+  enabled_ = model_ptr_->IsEnabled();
 }
 
 void SimControlManager::Restart(double x, double y) {
   // reset start point for dynamic model.
   if (!IsEnabled() || !model_ptr_) {
     AERROR << "Sim control is invalid,Failed to restart!";
+    return;
   }
   model_ptr_->Stop();
   model_ptr_->Start(x, y);
+  enabled_ = model_ptr_->IsEnabled();
   return;
 }
 
-void SimControlManager::RunOnce() { model_ptr_->RunOnce(); }
+void SimControlManager::RunOnce() {
+  if (model_ptr_ != nullptr) {
+    model_ptr_->RunOnce();
+  }
+}
 
 void SimControlManager::Stop() {
   if (enabled_) {

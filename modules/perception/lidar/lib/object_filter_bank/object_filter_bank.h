@@ -15,10 +15,10 @@
  *****************************************************************************/
 #pragma once
 
-#include <string>
-#include <vector>
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "cyber/common/macros.h"
 #include "modules/perception/lidar/lib/interface/base_object_filter.h"
@@ -28,7 +28,9 @@ namespace apollo {
 namespace perception {
 namespace lidar {
 
-class ObjectFilterBank : public pipeline::Stage {
+// Applies object-level post filters after segmentation / geometry building.
+// In the segmentation pipeline this stage is the final object gate.
+class ObjectPostFilterBank : public pipeline::Stage {
  public:
   using DataFrame = pipeline::DataFrame;
   using Plugin = pipeline::Plugin;
@@ -36,9 +38,9 @@ class ObjectFilterBank : public pipeline::Stage {
   using StageConfig = pipeline::StageConfig;
 
  public:
-  ObjectFilterBank() = default;
+  ObjectPostFilterBank() { name_ = "ObjectPostFilterBank"; }
 
-  ~ObjectFilterBank() {
+  ~ObjectPostFilterBank() {
     for (auto& filter : filter_bank_) {
       delete filter;
     }
@@ -66,10 +68,12 @@ class ObjectFilterBank : public pipeline::Stage {
   std::vector<BaseObjectFilter*> filter_bank_;
 
   std::vector<std::unique_ptr<BaseObjectFilter>> filter_ptrs_;
-  ObjectFilterBankConfig object_filter_bank_config_;
+  ObjectPostFilterBankConfig object_post_filter_bank_config_;
 
-  DISALLOW_COPY_AND_ASSIGN(ObjectFilterBank);
+  DISALLOW_COPY_AND_ASSIGN(ObjectPostFilterBank);
 };
+
+using ObjectFilterBank = ObjectPostFilterBank;
 
 }  // namespace lidar
 }  // namespace perception

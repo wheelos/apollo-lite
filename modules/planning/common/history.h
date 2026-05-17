@@ -32,6 +32,24 @@
 namespace apollo {
 namespace planning {
 
+class BlockingStatus {
+ public:
+  bool has_start_stuck_time() const { return start_stuck_time_ > 0; }
+
+  void clear_start_stuck_time() { start_stuck_time_ = -1.0; }
+
+  void set_start_stuck_time(double start_stuck_time) {
+    start_stuck_time_ = start_stuck_time;
+  }
+
+  double start_stuck_time() const { return start_stuck_time_; }
+
+ private:
+  // Using -1.0 (or similar negative number) is a standard way to represent
+  // an unset/invalid/clear state for a positive time variable.
+  double start_stuck_time_ = -1.0;
+};
+
 class HistoryObjectDecision {
  public:
   HistoryObjectDecision() = default;
@@ -106,9 +124,12 @@ class History {
   size_t Size() const;
   HistoryStatus* mutable_history_status() { return &history_status_; }
 
+  BlockingStatus* mutable_blocking_status() { return &blocking_status_; }
+
  private:
   std::list<HistoryFrame> history_frames_;
   HistoryStatus history_status_;
+  BlockingStatus blocking_status_;
 };
 
 }  // namespace planning

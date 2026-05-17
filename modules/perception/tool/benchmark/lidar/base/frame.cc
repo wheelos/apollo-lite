@@ -53,7 +53,7 @@ void Frame::set_min_confidence(float confidence) {
 }
 
 bool Frame::load(const std::vector<std::string>& filenames) {
-  if (filenames.size() < 3 || filenames.size() > 4) {
+  if (filenames.size() < 2 || filenames.size() > 4) {
     std::cerr << "file list is not complete" << std::endl;
     return false;
   }
@@ -65,8 +65,11 @@ bool Frame::load(const std::vector<std::string>& filenames) {
   // 4. pose: sensor2world_pose
   std::string pc_filename = filenames[0];
   std::string result_filename = filenames[1];
-  std::string gt_filename = filenames[2];
+  std::string gt_filename = "";
   std::string pose_filename = "";
+  if (filenames.size() >= 3) {
+    gt_filename = filenames[2];
+  }
   if (filenames.size() == 4) {
     pose_filename = filenames[3];
     if (!load_sensor2world_pose(pose_filename, &sensor2world_pose)) {
@@ -93,7 +96,9 @@ bool Frame::load(const std::vector<std::string>& filenames) {
     std::cerr << "Fail to load result: " << result_filename << std::endl;
     return false;
   }
-  if (!load_frame_objects(gt_filename, _s_black_list, &gt_objects)) {
+  gt_objects.clear();
+  if (!gt_filename.empty() &&
+      !load_frame_objects(gt_filename, _s_black_list, &gt_objects)) {
     std::cerr << "Fail to load groundtruth: " << gt_filename << std::endl;
     return false;
   }
@@ -206,8 +211,20 @@ void Frame::build_indices() {
   if (objects_has_indices && gt_objects_has_indices) {
     return;
   }
-  pcl::KdTreeFLANN<Point> point_cloud_kdtree;
-  point_cloud_kdtree.setInputCloud(_point_cloud);
+  // Use a standard PCL point type for kdtree to avoid requiring explicit PCL
+  // template instantiations for our custom PointXYZIL type.
+  pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud_xyz(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  point_cloud_xyz->points.resize(_point_cloud->size());
+  for (std::size_t i = 0; i < _point_cloud->size(); ++i) {
+    const auto& pt = _point_cloud->at(i);
+    point_cloud_xyz->points[i].x = pt.x;
+    point_cloud_xyz->points[i].y = pt.y;
+    point_cloud_xyz->points[i].z = pt.z;
+  }
+
+  pcl::KdTreeFLANN<pcl::PointXYZ> point_cloud_kdtree;
+  point_cloud_kdtree.setInputCloud(point_cloud_xyz);
   // Step I: build result objects' indices
   if (!objects_has_indices) {
     build_objects_indices(point_cloud_kdtree, &objects);
@@ -241,7 +258,7 @@ void Frame::build_points() {
 }
 
 void Frame::build_objects_indices(
-    const pcl::KdTreeFLANN<Point>& point_cloud_kdtree,
+    const pcl::KdTreeFLANN<pcl::PointXYZ>& point_cloud_kdtree,
     std::vector<ObjectPtr>* objects_out) {
   std::vector<int> k_indices;
   std::vector<float> k_sqrt_dist;
@@ -251,15 +268,16 @@ void Frame::build_objects_indices(
     objects_out->at(i)->indices->indices.resize(pts_num);
     for (int j = 0; j < pts_num; ++j) {
       const Point& pt = objects_out->at(i)->cloud->points[j];
-      Point query_pt;
+      pcl::PointXYZ query_pt;
       query_pt.x = pt.x;
       query_pt.y = pt.y;
       query_pt.z = pt.z;
       k_indices.resize(1);
       k_sqrt_dist.resize(1);
-      point_cloud_kdtree.nearestKSearch(query_pt, 1, k_indices, k_sqrt_dist);
-      int query_indice = k_indices[0];
-      objects_out->at(i)->indices->indices[j] = query_indice;
+      const int found =
+          point_cloud_kdtree.nearestKSearch(query_pt, 1, k_indices, k_sqrt_dist);
+      objects_out->at(i)->indices->indices[j] =
+          (found > 0) ? k_indices[0] : 0;
     }
   }
 }

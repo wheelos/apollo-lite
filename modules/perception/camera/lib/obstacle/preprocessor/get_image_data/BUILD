@@ -7,10 +7,14 @@ cc_library(
     name = "get_image_data",
     srcs = ["get_image_data.cc"],
     hdrs = ["get_image_data.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/pipeline:data_frame",
         "//modules/perception/pipeline:plugin",
         "//modules/perception/pipeline/proto/plugin:get_image_data_config_cc_proto",
+        "@opencv//:imgcodecs",
     ],
 )
 

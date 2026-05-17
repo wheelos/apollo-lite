@@ -1,0 +1,81 @@
+segment_setting {
+  size_segment: 1024
+  time_segment: 5
+}
+ring_segment_count: 24
+
+# Recorder-plane policy is the only place that should reduce traffic volume.
+# Trigger logic still sees only its own lightweight semantic channels.
+# Recommended tuning order:
+# 1. exclude only diagnostically unactionable heavy channels
+# 2. sample diagnostically valuable heavy channels with channel_rate_limits
+# 3. drop oversized payloads with large_message_policy only when size itself is
+#    the problem
+# Enabled trigger channels are protected: do not exclude or sample the topics
+# that your active triggers depend on, or roadlog will fail fast at startup.
+recorder_policy {
+  # include_channels: "/apollo/planning"
+  # exclude_channels: "/apollo/sensor/camera/front_6mm/image"
+  channel_rate_limits {
+    channel_name: "/apollo/sensor/lidar/fusion/PointCloud2"
+    max_rate_hz: 1.0
+  }
+  # large_message_policy {
+  #   drop_message_size_bytes: 1048576
+  # }
+}
+
+# Built-in triggers omitted from this config default to disabled.
+triggers {
+  trigger_name: "DriveEventTrigger"
+  enabled: true
+  backward_time: 30.0
+  forward_time: 5.0
+  cooldown_time: 10.0
+  description: "triggered by DriveEvent messages"
+}
+
+triggers {
+  trigger_name: "EmergencyModeTrigger"
+  enabled: true
+  backward_time: 25.0
+  forward_time: 10.0
+  cooldown_time: 10.0
+  description: "triggered when mode changes from auto to driver engagement"
+}
+
+triggers {
+  trigger_name: "HardBrakeTrigger"
+  enabled: false
+  backward_time: 25.0
+  forward_time: 10.0
+  cooldown_time: 8.0
+  description: "triggered when hard brake happened"
+}
+
+triggers {
+  trigger_name: "RegularIntervalTrigger"
+  enabled: false
+  backward_time: 15
+  forward_time: 15
+  cooldown_time: 0
+  description: "regularly triggered every certain time interval"
+}
+
+triggers {
+  trigger_name: "SwerveTrigger"
+  enabled: false
+  backward_time: 15
+  forward_time: 15
+  cooldown_time: 8.0
+  description: "triggered when swerve happened"
+}
+
+triggers {
+  trigger_name: "BumperCrashTrigger"
+  enabled: true
+  backward_time: 60.0
+  forward_time: 30.0
+  cooldown_time: 15.0
+  description: "triggered when bumper was pressed by car crashed happened"
+}

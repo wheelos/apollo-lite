@@ -311,36 +311,74 @@ double Obstacle::MinRadiusStopDistance(
   return stop_distance;
 }
 
+double Obstacle::CalculateSTMaxTime() const {
+  const auto& perception = this->Perception();
+  // Sub-type processing
+  switch (perception.sub_type()) {
+    case PerceptionObstacle::ST_TRAFFICCONE:
+      return 4.0;  // Cones: to guide traffic around
+    case PerceptionObstacle::ST_PEDESTRIAN:
+      return 3.0;  // Static pedestrian: short time window to trigger creeping
+    case PerceptionObstacle::ST_UNKNOWN_UNMOVABLE:
+      // If tracking time is short, it might be noise
+      return (perception.tracking_time() < 0.5) ? 2.0 : 5.0;
+    case PerceptionObstacle::ST_TRUCK:
+    case PerceptionObstacle::ST_BUS:
+      return FLAGS_st_max_t;  // Large vehicle, strictly sealed
+    default:
+      break;
+  }
+
+  return FLAGS_st_max_t;  // default
+}
+
 void Obstacle::BuildReferenceLineStBoundary(const ReferenceLine& reference_line,
                                             const double adc_start_s) {
-  const auto& adc_param =
-      VehicleConfigHelper::Instance()->GetConfig().vehicle_param();
-  const double half_adc_width = adc_param.width() / 2;
-  if (is_static_ || trajectory_.trajectory_point().empty()) {
-    std::vector<std::pair<STPoint, STPoint>> point_pairs;
+  // 1. Quick Ignore
+  if (interaction_type_ == InteractionType::IGNORE) {
+    ADEBUG << "Obstacle " << id_ << " is IGNORE. Skip ST.";
+    return;
+  }
+
+  // 2. Static obstacle diversion
+  if (is_static_) {
+    if (interaction_type_ == InteractionType::NUDGEABLE) {
+      // Static and can be bypassed, no ST wall needs to be built.
+      ADEBUG << "Obstacle " << id_ << " is Static NUDGEABLE. Skip ST.";
+      return;
+    }
+
+    // The rest is static blocking. Using the "attenuation wall" logic
+    double st_t_max = CalculateSTMaxTime();
     double start_s = sl_boundary_.start_s();
     double end_s = sl_boundary_.end_s();
     if (end_s - start_s < kStBoundaryDeltaS) {
       end_s = start_s + kStBoundaryDeltaS;
     }
-    if (!reference_line.IsBlockRoad(perception_bounding_box_, half_adc_width)) {
-      return;
-    }
+
+    std::vector<std::pair<STPoint, STPoint>> point_pairs;
     point_pairs.emplace_back(STPoint(start_s - adc_start_s, 0.0),
                              STPoint(end_s - adc_start_s, 0.0));
-    point_pairs.emplace_back(STPoint(start_s - adc_start_s, FLAGS_st_max_t),
-                             STPoint(end_s - adc_start_s, FLAGS_st_max_t));
+    point_pairs.emplace_back(STPoint(start_s - adc_start_s, st_t_max),
+                             STPoint(end_s - adc_start_s, st_t_max));
     reference_line_st_boundary_ = STBoundary(point_pairs);
-  } else {
+    ADEBUG << "Obstacle " << id_ << " is Static BLOCKING. ST Wall built.";
+  }
+  // 3. Dynamic obstacle logic (InteractionType::YIELDING / BLOCKING)
+  else {
+    // Dynamic obstacles: Attempt to establish ST boundaries unless ignored.
+    // Even if the vehicle appears to be to the side from the perspective of SL,
+    // we still need to calculate whether its trajectory will "sweep" across the
+    // reference line (Cut-in).
     if (BuildTrajectoryStBoundary(reference_line, adc_start_s,
                                   &reference_line_st_boundary_)) {
-      ADEBUG << "Found st_boundary for obstacle " << id_;
-      ADEBUG << "st_boundary: min_t = " << reference_line_st_boundary_.min_t()
-             << ", max_t = " << reference_line_st_boundary_.max_t()
-             << ", min_s = " << reference_line_st_boundary_.min_s()
-             << ", max_s = " << reference_line_st_boundary_.max_s();
+      ADEBUG << "Obstacle " << id_ << " is Dynamic. ST Boundary built.";
     } else {
-      ADEBUG << "No st_boundary for obstacle " << id_;
+      ADEBUG << "Obstacle " << id_
+             << " is Dynamic but trajectory has NO overlap.";
+      // Note: There is no overlap here, which is equivalent to
+      // Ignore, but this is determined by the physical trajectory, not by
+      // the intended prediction.
     }
   }
 }
@@ -612,8 +650,15 @@ ObjectDecisionType Obstacle::MergeLateralDecision(
     if (lhs.has_ignore()) {
       return rhs;
     } else if (lhs.has_nudge()) {
-      DCHECK(lhs.nudge().type() == rhs.nudge().type())
-          << "could not merge left nudge and right nudge";
+      if (lhs.nudge().has_type() != rhs.nudge().has_type()) {
+        return lhs.nudge().has_type() ? lhs : rhs;
+      }
+      if (lhs.nudge().has_type() && rhs.nudge().has_type() &&
+          lhs.nudge().type() != rhs.nudge().type()) {
+        AWARN << "Conflicting lateral nudge directions, prefer the decision "
+                 "with larger lateral clearance. lhs="
+              << lhs.ShortDebugString() << ", rhs=" << rhs.ShortDebugString();
+      }
       return std::fabs(lhs.nudge().distance_l()) >
                      std::fabs(rhs.nudge().distance_l())
                  ? lhs
@@ -726,34 +771,6 @@ bool Obstacle::IsValidObstacle(
   return !std::isnan(object_width) && !std::isnan(object_length) &&
          object_width > kMinObjectDimension &&
          object_length > kMinObjectDimension;
-}
-
-void Obstacle::CheckLaneBlocking(const ReferenceLine& reference_line) {
-  if (!IsStatic()) {
-    is_lane_blocking_ = false;
-    return;
-  }
-  DCHECK(sl_boundary_.has_start_s());
-  DCHECK(sl_boundary_.has_end_s());
-  DCHECK(sl_boundary_.has_start_l());
-  DCHECK(sl_boundary_.has_end_l());
-
-  if (sl_boundary_.start_l() * sl_boundary_.end_l() < 0.0) {
-    is_lane_blocking_ = true;
-    return;
-  }
-
-  const double driving_width = reference_line.GetDrivingWidth(sl_boundary_);
-  auto vehicle_param = common::VehicleConfigHelper::GetConfig().vehicle_param();
-
-  if (reference_line.IsOnLane(sl_boundary_) &&
-      driving_width <
-          vehicle_param.width() + FLAGS_static_obstacle_nudge_l_buffer) {
-    is_lane_blocking_ = true;
-    return;
-  }
-
-  is_lane_blocking_ = false;
 }
 
 void Obstacle::SetLaneChangeBlocking(const bool is_distance_clear) {

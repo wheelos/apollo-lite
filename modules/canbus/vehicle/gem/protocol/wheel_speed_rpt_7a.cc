@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,15 +33,16 @@ const int32_t Wheelspeedrpt7a::ID = 0x7A;
 
 void Wheelspeedrpt7a::Parse(const std::uint8_t* bytes, int32_t length,
                             ChassisDetail* chassis) const {
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_wheel_speed_rpt_7a()
       ->set_wheel_spd_rear_right(wheel_spd_rear_right(bytes, length));
-  chassis->mutable_gem()->mutable_wheel_speed_rpt_7a()->set_wheel_spd_rear_left(
-      wheel_spd_rear_left(bytes, length));
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
+      ->mutable_wheel_speed_rpt_7a()
+      ->set_wheel_spd_rear_left(wheel_spd_rear_left(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_wheel_speed_rpt_7a()
       ->set_wheel_spd_front_right(wheel_spd_front_right(bytes, length));
-  chassis->mutable_gem()
+  MutableChassisExtension<::apollo::canbus::Gem>(chassis)
       ->mutable_wheel_speed_rpt_7a()
       ->set_wheel_spd_front_left(wheel_spd_front_left(bytes, length));
 }

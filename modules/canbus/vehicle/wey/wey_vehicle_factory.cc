@@ -15,12 +15,17 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/wey_vehicle_factory.h"
+
+#include "modules/canbus/vehicle/vehicle_factory.h"
 #include "modules/canbus/vehicle/wey/wey_controller.h"
 #include "modules/canbus/vehicle/wey/wey_message_manager.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
 namespace canbus {
+
+REGISTER_PLUGIN_BY_KEY(AbstractVehicleFactory, WeyVehicleFactory,
+                       apollo::common::WEY);
 
 std::unique_ptr<VehicleController>
 WeyVehicleFactory::CreateVehicleController() {

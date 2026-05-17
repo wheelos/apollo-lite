@@ -32,7 +32,7 @@
 #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
 
 #include "cyber/cyber.h"
-#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
 
 namespace apollo {
 namespace drivers {
@@ -72,7 +72,7 @@ class PriSecFusionComponent : public Component<PointCloud> {
   uint64_t GetPointTimestamp(const uint64_t& timestamp);
 
   FusionConfig conf_;
-  apollo::transform::Buffer* buffer_ptr_ = nullptr;
+  apollo::transform::TransformQuery transform_query_;
   std::shared_ptr<Writer<PointCloud>> fusion_writer_;
   std::vector<std::shared_ptr<Reader<PointCloud>>> readers_;
 

@@ -39,7 +39,7 @@ struct PullOverContext {
 class PullOverScenario : public Scenario {
  public:
   PullOverScenario(const ScenarioConfig& config,
-                   const ScenarioContext* scenario_context,
+                   ScenarioContext* scenario_context,
                    const std::shared_ptr<DependencyInjector>& injector)
       : Scenario(config, scenario_context, injector) {}
 
@@ -47,9 +47,9 @@ class PullOverScenario : public Scenario {
 
   std::unique_ptr<Stage> CreateStage(
       const ScenarioConfig::StageConfig& stage_config,
-      const std::shared_ptr<DependencyInjector>& injector);
+      const std::shared_ptr<DependencyInjector>& injector) override;
 
-  PullOverContext* GetContext() { return &context_; }
+  ScenarioGrade Grade() const override { return ScenarioGrade::MISSION; }
 
  private:
   static void RegisterStages();

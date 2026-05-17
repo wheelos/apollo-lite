@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "opencv2/opencv.hpp"
+#include "opencv2/imgcodecs.hpp"
 
 #include "modules/perception/base/camera.h"
 #include "modules/perception/camera/common/camera_frame.h"

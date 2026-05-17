@@ -26,6 +26,16 @@ namespace apollo {
 namespace drivers {
 namespace lidar {
 
+VanjeelidarComponent::~VanjeelidarComponent() {
+  if (cloud_handle_thread_.joinable()) {
+    cloud_handle_thread_.join();
+  }
+  if (driver_ptr_ != nullptr) {
+    driver_ptr_->stop();
+    driver_ptr_ = nullptr;
+  }
+}
+
 bool VanjeelidarComponent::Init() {
   if (!GetProtoConfig(&conf_)) {
     AERROR << "load config error, file:" << config_file_path_;
@@ -79,15 +89,31 @@ bool VanjeelidarComponent::Init() {
       conf_.driver_param().decoder_param().angle_path_hor();
   decoder_param.imu_param_path =
       conf_.driver_param().decoder_param().imu_param_path();
+  decoder_param.query_via_external_interface_enable =
+      conf_.driver_param()
+          .decoder_param()
+          .query_via_external_interface_enable();
   decoder_param.point_cloud_enable =
       conf_.driver_param().decoder_param().point_cloud_enable();
   decoder_param.imu_enable = conf_.driver_param().decoder_param().imu_enable();
+  decoder_param.imu_orientation_enable =
+      conf_.driver_param().decoder_param().imu_orientation_enable();
   decoder_param.laser_scan_enable =
       conf_.driver_param().decoder_param().laser_scan_enable();
   decoder_param.device_ctrl_state_enable =
       conf_.driver_param().decoder_param().device_ctrl_state_enable();
   decoder_param.device_ctrl_cmd_enable =
       conf_.driver_param().decoder_param().device_ctrl_cmd_enable();
+  decoder_param.send_packet_enable =
+      conf_.driver_param().decoder_param().send_packet_enable();
+  decoder_param.recv_packet_enable =
+      conf_.driver_param().decoder_param().recv_packet_enable();
+  decoder_param.send_lidar_param_enable =
+      conf_.driver_param().decoder_param().send_lidar_param_enable();
+  decoder_param.recv_lidar_param_cmd_enable =
+      conf_.driver_param().decoder_param().recv_lidar_param_cmd_enable();
+  decoder_param.tail_filter_enable =
+      conf_.driver_param().decoder_param().tail_filter_enable();
   decoder_param.hide_points_range =
       conf_.driver_param().decoder_param().hide_points_range();
 
@@ -105,6 +131,18 @@ bool VanjeelidarComponent::Init() {
         conf_.driver_param().decoder_param().transform_param().pitch();
     transform_param.yaw =
         conf_.driver_param().decoder_param().transform_param().yaw();
+    transform_param.x_imu =
+        conf_.driver_param().decoder_param().transform_param().x_imu();
+    transform_param.y_imu =
+        conf_.driver_param().decoder_param().transform_param().y_imu();
+    transform_param.z_imu =
+        conf_.driver_param().decoder_param().transform_param().z_imu();
+    transform_param.roll_imu =
+        conf_.driver_param().decoder_param().transform_param().roll_imu();
+    transform_param.pitch_imu =
+        conf_.driver_param().decoder_param().transform_param().pitch_imu();
+    transform_param.yaw_imu =
+        conf_.driver_param().decoder_param().transform_param().yaw_imu();
     decoder_param.transform_param = transform_param;
   }
 
@@ -128,6 +166,10 @@ bool VanjeelidarComponent::Init() {
       conf_.driver_param().input_param().user_layer_bytes();
   input_param.tail_layer_bytes =
       conf_.driver_param().input_param().tail_layer_bytes();
+  input_param.port_name = conf_.driver_param().input_param().port_name();
+  input_param.baud_rate = conf_.driver_param().input_param().baud_rate();
+  input_param.network_interface =
+      conf_.driver_param().input_param().network_interface();
 
   ::vanjee::lidar::WJDriverParam driver_param;
 
@@ -172,6 +214,27 @@ bool VanjeelidarComponent::Init() {
     WJ_WARNING << code.toString() << WJ_REND;
   });
 
+  driver_ptr_->regPacketCallback(
+      std::bind(&VanjeelidarComponent::VanjeePacketCallback, this,
+                std::placeholders::_1));
+
+  static ::vanjee::lidar::LidarParameterInterface g_lidar_param;
+  driver_ptr_->regLidarParameterInterfaceCallback(
+      []() {
+        // TODO(All): implement lidar parameter interface allocate callback if
+        // necessary
+        return std::shared_ptr<::vanjee::lidar::LidarParameterInterface>(
+            &g_lidar_param, [](::vanjee::lidar::LidarParameterInterface*) {});
+      },
+      [](std::shared_ptr<::vanjee::lidar::LidarParameterInterface>
+             lidar_param) {
+        // TODO(All): implement lidar parameter interface put callback if
+        // necessary
+        (void)lidar_param;
+      });
+
+  AINFO << "vanjee driver version: "
+        << ::vanjee::lidar::getDriverVersion().str();
   driver_param.print();
 
   if (!driver_ptr_->init(driver_param)) {
@@ -188,27 +251,28 @@ bool VanjeelidarComponent::Init() {
 }
 
 void VanjeelidarComponent::ReadScanCallback(
-    const std::shared_ptr<vanjee::VanjeeScanPacket>& scan_message) {
+    const std::shared_ptr<vanjee::VanjeePacket>& packet) {
   ADEBUG << __FUNCTION__ << " start";
-  // std::vector<uint8_t> pkt_vector;
-  // pkt_vector.assign(scan_message->data().begin(),
-  // scan_message->data().end()); std::shared_ptr<::vanjee::lidar::Buffer> pkt =
-  //     std::make_shared<::vanjee::lidar::Buffer>(pkt_vector.size());
-  // memcpy(pkt->data(), pkt_vector.data(), pkt_vector.size());
-  // pkt->setData(0, pkt_vector.size());
-  // driver_ptr_->putPacket(pkt);
+  std::vector<uint8_t> pkt_data;
+  pkt_data.assign(packet->data().begin(), packet->data().end());
+  std::shared_ptr<::vanjee::lidar::Packet> pkt =
+      std::make_shared<::vanjee::lidar::Packet>(pkt_data.size());
+  pkt->seq = packet->seq();
+  pkt->timestamp = packet->timestamp();
+  pkt->buf = pkt_data;
+  driver_ptr_->decodePacket(*pkt);
 }
 
-// void VanjeelidarComponent::VanjeePacketCallback(
-//     const ::vanjee::lidar::Packet& lidar_packet) {
-//   ADEBUG << __FUNCTION__ << " start";
-//   std::shared_ptr<vanjee::VanjeeScanPacket> scan_packet =
-//       std::make_shared<vanjee::VanjeeScanPacket>();
-//   scan_packet->set_stamp(cyber::Time::Now().ToNanosecond());
-//   scan_packet->mutable_data()->assign(lidar_packet.buf_.begin(),
-//                                       lidar_packet.buf_.end());
-//   WriteScan(scan_packet);
-// }
+void VanjeelidarComponent::VanjeePacketCallback(
+    std::shared_ptr<::vanjee::lidar::Packet> pkt) {
+  ADEBUG << __FUNCTION__ << " start";
+  std::shared_ptr<vanjee::VanjeePacket> packet =
+      std::make_shared<vanjee::VanjeePacket>();
+  packet->set_timestamp(pkt->timestamp);
+  packet->set_seq(pkt->seq);
+  packet->mutable_data()->assign(pkt->buf.begin(), pkt->buf.end());
+  WriteScan(packet);
+}
 
 std::shared_ptr<::vanjee::lidar::ScanData>
 VanjeelidarComponent::VanjeeScanDataAllocateCallback() {

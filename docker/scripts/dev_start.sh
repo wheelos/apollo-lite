@@ -40,7 +40,7 @@ source "${CURR_DIR}/docker_base.sh"
 
 # --- Constants: Directories and Container Naming ---
 CACHE_ROOT_DIR="${APOLLO_ROOT_DIR}/.cache"
-BAZEL_CACHE_DIR="/var/cache/bazel/repo_cache"
+BAZEL_CACHE_DIR="${CACHE_ROOT_DIR}/bazel/repo_cache"
 
 DEV_CONTAINER_PREFIX='apollo_dev_'
 DEV_INSIDE="in-dev-docker" # Hostname inside the container
@@ -48,18 +48,24 @@ DEV_INSIDE="in-dev-docker" # Hostname inside the container
 # Ensure cache dir exists early
 [ -d "${CACHE_ROOT_DIR}" ] || mkdir -p "${CACHE_ROOT_DIR}"
 
+# TODO(daohu527): Ensure calibration dir exists! need deprecated
+CALIBRATION_DIR="${APOLLO_ROOT_DIR}/modules/calibration/data"
+[ -d "${CALIBRATION_DIR}" ] || mkdir -p "${CALIBRATION_DIR}"
+
 # --- Constants: Host Environment ---
 SUPPORTED_ARCHS=(x86_64 aarch64)
+RELEASE_TARGET="$(lsb_release -sr)"
 TARGET_ARCH="$(uname -m)"
 TIMEZONE_CN=(
     "+0800"
     "+0800 CST"
+    "Asia/Shanghai"
     "Time zone: Asia/Shanghai (CST, +0800)"
 )
 
 # --- Constants: Container Resources ---
 # Resource limits (can be overridden by environment variables)
-DOCKER_CPUS="${DOCKER_CPUS:-8}"
+DOCKER_CPUS="${DOCKER_CPUS:-4}"
 DOCKER_MEMORY="${DOCKER_MEMORY:-8g}"
 
 # --- Constants: Image Name and Versions ---
@@ -68,14 +74,15 @@ DOCKER_MEMORY="${DOCKER_MEMORY:-8g}"
 DOCKER_IMAGE_REPO=${DOCKER_IMAGE_REPO:="wheelos/apollo"}
 DOCKER_IMAGE_TAG_X86_64=${DOCKER_IMAGE_TAG_X86_64:="dev-x86_64-20.04-20250713_1555"}
 DOCKER_IMAGE_TAG_X86_64_TESTING=${DOCKER_IMAGE_TAG_X86_64_TESTING:="dev-x86_64-20.04-20250710_2109"}
-DOCKER_IMAGE_TAG_AARCH64=${DOCKER_IMAGE_TAG_AARCH64:="dev-aarch64-20.04-20250714_2123"}
+[[ "$RELEASE_TARGET" == "20.04" ]] && DOCKER_IMAGE_TAG_AARCH64=${DOCKER_IMAGE_TAG_AARCH64:="dev-aarch64-20.04-20250714_2123"}
+[[ "$RELEASE_TARGET" == "22.04" ]] && DOCKER_IMAGE_TAG_AARCH64=${DOCKER_IMAGE_TAG_AARCH64:="dev-aarch64-22.04-20251109_1137"}
 
 # --- Script Global Variables (Modified by arguments/logic) ---
 DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:=""} # Default empty
 GEOLOC=""            # Default: auto-detect ('us', 'cn', 'none')
 SHM_SIZE="2G"        # Default shared memory size
 USE_LOCAL_IMAGE=1    # Flag to use local image (0 or 1)
-CUSTOM_DIST="stable" # Apollo distribution (stable/testing)
+CUSTOM_DIST="stable" # Apollo distribution (stable/test)
 USER_AGREED="no"     # Flag for Apollo License Agreement ('yes' or 'no')
 FORCE_PULL="no"      # Flag to force pull the image
 
@@ -285,18 +292,31 @@ function check_target_arch() {
     info "Target architecture check passed (${TARGET_ARCH})."
 }
 
+detect_timezone() {
+    if command -v timedatectl 2>&1 >/dev/null; then
+        # Use timedatectl if available (systemd based systems)
+        timedatectl | grep "Time zone" | awk '{print $3}'
+    elif [[ -f /etc/timezone ]]; then
+        # Fallback to /etc/timezone file if it exists
+        cat /etc/timezone
+    elif [[ -L /etc/localtime ]]; then
+        # Fallback to /etc/localtime symlink if it exists
+        readlink -f /etc/localtime | sed 's|.*/zoneinfo/||'
+    else
+        # Fallback to date command for other systems
+        local tzoffset="$(date +"%z")"
+        local tzoffset_sign="${tzoffset:0:1}"
+        local tzoffset_sign_r=$(echo "${tzoffset_sign}" | sed 's/+/@/g; s/-/+/g; s/@/-/g')
+        local tzoffset_hours=$((10#${tzoffset:1:2}))
+        timezone="Etc/GMT${tzoffset_sign_r}${tzoffset_hours}"
+        echo "${timezone}"
+    fi
+}
+
 # Auto-detect China timezone for geo location if GEOLOC is not explicitly set
 function determine_timezone_cn() {
     # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-    local time_zone=
-    if command -v timedatectl 2>&1 >/dev/null; then
-        # Use timedatectl if available (systemd based systems)
-        # Use xargs to trim whitespace, echo "" if grep fails
-        time_zone=$(timedatectl | grep "Time zone" | xargs || echo "")
-    else
-        # Fallback to date command for other systems
-        time_zone=$(date +%z)
-    fi
+    local time_zone="$(detect_timezone)"
 
     if [[ -z "${GEOLOC}" ]]; then # Only auto-detect if GEOLOC wasn't set by argument
         for tz in "${TIMEZONE_CN[@]}"; do
@@ -369,7 +389,6 @@ function prepare_docker_volumes() {
     # Standard mounts required for typical X/GUI/system integration
     volumes+=" -v /media:/media"                  # Removable media
     volumes+=" -v /tmp/.X11-unix:/tmp/.X11-unix:rw" # X server access
-    volumes+=" -v /etc/localtime:/etc/localtime:ro" # Sync timezone
     volumes+=" -v /usr/src:/usr/src"              # Mount kernel sources (often needed by drivers/modules)
     volumes+=" -v /lib/modules:/lib/modules"      # Mount kernel modules (often needed by drivers)
     volumes+=" -v /dev/null:/dev/raw1394"         # Workaround for some older libraries
@@ -502,7 +521,6 @@ function main() {
     local run_opts=(
       -itd     # Interactive, TTY, Detached (run in background)
       --name "${DEV_CONTAINER}"
-      --net host # Use host network
       --shm-size "${SHM_SIZE}"
       -w /apollo             # Set working directory inside container
       --hostname "${DEV_INSIDE}" # Set hostname inside container for easy identification
@@ -515,6 +533,11 @@ function main() {
       run_opts+=(
         --privileged # Grant extended privileges (often needed for device access)
         --pid=host # Use host process namespace (allows host process inspection/signals)
+        --net host # Use host network
+      )
+    else
+      run_opts+=(
+        -p ${SERVER_PORT}:${SERVER_PORT}
       )
     fi
 
@@ -544,6 +567,12 @@ function main() {
         -e DOCKER_IMG="${DEV_IMAGE}"                 # Original image name (tag only)
         -e USE_GPU_HOST="${USE_GPU_HOST}"            # Pass GPU availability status
         -e CROSS_PLATFORM="${CROSS_PLATFORM_FLAG:-}" # Pass cross-platform build flag if applicable
+        # make sure the container has same timezone as host
+        # Note: We do NOT mount /etc/localtime to avoid overwriting container's timezone
+        # if host /etc/localtime is a symlink, it will overwrite the target file
+        # in the container, and cause confusion. So we use -e TZ instead.
+        # setting TZ can also speed up timelocal() calls in some libraries.
+        -e TZ="$(detect_timezone)"
     )
 
     # Define host entries to add to the container's /etc/hosts
@@ -559,10 +588,12 @@ function main() {
 
     # Add resource limits (cpus, memory)
     # TODO(zero): move to CI, --memory will force OOM when the content exceeds the memory limit.
-    local resource_opts=(
-        # --cpus="${DOCKER_CPUS}"
-        # --memory="${DOCKER_MEMORY}"
-    )
+    if [[ "${CUSTOM_DIST}" == "testing" ]]; then
+        local resource_opts=(
+            --cpus="${DOCKER_CPUS}"
+            --memory="${DOCKER_MEMORY}"
+        )
+    fi
 
     # --- Phase 4: Run the Container ---
     info "Starting Docker container \"${DEV_CONTAINER}\" from image: ${FULL_IMAGE_NAME} ..."
@@ -603,11 +634,11 @@ function main() {
     ok "To login into the container, please run:"
     ok "  bash docker/scripts/dev_into.sh"
 
-    warning "--- Next Steps (Run INSIDE the Container) ---"
-    info "This host script ONLY launched the container."
-    info "ALL further environment setup (installing tools, downloading models, downloading map data) MUST be done *INSIDE* the container."
-    info "After logging in, locate and run the necessary setup scripts within the /apollo directory or as provided by your Apollo distribution."
-    info "You will need to handle persistent storage for models/maps yourself (e.g., by manually mounting volumes/bind mounts to specific data paths like /opt/apollo/data/models and /apollo/modules/map/data when starting the container, or by configuring internal download scripts to use specific locations)."
+    warning "--- Next Steps ---"
+    info "This host script only launched the container."
+    info "All further resources (models, maps) must be downloaded inside the container."
+    info "Use whl-hub (install via `pip install whl-hub`) to manage models/maps."
+    info "See resource management at: https://github.com/wheelos/apollo-lite/issues/1"
     ok "Enjoy!"
 }
 

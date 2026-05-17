@@ -3,14 +3,19 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
+
 cc_library(
     name = "ch_vehicle_factory",
+    alwayslink = True,
     srcs = ["ch_vehicle_factory.cc"],
     hdrs = ["ch_vehicle_factory.h"],
+    copts = CANBUS_COPTS,
     deps = [
         ":ch_controller",
         ":ch_message_manager",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 
@@ -18,6 +23,7 @@ cc_library(
     name = "ch_message_manager",
     srcs = ["ch_message_manager.cc"],
     hdrs = ["ch_message_manager.h"],
+    copts = CANBUS_COPTS,
     deps = [
         "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle/ch/protocol:canbus_ch_protocol",
@@ -30,6 +36,7 @@ cc_library(
     name = "ch_controller",
     srcs = ["ch_controller.cc"],
     hdrs = ["ch_controller.h"],
+    copts = CANBUS_COPTS,
     deps = [
         ":ch_message_manager",
         "//modules/canbus/proto:canbus_conf_cc_proto",
@@ -39,6 +46,7 @@ cc_library(
         "//modules/canbus/vehicle/ch/protocol:canbus_ch_protocol",
         "//modules/common_msgs/basic_msgs:error_code_cc_proto",
         "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
+        "//modules/canbus/vehicle/ch/proto:ch_cc_proto",
     ],
 )
 

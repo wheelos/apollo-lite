@@ -99,7 +99,7 @@ Status Dreamview::Init() {
   hmi_.reset(new HMI(websocket_.get(), map_service_.get()));
   plugin_manager_.reset(new PluginManager(plugin_ws_.get()));
   sim_world_updater_.reset(new SimulationWorldUpdater(
-      websocket_.get(), map_ws_.get(), camera_ws_.get(),
+      websocket_.get(), map_ws_.get(), point_cloud_ws_.get(), camera_ws_.get(),
       sim_control_manager_.get(), plugin_ws_.get(), map_service_.get(),
       perception_camera_updater_.get(), plugin_manager_.get(),
       FLAGS_routing_from_file));
@@ -112,6 +112,9 @@ Status Dreamview::Init() {
   server_->addWebSocketHandler("/camera", *camera_ws_);
   server_->addWebSocketHandler("/plugin", *plugin_ws_);
   server_->addHandler("/image", *image_);
+  // Initialize data handler for serving map data files and register it.
+  map_data_handler_.reset(new MapDataHandler());
+  server_->addHandler("/assets/map_data/", *map_data_handler_);
 #if WITH_TELEOP == 1
   teleop_ws_.reset(new WebSocketHandler("Teleop"));
   teleop_.reset(new TeleopService(teleop_ws_.get()));

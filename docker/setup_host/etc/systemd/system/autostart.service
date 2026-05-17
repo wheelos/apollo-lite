@@ -5,24 +5,40 @@ After=network.target docker.service
 Requires=docker.service
 
 [Service]
-# These values will be replaced by the config_system.sh script
-Environment="USER=__USER__"
+# --- Identity & Security ---
+# These placeholders will be replaced by the installation script.
+# Running as the specific user ensures file permissions in the mapped volumes remain correct.
+User=__USER__
+Group=__GROUP__
 WorkingDirectory=__APOLLO_ROOT_DIR__
 
+# --- Environment ---
+# HOME is set so docker can find user docker configs.
+Environment="HOME=__HOME_DIR__"
+# AUTO_BOOTSTRAP precedence:
+# - Service `Environment` sets the process env.
+# - Compose `AUTO_BOOTSTRAP=${AUTO_BOOTSTRAP}` uses the process value over `.env`.
+# - `entrypoint.sh` runs bootstrap only when AUTO_BOOTSTRAP=="true" inside container.
+Environment="AUTO_BOOTSTRAP=true"
+# Ensure the script can find standard tools
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 # --- Service Behavior ---
-# Systemd will now correctly monitor this script's exit code.
+# Type=oneshot is perfect for "docker compose up -d" because the command returns
+# immediately after telling the daemon to start the containers.
 Type=oneshot
 RemainAfterExit=yes
 
 # --- Commands ---
-ExecStart=/bin/bash docker/scripts/dev_into.sh --command "/apollo/scripts/bootstrap.sh start"
+# We delegate the complexity of architecture detection and env generation to the 'whl' script.
+# The 'start' command in 'whl' script handles 'docker compose up -d'.
+ExecStart=/bin/bash __APOLLO_ROOT_DIR__/docker/scripts/whl.sh start
 
-# ExecStop remains the same, it's called when the service is stopped.
-ExecStop=/bin/bash docker/scripts/dev_into.sh --command "/apollo/scripts/bootstrap.sh stop"
-ExecStopPost=/bin/sh -c '/usr/bin/docker stop apollo_dev_${USER}'
+# The 'stop' command handles 'docker compose down'.
+ExecStop=/bin/bash __APOLLO_ROOT_DIR__/docker/scripts/whl.sh stop
 
 # --- Resiliency ---
-# If the ExecStart script fails (returns a non-zero exit code), systemd will restart it.
+# If the whl script itself fails (exit code != 0), wait and retry.
 Restart=on-failure
 RestartSec=30
 

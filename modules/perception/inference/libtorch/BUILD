@@ -1,5 +1,5 @@
-load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -7,12 +7,15 @@ cc_library(
     name = "torch_net",
     srcs = ["torch_net.cc"],
     hdrs = ["torch_net.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/inference:inference_lib",
-        "@libtorch_gpu",
         "@com_google_protobuf//:protobuf",
+        "@cuda//:cuda_runtime",
+        "@libtorch_gpu",
         "@opencv//:imgcodecs",
-        "@local_config_cuda//cuda:cudart",
     ],
 )
 

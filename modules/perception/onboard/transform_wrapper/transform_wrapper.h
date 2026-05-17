@@ -15,68 +15,38 @@
  *****************************************************************************/
 #pragma once
 
-#include <deque>
 #include <memory>
 #include <string>
 
-#include "Eigen/Core"
-#include "Eigen/Dense"
+#include "Eigen/Geometry"
 #include "gflags/gflags.h"
 
-#include "modules/transform/buffer.h"
+#include "modules/transform/timed_transform_resolver.h"
+#include "modules/transform/transform_query.h"
 
 namespace apollo {
 namespace perception {
 namespace onboard {
 
-using apollo::transform::Buffer;
-
-DECLARE_string(obs_sensor2novatel_tf2_frame_id);
-DECLARE_string(obs_novatel2world_tf2_frame_id);
-DECLARE_string(obs_novatel2world_tf2_child_frame_id);
-DECLARE_double(obs_tf2_buff_size);
-DECLARE_bool(hardware_trigger);
-
-struct StampedTransform {
-  double timestamp = 0.0;  // in second
-  Eigen::Translation3d translation;
-  Eigen::Quaterniond rotation;
-
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-};
-
-class TransformCache {
- public:
-  TransformCache() = default;
-  ~TransformCache() = default;
-
-  void AddTransform(const StampedTransform& transform);
-  bool QueryTransform(double timestamp, StampedTransform* transform,
-                      double max_duration = 0.0);
-
-  inline void SetCacheDuration(double duration) { cache_duration_ = duration; }
-
- protected:
-  // in ascending order of time
-  std::deque<StampedTransform> transforms_;
-  double cache_duration_ = 1.0;
-};
+DECLARE_string(obs_sensor2vehicle_tf2_frame_id);
+DECLARE_string(obs_vehicle2world_tf2_frame_id);
+DECLARE_string(obs_vehicle2world_tf2_child_frame_id);
 
 class TransformWrapper {
  public:
-  TransformWrapper() {}
+  TransformWrapper() : timed_transform_resolver_(&transform_query_) {}
   ~TransformWrapper() = default;
 
-  void Init(const std::string& sensor2novatel_tf2_child_frame_id);
-  void Init(const std::string& sensor2novatel_tf2_frame_id,
-            const std::string& sensor2novatel_tf2_child_frame_id,
-            const std::string& novatel2world_tf2_frame_id,
-            const std::string& novatel2world_tf2_child_frame_id);
+  void Init(const std::string& sensor2vehicle_tf2_child_frame_id);
+  void Init(const std::string& sensor2vehicle_tf2_frame_id,
+            const std::string& sensor2vehicle_tf2_child_frame_id,
+            const std::string& vehicle2world_tf2_frame_id,
+            const std::string& vehicle2world_tf2_child_frame_id);
 
   // Attention: must initialize TransformWrapper first
   bool GetSensor2worldTrans(double timestamp,
                             Eigen::Affine3d* sensor2world_trans,
-                            Eigen::Affine3d* novatel2world_trans = nullptr);
+                            Eigen::Affine3d* vehicle2world_trans = nullptr);
 
   bool GetExtrinsics(Eigen::Affine3d* trans);
 
@@ -89,23 +59,28 @@ class TransformWrapper {
                                Eigen::Affine3d* trans);
 
  protected:
-  bool QueryTrans(double timestamp, StampedTransform* trans,
+  bool QueryTrans(double timestamp, apollo::transform::StampedTransform* trans,
                   const std::string& frame_id,
                   const std::string& child_frame_id);
+
+  bool QueryStaticTrans(const std::string& frame_id,
+                        const std::string& child_frame_id,
+                        Eigen::Affine3d* trans);
+
+  bool EnsureSensor2VehicleExtrinsics();
 
  private:
   bool inited_ = false;
 
-  Buffer* tf2_buffer_ = Buffer::Instance();
+  std::string sensor2vehicle_tf2_frame_id_;
+  std::string sensor2vehicle_tf2_child_frame_id_;
+  std::string vehicle2world_tf2_frame_id_;
+  std::string vehicle2world_tf2_child_frame_id_;
 
-  std::string sensor2novatel_tf2_frame_id_;
-  std::string sensor2novatel_tf2_child_frame_id_;
-  std::string novatel2world_tf2_frame_id_;
-  std::string novatel2world_tf2_child_frame_id_;
+  std::unique_ptr<Eigen::Affine3d> sensor2vehicle_extrinsics_;
 
-  std::unique_ptr<Eigen::Affine3d> sensor2novatel_extrinsics_;
-
-  TransformCache transform_cache_;
+  apollo::transform::TransformQuery transform_query_;
+  apollo::transform::TimedTransformResolver timed_transform_resolver_;
 };
 
 }  // namespace onboard

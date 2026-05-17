@@ -55,12 +55,12 @@ namespace can {
 
 /**
  * @class SocketCanClientRaw
- * @brief The class which defines an ESD CAN client which inherites CanClient.
+ * @brief The class which defines a Socket CAN client which inherits CanClient.
  */
 class SocketCanClientRaw : public CanClient {
  public:
   /**
-   * @brief Initialize the ESD CAN client by specified CAN card parameters.
+   * @brief Initialize the Socket CAN client by specified CAN card parameters.
    * @param parameter CAN card parameters to initialize the CAN client.
    * @return If the initialization is successful.
    */
@@ -72,14 +72,14 @@ class SocketCanClientRaw : public CanClient {
   virtual ~SocketCanClientRaw();
 
   /**
-   * @brief Start the ESD CAN client.
+   * @brief Start the Socket CAN client.
    * @return The status of the start action which is defined by
    *         apollo::common::ErrorCode.
    */
   apollo::common::ErrorCode Start() override;
 
   /**
-   * @brief Stop the ESD CAN client.
+   * @brief Stop the Socket CAN client.
    */
   void Stop() override;
 

@@ -17,19 +17,32 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdlib>
+#include <cstring>
 #include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include "Eigen/Eigen"
-#include "osqp/osqp.h"
+#include <osqp.h>
 
 #include "cyber/common/log.h"
 
 namespace apollo {
 namespace common {
 namespace math {
+
+struct MpcOsqpData {
+  OSQPInt n;
+  OSQPInt m;
+  OSQPCscMatrix* P;
+  OSQPFloat* q;
+  OSQPCscMatrix* A;
+  OSQPFloat* l;
+  OSQPFloat* u;
+};
+
 class MpcOsqp {
  public:
   /**
@@ -56,21 +69,25 @@ class MpcOsqp {
   bool Solve(std::vector<double> *control_cmd);
 
  private:
-  void CalculateKernel(std::vector<c_float> *P_data,
-                       std::vector<c_int> *P_indices,
-                       std::vector<c_int> *P_indptr);
-  void CalculateEqualityConstraint(std::vector<c_float> *A_data,
-                                   std::vector<c_int> *A_indices,
-                                   std::vector<c_int> *A_indptr);
+  void CalculateKernel(std::vector<OSQPFloat> *P_data,
+                       std::vector<OSQPInt> *P_indices,
+                       std::vector<OSQPInt> *P_indptr);
+  void CalculateEqualityConstraint(std::vector<OSQPFloat> *A_data,
+                                   std::vector<OSQPInt> *A_indices,
+                                   std::vector<OSQPInt> *A_indptr);
   void CalculateGradient();
   void CalculateConstraintVectors();
   OSQPSettings *Settings();
-  OSQPData *Data();
-  void FreeData(OSQPData *data);
+  MpcOsqpData *Data();
+  void FreeData(MpcOsqpData *data);
 
   template <typename T>
   T *CopyData(const std::vector<T> &vec) {
-    T *data = new T[vec.size()];
+    if (vec.empty()) {
+      return nullptr;
+    }
+    T *data =
+        reinterpret_cast<T *>(std::malloc(sizeof(T) * vec.size()));
     memcpy(data, vec.data(), sizeof(T) * vec.size());
     return data;
   }

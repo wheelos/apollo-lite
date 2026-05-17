@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,12 +33,15 @@ const int32_t Vinrpt414::ID = 0x414;
 
 void Vinrpt414::Parse(const std::uint8_t* bytes, int32_t length,
                       ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_vin_rpt_414()->set_veh_serial(
-      veh_serial(bytes, length));
-  chassis->mutable_lexus()->mutable_vin_rpt_414()->set_veh_my_code(
-      veh_my_code(bytes, length));
-  chassis->mutable_lexus()->mutable_vin_rpt_414()->set_veh_mfg_code(
-      veh_mfg_code(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_vin_rpt_414()
+      ->set_veh_serial(veh_serial(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_vin_rpt_414()
+      ->set_veh_my_code(veh_my_code(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_vin_rpt_414()
+      ->set_veh_mfg_code(veh_mfg_code(bytes, length));
 }
 
 // config detail: {'name': 'veh_serial', 'offset': 0.0, 'precision': 1.0, 'len':

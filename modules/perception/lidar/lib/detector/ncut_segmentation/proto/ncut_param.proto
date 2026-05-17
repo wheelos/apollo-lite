@@ -14,11 +14,12 @@ message NCutSegmentationParam {
   optional uint32 outlier_min_num_points = 9 [default = 3];
   optional string ground_detector = 10
       [default = "SpatioTemporalGroundDetector"];
-  optional string roi_filter = 11 [default = "HdmapROIFilter"];
+  optional string roi_filter = 11 [default = "HdmapPointCloudRoiFilter"];
   optional bool remove_ground_points = 12 [default = true];
   optional bool remove_roi = 13 [default = true];
   optional bool do_classification = 14 [default = true];
   optional NCutParam ncut_param = 15;
+  optional bool publish_debug_info = 16 [default = false];
 }
 
 message NCutParam {

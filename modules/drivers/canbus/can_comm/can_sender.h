@@ -298,6 +298,9 @@ void CanSender<SensorType>::PowerSendThreadFunc() {
       if (!need_send) {
         continue;
       }
+      // ensure can data update before sending
+      // TODO(leafyleong): optimize the update mechanism
+      message.Update();
       std::vector<CanFrame> can_frames;
       CanFrame can_frame = message.CanFrame();
       can_frames.push_back(can_frame);

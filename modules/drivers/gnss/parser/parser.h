@@ -200,6 +200,7 @@ std::vector<Parser::ParsedMessage> Parser::ParseAllMessages() {
   while (true) {
     // Store buffer ReadableBytes before attempting to parse.
     size_t initial_buffer_size = buffer_.ReadableBytes();
+    ParseState initial_state = state_;
 
     // Try to parse one unit (header or payload).
     auto result = TryParseMessage();
@@ -225,12 +226,20 @@ std::vector<Parser::ParsedMessage> Parser::ParseAllMessages() {
         // - Recovering from an error in ProcessPayload by skipping invalid
         // bytes. Since progress (data consumption) was made, continue the loop
         // to try again with the potentially smaller buffer.
-        ADEBUG
-            << "Parser consumed data without yielding a message. Buffer ReadableBytes "
-               "decreased from "
-            << initial_buffer_size << " to " << buffer_.ReadableBytes();
+        ADEBUG << "Parser consumed data without yielding a message. Buffer "
+                  "ReadableBytes "
+                  "decreased from "
+               << initial_buffer_size << " to " << buffer_.ReadableBytes();
         continue;
       } else {
+        // No data consumed, but header found(state_ changed),
+        // if there are multiple messages in the buffer, after last payload
+        // consumed, then the first byte is header, and the `ProcessHeader` will
+        // return without data consumed. So continue to process payload
+        if (initial_state == ParseState::SEEK_HEADER &&
+            state_ == ParseState::PROCESS_PAYLOAD) {
+          continue;
+        }
         // No data was consumed, and no message was parsed.
         // This indicates that the parser is stuck - it needs more data to
         // proceed or the remaining data is insufficient/invalid for *any*

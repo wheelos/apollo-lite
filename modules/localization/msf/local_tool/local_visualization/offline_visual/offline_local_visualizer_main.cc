@@ -14,8 +14,11 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include <iostream>
+
 #include <boost/program_options.hpp>
 
+#include "cyber/common/file.h"
 #include "modules/localization/msf/local_tool/local_visualization/offline_visual/offline_local_visualizer.h"
 
 int main(int argc, char **argv) {
@@ -43,7 +46,15 @@ int main(int argc, char **argv) {
   std::string gnss_loc_file = pcd_folder + "/gnss_loc.txt";
   std::string lidar_loc_file = pcd_folder + "/lidar_loc.txt";
   std::string fusion_loc_file = pcd_folder + "/fusion_loc.txt";
-  std::string extrinsic_file = basedir + "/velodyne_novatel_extrinsics.yaml";
+  std::string extrinsic_file = basedir + "/velodyne128_base_link_extrinsics.yaml";
+  if (!apollo::cyber::common::PathExists(extrinsic_file)) {
+    const std::string workspace_default =
+        "modules/transform/conf/velodyne128_base_link_extrinsics.yaml";
+    extrinsic_file = apollo::cyber::common::PathExists(workspace_default)
+                         ? workspace_default
+                         : "/apollo/modules/transform/conf/"
+                           "velodyne128_base_link_extrinsics.yaml";
+  }
 
   apollo::localization::msf::OfflineLocalVisualizer local_visualizer;
   bool success = local_visualizer.Init(

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,8 +33,9 @@ const int32_t Vinresp3393::ID = 0x393;
 
 void Vinresp3393::Parse(const std::uint8_t* bytes, int32_t length,
                         ChassisDetail* chassis) const {
-  chassis->mutable_wey()->mutable_vin_resp3_393()->set_vin16(
-      vin16(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_vin_resp3_393()
+      ->set_vin16(vin16(bytes, length));
 }
 
 // config detail: {'name': 'vin16', 'offset': 0.0, 'precision': 1.0,

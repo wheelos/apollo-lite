@@ -16,38 +16,50 @@
 
 #pragma once
 
-#include "modules/drivers/canbus/can_comm/protocol_data.h"
+#include "modules/canbus/vehicle/yunle/proto/yunle.pb.h"
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
+#include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 namespace apollo {
 namespace canbus {
 namespace yunle {
 
 class Targetspeedfeedback7f1 : public ::apollo::drivers::canbus::ProtocolData<
-                    ::apollo::canbus::ChassisDetail> {
+                                   ::apollo::canbus::ChassisDetail> {
  public:
   static const int32_t ID;
   Targetspeedfeedback7f1();
   void Parse(const std::uint8_t* bytes, int32_t length,
-                     ChassisDetail* chassis) const override;
+             ChassisDetail* chassis) const override;
 
  private:
+  // config detail: {'bit': 48, 'description': '实际平均轮速', 'is_signed_var':
+  // True, 'len': 16, 'name': 'Target_speed_rpm', 'offset': 0.0, 'order':
+  // 'intel', 'physical_range': '[0|0]', 'physical_unit': 'rpm', 'precision':
+  // 0.1, 'type': 'double'}
+  double target_speed_rpm(const std::uint8_t* bytes,
+                          const int32_t length) const;
 
-  // config detail: {'bit': 48, 'description': '实际平均轮速', 'is_signed_var': True, 'len': 16, 'name': 'Target_speed_rpm', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'rpm', 'precision': 0.1, 'type': 'double'}
-  double target_speed_rpm(const std::uint8_t* bytes, const int32_t length) const;
-
-  // config detail: {'bit': 32, 'description': '目标速度', 'is_signed_var': True, 'len': 16, 'name': 'Target_speed', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'km/h', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 32, 'description': '目标速度', 'is_signed_var':
+  // True, 'len': 16, 'name': 'Target_speed', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': 'km/h', 'precision': 0.1,
+  // 'type': 'double'}
   double target_speed(const std::uint8_t* bytes, const int32_t length) const;
 
-  // config detail: {'bit': 16, 'description': '自动驾驶模式下发目标速度', 'is_signed_var': True, 'len': 16, 'name': 'SCU_speed', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'km/h', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 16, 'description': '自动驾驶模式下发目标速度',
+  // 'is_signed_var': True, 'len': 16, 'name': 'SCU_speed', 'offset': 0.0,
+  // 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'km/h',
+  // 'precision': 0.1, 'type': 'double'}
   double scu_speed(const std::uint8_t* bytes, const int32_t length) const;
 
-  // config detail: {'bit': 0, 'description': '硬件目标速度', 'is_signed_var': True, 'len': 16, 'name': 'Hdw_speed', 'offset': 0.0, 'order': 'intel', 'physical_range': '[0|0]', 'physical_unit': 'km/h', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 0, 'description': '硬件目标速度', 'is_signed_var':
+  // True, 'len': 16, 'name': 'Hdw_speed', 'offset': 0.0, 'order': 'intel',
+  // 'physical_range': '[0|0]', 'physical_unit': 'km/h', 'precision': 0.1,
+  // 'type': 'double'}
   double hdw_speed(const std::uint8_t* bytes, const int32_t length) const;
 };
 
 }  // namespace yunle
 }  // namespace canbus
 }  // namespace apollo
-
-

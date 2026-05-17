@@ -16,32 +16,37 @@
 
 #pragma once
 
-#include "modules/drivers/canbus/can_comm/protocol_data.h"
+#include "modules/canbus/vehicle/yunle/proto/yunle.pb.h"
 #include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+
+#include "modules/drivers/canbus/can_comm/protocol_data.h"
 
 namespace apollo {
 namespace canbus {
 namespace yunle {
 
 class Sasanglefeedbacke1 : public ::apollo::drivers::canbus::ProtocolData<
-                    ::apollo::canbus::ChassisDetail> {
+                               ::apollo::canbus::ChassisDetail> {
  public:
   static const int32_t ID;
   Sasanglefeedbacke1();
   void Parse(const std::uint8_t* bytes, int32_t length,
-                     ChassisDetail* chassis) const override;
+             ChassisDetail* chassis) const override;
 
  private:
-
-  // config detail: {'bit': 24, 'is_signed_var': True, 'len': 16, 'name': 'SAS_Angle_R', 'offset': 0.0, 'order': 'intel', 'physical_range': '[-3276.8|3276.7]', 'physical_unit': '', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 24, 'is_signed_var': True, 'len': 16, 'name':
+  // 'SAS_Angle_R', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[-3276.8|3276.7]', 'physical_unit': '', 'precision': 0.1, 'type':
+  // 'double'}
   double sas_angle_r(const std::uint8_t* bytes, const int32_t length) const;
 
-  // config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name': 'SAS_Angle_F', 'offset': 0.0, 'order': 'intel', 'physical_range': '[-3276.8|3276.7]', 'physical_unit': '', 'precision': 0.1, 'type': 'double'}
+  // config detail: {'bit': 0, 'is_signed_var': True, 'len': 16, 'name':
+  // 'SAS_Angle_F', 'offset': 0.0, 'order': 'intel', 'physical_range':
+  // '[-3276.8|3276.7]', 'physical_unit': '', 'precision': 0.1, 'type':
+  // 'double'}
   double sas_angle_f(const std::uint8_t* bytes, const int32_t length) const;
 };
 
 }  // namespace yunle
 }  // namespace canbus
 }  // namespace apollo
-
-

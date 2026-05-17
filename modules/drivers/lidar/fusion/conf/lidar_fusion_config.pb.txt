@@ -7,7 +7,7 @@ input_channel: [
 output_channel: "/apollo/sensor/lidar/fusion/PointCloud2"
 
 # the frame id of the output point cloud, if not set, it will be the same as the main lidar frame
-target_frame_id: "vanjeelidar_up"
+target_frame_id: "base_link"
 
 # drop expired data, if true, the point cloud will be dropped if the difference between the main channel and the input channel is larger than max_interval_ms
 drop_expired_data: true

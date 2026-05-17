@@ -18,71 +18,26 @@
 
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
 
-#include "modules/canbus/vehicle/ch/ch_vehicle_factory.h"
-#include "modules/canbus/vehicle/devkit/devkit_vehicle_factory.h"
-#include "modules/canbus/vehicle/ge3/ge3_vehicle_factory.h"
-#include "modules/canbus/vehicle/gem/gem_vehicle_factory.h"
-#include "modules/canbus/vehicle/lexus/lexus_vehicle_factory.h"
-#include "modules/canbus/vehicle/lincoln/lincoln_vehicle_factory.h"
-#include "modules/canbus/vehicle/mk_mini/mk_mini_vehicle_factory.h"
-#include "modules/canbus/vehicle/neolix_edu/neolix_edu_vehicle_factory.h"
-#include "modules/canbus/vehicle/transit/transit_vehicle_factory.h"
-#include "modules/canbus/vehicle/wey/wey_vehicle_factory.h"
-#include "modules/canbus/vehicle/yunle/yunle_vehicle_factory.h"
-#include "modules/canbus/vehicle/zhongyun/zhongyun_vehicle_factory.h"
+#include "cyber/common/log.h"
+#include "modules/common/util/registry.h"
+
 namespace apollo {
 namespace canbus {
 
-void VehicleFactory::RegisterVehicleFactory() {
-  Register(apollo::common::LINCOLN_MKZ, []() -> AbstractVehicleFactory * {
-    return new LincolnVehicleFactory();
-  });
-  Register(apollo::common::GEM, []() -> AbstractVehicleFactory * {
-    return new GemVehicleFactory();
-  });
-  Register(apollo::common::LEXUS, []() -> AbstractVehicleFactory * {
-    return new LexusVehicleFactory();
-  });
-  Register(apollo::common::TRANSIT, []() -> AbstractVehicleFactory * {
-    return new TransitVehicleFactory();
-  });
-  Register(apollo::common::GE3, []() -> AbstractVehicleFactory * {
-    return new Ge3VehicleFactory();
-  });
-  Register(apollo::common::WEY, []() -> AbstractVehicleFactory * {
-    return new WeyVehicleFactory();
-  });
-  Register(apollo::common::ZHONGYUN, []() -> AbstractVehicleFactory * {
-    return new ZhongyunVehicleFactory();
-  });
-  Register(apollo::common::CH,
-           []() -> AbstractVehicleFactory * { return new ChVehicleFactory(); });
-  Register(apollo::common::DKIT, []() -> AbstractVehicleFactory * {
-    return new DevkitVehicleFactory();
-  });
-  Register(apollo::common::NEOLIX, []() -> AbstractVehicleFactory * {
-    return new Neolix_eduVehicleFactory();
-  });
-  Register(apollo::common::MK_MINI, []() -> AbstractVehicleFactory * {
-    return new Mk_miniVehicleFactory();
-  });
-  Register(apollo::common::YUNLE, []() -> AbstractVehicleFactory * {
-    return new YunleVehicleFactory();
-  });
-}
-
 std::unique_ptr<AbstractVehicleFactory> VehicleFactory::CreateVehicle(
-    const VehicleParameter &vehicle_parameter) {
-  auto abstract_factory = CreateObject(vehicle_parameter.brand());
-  if (!abstract_factory) {
-    AERROR << "failed to create vehicle factory with "
-           << vehicle_parameter.DebugString();
-  } else {
-    abstract_factory->SetVehicleParameter(vehicle_parameter);
-    AINFO << "successfully created vehicle factory with "
-          << vehicle_parameter.DebugString();
+    const VehicleParameter& vehicle_parameter) {
+  auto factory_ptr =
+      AbstractVehicleFactoryManager::CreateInstance(vehicle_parameter.brand());
+  if (!factory_ptr) {
+    AERROR << "failed to create vehicle factory for brand: "
+           << vehicle_parameter.brand() << " (Plugin may not be linked)";
+    return nullptr;
   }
-  return abstract_factory;
+
+  factory_ptr->SetVehicleParameter(vehicle_parameter);
+  AINFO << "successfully created vehicle factory for brand: "
+        << vehicle_parameter.brand();
+  return factory_ptr;
 }
 
 }  // namespace canbus

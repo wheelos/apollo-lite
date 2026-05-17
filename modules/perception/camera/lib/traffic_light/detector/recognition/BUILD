@@ -7,6 +7,9 @@ cc_library(
     name = "classify",
     srcs = ["classify.cc"],
     hdrs = ["classify.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/camera/common",
@@ -22,13 +25,26 @@ cc_library(
 
 cc_library(
     name = "recognition",
-    srcs = ["recognition.cc"],
-    hdrs = ["recognition.h"],
+    srcs = [
+        "efficient_net_recognizer.cc",
+        "recognition.cc",
+    ],
+    hdrs = [
+        "efficient_net_recognizer.h",
+        "recognition.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":classify",
         "//cyber",
+        "//modules/perception/base",
+        "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
+        "//modules/perception/inference/onnx_multi_batch:onnx_multi_batch_infer",
         "//modules/perception/inference:inference_lib",
+        "//modules/perception/inference/utils:inference_resize_lib",
     ],
     alwayslink = True,
 )

@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace devkit {
@@ -42,9 +44,24 @@ TEST_F(Bmsreport512Test, General) {
   EXPECT_EQ(data[6], 0b00000000);
   EXPECT_EQ(data[7], 0b00000001);
 
-  EXPECT_EQ(cd.devkit().bms_report_512().battery_current(), -3174.1);
-  EXPECT_EQ(cd.devkit().bms_report_512().battery_voltage(), 2.56);
-  EXPECT_EQ(cd.devkit().bms_report_512().battery_soc(), 82);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .bms_report_512()
+          .battery_current(),
+      -3174.1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .bms_report_512()
+          .battery_voltage(),
+      2.56);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .bms_report_512()
+          .battery_soc_percentage(),
+      82);
 }
 
 }  // namespace devkit

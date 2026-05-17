@@ -20,7 +20,8 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
-#include "opencv2/opencv.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
 
 #include "cyber/common/log.h"
 #include "modules/perception/camera/tools/common/util.h"

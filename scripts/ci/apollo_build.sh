@@ -23,7 +23,6 @@ source "${TOP_DIR}/scripts/apollo_base.sh"
 
 ARCH="$(uname -m)"
 
-: ${USE_ESD_CAN:=false}
 USE_GPU=-1
 
 CMDLINE_OPTIONS=
@@ -33,17 +32,13 @@ CUSTOM_JOBS=${CUSTOM_JOBS:-""}
 CUSTOM_RAMS=${CUSTOM_RAMS:-""}
 CUSTOM_CPUS=${CUSTOM_CPUS:-""}
 
-declare -A MODULE_DEFINES=(
-  # [dreamview]="no_files=true"
-)
+# associative map of module-specific defines (bash 4+)
+declare -A MODULE_DEFINES=()
+# Example usage:
+# MODULE_DEFINES[dreamview]="no_files=true"
 
 function _determine_drivers_disabled() {
-  if ! ${USE_ESD_CAN}; then
-    warning "ESD CAN library supplied by ESD Electronics doesn't exist."
-    warning "If you need ESD CAN, please refer to:"
-    warning "  third_party/can_card_library/esd_can/README.md"
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/drivers/canbus/can_client/esd/..."
-  fi
+  :
 }
 
 function _determine_perception_disabled() {
@@ -53,10 +48,10 @@ function _determine_perception_disabled() {
 }
 
 function _determine_localization_disabled() {
-  if [ "${ARCH}" != "x86_64" ]; then
-    # Skip msf for non-x86_64 platforms
-    DISABLED_TARGETS="${disabled} except //modules/localization/msf/..."
-  fi
+    if [ "${ARCH}" != "x86_64" ]; then
+      # Skip msf for non-x86_64 platforms
+      DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/localization/msf/..."
+    fi
 }
 
 function _determine_planning_disabled() {
@@ -127,6 +122,11 @@ function determine_build_targets_and_defines() {
         fi
       elif [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
         targets_all+=" //modules/${component}/..."
+      elif [[ -d "${APOLLO_ROOT_DIR}/${component}" ]]; then
+        targets_all+=" //${component}/..."
+      elif [[ $component =~ ^@ ]]; then
+        # keep target of deps
+        targets_all+=" ${component}"
       else
         error "Directory ${APOLLO_ROOT_DIR}/modules/${component} not found. Exiting ..."
         exit 1
@@ -255,10 +255,6 @@ function format_bazel_targets() {
 }
 
 function run_bazel_build() {
-  if ${USE_ESD_CAN}; then
-    CMDLINE_OPTIONS="${CMDLINE_OPTIONS} --define USE_ESD_CAN=${USE_ESD_CAN}"
-  fi
-
   CMDLINE_OPTIONS="$(echo ${CMDLINE_OPTIONS} | xargs)"
 
   local build_targets
@@ -284,7 +280,8 @@ function run_bazel_build() {
     jobs_args="--jobs=${CUSTOM_JOBS}"
   fi
   # default set cpus number according to the total cpu cores
-  local cpu_count=$(($(nproc) / 2))
+  local nproc_cnt=$(nproc)
+  local cpu_count=$(( nproc_cnt > 8 ? 8 : nproc_cnt ))
   local cpus_args="--local_resources=cpu=${cpu_count}"
   if [[ -n "${CUSTOM_CPUS}" ]]; then
     cpus_args="--local_resources=cpu=${CUSTOM_CPUS}"

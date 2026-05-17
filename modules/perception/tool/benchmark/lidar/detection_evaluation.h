@@ -15,11 +15,13 @@
  *****************************************************************************/
 #pragma once
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "modules/perception/tool/benchmark/lidar/eval/frame_statistics.h"
 #include "modules/perception/tool/benchmark/lidar/eval/lidar_option.h"
 #include "modules/perception/tool/benchmark/lidar/eval/sequence_self_statistics.h"

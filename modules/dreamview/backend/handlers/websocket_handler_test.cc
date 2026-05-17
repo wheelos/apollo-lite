@@ -68,6 +68,8 @@ TEST(WebSocketTest, IntegrationTest) {
   // Wait for a small amount of time to make sure that the client is up and
   // connected.
   std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  EXPECT_TRUE(handler.HasConnections());
+  EXPECT_EQ(1u, handler.ConnectionCount());
 
   // Send 3 messages.
   for (int i = 0; i < 3; ++i) {
@@ -79,6 +81,12 @@ TEST(WebSocketTest, IntegrationTest) {
 
   // Check that the 3 messages are successfully received and processed.
   EXPECT_THAT(client.GetReceivedMessages(), ElementsAre("0", "1", "2"));
+}
+
+TEST(WebSocketTest, EmptyConnectionSet) {
+  WebSocketHandler empty_handler("Empty");
+  EXPECT_FALSE(empty_handler.HasConnections());
+  EXPECT_EQ(0u, empty_handler.ConnectionCount());
 }
 
 TEST(WebSocketTest, handleData) {

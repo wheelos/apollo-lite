@@ -4,6 +4,8 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+PERCEPTION_COPTS = ['-DMODULE_NAME=\\"perception\\"']
+
 install(
     name = "install",
     data_dest = "perception/addition_data/pipeline",
@@ -24,6 +26,7 @@ cc_library(
   hdrs = [
     "data_frame.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     "//modules/perception/camera/common:camera_frame",
     "//modules/perception/fusion/base:fusion_frame",
@@ -39,6 +42,7 @@ cc_library(
   hdrs = [
     "plugin_factory.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     ":plugin",
     "//modules/common/util:util_tool",
@@ -49,7 +53,6 @@ cc_library(
     "//modules/perception/camera/lib/obstacle/camera_detection_postprocessor/recover_bbox",
     "//modules/perception/camera/lib/obstacle/preprocessor/get_image_data",
     "//modules/perception/camera/lib/obstacle/preprocessor/resize_and_normalize",
-
     "//modules/perception/lidar/lib/classifier/fused_classifier:ccrf_type_fusion",
     "//modules/perception/lidar/lib/object_filter_bank/roi_boundary_filter",
     "//modules/perception/lidar/lib/pointcloud_detection_postprocessor/pointcloud_get_objects",
@@ -65,6 +68,7 @@ cc_library(
   hdrs = [
     "plugin.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
   ],
@@ -78,6 +82,7 @@ cc_library(
   hdrs = [
     "stage.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     ":data_frame",
     ":plugin_factory",
@@ -94,6 +99,7 @@ cc_library(
   hdrs = [
     "pipeline.h",
   ],
+  copts = PERCEPTION_COPTS,
   deps = [
     ":stage",
     "//cyber",
@@ -112,22 +118,23 @@ cc_library(
     "//modules/perception/fusion/lib/fusion_system/probabilistic_fusion",
     "//modules/perception/fusion/lib/gatekeeper:collect_fused_object",
     "//modules/perception/lidar/lib/classifier/fused_classifier",
-    "//modules/perception/lidar/lib/detector/center_point_detection",
-    "//modules/perception/lidar/lib/detector/mask_pillars_detection",
+    # "//modules/perception/lidar/lib/detector/center_point_detection",
+    "//modules/perception/lidar/lib/detector/center_point_trt",
     "//modules/perception/lidar/lib/detector/point_pillars_detection",
     "//modules/perception/lidar/lib/detector/cnn_segmentation",
     "//modules/perception/lidar/lib/detector/ncut_segmentation",
+    "//modules/perception/lidar/lib/detector/graph_segmentation",
     "//modules/perception/lidar/lib/map_manager",
     "//modules/perception/lidar/lib/object_builder",
     "//modules/perception/lidar/lib/object_filter_bank",
     "//modules/perception/lidar/lib/pointcloud_detection_postprocessor",
     "//modules/perception/lidar/lib/pointcloud_detection_preprocessor",
     "//modules/perception/lidar/lib/pointcloud_preprocessor",
+    "//modules/perception/lidar/lib/roi_filter/hdmap_roi_filter",
     "//modules/perception/lidar/lib/tracker/multi_lidar_fusion:mlf_engine",
     "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
     "//modules/perception/camera/lib/obstacle/postprocessor/location_refiner:location_refiner_obstacle_postprocessor",
-    "//modules/perception/camera/lib/obstacle/detector/bev_detection:bev_obstacle_detector",
-    "//modules/perception/camera/lib/obstacle/detector/caddn:caddn_obstacle_detector",
+    # "//modules/perception/camera/lib/obstacle/detector/caddn:caddn_obstacle_detector",
   ],
 )
 

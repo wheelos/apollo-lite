@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package apollo.perception.lidar;
 
-message MapManagerConfig {
+message HdmapContextProviderConfig {
   optional bool update_pose = 1 [default = false];
   optional double roi_search_distance = 2 [default = 80.0];
   optional double lane_range = 3;

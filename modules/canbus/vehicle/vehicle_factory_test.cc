@@ -24,9 +24,6 @@ namespace apollo {
 namespace canbus {
 
 class VehicleFactoryTest : public ::testing::Test {
- public:
-  virtual void SetUp() { factory_.RegisterVehicleFactory(); }
-
  protected:
   VehicleFactory factory_;
 };

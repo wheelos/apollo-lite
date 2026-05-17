@@ -39,7 +39,7 @@ class PathLaneBorrowDecider : public Decider {
                          ReferenceLineInfo* reference_line_info) override;
 
   bool IsNecessaryToBorrowLane(const Frame& frame,
-                               const ReferenceLineInfo& reference_line_info);
+                               ReferenceLineInfo* reference_line_info);
 
   bool HasSingleReferenceLine(const Frame& frame);
 

@@ -1,0 +1,64 @@
+// Copyright 2025 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//  Created Date: 2025-12-07
+//  Author: daohu527
+
+#include "modules/planning/scenarios/maneuver/deadend_turnaround/deadend_turnaround_scenario.h"
+
+#include "cyber/common/log.h"
+
+namespace apollo {
+namespace planning {
+namespace scenario {
+namespace deadend_turnaround {
+
+namespace {
+
+class DeadendTurnaroundStage final : public Stage {
+ public:
+  DeadendTurnaroundStage(const ScenarioConfig::StageConfig& config,
+                         const std::shared_ptr<DependencyInjector>& injector)
+      : Stage(config, injector) {}
+
+  StageStatus Process(const common::TrajectoryPoint& planning_init_point,
+                      Frame* frame) override {
+    CHECK_NOTNULL(frame);
+
+    const bool plan_ok = ExecuteTaskOnReferenceLine(planning_init_point, frame);
+    if (!plan_ok) {
+      AERROR << "DeadendTurnaroundStage failed to produce a plan.";
+      return Stage::RUNNING;
+    }
+    return FinishScenario();
+  }
+};
+
+}  // namespace
+
+std::unique_ptr<Stage> DeadendTurnaroundScenario::CreateStage(
+    const ScenarioConfig::StageConfig& stage_config,
+    const std::shared_ptr<DependencyInjector>& injector) {
+  if (stage_config.stage_type() ==
+          StageType::DEADEND_TURNAROUND_APPROACHING_TURNING_POINT ||
+      stage_config.stage_type() == StageType::DEADEND_TURNAROUND_TURNING) {
+    return std::make_unique<DeadendTurnaroundStage>(stage_config, injector);
+  }
+  return nullptr;
+}
+
+}  // namespace deadend_turnaround
+}  // namespace scenario
+}  // namespace planning
+}  // namespace apollo

@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/gear_status_514.h"
+
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -30,15 +33,16 @@ const int32_t Gearstatus514::ID = 0x514;
 
 void Gearstatus514::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_ch()->mutable_gear_status_514()->set_gear_sts(
-      gear_sts(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Ch>(chassis)
+      ->mutable_gear_status_514()
+      ->set_gear_sts(gear_sts(bytes, length));
 }
 
-// config detail: {'description': 'PRND control(Status)', 'enum': {1:
+// config detail: {'bit': 0, 'description': 'PRND control(Status)', 'enum': {1:
 // 'GEAR_STS_PARK', 2: 'GEAR_STS_REVERSE', 3: 'GEAR_STS_NEUTRAL', 4:
-// 'GEAR_STS_DRIVE'}, 'precision': 1.0, 'len': 8, 'name': 'gear_sts',
-// 'is_signed_var': False, 'offset': 0.0, 'physical_range': '[1|4]', 'bit': 0,
-// 'type': 'enum', 'order': 'intel', 'physical_unit': ''}
+// 'GEAR_STS_DRIVE'}, 'is_signed_var': False, 'len': 8, 'name': 'gear_sts',
+// 'offset': 0.0, 'order': 'intel', 'physical_range': '[1|4]', 'physical_unit':
+// '', 'precision': 1.0, 'type': 'enum'}
 Gear_status_514::Gear_stsType Gearstatus514::gear_sts(const std::uint8_t* bytes,
                                                       int32_t length) const {
   Byte t0(bytes + 0);

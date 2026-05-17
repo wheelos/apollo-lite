@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/protocol/ads3_38e.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

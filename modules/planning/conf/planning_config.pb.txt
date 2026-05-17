@@ -272,14 +272,14 @@ default_task_config: {
           default_bound: 2.0
           vehicle_shortest_dimension: 1.04
           fem_pos_deviation_smoother_config {
-            weight_fem_pos_deviation: 1e7
+            weight_fem_pos_deviation: 1e3
             weight_path_length: 0.0
             weight_ref_deviation: 1e3
             apply_curvature_constraint: true
             weight_curvature_constraint_slack_var: 1e8
             curvature_constraint: 0.18
             max_iter: 500
-            time_limit: 0.0
+            time_limit: 1.0
             verbose: false
             scaled_termination: true
             warm_start: true
@@ -396,5 +396,57 @@ default_task_config {
   task_type: PATH_REFERENCE_DECIDER
   path_reference_decider_config {
     min_path_reference_length: 20
+  }
+}
+scenario_transition_config {
+  # 1. Default/Starting Scenario: Allows access to almost all task scenarios.
+  transition_rules {
+    from_scenario_type: LANE_FOLLOW
+    to_scenario_types: BARE_INTERSECTION_UNPROTECTED
+    to_scenario_types: STOP_SIGN_UNPROTECTED
+    to_scenario_types: TRAFFIC_LIGHT_PROTECTED
+    to_scenario_types: TRAFFIC_LIGHT_UNPROTECTED_LEFT_TURN
+    to_scenario_types: TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN
+    to_scenario_types: YIELD_SIGN
+    to_scenario_types: PULL_OVER
+    to_scenario_types: VALET_PARKING
+    to_scenario_types: NARROW_STREET_U_TURN
+    to_scenario_types: NARROW_STREET_MANEUVER
+    to_scenario_types: MISSION_IDLE
+    to_scenario_types: ESCAPE
+  }
+
+  # 2. Parking and starting: After completion, you can only switch back to lane following or follow the path.
+  transition_rules {
+    from_scenario_type: PARK_AND_GO
+    to_scenario_types: LANE_FOLLOW
+    to_scenario_types: ESCAPE
+  }
+
+  # 3. Intersection scenario: Once entered, it is usually only allowed to switch
+  # back to LANE_FOLLOW after the end. Note that direct jumps between intersections are usually not allowed.
+  transition_rules {
+    from_scenario_type: TRAFFIC_LIGHT_PROTECTED
+    to_scenario_types: LANE_FOLLOW
+    to_scenario_types: PARK_AND_GO
+  }
+
+  # 5. Emergency scenario: Once entered, switching back to MISSION_IDLE is
+  # only permitted after it is safe to do so, or manual exit is allowed.
+  transition_rules {
+    from_scenario_type: EMERGENCY_STOP
+    to_scenario_types: MISSION_IDLE
+    to_scenario_types: PULL_OVER
+  }
+
+  # 6. Special scenario: After making a U-turn, switch back to the main channel.
+  transition_rules {
+    from_scenario_type: DEADEND_TURNAROUND
+    to_scenario_types: LANE_FOLLOW
+  }
+
+  transition_rules {
+    from_scenario_type: ESCAPE
+    to_scenario_types: LANE_FOLLOW
   }
 }

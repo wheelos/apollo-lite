@@ -19,10 +19,14 @@
 #include "cyber/common/log.h"
 #include "modules/canbus/vehicle/neolix_edu/neolix_edu_controller.h"
 #include "modules/canbus/vehicle/neolix_edu/neolix_edu_message_manager.h"
+#include "modules/canbus/vehicle/vehicle_factory.h"
 #include "modules/common/util/util.h"
 
 namespace apollo {
 namespace canbus {
+
+REGISTER_PLUGIN_BY_KEY(AbstractVehicleFactory, Neolix_eduVehicleFactory,
+                       apollo::common::NEOLIX);
 
 std::unique_ptr<VehicleController>
 Neolix_eduVehicleFactory::CreateVehicleController() {

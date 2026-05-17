@@ -4,6 +4,7 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "mk_mini_vehicle_factory",
+    alwayslink = True,
     srcs = [
         "mk_mini_vehicle_factory.cc",
     ],
@@ -14,6 +15,7 @@ cc_library(
         ":mk_mini_controller",
         ":mk_mini_message_manager",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 

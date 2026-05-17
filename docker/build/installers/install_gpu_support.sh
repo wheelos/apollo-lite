@@ -27,9 +27,9 @@ apt_get_update_and_install \
     libatlas-base-dev \
     liblapack-dev
 
-# Note(infra): build magma before mkl
-info "Install Magma ..."
-bash ${CURR_DIR}/install_magma.sh
+# # Note(infra): build magma before mkl
+# info "Install Magma ..."
+# bash ${CURR_DIR}/install_magma.sh
 
 info "Install libtorch ..."
 bash ${CURR_DIR}/install_libtorch.sh
@@ -39,5 +39,5 @@ bash ${CURR_DIR}/install_libtorch.sh
 # opencv @cuda
 
 # Clean up cache to reduce layer size.
-apt-get clean && \
+apt-get clean &&
     rm -rf /var/lib/apt/lists/*

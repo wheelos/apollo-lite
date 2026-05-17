@@ -23,9 +23,7 @@
 #include <utility>
 #include <vector>
 
-// #define ACCEPT_USE_OF_DEPRECATED_PROJ_API_H
 #include <proj.h>
-// #include <proj_api.h>
 
 #include "modules/common_msgs/localization_msgs/gps.pb.h"
 #include "modules/common_msgs/localization_msgs/imu.pb.h"
@@ -40,7 +38,6 @@
 
 #include "cyber/cyber.h"
 #include "modules/drivers/gnss/parser/parser.h"
-#include "modules/transform/transform_broadcaster.h"
 
 namespace apollo {
 namespace drivers {
@@ -103,16 +100,10 @@ class DataParser {
   // Checks and updates internal status based on Gnss message.
   void CheckGnssStatus(const std::shared_ptr<Gnss>& gnss);
 
-  // Converts Gps message to TransformStamped for TF broadcasting.
-  void GpsToTransformStamped(
-      const std::shared_ptr<apollo::localization::Gps>& gps,
-      apollo::transform::TransformStamped* transform);
-
   bool init_flag_ = false;
   config::Config config_;
   // Use gnss parser to parse data, which will call different hardware parsers
   std::unique_ptr<Parser> gnss_parser_;
-  apollo::transform::TransformBroadcaster tf_broadcaster_;
 
   GnssStatus gnss_status_;
   InsStatus ins_status_;

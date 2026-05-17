@@ -17,6 +17,8 @@
 #include "modules/canbus/vehicle/devkit/protocol/brake_report_501.h"
 
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,16 +33,20 @@ const int32_t Brakereport501::ID = 0x501;
 
 void Brakereport501::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_devkit()->mutable_brake_report_501()->set_brake_pedal_actual(
-      brake_pedal_actual(bytes, length));
-  chassis->mutable_devkit()->mutable_brake_report_501()->set_brake_flt2(
-      brake_flt2(bytes, length));
-  chassis->mutable_devkit()->mutable_brake_report_501()->set_brake_flt1(
-      brake_flt1(bytes, length));
-  chassis->mutable_devkit()->mutable_brake_report_501()->set_brake_en_state(
-      brake_en_state(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_brake_report_501()
+      ->set_brake_pedal_actual(brake_pedal_actual(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_brake_report_501()
+      ->set_brake_flt2(brake_flt2(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_brake_report_501()
+      ->set_brake_flt1(brake_flt1(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_brake_report_501()
+      ->set_brake_en_state(brake_en_state(bytes, length));
   chassis->mutable_check_response()->set_is_esp_online(
-      brake_en_state(bytes, length) == 1);
+      brake_flt1(bytes, length) == 0 && brake_flt2(bytes, length) == 0);
 }
 
 // config detail: {'name': 'brake_pedal_actual', 'offset': 0.0, 'precision':

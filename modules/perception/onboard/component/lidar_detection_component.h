@@ -60,7 +60,7 @@ class LidarDetectionComponent : public cyber::Component<drivers::PointCloud> {
   std::string detector_name_;
   bool enable_hdmap_ = true;
   float lidar_query_tf_offset_ = 20.0f;
-  std::string lidar2novatel_tf2_child_frame_id_;
+  std::string lidar2vehicle_tf2_child_frame_id_;
   std::string output_channel_name_;
   base::SensorInfo sensor_info_;
   TransformWrapper lidar2world_trans_;

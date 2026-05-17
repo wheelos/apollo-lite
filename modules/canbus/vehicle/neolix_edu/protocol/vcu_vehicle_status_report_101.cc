@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,43 +33,43 @@ const int32_t Vcuvehiclestatusreport101::ID = 0x101;
 
 void Vcuvehiclestatusreport101::Parse(const std::uint8_t* bytes, int32_t length,
                                       ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_drive_enable_resp(drive_enable_resp(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_highvoltagecircuitstate(
           vcu_highvoltagecircuitstate(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_dcdc_enabledstates(vcu_dcdc_enabledstates(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_control_mode_resp(control_mode_resp(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_vehicle_speed(vcu_vehicle_speed(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_lowbatterychargingfunctionst(
           vcu_lowbatterychargingfunctionst(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_display_soc(vcu_display_soc(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_motor_speed(vcu_motor_speed(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_motor_direction(vcu_motor_direction(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_motor_speed_valid(vcu_motor_speed_valid(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_statusrept_alivecounter(
           vcu_statusrept_alivecounter(bytes, length));
-  chassis->mutable_neolix_edu()
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
       ->mutable_vcu_vehicle_status_report_101()
       ->set_vcu_statusrept_checksum(vcu_statusrept_checksum(bytes, length));
 

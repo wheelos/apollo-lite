@@ -3,13 +3,17 @@ load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
+PERCEPTION_COPTS = ['-DMODULE_NAME=\\"perception\\"']
+
 cc_library(
     name = "spatio_temporal_ground_detector",
     srcs = ["spatio_temporal_ground_detector.cc"],
     hdrs = ["spatio_temporal_ground_detector.h"],
+    copts = PERCEPTION_COPTS,
     deps = [
         "//cyber",
         "//modules/perception/base",
+        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/perception/lib/registerer",
         "@eigen",
         #"//modules/perception/lib/io:protobuf_util",

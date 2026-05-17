@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -128,6 +128,17 @@ cc_library(
         "//modules/planning/common/trajectory1d:piecewise_jerk_trajectory1d",
         "@eigen",
         "@osqp",
+    ],
+)
+
+cc_test(
+    name = "lateral_osqp_optimizer_test",
+    size = "small",
+    srcs = ["lateral_osqp_optimizer_test.cc"],
+    deps = [
+        ":lateral_osqp_optimizer",
+        "//cyber",
+        "@com_google_googletest//:gtest",
     ],
 )
 

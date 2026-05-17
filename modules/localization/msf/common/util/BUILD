@@ -22,7 +22,7 @@ cc_library(
         "@boost.filesystem",
         "@com_github_google_glog//:glog",
         "@eigen",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 
@@ -43,6 +43,7 @@ cc_library(
     hdrs = ["frame_transform.h"],
     deps = [
         "//cyber",
+        "//modules/common/util:proj_helper",
         "@com_google_absl//absl/strings",
         "@eigen",
         "@proj",

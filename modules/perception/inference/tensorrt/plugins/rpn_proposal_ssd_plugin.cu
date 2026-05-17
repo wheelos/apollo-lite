@@ -107,7 +107,7 @@ __global__ void reshape_scores_kernel(const int nthreads,
 }
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR != 8
+#if NV_TENSORRT_MAJOR < 8
 int RPNProposalSSDPlugin::enqueue(int batchSize, const void *const *inputs,
                                   void **outputs, void *workspace,
                                   cudaStream_t stream) {
@@ -117,6 +117,16 @@ int32_t RPNProposalSSDPlugin::enqueue(int32_t batchSize, const void *const *inpu
                                     cudaStream_t stream) noexcept {
 #endif
 #endif
+  int effective_batch = batchSize;
+#if NV_TENSORRT_MAJOR >= 10
+  if (explicit_batch_ > 0) {
+    effective_batch = explicit_batch_;
+  }
+#endif
+  CHECK_EQ(effective_batch, 1)
+      << "RPNProposalSSDPlugin only supports batch=1 (output dims are hard "
+         "coded to batch=1). Got effective_batch="
+      << effective_batch;
 // dimsNCHW: [N, 2 * num_anchor_per_point, H, W]
   const float *rpn_cls_prob_reshape =
       reinterpret_cast<const float *>(inputs[0]);
@@ -126,18 +136,18 @@ int32_t RPNProposalSSDPlugin::enqueue(int32_t batchSize, const void *const *inpu
   const float *im_info = reinterpret_cast<const float *>(inputs[2]);
   float *out_rois = reinterpret_cast<float *>(outputs[0]);
 
-  float *host_im_info = new float[batchSize * 6]();
+  float *host_im_info = new float[effective_batch * 6]();
   BASE_CUDA_CHECK(cudaMemcpyAsync(host_im_info, im_info,
-                                  batchSize * 6 * sizeof(float),
+                                  effective_batch * 6 * sizeof(float),
                                   cudaMemcpyDeviceToHost, stream));
 
   const int origin_height = (int)(host_im_info[0]);
   const int origin_width = (int)(host_im_info[1]);
   int num_anchor = height_ * width_ * num_anchor_per_point_;
-  int rpn_bbox_pred_size = batchSize * num_anchor * 4;
-  int scores_size = batchSize * num_anchor * 2;
+  int rpn_bbox_pred_size = effective_batch * num_anchor * 4;
+  int scores_size = effective_batch * num_anchor * 2;
   int anchors_size = num_anchor * 4;
-  int out_rois_size = batchSize * top_n_ * 5;
+  int out_rois_size = effective_batch * top_n_ * 5;
 
   // Using thrust::fill might cause crash
   float *init_out_rois = new float[out_rois_size]();
@@ -204,7 +214,7 @@ int32_t RPNProposalSSDPlugin::enqueue(int32_t batchSize, const void *const *inpu
                              rpn_bbox_pred_size * sizeof(float)));
   BASE_CUDA_CHECK(cudaMemsetAsync(proposals, 0,
                                   rpn_bbox_pred_size * sizeof(float), stream));
-  nthreads = batchSize * num_anchor;
+  nthreads = effective_batch * num_anchor;
   block_size = (nthreads - 1) / thread_size_ + 1;
   bbox_transform_inv_cuda(block_size, thread_size_, 0, stream, nthreads,
                           anchors, temp_rpn_bbox_pred, num_anchor, 1,
@@ -234,16 +244,16 @@ int32_t RPNProposalSSDPlugin::enqueue(int32_t batchSize, const void *const *inpu
   BASE_CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&filtered_proposals),
                              rpn_bbox_pred_size * sizeof(float)));
   BASE_CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&filtered_scores),
-                             batchSize * num_anchor * sizeof(float)));
+                             effective_batch * num_anchor * sizeof(float)));
   BASE_CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&filtered_count),
-                             batchSize * sizeof(int)));
+                             effective_batch * sizeof(int)));
   BASE_CUDA_CHECK(cudaMemsetAsync(filtered_proposals, 0,
                                   rpn_bbox_pred_size * sizeof(float), stream));
   BASE_CUDA_CHECK(cudaMemsetAsync(
-      filtered_scores, 0, batchSize * num_anchor * sizeof(float), stream));
+      filtered_scores, 0, effective_batch * num_anchor * sizeof(float), stream));
   BASE_CUDA_CHECK(
-      cudaMemsetAsync(filtered_count, 0, batchSize * sizeof(int), stream));
-  nthreads = batchSize * num_anchor;
+      cudaMemsetAsync(filtered_count, 0, effective_batch * sizeof(int), stream));
+  nthreads = effective_batch * num_anchor;
   block_size = (nthreads - 1) / thread_size_ + 1;
   // TODO(chenjiahao): filter area
   filter_boxes_cuda(block_size, thread_size_, 0, stream, nthreads, proposals,
@@ -252,16 +262,16 @@ int32_t RPNProposalSSDPlugin::enqueue(int32_t batchSize, const void *const *inpu
                     threshold_objectness_, filtered_proposals, filtered_scores,
                     nullptr, filtered_count);
 
-  int *host_filtered_count = new int[batchSize]();
+  int *host_filtered_count = new int[effective_batch]();
   BASE_CUDA_CHECK(cudaMemcpyAsync(host_filtered_count, filtered_count,
-                                  batchSize * sizeof(int),
+                                  effective_batch * sizeof(int),
                                   cudaMemcpyDeviceToHost, stream));
 
   // descending sort proposals by score
   int *sorted_indexes;
   BASE_CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&sorted_indexes),
-                             batchSize * num_anchor * sizeof(int)));
-  for (int i = 0; i < batchSize; ++i) {
+                             effective_batch * num_anchor * sizeof(int)));
+  for (int i = 0; i < effective_batch; ++i) {
     thrust::sequence(thrust::device, sorted_indexes + i * num_anchor,
                      sorted_indexes + i * num_anchor + host_filtered_count[i]);
     thrust::sort_by_key(
@@ -273,11 +283,11 @@ int32_t RPNProposalSSDPlugin::enqueue(int32_t batchSize, const void *const *inpu
   // keep max N candidates
   float *pre_nms_proposals;
   BASE_CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&pre_nms_proposals),
-                             batchSize * max_candidate_n_ * 4 * sizeof(float)));
+                             effective_batch * max_candidate_n_ * 4 * sizeof(float)));
   BASE_CUDA_CHECK(cudaMemsetAsync(
-      pre_nms_proposals, 0, batchSize * max_candidate_n_ * 4 * sizeof(float),
+      pre_nms_proposals, 0, effective_batch * max_candidate_n_ * 4 * sizeof(float),
       stream));
-  nthreads = batchSize * max_candidate_n_;
+  nthreads = effective_batch * max_candidate_n_;
   block_size = (nthreads - 1) / thread_size_ + 1;
   keep_topN_boxes_cuda(block_size, thread_size_, 0, stream, nthreads,
                        filtered_proposals, nullptr, nullptr, sorted_indexes,
@@ -287,7 +297,7 @@ int32_t RPNProposalSSDPlugin::enqueue(int32_t batchSize, const void *const *inpu
   // Nms, keep top N proposals and output final proposals
   // output dims: [num_roi, 5] (axis-1: batch_id, x_min, y_min, x_max, y_max)
   int acc_box_num = 0;
-  for (int i = 0; i < batchSize; ++i) {
+  for (int i = 0; i < effective_batch; ++i) {
     int cur_filter_count = std::min(host_filtered_count[i], max_candidate_n_);
     NmsForward(
         false, cur_filter_count, 4, overlap_ratio_, max_candidate_n_, top_n_, i,

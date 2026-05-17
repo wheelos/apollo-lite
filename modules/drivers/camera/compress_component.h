@@ -16,12 +16,18 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <mutex>
+
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+
+#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "modules/drivers/camera/proto/config.pb.h"
 
 #include "cyber/base/concurrent_object_pool.h"
 #include "cyber/cyber.h"
-#include "modules/drivers/camera/proto/config.pb.h"
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
 
 namespace apollo {
 namespace drivers {
@@ -30,6 +36,7 @@ namespace camera {
 using apollo::cyber::Component;
 using apollo::cyber::Writer;
 using apollo::cyber::base::CCObjectPool;
+using apollo::drivers::CompressedImage;
 using apollo::drivers::Image;
 using apollo::drivers::camera::config::Config;
 
@@ -39,9 +46,11 @@ class CompressComponent : public Component<Image> {
   bool Proc(const std::shared_ptr<Image>& image) override;
 
  private:
-  std::shared_ptr<CCObjectPool<CompressedImage>> image_pool_;
-  std::shared_ptr<Writer<CompressedImage>> writer_ = nullptr;
   Config config_;
+  std::shared_ptr<CCObjectPool<CompressedImage>> image_pool_;
+  std::shared_ptr<Writer<CompressedImage>> writer_;
+  std::vector<int> compress_params_;
+  size_t compressed_buffer_reserve_bytes_ = 0;
 };
 
 CYBER_REGISTER_COMPONENT(CompressComponent)

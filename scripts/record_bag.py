@@ -26,9 +26,10 @@ It lists all available disks mounted under /media, and prioritize them in order:
    - Disk#y. Smaller Non-NVME disk
    - ...
 
-1. If we have NVME disk, it will be used to record all data.
-2. If we have Non-NVME disk, it will only record smaller topics (blacklist LARGE_TOPICS), unless '--all' is
-   specified.
+1. If we have NVME disk, it will be used to record all data and a compact
+   size-filtered bag for quick copy and processing.
+2. If we have Non-NVME disk, it will record the compact size-filtered bag by
+   default, unless '--all' is specified.
 3. If no external disks are available, we will take '/apollo' as a
    'Non-NVME disk' and follow the rule above.
 
@@ -42,40 +43,6 @@ import subprocess
 import sys
 
 import psutil
-
-
-LARGE_TOPICS = [
-    '/apollo/sensor/camera/front_12mm/image',
-    '/apollo/sensor/camera/front_12mm/image/compressed',
-    '/apollo/sensor/camera/front_12mm/video/compressed',
-    '/apollo/sensor/camera/front_6mm/image',
-    '/apollo/sensor/camera/front_6mm/image/compressed',
-    '/apollo/sensor/camera/front_6mm/video/compressed',
-    '/apollo/sensor/camera/left_fisheye/image',
-    '/apollo/sensor/camera/left_fisheye/image/compressed',
-    '/apollo/sensor/camera/left_fisheye/video/compressed',
-    '/apollo/sensor/camera/rear_6mm/image',
-    '/apollo/sensor/camera/rear_6mm/image/compressed',
-    '/apollo/sensor/camera/rear_6mm/video/compressed',
-    '/apollo/sensor/camera/right_fisheye/image',
-    '/apollo/sensor/camera/right_fisheye/image/compressed',
-    '/apollo/sensor/camera/right_fisheye/video/compressed',
-    '/apollo/sensor/lidar128/PointCloud2',
-    '/apollo/sensor/lidar128/compensator/PointCloud2',
-    '/apollo/sensor/lidar16/PointCloud2',
-    '/apollo/sensor/lidar16/Scan',
-    '/apollo/sensor/lidar16/compensator/PointCloud2',
-    '/apollo/sensor/lidar16/front/center/PointCloud2',
-    '/apollo/sensor/lidar16/front/up/PointCloud2',
-    '/apollo/sensor/lidar16/fusion/PointCloud2',
-    '/apollo/sensor/lidar16/fusion/compensator/PointCloud2',
-    '/apollo/sensor/lidar16/rear/left/PointCloud2',
-    '/apollo/sensor/lidar16/rear/right/PointCloud2',
-    '/apollo/sensor/microphone',
-    '/apollo/sensor/radar/front',
-    '/apollo/sensor/radar/rear',
-    '/apollo/sensor/velodyne64/compensator/PointCloud2',
-]
 
 def shell_cmd(cmd, alert_on_failure=True):
     """Execute shell command and return (ret-code, stdout, stderr)."""
@@ -105,10 +72,10 @@ class ArgManager(object):
         self.parser.add_argument('--stop_signal', default="SIGINT",
                                  help='Signal to stop the recorder.')
         self.parser.add_argument('--all', default=False, action="store_true",
-                                 help='Record all topics even without high '
+                                 help='Record a full bag even without high '
                                  'performance disks.')
         self.parser.add_argument('--small', default=False, action="store_true",
-                                 help='Record small topics only.')
+                                 help='Record the compact filtered bag only.')
         self.parser.add_argument('--split_duration', default="1m",
                                  help='Duration to split bags, will be applied '
                                  'as parameter to "rosbag record --duration".')
@@ -161,19 +128,18 @@ class Recorder(object):
             return
 
         disks = self.disk_manager.disks
-        # To record all topics if
-        # 1. User requested with '--all' argument.
-        # 2. Or we have a NVME disk and '--small' is not set.
-        record_all = self.args.all or (
-            len(disks) > 0 and disks[0]['is_nvme'] and not self.args.small)
+        # By default record the compact (small) bag only.
+        # Use '--all' to explicitly request a full (unfiltered) bag.
+        record_all = self.args.all
         # Use the best disk, or fallback '/apollo' if none available.
         disk_to_use = disks[0]['mountpoint'] if len(disks) > 0 else '/apollo'
 
-        # Record small topics to quickly copy and process
         if record_all:
+            # Explicit request: record full bag
+            self.record_task(disk_to_use, True)
+        else:
+            # Default: record compact filtered bag only
             self.record_task(disk_to_use, False)
-
-        self.record_task(disk_to_use, record_all)
 
     def stop(self):
         """Stop recording."""
@@ -188,12 +154,12 @@ class Recorder(object):
         task_dir = os.path.join(disk, 'data/bag', task_id)
         print('Recording bag to {}'.format(task_dir))
 
-        topics_str = "--all"
+        topics_str = "-a"
 
         log_file = '/apollo/data/log/apollo_record.out'
         if not record_all:
             log_file += "_s"
-            topics_str += " -k {}".format(' -k '.join(list(LARGE_TOPICS)))
+            topics_str += " -f"
 
         if not os.path.exists(task_dir):
             os.makedirs(task_dir)

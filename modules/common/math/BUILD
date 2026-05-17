@@ -264,6 +264,7 @@ cc_library(
         "@eigen",
     ],
     alwayslink = True,
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -282,7 +283,7 @@ cc_test(
     deps = [
         ":mpc_osqp",
         "//cyber",
-        "@com_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -292,7 +293,7 @@ cc_test(
     srcs = ["math_utils_test.cc"],
     deps = [
         ":geometry",
-        "@com_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest",
         "@osqp",
     ],
 )

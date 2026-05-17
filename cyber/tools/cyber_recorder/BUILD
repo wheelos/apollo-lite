@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
 
@@ -41,14 +41,62 @@ cc_library(
 )
 
 cc_library(
+    name = "channel_rate_filter",
+    srcs = ["channel_rate_filter.cc"],
+    hdrs = ["channel_rate_filter.h"],
+)
+
+cc_test(
+    name = "channel_rate_filter_test",
+    size = "small",
+    srcs = ["channel_rate_filter_test.cc"],
+    deps = [
+        ":channel_rate_filter",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "message_size_filter",
+    srcs = ["message_size_filter.cc"],
+    hdrs = ["message_size_filter.h"],
+)
+
+cc_test(
+    name = "message_size_filter_test",
+    size = "small",
+    srcs = ["message_size_filter_test.cc"],
+    deps = [
+        ":message_size_filter",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "recorder_filter_integration_test",
+    size = "medium",
+    srcs = ["recorder_filter_integration_test.cc"],
+    deps = [
+        ":channel_rate_filter",
+        ":message_size_filter",
+        "//cyber/record:header_builder",
+        "//cyber/record:record_reader",
+        "//cyber/record:record_writer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "recorder",
     srcs = ["recorder.cc"],
     hdrs = ["recorder.h"],
     deps = [
+        ":channel_rate_filter",
+        ":message_size_filter",
         "//cyber",
         "//cyber/common:log",
         "//cyber/proto:record_cc_proto",
-        "@fastrtps",
+        "@wheelos_fastdds//:fastdds",
     ],
 )
 

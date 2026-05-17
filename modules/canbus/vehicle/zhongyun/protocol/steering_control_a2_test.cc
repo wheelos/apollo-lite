@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/zhongyun/protocol/steering_control_a2.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

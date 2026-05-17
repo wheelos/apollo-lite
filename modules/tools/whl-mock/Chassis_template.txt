@@ -1,0 +1,12 @@
+engine_started: true
+speed_mps: 0.22203603
+throttle_percentage: 0.0
+brake_percentage: 0.0
+driving_mode: COMPLETE_AUTO_DRIVE
+gear_location: GEAR_DRIVE
+header {
+    timestamp_sec: 1769053709.071986
+    module_name: "SimPerfectControl"
+    sequence_num: 22192
+}
+motion_mode: MOTION_ACKERMANN

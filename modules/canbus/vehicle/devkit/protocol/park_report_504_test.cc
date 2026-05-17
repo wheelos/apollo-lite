@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace devkit {
@@ -42,8 +44,18 @@ TEST_F(Parkreport504Test, General) {
   EXPECT_EQ(data[6], 0b00000000);
   EXPECT_EQ(data[7], 0b00000001);
 
-  EXPECT_EQ(cd.devkit().park_report_504().parking_actual(), 0);
-  EXPECT_EQ(cd.devkit().park_report_504().park_flt(), 1);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .park_report_504()
+          .parking_actual(),
+      0);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .park_report_504()
+          .park_flt(),
+      1);
 }
 
 }  // namespace devkit

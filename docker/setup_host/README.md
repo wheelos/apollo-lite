@@ -12,3 +12,22 @@ Please use the following command to check the device (_e.g. video0_) attributes:
 
 `udevadm info --attribute-walk --name /dev/video0`
 
+---
+
+## Run `setup_host.sh`
+
+#### **Standard Installation (with GUI)**:
+
+This command installs Docker, NVIDIA Container Toolkit, and system configs.
+
+```bash
+sudo ./setup_host.sh
+```
+
+#### **Headless Mode Installation (GUI disabled)**:
+
+Run setup_host with headless mode to apply system configs without GUI.
+
+```bash
+sudo SETUP_HEADLESS_MODE=yes ./setup_host.sh
+```

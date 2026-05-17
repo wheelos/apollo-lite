@@ -11,6 +11,9 @@ cc_library(
     name = "msg_buffer",
     srcs = ["msg_buffer.cc"],
     hdrs = ["msg_buffer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "@boost.circular_buffer",

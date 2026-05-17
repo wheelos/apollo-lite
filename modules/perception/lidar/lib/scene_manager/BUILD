@@ -7,6 +7,9 @@ cc_library(
     name = "scene_manager",
     srcs = ["scene_manager.cc"],
     hdrs = ["scene_manager.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":scene_service",
         "//modules/common/util",
@@ -20,6 +23,9 @@ cc_library(
 cc_library(
     name = "scene_service",
     hdrs = ["scene_service.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/lib/registerer",
     ],

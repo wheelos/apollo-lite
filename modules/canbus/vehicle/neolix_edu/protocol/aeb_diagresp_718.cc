@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,8 +33,9 @@ const int32_t Aebdiagresp718::ID = 0x718;
 
 void Aebdiagresp718::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_neolix_edu()->mutable_aeb_diagresp_718()->set_aeb_diagresp(
-      aeb_diagresp(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Neolix_edu>(chassis)
+      ->mutable_aeb_diagresp_718()
+      ->set_aeb_diagresp(aeb_diagresp(bytes, length));
 }
 
 // config detail: {'name': 'aeb_diagresp', 'offset': 0.0, 'precision': 1.0,

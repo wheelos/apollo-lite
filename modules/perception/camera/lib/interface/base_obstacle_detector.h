@@ -59,6 +59,12 @@ class BaseObstacleDetector : public pipeline::Stage {
   virtual bool Detect(const ObstacleDetectorOptions &options,
                       CameraFrame *frame) = 0;
 
+  virtual bool SetLidarToVehicleExtrinsics(
+      const Eigen::Matrix4d &lidar_to_vehicle) {
+    (void)lidar_to_vehicle;
+    return false;
+  }
+
   virtual bool Init(const StageConfig& stage_config) = 0;
 
   virtual bool Process(DataFrame* data_frame) = 0;

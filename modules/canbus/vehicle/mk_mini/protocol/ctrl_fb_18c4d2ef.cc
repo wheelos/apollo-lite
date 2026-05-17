@@ -18,6 +18,9 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/mk_mini/proto/mk_mini.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -37,22 +40,30 @@ uint32_t Ctrlfb18c4d2ef::GetPeriod() const {
 
 void Ctrlfb18c4d2ef::Parse(const std::uint8_t* bytes, int32_t length,
                            ChassisDetail* chassis) const {
-  chassis->mutable_mk_mini()->mutable_ctrl_fb_18c4d2ef()->set_ctrl_fb_remotest(
-      ctrl_fb_remotest(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ctrl_fb_18c4d2ef()->set_ctrl_fb_check_bcc(
-      ctrl_fb_check_bcc(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ctrl_fb_18c4d2ef()->set_ctrl_fb_alive_cnt(
-      ctrl_fb_alive_cnt(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ctrl_fb_18c4d2ef()->set_ctrl_fb_mode(
-      ctrl_fb_mode(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ctrl_fb_18c4d2ef()->set_ctrl_fb_brake(
-      ctrl_fb_brake(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ctrl_fb_18c4d2ef()->set_ctrl_fb_steering(
-      ctrl_fb_steering(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ctrl_fb_18c4d2ef()->set_ctrl_fb_velocity(
-      ctrl_fb_velocity(bytes, length));
-  chassis->mutable_mk_mini()->mutable_ctrl_fb_18c4d2ef()->set_ctrl_fb_gear(
-      ctrl_fb_gear(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ctrl_fb_18c4d2ef()
+      ->set_ctrl_fb_remotest(ctrl_fb_remotest(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ctrl_fb_18c4d2ef()
+      ->set_ctrl_fb_check_bcc(ctrl_fb_check_bcc(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ctrl_fb_18c4d2ef()
+      ->set_ctrl_fb_alive_cnt(ctrl_fb_alive_cnt(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ctrl_fb_18c4d2ef()
+      ->set_ctrl_fb_mode(ctrl_fb_mode(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ctrl_fb_18c4d2ef()
+      ->set_ctrl_fb_brake(ctrl_fb_brake(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ctrl_fb_18c4d2ef()
+      ->set_ctrl_fb_steering(ctrl_fb_steering(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ctrl_fb_18c4d2ef()
+      ->set_ctrl_fb_velocity(ctrl_fb_velocity(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_ctrl_fb_18c4d2ef()
+      ->set_ctrl_fb_gear(ctrl_fb_gear(bytes, length));
 }
 
 // config detail: {'bit': 47, 'is_signed_var': False, 'len': 1, 'name':

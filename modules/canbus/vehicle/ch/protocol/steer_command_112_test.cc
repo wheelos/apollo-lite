@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ch/protocol/steer_command_112.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

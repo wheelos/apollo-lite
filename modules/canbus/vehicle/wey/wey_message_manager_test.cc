@@ -15,13 +15,14 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/wey/wey_message_manager.h"
+
 #include "gtest/gtest.h"
+
 #include "modules/canbus/vehicle/wey/protocol/ads1_111.h"
 #include "modules/canbus/vehicle/wey/protocol/ads3_38e.h"
 #include "modules/canbus/vehicle/wey/protocol/ads_eps_113.h"
 #include "modules/canbus/vehicle/wey/protocol/ads_req_vin_390.h"
 #include "modules/canbus/vehicle/wey/protocol/ads_shifter_115.h"
-
 #include "modules/canbus/vehicle/wey/protocol/fail_241.h"
 #include "modules/canbus/vehicle/wey/protocol/fbs1_243.h"
 #include "modules/canbus/vehicle/wey/protocol/fbs2_240.h"

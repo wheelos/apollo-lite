@@ -18,6 +18,9 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/mk_mini/proto/mk_mini.pb.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -43,88 +46,89 @@ void Vehfbdiag18c4eaef::Parse(const std::uint8_t* bytes, int32_t length,
   chassis->mutable_check_response()->set_is_vcu_online(
       !veh_fb_autocanctrlcmd(bytes, length));
 
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_rdrvmcufault(veh_fb_rdrvmcufault(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ldrvmcufault(veh_fb_ldrvmcufault(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehboilfault(veh_fb_ehboilfault(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehboilpresssensorfault(
           veh_fb_ehboilpresssensorfault(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehbmotorfault(veh_fb_ehbmotorfault(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehbsensorabnomal(veh_fb_ehbsensorabnomal(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehbpowerfault(veh_fb_ehbpowerfault(bytes, length));
-  chassis->mutable_mk_mini()->mutable_veh_fb_diag_18c4eaef()->set_veh_fb_ehbot(
-      veh_fb_ehbot(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
+      ->mutable_veh_fb_diag_18c4eaef()
+      ->set_veh_fb_ehbot(veh_fb_ehbot(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehbangulefault(veh_fb_ehbangulefault(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehbdisen(veh_fb_ehbdisen(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehbworkmodelfault(veh_fb_ehbworkmodelfault(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_epsovercurrent(veh_fb_epsovercurrent(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_epsdiswork(veh_fb_epsdiswork(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_epswarning(veh_fb_epswarning(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_auxremotedisonline(veh_fb_auxremotedisonline(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_auxremoteclose(veh_fb_auxremoteclose(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_auxbmsdisonline(veh_fb_auxbmsdisonline(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_autoiocancmd(veh_fb_autoiocancmd(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_autocanctrlcmd(veh_fb_autocanctrlcmd(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_infor_check_bcc(veh_fb_infor_check_bcc(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_infor_alive_cnt(veh_fb_infor_alive_cnt(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_auxscram(veh_fb_auxscram(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehbdisonline(veh_fb_ehbdisonline(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_ehbecufault(veh_fb_ehbecufault(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_epsmosfetot(veh_fb_epsmosfetot(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_epsfault(veh_fb_epsfault(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_epsdisonline(veh_fb_epsdisonline(bytes, length));
-  chassis->mutable_mk_mini()
+  MutableChassisExtension<::apollo::canbus::Mk_mini>(chassis)
       ->mutable_veh_fb_diag_18c4eaef()
       ->set_veh_fb_faultlevel(veh_fb_faultlevel(bytes, length));
 }

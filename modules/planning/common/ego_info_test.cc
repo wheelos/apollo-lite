@@ -44,11 +44,10 @@ TEST(EgoInfoTest, EgoInfoSimpleTest) {
   uint32_t sequence_num = 0;
   common::TrajectoryPoint planning_start_point;
   common::VehicleState vehicle_state;
-  ReferenceLineProvider reference_line_provider;
 
   LocalView dummy_local_view;
   Frame frame(sequence_num, dummy_local_view, planning_start_point,
-              vehicle_state, &reference_line_provider);
+              vehicle_state);
   ego_info->CalculateFrontObstacleClearDistance(frame.obstacles());
 }
 

@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,10 +33,10 @@ const int32_t Steeringmotorrpt3406::ID = 0x406;
 
 void Steeringmotorrpt3406::Parse(const std::uint8_t* bytes, int32_t length,
                                  ChassisDetail* chassis) const {
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_steering_motor_rpt_3_406()
       ->set_torque_output(torque_output(bytes, length));
-  chassis->mutable_lexus()
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
       ->mutable_steering_motor_rpt_3_406()
       ->set_torque_input(torque_input(bytes, length));
 }

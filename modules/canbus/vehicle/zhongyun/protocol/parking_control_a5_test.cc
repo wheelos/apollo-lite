@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/zhongyun/protocol/parking_control_a5.h"
+
 #include "gtest/gtest.h"
 
 namespace apollo {

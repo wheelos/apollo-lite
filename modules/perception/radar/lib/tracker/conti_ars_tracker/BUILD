@@ -28,6 +28,9 @@ cc_library(
     name = "conti_ars_tracker",
     srcs = ["conti_ars_tracker.cc"],
     hdrs = ["conti_ars_tracker.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base",
         "//modules/perception/common/graph",

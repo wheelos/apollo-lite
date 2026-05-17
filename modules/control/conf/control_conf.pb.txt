@@ -1,5 +1,4 @@
 control_test_duration: -1
-enable_csv_debug: false
 enable_speed_station_preview: false
 is_control_test_mode: false
 use_preview_speed_for_table: false
@@ -103,9 +102,9 @@ lat_controller_conf {
   }
   reverse_leadlag_conf {
     innerstate_saturation_level: 3000
-    alpha: 1.0
-    beta: 1.0
-    tau: 0.0
+    alpha: 0.7
+    beta: 0.6
+    tau: 0.01
   }
   steer_mrac_conf {
     mrac_model_order: 1

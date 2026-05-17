@@ -49,7 +49,7 @@ TEST_F(PullOverScenarioTest, Init) {
   ScenarioContext context;
   auto injector = std::make_shared<DependencyInjector>();
   scenario_.reset(new PullOverScenario(config, &context, injector));
-  EXPECT_EQ(scenario_->scenario_type(), ScenarioType::PULL_OVER);
+  EXPECT_EQ(scenario_->Type(), ScenarioType::PULL_OVER);
 }
 
 }  // namespace pull_over

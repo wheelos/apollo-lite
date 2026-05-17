@@ -1,5 +1,6 @@
 sensor_meta {
     name: "velodyne128"
+    frame_id: "base_link"
     type: VELODYNE_128
     orientation: PANORAMIC
 }

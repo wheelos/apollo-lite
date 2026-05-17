@@ -11,6 +11,7 @@ cc_library(
         "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
         "//modules/perception/lidar/common:pcl_util",
         "//modules/perception/onboard/transform_wrapper",
+        "//modules/transform:transform_query",
         "@com_google_absl//absl/strings",
         "@opencv//:imgproc",
         "@opencv//:imgcodecs",
@@ -25,6 +26,16 @@ cc_binary(
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_binary(
+    name = "pcd_exporter",
+    srcs = ["pcd_exporter_main.cc"],
+    deps = [
+        "//cyber",
+        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "//modules/perception/lidar/common:pcl_util",
     ],
 )
 

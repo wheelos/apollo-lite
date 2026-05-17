@@ -6,6 +6,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "ground_struct",
     hdrs = ["ground_struct.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "@eigen",
     ],
@@ -15,6 +18,9 @@ cc_library(
     name = "ground_service",
     srcs = ["ground_service.cc"],
     hdrs = ["ground_service.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":ground_struct",
         "//modules/perception/common/i_lib",

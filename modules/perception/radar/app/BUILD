@@ -7,6 +7,9 @@ cc_library(
     name = "radar_obstacle_perception",
     srcs = ["radar_obstacle_perception.cc"],
     hdrs = ["radar_obstacle_perception.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/base",

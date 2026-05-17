@@ -38,6 +38,7 @@ cc_library(
         "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
         "//modules/drivers/tools/image_decompress/proto:config_cc_proto",
         "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
     ],
 )
 

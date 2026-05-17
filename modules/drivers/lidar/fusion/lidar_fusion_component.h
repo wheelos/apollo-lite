@@ -27,7 +27,7 @@
 #include "cyber/cyber.h"
 #include "cyber/node/reader.h"
 #include "cyber/node/writer.h"
-#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
 
 namespace apollo {
 namespace drivers {
@@ -53,6 +53,12 @@ class LidarFusionComponent
    */
   uint64_t GetPointTimestamp(const uint64_t& timestamp);
 
+  /**
+   * @brief Pad point size to fit target size.
+   */
+  void FitPointSize(std::shared_ptr<apollo::drivers::PointCloud>& target_pc,
+                    int size);
+
   bool IsExpired(const std::shared_ptr<apollo::drivers::PointCloud>& target,
                  const std::shared_ptr<apollo::drivers::PointCloud>& source);
 
@@ -60,17 +66,22 @@ class LidarFusionComponent
                        const std::string& target_frame_id,
                        const std::string& source_frame_id,
                        Eigen::Affine3d* pose);
+  bool GetPoseAffine(
+      std::shared_ptr<apollo::drivers::PointCloud>& target_pc,
+      const std::shared_ptr<apollo::drivers::PointCloud>& source_pc,
+      Eigen::Affine3f* pose);
 
   void AppendPointCloud(
       std::shared_ptr<apollo::drivers::PointCloud> target,
       const std::shared_ptr<apollo::drivers::PointCloud> source,
-      const Eigen::Affine3f& pose);
+      const Eigen::Affine3f& pose, int* target_size);
 
   bool Fusion(std::shared_ptr<apollo::drivers::PointCloud>& target_pc,
-              const std::shared_ptr<apollo::drivers::PointCloud>& source_pc);
+              const std::shared_ptr<apollo::drivers::PointCloud>& source_pc,
+              int* target_size);
 
   LidarFusionConfig config_;
-  apollo::transform::Buffer* tf2_buffer_ptr_ = nullptr;
+    apollo::transform::TransformQuery transform_query_;
   std::shared_ptr<apollo::cyber::Writer<apollo::drivers::PointCloud>> writer_;
   std::vector<
       std::shared_ptr<apollo::cyber::Reader<apollo::drivers::PointCloud>>>
@@ -85,10 +96,8 @@ class LidarFusionComponent
   // lidar to system clock offset nanoseconds
   int64_t lidar_system_offset_ns_ = 0;
 
-  std::vector<std::shared_ptr<PointCloud>> point_cloud_pool_;
-  size_t pool_size_ = 10;
-  size_t pool_index_ = 0;
-  size_t reserved_point_size_ = 500000;
+  std::shared_ptr<PointCloud> target_pointcloud_;
+  size_t reserved_point_size_ = 1000000;
 };
 
 CYBER_REGISTER_COMPONENT(LidarFusionComponent)

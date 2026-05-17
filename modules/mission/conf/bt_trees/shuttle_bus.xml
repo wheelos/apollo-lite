@@ -1,0 +1,18 @@
+<root BTCPP_format="4">
+    <BehaviorTree ID="ShuttleBus">
+        <Repeat num_cycles="-1">
+            <Sequence name="RouteSequence">
+                <Sequence name="StationA_Ops">
+                    <Condition ID="CheckBattery" min_percentage="20.0" />
+                    <Action ID="MoveTo" goal="{Station_A}" />
+                    <Action ID="StationWait" seconds="30.0" />
+                </Sequence>
+                <Sequence name="StationB_Ops">
+                    <Condition ID="CheckBattery" min_percentage="20.0" />
+                    <Action ID="MoveTo" goal="{Station_B}" />
+                    <Action ID="StationWait" seconds="60.0" />
+                </Sequence>
+            </Sequence>
+        </Repeat>
+    </BehaviorTree>
+</root>

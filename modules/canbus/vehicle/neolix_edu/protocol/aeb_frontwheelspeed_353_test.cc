@@ -16,9 +16,11 @@
 
 #include "modules/canbus/vehicle/neolix_edu/protocol/aeb_frontwheelspeed_353.h"
 
+#include "gtest/gtest.h"
+
 #include "glog/logging.h"
 
-#include "gtest/gtest.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
 namespace apollo {
@@ -45,20 +47,50 @@ TEST_F(Aebfrontwheelspeed353Test, reset) {
   EXPECT_EQ(data[6], 0b01010011);
   EXPECT_EQ(data[7], 0b01010100);
 
-  EXPECT_EQ(cd.neolix_edu().aeb_frontwheelspeed_353().vehiclespeedvalid(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_frontwheelspeed_353()
+                .vehiclespeedvalid(),
             false);
-  EXPECT_DOUBLE_EQ(cd.neolix_edu().aeb_frontwheelspeed_353().vehiclespeed(),
+  EXPECT_DOUBLE_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                       ::apollo::canbus::Neolix_edu>(cd)
+                       .aeb_frontwheelspeed_353()
+                       .vehiclespeed(),
                    106.3125);
-  EXPECT_EQ(cd.neolix_edu().aeb_frontwheelspeed_353().vehiclerealdirect(), 3);
-  EXPECT_EQ(cd.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fl_valid(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_frontwheelspeed_353()
+                .vehiclerealdirect(),
+            3);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_frontwheelspeed_353()
+                .wheelspeed_fl_valid(),
             false);
-  EXPECT_EQ(cd.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fl(), 254.44);
-  EXPECT_EQ(cd.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fr_valid(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_frontwheelspeed_353()
+                .wheelspeed_fl(),
+            254.44);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_frontwheelspeed_353()
+                .wheelspeed_fr_valid(),
             false);
-  EXPECT_EQ(cd.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fr(), 208.18);
-  EXPECT_EQ(cd.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fl_direct(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_frontwheelspeed_353()
+                .wheelspeed_fr(),
+            208.18);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_frontwheelspeed_353()
+                .wheelspeed_fl_direct(),
             1);
-  EXPECT_EQ(cd.neolix_edu().aeb_frontwheelspeed_353().wheelspeed_fr_direct(),
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .aeb_frontwheelspeed_353()
+                .wheelspeed_fr_direct(),
             1);
 }
 

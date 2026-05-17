@@ -17,6 +17,8 @@
 #include "modules/canbus/vehicle/devkit/protocol/gear_report_503.h"
 
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,10 +33,12 @@ const int32_t Gearreport503::ID = 0x503;
 
 void Gearreport503::Parse(const std::uint8_t* bytes, int32_t length,
                           ChassisDetail* chassis) const {
-  chassis->mutable_devkit()->mutable_gear_report_503()->set_gear_flt(
-      gear_flt(bytes, length));
-  chassis->mutable_devkit()->mutable_gear_report_503()->set_gear_actual(
-      gear_actual(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_gear_report_503()
+      ->set_gear_flt(gear_flt(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_gear_report_503()
+      ->set_gear_actual(gear_actual(bytes, length));
 }
 
 // config detail: {'name': 'gear_flt', 'enum': {0: 'GEAR_FLT_NO_FAULT', 1:

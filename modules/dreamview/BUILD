@@ -7,17 +7,12 @@ package(default_visibility = ["//visibility:public"])
 
 DREAMVIEW_COPTS = ['-DMODULE_NAME=\\"dreamview\\"']
 
-filegroup(
-    name = "frontend",
-    srcs = glob(["frontend/dist/**/*"]),
-)
-
 cc_binary(
     name = "dreamview",
     srcs = ["main.cc"],
     copts = DREAMVIEW_COPTS + copts_if_teleop(),
     data = [
-        ":frontend",
+        "@dreamview_frontend_assets//:all_files",
     ],
     deps = [
         "//modules/dreamview/backend",
@@ -41,8 +36,7 @@ install(
     runtime_dest = "dreamview/bin",
     data = [
         ":dreamview_conf",
-        ":frontend",
-        "dreamview.BUILD"
+        "@dreamview_frontend_assets//:all_files",
     ],
     targets = ["dreamview"],
     deps = [
@@ -52,6 +46,7 @@ install(
         "//modules/dreamview/backend/hmi:install",
         "//modules/dreamview/backend/map:install",
         "//modules/dreamview/backend:install",
+        "//modules/dreamview/backend/sim_control_manager:install",
         "//modules/dreamview/backend/sim_control_manager/common:install"
     ],
 )

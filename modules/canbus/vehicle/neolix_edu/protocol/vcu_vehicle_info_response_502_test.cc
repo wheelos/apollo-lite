@@ -16,9 +16,11 @@
 
 #include "modules/canbus/vehicle/neolix_edu/protocol/vcu_vehicle_info_response_502.h"
 
+#include "gtest/gtest.h"
+
 #include "glog/logging.h"
 
-#include "gtest/gtest.h"
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
 namespace apollo {
@@ -45,18 +47,41 @@ TEST_F(Vcuvehicleinforesponse502Test, reset) {
   EXPECT_EQ(data[6], 0b01010011);
   EXPECT_EQ(data[7], 0b01010100);
 
-  EXPECT_EQ(cd.neolix_edu()
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
                 .vcu_vehicle_info_response_502()
                 .vehicle_softwareversion_indicati(),
             6775395);
-  EXPECT_EQ(cd.neolix_edu().vcu_vehicle_info_response_502().project(), 4);
-  EXPECT_EQ(cd.neolix_edu().vcu_vehicle_info_response_502().manufacturer(), 6);
-  EXPECT_EQ(cd.neolix_edu().vcu_vehicle_info_response_502().year(), 81);
-  EXPECT_EQ(cd.neolix_edu().vcu_vehicle_info_response_502().month(), 5);
-  EXPECT_EQ(cd.neolix_edu().vcu_vehicle_info_response_502().day(), 4);
-  EXPECT_EQ(
-      cd.neolix_edu().vcu_vehicle_info_response_502().vehicle_serial_number(),
-      21332);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_vehicle_info_response_502()
+                .project(),
+            4);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_vehicle_info_response_502()
+                .manufacturer(),
+            6);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_vehicle_info_response_502()
+                .year(),
+            81);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_vehicle_info_response_502()
+                .month(),
+            5);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_vehicle_info_response_502()
+                .day(),
+            4);
+  EXPECT_EQ(::apollo::canbus::GetChassisExtensionOrDefault<
+                ::apollo::canbus::Neolix_edu>(cd)
+                .vcu_vehicle_info_response_502()
+                .vehicle_serial_number(),
+            21332);
 }
 
 }  // namespace neolix_edu

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ###############################################################################
-# Copyright 2018 The Apollo Authors. All Rights Reserved.
+# Copyright 2025 The WheelOS Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +15,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-APOLLO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
 
-PYTHON_USER_BASE=$(python3 -c 'import site; print(site.USER_BASE)')
-PYTHON_INSTALL_PATH="${PYTHON_USER_BASE}/apollo/tools"
-PYTHON_VERSION=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[0:2])))')
+LOCAL_BIN_PATH="$HOME/.local/bin"
+BASHRC="$HOME/.bashrc"
+MARKER="# [apollo-deploy] Added by host_env.sh"
 
-source ${APOLLO_ROOT_DIR}/scripts/common.bashrc
+echo "Setup host environment..."
 
-pathprepend "${PYTHON_INSTALL_PATH}/lib/python${PYTHON_VERSION}/site-packages" PYTHONPATH
-pathprepend "${PYTHON_INSTALL_PATH}/bin/" PATH
+mkdir -p "$LOCAL_BIN_PATH"
+
+if ! grep -qF "$MARKER" "$BASHRC"; then
+  echo "Writing PATH update snippet to $BASHRC..."
+  cat << EOF >> "$BASHRC"
+$MARKER
+if [ -d "\$HOME/.local/bin" ] && [[ ":\$PATH:" != *":\$HOME/.local/bin:"* ]]; then
+    export PATH="\$HOME/.local/bin:\$PATH"
+fi
+EOF
+else
+  echo "Environment variables already configured in $BASHRC."
+fi
+
+# Apply immediately to the current shell
+if [ -d "$LOCAL_BIN_PATH" ] && [[ ":$PATH:" != *":$LOCAL_BIN_PATH:"* ]]; then
+  export PATH="$LOCAL_BIN_PATH:$PATH"
+  echo "Updated PATH for current shell."
+fi
+
+echo "Current PATH: $PATH"

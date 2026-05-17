@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace gem {
@@ -30,7 +32,10 @@ TEST(Brake61Test, General) {
   Brakerpt6c brake;
   brake.Parse(bytes, length, &chassis_detail);
 
-  auto &brakerpt = chassis_detail.gem().brake_rpt_6c();
+  auto& brakerpt =
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Gem>(
+          chassis_detail)
+          .brake_rpt_6c();
   EXPECT_DOUBLE_EQ(brakerpt.manual_input(), 0.258);
   EXPECT_DOUBLE_EQ(brakerpt.commanded_value(), 0.772);
   EXPECT_DOUBLE_EQ(brakerpt.output_value(), 4.37);

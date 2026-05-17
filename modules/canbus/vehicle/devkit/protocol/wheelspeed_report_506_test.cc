@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
+
 namespace apollo {
 namespace canbus {
 namespace devkit {
@@ -42,10 +44,30 @@ TEST_F(Wheelspeedreport506Test, General) {
   EXPECT_EQ(data[6], 0b00000100);
   EXPECT_EQ(data[7], 0b00000101);
 
-  EXPECT_EQ(cd.devkit().wheelspeed_report_506().rr(), 1.029);
-  EXPECT_EQ(cd.devkit().wheelspeed_report_506().rl(), 35.331);
-  EXPECT_EQ(cd.devkit().wheelspeed_report_506().fr(), 0.258);
-  EXPECT_EQ(cd.devkit().wheelspeed_report_506().fl(), 1.793);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .wheelspeed_report_506()
+          .rr(),
+      1.029);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .wheelspeed_report_506()
+          .rl(),
+      35.331);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .wheelspeed_report_506()
+          .fr(),
+      0.258);
+  EXPECT_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Devkit>(
+          cd)
+          .wheelspeed_report_506()
+          .fl(),
+      1.793);
 }
 
 }  // namespace devkit

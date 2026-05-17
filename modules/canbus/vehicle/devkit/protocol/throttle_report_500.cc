@@ -17,6 +17,8 @@
 #include "modules/canbus/vehicle/devkit/protocol/throttle_report_500.h"
 
 #include "glog/logging.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -31,18 +33,20 @@ const int32_t Throttlereport500::ID = 0x500;
 
 void Throttlereport500::Parse(const std::uint8_t* bytes, int32_t length,
                               ChassisDetail* chassis) const {
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_throttle_report_500()
       ->set_throttle_pedal_actual(throttle_pedal_actual(bytes, length));
-  chassis->mutable_devkit()->mutable_throttle_report_500()->set_throttle_flt2(
-      throttle_flt2(bytes, length));
-  chassis->mutable_devkit()->mutable_throttle_report_500()->set_throttle_flt1(
-      throttle_flt1(bytes, length));
-  chassis->mutable_devkit()
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_throttle_report_500()
+      ->set_throttle_flt2(throttle_flt2(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
+      ->mutable_throttle_report_500()
+      ->set_throttle_flt1(throttle_flt1(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Devkit>(chassis)
       ->mutable_throttle_report_500()
       ->set_throttle_en_state(throttle_en_state(bytes, length));
   chassis->mutable_check_response()->set_is_vcu_online(
-      throttle_en_state(bytes, length) == 1);
+      throttle_flt1(bytes, length) == 0 && throttle_flt2(bytes, length) == 0);
 }
 
 // config detail: {'name': 'throttle_pedal_actual', 'offset': 0.0, 'precision':

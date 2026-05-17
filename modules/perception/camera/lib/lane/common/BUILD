@@ -7,6 +7,9 @@ cc_library(
     name = "common_functions",
     srcs = ["common_functions.cc"],
     hdrs = ["common_functions.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",

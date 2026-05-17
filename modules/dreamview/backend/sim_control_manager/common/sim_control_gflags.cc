@@ -58,6 +58,24 @@ DEFINE_bool(enable_backward_fnn_model, true,
 DEFINE_bool(enable_sim_at_nonauto_mode, true,
             "enable the simulation even before starting auto");
 
+DEFINE_bool(enable_sim_control_custom_prediction, false,
+            "publish custom prediction obstacles from sim control");
+
+DEFINE_string(sim_control_custom_prediction_file, "",
+              "custom prediction obstacle file for sim control; supports "
+              "PredictionObstacles or PerceptionObstacles text/binary proto");
+
+DEFINE_string(sim_control_spawn_mode, "legacy",
+              "sim control ego spawn mode: legacy, localization_start, "
+              "routing_start");
+
+DEFINE_string(sim_control_prediction_mode, "legacy",
+              "sim control prediction mode: legacy, empty, custom_file, "
+              "external_passthrough");
+
+DEFINE_string(sim_control_status_topic, "/apollo/sim_control/status",
+              "status topic for structured sim control runtime state");
+
 // cascade model
 DEFINE_string(torch_gp_model_file,
               "sim_control/conf/LiteTrans-20201023-1043/gp_model.pt",
@@ -69,3 +87,73 @@ DEFINE_string(
     cascade_model_conf_file,
     "sim_control/conf/LiteTrans-20201023-1043/standardization_factors.bin",
     "cascade model conf file path");
+
+namespace apollo {
+namespace dreamview {
+
+apollo::sim_control::SimControlSpawnMode GetConfiguredSimControlSpawnMode() {
+  if (FLAGS_sim_control_spawn_mode == "legacy") {
+    return apollo::sim_control::SIM_CONTROL_SPAWN_MODE_LEGACY;
+  }
+  if (FLAGS_sim_control_spawn_mode == "localization_start") {
+    return apollo::sim_control::SIM_CONTROL_SPAWN_MODE_LOCALIZATION_START;
+  }
+  if (FLAGS_sim_control_spawn_mode == "routing_start") {
+    return apollo::sim_control::SIM_CONTROL_SPAWN_MODE_ROUTING_START;
+  }
+  return apollo::sim_control::SIM_CONTROL_SPAWN_MODE_UNKNOWN;
+}
+
+apollo::sim_control::SimControlPredictionMode
+GetConfiguredSimControlPredictionMode() {
+  if (FLAGS_sim_control_prediction_mode == "legacy") {
+    return apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_LEGACY;
+  }
+  if (FLAGS_sim_control_prediction_mode == "empty") {
+    return apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_EMPTY;
+  }
+  if (FLAGS_sim_control_prediction_mode == "custom_file") {
+    return apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_CUSTOM_FILE;
+  }
+  if (FLAGS_sim_control_prediction_mode == "external_passthrough") {
+    return apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_EXTERNAL_PASSTHROUGH;
+  }
+  return apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_UNKNOWN;
+}
+
+std::string SimControlSpawnModeToString(
+    apollo::sim_control::SimControlSpawnMode mode) {
+  switch (mode) {
+    case apollo::sim_control::SIM_CONTROL_SPAWN_MODE_LEGACY:
+      return "legacy";
+    case apollo::sim_control::SIM_CONTROL_SPAWN_MODE_EXPLICIT_START:
+      return "explicit_start";
+    case apollo::sim_control::SIM_CONTROL_SPAWN_MODE_LOCALIZATION_START:
+      return "localization_start";
+    case apollo::sim_control::SIM_CONTROL_SPAWN_MODE_ROUTING_START:
+      return "routing_start";
+    case apollo::sim_control::SIM_CONTROL_SPAWN_MODE_UNKNOWN:
+    default:
+      return "unknown";
+  }
+}
+
+std::string SimControlPredictionModeToString(
+    apollo::sim_control::SimControlPredictionMode mode) {
+  switch (mode) {
+    case apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_LEGACY:
+      return "legacy";
+    case apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_EMPTY:
+      return "empty";
+    case apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_CUSTOM_FILE:
+      return "custom_file";
+    case apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_EXTERNAL_PASSTHROUGH:
+      return "external_passthrough";
+    case apollo::sim_control::SIM_CONTROL_PREDICTION_MODE_UNKNOWN:
+    default:
+      return "unknown";
+  }
+}
+
+}  // namespace dreamview
+}  // namespace apollo

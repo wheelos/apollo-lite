@@ -19,7 +19,8 @@
 #include <memory>
 #include <vector>
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include "absl/strings/str_split.h"
 #include "pcl/io/pcd_io.h"
@@ -39,7 +40,8 @@ MsgExporter::MsgExporter(std::shared_ptr<apollo::cyber::Node> node,
   _cyber_node = node;
   _channels = channels;
   _child_frame_ids = child_frame_ids;
-  _localization_method = "perception_localization_100hz";
+  _localization_method =
+      apollo::perception::onboard::FLAGS_obs_vehicle2world_tf2_child_frame_id;
   auto create_folder = [](const std::string& folder) {
     if (cyber::common::DirectoryExists(folder)) {
       cyber::common::Remove(folder);
@@ -168,52 +170,42 @@ bool MsgExporter::SaveImage(const unsigned char* color_image,
 bool MsgExporter::QuerySensorToWorldPose(double timestamp,
                                          const std::string& child_frame_id,
                                          Eigen::Matrix4d* pose) {
-  Eigen::Matrix4d sensor2novatel_extrinsics = Eigen::Matrix4d::Identity();
-  Eigen::Matrix4d novatel2world_pose;
-  // query sensor to novatel extrinsics
+  Eigen::Matrix4d sensor2vehicle_extrinsics = Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d vehicle2world_pose;
+  // query sensor to the configured vehicle reference frame extrinsics
   if (child_frame_id != "null" &&
-      !QueryPose(timestamp, "novatel", child_frame_id,
-                 &sensor2novatel_extrinsics)) {
+      !QueryPose(timestamp,
+                 apollo::perception::onboard::
+                     FLAGS_obs_sensor2vehicle_tf2_frame_id,
+                 child_frame_id,
+                 &sensor2vehicle_extrinsics)) {
     return false;
   }
-  // query novatel to world pose
-  if (!QueryPose(timestamp, "world", _localization_method,
-                 &novatel2world_pose)) {
+  // query configured vehicle pose in the configured global frame
+  if (!QueryPose(timestamp,
+                 apollo::perception::onboard::FLAGS_obs_vehicle2world_tf2_frame_id,
+                 _localization_method,
+                 &vehicle2world_pose)) {
     return false;
   }
-  *pose = novatel2world_pose * sensor2novatel_extrinsics;
+  *pose = vehicle2world_pose * sensor2vehicle_extrinsics;
   return true;
 }
 
 bool MsgExporter::QueryPose(double timestamp, const std::string& frame_id,
                             const std::string& child_frame_id,
                             Eigen::Matrix4d* pose) {
-  cyber::Time query_time(timestamp);
+  Eigen::Affine3d affine_pose = Eigen::Affine3d::Identity();
   std::string err_string;
-  if (!tf2_buffer_->canTransform(frame_id, child_frame_id, query_time, 0.05f,
-                                 &err_string)) {
+  if (!transform_query_.LookupTransformToAffine(
+          frame_id, child_frame_id, cyber::Time(timestamp), &affine_pose,
+          0.05f, &err_string)) {
     AERROR << "Can not find transform. "  //<< FORMAT_TIMESTAMP(timestamp)
            << " frame_id: " << frame_id << " child_frame_id: " << child_frame_id
            << " Error info: " << err_string;
     return false;
   }
-  apollo::transform::TransformStamped stamped_transform;
-  try {
-    stamped_transform =
-        tf2_buffer_->lookupTransform(frame_id, child_frame_id, query_time);
-    Eigen::Translation3d translation(
-        stamped_transform.transform().translation().x(),
-        stamped_transform.transform().translation().y(),
-        stamped_transform.transform().translation().z());
-    Eigen::Quaterniond rotation(stamped_transform.transform().rotation().qw(),
-                                stamped_transform.transform().rotation().qx(),
-                                stamped_transform.transform().rotation().qy(),
-                                stamped_transform.transform().rotation().qz());
-    *pose = (translation * rotation).matrix();
-  } catch (tf2::TransformException& ex) {
-    AERROR << ex.what();
-    return false;
-  }
+  *pose = affine_pose.matrix();
   return true;
 }
 

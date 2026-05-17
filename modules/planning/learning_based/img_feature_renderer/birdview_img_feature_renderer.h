@@ -25,7 +25,8 @@
 #include <utility>
 #include <vector>
 
-#include "opencv2/opencv.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
 
 #include "modules/planning/proto/learning_data.pb.h"
 #include "modules/planning/proto/planning_semantic_map_config.pb.h"

@@ -221,6 +221,20 @@ bool ObstacleDetectionCamera::Init(const PipelineConfig &pipeline_config) {
   return true;
 }
 
+bool ObstacleDetectionCamera::SetLidarToCameraDetectorExtrinsics(
+    const Eigen::Matrix4d &lidar_to_vehicle) {
+  bool applied = false;
+  for (const auto &stage_ptr : stage_ptrs_) {
+    auto detector_ptr = std::dynamic_pointer_cast<BaseObstacleDetector>(stage_ptr);
+    if (detector_ptr == nullptr) {
+      continue;
+    }
+    applied = detector_ptr->SetLidarToVehicleExtrinsics(lidar_to_vehicle) ||
+              applied;
+  }
+  return applied;
+}
+
 bool ObstacleDetectionCamera::Process(DataFrame *data_frame) {
   CameraFrame *frame = data_frame->camera_frame;
   frame->camera_k_matrix =

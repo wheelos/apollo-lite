@@ -19,8 +19,8 @@
 #include "cyber/time/clock.h"
 #include "modules/common/util/map_util.h"
 #include "modules/perception/camera/lib/obstacle/camera_detection_postprocessor/camera_detection_postprocessor.h"
-#include "modules/perception/camera/lib/obstacle/detector/bev_detection/bev_obstacle_detector.h"
-#include "modules/perception/camera/lib/obstacle/detector/caddn/caddn_obstacle_detector.h"
+// #include
+// "modules/perception/camera/lib/obstacle/detector/caddn/caddn_obstacle_detector.h"
 #include "modules/perception/camera/lib/obstacle/detector/smoke/smoke_obstacle_detector.h"
 #include "modules/perception/camera/lib/obstacle/detector/yolo/yolo_obstacle_detector.h"
 #include "modules/perception/camera/lib/obstacle/postprocessor/location_refiner/location_refiner_obstacle_postprocessor.h"
@@ -35,17 +35,21 @@
 #include "modules/perception/fusion/lib/fusion_system/probabilistic_fusion/probabilistic_fusion.h"
 #include "modules/perception/fusion/lib/gatekeeper/collect_fused_object.h"
 #include "modules/perception/lidar/lib/classifier/fused_classifier/fused_classifier.h"
-#include "modules/perception/lidar/lib/detector/center_point_detection/center_point_detection.h"
+// #include
+// "modules/perception/lidar/lib/detector/center_point_detection/center_point_detection.h"
+#include "modules/perception/lidar/lib/detector/center_point_trt/center_point_trt.h"
 #include "modules/perception/lidar/lib/detector/cnn_segmentation/cnn_segmentation.h"
-#include "modules/perception/lidar/lib/detector/mask_pillars_detection/mask_pillars_detection.h"
+#include "modules/perception/lidar/lib/detector/graph_segmentation/graph_segmentation.h"
 #include "modules/perception/lidar/lib/detector/ncut_segmentation/ncut_segmentation.h"
 #include "modules/perception/lidar/lib/detector/point_pillars_detection/point_pillars_detection.h"
+#include "modules/perception/lidar/lib/ground_detector/spatio_temporal_ground_detector/spatio_temporal_ground_detector.h"
 #include "modules/perception/lidar/lib/map_manager/map_manager.h"
 #include "modules/perception/lidar/lib/object_builder/object_builder.h"
 #include "modules/perception/lidar/lib/object_filter_bank/object_filter_bank.h"
 #include "modules/perception/lidar/lib/pointcloud_detection_postprocessor/pointcloud_detection_postprocessor.h"
 #include "modules/perception/lidar/lib/pointcloud_detection_preprocessor/pointcloud_detection_preprocessor.h"
 #include "modules/perception/lidar/lib/pointcloud_preprocessor/pointcloud_preprocessor.h"
+#include "modules/perception/lidar/lib/roi_filter/hdmap_roi_filter/hdmap_roi_filter.h"
 #include "modules/perception/lidar/lib/tracker/multi_lidar_fusion/mlf_engine.h"
 #include "modules/perception/pipeline/plugin_factory.h"
 
@@ -140,8 +144,14 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::POINTCLOUD_DETECTION_POSTPROCESSOR:
       stage_ptr.reset(new lidar::PointcloudDetectionPostprocessor());
       break;
-    case StageType::MAP_MANAGER:
-      stage_ptr.reset(new lidar::MapManager());
+    case StageType::HDMAP_CONTEXT_PROVIDER:
+      stage_ptr.reset(new lidar::HdmapContextProvider());
+      break;
+    case StageType::POINTCLOUD_ROI_FILTER:
+      stage_ptr.reset(new lidar::HdmapPointCloudRoiFilter());
+      break;
+    case StageType::GROUND_SEGMENTER:
+      stage_ptr.reset(new lidar::SpatioTemporalGroundDetector());
       break;
     case StageType::POINT_PILLARS_DETECTION:
       stage_ptr.reset(new lidar::PointPillarsDetection());
@@ -152,17 +162,17 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::NCUT_SEGMENTATION:
       stage_ptr.reset(new lidar::NCutSegmentation());
       break;
-    case StageType::MASK_PILLARS_DETECTION:
-      stage_ptr.reset(new lidar::MaskPillarsDetection());
+    case StageType::GRAPH_CLUSTER_SEGMENTER:
+      stage_ptr.reset(new lidar::GraphClusterSegmenter());
       break;
-    case StageType::CENTER_POINT_DETECTION:
-      stage_ptr.reset(new lidar::CenterPointDetection());
+    case StageType::CENTER_POINT_TRT_DETECTION:
+      stage_ptr.reset(new lidar::CenterPointTRT());
       break;
-    case StageType::OBJECT_BUILDER:
-      stage_ptr.reset(new lidar::ObjectBuilder());
+    case StageType::OBJECT_GEOMETRY_BUILDER:
+      stage_ptr.reset(new lidar::ObjectGeometryBuilder());
       break;
-    case StageType::OBJECT_FILTER_BANK:
-      stage_ptr.reset(new lidar::ObjectFilterBank());
+    case StageType::OBJECT_POST_FILTER_BANK:
+      stage_ptr.reset(new lidar::ObjectPostFilterBank());
       break;
     case StageType::MLF_ENGINE:
       stage_ptr.reset(new lidar::MlfEngine());
@@ -209,15 +219,13 @@ std::shared_ptr<Stage> Pipeline::CreateStage(const StageType& stage_type) {
     case StageType::LOCATION_REFINER_OBSTACLE_POSTPROCESSOR:
       stage_ptr.reset(new camera::LocationRefinerObstaclePostprocessor());
       break;
-    case StageType::BEV_OBSTACLE_DETECTOR:
-      stage_ptr.reset(new camera::BEVObstacleDetector());
-      break;
+    // BEV obstacle detector is temporarily disabled in this build.
     case StageType::OMT_BEV_OBSTACLE_TRACKER:
       stage_ptr.reset(new camera::OMTBEVTracker());
       break;
-    case StageType::CADDN_DETECTION:
-      stage_ptr.reset(new camera::CaddnObstacleDetector());
-      break;
+    // case StageType::CADDN_DETECTION:
+    //   stage_ptr.reset(new camera::CaddnObstacleDetector());
+    //   break;
     default:
       return nullptr;
   }

@@ -16,31 +16,56 @@
 
 #include "modules/planning/lattice/trajectory_generation/lateral_osqp_optimizer.h"
 
+#include <vector>
+
 #include "cyber/common/log.h"
 #include "modules/common/math/matrix_operations.h"
 #include "modules/planning/common/planning_gflags.h"
 
 namespace apollo {
 namespace planning {
+namespace {
+
+bool HasUsableSolutionStatus(const OSQPInt status) {
+  return status == OSQP_SOLVED || status == OSQP_SOLVED_INACCURATE;
+}
+
+OSQPCscMatrix* CscMatrix(OSQPInt m, OSQPInt n,
+                         std::vector<OSQPFloat>* values,
+                         std::vector<OSQPInt>* indices,
+                         std::vector<OSQPInt>* indptr) {
+  return OSQPCscMatrix_new(m, n, values->size(),
+                           values->empty() ? nullptr : values->data(),
+                           indices->empty() ? nullptr : indices->data(),
+                           indptr->data());
+}
+
+}  // namespace
 
 bool LateralOSQPOptimizer::optimize(
     const std::array<double, 3>& d_state, const double delta_s,
     const std::vector<std::pair<double, double>>& d_bounds) {
-  std::vector<c_float> P_data;
-  std::vector<c_int> P_indices;
-  std::vector<c_int> P_indptr;
+  std::vector<OSQPFloat> P_data;
+  std::vector<OSQPInt> P_indices;
+  std::vector<OSQPInt> P_indptr;
   CalculateKernel(d_bounds, &P_data, &P_indices, &P_indptr);
   delta_s_ = delta_s;
   const int num_var = static_cast<int>(d_bounds.size());
-  const int kNumParam = 3 * static_cast<int>(d_bounds.size());
-  const int kNumConstraint = kNumParam + 3 * (num_var - 1) + 3;
-  c_float lower_bounds[kNumConstraint];
-  c_float upper_bounds[kNumConstraint];
+  opt_d_.clear();
+  opt_d_prime_.clear();
+  opt_d_pprime_.clear();
+  opt_d_.reserve(d_bounds.size());
+  opt_d_prime_.reserve(d_bounds.size());
+  opt_d_pprime_.reserve(d_bounds.size());
+  const OSQPInt kNumParam = static_cast<OSQPInt>(3 * d_bounds.size());
+  const OSQPInt kNumConstraint = kNumParam + 3 * (num_var - 1) + 3;
+  std::vector<OSQPFloat> lower_bounds(kNumConstraint);
+  std::vector<OSQPFloat> upper_bounds(kNumConstraint);
 
   const int prime_offset = num_var;
   const int pprime_offset = 2 * num_var;
 
-  std::vector<std::vector<std::pair<c_int, c_float>>> columns;
+  std::vector<std::vector<std::pair<OSQPInt, OSQPFloat>>> columns;
   columns.resize(kNumParam);
 
   int constraint_index = 0;
@@ -116,9 +141,9 @@ bool LateralOSQPOptimizer::optimize(
   CHECK_EQ(constraint_index, kNumConstraint);
 
   // change affine_constraint to CSC format
-  std::vector<c_float> A_data;
-  std::vector<c_int> A_indices;
-  std::vector<c_int> A_indptr;
+  std::vector<OSQPFloat> A_data;
+  std::vector<OSQPInt> A_indices;
+  std::vector<OSQPInt> A_indptr;
   int ind_p = 0;
   for (int j = 0; j < kNumParam; ++j) {
     A_indptr.push_back(ind_p);
@@ -131,8 +156,8 @@ bool LateralOSQPOptimizer::optimize(
   A_indptr.push_back(ind_p);
 
   // offset
-  double q[kNumParam];
-  for (int i = 0; i < kNumParam; ++i) {
+  std::vector<OSQPFloat> q(kNumParam);
+  for (OSQPInt i = 0; i < kNumParam; ++i) {
     if (i < num_var) {
       q[i] = -2.0 * FLAGS_weight_lateral_obstacle_distance *
              (d_bounds[i].first + d_bounds[i].second);
@@ -142,37 +167,52 @@ bool LateralOSQPOptimizer::optimize(
   }
 
   // Problem settings
-  OSQPSettings* settings =
-      reinterpret_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
-
-  // Define Solver settings as default
-  osqp_set_default_settings(settings);
+  OSQPSettings* settings = OSQPSettings_new();
+  if (settings == nullptr) {
+    return false;
+  }
   settings->alpha = 1.0;  // Change alpha parameter
   settings->eps_abs = 1.0e-05;
   settings->eps_rel = 1.0e-05;
   settings->max_iter = 5000;
-  settings->polish = true;
+  settings->polishing = true;
   settings->verbose = FLAGS_enable_osqp_debug;
 
-  // Populate data
-  OSQPData* data = reinterpret_cast<OSQPData*>(c_malloc(sizeof(OSQPData)));
-  data->n = kNumParam;
-  data->m = kNumConstraint;
-  data->P = csc_matrix(data->n, data->n, P_data.size(), P_data.data(),
-                       P_indices.data(), P_indptr.data());
-  data->q = q;
-  data->A = csc_matrix(data->m, data->n, A_data.size(), A_data.data(),
-                       A_indices.data(), A_indptr.data());
-  data->l = lower_bounds;
-  data->u = upper_bounds;
+  OSQPCscMatrix* P_matrix =
+      CscMatrix(kNumParam, kNumParam, &P_data, &P_indices, &P_indptr);
+  OSQPCscMatrix* A_matrix =
+      CscMatrix(kNumConstraint, kNumParam, &A_data, &A_indices, &A_indptr);
+  if (P_matrix == nullptr || A_matrix == nullptr) {
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
+  }
 
-  // Workspace
-  OSQPWorkspace* work = nullptr;
-  // osqp_setup(&work, data, settings);
-  work = osqp_setup(data, settings);
+  OSQPSolver* work = nullptr;
+  if (osqp_setup(&work, P_matrix, q.data(), A_matrix, lower_bounds.data(),
+                 upper_bounds.data(), kNumConstraint, kNumParam, settings) !=
+          0 ||
+      work == nullptr) {
+    if (work != nullptr) {
+      osqp_cleanup(work);
+    }
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
+  }
 
   // Solve Problem
   osqp_solve(work);
+  if (work->solution == nullptr ||
+      !HasUsableSolutionStatus(work->info->status_val)) {
+    osqp_cleanup(work);
+    OSQPCscMatrix_free(A_matrix);
+    OSQPCscMatrix_free(P_matrix);
+    OSQPSettings_free(settings);
+    return false;
+  }
 
   // extract primal results
   for (int i = 0; i < num_var; ++i) {
@@ -185,18 +225,17 @@ bool LateralOSQPOptimizer::optimize(
 
   // Cleanup
   osqp_cleanup(work);
-  c_free(data->A);
-  c_free(data->P);
-  c_free(data);
-  c_free(settings);
+  OSQPCscMatrix_free(A_matrix);
+  OSQPCscMatrix_free(P_matrix);
+  OSQPSettings_free(settings);
 
   return true;
 }
 
 void LateralOSQPOptimizer::CalculateKernel(
     const std::vector<std::pair<double, double>>& d_bounds,
-    std::vector<c_float>* P_data, std::vector<c_int>* P_indices,
-    std::vector<c_int>* P_indptr) {
+    std::vector<OSQPFloat>* P_data, std::vector<OSQPInt>* P_indices,
+    std::vector<OSQPInt>* P_indptr) {
   const int kNumParam = 3 * static_cast<int>(d_bounds.size());
   P_data->resize(kNumParam);
   P_indices->resize(kNumParam);

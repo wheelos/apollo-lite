@@ -152,17 +152,31 @@ common::Status PiecewiseJerkPathOptimizer::Process(
       is_valid_path_reference = true;
     }
 
-    const auto& veh_param =
-        common::VehicleConfigHelper::GetConfig().vehicle_param();
-    const double lat_acc_bound =
-        std::tan(veh_param.max_steer_angle() / veh_param.steer_ratio()) /
-        veh_param.wheel_base();
+    double kappa_max = 0.0;
     std::vector<std::pair<double, double>> ddl_bounds;
+    auto& vehicle_params = VehicleConfigHelper::GetConfig().vehicle_param();
+    if (FLAGS_use_center_mass_in_path_planning) {
+      const double R_min = vehicle_params.wheel_base() /
+                           (std::tan(vehicle_params.max_front_wheel_steer()) +
+                            std::tan(vehicle_params.max_back_wheel_steer()));
+      // R_cg is the radius of curvature at the center of mass
+      const double delta_r = std::tan(vehicle_params.max_back_wheel_steer());
+      const double R_cg = std::sqrt(
+          std::pow(R_min, 2) +
+          std::pow(vehicle_params.wheel_base() / 2.0 - R_min * delta_r, 2));
+      kappa_max = 1 / R_cg;
+      ADEBUG << "kappa_max is: " << kappa_max << ", R_min is: " << R_min
+             << ", delta_r is: " << delta_r << ", R_cg is: " << R_cg;
+    } else {
+      kappa_max =
+          tan(vehicle_params.max_steer_angle() / vehicle_params.steer_ratio()) /
+          vehicle_params.wheel_base();
+    }
     for (size_t i = 0; i < path_boundary_size; ++i) {
       double s = static_cast<double>(i) * path_boundary.delta_s() +
                  path_boundary.start_s();
       double kappa = reference_line.GetNearestReferencePoint(s).kappa();
-      ddl_bounds.emplace_back(-lat_acc_bound - kappa, lat_acc_bound - kappa);
+      ddl_bounds.emplace_back(-kappa_max - kappa, kappa_max - kappa);
     }
 
     bool res_opt =

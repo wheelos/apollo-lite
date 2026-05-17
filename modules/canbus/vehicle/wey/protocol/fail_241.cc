@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,16 +33,21 @@ const int32_t Fail241::ID = 0x241;
 
 void Fail241::Parse(const std::uint8_t* bytes, int32_t length,
                     ChassisDetail* chassis) const {
-  chassis->mutable_wey()->mutable_fail_241()->set_engfail(
-      engfail(bytes, length));
-  chassis->mutable_wey()->mutable_fail_241()->set_espfail(
-      espfail(bytes, length));
-  chassis->mutable_wey()->mutable_fail_241()->set_epbfail(
-      epbfail(bytes, length));
-  chassis->mutable_wey()->mutable_fail_241()->set_shiftfail(
-      shiftfail(bytes, length));
-  chassis->mutable_wey()->mutable_fail_241()->set_epsfail(
-      epsfail(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fail_241()
+      ->set_engfail(engfail(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fail_241()
+      ->set_espfail(espfail(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fail_241()
+      ->set_epbfail(epbfail(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fail_241()
+      ->set_shiftfail(shiftfail(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Wey>(chassis)
+      ->mutable_fail_241()
+      ->set_epsfail(epsfail(bytes, length));
 }
 
 // config detail: {'description': 'Engine Fail status', 'enum': {0:

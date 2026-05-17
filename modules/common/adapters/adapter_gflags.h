@@ -71,9 +71,6 @@ DECLARE_string(gnss_status_topic);
 DECLARE_string(system_status_topic);
 DECLARE_string(static_info_topic);
 DECLARE_string(mobileye_topic);
-DECLARE_string(smartereye_obstacles_topic);
-DECLARE_string(smartereye_lanemark_topic);
-DECLARE_string(smartereye_image_topic);
 DECLARE_string(delphi_esr_topic);
 DECLARE_string(conti_radar_topic);
 DECLARE_string(racobit_radar_topic);
@@ -145,3 +142,5 @@ DECLARE_string(latency_reporting_topic);
 DECLARE_string(lidar_model_version);
 
 DECLARE_string(collision_warning_topic);
+
+DECLARE_string(mission_request_topic);

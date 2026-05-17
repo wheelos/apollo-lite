@@ -18,20 +18,22 @@
 #include <string>
 #include <vector>
 
-#include "Eigen/Dense"
 #include "gtest/gtest_prod.h"
+
+#include "Eigen/Dense"
+
+#include "modules/perception/pipeline/proto/pipeline_config.pb.h"
 
 #include "modules/common/util/eigen_defs.h"
 #include "modules/perception/base/point_cloud.h"
 #include "modules/perception/lidar/lib/interface/base_object_filter.h"
 #include "modules/perception/pipeline/plugin.h"
-#include "modules/perception/pipeline/proto/pipeline_config.pb.h"
 
 namespace apollo {
 namespace perception {
 namespace lidar {
 
-class ROIBoundaryFilter : public BaseObjectFilter {
+class HdmapBoundaryObjectFilter : public BaseObjectFilter {
  public:
   using PluginConfig = pipeline::PluginConfig;
 
@@ -39,11 +41,11 @@ class ROIBoundaryFilter : public BaseObjectFilter {
   using EigenVector = apollo::common::EigenVector<EigenType>;
 
  public:
-  ROIBoundaryFilter() { name_ = "ROIBoundaryFilter"; }
+  HdmapBoundaryObjectFilter() { name_ = "HdmapBoundaryObjectFilter"; }
 
-  explicit ROIBoundaryFilter(const PluginConfig& plugin_config);
+  explicit HdmapBoundaryObjectFilter(const PluginConfig& plugin_config);
 
-  virtual ~ROIBoundaryFilter() = default;
+  virtual ~HdmapBoundaryObjectFilter() = default;
 
   bool Init(const ObjectFilterInitOptions& options =
                 ObjectFilterInitOptions()) override;
@@ -90,7 +92,9 @@ class ROIBoundaryFilter : public BaseObjectFilter {
   double inside_threshold_ = 1.0;
   float confidence_threshold_ = 0.5f;
   float cross_roi_threshold_ = 0.6f;
-};  // class ROIBoundaryFilter
+};  // class HdmapBoundaryObjectFilter
+
+using ROIBoundaryFilter = HdmapBoundaryObjectFilter;
 
 }  // namespace lidar
 }  // namespace perception

@@ -19,6 +19,7 @@ cc_library(
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/handlers:image_handler",
         "//modules/dreamview/backend/handlers:websocket_handler",
+        "//modules/dreamview/backend/handlers:map_data_handler",
         "//modules/dreamview/backend/hmi",
         "//modules/dreamview/backend/map:map_service",
         "//modules/dreamview/backend/perception_camera_updater",

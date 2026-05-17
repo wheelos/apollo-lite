@@ -7,6 +7,7 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "lexus_vehicle_factory",
+    alwayslink = True,
     srcs = ["lexus_vehicle_factory.cc"],
     hdrs = ["lexus_vehicle_factory.h"],
     copts = CANBUS_COPTS,
@@ -16,6 +17,7 @@ cc_library(
         "//modules/canbus/proto:canbus_conf_cc_proto",
         "//modules/canbus/proto:vehicle_parameter_cc_proto",
         "//modules/canbus/vehicle:abstract_vehicle_factory",
+        "//modules/canbus/vehicle:vehicle_factory_core",
     ],
 )
 

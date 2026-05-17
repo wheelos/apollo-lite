@@ -2,19 +2,28 @@ syntax = "proto2";
 
 package apollo.perception.pipeline;
 
-// pipeline
 import "modules/perception/pipeline/proto/camera_detection_config.proto";
 import "modules/perception/pipeline/proto/lane_detection_config.proto";
 import "modules/perception/pipeline/proto/lidar_detection_config.proto";
-import "modules/perception/pipeline/proto/traffic_light_config.proto";
-// stage
+import "modules/perception/pipeline/proto/plugin/camera_get_object_config.proto";
+import "modules/perception/pipeline/proto/plugin/ccrf_type_fusion_config.proto";
+import "modules/perception/pipeline/proto/plugin/filter_bbox_config.proto";
+import "modules/perception/pipeline/proto/plugin/get_image_data_config.proto";
+import "modules/perception/pipeline/proto/plugin/multi_lidar_fusion_config.proto";
+import "modules/perception/pipeline/proto/plugin/pbf_gatekeeper_config.proto";
+import "modules/perception/pipeline/proto/plugin/pointcloud_downsample_config.proto";
+import "modules/perception/pipeline/proto/plugin/pointcloud_get_objects_config.proto";
+import "modules/perception/pipeline/proto/plugin/recover_bbox_config.proto";
+import "modules/perception/pipeline/proto/plugin/resize_and_normalize_config.proto";
+import "modules/perception/pipeline/proto/plugin/roi_boundary_filter_config.proto";
 import "modules/perception/pipeline/proto/stage/all_latest_fusion_config.proto";
 import "modules/perception/pipeline/proto/stage/bev_obstacle_detection_config.proto";
 import "modules/perception/pipeline/proto/stage/caddn_detection_config.proto";
-import "modules/perception/pipeline/proto/stage/camera_detector_config.proto";
 import "modules/perception/pipeline/proto/stage/camera_detection_postprocessor_config.proto";
 import "modules/perception/pipeline/proto/stage/camera_detection_preprocessor_config.proto";
+import "modules/perception/pipeline/proto/stage/camera_detector_config.proto";
 import "modules/perception/pipeline/proto/stage/center_point_detection_config.proto";
+import "modules/perception/pipeline/proto/stage/center_point_trt_detection_config.proto";
 import "modules/perception/pipeline/proto/stage/cnnseg_config.proto";
 import "modules/perception/pipeline/proto/stage/darkSCNN_postprocessor.proto";
 import "modules/perception/pipeline/proto/stage/darkSCNN.proto";
@@ -22,6 +31,7 @@ import "modules/perception/pipeline/proto/stage/denseline_postprocessor.proto";
 import "modules/perception/pipeline/proto/stage/denseline.proto";
 import "modules/perception/pipeline/proto/stage/detection.proto";
 import "modules/perception/pipeline/proto/stage/fused_classifier_config.proto";
+import "modules/perception/pipeline/proto/stage/graph_segmentation_config.proto";
 import "modules/perception/pipeline/proto/stage/ground_service_detector_config.proto";
 import "modules/perception/pipeline/proto/stage/hdmap_roi_filter_config.proto";
 import "modules/perception/pipeline/proto/stage/location_refiner.proto";
@@ -32,8 +42,8 @@ import "modules/perception/pipeline/proto/stage/multicue.proto";
 import "modules/perception/pipeline/proto/stage/ncut_config.proto";
 import "modules/perception/pipeline/proto/stage/object_builder_config.proto";
 import "modules/perception/pipeline/proto/stage/object_filter_bank_config.proto";
-import "modules/perception/pipeline/proto/stage/omt.proto";
 import "modules/perception/pipeline/proto/stage/omt_bev.proto";
+import "modules/perception/pipeline/proto/stage/omt.proto";
 import "modules/perception/pipeline/proto/stage/pbf_tracker_config.proto";
 import "modules/perception/pipeline/proto/stage/point_pillars_detection_config.proto";
 import "modules/perception/pipeline/proto/stage/pointcloud_detection_postprocessor_config.proto";
@@ -46,22 +56,11 @@ import "modules/perception/pipeline/proto/stage/singlestage.proto";
 import "modules/perception/pipeline/proto/stage/smoke_obstacle_detection_config.proto";
 import "modules/perception/pipeline/proto/stage/spatio_temporal_ground_detector_config.proto";
 import "modules/perception/pipeline/proto/stage/yolo_obstacle_detector_config.proto";
-// plugin
-import "modules/perception/pipeline/proto/plugin/camera_get_object_config.proto";
-import "modules/perception/pipeline/proto/plugin/ccrf_type_fusion_config.proto";
-import "modules/perception/pipeline/proto/plugin/filter_bbox_config.proto";
-import "modules/perception/pipeline/proto/plugin/get_image_data_config.proto";
-import "modules/perception/pipeline/proto/plugin/multi_lidar_fusion_config.proto";
-import "modules/perception/pipeline/proto/plugin/pbf_gatekeeper_config.proto";
-import "modules/perception/pipeline/proto/plugin/pointcloud_downsample_config.proto";
-import "modules/perception/pipeline/proto/plugin/pointcloud_get_objects_config.proto";
-import "modules/perception/pipeline/proto/plugin/recover_bbox_config.proto";
-import "modules/perception/pipeline/proto/plugin/resize_and_normalize_config.proto";
-import "modules/perception/pipeline/proto/plugin/roi_boundary_filter_config.proto";
+import "modules/perception/pipeline/proto/traffic_light_config.proto";
 
-
-// plugin
 enum PluginType {
+  option allow_alias = true;
+
   CAMERA_GET_OBJECT = 1;
   POINTCLOUD_DOWN_SAMPLE = 2;
   RESIZIE_AND_NORMALIZE = 3;
@@ -69,7 +68,8 @@ enum PluginType {
   GET_IMAGE_DATA = 5;
 
   // filter
-  ROI_BOUNDARY_FILTER = 6;
+  HDMAP_BOUNDARY_OBJECT_FILTER = 6;
+  ROI_BOUNDARY_FILTER = 6 [deprecated = true];
   FILTER_BBOX = 7;
 
   RECOVER_BBOX = 8;
@@ -98,7 +98,8 @@ message PluginConfig {
     camera.ResizeAndNormalizeConfig resize_and_normalize_config = 14;
     lidar.PointcloudDownSampleConfig pointcloud_downsample_config = 15;
     lidar.PointcloudGetObjectsConfig pointcloud_get_objects_config = 16;
-    lidar.ROIBoundaryFilterConfig roi_boundary_filter_config = 17;
+    lidar.HdmapBoundaryObjectFilterConfig
+        hdmap_boundary_object_filter_config = 17;
     lidar.MlfTrackObjectMatcherConfig mlf_track_object_matcher_config = 18;
     lidar.MlfTrackerConfig mlf_tracker_config = 19;
     lidar.CcrfTypeFusionConfig ccrf_type_fusion_config = 20;
@@ -108,6 +109,8 @@ message PluginConfig {
 
 // stage
 enum StageType {
+  option allow_alias = true;
+
   // preprocessors
   // camera preprocessor
   CAMERA_DETECTION_PREPROCESSOR = 1;
@@ -120,9 +123,13 @@ enum StageType {
   // radar preprocessors
   CONTI_ARS_PREPROCESSOR = 5;
 
-  MAP_MANAGER = 6;
+  HDMAP_CONTEXT_PROVIDER = 6;
+  MAP_MANAGER = 6 [deprecated = true];
   ALL_LATEST_FUSION = 7;
-
+  POINTCLOUD_ROI_FILTER = 8;
+  HDMAP_ROI_FILTER = 8 [deprecated = true];
+  GROUND_SEGMENTER = 9;
+  GROUND_DETECTOR = 9 [deprecated = true];
 
   // detectors
   // camera detectors
@@ -146,6 +153,9 @@ enum StageType {
   CENTER_POINT_DETECTION = 33;
   // radar detectors
   CONTI_ARS_DETECTOR = 34;
+  GRAPH_CLUSTER_SEGMENTER = 35;
+  GRAPH_SEGMENTATION = 35 [deprecated = true];
+  CENTER_POINT_TRT_DETECTION = 36;
 
   // post processors
   // camera post processors
@@ -157,10 +167,10 @@ enum StageType {
   DENSELINE_LANE_POSTPROCESSOR = 104;
   // lidar post processors
   POINTCLOUD_DETECTION_POSTPROCESSOR = 105;
-  OBJECT_BUILDER = 106;
-  OBJECT_FILTER_BANK = 107;
-
-
+  OBJECT_GEOMETRY_BUILDER = 106;
+  OBJECT_BUILDER = 106 [deprecated = true];
+  OBJECT_POST_FILTER_BANK = 107;
+  OBJECT_FILTER_BANK = 107 [deprecated = true];
 
   // tracker
   OMT_BEV_OBSTACLE_TRACKER = 119;
@@ -190,28 +200,34 @@ message StageConfig {
 
   repeated PluginConfig plugin_config = 3;
 
+  // Optional semantic alias used for display/logging so a stable stage_type
+  // can keep backward compatibility while the configured stage name reflects
+  // the actual role in a pipeline.
   optional string type = 4;
 
   reserved 5 to 9;
 
   oneof stage_config {
-
-    lidar.PointcloudDetectionPreprocessorConfig pointcloud_detection_preprocessor_config = 10;
-    lidar.PointcloudDetectionPostprocessorConfig pointcloud_detection_postprocessor_config = 11;
+    lidar.PointcloudDetectionPreprocessorConfig
+        pointcloud_detection_preprocessor_config = 10;
+    lidar.PointcloudDetectionPostprocessorConfig
+        pointcloud_detection_postprocessor_config = 11;
     lidar.PointcloudPreprocessorConfig pointcloud_preprocessor_config = 12;
-    lidar.MapManagerConfig map_manager_config = 13;
-    lidar.ObjectFilterBankConfig object_filter_bank_config = 14;
+    lidar.HdmapContextProviderConfig hdmap_context_provider_config = 13;
+    lidar.ObjectPostFilterBankConfig object_post_filter_bank_config = 14;
     lidar.MlfEngineConfig mlf_engine_config = 16;
     lidar.FusedClassifierConfig fused_classifier_config = 17;
     lidar.CNNSegConfig cnnseg_config = 18;
     lidar.NCutConfig ncut_config = 19;
     lidar.GroundServiceDetectorConfig ground_service_detector_config = 20;
-    lidar.SpatioTemporalGroundDetectorConfig spatio_temporal_ground_detector_config = 21;
-    lidar.HDMapRoiFilterConfig hdmap_roi_filter_config = 22;
+    lidar.SpatioTemporalGroundDetectorConfig ground_segmenter_config = 21;
+    lidar.PointCloudRoiFilterConfig pointcloud_roi_filter_config = 22;
     lidar.PointPillarsDetectionConfig point_pillars_detection_config = 23;
-    lidar.ObjectBuilderConfig object_builder_config = 24;
+    lidar.ObjectGeometryBuilderConfig object_geometry_builder_config = 24;
     lidar.CenterPointDetectionConfig center_point_detection_config = 25;
     lidar.MaskPillarsDetectionConfig mask_pillars_detection_config = 26;
+    lidar.GraphClusterSegmenterConfig graph_cluster_segmenter_config = 27;
+    lidar.CenterPointTRTDetectionConfig center_point_trt_detection_config = 28;
 
     camera.TrafficLightDetectionConfig traffic_light_detection_config = 50;
     camera.TrafficLightRecognitionConfig traffic_light_recognition_config = 51;
@@ -224,11 +240,14 @@ message StageConfig {
     camera.singlestage.SinglestageParam singlestage_param = 58;
     camera.darkSCNN.DarkSCNNParam dark_scnn_param = 59;
     camera.denseline.DenselineParam denseline_param = 60;
-    camera.lane.DarkSCNNLanePostprocessorParam darkscnn_lane_postprocessor_param = 61;
+    camera.lane.DarkSCNNLanePostprocessorParam
+        darkscnn_lane_postprocessor_param = 61;
     camera.lane.LanePostprocessorParam lane_postprocessor_param = 62;
     camera.SmokeObstacleDetectionConfig smoke_obstacle_detection_config = 63;
-    camera.CameraDetectionPostprocessorConfig camera_detection_postprocessor_config = 64;
-    camera.CameraDetectionPreprocessorConfig camera_detection_preprocessor_config = 65;
+    camera.CameraDetectionPostprocessorConfig
+        camera_detection_postprocessor_config = 64;
+    camera.CameraDetectionPreprocessorConfig
+        camera_detection_preprocessor_config = 65;
     camera.BEVObstacleDetectionConfig bev_obstacle_detection_config = 66;
     camera.CameraDetectorConfig camera_detector_config = 67;
     camera.CaddnDetectionConfig caddn_detection_config = 68;
@@ -238,9 +257,7 @@ message StageConfig {
   }
 }
 
-enum PipelineType {
-  LIDAR_DETECTION = 1;
-}
+enum PipelineType { LIDAR_DETECTION = 1; }
 
 // pipeline
 message PipelineConfig {

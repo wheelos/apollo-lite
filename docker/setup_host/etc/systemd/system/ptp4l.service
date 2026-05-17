@@ -1,0 +1,14 @@
+[Unit]
+Description=Precision Time Protocol (PTP) service
+After=network.target
+
+[Service]
+Type=simple
+# -f specifies the configuration file path, -i specifies the network interface
+# card.
+ExecStart=/usr/sbin/ptp4l -f /etc/linuxptp/ptp4l.conf
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

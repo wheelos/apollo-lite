@@ -41,38 +41,90 @@ bool CompressComponent::Init() {
     return false;
   }
 
+  // Reserve a reusable compression buffer capacity for typical 1080p frames.
+  compressed_buffer_reserve_bytes_ = 2 * 1024 * 1024;
+
+  // JPEG quality tuned for throughput/size balance.
+  compress_params_ = {
+      cv::IMWRITE_JPEG_QUALITY, 80,
+      cv::IMWRITE_JPEG_OPTIMIZE, 1,
+  };
+
   writer_ = node_->CreateWriter<CompressedImage>(
       config_.compress_conf().output_channel());
   return true;
 }
 
 bool CompressComponent::Proc(const std::shared_ptr<Image>& image) {
-  ADEBUG << "procing compressed";
-  auto compressed_image = image_pool_->GetObject();
-  compressed_image->mutable_header()->CopyFrom(image->header());
-  compressed_image->set_frame_id(image->frame_id());
-  compressed_image->set_measurement_time(image->measurement_time());
-  compressed_image->set_format(image->encoding() + "; jpeg compressed bgr8");
+  if (!image) {
+    AERROR << "Input image is null";
+    return false;
+  }
 
-  std::vector<int> params;
-  params.resize(3, 0);
-  params[0] = cv::IMWRITE_JPEG_QUALITY;
-  params[1] = 95;
+  const double resize_ratio = config_.compress_conf().resize_ratio();
+  const bool need_resize = resize_ratio > 0.0 && resize_ratio < 1.0;
+  const std::string& encoding = image->encoding();
+
+  cv::Mat image_view;
+  cv::Mat resized_mat;
+  cv::Mat bgr_mat;
+
+  if (encoding == "yuyv") {
+    image_view = cv::Mat(image->height(), image->width(), CV_8UC2,
+                         const_cast<char*>(image->data().data()),
+                         image->step());
+    const cv::Mat* src = &image_view;
+    if (need_resize) {
+      cv::resize(image_view, resized_mat, cv::Size(), resize_ratio,
+                 resize_ratio);
+      src = &resized_mat;
+    }
+    cv::cvtColor(*src, bgr_mat, cv::COLOR_YUV2BGR_YUYV);
+  } else if (encoding == "rgb8" || encoding == "bgr8") {
+    image_view = cv::Mat(image->height(), image->width(), CV_8UC3,
+                         const_cast<char*>(image->data().data()),
+                         image->step());
+    const cv::Mat* src = &image_view;
+    if (need_resize) {
+      cv::resize(image_view, resized_mat, cv::Size(), resize_ratio,
+                 resize_ratio);
+      src = &resized_mat;
+    }
+    if (encoding == "rgb8") {
+      cv::cvtColor(*src, bgr_mat, cv::COLOR_RGB2BGR);
+    } else {
+      bgr_mat = *src;
+    }
+  } else {
+    AERROR << "Unsupported image encoding for compression: " << encoding;
+    return false;
+  }
+
+  thread_local std::vector<uint8_t> compressed_buffer;
+  if (compressed_buffer.capacity() < compressed_buffer_reserve_bytes_) {
+    compressed_buffer.reserve(compressed_buffer_reserve_bytes_);
+  }
 
   try {
-    cv::Mat mat_image(image->height(), image->width(), CV_8UC3,
-                      const_cast<char*>(image->data().data()), image->step());
-    cv::Mat tmp_mat;
-    cv::cvtColor(mat_image, tmp_mat, cv::COLOR_RGB2BGR);
-    std::vector<uint8_t> compress_buffer;
-    if (!cv::imencode(".jpg", tmp_mat, compress_buffer, params)) {
-      AERROR << "cv::imencode (jpeg) failed on input image";
+    compressed_buffer.clear();
+    if (!cv::imencode(".jpg", bgr_mat, compressed_buffer,
+                      compress_params_)) {
+      AERROR << "JPEG compression failed";
       return false;
     }
-    compressed_image->set_data(compress_buffer.data(), compress_buffer.size());
-    writer_->Write(compressed_image);
-  } catch (std::exception& e) {
-    AERROR << "cv::imencode (jpeg) exception :" << e.what();
+
+    auto out_msg = image_pool_->GetObject();
+    if (!out_msg) {
+      AERROR << "Compressed image pool is exhausted";
+      return false;
+    }
+    out_msg->mutable_header()->CopyFrom(image->header());
+    out_msg->set_format("jpeg");
+    out_msg->set_data(compressed_buffer.data(), compressed_buffer.size());
+    writer_->Write(out_msg);
+
+  } catch (const cv::Exception& e) {
+    AERROR << "OpenCV Exception: " << e.what();
     return false;
   }
   return true;

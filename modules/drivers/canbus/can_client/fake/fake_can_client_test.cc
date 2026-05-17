@@ -44,7 +44,7 @@ class FakeCanClientTest : public ::testing::Test {
     recv_succ_count_ = 0;
     send_err_count_ = 0;
     recv_err_count_ = 0;
-    param_.set_brand(CANCardParameter::ESD_CAN);
+    param_.set_brand(CANCardParameter::FAKE_CAN);
     param_.set_channel_id(CANCardParameter::CHANNEL_ID_ZERO);
     send_client_ = std::unique_ptr<FakeCanClient>(new FakeCanClient());
     send_client_->Init(param_);

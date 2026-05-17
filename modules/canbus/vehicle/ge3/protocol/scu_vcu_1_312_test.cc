@@ -15,7 +15,10 @@
  *****************************************************************************/
 
 #include "modules/canbus/vehicle/ge3/protocol/scu_vcu_1_312.h"
+
 #include "gtest/gtest.h"
+
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 
 namespace apollo {
 namespace canbus {
@@ -33,21 +36,96 @@ TEST_F(Scuvcu1312Test, reset) {
   uint8_t bytes[8] = {0x01, 0x02, 0x03, 0x04, 0x11, 0x12, 0x13, 0x14};
 
   scuvcu1312.Parse(bytes, length, &chassis_detail);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_elcsysfault(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_brkpedst(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_intidx(), 4);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_gearintidx(), 2);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_geardrvmode(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_accpedact(), 14.45);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_brkpedpst(), 6.664);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_vehrng(), 515);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_accpedpst(), 1.568);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_vehrdyst(), 1);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_faultst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_drvmode(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_gearpst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_gearfaultst(), 0);
-  EXPECT_DOUBLE_EQ(chassis_detail.ge3().scu_vcu_1_312().vcu_gearact(), 0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_elcsysfault(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_brkpedst(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_intidx(),
+      4);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_gearintidx(),
+      2);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_geardrvmode(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_accpedact(),
+      14.45);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_brkpedpst(),
+      6.664);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_vehrng(),
+      515);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_accpedpst(),
+      1.568);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_vehrdyst(),
+      1);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_faultst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_drvmode(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_gearpst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_gearfaultst(),
+      0);
+  EXPECT_DOUBLE_EQ(
+      ::apollo::canbus::GetChassisExtensionOrDefault<::apollo::canbus::Ge3>(
+          chassis_detail)
+          .scu_vcu_1_312()
+          .vcu_gearact(),
+      0);
 }
 
 }  // namespace ge3

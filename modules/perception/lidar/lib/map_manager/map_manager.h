@@ -28,11 +28,14 @@ namespace apollo {
 namespace perception {
 namespace lidar {
 
-struct MapManagerInitOptions {};
+struct HdmapContextProviderInitOptions {};
 
-struct MapManagerOptions {};
+struct HdmapContextProviderOptions {};
 
-class MapManager final : public pipeline::Stage {
+// Provides HDMap context for the current lidar pose and optionally refines the
+// pose in the future. In the current pipeline this stage is used as an HDMap
+// context provider, not as a generic map management subsystem.
+class HdmapContextProvider final : public pipeline::Stage {
  public:
   using DataFrame = pipeline::DataFrame;
   using Plugin = pipeline::Plugin;
@@ -40,17 +43,19 @@ class MapManager final : public pipeline::Stage {
   using StageConfig = pipeline::StageConfig;
 
  public:
-  MapManager() = default;
-  ~MapManager() = default;
+  HdmapContextProvider() { name_ = "HdmapContextProvider"; }
+  ~HdmapContextProvider() = default;
 
-  bool Init(const MapManagerInitOptions& options = MapManagerInitOptions());
+  bool Init(const HdmapContextProviderInitOptions& options =
+                HdmapContextProviderInitOptions());
 
-  // @brief: update map structure and lidar2world pose
+  // @brief: populate frame hdmap_struct around the current lidar2world pose.
+  // Optionally refine lidar2world_pose when pose refinement is implemented.
   // @param [in]: options
   // @param [in/out]: frame
   // hdmap_struct should be filled, required,
   // lidar2world_pose can be updated, optional,
-  bool Update(const MapManagerOptions& options, LidarFrame* frame);
+  bool Update(const HdmapContextProviderOptions& options, LidarFrame* frame);
 
   bool QueryPose(Eigen::Affine3d* sensor2world_pose) const;
 
@@ -69,10 +74,14 @@ class MapManager final : public pipeline::Stage {
   bool update_pose_ = false;
   double roi_search_distance_ = 80.0;
 
-  MapManagerConfig map_manager_config_;
+  HdmapContextProviderConfig hdmap_context_provider_config_;
 
   FRIEND_TEST(LidarLibMapManagerTest, lidar_map_manager_test);
-};  // class MapManager
+};  // class HdmapContextProvider
+
+using MapManagerInitOptions = HdmapContextProviderInitOptions;
+using MapManagerOptions = HdmapContextProviderOptions;
+using MapManager = HdmapContextProvider;
 
 }  // namespace lidar
 }  // namespace perception

@@ -18,14 +18,16 @@
 
 #include <thread>
 
+#include "gtest/gtest.h"
+
+#include "modules/control/proto/control_conf.pb.h"
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "cyber/cyber.h"
-#include "gtest/gtest.h"
-
 #include "modules/common/adapters/adapter_gflags.h"
+#include "modules/common/util/util.h"
 #include "modules/control/common/control_gflags.h"
-#include "modules/control/proto/control_conf.pb.h"
 
 namespace apollo {
 namespace control {
@@ -241,7 +243,6 @@ void ControlComponentTest::TrimControlCommand(ControlCommand* origin) {
 
 TEST_F(ControlComponentTest, simple_test) {
   FLAGS_test_data_dir = "/apollo/modules/control/testdata/simple_control_test/";
-  FLAGS_enable_csv_debug = true;
   FLAGS_test_localization_file = "1_localization.pb.txt";
   FLAGS_test_pad_file = "1_pad.pb.txt";
   FLAGS_test_planning_file = "1_planning.pb.txt";

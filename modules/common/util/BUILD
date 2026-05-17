@@ -26,6 +26,7 @@ cc_library(
         exclude = [
             "point_factory.h",
             "points_downsampler.h",
+            "proj_helper.h",
             "util.h",
         ],
     ),
@@ -52,6 +53,15 @@ cc_library(
 )
 
 cc_library(
+    name = "proj_helper",
+    srcs = ["proj_helper.cc"],
+    hdrs = ["proj_helper.h"],
+    deps = [
+        "@proj",
+    ],
+)
+
+cc_library(
     name = "util_lib",
     srcs = ["util.cc"],
     hdrs = ["util.h"],
@@ -63,6 +73,11 @@ cc_library(
         "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
         "@com_github_gflags_gflags//:gflags",
     ]
+)
+
+cc_library(
+    name = "debouncer",
+    hdrs = ["debouncer.h"]
 )
 
 cc_library(
@@ -282,6 +297,12 @@ cc_library(
     ]
 )
 
+cc_library(
+    name = "rate_limiter",
+    hdrs = ["rate_limiter.h"],
+    visibility = ["//visibility:public"],
+)
+
 cc_test(
     name = "perf_util_test",
     size = "small",
@@ -292,4 +313,19 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "debouncer_test",
+    size = "small",
+    srcs = ["debouncer_test.cc"],
+    deps = [
+        ":debouncer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cpplint()
+
+cc_library(
+    name = "registry",
+    hdrs = ["registry.h"],
+)

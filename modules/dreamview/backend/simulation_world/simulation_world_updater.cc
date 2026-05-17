@@ -18,6 +18,8 @@
 
 #include "google/protobuf/util/json_util.h"
 
+#include "modules/common_msgs/mission_msgs/mission_request.pb.h"
+
 #include "cyber/common/file.h"
 #include "modules/common/util/json_util.h"
 #include "modules/common/util/map_util.h"
@@ -50,6 +52,7 @@ using google::protobuf::util::MessageToJsonString;
 
 SimulationWorldUpdater::SimulationWorldUpdater(
     WebSocketHandler *websocket, WebSocketHandler *map_ws,
+    WebSocketHandler *point_cloud_ws,
     WebSocketHandler *camera_ws, SimControlManager *sim_control_manager,
     WebSocketHandler *plugin_ws, const MapService *map_service,
     PerceptionCameraUpdater *perception_camera_updater,
@@ -58,6 +61,7 @@ SimulationWorldUpdater::SimulationWorldUpdater(
       map_service_(map_service),
       websocket_(websocket),
       map_ws_(map_ws),
+      point_cloud_ws_(point_cloud_ws),
       camera_ws_(camera_ws),
       plugin_ws_(plugin_ws),
       sim_control_manager_(sim_control_manager),
@@ -169,6 +173,33 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
           sim_world_service_.PublishMonitorMessage(
               MonitorMessageItem::ERROR, "Failed to send a routing request.");
         }
+      });
+
+  websocket_->RegisterMessageHandler(
+      "SendMissionRequest",
+      [this](const Json &json, WebSocketHandler::Connection *conn) {
+        auto mission_request =
+            std::make_shared<apollo::mission::MissionRequest>();
+
+        // Parse common fields
+        if (ContainsKey(json, "task_name")) {
+          mission_request->set_task_name(json["task_name"]);
+        }
+        if (ContainsKey(json, "enable_loop")) {
+          mission_request->set_enable_loop(json["enable_loop"]);
+        }
+
+        // Analyzing key points (Waypoints)
+        if (ContainsKey(json, "waypoints")) {
+          for (const auto &wp_json : json["waypoints"]) {
+            auto *wp = mission_request->add_waypoints();
+            wp->set_name(wp_json["name"]);
+            wp->mutable_pose()->set_x(wp_json["x"]);
+            wp->mutable_pose()->set_y(wp_json["y"]);
+          }
+        }
+
+        sim_world_service_.PublishMissionRequest(mission_request);
       });
 
   websocket_->RegisterMessageHandler(
@@ -495,9 +526,6 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
   camera_ws_->RegisterMessageHandler(
       "ChangeCameraChannel",
       [this](const Json &json, WebSocketHandler::Connection *conn) {
-        if (!perception_camera_updater_->IsEnabled()) {
-          return;
-        }
         auto channel_info = json.find("data");
         Json response({});
         if (channel_info == json.end()) {
@@ -715,17 +743,48 @@ void SimulationWorldUpdater::Start() {
 }
 
 void SimulationWorldUpdater::OnTimer() {
+  const bool needs_sim_world = websocket_->HasConnections();
+  const bool needs_map_data = map_ws_->HasConnections();
+  const bool needs_adc_timestamp =
+      point_cloud_ws_ != nullptr && point_cloud_ws_->HasConnections();
+
+  if (!needs_sim_world && !needs_map_data && !needs_adc_timestamp) {
+    if (cached_outputs_cleared_) {
+      return;
+    }
+    boost::unique_lock<boost::shared_mutex> writer_lock(mutex_);
+    last_pushed_adc_timestamp_sec_.store(0.0, std::memory_order_relaxed);
+    std::string().swap(simulation_world_);
+    std::string().swap(simulation_world_with_planning_data_);
+    std::string().swap(relative_map_string_);
+    cached_outputs_cleared_ = true;
+    return;
+  }
+
+  cached_outputs_cleared_ = false;
   sim_world_service_.Update();
 
   {
     boost::unique_lock<boost::shared_mutex> writer_lock(mutex_);
-    last_pushed_adc_timestamp_sec_ =
-        sim_world_service_.world().auto_driving_car().timestamp_sec();
-    sim_world_service_.GetWireFormatString(
-        FLAGS_sim_map_radius, &simulation_world_,
-        &simulation_world_with_planning_data_);
-    sim_world_service_.GetRelativeMap().SerializeToString(
-        &relative_map_string_);
+    last_pushed_adc_timestamp_sec_.store(
+        needs_adc_timestamp
+            ? sim_world_service_.world().auto_driving_car().timestamp_sec()
+            : 0.0,
+        std::memory_order_relaxed);
+    if (needs_sim_world) {
+      sim_world_service_.GetWireFormatString(
+          FLAGS_sim_map_radius, &simulation_world_,
+          &simulation_world_with_planning_data_);
+    } else {
+      std::string().swap(simulation_world_);
+      std::string().swap(simulation_world_with_planning_data_);
+    }
+    if (needs_map_data) {
+      sim_world_service_.GetRelativeMap().SerializeToString(
+          &relative_map_string_);
+    } else {
+      std::string().swap(relative_map_string_);
+    }
   }
 }
 

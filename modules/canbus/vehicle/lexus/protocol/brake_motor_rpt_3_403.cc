@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,10 +33,12 @@ const int32_t Brakemotorrpt3403::ID = 0x403;
 
 void Brakemotorrpt3403::Parse(const std::uint8_t* bytes, int32_t length,
                               ChassisDetail* chassis) const {
-  chassis->mutable_lexus()->mutable_brake_motor_rpt_3_403()->set_torque_output(
-      torque_output(bytes, length));
-  chassis->mutable_lexus()->mutable_brake_motor_rpt_3_403()->set_torque_input(
-      torque_input(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_brake_motor_rpt_3_403()
+      ->set_torque_output(torque_output(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Lexus>(chassis)
+      ->mutable_brake_motor_rpt_3_403()
+      ->set_torque_input(torque_input(bytes, length));
 }
 
 // config detail: {'name': 'torque_output', 'offset': 0.0, 'precision': 0.001,

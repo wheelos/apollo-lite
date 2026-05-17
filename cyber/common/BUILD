@@ -115,7 +115,21 @@ cc_library(
 cc_library(
     name = "time_conversion",
     hdrs = ["time_conversion.h"],
+    deps = [
+        "@com_google_absl//absl/time"
+    ],
 )
+
+cc_test(
+    name = "time_conversion_test",
+    srcs = ["time_conversion_test.cc"],
+    size = "small",
+    deps = [
+        ":time_conversion",
+        "@com_google_googletest//:gtest_main"
+    ],
+)
+
 
 cc_library(
     name = "types",

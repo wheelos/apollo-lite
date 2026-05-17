@@ -14,24 +14,21 @@ limitations under the License.
 =========================================================================*/
 #include "modules/map/hdmap/adapter/xml_parser/coordinate_convert_tool.h"
 
+#include <cmath>
+
 #include "glog/logging.h"
+#include "modules/common/util/proj_helper.h"
 
 namespace apollo {
 namespace hdmap {
 namespace adapter {
 
-CoordinateConvertTool::CoordinateConvertTool()
-    : pj_from_(nullptr), pj_to_(nullptr) {}
+CoordinateConvertTool::CoordinateConvertTool() : pj_(nullptr) {}
 
 CoordinateConvertTool::~CoordinateConvertTool() {
-  if (pj_from_) {
-    pj_free(pj_from_);
-    pj_from_ = nullptr;
-  }
-
-  if (pj_to_) {
-    pj_free(pj_to_);
-    pj_to_ = nullptr;
+  if (pj_) {
+    proj_destroy(pj_);
+    pj_ = nullptr;
   }
 }
 
@@ -44,26 +41,17 @@ Status CoordinateConvertTool::SetConvertParam(const std::string& source_param,
                                               const std::string& dst_param) {
   source_convert_param_ = source_param;
   dst_convert_param_ = dst_param;
-  if (pj_from_) {
-    pj_free(pj_from_);
-    pj_from_ = nullptr;
+
+  if (pj_) {
+    proj_destroy(pj_);
+    pj_ = nullptr;
   }
 
-  if (pj_to_) {
-    pj_free(pj_to_);
-    pj_to_ = nullptr;
-  }
-
-  if (!(pj_from_ = pj_init_plus(source_convert_param_.c_str()))) {
-    std::string err_msg = "Fail to pj_init_plus " + source_convert_param_;
-    return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, err_msg);
-  }
-
-  if (!(pj_to_ = pj_init_plus(dst_convert_param_.c_str()))) {
-    std::string err_msg = "Fail to pj_init_plus " + dst_convert_param_;
-    pj_free(pj_from_);
-    pj_from_ = nullptr;
-    return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, err_msg);
+  std::string proj_error;
+  pj_ = apollo::common::util::ProjHelper::CreateNormalizedCrsToCrs(
+      PJ_DEFAULT_CTX, source_convert_param_, dst_convert_param_, &proj_error);
+  if (!pj_) {
+    return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, proj_error);
   }
 
   return Status::OK();
@@ -77,35 +65,28 @@ Status CoordinateConvertTool::CoordiateConvert(const double longitude,
   CHECK_NOTNULL(utm_x);
   CHECK_NOTNULL(utm_y);
   CHECK_NOTNULL(utm_z);
-  if (!pj_from_ || !pj_to_) {
+  if (!pj_) {
     std::string err_msg = "no transform param";
     return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, err_msg);
   }
 
-  double gps_longitude = longitude;
-  double gps_latitude = latitude;
-  double gps_alt = height_ellipsoid;
+  PJ_COORD c;
+  c.xyzt.x = longitude;
+  c.xyzt.y = latitude;
+  c.xyzt.z = height_ellipsoid;
+  c.xyzt.t = 0.0;
 
-  if (pj_is_latlong(pj_from_)) {
-    gps_longitude *= DEG_TO_RAD;
-    gps_latitude *= DEG_TO_RAD;
-    gps_alt = height_ellipsoid;
-  }
+  PJ_COORD res = proj_trans(pj_, PJ_FWD, c);
 
-  if (0 != pj_transform(pj_from_, pj_to_, 1, 1, &gps_longitude, &gps_latitude,
-                        &gps_alt)) {
+  // If projection fails, proj_trans returns HUGE_VAL for coordinates
+  if (res.xyzt.x == HUGE_VAL || res.xyzt.y == HUGE_VAL) {
     std::string err_msg = "fail to transform coordinate";
     return Status(apollo::common::ErrorCode::HDMAP_DATA_ERROR, err_msg);
   }
 
-  if (pj_is_latlong(pj_to_)) {
-    gps_longitude *= RAD_TO_DEG;
-    gps_latitude *= RAD_TO_DEG;
-  }
-
-  *utm_x = gps_longitude;
-  *utm_y = gps_latitude;
-  *utm_z = gps_alt;
+  *utm_x = res.xyzt.x;
+  *utm_y = res.xyzt.y;
+  *utm_z = res.xyzt.z;
 
   return Status::OK();
 }

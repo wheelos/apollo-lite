@@ -1,14 +1,14 @@
 /******************************************************************************
- * Copyright 2018 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an AS IS BASIS,
+ * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -47,6 +47,12 @@ bool TrafficLightDetection::Init(
   std::string param_str;
   google::protobuf::TextFormat::PrintToString(detection_param_, &param_str);
   AINFO << "TL detection param: " << param_str;
+  detector_type_ = detection_param_.detector_type();
+
+  if (detector_type_ == TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR) {
+    yolo_single_stage_dector_.reset(new TrafficLightYoloSingleStageDector());
+    return yolo_single_stage_dector_->Init(detection_param_);
+  }
 
   // todo:determine details
 
@@ -159,13 +165,19 @@ bool TrafficLightDetection::Init(
   return true;
 }
 
-bool TrafficLightDetection::Init(const StageConfig& stage_config) {
+bool TrafficLightDetection::Init(const StageConfig &stage_config) {
   if (!Initialize(stage_config)) {
     return false;
   }
 
   detection_param_ = stage_config.traffic_light_detection_config();
   AINFO << "TL detection param: " << detection_param_.DebugString();
+  detector_type_ = detection_param_.detector_type();
+
+  if (detector_type_ == TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR) {
+    yolo_single_stage_dector_.reset(new TrafficLightYoloSingleStageDector());
+    return yolo_single_stage_dector_->Init(detection_param_);
+  }
 
   detection_root_dir = detection_param_.traffic_light_detection_root_dir();
   std::string model_root =
@@ -277,7 +289,7 @@ bool TrafficLightDetection::Init(const StageConfig& stage_config) {
   return true;
 }
 
-bool TrafficLightDetection::Process(DataFrame* data_frame) {
+bool TrafficLightDetection::Process(DataFrame *data_frame) {
   if (data_frame == nullptr || data_frame->camera_frame == nullptr)
     return false;
 
@@ -305,10 +317,9 @@ bool TrafficLightDetection::Inference(
     auto input_img_blob = rt_net_->get_blob(net_inputs_[0]);
     auto input_param = rt_net_->get_blob(net_inputs_[1]);
 
-    input_img_blob->Reshape(1,
-                            static_cast<int>(detection_param_.min_crop_size()),
-                            static_cast<int>(detection_param_.min_crop_size()),
-                            3);
+    input_img_blob->Reshape(
+        1, static_cast<int>(detection_param_.min_crop_size()),
+        static_cast<int>(detection_param_.min_crop_size()), 3);
     param_blob_->Reshape(1, 6, 1, 1);
     float *param_data = param_blob_->mutable_cpu_data();
     param_data[0] = static_cast<float>(detection_param_.min_crop_size());
@@ -339,7 +350,7 @@ bool TrafficLightDetection::Inference(
 
       float resize_scale =
           static_cast<float>(detection_param_.min_crop_size()) /
-              static_cast<float>(std::min(cbox.width, cbox.height));
+          static_cast<float>(std::min(cbox.width, cbox.height));
       resize_scale_list_.push_back(resize_scale);
 
       inference::ResizeGPU(*image_, input_img_blob, img_width, resize_index,
@@ -365,6 +376,14 @@ bool TrafficLightDetection::Inference(
 
 bool TrafficLightDetection::Detect(const TrafficLightDetectorOptions &options,
                                    CameraFrame *frame) {
+  if (detector_type_ == TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR) {
+    if (yolo_single_stage_dector_ == nullptr) {
+      AERROR << "YOLO single-stage dector is not initialized";
+      return false;
+    }
+    return yolo_single_stage_dector_->Detect(frame);
+  }
+
   if (frame->traffic_lights.empty()) {
     AINFO << "no lights to detect";
     return true;

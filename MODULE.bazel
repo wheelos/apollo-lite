@@ -10,9 +10,32 @@ bazel_dep(name = "rules_cc", version = "0.0.9")
 bazel_dep(name = "rules_pkg", version = "0.10.1")
 bazel_dep(name = "rules_proto", version = "6.0.2")
 bazel_dep(name = "rules_python", version = "0.34.0")
+bazel_dep(name = "rules_cuda", version = "0.3.0")
+
+cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
+cuda.toolkit(
+    name = "cuda",
+    toolkit_path = "",
+)
+use_repo(cuda, "cuda")
+
+bazel_dep(name = "platforms", version = "0.0.10")
+
+cudnn_ext = use_extension("//third_party/cudnn:extensions.bzl", "cudnn")
+use_repo(cudnn_ext, "local_config_cudnn")
+
+tensorrt_ext = use_extension("//third_party/tensorrt:extensions.bzl", "tensorrt_configure")
+use_repo(tensorrt_ext, "local_config_tensorrt")
+
+ffmpeg_ext = use_extension("//third_party/ffmpeg:extensions.bzl", "ffmpeg")
+qt_ext = use_extension("//third_party/qt5:extensions.bzl", "qt")
+libtorch_ext = use_extension("//third_party/libtorch:extensions.bzl", "libtorch_ext")
+use_repo(libtorch_ext, "libtorch_cpu", "libtorch_gpu")
+
+use_repo(ffmpeg_ext, "ffmpeg")
+use_repo(qt_ext, "qt")
 
 # TODO: Keep the version of Python toolchain consistent with Docker.
-# Note whether there is any duplication with .apollo.bazelrc?
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.defaults(python_version = "3.8")
 python.toolchain(python_version = "3.8")
@@ -37,13 +60,23 @@ bazel_dep(name = "boost.property_tree", version = "1.87.0")
 bazel_dep(name = "boost.program_options", version = "1.87.0")
 bazel_dep(name = "boost.signals2", version = "1.87.0")
 bazel_dep(name = "boost.tuple", version = "1.87.0")
+bazel_dep(name = "boost.lockfree", version = "1.87.0")
 
 # thirdparty
-bazel_dep(name = "abseil-cpp", version = "20240116.2", repo_name = "com_google_absl")
+bazel_dep(name = "abseil-cpp", version = "20250127.1", repo_name = "com_google_absl")
+single_version_override(
+    module_name = "abseil-cpp",
+    # locked at 20250127.1 to be compatible with protobuf
+    # In newer versions, the target `if_constexpr` in `absl/utility/BUILD.bazel`
+    # that protobuf depends on has been removed or migrated.
+    version = "20250127.1",
+)
+
 bazel_dep(name = "cpplint", version = "2.0.2")
 bazel_dep(name = "eigen", version = "4.0.0-20241125.bcr.2")
 bazel_dep(name = "nlohmann_json", version = "3.12.0", repo_name = "com_github_nlohmann_json")
 bazel_dep(name = "gflags", version = "2.2.2", repo_name = "com_github_gflags_gflags")
+
 # Note: build gflags as a shared library and make the third-party(pre-compiled
 # library such as paddleinference) link to it to keep only one copy of gflags
 # in one process
@@ -66,6 +99,16 @@ single_version_override(
     version = "0.7.1",
 )
 
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "dreamview_frontend_assets",
+    sha256 = "0fca6468d79b8140b5162b867daa63040c872ea1f7d4d42133d518db38e3d953",
+    urls = [
+        "https://dl.wheelos.cn/release/dreamview/dreamview-frontend-5.5.0.tar.gz",
+    ],
+)
+
 bazel_dep(name = "googletest", version = "1.17.0", repo_name = "com_google_googletest")
 bazel_dep(name = "grpc", version = "1.69.0", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "protobuf", version = "29.0", repo_name = "com_google_protobuf")
@@ -75,9 +118,18 @@ bazel_dep(name = "libuuid", version = "2.39.3.bcr.1", repo_name = "uuid")
 bazel_dep(name = "tinyxml2", version = "10.0.0")
 bazel_dep(name = "civetweb", version = "1.16.bcr.3")
 bazel_dep(name = "sqlite3", version = "3.50.0")
-bazel_dep(name = "fastcdr", version = "2.2.2")
-bazel_dep(name = "fastdds", version = "2.14.3")
+bazel_dep(name = "wheelos_fastcdr", version = "1.1.0")
+bazel_dep(name = "wheelos_fastdds", version = "1.5.0")
 bazel_dep(name = "yaml-cpp", version = "0.8.0", repo_name = "com_github_jbeder_yaml_cpp")
 bazel_dep(name = "portaudio", version = "19.7.0.bcr.3")
 bazel_dep(name = "pcl", version = "1.15.0.bcr.2", repo_name = "local_config_pcl")
 bazel_dep(name = "sse2neon", version = "1.8.0")
+bazel_dep(name = "behaviortree_cpp", version = "4.7.0.bcr.2")
+bazel_dep(name = "inno-lidar-sdk", version = "3.103.4")
+bazel_dep(name = "hesai-lidar-sdk", version = "2.0.11")
+bazel_dep(name = "vanjee-lidar-sdk", version = "2.2.9")
+bazel_dep(name = "robosense-lidar-sdk", version = "1.5.18")
+bazel_dep(name = "opencv", version = "4.13.0")
+bazel_dep(name = "proj", version = "9.8.0")
+bazel_dep(name = "livox-sdk", version = "2.3.0")
+bazel_dep(name = "osqp", version = "1.0.0.bcr.2")

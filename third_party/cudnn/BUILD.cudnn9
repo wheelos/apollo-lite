@@ -1,0 +1,145 @@
+package(default_visibility = ["//visibility:private"])
+
+# cudnn_headers simply serve as a dummy target by adding
+cc_library(
+    name = "cudnn_headers",
+    srcs = glob(["cudnn/include/**/*.h"]),
+    includes = ["cudnn/include"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "cudnn",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+    ] + select({
+        "@platforms//os:linux": [":cudnn_so"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "cudnn_adv",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+    ] + select({
+        "@platforms//os:linux": [":cudnn_adv_so"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "cudnn_cnn",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+    ] + select({
+        "@platforms//os:linux": [":cudnn_cnn_so"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "cudnn_graph",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+    ] + select({
+        "@platforms//os:linux": [":cudnn_graph_so"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "cudnn_ops",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+    ] + select({
+        "@platforms//os:linux": [":cudnn_ops_so"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "cudnn_heuristic",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+    ] + select({
+        "@platforms//os:linux": [":cudnn_heuristic_so"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "cudnn_engines_precompiled",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+    ] + select({
+        "@platforms//os:linux": [":cudnn_engines_precompiled_so"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "cudnn_engines_runtime_compiled",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cudnn_headers",
+    ] + select({
+        "@platforms//os:linux": [":cudnn_engines_runtime_compiled_so"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_import(
+    name = "cudnn_so",
+    shared_library = "cudnn/lib/libcudnn.so",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+cc_import(
+    name = "cudnn_adv_so",
+    shared_library = "cudnn/lib/libcudnn_adv.so",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+cc_import(
+    name = "cudnn_cnn_so",
+    shared_library = "cudnn/lib/libcudnn_cnn.so",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+cc_import(
+    name = "cudnn_graph_so",
+    shared_library = "cudnn/lib/libcudnn_graph.so",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+cc_import(
+    name = "cudnn_ops_so",
+    shared_library = "cudnn/lib/libcudnn_ops.so",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+cc_import(
+    name = "cudnn_heuristic_so",
+    shared_library = "cudnn/lib/libheuristic.so",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+cc_import(
+    name = "cudnn_engines_precompiled_so",
+    shared_library = "cudnn/lib/libcudnn_engines_precompiled.so",
+    target_compatible_with = ["@platforms//os:linux"],
+)
+
+cc_import(
+    name = "cudnn_engines_runtime_compiled_so",
+    shared_library = "cudnn/lib/libcudnn_engines_runtime_compiled.so",
+    target_compatible_with = ["@platforms//os:linux"],
+)

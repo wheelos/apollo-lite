@@ -16,7 +16,7 @@
 # limitations under the License.
 ###############################################################################
 
-set -e
+set -euo pipefail
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
@@ -27,163 +27,204 @@ if [[ -e '/usr/local/libtorch/lib/libtorch.so' ]]; then
   exit 0
 fi
 
-# --- Unified Version Control ---
-# Manage all Pytorch related component versions here
-PYTORCH_VERSION="2.6.0"
-TORCHVISION_VERSION="0.18.0" # Note: Version must be compatible with Pytorch
-TORCHAUDIO_VERSION="2.4.0"  # Note: Version must be compatible with Pytorch
-
-# --- Environment Detection ---
+PYTORCH_VERSION="2.10.0"
 TARGET_ARCH="$(uname -m)"
 CUDA_SUPPORT=false
-CUDA_VERSION_STR="" # e.g., "11.8"
-CUDA_VERSION_TAG="" # e.g., "cu118"
+CUDA_VERSION_STR=""
+CUDA_VERSION_TAG=""
 
 if [ "${TARGET_ARCH}" = "x86_64" ] && command -v nvcc >/dev/null 2>&1; then
-  # Get CUDA major and minor version (e.g., 11.8)
   CUDA_VERSION_STR=$(nvcc --version | sed -n 's/.*release \([0-9]*\.[0-9]*\).*/\1/p')
   if [ -n "${CUDA_VERSION_STR}" ]; then
-    # Format version for Pytorch whl URL (e.g., 11.8 -> cu118)
     CUDA_VERSION_TAG="cu$(echo ${CUDA_VERSION_STR} | sed 's/\.//g')"
     CUDA_SUPPORT=true
-    ok "Found CUDA ${CUDA_VERSION_STR}. PyTorch will be installed with GPU support."
+    ok "Found CUDA ${CUDA_VERSION_STR} on x86_64. PyTorch will be installed with GPU support."
   else
-    warning "nvcc found, but could not determine CUDA version. Falling back to CPU."
+    warning "nvcc found, but CUDA version could not be determined. Falling back to CPU-only."
   fi
 fi
 
-# --- Python PyTorch Installation ---
-function install_pytorch_python() {
-  info "Installing Python PyTorch ${PYTORCH_VERSION}..."
+# --- C++ LibTorch Installation  ---
+function install_libtorch_cpp() {
+  local INSTALL_DIR="/usr/local/libtorch"
+  info "Starting LibTorch C++ ${PYTORCH_VERSION} installation for ${TARGET_ARCH}..."
 
-  local INDEX_URL_FLAG=""
-  if [ "$CUDA_SUPPORT" = true ]; then
-    INDEX_URL_FLAG="--index-url https://download.pytorch.org/whl/${CUDA_VERSION_TAG}"
+  # ============================================================================
+  # x86_64 Strategy: Download official pre-compiled .zip via caching function
+  # ============================================================================
+  if [ "${TARGET_ARCH}" = "x86_64" ]; then
+    info "Executing x86_64 strategy: Downloading official package via cache."
+    local BASE_URL="https://download.pytorch.org/libtorch"
+    local PKG_NAME="" URL="" CHECKSUM=""
+
+    if [ "$CUDA_SUPPORT" = true ]; then
+      PKG_NAME="libtorch-shared-with-deps-${PYTORCH_VERSION}+${CUDA_VERSION_TAG}.zip"
+      URL="${BASE_URL}/${CUDA_VERSION_TAG}/${PKG_NAME}"
+      # Example: CHECKSUM="419dba362eaf8f1d36849ceee17c3e2ff8ff12ac666b42d3ff02a164ebe090e9"
+      # libtorch-shared-withh-deps-2.10.0+cu128.zip
+      CHECKSUM='429aa9fead3cf3d557e7c310442a1fae3879cdc14a469ff452043b39b61666a9'
+    else
+      PKG_NAME="libtorch-shared-with-deps-${PYTORCH_VERSION}%2Bcpu.zip"
+      URL="${BASE_URL}/cpu/${PKG_NAME}"
+      # libtorch-shared-with-deps-2.10.0+cpu.zip
+      CHECKSUM="c5bf8efda9224a2d971b19d1ef6cf3ba6fee8ab53e69c49427db003d1d300496"
+    fi
+
+    if [[ "${CHECKSUM}" == TODO_* ]]; then
+        error "Checksum for ${PKG_NAME} is not set. Please edit the script and add the correct SHA256 value."
+        return 1
+    fi
+
+    local DOWNLOAD_DIR="/tmp/libtorch_download"
+    mkdir -p "${DOWNLOAD_DIR}"; pushd "${DOWNLOAD_DIR}" > /dev/null
+
+    info "Downloading ${PKG_NAME} via cache-aware function..."
+    if ! download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${URL}"; then
+        error "Download failed for ${PKG_NAME}. Please check URL, checksum, and network."
+        popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"; return 1
+    fi
+
+    info "Extracting archive..."
+    unzip -q "${PKG_NAME}"
+
+    info "Installing to ${INSTALL_DIR}..."
+    sudo rm -rf "${INSTALL_DIR}"
+    sudo mv libtorch "${INSTALL_DIR}"
+
+    popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"
+
+  # ============================================================================
+  # aarch64 Strategy: Prioritize pre-compiled wheel, fallback to source build
+  # ============================================================================
+  elif [ "${TARGET_ARCH}" = "aarch64" ]; then
+    # use 2.6.0 in l4t environment
+    PYTORCH_VERSION="2.6.0"
+    info "Executing aarch64 strategy..."
+    if ! _install_libtorch_from_wheel_aarch64; then
+      warning "Pre-compiled wheel installation failed. Falling back to building from source."
+      if ! _build_libtorch_from_source_aarch64; then
+        error "LibTorch installation failed after both attempts."
+        return 1
+      fi
+    fi
+    # Common step for aarch64: Copy from Python site-packages
+    info "Copying LibTorch C++ headers and libraries to final destination..."
+    local PYTORCH_SITE
+    PYTORCH_SITE=$(python3 -c "import torch, os; print(os.path.dirname(torch.__file__))")
+    if [ -z "${PYTORCH_SITE}" ]; then
+      error "Could not determine PyTorch installation location. Aborting."; return 1
+    fi
+    sudo rm -rf "${INSTALL_DIR}"; sudo mkdir -p "${INSTALL_DIR}"
+    sudo cp -r "${PYTORCH_SITE}/include" "${INSTALL_DIR}/"
+    sudo cp -r "${PYTORCH_SITE}/lib" "${INSTALL_DIR}/"
+
   else
-    INDEX_URL_FLAG="--index-url https://download.pytorch.org/whl/cpu"
+    error "Unsupported architecture: ${TARGET_ARCH}"; return 1
   fi
 
-  pip3 install \
-    torch==${PYTORCH_VERSION} \
-    torchvision==${TORCHVISION_VERSION} \
-    torchaudio==${TORCHAUDIO_VERSION} \
-    ${INDEX_URL_FLAG}
+  # ============================================================================
+  # Post-install steps for all architectures
+  # ============================================================================
+  if [ -d "${INSTALL_DIR}/lib" ]; then
+    ensure_ld_path "${INSTALL_DIR}/lib" # This function is in installer_base.sh
+    sudo ldconfig
+    ok "LibTorch C++ ${PYTORCH_VERSION} installed successfully at ${INSTALL_DIR}."
+  else
+    error "Installation failed — ${INSTALL_DIR}/lib directory missing."; return 1
+  fi
 
-  # Verify installation
-  info "Verifying Python PyTorch installation..."
-  python3 -c "
-import torch
-print(f'PyTorch Version: {torch.__version__}')
-print(f'CUDA Available: {torch.cuda.is_available()}')
-if torch.cuda.is_available():
-  print(f'CUDA Version: {torch.version.cuda}')
-  print(f'GPU Name: {torch.cuda.get_device_name(0)}')
-"
-  ok "Python PyTorch installation successful."
+  if [ -f "${INSTALL_DIR}/lib/libtorch.so" ]; then
+    info "libtorch.so located successfully."
+  else
+    warning "libtorch.so not found — verify your build output."
+  fi
 }
 
-# --- C++ LibTorch Installation ---
-function install_libtorch_cpp() {
-  info "Installing LibTorch C++ ${PYTORCH_VERSION}..."
-  local BASE_URL="https://download.pytorch.org/libtorch"
-  local ARCHIVE=""
-  local URL=""
+# --- Helper: Install aarch64 from pre-compiled wheel via cache ---
+function _install_libtorch_from_wheel_aarch64() {
+  local PYTORCH_WHL_VERSION="2.6.0a0+git1eba9b3"
+  local PKG_NAME="torch-${PYTORCH_WHL_VERSION}-cp310-cp310-linux_aarch64.whl"
+  local DOWNLOAD_LINK="http://10.0.39.103:8080/build/aarch64/${PKG_NAME}"
 
-  if [ "${TARGET_ARCH}" = "x86_64" ]; then
-    if [ "$CUDA_SUPPORT" = true ]; then
-      ARCHIVE="libtorch-cxx11-abi-shared-with-deps-${PYTORCH_VERSION}+${CUDA_VERSION_TAG}.zip"
-      CHECKSUM='36835d6c6315d741ad687632516f7bcd8efb6de3b57b61ca66b96f98e5ea30e8'
-      URL="${BASE_URL}/${CUDA_VERSION_TAG}/${ARCHIVE}"
-    else
-      ARCHIVE="libtorch-cxx11-abi-shared-with-deps-${PYTORCH_VERSION}%2Bcpu.zip"
-      CHECKSUM="6887b5186e466a6d5ca044a51d083bb03c48cb1b4952059b7ca51a5398fbafcc"
-      URL="${BASE_URL}/cpu/${ARCHIVE}"
-    fi
-  elif [ "${TARGET_ARCH}" = "aarch64" ]; then
-    # WARNING: Official pre-compiled LibTorch C++ package is not available for aarch64.
-    # If needed, you must build from source. Skipping installation here.
-    warning "Official pre-compiled LibTorch C++ is not available for aarch64."
-    warning "We default install our own compiled for orin(l4t r35.2)"
-    warning "If not suitable, please build from source yourself."
+  # IMPORTANT: Add the real SHA256 checksum for your wheel file.
+  # Run this on your server: sha256sum torch-2.6.0a0+git1eba9b3-cp310-cp310-linux_aarch64.whl
+  local CHECKSUM="828ffcf5b4185eef382b0f1e9bd479201c4cae1bb16abd84f45195cdb4eed205"
 
-    # TODO(build): Docs on how to build libtorch on Jetson boards
-    # References:
-    #   https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
-    #
-    # Following content is an example to build libtorch source on orin:
-    # 1. Downloading source of specific version libtorch and it's submodules:
-    #     git clone --recursive --single-branch --branch release/1.11 --depth 1 https://github.com/pytorch/pytorch.git
-    # 2. install py deps:
-    #     pip3 install --no-cache-dir PyYAML typing typing-extensions
-    # 3. set envs, e.g.:
-    #     export USE_CUDA=1
-    #     export TORCH_CUDA_ARCH_LIST="3.5;5.0;5.2;6.1;7.0;7.5;8.6;8.7"
-    #     export BUILD_CAFFE2=1
-    #     export USE_NCCL=0
-    # 4. build
-    #     python3 setup.py install
-    # 5. packaging/install
-    #     mkdir libtorch && cp -r include libtorch && cp -r lib libtorch/ && sudo mv libtorch /usr/local/
+  info "Attempt 1/2: Trying to install from pre-compiled aarch64 wheel..."
 
-    # download the original pre-compiled libtorch for aarch64
-    local pkg_version='1.11.0'
-    local pkg_filename="libtorch_gpu-${pkg_version}-linux-${TARGET_ARCH}.tar.gz"
-    local pkg_uri="https://apollo-pkg-beta.cdn.bcebos.com/archive/${pkg_filename}"
-    local pkg_checksum='8413dd02c08fe7d0384e4ac0a66449f22c8fbe99f252015d6020174e8ecd5acf'
-    download_if_not_cached "${pkg_filename}" "${pkg_checksum}" "${pkg_uri}"
-    mkdir -p /usr/local/libtorch
-    tar -xzf "${pkg_filename}" -C /usr/local/libtorch --strip-components=1
-
-    # Add runtime library path
-    ensure_ld_path "/usr/local/libtorch/lib"
-
-    rm -rf "${pkg_filename}"
-
-    ldconfig
-
-    ok "LibTorch C++ pre-compiled package for jetson installed successfully."
-
-    return 0 # Exit normally
-  else
-    error "Unsupported architecture: ${TARGET_ARCH}"
-    return 1
+  if [[ "${CHECKSUM}" == TODO_* ]]; then
+      error "Checksum for ${PKG_NAME} is not set. Please edit the script."
+      return 1
   fi
 
-  local DOWNLOAD_DIR="/tmp/libtorch_download"
-  mkdir -p "${DOWNLOAD_DIR}"
-  pushd "${DOWNLOAD_DIR}" > /dev/null
+  local DOWNLOAD_DIR="/tmp/pytorch_wheel"
+  mkdir -p "${DOWNLOAD_DIR}"; pushd "${DOWNLOAD_DIR}" > /dev/null
 
-  info "Downloading from ${URL}"
-  download_if_not_cached "${ARCHIVE}" "${CHECKSUM}" "${URL}"
-  unzip -q "${ARCHIVE}"
+  if ! download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"; then
+      warning "Could not download pre-compiled wheel from ${DOWNLOAD_LINK}."
+      popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"; return 1
+  fi
 
-  # Install to system path
-  INSTALL_DIR="/usr/local/libtorch"
-  info "Installing LibTorch to ${INSTALL_DIR}..."
-  rm -rf "${INSTALL_DIR}" # Remove old version
-  mkdir -p "${INSTALL_DIR}"
-  # Use mv instead of cp -r for better efficiency
-  mv libtorch/* "${INSTALL_DIR}/"
+  # install deps
+  # TODO(leafyleong): just install runtime deps not dev packages
+  apt_get_update_and_install \
+    libopenblas-dev \
+    libomp-dev \
+    zlib1g-dev \
+    libffi-dev
 
-  # Add runtime library path
-  ensure_ld_path "${INSTALL_DIR}/lib"
+  info "Installing downloaded wheel via pip..."
+  if ! pip3 install --no-cache-dir "${PKG_NAME}"; then
+      error "pip3 install failed for the downloaded wheel."; popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"; return 1
+  fi
 
-  # Clean up downloaded files
-  popd > /dev/null
-  rm -rf "${DOWNLOAD_DIR}"
+  ok "Pre-compiled wheel installed successfully."
+  popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"; return 0 # Success
+}
 
-  # Optionally: update dynamic linker cache
-  ldconfig
+# --- Helper: Build aarch64 from source (Fallback) ---
+function _build_libtorch_from_source_aarch64() {
+  info "Attempt 2/2: Building LibTorch from source. This will take a very long time."
+  # Install build dependencies
+  info "Installing source build dependencies..."
+  sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+      git cmake ninja-build build-essential python3-dev python3-pip python3-setuptools \
+      python3-wheel libopenblas-dev libomp-dev libjpeg-dev zlib1g-dev libffi-dev \
+      && pip3 install --no-cache-dir numpy pyyaml typing_extensions sympy filelock \
+      && sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*
 
-  ok "LibTorch C++ ${PYTORCH_VERSION} installed successfully."
+  # Clone PyTorch source
+  local BUILD_DIR="/tmp/pytorch_build"
+  rm -rf "${BUILD_DIR}"; mkdir -p "${BUILD_DIR}"; pushd "${BUILD_DIR}" > /dev/null
+  info "Cloning PyTorch source v${PYTORCH_VERSION}..."
+  git clone --recursive --single-branch --branch "v${PYTORCH_VERSION}" https://github.com/pytorch/pytorch.git
+  cd pytorch
+
+  # Configure and build
+  info "Configuring build environment for Jetson..."
+  export USE_CUDA=1 USE_CUDNN=1 USE_TENSORRT=1 TORCH_CUDA_ARCH_LIST="8.7"
+  export USE_NCCL=0 USE_DISTRIBUTED=0 USE_QNNPACK=1 USE_PYTORCH_QNNPACK=1
+  export BUILD_TEST=0 CMAKE_GENERATOR="Ninja" CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
+
+  info "Starting PyTorch wheel build. Log: /tmp/pytorch_build.log"
+  if ! python3 setup.py bdist_wheel > /tmp/pytorch_build.log 2>&1; then
+    error "Build from source failed. Check /tmp/pytorch_build.log"; popd >/dev/null; rm -rf "${BUILD_DIR}"; return 1
+  fi
+
+  ok "PyTorch source build completed. Installing the new wheel..."
+  if ! pip3 install --no-cache-dir dist/*.whl; then
+      error "pip3 install failed for the newly built wheel."; return 1
+  fi
+
+  popd >/dev/null; rm -rf "${BUILD_DIR}"; return 0 # Success
 }
 
 # --- Main Execution Flow ---
 main() {
-  # TODO(daohu527): For inference, no python version is required
+  # As per original script, Python installation is commented out by default.
   # install_pytorch_python
   install_libtorch_cpp
-  info "✅ All PyTorch components have been installed."
+  info "✅ LibTorch installation process finished."
 }
 
 main "$@"

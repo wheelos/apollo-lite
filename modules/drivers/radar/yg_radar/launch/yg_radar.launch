@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>yg_radar</name>
+        <dag_conf>/apollo/modules/drivers/radar/yg_radar/dag/yg_radar.dag</dag_conf>
+        <process_name>yg_radar</process_name>
+    </module>
+</cyber>

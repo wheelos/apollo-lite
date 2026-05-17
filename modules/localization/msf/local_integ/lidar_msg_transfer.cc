@@ -21,6 +21,7 @@
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"
+#include "modules/localization/common/rigid_transform_helper.h"
 #include "modules/localization/common/localization_gflags.h"
 
 namespace apollo {
@@ -79,6 +80,8 @@ void LidarMsgTransfer::Transfer(const drivers::PointCloud &msg,
 
   lidar_frame->measurement_time =
       cyber::Time(msg.measurement_time()).ToSecond();
+  lidar_frame->frame_id =
+      apollo::localization::common::GetPointCloudFrameId(msg);
   if (FLAGS_lidar_debug_log_flag) {
     AINFO << std::setprecision(15) << "LocalLidar Debug Log: velodyne msg. "
           << "[time:" << lidar_frame->measurement_time

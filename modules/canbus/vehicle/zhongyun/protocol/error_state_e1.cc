@@ -18,6 +18,7 @@
 
 #include "glog/logging.h"
 
+#include "modules/canbus/vehicle/chassis_extension_tools.h"
 #include "modules/drivers/canbus/common/byte.h"
 #include "modules/drivers/canbus/common/canbus_consts.h"
 
@@ -32,17 +33,21 @@ const int32_t Errorstatee1::ID = 0xE1;
 
 void Errorstatee1::Parse(const std::uint8_t* bytes, int32_t length,
                          ChassisDetail* chassis) const {
-  chassis->mutable_zhongyun()->mutable_error_state_e1()->set_brake_error_code(
-      brake_error_code(bytes, length));
-  chassis->mutable_zhongyun()->mutable_error_state_e1()->set_driven_error_code(
-      driven_error_code(bytes, length));
-  chassis->mutable_zhongyun()
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
+      ->mutable_error_state_e1()
+      ->set_brake_error_code(brake_error_code(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
+      ->mutable_error_state_e1()
+      ->set_driven_error_code(driven_error_code(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
       ->mutable_error_state_e1()
       ->set_steering_error_code(steering_error_code(bytes, length));
-  chassis->mutable_zhongyun()->mutable_error_state_e1()->set_parking_error_code(
-      parking_error_code(bytes, length));
-  chassis->mutable_zhongyun()->mutable_error_state_e1()->set_gear_error_msg(
-      gear_error_msg(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
+      ->mutable_error_state_e1()
+      ->set_parking_error_code(parking_error_code(bytes, length));
+  MutableChassisExtension<::apollo::canbus::Zhongyun>(chassis)
+      ->mutable_error_state_e1()
+      ->set_gear_error_msg(gear_error_msg(bytes, length));
 }
 
 // config detail: {'name': 'brake_error_code', 'enum': {0:

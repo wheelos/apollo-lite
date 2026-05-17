@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>mission</name>
+        <dag_conf>/apollo/modules/mission/dag/mission.dag</dag_conf>
+        <process_name></process_name>
+    </module>
+</cyber>

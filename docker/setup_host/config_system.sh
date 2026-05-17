@@ -21,10 +21,16 @@ APOLLO_ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # use relative path for multiple instances
 CORE_DUMP_DIR="data/core"
 CORE_DUMP_CONF_FILE="/etc/sysctl.d/99-core-dump.conf"
-BAZEL_CACHE_DIR="/var/cache/bazel/repo_cache"
+BAZEL_CACHE_DIR="${APOLLO_ROOT_DIR}/.cache/bazel/repo_cache"
 UVCVIDEO_CONF_FILE="/etc/modprobe.d/uvcvideo.conf"
 UDEV_RULES_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/udev/rules.d"
 UDEV_RULES_DEST_DIR="/etc/udev/rules.d"
+LIMITS_CONF_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/security/limits.d"
+LIMITS_CONF_DEST_DIR="/etc/security/limits.d"
+NETWORK_CONF_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/network"
+NETWORK_CONF_DEST_DIR="/etc/systemd/network"
+SYSTEMD_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system"
+SYSTEMD_DEST_DIR="/etc/systemd/system"
 
 # Source path of the service file within the project
 AUTOSERVICE_SRC_FILE="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/autostart.service"
@@ -32,11 +38,33 @@ AUTOSERVICE_SRC_FILE="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/au
 AUTOSERVICE_DEST_FILE="/etc/systemd/system/autostart.service"
 # User who will run the autonomous driving stack. SUDO_USER is the user who invoked sudo.
 WHL_HOST_USER="${SUDO_USER:-$(whoami)}"
+## interactive-only script; no CLI skip/profile parsing in this file
+
+## NOTE: This script is interactive and optional steps are controlled via
+## interactive prompts. No CLI parsing is required here.
+
+# --- PTP Variables ---
+PTP_CONF_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/linuxptp/ptp4l.conf"
+PTP_CONF_DEST_DIR="/etc/linuxptp"
+PTP_CONF_DEST="/etc/linuxptp/ptp4l.conf"
+
+# Service Base Files
+SYSTEMD_DEST_DIR="/etc/systemd/system"
+PTP4L_SERVICE_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/ptp4l.service"
+PHC2SYS_SERVICE_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/phc2sys.service"
+
+# Service Overrides
+PTP4L_OVERRIDE_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/ptp4l.service.d/override.conf"
+PTP4L_OVERRIDE_DEST_DIR="/etc/systemd/system/ptp4l.service.d"
+
+PHC2SYS_OVERRIDE_SRC="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/phc2sys.service.d/override.conf"
+PHC2SYS_OVERRIDE_DEST_DIR="/etc/systemd/system/phc2sys.service.d"
 
 # --- Color Definitions for Output ---
 BOLD='\033[1m'
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 WHITE='\033[34m'
 NO_COLOR='\033[0m'
 
@@ -56,11 +84,65 @@ error() {
   (echo >&2 -e "[${RED}${BOLD}ERROR${NO_COLOR}] $*")
 }
 
+# Prints a warning message to stderr.
+warning() {
+  (echo >&2 -e "[${YELLOW}${BOLD}WARNING${NO_COLOR}] $*")
+}
+
+prompt_yes_no() {
+  local prompt_msg="$1"
+  local default_yes=${2:-Y}
+  # Non-interactive shells: honor default
+  if [[ ! -t 0 ]]; then
+    if [[ "${default_yes}" == "Y" ]]; then
+      return 0
+    else
+      return 1
+    fi
+  fi
+  local answer
+  # Print prompt to stderr to avoid accidental duplication when stdout is
+  # redirected or when other parts of the script also write to stdout.
+  printf "%s" "${prompt_msg} [Y/n]: " >&2
+  read -r answer
+  answer=${answer:-${default_yes}}
+  case "${answer}" in
+    [Yy]* ) return 0 ;;
+    * ) return 1 ;;
+  esac
+}
+
+confirm_and_run() {
+  local label="$1"
+  local fn="$2"
+  if prompt_yes_no "Install/configure ${label}?" Y; then
+    if ! ${fn}; then
+      error "Step '${label}' failed."
+      return 1
+    fi
+  else
+    info "Skipping ${label} by user choice."
+  fi
+  return 0
+}
+
 # --- Pre-condition Check for the Entire Script ---
 # This function checks essential prerequisites before starting any host setup.
 # Returns 0 if all pre-conditions are met, 1 otherwise.
 check_host_setup_pre_conditions() {
   info "Checking host setup pre-conditions..."
+
+  # APT authentication will fail if the time is incorrect! so time
+  # synchronization is required the first time.
+  if ! command -v chronyc &>/dev/null; then
+    if sudo timedatectl set-ntp true; then
+      timedatectl status
+    else
+      error "Failed to enable NTP via timedatectl"
+      timedatectl status
+      return 1
+    fi
+  fi
 
   # 1. Check for root privileges
   if [ "$(id -u)" -ne 0 ]; then
@@ -86,21 +168,19 @@ check_host_setup_pre_conditions() {
   done
   info "All required commands are available."
 
-  # 4. Check for existence of udev source rules
+  # 4. Check udev source rules (optional)
   if [ ! -d "${UDEV_RULES_SRC_DIR}" ] || [ -z "$(ls -A "${UDEV_RULES_SRC_DIR}")" ]; then
-    error "Udev rules source directory '${UDEV_RULES_SRC_DIR}' not found or is empty."
-    error "Please ensure Apollo's udev rules are present in the expected location."
-    return 1
+    warning "Udev rules source directory '${UDEV_RULES_SRC_DIR}' not found or is empty. The udev step will be skipped unless you provide rules."
+  else
+    info "Udev rules source directory detected."
   fi
-  info "Udev rules source directory detected."
 
-  # 5. Check for existence of autostart service file
+  # 5. Check autostart service file (optional)
   if [ ! -f "${AUTOSERVICE_SRC_FILE}" ]; then
-    error "Autostart service file not found at '${AUTOSERVICE_SRC_FILE}'."
-    error "Please ensure the service definition file is present."
-    return 1
+    warning "Autostart service file not found at '${AUTOSERVICE_SRC_FILE}'. The autostart step will be skipped unless you provide the service file."
+  else
+    info "Autostart service source file detected."
   fi
-  info "Autostart service source file detected."
 
   success "All host setup pre-conditions met."
   return 0
@@ -179,54 +259,75 @@ setup_bazel_cache_dir() {
   return 0
 }
 
-# Configures NTP synchronization using systemd-timesyncd.
+# Configures NTP synchronization using chrony.
 configure_ntp() {
-  info "Configuring NTP synchronization with systemd-timesyncd..."
+  info "Standardizing NTP synchronization on chrony..."
 
-  # Step 1: Check if systemd-timesyncd service unit file exists
-  local service_exists=false
-  if sudo systemctl list-unit-files systemd-timesyncd.service | grep -c systemd-timesyncd.service &> /dev/null; then
-    service_exists=true
+  # --- Step 1: Detect and disable conflicting NTP services ---
+  if systemctl list-unit-files | grep -q 'systemd-timesyncd.service'; then
+    if systemctl is-active --quiet systemd-timesyncd.service; then
+      info "Conflict detected: systemd-timesyncd is active. Disabling it now."
+      sudo systemctl disable --now systemd-timesyncd.service || warning "Failed to disable systemd-timesyncd."
+    fi
   fi
 
-  if ! "$service_exists"; then
-    error "systemd-timesyncd.service not found on this system."
-    error "Please ensure 'systemd-timesyncd' is installed if accurate time synchronization is critical."
-    return 1 # Exit if the service file itself doesn't exist
+  local ntpd_service
+  ntpd_service=$(systemctl list-unit-files | grep -Eo '^(ntp|ntpd)\.service' | head -n 1)
+  if [ -n "$ntpd_service" ]; then
+    if systemctl is-active --quiet "$ntpd_service"; then
+      info "Conflict detected: $ntpd_service is active. Disabling it now."
+      sudo systemctl disable --now "$ntpd_service" || warning "Failed to disable $ntpd_service."
+    fi
   fi
 
-  # Step 2: If service exists, check if it's already in the desired state (enabled and active)
-  local is_enabled=false
-  if sudo systemctl is-enabled --quiet systemd-timesyncd.service; then
-    is_enabled=true
+  # --- Step 2: Check for chrony, install if missing ---
+  # 'command -v' is a reliable way to check if a command is in the system's PATH
+  if ! command -v chronyc &> /dev/null; then
+    info "chrony is not installed. Attempting to install via apt..."
+
+    # Update package list and install chrony
+    sudo apt-get update
+    sudo apt-get install -y chrony
+
+    if [ $? -ne 0 ]; then
+      error "Failed to install 'chrony' via apt. Please check for errors above. Aborting."
+      return 1
+    fi
+    success "'chrony' package installed successfully."
+
+    # Reload systemd to recognize the new service file. This is crucial.
+    info "Reloading systemd daemon..."
+    sudo systemctl daemon-reload
   fi
 
-  local is_active=false
-  if sudo systemctl is-active --quiet systemd-timesyncd.service; then
-    is_active=true
+  # --- Step 3: Ensure chrony service is enabled and active ---
+  # Find the exact service name (usually 'chrony.service' on Debian/Ubuntu)
+  local chrony_service
+  chrony_service=$(systemctl list-unit-files | grep -Eo '^chrony(d)?\.service' | head -n 1)
+
+  if [ -z "$chrony_service" ]; then
+    error "chrony appears to be installed, but its systemd service could not be found. Investigation needed."
+    return 1
   fi
 
-  if "$is_enabled" && "$is_active"; then
-    info "systemd-timesyncd service is already enabled and active. Skipping configuration."
-    return 0 # Configuration is already complete, no action needed
+  if systemctl is-enabled --quiet "$chrony_service" && systemctl is-active --quiet "$chrony_service"; then
+    success "chrony ($chrony_service) is already enabled and running correctly."
   else
-    info "systemd-timesyncd service found but not fully enabled or active. Attempting to enable and start."
+    info "Enabling and starting chrony service ($chrony_service)..."
+    sudo systemctl enable --now "$chrony_service"
+    if [ $? -ne 0 ]; then
+      error "Failed to start $chrony_service. Diagnose with 'systemctl status $chrony_service'."
+      return 1
+    fi
+    success "chrony ($chrony_service) has been enabled and started."
   fi
 
-  # Step 3: Enable and start the service if it's not already in the desired state
-  info "Enabling and starting systemd-timesyncd time synchronization service..."
-  sudo systemctl enable systemd-timesyncd.service
-  if [ $? -ne 0 ]; then
-    error "Failed to enable systemd-timesyncd. Please check systemd status and permissions."
-    return 1
-  fi
+  # --- Step 4: Verify synchronization status ---
+  info "Verifying chrony synchronization status..."
+  # Allow a few seconds for chrony to establish a connection
+  sleep 3
+  chronyc tracking
 
-  sudo systemctl start systemd-timesyncd.service
-  if [ $? -ne 0 ]; then
-    error "Failed to start systemd-timesyncd. Please check systemd logs for details (e.g., journalctl -xeu systemd-timesyncd)."
-    return 1
-  fi
-  success "systemd-timesyncd enabled and started."
   return 0
 }
 
@@ -251,15 +352,15 @@ apply_udev_rules() {
   fi
 
   if "${all_udev_rules_present}"; then
-    info "Udev rules already appear to be in place. Skipping copy."
-  else
-    sudo cp -r "${UDEV_RULES_SRC_DIR}"/* "${UDEV_RULES_DEST_DIR}/"
-    if [ $? -ne 0 ]; then
-      error "Failed to copy udev rules. Check source/destination permissions or path."
-      return 1
-    fi
-    info "Udev rules copied."
+    info "Udev rules already appear to be in place. Force copy."
   fi
+
+  sudo cp -r "${UDEV_RULES_SRC_DIR}"/* "${UDEV_RULES_DEST_DIR}/"
+  if [ $? -ne 0 ]; then
+    error "Failed to copy udev rules. Check source/destination permissions or path."
+    return 1
+  fi
+  info "Udev rules copied."
 
   info "Reloading udev rules and triggering devices..."
   sudo udevadm control --reload-rules
@@ -348,77 +449,227 @@ add_user_to_docker_group() {
 install_autostart_service() {
   info "Installing and configuring the autostart systemd service..."
 
-  # 1: Hard Fail on Root Installation (Security Best Practice) ---
-  # Running the main AD stack as root is a major security risk.
-  # We now block this by default and require an explicit, intentional override.
+  # --- 1: Security & User Validation ---
+  # Check for Root installation attempt (Blocked by default)
   if [[ "${WHL_HOST_USER}" == "root" ]]; then
      error "Running the autonomous driving stack as 'root' is not allowed for security reasons."
-     error "To override this critical check, set the environment variable ALLOW_ROOT_INSTALL=yes and re-run."
+     error "To override, set ALLOW_ROOT_INSTALL=yes. (NOT RECOMMENDED)"
      if [[ "${ALLOW_ROOT_INSTALL:-no}" != "yes" ]]; then
-         return 1 # Hard fail, aborting the installation.
+         return 1
      else
-         info "ALLOW_ROOT_INSTALL=yes detected. Proceeding with installation as root. THIS IS NOT RECOMMENDED."
+         warning "ALLOW_ROOT_INSTALL=yes detected. Proceeding as root."
      fi
   fi
 
-  # 2: Input Validation for Username (Prevent Command Injection) ---
-  # Ensure the username consists only of safe, alphanumeric characters.
+  # Validate Username (Alphanumeric check)
   if ! [[ "${WHL_HOST_USER}" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_-]*$ ]]; then
-    error "Invalid username detected: '${WHL_HOST_USER}'. Usernames must be alphanumeric (with _ or -)."
-    error "Aborting installation to prevent potential command injection."
+    error "Invalid username: '${WHL_HOST_USER}'. Aborting."
     return 1
   fi
-  info "Target user '${WHL_HOST_USER}' validated."
 
-  # 3: Input Validation for Path (Prevent Command Injection) ---
-  # Ensure the path is a valid absolute path and does not contain characters
-  # that could break the sed command or be interpreted by the shell.
+  # Validate Path (Absolute path check)
   if ! [[ "${APOLLO_ROOT_DIR}" =~ ^/[a-zA-Z0-9_/.-]+$ ]]; then
-    error "Invalid APOLLO_ROOT_DIR detected: '${APOLLO_ROOT_DIR}'."
-    error "Path must be absolute and contain only safe characters (alphanumeric, /, _, ., -)."
-    error "Aborting installation to prevent potential command injection."
-    return 1
-  fi
-  info "Apollo root directory '${APOLLO_ROOT_DIR}' validated."
-
-  info "Copying '${AUTOSERVICE_SRC_FILE}' to '${AUTOSERVICE_DEST_FILE}'..."
-  if ! cp "${AUTOSERVICE_SRC_FILE}" "${AUTOSERVICE_DEST_FILE}"; then
-    error "Failed to copy service file. Check permissions."
+    error "Invalid APOLLO_ROOT_DIR: '${APOLLO_ROOT_DIR}'. Must be absolute path."
     return 1
   fi
 
-  # 4: Safer Replacement Method ---
-  # By using a different delimiter for sed (like '#'), we make the replacement
-  # robust even if the path contains the default '/' delimiter.
-  # The validation above already mitigates this, but this is a defense-in-depth measure.
-  info "Customizing service file with user='${WHL_HOST_USER}' and path='${APOLLO_ROOT_DIR}'..."
-  if ! sed -i "s#__USER__#${WHL_HOST_USER}#g" "${AUTOSERVICE_DEST_FILE}"; then
-    error "Failed to replace user placeholder in service file."
-    return 1
-  fi
-  if ! sed -i "s#__APOLLO_ROOT_DIR__#${APOLLO_ROOT_DIR}#g" "${AUTOSERVICE_DEST_FILE}"; then
-    error "Failed to replace path placeholder in service file."
-    return 1
+  # --- 2: Context Gathering ---
+  # We need the Group and Home directory for the systemd service context
+  local host_group=$(id -gn "${WHL_HOST_USER}")
+  local host_home=$(eval echo "~${WHL_HOST_USER}")
+
+  info "Target Context -> User: ${WHL_HOST_USER}, Group: ${host_group}, Home: ${host_home}"
+
+  # --- 3: File Preparation ---
+  if [[ ! -f "${AUTOSERVICE_SRC_FILE}" ]]; then
+      error "Source service file not found at: ${AUTOSERVICE_SRC_FILE}"
+      return 1
   fi
 
-  # Reload the systemd daemon
+  info "Copying template to '${AUTOSERVICE_DEST_FILE}'..."
+  # We use a temporary file to do sed replacements to avoid permission issues before sudo mv
+  local tmp_service_file="/tmp/wheelos_autostart.service.tmp"
+  cp "${AUTOSERVICE_SRC_FILE}" "${tmp_service_file}"
+
+  # --- 4: Template Replacement ---
+  info "Configuring service parameters..."
+
+  # Use '#' as delimiter to safely handle paths containing '/'
+  sed -i "s#__USER__#${WHL_HOST_USER}#g" "${tmp_service_file}"
+  sed -i "s#__GROUP__#${host_group}#g" "${tmp_service_file}"
+  sed -i "s#__APOLLO_ROOT_DIR__#${APOLLO_ROOT_DIR}#g" "${tmp_service_file}"
+  sed -i "s#__HOME_DIR__#${host_home}#g" "${tmp_service_file}"
+
+  # --- 5: Installation & Activation ---
+  # Move to system directory (requires sudo implicitly if running as setup script,
+  # or ensure script is run with sufficient privs for this step)
+  if ! sudo mv "${tmp_service_file}" "${AUTOSERVICE_DEST_FILE}"; then
+      error "Failed to move service file to /etc/systemd/system/. Permission denied?"
+      return 1
+  fi
+
+    # Ensure the whl script is executable
+    if [[ -f "${APOLLO_ROOT_DIR}/docker/scripts/whl.sh" ]]; then
+      chmod +x "${APOLLO_ROOT_DIR}/docker/scripts/whl.sh"
+    else
+      warning "Script '${APOLLO_ROOT_DIR}/docker/scripts/whl.sh' not found. Service may fail to start."
+    fi
+
+  # Systemd Reload
   info "Reloading systemd daemon..."
-  if ! systemctl daemon-reload; then
-    error "Failed to reload systemd daemon. Run 'journalctl -xe' for details."
+  if ! sudo systemctl daemon-reload; then
+    error "Failed to reload systemd."
     return 1
   fi
 
-  # Enable the service
-  info "Enabling 'autostart.service' to run on boot..."
-  if ! systemctl enable autostart.service; then
-    error "Failed to enable autostart.service."
+  # Enable Service
+  info "Enabling 'autostart.service'..."
+  if ! sudo systemctl enable $(basename "${AUTOSERVICE_DEST_FILE}"); then
+    error "Failed to enable service."
     return 1
   fi
 
-  success "Autostart service installed and enabled successfully."
-  info "The autonomous driving system will now start automatically on the next boot."
+  success "Autostart service installed. The system will start automatically on boot."
   return 0
 }
+
+# Sets the system-wide limits for core dump file size by copying config.
+setup_core_limits() {
+    info "Configuring system-wide core dump size limits..."
+    if [ ! -d "${LIMITS_CONF_SRC_DIR}" ] || [ -z "$(ls -A "${LIMITS_CONF_SRC_DIR}")" ]; then
+        info "Core limits source directory not found or empty. Skipping."
+        return 0
+    fi
+    sudo cp -f "${LIMITS_CONF_SRC_DIR}"/* "${LIMITS_CONF_DEST_DIR}/"
+    if [ $? -ne 0 ]; then error "Failed to copy core limits configuration." && return 1; fi
+    success "Core dump size limits configured."
+    return 0
+}
+
+# Configures CAN bus using systemd-networkd for permanent setup.
+configure_can_bus() {
+    info "Configuring CAN bus interfaces using systemd-networkd..."
+    if [ ! -d "${NETWORK_CONF_SRC_DIR}" ] || [ -z "$(ls -A "${NETWORK_CONF_SRC_DIR}")" ]; then
+        info "systemd-networkd source directory not found or empty. Skipping CAN bus setup."
+        return 0
+    fi
+
+    sudo mkdir -p "${NETWORK_CONF_DEST_DIR}"
+    # This robustly copies any .network files present (e.g., just 10-can0.network)
+    sudo cp -f "${NETWORK_CONF_SRC_DIR}"/*.network "${NETWORK_CONF_DEST_DIR}/"
+    if [ $? -ne 0 ]; then error "Failed to copy systemd-networkd CAN configurations." && return 1; fi
+    info "CAN network configuration files copied."
+
+    info "Enabling and restarting systemd-networkd service..."
+    sudo systemctl enable --now systemd-networkd.service > /dev/null 2>&1
+    sudo systemctl restart systemd-networkd.service
+    if [ $? -ne 0 ]; then error "Failed to restart systemd-networkd. Check its status." && return 1; fi
+    success "CAN bus interfaces configured via systemd-networkd."
+    return 0
+}
+
+# Sets up Jetson performance optimizations (nvpmodel, jetson_clocks).
+setup_jetson_performance() {
+    if ! command -v nvpmodel &> /dev/null; then
+        info "Not a Jetson device. Skipping Jetson performance setup."
+        return 0
+    fi
+
+    info "Configuring Jetson performance services (nvpmodel and jetson_clocks)..."
+    local service_file="jetson-performance.service"
+
+    if [ ! -f "${SYSTEMD_SRC_DIR}/${service_file}" ]; then
+        error "'${service_file}' not found in source directory. Skipping." && return 1
+    fi
+
+    sudo cp -f "${SYSTEMD_SRC_DIR}/${service_file}" "${SYSTEMD_DEST_DIR}/"
+    if [ $? -ne 0 ]; then error "Failed to copy ${service_file}." && return 1; fi
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now "${service_file}"
+    if [ $? -ne 0 ]; then error "Failed to enable and start ${service_file}." && return 1; fi
+    success "Jetson performance service enabled and started."
+    return 0
+}
+
+# Switches the system to non-graphical multi-user mode (headless).
+configure_headless_mode() {
+    info "Configuring system for headless operation (disabling GUI)..."
+    # Check if it's already in the desired state (idempotency)
+    if systemctl get-default | grep -q "multi-user.target"; then
+        info "System is already set to multi-user (headless) mode."
+        return 0
+    fi
+
+    sudo systemctl set-default multi-user.target
+    if [ $? -ne 0 ]; then
+        error "Failed to set default target to multi-user.target."
+        return 1
+    fi
+
+    success "System configured for headless mode. GUI will be disabled on next reboot."
+    info "To revert this change, run: sudo systemctl set-default graphical.target"
+    return 0
+}
+
+# Configures Linux PTP (ptp4l and phc2sys) as Master.
+configure_ptp() {
+  info "Configuring Linux PTP as Master..."
+
+  # 1. Install linuxptp
+  if ! command -v ptp4l &> /dev/null; then
+    sudo apt-get update && sudo apt-get install -y linuxptp
+  fi
+
+  # 2. Force overwrite configuration file
+  if [ -f "${PTP_CONF_SRC}" ]; then
+    sudo mkdir -p "${PTP_CONF_DEST_DIR}"
+    sudo cp -f "${PTP_CONF_SRC}" "${PTP_CONF_DEST}"
+    success "PTP configuration file copied."
+  fi
+
+  # 3. Systemd Unit Files
+  [ -f "${PTP4L_SERVICE_SRC}" ] && sudo cp -f "${PTP4L_SERVICE_SRC}" "${SYSTEMD_DEST_DIR}/ptp4l.service"
+  [ -f "${PHC2SYS_SERVICE_SRC}" ] && sudo cp -f "${PHC2SYS_SERVICE_SRC}" "${SYSTEMD_DEST_DIR}/phc2sys.service"
+
+  # 4. Overrides
+  [ -f "${PTP4L_OVERRIDE_SRC}" ] && {
+    sudo mkdir -p "${PTP4L_OVERRIDE_DEST_DIR}";
+    sudo cp -f "${PTP4L_OVERRIDE_SRC}" "${PTP4L_OVERRIDE_DEST_DIR}/override.conf";
+  }
+  [ -f "${PHC2SYS_OVERRIDE_SRC}" ] && {
+    sudo mkdir -p "${PHC2SYS_OVERRIDE_DEST_DIR}";
+    sudo cp -f "${PHC2SYS_OVERRIDE_SRC}" "${PHC2SYS_OVERRIDE_DEST_DIR}/override.conf";
+  }
+
+  # 5. Restart service
+  sudo systemctl daemon-reload
+  sudo systemctl enable ptp4l phc2sys
+  sudo systemctl restart ptp4l phc2sys
+
+  # 6. info
+  if systemctl is-active --quiet ptp4l; then
+    success "PTP E2E is ACTIVE."
+  else
+    # some platform may fail to start ptp server
+    error "PTP failed to start. Check 'journalctl -u ptp4l'."
+    if [[ ! -t 0 ]]; then
+      warning "Non-interactive mode detected; continue without PTP synchronization."
+      return 0
+    fi
+    read -r -p "Should Apollo be setup without time synchronization?(y/N): " response
+    case "$response" in
+      [yY][eE][sS]|[yY])
+        return 0
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  fi
+}
+
+# Note: 'whl' system command is installed by setup_host.sh before calling this script.
 
 # --- Main Host Setup Orchestration Function ---
 # This is the primary entry point for setting up the host machine.
@@ -437,28 +688,62 @@ setup_host_machine() {
     return 1
   fi
 
+  if prompt_yes_no "Configure core limits?" Y; then
+    if ! setup_core_limits; then return 1; fi
+  else
+    info "Skipping core limits configuration."
+  fi
+
   # 3. Setup Bazel cache directory
   if ! setup_bazel_cache_dir; then
     error "Failed to set up Bazel cache directory. Aborting host setup."
     return 1
   fi
 
-  # 4. Configure NTP synchronization
-  if ! configure_ntp; then
-    error "Failed to configure NTP synchronization. Aborting host setup."
-    return 1
+  # 4. Configure optional system-level integrations.
+  if prompt_yes_no "Configure NTP synchronization (chrony)?" Y; then
+    if ! configure_ntp; then return 1; fi
+  else
+    info "Skipping NTP configuration."
   fi
 
-  # 5. Apply udev rules
-  if ! apply_udev_rules; then
-    error "Failed to apply udev rules. Aborting host setup."
-    return 1
+  if prompt_yes_no "Configure Linux PTP (ptp4l)?" Y; then
+    if ! configure_ptp; then return 1; fi
+  else
+    info "Skipping PTP configuration."
   fi
 
-  # 6. Configure uvcvideo module
-  if ! configure_uvcvideo_module; then
-    error "Failed to configure uvcvideo module. Aborting host setup."
-    return 1
+  if prompt_yes_no "Apply udev rules?" Y; then
+    if ! apply_udev_rules; then return 1; fi
+  else
+    info "Skipping udev rules."
+  fi
+
+  if prompt_yes_no "Configure uvcvideo module options?" Y; then
+    if ! configure_uvcvideo_module; then return 1; fi
+  else
+    info "Skipping uvcvideo configuration."
+  fi
+
+  if prompt_yes_no "Configure CAN bus (systemd-networkd)?" Y; then
+    if ! configure_can_bus; then return 1; fi
+  else
+    info "Skipping CAN bus configuration."
+  fi
+
+  if prompt_yes_no "Apply Jetson performance tuning (nvpmodel/jetson_clocks)?" N; then
+    if ! setup_jetson_performance; then
+      error "Failed to configure Jetson performance."
+      return 1
+    fi
+  else
+    info "Skipping Jetson performance tuning."
+  fi
+
+  if prompt_yes_no "Configure headless mode (disable GUI)?" N; then
+    if ! configure_headless_mode; then return 1; fi
+  else
+    info "Skipping headless mode configuration."
   fi
 
   # 7. Ensure docker permissions are set correctly
@@ -467,10 +752,14 @@ setup_host_machine() {
     return 1
   fi
 
-  # 8. Install and enable the autostart service
-  if ! install_autostart_service; then
-    error "Failed to install the autostart service. Host setup is incomplete."
-    return 1
+  # 8. Install and enable the autostart service (optional)
+  if prompt_yes_no "Install autostart service?" N; then
+    if ! install_autostart_service; then
+      error "Failed to install the autostart service."
+      return 1
+    fi
+  else
+    info "Skipping autostart service installation."
   fi
 
   success "Host machine setup completed successfully!"
@@ -480,20 +769,8 @@ setup_host_machine() {
 # --- Script Entry Point ---
 # Handles command-line arguments to either setup or uninstall host configurations.
 main() {
-  # This script now only supports 'install' mode for setting up the host.
-  # If no argument is provided, it defaults to install.
-  # Any other argument will result in an error message.
-  if [ "$#" -eq 0 ] || [ "$1" == "install" ]; then
-    if [ "$#" -eq 0 ]; then
-      info "No argument provided. Defaulting to 'install' mode."
-    fi
-    setup_host_machine
-  else
-    error "Invalid argument: $1"
-    info "This script is designed for 'install' mode only. Uninstallation is not supported."
-    info "Usage: $0 [install]"
-    return 1 # Return 1 for invalid arguments
-  fi
+  # Interactive-only script: directly run the setup flow.
+  setup_host_machine
 }
 
 # Execute the main function with all command-line arguments

@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -86,6 +86,28 @@ cc_library(
     deps = [
         "//cyber",
         "@osqp",
+    ],
+)
+
+cc_test(
+    name = "fem_pos_deviation_osqp_interface_test",
+    size = "small",
+    srcs = ["fem_pos_deviation_osqp_interface_test.cc"],
+    deps = [
+        ":fem_pos_deviation_osqp_interface",
+        "//cyber",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "fem_pos_deviation_sqp_osqp_interface_test",
+    size = "small",
+    srcs = ["fem_pos_deviation_sqp_osqp_interface_test.cc"],
+    deps = [
+        ":fem_pos_deviation_sqp_osqp_interface",
+        "//cyber",
+        "@com_google_googletest//:gtest",
     ],
 )
 

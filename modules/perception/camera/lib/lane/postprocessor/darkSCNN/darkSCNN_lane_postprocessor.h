@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 #include "modules/common/util/eigen_defs.h"
 #include "modules/perception/base/point.h"

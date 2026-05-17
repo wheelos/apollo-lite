@@ -19,13 +19,14 @@
 #include <NvInferVersion.h>
 
 #ifdef NV_TENSORRT_MAJOR
-#if NV_TENSORRT_MAJOR == 8
+#if NV_TENSORRT_MAJOR > 7
 #include "modules/perception/inference/tensorrt/rt_legacy.h"
 #endif
 #endif
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "modules/perception/proto/rt.pb.h"
@@ -222,6 +223,8 @@ class RTNet : public Inference {
   std::shared_ptr<NetParameter> net_param_;
   WeightMap weight_map_;
   std::vector<void *> buffers_;
+  // Map tensor name -> index in buffers_ (for TRT>=10 setTensorAddress)
+  std::unordered_map<std::string, int> tensor_buffer_index_;
   int workspaceSize_ = 1;
   nvinfer1::Int8EntropyCalibrator *calibrator_ = nullptr;
   bool is_own_calibrator_ = true;

@@ -61,9 +61,9 @@ class VehicleController {
    * @return error_code
    */
   virtual common::ErrorCode Init(
-      const VehicleParameter &params,
-      CanSender<ChassisDetail> *const can_sender,
-      MessageManager<ChassisDetail> *const message_manager) = 0;
+      const VehicleParameter& params,
+      CanSender<ChassisDetail>* const can_sender,
+      MessageManager<ChassisDetail>* const message_manager) = 0;
 
   /**
    * @brief start the vehicle controller.
@@ -87,7 +87,7 @@ class VehicleController {
    * @param command the control command
    * @return error_code
    */
-  virtual common::ErrorCode Update(const control::ControlCommand &command);
+  virtual common::ErrorCode Update(const control::ControlCommand& command);
 
   /**
    * @brief set vehicle to appointed driving mode.
@@ -95,7 +95,7 @@ class VehicleController {
    * @return error_code
    */
   virtual common::ErrorCode SetDrivingMode(
-      const Chassis::DrivingMode &driving_mode);
+      const Chassis::DrivingMode& driving_mode);
 
  private:
   /*
@@ -156,27 +156,29 @@ class VehicleController {
    * @note this function is only for vehicle supporting differential speed
    * control, such as electric car with in-wheel motor
    */
-  virtual void DifferentialSpeed(double linear_speed, double angular_speed) {};
+  virtual void DifferentialSpeed(double linear_speed, double angular_speed){};
 
   /*
    * @brief set Electrical Park Brake
    */
-  virtual void SetEpbBreak(const control::ControlCommand &command) = 0;
-  virtual void SetBeam(const control::ControlCommand &command) = 0;
-  virtual void SetHorn(const control::ControlCommand &command) = 0;
-  virtual void SetTurningSignal(const control::ControlCommand &command) = 0;
+  virtual void SetEpbBreak(const control::ControlCommand& command) = 0;
+  virtual void SetBeam(const control::ControlCommand& command) = 0;
+  virtual void SetHorn(const control::ControlCommand& command) = 0;
+  virtual void SetTurningSignal(const control::ControlCommand& command) = 0;
 
   virtual void SetLimits() {}
 
+  virtual bool VerifyID() { return true; }
+
  protected:
   virtual Chassis::DrivingMode driving_mode();
-  virtual void set_driving_mode(const Chassis::DrivingMode &driving_mode);
+  virtual void set_driving_mode(const Chassis::DrivingMode& driving_mode);
 
  protected:
   canbus::VehicleParameter params_;
   common::VehicleParam vehicle_params_;
-  CanSender<ChassisDetail> *can_sender_ = nullptr;
-  MessageManager<ChassisDetail> *message_manager_ = nullptr;
+  CanSender<ChassisDetail>* can_sender_ = nullptr;
+  MessageManager<ChassisDetail>* message_manager_ = nullptr;
   bool is_initialized_ = false;  // own by derviative concrete controller
   Chassis::DrivingMode driving_mode_ = Chassis::COMPLETE_MANUAL;
   bool is_reset_ = false;  // reset command from control command
