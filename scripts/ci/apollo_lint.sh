@@ -100,13 +100,22 @@ function get_changed_files_by_pattern() {
 
 function run_cpp_format() {
   info "::group::Running C++ Format Check (Clang-Format)"
-  local CLANG_FORMAT_EXPECTED_VERSION="18"
-  local clang_format_cmd="clang-format-${CLANG_FORMAT_EXPECTED_VERSION}"
+  # CLANG_FORMAT_CMD can override the exact executable (e.g. "/usr/bin/clang-format" or "clang-format-18")
+  local CLANG_FORMAT_EXPECTED_VERSION="${CLANG_FORMAT_EXPECTED_VERSION:-18}"
+  local clang_format_cmd="${CLANG_FORMAT_CMD:-clang-format-${CLANG_FORMAT_EXPECTED_VERSION}}"
 
+  # Prefer the requested command, but fall back to a plain `clang-format` if available.
   if ! command -v "${clang_format_cmd}" &>/dev/null; then
-    error "Specific clang-format version '${clang_format_cmd}' not found. Please install."
-    return 1
+    if command -v clang-format &>/dev/null; then
+      warning "Requested clang-format '${clang_format_cmd}' not found; falling back to 'clang-format' from PATH."
+      clang_format_cmd="clang-format"
+    else
+      error "clang-format not found. Please install '${clang_format_cmd}' or make 'clang-format' available in PATH."
+      return 1
+    fi
   fi
+
+  info "Using clang-format command: ${clang_format_cmd}"
 
   local files_to_check=()
   if [[ "${DIFF_MODE}" -eq 1 ]]; then
@@ -321,6 +330,10 @@ Options:
   -a, --all            Run all available checks.
   --stage <dev|prod>   Specify stage for linting (default: dev). Affects C++ lint targets.
   -h, --help           Show this help message and exit.
+  
+Environment variables:
+  CLANG_FORMAT_CMD                Override clang-format executable (e.g. clang-format-18 or /usr/bin/clang-format).
+  CLANG_FORMAT_EXPECTED_VERSION   Expected clang-format minor version (default: 18, used when CLANG_FORMAT_CMD is unset).
 EOF
 }
 

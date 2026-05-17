@@ -78,6 +78,8 @@ struct LocalizationIntegParam {
 
   // lidar module
   std::string map_path = "";
+  // Deprecated legacy field kept for compatibility. Runtime rigid extrinsics
+  // now come from TF using the incoming sensor frame id.
   std::string lidar_extrinsic_file = "";
   std::string lidar_height_file = "";
   double lidar_height_default = 1.7;

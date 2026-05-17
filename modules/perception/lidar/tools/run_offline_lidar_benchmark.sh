@@ -14,6 +14,7 @@ Required (generation):
 Optional (generation):
   --pose_dir=DIR                                (if empty, tracking is forced off)
   --sensor_name=NAME                            (default: velodyne64)
+  --flagfile=FILE                               (default: modules/common/data/global_flagfile.txt; forwarded to offline binary)
   --enable_tracking=true|false                  (default: false)
   --use_hdmap=true|false                        (default: false)
   --use_tracking_info=true|false                (default: false)
@@ -57,6 +58,7 @@ pose_dir=""
 result_dir=""
 gt_dir=""
 sensor_name="velodyne64"
+flagfile=""
 enable_tracking="false"
 use_hdmap="false"
 use_tracking_info="false"
@@ -81,6 +83,7 @@ while [[ $# -gt 0 ]]; do
     --result_dir=*) result_dir="${arg#*=}" ;;
     --gt_dir=*) gt_dir="${arg#*=}" ;;
     --sensor_name=*) sensor_name="${arg#*=}" ;;
+    --flagfile=*) flagfile="${arg#*=}" ;;
     --enable_tracking=*) enable_tracking="${arg#*=}" ;;
     --use_hdmap=*) use_hdmap="${arg#*=}" ;;
     --use_tracking_info=*) use_tracking_info="${arg#*=}" ;;
@@ -112,6 +115,15 @@ fi
 
 if [[ -z "${tag}" ]]; then
   tag="$(date +%Y%m%d_%H%M%S)"
+fi
+
+if [[ -z "${flagfile}" ]]; then
+  flagfile="${ROOT}/modules/common/data/global_flagfile.txt"
+fi
+
+if [[ ! -f "${flagfile}" ]]; then
+  echo "Missing flagfile: ${flagfile}" 1>&2
+  exit 4
 fi
 
 mkdir -p "${result_dir}"
@@ -161,6 +173,7 @@ current_step=1
 
 echo "[${current_step}/${total_steps}] Generate results -> ${result_dir}"
 offline_args=(
+  "--flagfile=${flagfile}"
   "--pcd_path=${pcd_dir}"
   "--pose_path=${pose_dir}"
   "--output_path=${result_dir}"

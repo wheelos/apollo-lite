@@ -19,6 +19,7 @@
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/configs/config_gflags.h"
 
+#include "cyber/common/file.h"
 #include "cyber/time/clock.h"
 #include "modules/common/math/quaternion.h"
 #include "modules/localization/common/localization_gflags.h"
@@ -29,6 +30,24 @@
 namespace apollo {
 namespace localization {
 namespace msf {
+
+namespace {
+
+std::string ResolveLocalToolLidarExtrinsicFile(const std::string& configured) {
+  if (!configured.empty()) {
+    return configured;
+  }
+
+  const std::string workspace_relative =
+      "modules/transform/conf/velodyne128_base_link_extrinsics.yaml";
+  if (apollo::cyber::common::PathExists(workspace_relative)) {
+    return workspace_relative;
+  }
+
+  return "/apollo/modules/transform/conf/velodyne128_base_link_extrinsics.yaml";
+}
+
+}  // namespace
 
 OnlineVisualizerComponent::OnlineVisualizerComponent() {}
 
@@ -55,7 +74,8 @@ bool OnlineVisualizerComponent::Init() {
 bool OnlineVisualizerComponent::InitConfig() {
   map_folder_ = FLAGS_map_dir + "/" + FLAGS_local_map_name;
   map_visual_folder_ = FLAGS_map_visual_dir;
-  lidar_extrinsic_file_ = FLAGS_lidar_extrinsics_file;
+  lidar_extrinsic_file_ =
+      ResolveLocalToolLidarExtrinsicFile(FLAGS_lidar_extrinsics_file);
 
   lidar_local_topic_ = FLAGS_localization_lidar_topic;
   gnss_local_topic_ = FLAGS_localization_gnss_topic;

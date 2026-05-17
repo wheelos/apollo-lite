@@ -3,97 +3,68 @@
 set -euo pipefail
 
 # ----- Constants -----
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+PROJECT_ROOT="$(cd "${DIR}/../.." && pwd -P)"
 DOCKER_DIR="${PROJECT_ROOT}/docker"
 DOCKER_SERVICE_DIR="${DOCKER_DIR}/services"
 CACHE_ROOT_DIR="${PROJECT_ROOT}/.cache"
 HOST_READY_MARKER="/etc/wheelos_setup_host.done"
 
-# Ensure cache dir exists early
 [ -d "${CACHE_ROOT_DIR}" ] || mkdir -p "${CACHE_ROOT_DIR}"
 
-# Dynamic port calculation
-function calculate_dreamview_port() {
-  local base_port=8888
-  local offset=$(($(id -u) % 1000))
-  local dreamview_port=$((base_port + offset))
-  echo $dreamview_port
-}
-DREAMVIEW_PORT=$(calculate_dreamview_port)
-
-# ----- OS Detection -----
-# Detect Ubuntu version, fallback to 22.04 for non-Ubuntu or detection failure
-function detect_os_version() {
-  local os_version="${OS:-}"
-
-  # If OS is already set via environment or command line, use it
-  if [[ -n "${os_version}" ]]; then
-    echo "${os_version}"
-    return
-  fi
-
-  # Try to detect Ubuntu version
-  if [[ -f /etc/os-release ]]; then
-    local os_id=""
-    local version_id=""
-    # shellcheck source=/dev/null
-    source /etc/os-release 2>/dev/null  || true
-    os_id="${ID:-}"
-    version_id="${VERSION_ID:-}"
-
-    if [[ "${os_id}" == "ubuntu" && -n "${version_id}" ]]; then
-      # Extract major version (e.g., "22.04" -> "22.04")
-      echo "${version_id}"
-      return
-    fi
-
-    if [[ "${os_id}" != "ubuntu" ]]; then
-      echo ">>> NOTICE: Non-Ubuntu system detected (${os_id:-unknown}), falling back to 22.04" >&2
-    fi
-  else
-    echo ">>> NOTICE: Cannot detect OS version (/etc/os-release not found), falling back to 22.04" >&2
-  fi
-
-  # Fallback to 22.04
-  echo "22.04"
+function show_help() {
+  echo "Usage: whl [OPTIONS] [COMMAND] [MODE]"
+  echo ""
+  echo "Options:"
+  echo "  -i, --image IMAGE  Specify Docker image for the selected mode"
+  echo "  --os VERSION       Specify OS version (default: auto-detect, fallback: 22.04)"
+  echo "  -h, --help         Show this help message"
+  echo "                     (Prod env file: docker/.env.prod; template: docker/.env.prod.template)"
+  echo ""
+  echo "User-maintained overrides live in .env.global at the project root."
+  echo "Use mode-specific keys such as DEV_USE_GPU, DEV_BAZEL_CACHE_DIR,"
+  echo "TEST_SERVER_PORT, TEST_USE_GPU, TEST_CPUS, TEST_MEMORY,"
+  echo "and TEST_BAZEL_CACHE_DIR."
+  echo "Container names are deterministic and no longer user-configurable."
+  echo "whl regenerates docker/.env.<mode>.local on every run for compose/runtime use."
+  echo ""
+  echo "Extra env overrides (useful for CI):"
+  echo "  WHL_PROJECT_SUFFIX  Append suffix to compose project name for multi-job isolation"
+  echo "  WHL_PORT_OFFSET     Numeric offset added to Dreamview dynamic port (helps avoid port collision)"
+  echo ""
+  echo "Commands:"
+  echo "  start      Start container for the selected mode"
+  echo "  enter      Enter container (starts first if not running)"
+  echo "  stop       Stop container for the selected mode, or 'all'"
+  echo "  status     Show Apollo container status for the selected mode"
+  echo "  update     Pull latest image and restart the selected mode"
+  echo "  prune      Remove legacy Apollo containers for current user"
+  echo "  help       Show this help message"
+  echo ""
+  echo "Modes:"
+  echo "  dev        Standard development mode (Host net, Privileged)"
+  echo "  test       Isolated test mode (Bridge net, Dynamic ports, optional GPU runtime)"
+  echo "  prod       Production mode (Host net, Restart enabled)"
+  echo "  all        Stop all managed modes (stop only)"
+  echo ""
+  echo "Examples:"
+  echo "  whl start dev                # Start dev container using DEV_* overrides"
+  echo "  whl start test               # Start test container using TEST_* overrides"
+  echo "  whl stop test                # Stop only the test container"
+  echo "  whl stop all                 # Stop dev/test and prod when configured"
 }
 
-detect_timezone() {
-  if command -v timedatectl 2>&1 >/dev/null; then
-    # Use timedatectl if available (systemd based systems)
-    timedatectl | grep "Time zone" | awk '{print $3}'
-  elif [[ -f /etc/timezone ]]; then
-    # Fallback to /etc/timezone file if it exists
-    cat /etc/timezone
-  elif [[ -L /etc/localtime ]]; then
-    # Fallback to /etc/localtime symlink if it exists
-    readlink -f /etc/localtime | sed 's|.*/zoneinfo/||'
-  else
-    # Fallback to date command for other systems
-    local tzoffset="$(date +"%z")"
-    local tzoffset_sign="${tzoffset:0:1}"
-    local tzoffset_sign_r=$(echo "${tzoffset_sign}" | sed 's/+/@/g; s/-/+/g; s/@/-/g')
-    local tzoffset_hours=$((10#${tzoffset:1:2}))
-    timezone="Etc/GMT${tzoffset_sign_r}${tzoffset_hours}"
-    echo "${timezone}"
-  fi
-}
-
-# ----- Command Line Arguments -----
-CUSTOM_CONTAINER_NAME=""
 CUSTOM_IMAGE=""
 
 function parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -n | --name)
-        if [[ -z "${2:-}" || "${2}" == -* ]]; then
-          echo ">>> ERROR: --name requires a container name argument"
-          exit 2
-        fi
-        CUSTOM_CONTAINER_NAME="$2"
-        shift 2
-        ;;
       -i | --image)
         if [[ -z "${2:-}" || "${2}" == -* ]]; then
           echo ">>> ERROR: --image requires an image name argument"
@@ -111,35 +82,24 @@ function parse_args() {
         shift 2
         ;;
       enter | start | stop | status | update | prune | help | --help | -h)
-        # These are commands, stop parsing options
         break
         ;;
-      dev | test | prod)
-        # These are modes, stop parsing options
+      dev | test | prod | all)
         break
         ;;
       *)
-        # Unknown option or positional argument
         break
         ;;
     esac
   done
 }
 
-# Parse options before the command
 parse_args "$@"
 
-# Shift parsed options, keep remaining args for command routing
 remaining_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -n | --name)
-      shift 2
-      ;;
-    -i | --image)
-      shift 2
-      ;;
-    --os)
+    -i | --image | --os)
       shift 2
       ;;
     *)
@@ -150,55 +110,86 @@ while [[ $# -gt 0 ]]; do
 done
 set -- "${remaining_args[@]}"
 
-# Prepare to call the container selection script
-ARCH=$(uname -m)
-OS=$(detect_os_version)
-USE_GPU="${USE_GPU:-auto}"
-BAZEL_CACHE_DIR="${BAZEL_CACHE_DIR:-/var/cache/bazel/repo_cache}"
-TARGET_ARCH="${TARGET_ARCH:-${ARCH}}"
-SYSTEM_TZ="$(detect_timezone)"
+ACTION="${1:-enter}"
+if [[ "${ACTION}" == "help" || "${ACTION}" == "--help" || "${ACTION}" == "-h" ]]; then
+  show_help
+  exit 0
+fi
 
-# ----- Phase 1: Container Selection -----
-
-# Call the container selection script
+source "${DOCKER_DIR}/scripts/env_setup.sh"
 source "${DOCKER_DIR}/scripts/container_selection.sh"
+load_project_env_overrides "${PROJECT_ROOT}"
 
-function gpu_available() {
-  local host_arch="$(uname -m)"
-  if [[ "${host_arch}" == "aarch64" ]]; then
-      # for standard arm or jetson with jetpack 6.2+
-      if [[ -x "$(command -v nvidia-smi)" ]]; then
-          return 0
-      fi
-      # for jetson with jetpack 5.x or lower
-      if lsmod | grep -q "^nvgpu"; then
-          return 0
-      fi
-      echo "No GPU device found. CPU will be used."
-      return 1
-  elif [[ "${host_arch}" == "x86_64" ]]; then
-      if [[ ! -x "$(command -v nvidia-smi)" ]]; then
-          echo "No nvidia-smi found. CPU will be used."
-          return 1
-      fi
-      if ! nvidia-smi -L &>/dev/null; then
-          echo "No GPU device found or driver error. CPU will be used."
-          return 1
-      else
-          return 0
-      fi
+function get_compose_cmd() {
+  if docker compose version >/dev/null 2>&1; then
+    echo "docker compose"
   else
-      echo ">>> Error: Unsupported CPU architecture: ${host_arch}" >&2
-      return 1
+    echo "docker-compose"
   fi
 }
 
-function detect_gpu_use() {
-  if gpu_available; then
-     echo "true"
-  else
-     echo "false"
+function validate_mode() {
+  local mode="$1"
+  if [[ "${mode}" != "dev" && "${mode}" != "test" && "${mode}" != "prod" ]]; then
+    echo ">>> ERROR: Invalid mode '${mode}'. Use 'dev', 'test' or 'prod'."
+    exit 2
   fi
+}
+
+function validate_stop_target() {
+  local target="$1"
+  if [[ "${target}" == "all" ]]; then
+    return 0
+  fi
+  validate_mode "${target}"
+}
+
+function compose_project_name() {
+  local mode="$1"
+  local project_hash
+  project_hash="$(project_hash_suffix "${PROJECT_ROOT}")"
+  local project_name="apollo_${USER}_${project_hash}_${mode}"
+  if [[ -n "${WHL_PROJECT_SUFFIX:-}" ]]; then
+    project_name="${project_name}_${WHL_PROJECT_SUFFIX}"
+  fi
+  echo "${project_name}"
+}
+
+function prepare_mode_context() {
+  local mode="$1"
+  local ensure_local_image="${2:-false}"
+  local mode_image=""
+  local mode_use_gpu=""
+
+  ARCH="$(uname -m)"
+
+  if mode_use_gpu="$(resolve_mode_use_gpu "${mode}")"; then
+    USE_GPU="${mode_use_gpu}"
+  else
+    USE_GPU="$(detect_gpu_use_interactive)"
+  fi
+  USE_GPU_HOST="$(gpu_host_flag_from_preference "${USE_GPU}")"
+  export USE_GPU
+  export USE_GPU_HOST
+
+  if [[ -n "${CUSTOM_IMAGE}" ]]; then
+    echo ">>> Using custom image: ${CUSTOM_IMAGE}"
+    APOLLO_IMAGE="${CUSTOM_IMAGE}"
+    export APOLLO_IMAGE
+    return 0
+  fi
+
+  mode_image="$(resolve_mode_image_override "${mode}")"
+  if [[ -n "${mode_image}" ]]; then
+    echo ">>> Using ${mode} image from .env.global: ${mode_image}"
+    APOLLO_IMAGE="${mode_image}"
+    export APOLLO_IMAGE
+    return 0
+  fi
+
+  OS="${OS:-$(detect_os_version)}"
+  select_container "${ARCH}" "${OS}" "${USE_GPU}" "${ensure_local_image}"
+  export APOLLO_IMAGE
 }
 
 function require_host_ready() {
@@ -207,7 +198,7 @@ function require_host_ready() {
   fi
   if [[ ! -f "${HOST_READY_MARKER}" ]]; then
     echo ">>> ERROR: Host is not initialized. Run setup_host first."
-    echo ">>> Hint: sudo ${DOCKER_DIR}/setup_host/setup_host.sh"
+    echo ">>> Hint: sudo ${PROJECT_ROOT}/docker/setup_host/setup_host.sh"
     exit 1
   fi
 }
@@ -216,12 +207,6 @@ function verify_gpu_ready() {
   if [[ "${USE_GPU}" != "true" ]]; then
     return 0
   fi
-
-  # no need to check gpu on this function(already checked above)
-  # if ! command -v nvidia-smi >/dev/null  2>&1; then
-  #   echo ">>> ERROR: GPU requested but 'nvidia-smi' is not available on host."
-  #   exit 1
-  # fi
 
   local docker_info_output
   if ! docker_info_output="$(docker info --format '{{json .Runtimes}}' 2>/dev/null)"; then
@@ -243,83 +228,14 @@ function verify_gpu_ready() {
   fi
 }
 
-if [[ "${USE_GPU}" == "auto" ]]; then
-  USE_GPU="$(detect_gpu_use)"
-fi
-require_host_ready
-verify_gpu_ready
-
-# Use custom image or select container automatically
-if [[ -n "${CUSTOM_IMAGE}" ]]; then
-  echo ">>> Using custom image: ${CUSTOM_IMAGE}"
-  APOLLO_IMAGE="${CUSTOM_IMAGE}"
-else
-  select_container "$ARCH" "$OS" "$USE_GPU"
-fi
-
-# ----- Phase 2: Environment Variable Generation -----
-function generate_env() {
+function ensure_env_generated() {
   local mode="$1"
-  local container_name="apollo_dev_${USER}"
-  local prod_env_file="${DOCKER_DIR}/.env.prod"
-  local prod_env_template="${DOCKER_DIR}/.env.prod.template"
-
-  if [[ "${mode}" == "test" ]]; then
-    container_name="apollo_test_${USER}"
-  elif [[ "${mode}" == "prod" ]]; then
-    container_name="apollo_prod_${USER}"
-  fi
-
-  # Override with custom container name if specified
-  if [[ -n "${CUSTOM_CONTAINER_NAME}" ]]; then
-    container_name="${CUSTOM_CONTAINER_NAME}"
-  fi
-
-  echo ">>> Generating .env for [${mode}]..."
-
-  CONTAINER_NAME="${container_name}"
-  export CONTAINER_NAME
-
-  cat >"${DOCKER_DIR}/.env"  <<EOF
-APOLLO_ROOT=${PROJECT_ROOT}
-APOLLO_IMAGE=${APOLLO_IMAGE}
-CONTAINER_NAME=${container_name}
-USER_NAME=${USER}
-USER_ID=$(id -u)
-GROUP_ID=$(id -g)
-BAZEL_CACHE_DIR=${BAZEL_CACHE_DIR}
-TARGET_ARCH=${TARGET_ARCH}
-TZ=${SYSTEM_TZ}
-DISPLAY=${DISPLAY:-:0}
-SHM_SIZE=2g
-
-# Dynamic port (Test mode)
-SERVER_PORT=${DREAMVIEW_PORT}
-
-# Controlling Entrypoint Behavior
-AUTO_BOOTSTRAP=${AUTO_BOOTSTRAP:-false}
-EOF
-
-  if [[ "${mode}" == "prod" ]]; then
-    if [[ ! -f "${prod_env_file}" && -f "${prod_env_template}" ]]; then
-      cp "${prod_env_template}" "${prod_env_file}"
-      echo ">>> Created ${prod_env_file} from template"
-    fi
-
-    if [[ ! -f "${prod_env_file}" ]]; then
-      echo ">>> ERROR: Missing prod env file: ${prod_env_file}"
-      echo ">>> Hint: copy ${prod_env_template} to ${prod_env_file} and update values."
-      exit 1
-    fi
-    echo ">>> Using prod env file: ${prod_env_file}"
-  fi
-}
-
-function get_compose_cmd() {
-  if docker compose version >/dev/null  2>&1; then
-    echo "docker compose"
-  else
-    echo "docker-compose"
+  local env_file
+  env_file="$(generated_runtime_env_path "${mode}" "${DOCKER_DIR}")"
+  if [[ ! -f "${env_file}" ]]; then
+    echo ">>> ERROR: Expected env file not found: ${env_file}"
+    echo ">>> Hint: rerun command and check output from generate_env."
+    exit 1
   fi
 }
 
@@ -327,37 +243,40 @@ function get_cmd() {
   local mode="$1"
   local base_file="${DOCKER_SERVICE_DIR}/docker-compose.yml"
   local mode_file="${DOCKER_SERVICE_DIR}/docker-compose.dev.yml"
+  local extra_files=""
+  local env_file
+  env_file="$(generated_runtime_env_path "${mode}" "${DOCKER_DIR}")"
+
   if [[ "${mode}" == "test" ]]; then
     mode_file="${DOCKER_SERVICE_DIR}/docker-compose.test.yml"
+    if [[ "${USE_GPU}" == "true" ]]; then
+      extra_files=" -f ${DOCKER_SERVICE_DIR}/docker-compose.test.gpu.yml"
+    fi
   elif [[ "${mode}" == "prod" ]]; then
     mode_file="${DOCKER_SERVICE_DIR}/docker-compose.prod.yml"
+  elif [[ "${mode}" == "dev" && "${USE_GPU}" == "true" ]]; then
+    extra_files=" -f ${DOCKER_SERVICE_DIR}/docker-compose.dev.gpu.yml"
   fi
 
-  # Generate unique project name based on user and project directory
-  # This ensures container isolation between different users and projects
-  local project_hash
-  project_hash=$(echo "${PROJECT_ROOT}" | md5sum | cut -c1-8)
-  local project_name="apollo_${USER}_${project_hash}"
-
-  local compose_cmd
-  compose_cmd="$(get_compose_cmd)"
-  echo "${compose_cmd} --project-name ${project_name} --project-directory ${DOCKER_DIR} -f ${base_file} -f ${mode_file}"
+  echo "$(get_compose_cmd) --env-file ${env_file} --project-name $(compose_project_name "${mode}") --project-directory ${DOCKER_DIR} -f ${base_file} -f ${mode_file}${extra_files}"
 }
 
-function validate_mode() {
+function stop_mode() {
   local mode="$1"
-  if [[ "${mode}" != "dev" && "${mode}" != "test" && "${mode}" != "prod" ]]; then
-    echo ">>> ERROR: Invalid mode '${mode}'. Use 'dev', 'test' or 'prod'."
-    exit 2
-  fi
+  prepare_mode_context "${mode}" "false"
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
+  ensure_env_generated "${mode}"
+  $(get_cmd "${mode}") down 2>/dev/null || true
 }
 
-# ----- Phase 3: Start Container -----
 function cmd_start() {
   local mode="${1:-dev}"
   validate_mode "${mode}"
+  prepare_mode_context "${mode}" "true"
   require_host_ready
-  generate_env "${mode}"
+  verify_gpu_ready
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
+  ensure_env_generated "${mode}"
 
   echo ">>> Starting Apollo [Mode: ${mode}]..."
   if [[ "${mode}" == "test" ]]; then
@@ -365,8 +284,6 @@ function cmd_start() {
   fi
 
   $(get_cmd "${mode}") up -d --remove-orphans
-
-  # Check if the startup was successful.
   sleep 1
   if ! $(get_cmd "${mode}") ps --services --filter "status=running" | grep -q "core"; then
     echo ">>> ERROR: Container failed to start. Logs:"
@@ -378,45 +295,54 @@ function cmd_start() {
 }
 
 function cmd_enter() {
-  local mode=${1:-dev}
+  local mode="${1:-dev}"
   validate_mode "${mode}"
-  require_host_ready
-  # Ensure the container is running.
-  cmd_start "$mode"
-
-  # Allow X11
-  xhost +local:root >/dev/null  2>&1 || true
-
+  cmd_start "${mode}"
+  xhost +local:root >/dev/null 2>&1 || true
   echo ">>> Entering container ${CONTAINER_NAME}..."
   $(get_cmd "${mode}") exec -u "${USER}" -it core /bin/bash
 }
 
 function cmd_status() {
-  local mode=${1:-dev}
+  local mode="${1:-dev}"
   validate_mode "${mode}"
-  require_host_ready
-  generate_env "${mode}"
+  prepare_mode_context "${mode}" "false"
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
+  ensure_env_generated "${mode}"
   $(get_cmd "${mode}") ps
 }
 
 function cmd_update() {
-  local mode=${1:-dev}
+  local mode="${1:-dev}"
   validate_mode "${mode}"
+  prepare_mode_context "${mode}" "true"
   require_host_ready
-  generate_env "${mode}"
+  verify_gpu_ready
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
+  ensure_env_generated "${mode}"
   echo ">>> Updating Apollo image and restarting [Mode: ${mode}]..."
   $(get_cmd "${mode}") pull
   $(get_cmd "${mode}") up -d --remove-orphans
 }
 
 function cmd_stop() {
-  echo ">>> Stopping containers..."
-  generate_env "dev"
-  $(get_cmd "dev") down 2>/dev/null  || true
-  generate_env "test"
-  $(get_cmd "test") down 2>/dev/null  || true
-  generate_env "prod"
-  $(get_cmd "prod") down 2>/dev/null  || true
+  local target="${1:-dev}"
+  local prod_env_file="${DOCKER_DIR}/.env.prod"
+  validate_stop_target "${target}"
+  echo ">>> Stopping Apollo [Target: ${target}]..."
+
+  if [[ "${target}" == "all" ]]; then
+    stop_mode "dev"
+    stop_mode "test"
+    if [[ -f "${prod_env_file}" ]]; then
+      stop_mode "prod"
+    else
+      echo ">>> Skipping prod stop: ${prod_env_file} not found."
+    fi
+  else
+    stop_mode "${target}"
+  fi
+
   echo ">>> Stopped."
 }
 
@@ -426,48 +352,13 @@ function cmd_prune() {
   for container in ${running_containers[*]}; do
     if [[ "${container}" =~ apollo_.*_${USER} ]]; then
       echo ">>> Removing container ${container} ..."
-      docker stop "${container}" >/dev/null  2>&1 || true
-      docker rm -v -f "${container}" >/dev/null  2>&1 || true
+      docker stop "${container}" >/dev/null 2>&1 || true
+      docker rm -v -f "${container}" >/dev/null 2>&1 || true
     fi
   done
   echo ">>> Prune complete."
 }
 
-# ----- Main Script Execution -----
-function show_help() {
-  echo "Usage: bash whl.sh [OPTIONS] [COMMAND] [MODE]"
-  echo ""
-  echo "Options:"
-  echo "  -n, --name NAME    Specify container name (default: apollo_{dev|test|prod}_{USER})"
-  echo "  -i, --image IMAGE  Specify Docker image (skip auto-selection)"
-  echo "  --os VERSION       Specify OS version (default: auto-detect, fallback: 22.04)"
-  echo "  -h, --help         Show this help message"
-  echo "                     (Prod env file: docker/.env.prod; template: docker/.env.prod.template)"
-  echo ""
-  echo "Commands:"
-  echo "  start      Start container (skips if running, restarts if stopped)"
-  echo "  enter      Enter container (starts first if not running)"
-  echo "  stop       Stop and remove containers"
-  echo "  status     Show Apollo container status"
-  echo "  update     Pull latest image and restart"
-  echo "  prune      Remove legacy Apollo containers for current user"
-  echo "  help       Show this help message"
-  echo ""
-  echo "Modes:"
-  echo "  dev        Standard development mode (Host net, Privileged)"
-  echo "  test       Isolated test mode (Bridge net, Dynamic ports)"
-  echo "  prod       Production mode (Host net, Restart enabled)"
-  echo ""
-  echo "Examples:"
-  echo "  bash whl.sh enter                    # Enter dev container (auto-select image)"
-  echo "  bash whl.sh -n my_container enter    # Enter container with custom name"
-  echo "  bash whl.sh -i myimage:latest start  # Start with custom image"
-  echo "  bash whl.sh start prod               # Start production container"
-  echo "  bash whl.sh --os 20.04 enter dev     # Enter with Ubuntu 20.04 image"
-}
-
-# Simple routing
-ACTION="${1:-enter}"
 case "${ACTION}" in
   enter)
     shift
@@ -477,7 +368,10 @@ case "${ACTION}" in
     shift
     cmd_start "$@"
     ;;
-  stop) cmd_stop ;;
+  stop)
+    shift
+    cmd_stop "$@"
+    ;;
   status)
     shift
     cmd_status "$@"
@@ -486,8 +380,12 @@ case "${ACTION}" in
     shift
     cmd_update "$@"
     ;;
-  prune) cmd_prune ;;
-  help | --help | -h) show_help ;;
+  prune)
+    cmd_prune
+    ;;
+  help | --help | -h)
+    show_help
+    ;;
   *)
     echo ">>> ERROR: Unknown command '${ACTION}'"
     show_help

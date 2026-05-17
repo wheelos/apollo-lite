@@ -26,18 +26,22 @@ namespace perception {
 namespace lidar {
 
 using cyber::common::GetAbsolutePath;
+using cyber::common::PathExists;
 
-bool MapManager::Init(const MapManagerInitOptions& options) {
+bool HdmapContextProvider::Init(const HdmapContextProviderInitOptions& options) {
   auto config_manager = lib::ConfigManager::Instance();
   const lib::ModelConfig* model_config = nullptr;
   ACHECK(config_manager->GetModelConfig(Name(), &model_config));
   const std::string work_root = config_manager->work_root();
-  std::string config_file;
   std::string root_path;
   ACHECK(model_config->get_value("root_path", &root_path));
-  config_file = GetAbsolutePath(work_root, root_path);
-  config_file = GetAbsolutePath(config_file, "map_manager.conf");
-  MapManagerConfig config;
+  const std::string config_dir = GetAbsolutePath(work_root, root_path);
+  std::string config_file =
+      GetAbsolutePath(config_dir, "hdmap_context_provider.conf");
+  if (!PathExists(config_file)) {
+    config_file = GetAbsolutePath(config_dir, "map_manager.conf");
+  }
+  HdmapContextProviderConfig config;
   ACHECK(cyber::common::GetProtoFromFile(config_file, &config));
   update_pose_ = config.update_pose();
   roi_search_distance_ = config.roi_search_distance();
@@ -49,39 +53,42 @@ bool MapManager::Init(const MapManagerInitOptions& options) {
   return true;
 }
 
-bool MapManager::Init(const StageConfig& stage_config) {
+bool HdmapContextProvider::Init(const StageConfig& stage_config) {
   if (!Initialize(stage_config)) {
     return false;
   }
 
-  map_manager_config_ = stage_config.map_manager_config();
+  hdmap_context_provider_config_ = stage_config.hdmap_context_provider_config();
 
-  update_pose_ = map_manager_config_.update_pose();
-  roi_search_distance_ = map_manager_config_.roi_search_distance();
+  update_pose_ = hdmap_context_provider_config_.update_pose();
+  roi_search_distance_ = hdmap_context_provider_config_.roi_search_distance();
 
   hdmap_input_ = map::HDMapInput::Instance();
   if (!hdmap_input_->Init()) {
-    AERROR << "MapManager::Init: Failed to initialize HDMapInput.";
+    AERROR << "HdmapContextProvider::Init: Failed to initialize HDMapInput.";
     return false;
   }
   return true;
 }
 
-bool MapManager::Process(DataFrame* data_frame) {
+bool HdmapContextProvider::Process(DataFrame* data_frame) {
   if (data_frame == nullptr || data_frame->lidar_frame == nullptr) {
     AINFO << "DataFrame or LidarFrame is nullptr.";
     return false;
   }
 
-  MapManagerOptions options;
-  Update(options, data_frame->lidar_frame);
-
-  return true;
+  HdmapContextProviderOptions options;
+  return Update(options, data_frame->lidar_frame);
 }
 
-bool MapManager::Update(const MapManagerOptions& options, LidarFrame* frame) {
+bool HdmapContextProvider::Update(const HdmapContextProviderOptions& options,
+                                  LidarFrame* frame) {
   if (!frame) {
     AINFO << "Frame is nullptr.";
+    return false;
+  }
+  if (hdmap_input_ == nullptr) {
+    AERROR << "HDMapInput is nullptr.";
     return false;
   }
   if (!frame->hdmap_struct) {
@@ -106,8 +113,9 @@ bool MapManager::Update(const MapManagerOptions& options, LidarFrame* frame) {
   }
   return true;
 }
-bool MapManager::QueryPose(Eigen::Affine3d* sensor2world_pose) const {
-  // TODO(daohu527): map-based alignment to refine pose
+bool HdmapContextProvider::QueryPose(Eigen::Affine3d* sensor2world_pose) const {
+  // TODO(daohu527): implement map-based pose refinement in a dedicated stage
+  // or service. This stage currently acts as an HDMap context provider.
   return true;
 }
 

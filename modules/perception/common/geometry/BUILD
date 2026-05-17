@@ -6,6 +6,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "basic",
     hdrs = ["basic.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":common",
         "@eigen",
@@ -15,6 +18,9 @@ cc_library(
 cc_library(
     name = "common",
     hdrs = ["common.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/base:box",
@@ -25,6 +31,9 @@ cc_library(
 cc_library(
     name = "convex_hull_2d",
     hdrs = ["convex_hull_2d.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "@eigen",
     ],
@@ -34,6 +43,9 @@ cc_library(
     name = "roi_filter",
     srcs = ["roi_filter.cc"],
     hdrs = ["roi_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":common",
         "//modules/perception/base:base_type",
@@ -47,6 +59,9 @@ cc_library(
     name = "camera_homography",
     srcs = ["camera_homography.cc"],
     hdrs = ["camera_homography.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base:camera",
         "@eigen",

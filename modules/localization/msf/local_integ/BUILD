@@ -18,6 +18,7 @@ cc_library(
         "//modules/common_msgs/sensor_msgs:imu_cc_proto",
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/localization/common:localization_gflags",
+        "//modules/localization/common:rigid_transform_helper",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/common/util:frame_transform",
         "//modules/localization/msf/local_pyramid_map/base_map",

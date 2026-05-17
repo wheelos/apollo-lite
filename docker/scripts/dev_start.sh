@@ -40,7 +40,7 @@ source "${CURR_DIR}/docker_base.sh"
 
 # --- Constants: Directories and Container Naming ---
 CACHE_ROOT_DIR="${APOLLO_ROOT_DIR}/.cache"
-BAZEL_CACHE_DIR="/var/cache/bazel/repo_cache"
+BAZEL_CACHE_DIR="${CACHE_ROOT_DIR}/bazel/repo_cache"
 
 DEV_CONTAINER_PREFIX='apollo_dev_'
 DEV_INSIDE="in-dev-docker" # Hostname inside the container

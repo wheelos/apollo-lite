@@ -7,6 +7,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "mlf_base_filter",
     hdrs = ["mlf_base_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/lib/tracker/common:mlf_track_data_with_track_pool_types",
@@ -18,6 +21,9 @@ cc_library(
     name = "mlf_engine",
     srcs = ["mlf_engine.cc"],
     hdrs = ["mlf_engine.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/lib/config_manager",
@@ -39,6 +45,9 @@ cc_library(
     name = "mlf_motion_filter",
     srcs = ["mlf_motion_filter.cc"],
     hdrs = ["mlf_motion_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common/geometry:basic",
@@ -54,6 +63,9 @@ cc_library(
     name = "mlf_motion_measurement",
     srcs = ["mlf_motion_measurement.cc"],
     hdrs = ["mlf_motion_measurement.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/lidar/lib/tracker/common:mlf_track_data_with_track_pool_types",
         "//modules/perception/lidar/lib/tracker/common:tracked_object",
@@ -66,6 +78,9 @@ cc_library(
     name = "mlf_motion_refiner",
     srcs = ["mlf_motion_refiner.cc"],
     hdrs = ["mlf_motion_refiner.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common/geometry:basic",
@@ -80,6 +95,9 @@ cc_library(
     name = "mlf_shape_filter",
     srcs = ["mlf_shape_filter.cc"],
     hdrs = ["mlf_shape_filter.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common/geometry:convex_hull_2d",
@@ -95,6 +113,9 @@ cc_library(
     name = "mlf_track_object_distance",
     srcs = ["mlf_track_object_distance.cc"],
     hdrs = ["mlf_track_object_distance.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/lib/config_manager",
@@ -110,6 +131,9 @@ cc_library(
     name = "mlf_track_object_matcher",
     srcs = ["mlf_track_object_matcher.cc"],
     hdrs = ["mlf_track_object_matcher.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common/graph:secure_matrix",
@@ -128,6 +152,9 @@ cc_library(
     name = "mlf_tracker",
     srcs = ["mlf_tracker.cc"],
     hdrs = ["mlf_tracker.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/lib/config_manager",

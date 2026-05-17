@@ -3,7 +3,7 @@ syntax = "proto2";
 package apollo.perception.lidar;
 
 message CollisionGuardianComponentConfig {
-    // The frame_id of the vehicle's main body, e.g., "imu" or "base_link".
+    // The frame_id of the vehicle's main body, e.g., "imu_link" or "base_link".
     // This is the coordinate system where all filtering occurs.
     optional string vehicle_frame_id = 3 [default = "base_link"];
 

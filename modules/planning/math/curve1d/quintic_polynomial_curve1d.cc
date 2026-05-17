@@ -136,5 +136,6 @@ double QuinticPolynomialCurve1d::Coef(const size_t order) const {
   CHECK_GT(6U, order);
   return coef_[order];
 }
+
 }  // namespace planning
 }  // namespace apollo

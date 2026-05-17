@@ -7,6 +7,9 @@ cc_library(
     name = "hdmap_input",
     srcs = ["hdmap_input.cc"],
     hdrs = ["hdmap_input.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/math",

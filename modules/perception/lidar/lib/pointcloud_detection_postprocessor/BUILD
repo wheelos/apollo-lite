@@ -12,6 +12,9 @@ cc_library(
   hdrs = [
     "pointcloud_detection_postprocessor.h",
   ],
+  copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
   deps = [
     "//modules/perception/pipeline:stage",
     "//modules/perception/pipeline:plugin_factory",

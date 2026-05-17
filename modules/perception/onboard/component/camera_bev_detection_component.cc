@@ -75,7 +75,27 @@ static int GetGpuId(
   return pipeline_config.camera_detection_config().gpu_id();
 }
 
-static bool SetCameraHeight(const std::string &sensor_name,
+static bool QueryStaticTransform(TransformWrapper *transform_wrapper,
+                                 const std::string &frame_id,
+                                 const std::string &child_frame_id,
+                                 Eigen::Matrix4d *transform) {
+  if (transform_wrapper == nullptr || transform == nullptr) {
+    return false;
+  }
+
+  Eigen::Affine3d affine = Eigen::Affine3d::Identity();
+  if (!transform_wrapper->GetTrans(0.0, &affine, frame_id, child_frame_id)) {
+    AERROR << "failed to query static transform from " << child_frame_id
+           << " to " << frame_id;
+    return false;
+  }
+  *transform = affine.matrix();
+  return true;
+}
+
+static bool SetCameraHeight(TransformWrapper *transform_wrapper,
+                            const std::string &lidar_frame_id,
+                            const std::string &camera_frame_id,
                             const std::string &params_dir,
                             const std::string &lidar_sensor_name,
                             float default_camera_height, float *camera_height) {
@@ -88,9 +108,12 @@ static bool SetCameraHeight(const std::string &sensor_name,
 
     base_h = lidar_height["vehicle"]["parameters"]["height"].as<float>();
     AINFO << base_h;
-    YAML::Node camera_ex =
-        YAML::LoadFile(params_dir + "/" + sensor_name + "_extrinsics.yaml");
-    camera_offset = camera_ex["transform"]["translation"]["z"].as<float>();
+    Eigen::Matrix4d camera2lidar = Eigen::Matrix4d::Identity();
+    if (!QueryStaticTransform(transform_wrapper, lidar_frame_id,
+                              camera_frame_id, &camera2lidar)) {
+      return false;
+    }
+    camera_offset = static_cast<float>(camera2lidar(2, 3));
     AINFO << camera_offset;
     *camera_height = base_h + camera_offset;
   } catch (YAML::InvalidNode &in) {
@@ -105,60 +128,6 @@ static bool SetCameraHeight(const std::string &sensor_name,
            << " error, YAML exception:" << e.what();
     return false;
   }
-  return true;
-}
-
-// @description: load camera extrinsics from yaml file
-static bool LoadExtrinsics(const std::string &yaml_file,
-                           Eigen::Matrix4d *camera_extrinsic) {
-  if (!apollo::cyber::common::PathExists(yaml_file)) {
-    AINFO << yaml_file << " does not exist!";
-    return false;
-  }
-  YAML::Node node = YAML::LoadFile(yaml_file);
-  double qw = 0.0;
-  double qx = 0.0;
-  double qy = 0.0;
-  double qz = 0.0;
-  double tx = 0.0;
-  double ty = 0.0;
-  double tz = 0.0;
-  try {
-    if (node.IsNull()) {
-      AINFO << "Load " << yaml_file << " failed! please check!";
-      return false;
-    }
-    qw = node["transform"]["rotation"]["w"].as<double>();
-    qx = node["transform"]["rotation"]["x"].as<double>();
-    qy = node["transform"]["rotation"]["y"].as<double>();
-    qz = node["transform"]["rotation"]["z"].as<double>();
-    tx = node["transform"]["translation"]["x"].as<double>();
-    ty = node["transform"]["translation"]["y"].as<double>();
-    tz = node["transform"]["translation"]["z"].as<double>();
-  } catch (YAML::InvalidNode &in) {
-    AERROR << "load camera extrisic file " << yaml_file
-           << " with error, YAML::InvalidNode exception";
-    return false;
-  } catch (YAML::TypedBadConversion<double> &bc) {
-    AERROR << "load camera extrisic file " << yaml_file
-           << " with error, YAML::TypedBadConversion exception";
-    return false;
-  } catch (YAML::Exception &e) {
-    AERROR << "load camera extrisic file " << yaml_file
-           << " with error, YAML exception:" << e.what();
-    return false;
-  }
-  camera_extrinsic->setConstant(0);
-  Eigen::Quaterniond q;
-  q.x() = qx;
-  q.y() = qy;
-  q.z() = qz;
-  q.w() = qw;
-  (*camera_extrinsic).block<3, 3>(0, 0) = q.normalized().toRotationMatrix();
-  (*camera_extrinsic)(0, 3) = tx;
-  (*camera_extrinsic)(1, 3) = ty;
-  (*camera_extrinsic)(2, 3) = tz;
-  (*camera_extrinsic)(3, 3) = 1;
   return true;
 }
 
@@ -629,6 +598,17 @@ int CameraBevDetectionComponent::InitAlgorithmPlugin() {
     AERROR << "camera_obstacle_pipeline_->Init() failed";
     return cyber::FAIL;
   }
+
+  Eigen::Matrix4d lidar2vehicle = Eigen::Matrix4d::Identity();
+  ACHECK(!camera_names_.empty());
+  ACHECK(QueryStaticTransform(
+      camera2world_trans_wrapper_map_.at(camera_names_.front()).get(),
+      FLAGS_obs_sensor2vehicle_tf2_frame_id, FLAGS_lidar_sensor_name,
+      &lidar2vehicle));
+  ACHECK(
+      camera_obstacle_pipeline_->SetLidarToCameraDetectorExtrinsics(
+          lidar2vehicle));
+
   AINFO << "camera_obstacle_pipeline_->Init() succeed";
   return cyber::SUCC;
 }
@@ -679,9 +659,10 @@ int CameraBevDetectionComponent::InitCameraFrames() {
     AINFO << "#intrinsics of " << camera_name << ": "
           << intrinsic_map_[camera_name];
     Eigen::Matrix4d extrinsic;
-    LoadExtrinsics(FLAGS_obs_sensor_intrinsic_path + "/" + camera_name +
-                       "_extrinsics.yaml",
-                   &extrinsic);
+    ACHECK(QueryStaticTransform(
+      camera2world_trans_wrapper_map_.at(camera_name).get(),
+      FLAGS_lidar_sensor_name, tf_camera_frame_id_map_.at(camera_name),
+      &extrinsic));
     extrinsic_map_[camera_name] = extrinsic;
     AINFO << "#extrinsics of " << camera_name << ": "
           << extrinsic_map_[camera_name];
@@ -690,8 +671,12 @@ int CameraBevDetectionComponent::InitCameraFrames() {
   // Init camera height
   for (const auto &camera_name : camera_names_) {
     float height = 0.0f;
-    SetCameraHeight(camera_name, FLAGS_obs_sensor_intrinsic_path,
-                    FLAGS_lidar_sensor_name, default_camera_height_, &height);
+    ACHECK(SetCameraHeight(camera2world_trans_wrapper_map_.at(camera_name).get(),
+                           FLAGS_lidar_sensor_name,
+                           tf_camera_frame_id_map_.at(camera_name),
+                           FLAGS_obs_sensor_intrinsic_path,
+                           FLAGS_lidar_sensor_name, default_camera_height_,
+                           &height));
     camera_height_map_[camera_name] = height;
   }
 

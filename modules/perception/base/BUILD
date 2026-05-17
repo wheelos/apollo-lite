@@ -6,6 +6,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "base",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_type",
         ":blob",
@@ -30,6 +33,9 @@ cc_library(
 
 cc_library(
     name = "base_type",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     hdrs = [
         "hdmap_struct.h",
         "landmark_struct.h",
@@ -46,6 +52,9 @@ cc_library(
     name = "blob",
     srcs = ["blob.cc"],
     hdrs = ["blob.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":common",
         ":syncedmem",
@@ -71,6 +80,9 @@ cc_library(
         "box.h",
         "comparison_traits.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":point_cloud",
     ],
@@ -91,6 +103,9 @@ cc_library(
     name = "camera",
     srcs = ["camera.cc"],
     hdrs = ["camera.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "@eigen",
     ],
@@ -110,6 +125,9 @@ cc_test(
 cc_library(
     name = "common",
     hdrs = ["common.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
     ] + if_gpu([
         "@cuda//:cublas",
@@ -131,6 +149,9 @@ cc_library(
     name = "distortion_model",
     srcs = ["distortion_model.cc"],
     hdrs = ["distortion_model.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":camera",
         "//cyber",
@@ -154,6 +175,9 @@ cc_library(
         "frame.h",
         "frame_supplement.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_type",
         ":blob",
@@ -168,6 +192,9 @@ cc_library(
     hdrs = [
         "image.h",
         "image_8u.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         ":base_type",
@@ -188,6 +215,9 @@ cc_test(
 cc_library(
     name = "impending_collision_edge",
     hdrs = ["impending_collision_edge.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/common/util:util_tool",
@@ -208,6 +238,9 @@ cc_test(
 cc_library(
     name = "object",
     srcs = ["object.cc"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     hdrs = [
         "object.h",
         "object_supplement.h",
@@ -251,6 +284,9 @@ cc_library(
         "light_object_pool.h",
         "object_pool.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_type",
     ],
@@ -275,6 +311,9 @@ cc_library(
     name = "object_pool_types",
     srcs = ["object_pool_types.cc"],
     hdrs = ["object_pool_types.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":frame",
         ":object",
@@ -288,6 +327,9 @@ cc_library(
     name = "omnidirectional_model",
     srcs = ["omnidirectional_model.cc"],
     hdrs = ["omnidirectional_model.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":camera",
         ":distortion_model",
@@ -310,11 +352,17 @@ cc_test(
 cc_library(
     name = "point",
     hdrs = ["point.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "point_cloud",
     hdrs = ["point_cloud.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":point",
         "//modules/common/util:util_tool",
@@ -326,6 +374,9 @@ cc_library(
     name = "point_cloud_util",
     srcs = ["point_cloud_util.cc"],
     hdrs = ["point_cloud_util.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":point_cloud",
         "//cyber",
@@ -349,6 +400,9 @@ cc_library(
     name = "polynomial",
     srcs = ["polynomial.cc"],
     hdrs = ["polynomial.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_test(
@@ -365,6 +419,9 @@ cc_library(
     name = "syncedmem",
     srcs = ["syncedmem.cc"],
     hdrs = ["syncedmem.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":common",
         "//cyber",
@@ -385,6 +442,9 @@ cc_test(
 cc_library(
     name = "traffic_light",
     hdrs = ["traffic_light.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base:box",
     ],

@@ -35,28 +35,29 @@ using ObjectPtr = std::shared_ptr<apollo::perception::base::Object>;
 using PointFCloud = apollo::perception::base::PointCloud<PointF>;
 using PolygonDType = apollo::perception::base::PointCloud<PointD>;
 
-bool ObjectBuilder::Init(const ObjectBuilderInitOptions& options) {
+bool ObjectGeometryBuilder::Init(
+    const ObjectGeometryBuilderInitOptions& options) {
   return true;
 }
 
-bool ObjectBuilder::Init(const StageConfig& stage_config) {
+bool ObjectGeometryBuilder::Init(const StageConfig& stage_config) {
   if (!Initialize(stage_config)) {
     return false;
   }
   return true;
 }
 
-bool ObjectBuilder::Process(DataFrame* data_frame) {
+bool ObjectGeometryBuilder::Process(DataFrame* data_frame) {
   if (data_frame == nullptr || data_frame->lidar_frame == nullptr) return false;
 
-  ObjectBuilderOptions options;
+  ObjectGeometryBuilderOptions options;
   Build(options, data_frame->lidar_frame);
 
   return true;
 }
 
-bool ObjectBuilder::Build(const ObjectBuilderOptions& options,
-                          LidarFrame* frame) {
+bool ObjectGeometryBuilder::Build(const ObjectGeometryBuilderOptions& options,
+                                  LidarFrame* frame) {
   if (frame == nullptr) {
     return false;
   }
@@ -72,7 +73,7 @@ bool ObjectBuilder::Build(const ObjectBuilderOptions& options,
   return true;
 }
 
-void ObjectBuilder::ComputePolygon2D(ObjectPtr object) {
+void ObjectGeometryBuilder::ComputePolygon2D(ObjectPtr object) {
   Eigen::Vector3f min_pt;
   Eigen::Vector3f max_pt;
   PointFCloud& cloud = object->lidar_supplement.cloud;
@@ -86,7 +87,7 @@ void ObjectBuilder::ComputePolygon2D(ObjectPtr object) {
   hull.GetConvexHull(cloud, &(object->polygon));
 }
 
-void ObjectBuilder::ComputeOtherObjectInformation(ObjectPtr object) {
+void ObjectGeometryBuilder::ComputeOtherObjectInformation(ObjectPtr object) {
   object->anchor_point = object->center;
   double timestamp = 0.0;
   size_t num_point = object->lidar_supplement.cloud.size();
@@ -99,7 +100,7 @@ void ObjectBuilder::ComputeOtherObjectInformation(ObjectPtr object) {
   object->latest_tracked_time = timestamp;
 }
 
-void ObjectBuilder::ComputePolygonSizeCenter(ObjectPtr object) {
+void ObjectGeometryBuilder::ComputePolygonSizeCenter(ObjectPtr object) {
   if (object->lidar_supplement.cloud.size() < 4u) {
     return;
   }
@@ -126,9 +127,9 @@ void ObjectBuilder::ComputePolygonSizeCenter(ObjectPtr object) {
       static_cast<float>(atan2(object->direction(1), object->direction(0)));
 }
 
-void ObjectBuilder::SetDefaultValue(const Eigen::Vector3f& min_pt_in,
-                                    const Eigen::Vector3f& max_pt_in,
-                                    ObjectPtr object) {
+void ObjectGeometryBuilder::SetDefaultValue(const Eigen::Vector3f& min_pt_in,
+                                            const Eigen::Vector3f& max_pt_in,
+                                            ObjectPtr object) {
   Eigen::Vector3f min_pt = min_pt_in;
   Eigen::Vector3f max_pt = max_pt_in;
   // handle degeneration case
@@ -175,7 +176,7 @@ void ObjectBuilder::SetDefaultValue(const Eigen::Vector3f& min_pt_in,
   }
 }
 
-bool ObjectBuilder::LinePerturbation(PointFCloud* cloud) {
+bool ObjectGeometryBuilder::LinePerturbation(PointFCloud* cloud) {
   if (cloud->size() >= 3) {
     int start_point = 0;
     int end_point = 1;
@@ -196,9 +197,9 @@ bool ObjectBuilder::LinePerturbation(PointFCloud* cloud) {
   return true;
 }
 
-void ObjectBuilder::GetMinMax3D(const PointFCloud& cloud,
-                                Eigen::Vector3f* min_pt,
-                                Eigen::Vector3f* max_pt) {
+void ObjectGeometryBuilder::GetMinMax3D(const PointFCloud& cloud,
+                                        Eigen::Vector3f* min_pt,
+                                        Eigen::Vector3f* max_pt) {
   (*min_pt)[0] = (*min_pt)[1] = (*min_pt)[2] =
       std::numeric_limits<float>::max();
   (*max_pt)[0] = (*max_pt)[1] = (*max_pt)[2] =

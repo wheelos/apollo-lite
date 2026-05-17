@@ -93,7 +93,7 @@ bool PointCloudPreprocessor::Process(DataFrame* data_frame) {
   if (lidar_frame == nullptr) return false;
 
   PointCloudPreprocessorOptions options;
-  options.sensor2novatel_extrinsics = lidar_frame->lidar2novatel_extrinsics;
+  options.sensor2vehicle_extrinsics = lidar_frame->lidar2vehicle_extrinsics;
   bool result = Preprocess(options, lidar_frame);
   return result;
 }
@@ -128,12 +128,12 @@ bool PointCloudPreprocessor::Preprocess(
         }
       }
       Eigen::Vector3d vec3d_lidar(pt.x(), pt.y(), pt.z());
-      Eigen::Vector3d vec3d_novatel =
-          options.sensor2novatel_extrinsics * vec3d_lidar;
-      if (filter_nearby_box_points_ && vec3d_novatel[0] < box_forward_x_ &&
-          vec3d_novatel[0] > box_backward_x_ &&
-          vec3d_novatel[1] < box_forward_y_ &&
-          vec3d_novatel[1] > box_backward_y_) {
+      Eigen::Vector3d vec3d_vehicle =
+          options.sensor2vehicle_extrinsics * vec3d_lidar;
+      if (filter_nearby_box_points_ && vec3d_vehicle[0] < box_forward_x_ &&
+          vec3d_vehicle[0] > box_backward_x_ &&
+          vec3d_vehicle[1] < box_forward_y_ &&
+          vec3d_vehicle[1] > box_backward_y_) {
         continue;
       }
       if (filter_high_z_points_ && pt.z() > z_threshold_) {
@@ -181,12 +181,12 @@ bool PointCloudPreprocessor::Preprocess(
       }
     }
     Eigen::Vector3d vec3d_lidar(pt.x, pt.y, pt.z);
-    Eigen::Vector3d vec3d_novatel =
-        options.sensor2novatel_extrinsics * vec3d_lidar;
-    if (filter_nearby_box_points_ && vec3d_novatel[0] < box_forward_x_ &&
-        vec3d_novatel[0] > box_backward_x_ &&
-        vec3d_novatel[1] < box_forward_y_ &&
-        vec3d_novatel[1] > box_backward_y_) {
+    Eigen::Vector3d vec3d_vehicle =
+        options.sensor2vehicle_extrinsics * vec3d_lidar;
+    if (filter_nearby_box_points_ && vec3d_vehicle[0] < box_forward_x_ &&
+        vec3d_vehicle[0] > box_backward_x_ &&
+        vec3d_vehicle[1] < box_forward_y_ &&
+        vec3d_vehicle[1] > box_backward_y_) {
       frame->cloud->SwapPoint(i, size--);
       continue;
     }

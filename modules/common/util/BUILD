@@ -26,6 +26,7 @@ cc_library(
         exclude = [
             "point_factory.h",
             "points_downsampler.h",
+            "proj_helper.h",
             "util.h",
         ],
     ),
@@ -48,6 +49,15 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
         "@eigen",
+    ],
+)
+
+cc_library(
+    name = "proj_helper",
+    srcs = ["proj_helper.cc"],
+    hdrs = ["proj_helper.h"],
+    deps = [
+        "@proj",
     ],
 )
 

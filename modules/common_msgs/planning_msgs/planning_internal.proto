@@ -184,7 +184,42 @@ message PullOverDebug {
   optional double width_right = 6;
 }
 
-// next ID: 30
+message LaneBorrowDebug {
+  enum LaneBorrowDirection {
+    LANE_BORROW_DIRECTION_UNKNOWN = 0;
+    LEFT_BORROW = 1;
+    RIGHT_BORROW = 2;
+  }
+
+  enum TransitionType {
+    TRANSITION_UNKNOWN = 0;
+    NO_TRANSITION = 1;
+    ENTER_LANE_BORROW = 2;
+    EXIT_LANE_BORROW = 3;
+  }
+
+  optional bool is_path_lane_borrow = 1;
+  optional bool is_in_path_lane_borrow_scenario = 2;
+  optional string front_static_obstacle_id = 3;
+  optional int32 front_static_obstacle_cycle_counter = 4;
+  optional int32 able_to_use_self_lane_counter = 5;
+  optional double adc_speed = 6;
+  optional double lane_borrow_max_speed = 7;
+  optional bool has_single_reference_line = 8;
+  optional bool is_within_side_passing_speed_adc = 9;
+  optional bool is_blocking_obstacle_far_from_intersection = 10;
+  optional bool is_long_term_blocking_obstacle = 11;
+  optional bool is_blocking_obstacle_within_destination = 12;
+  optional bool is_side_passable_obstacle = 13;
+  optional bool left_borrowable = 14;
+  optional bool right_borrowable = 15;
+  optional string selected_path_label = 16;
+  repeated LaneBorrowDirection decided_side_pass_direction = 17;
+  optional TransitionType transition = 18;
+  optional string transition_reason = 19;
+}
+
+// next ID: 32
 message PlanningData {
   // input
   optional apollo.localization.LocalizationEstimate adc_position = 7;
@@ -214,6 +249,7 @@ message PlanningData {
   optional SmootherDebug smoother = 28;
   optional PullOverDebug pull_over = 29;
   optional HybridModelDebug hybrid_model = 30;
+  optional LaneBorrowDebug lane_borrow = 31;
 }
 
 message LatticeStPixel {

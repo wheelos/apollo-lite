@@ -25,6 +25,9 @@ cc_library(
         ":perception_inference_operators_cuda",
     ],
     hdrs = ["roipooling_layer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/perception/base:blob",
         "//modules/perception/inference:layer_lib",

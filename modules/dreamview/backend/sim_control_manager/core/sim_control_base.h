@@ -81,6 +81,8 @@ class SimControlBase {
    */
   virtual void Reset() = 0;
 
+  bool IsEnabled() const { return enabled_; }
+
   // virtual std::unique_ptr<SimControlBase> GetDynamicModel();
 
  protected:

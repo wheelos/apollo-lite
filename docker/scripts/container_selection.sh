@@ -47,11 +47,25 @@ function docker_pull() {
     return 0
 }
 
+function resolve_image_name() {
+    local base_image_name="$1"
+    local __final_image_var_name="$2"
+
+    local final_image_name="${base_image_name}"
+    if [[ -n "${GEO_REGISTRY}" ]]; then
+        final_image_name="${GEO_REGISTRY}/${base_image_name}"
+    fi
+
+    eval "${__final_image_var_name}='${final_image_name}'"
+    return 0
+}
+
 # Function: Determine image based on architecture and GPU usage
 function determine_image() {
     local arch="$1"     # e.g., x86 or arm
     local os_ver="$2"   # e.g., 20.04
     local gpu="$3"      # e.g., true (for GPU) or false (for CPU)
+    local ensure_local="${4:-true}"
 
     # Construct the base image name using the specified format
     local base_image_name="dev-${arch}-${os_ver}"
@@ -64,10 +78,17 @@ function determine_image() {
         image_name="${DOCKER_IMAGE_REPO}:${base_image_name}-cpu"
     fi
 
-    # Pull the Docker image or use the existing one
-    if ! docker_pull "${image_name}" "APOLLO_IMAGE"; then
-        echo "Failed to determine image."
-        exit 1
+    if [[ "${ensure_local}" == "true" ]]; then
+        # Pull the Docker image or use the existing one
+        if ! docker_pull "${image_name}" "APOLLO_IMAGE"; then
+            echo "Failed to determine image."
+            exit 1
+        fi
+    else
+        if ! resolve_image_name "${image_name}" "APOLLO_IMAGE"; then
+            echo "Failed to resolve image name."
+            exit 1
+        fi
     fi
 }
 
@@ -76,9 +97,10 @@ function select_container() {
     local arch="$1"
     local os_ver="$2"
     local gpu="$3"
+    local ensure_local="${4:-true}"
 
     geo_specific_config "${GEOLOC}"
-    determine_image "${arch}" "${os_ver}" "${gpu}"
+    determine_image "${arch}" "${os_ver}" "${gpu}" "${ensure_local}"
 }
 
 # Allow invocation of select_container from the command line for testing

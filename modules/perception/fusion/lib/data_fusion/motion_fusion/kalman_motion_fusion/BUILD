@@ -7,6 +7,9 @@ cc_library(
     name = "kalman_motion_fusion",
     srcs = ["kalman_motion_fusion.cc"],
     hdrs = ["kalman_motion_fusion.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/base",

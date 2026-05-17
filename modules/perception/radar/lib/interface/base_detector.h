@@ -70,7 +70,7 @@ namespace radar {
 
 struct DetectorOptions {
   Eigen::Matrix4d* radar2world_pose = nullptr;
-  Eigen::Matrix4d* radar2novatel_trans = nullptr;
+  Eigen::Matrix4d* radar2vehicle_trans = nullptr;
   Eigen::Vector3f car_linear_speed = Eigen::Vector3f::Zero();
   Eigen::Vector3f car_angular_speed = Eigen::Vector3f::Zero();
   base::HdmapStructPtr roi = nullptr;

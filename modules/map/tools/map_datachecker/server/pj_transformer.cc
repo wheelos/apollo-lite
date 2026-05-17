@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "cyber/cyber.h"
+#include "modules/common/util/proj_helper.h"
 
 namespace apollo {
 namespace hdmap {
@@ -29,19 +30,11 @@ PJTransformer::PJTransformer(int zone_id) : pj_(nullptr) {
   std::stringstream stream;
   stream << "+proj=utm +zone=" << zone_id << " +ellps=WGS84";
 
-  PJ* tmp_pj =
-      proj_create_crs_to_crs(PJ_DEFAULT_CTX, "+proj=latlong +ellps=WGS84",
-                             stream.str().c_str(), nullptr);
-  if (tmp_pj == nullptr) {
-    AERROR << "proj4 init failed! " << stream.str() << std::endl;
-    return;
-  }
-
-  pj_ = proj_normalize_for_visualization(PJ_DEFAULT_CTX, tmp_pj);
-  proj_destroy(tmp_pj);
-
+  std::string proj_error;
+  pj_ = apollo::common::util::ProjHelper::CreateNormalizedCrsToCrs(
+      PJ_DEFAULT_CTX, "+proj=latlong +ellps=WGS84", stream.str(), &proj_error);
   if (pj_ == nullptr) {
-    AERROR << "proj4 normalize failed!";
+    AERROR << "proj4 init failed! " << proj_error << std::endl;
     return;
   }
   AINFO << "proj4 init success" << std::endl;

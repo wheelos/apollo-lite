@@ -24,6 +24,7 @@
 #include "modules/common/math/euler_angles_zxy.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/common/math/quaternion.h"
+#include "modules/localization/common/rigid_transform_helper.h"
 #include "modules/localization/common/localization_gflags.h"
 #include "modules/localization/msf/msf_localization_component.h"
 
@@ -31,6 +32,12 @@ namespace apollo {
 namespace localization {
 
 using apollo::common::Status;
+
+namespace {
+
+constexpr float kStartupStaticTransformTimeoutSec = 3.0f;
+
+}  // namespace
 
 MSFLocalization::MSFLocalization()
     : monitor_logger_(
@@ -63,7 +70,6 @@ void MSFLocalization::InitParams() {
 
   // lidar module
   localization_param_.map_path = FLAGS_map_dir + "/" + FLAGS_local_map_name;
-  localization_param_.lidar_extrinsic_file = FLAGS_lidar_extrinsics_file;
   localization_param_.lidar_height_file = FLAGS_lidar_height_file;
   localization_param_.lidar_height_default = FLAGS_lidar_height_default;
   localization_param_.localization_mode = FLAGS_lidar_localization_mode;
@@ -74,7 +80,8 @@ void MSFLocalization::InitParams() {
   localization_param_.if_use_avx = FLAGS_if_use_avx;
 
   AINFO << "map: " << localization_param_.map_path;
-  AINFO << "lidar_extrin: " << localization_param_.lidar_extrinsic_file;
+  AINFO << "lidar rigid extrinsics: runtime TF using incoming point cloud "
+        << "frame_id";
   AINFO << "lidar_height: " << localization_param_.lidar_height_file;
 
   localization_param_.utm_zone_id = FLAGS_local_utm_zone_id;
@@ -96,27 +103,31 @@ void MSFLocalization::InitParams() {
   imu_vehicle_translation_[0] = 0.0;
   imu_vehicle_translation_[1] = 0.0;
   imu_vehicle_translation_[2] = 0.0;
-  // try to load imu vehicle quat from file
-  if (FLAGS_if_vehicle_imu_from_file) {
-    double qx = 0.0;
-    double qy = 0.0;
-    double qz = 0.0;
-    double qw = 0.0;
-
-    AINFO << "Vehile imu file: " << FLAGS_vehicle_imu_file;
-    if (LoadImuVehicleExtrinsic(FLAGS_vehicle_imu_file, &qx, &qy, &qz, &qw,
-                                &imu_vehicle_translation_)) {
-      imu_vehicle_quat_.x() = qx;
-      imu_vehicle_quat_.y() = qy;
-      imu_vehicle_quat_.z() = qz;
-      imu_vehicle_quat_.w() = qw;
-    } else {
-      AWARN << "Can't load imu vehicle quat from file, use default value.";
-    }
-  }
+  Eigen::Affine3d vehicle_to_imu = Eigen::Affine3d::Identity();
+  ACHECK(apollo::localization::common::LookupStaticTransform(
+      FLAGS_localization_tf_imu_frame_id, FLAGS_broadcast_tf_child_frame_id,
+      &vehicle_to_imu, kStartupStaticTransformTimeoutSec))
+      << "Failed to load rigid vehicle-to-imu TF. vehicle frame: "
+      << FLAGS_broadcast_tf_child_frame_id
+      << ", imu frame: " << FLAGS_localization_tf_imu_frame_id;
+  const Eigen::Quaterniond vehicle_to_imu_quat(vehicle_to_imu.linear());
+  imu_vehicle_quat_.x() = vehicle_to_imu_quat.x();
+  imu_vehicle_quat_.y() = vehicle_to_imu_quat.y();
+  imu_vehicle_quat_.z() = vehicle_to_imu_quat.z();
+  imu_vehicle_quat_.w() = vehicle_to_imu_quat.w();
+  imu_vehicle_translation_ = vehicle_to_imu.translation();
+  localization_param_.vehicle_to_imu_quatern.x = imu_vehicle_quat_.x();
+  localization_param_.vehicle_to_imu_quatern.y = imu_vehicle_quat_.y();
+  localization_param_.vehicle_to_imu_quatern.z = imu_vehicle_quat_.z();
+  localization_param_.vehicle_to_imu_quatern.w = imu_vehicle_quat_.w();
+  AINFO << "vehicle-to-imu rigid TF: " << FLAGS_broadcast_tf_child_frame_id
+        << " -> " << FLAGS_localization_tf_imu_frame_id;
   AINFO << "imu_vehicle_quat: " << imu_vehicle_quat_.x() << " "
         << imu_vehicle_quat_.y() << " " << imu_vehicle_quat_.z() << " "
         << imu_vehicle_quat_.w();
+  AINFO << "imu_vehicle_translation: " << imu_vehicle_translation_[0] << " "
+        << imu_vehicle_translation_[1] << " "
+        << imu_vehicle_translation_[2];
 
   // common
   localization_param_.enable_lidar_localization =
@@ -335,13 +346,13 @@ void MSFLocalization::CompensateImuVehicleExtrinsic(
   Eigen::Quaternion<double> quat_vehicle_world = quaternion * imu_vehicle_quat_;
 
   // set heading according to rotation of vehicle
-  posepb_loc->set_heading(common::math::QuaternionToHeading(
+  posepb_loc->set_heading(apollo::common::math::QuaternionToHeading(
       quat_vehicle_world.w(), quat_vehicle_world.x(), quat_vehicle_world.y(),
       quat_vehicle_world.z()));
 
   // set euler angles according to rotation of vehicle
   apollo::common::Point3D *eulerangles = posepb_loc->mutable_euler_angles();
-  common::math::EulerAnglesZXYd euler_angle(
+  apollo::common::math::EulerAnglesZXYd euler_angle(
       quat_vehicle_world.w(), quat_vehicle_world.x(), quat_vehicle_world.y(),
       quat_vehicle_world.z());
   eulerangles->set_x(euler_angle.pitch());
@@ -376,36 +387,6 @@ bool MSFLocalization::LoadGnssAntennaExtrinsic(
         *uncertainty_z =
             config["leverarm"]["primary"]["uncertainty"]["z"].as<double>();
       }
-      return true;
-    }
-  }
-  return false;
-}
-
-bool MSFLocalization::LoadImuVehicleExtrinsic(const std::string &file_path,
-                                              double *quat_qx, double *quat_qy,
-                                              double *quat_qz, double *quat_qw,
-                                              Eigen::Vector3d *translation) {
-  for (size_t i = 0; i < 3; ++i) {
-    (*translation)[i] = 0.0;
-  }
-  if (!cyber::common::PathExists(file_path)) {
-    return false;
-  }
-  YAML::Node config = YAML::LoadFile(file_path);
-  if (config["transform"]) {
-    if (config["transform"]["rotation"]) {
-      *quat_qx = config["transform"]["rotation"]["x"].as<double>();
-      *quat_qy = config["transform"]["rotation"]["y"].as<double>();
-      *quat_qz = config["transform"]["rotation"]["z"].as<double>();
-      *quat_qw = config["transform"]["rotation"]["w"].as<double>();
-    } else {
-      return false;
-    }
-    if (config["transform"]["translation"]) {
-      (*translation)[0] = config["transform"]["translation"]["x"].as<double>();
-      (*translation)[1] = config["transform"]["translation"]["y"].as<double>();
-      (*translation)[2] = config["transform"]["translation"]["z"].as<double>();
       return true;
     }
   }

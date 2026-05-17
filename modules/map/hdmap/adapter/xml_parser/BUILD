@@ -37,6 +37,7 @@ cc_library(
     alwayslink = True,
     deps = [
         ":status",
+        "//modules/common/util:proj_helper",
         "@com_github_google_glog//:glog",
         "@proj",
     ],

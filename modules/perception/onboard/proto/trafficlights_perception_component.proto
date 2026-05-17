@@ -3,9 +3,8 @@ syntax = "proto2";
 package apollo.perception.onboard;
 
 message TrafficLight {
-  optional string tl_tf2_frame_id = 1 [default = "world"];
-  optional string tl_tf2_child_frame_id = 2
-      [default = "perception_localization_100hz"];
+    optional string tl_tf2_frame_id = 1 [default = "map"];
+    optional string tl_tf2_child_frame_id = 2 [default = "base_link"];
   optional double tf2_timeout_second = 3 [default = 0.01];
   optional string camera_names = 4 [default = "front_6mm,front_12mm"];
   optional string camera_channel_names = 5

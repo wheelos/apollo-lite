@@ -102,12 +102,6 @@ enum ImuType {
   M21              = 66; // M21
 }
 
-message TF {
-  optional string frame_id = 1 [default = "world"];
-  optional string child_frame_id = 2 [default = "novatel"];
-  optional bool enable = 3 [default = false];
-}
-
 message Config {
   // The driver reads data from this port. This port should always be provided.
   optional Stream data = 1;
@@ -140,7 +134,9 @@ message Config {
   optional RtkSolutionType rtk_solution_type = 9;
   optional ImuType imu_type = 10;
   optional string proj4_text = 11;
-  optional TF tf = 12;
+  // Dynamic body TF is published by localization only.
+  reserved 12;
+  reserved "tf";
   // If given, the driver will send velocity info to novatel with command stream
   optional string wheel_parameters = 13;
   optional string gpsbin_folder = 14;

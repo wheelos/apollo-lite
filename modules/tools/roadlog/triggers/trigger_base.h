@@ -16,10 +16,13 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 
+#include "modules/tools/roadlog/common/trigger_types.h"
 #include "modules/tools/roadlog/proto/smart_recorder_triggers.pb.h"
 
 #include "cyber/record/record_message.h"
@@ -34,18 +37,23 @@ namespace data {
 class TriggerBase {
  public:
   TriggerBase() = default;
+  using TriggerEventHandler = std::function<void(const TriggerEvent&)>;
 
   // Init the trigger using configuration
-  virtual bool Init(const SmartRecordTrigger& trigger_conf);
+  virtual bool Init(const SmartRecordTrigger& trigger_conf,
+                    TriggerEventHandler event_handler);
 
   // Decide if the current trigger needs to be caught by input message,
   // and if yes record the time interval
   virtual void Pull(const cyber::record::RecordMessage& msg) = 0;
 
-  // Decide if the current message needs to be restored
-  virtual bool ShouldRestore(const cyber::record::RecordMessage& msg) const = 0;
+  virtual std::set<std::string> GetObservedChannels() const { return {}; }
+  virtual bool IsPeriodicTrigger() const { return false; }
 
   const std::string& GetTriggerName() const { return trigger_name_; }
+  bool IsEnabled() const {
+    return trigger_obj_ != nullptr && trigger_obj_->enabled();
+  }
 
   uint64_t SecondsToNanoSeconds(const double seconds) const;
 
@@ -56,9 +64,11 @@ class TriggerBase {
   uint64_t GetValidValueInRange(const double desired_value,
                                 const double min_limit,
                                 const double max_limit) const;
+  const Trigger& GetTriggerConfig() const { return *trigger_obj_; }
 
   std::string trigger_name_;
   std::unique_ptr<Trigger> trigger_obj_ = nullptr;
+  TriggerEventHandler event_handler_;
 
  private:
   void LockTrigger(const SmartRecordTrigger& trigger_conf);

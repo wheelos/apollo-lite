@@ -52,6 +52,7 @@ using google::protobuf::util::MessageToJsonString;
 
 SimulationWorldUpdater::SimulationWorldUpdater(
     WebSocketHandler *websocket, WebSocketHandler *map_ws,
+    WebSocketHandler *point_cloud_ws,
     WebSocketHandler *camera_ws, SimControlManager *sim_control_manager,
     WebSocketHandler *plugin_ws, const MapService *map_service,
     PerceptionCameraUpdater *perception_camera_updater,
@@ -60,6 +61,7 @@ SimulationWorldUpdater::SimulationWorldUpdater(
       map_service_(map_service),
       websocket_(websocket),
       map_ws_(map_ws),
+      point_cloud_ws_(point_cloud_ws),
       camera_ws_(camera_ws),
       plugin_ws_(plugin_ws),
       sim_control_manager_(sim_control_manager),
@@ -524,9 +526,6 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
   camera_ws_->RegisterMessageHandler(
       "ChangeCameraChannel",
       [this](const Json &json, WebSocketHandler::Connection *conn) {
-        if (!perception_camera_updater_->IsEnabled()) {
-          return;
-        }
         auto channel_info = json.find("data");
         Json response({});
         if (channel_info == json.end()) {
@@ -744,17 +743,48 @@ void SimulationWorldUpdater::Start() {
 }
 
 void SimulationWorldUpdater::OnTimer() {
+  const bool needs_sim_world = websocket_->HasConnections();
+  const bool needs_map_data = map_ws_->HasConnections();
+  const bool needs_adc_timestamp =
+      point_cloud_ws_ != nullptr && point_cloud_ws_->HasConnections();
+
+  if (!needs_sim_world && !needs_map_data && !needs_adc_timestamp) {
+    if (cached_outputs_cleared_) {
+      return;
+    }
+    boost::unique_lock<boost::shared_mutex> writer_lock(mutex_);
+    last_pushed_adc_timestamp_sec_.store(0.0, std::memory_order_relaxed);
+    std::string().swap(simulation_world_);
+    std::string().swap(simulation_world_with_planning_data_);
+    std::string().swap(relative_map_string_);
+    cached_outputs_cleared_ = true;
+    return;
+  }
+
+  cached_outputs_cleared_ = false;
   sim_world_service_.Update();
 
   {
     boost::unique_lock<boost::shared_mutex> writer_lock(mutex_);
-    last_pushed_adc_timestamp_sec_ =
-        sim_world_service_.world().auto_driving_car().timestamp_sec();
-    sim_world_service_.GetWireFormatString(
-        FLAGS_sim_map_radius, &simulation_world_,
-        &simulation_world_with_planning_data_);
-    sim_world_service_.GetRelativeMap().SerializeToString(
-        &relative_map_string_);
+    last_pushed_adc_timestamp_sec_.store(
+        needs_adc_timestamp
+            ? sim_world_service_.world().auto_driving_car().timestamp_sec()
+            : 0.0,
+        std::memory_order_relaxed);
+    if (needs_sim_world) {
+      sim_world_service_.GetWireFormatString(
+          FLAGS_sim_map_radius, &simulation_world_,
+          &simulation_world_with_planning_data_);
+    } else {
+      std::string().swap(simulation_world_);
+      std::string().swap(simulation_world_with_planning_data_);
+    }
+    if (needs_map_data) {
+      sim_world_service_.GetRelativeMap().SerializeToString(
+          &relative_map_string_);
+    } else {
+      std::string().swap(relative_map_string_);
+    }
   }
 }
 

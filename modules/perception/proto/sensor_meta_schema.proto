@@ -33,6 +33,7 @@ message SensorMeta {
   optional string name = 1;
   optional SensorType type = 2;
   optional SensorOrientation orientation = 3;
+  optional string frame_id = 4;
 }
 
 message MultiSensorMeta {

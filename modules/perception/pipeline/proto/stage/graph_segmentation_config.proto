@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package apollo.perception.lidar;
 
-message GraphSegmentationConfig {
+message GraphClusterSegmenterConfig {
   optional uint32 grid_width = 1;
   optional uint32 grid_height = 2;
   optional float resolution = 3 [default = 0.6];

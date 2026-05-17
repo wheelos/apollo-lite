@@ -15,11 +15,24 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "rigid_transform_helper",
+    srcs = ["rigid_transform_helper.cc"],
+    hdrs = ["rigid_transform_helper.h"],
+    deps = [
+        "//cyber",
+        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "//modules/transform:transform_query",
+        "@eigen",
+    ],
+)
+
 install(
     name = "install",
     library_dest = "localization/lib",
     targets = [
         ":localization_gflags",
+        ":rigid_transform_helper",
     ],
 )
 

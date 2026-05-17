@@ -20,7 +20,6 @@
 
 #include <opencv2/opencv.hpp>
 
-#include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/perception/camera/common/timer.h"
 #include "modules/perception/common/perception_gflags.h"
@@ -39,8 +38,8 @@ bool BEVObstacleDetector::Init(const StageConfig &stage_config) {
     return false;
   }
   ACHECK(stage_config.has_camera_detector_config());
-  LoadExtrinsics(stage_config.camera_detector_config().lidar_extrinsics_file(),
-                 &lidar2imu_matrix_rt_);
+  lidar2vehicle_matrix_rt_.setIdentity();
+  has_lidar_to_vehicle_extrinsics_ = false;
 
   std::string model_type = "PaddleNet";
 
@@ -66,12 +65,25 @@ bool BEVObstacleDetector::Init(const StageConfig &stage_config) {
   return true;
 }
 
+bool BEVObstacleDetector::SetLidarToVehicleExtrinsics(
+    const Eigen::Matrix4d &lidar_to_vehicle) {
+  lidar2vehicle_matrix_rt_ = lidar_to_vehicle;
+  has_lidar_to_vehicle_extrinsics_ = true;
+  return true;
+}
+
 bool BEVObstacleDetector::Detect(const ObstacleDetectorOptions &options,
                                  CameraFrame *frame) {
   return true;
 }
 
 bool BEVObstacleDetector::Process(DataFrame *data_frame) {
+  if (!has_lidar_to_vehicle_extrinsics_) {
+    AERROR << "BEVObstacleDetector requires injected lidar-to-vehicle "
+              "extrinsics before processing.";
+    return false;
+  }
+
   auto input_img_blob = inference_->get_blob(input_blob_names_.at(0));
   auto input_img2lidar_blob = inference_->get_blob(input_blob_names_.at(1));
   auto output_bbox_blob = inference_->get_blob(output_blob_names_.at(0));
@@ -207,59 +219,6 @@ void BEVObstacleDetector::FilterScore(
   }
 }
 
-bool BEVObstacleDetector::LoadExtrinsics(const std::string &yaml_file,
-                                         Eigen::Matrix4d *camera_extrinsic) {
-  if (!apollo::cyber::common::PathExists(yaml_file)) {
-    AINFO << yaml_file << " does not exist!";
-    return false;
-  }
-  YAML::Node node = YAML::LoadFile(yaml_file);
-  double qw = 0.0;
-  double qx = 0.0;
-  double qy = 0.0;
-  double qz = 0.0;
-  double tx = 0.0;
-  double ty = 0.0;
-  double tz = 0.0;
-  try {
-    if (node.IsNull()) {
-      AINFO << "Load " << yaml_file << " failed! please check!";
-      return false;
-    }
-    qw = node["transform"]["rotation"]["w"].as<double>();
-    qx = node["transform"]["rotation"]["x"].as<double>();
-    qy = node["transform"]["rotation"]["y"].as<double>();
-    qz = node["transform"]["rotation"]["z"].as<double>();
-    tx = node["transform"]["translation"]["x"].as<double>();
-    ty = node["transform"]["translation"]["y"].as<double>();
-    tz = node["transform"]["translation"]["z"].as<double>();
-  } catch (YAML::InvalidNode &in) {
-    AERROR << "load camera extrisic file " << yaml_file
-           << " with error, YAML::InvalidNode exception";
-    return false;
-  } catch (YAML::TypedBadConversion<double> &bc) {
-    AERROR << "load camera extrisic file " << yaml_file
-           << " with error, YAML::TypedBadConversion exception";
-    return false;
-  } catch (YAML::Exception &e) {
-    AERROR << "load camera extrisic file " << yaml_file
-           << " with error, YAML exception:" << e.what();
-    return false;
-  }
-  camera_extrinsic->setConstant(0);
-  Eigen::Quaterniond q;
-  q.x() = qx;
-  q.y() = qy;
-  q.z() = qz;
-  q.w() = qw;
-  (*camera_extrinsic).block<3, 3>(0, 0) = q.normalized().toRotationMatrix();
-  (*camera_extrinsic)(0, 3) = tx;
-  (*camera_extrinsic)(1, 3) = ty;
-  (*camera_extrinsic)(2, 3) = tz;
-  (*camera_extrinsic)(3, 3) = 1;
-  return true;
-}
-
 void BEVObstacleDetector::GetObjects(const std::vector<float> &detections,
                                      const std::vector<int64_t> &labels,
                                      const std::vector<float> &scores,
@@ -285,7 +244,7 @@ void BEVObstacleDetector::GetObjects(const std::vector<float> &detections,
 
     FillBBox3d(detections.data() + i * num_output_box_feature_,
                camera_frame->camera2world_pose, camera_frame->camera_extrinsic,
-               lidar2imu_matrix_rt_, obj);
+               lidar2vehicle_matrix_rt_, obj);
 
     objects->push_back(obj);
   }
@@ -293,8 +252,8 @@ void BEVObstacleDetector::GetObjects(const std::vector<float> &detections,
 
 void BEVObstacleDetector::FillBBox3d(const float *bbox,
                                      const Eigen::Affine3d &cam2world_pose,
-                                     const Eigen::Matrix4d &cam2imu_matrix_rt,
-                                     const Eigen::Matrix4d &lidar2imu_matrix_rt,
+                                     const Eigen::Matrix4d &camera2lidar_matrix_rt,
+                                     const Eigen::Matrix4d &lidar2vehicle_matrix_rt,
                                      base::ObjectPtr obj) {
   obj->camera_supplement.local_center[0] = bbox[0];
   obj->camera_supplement.local_center[1] = bbox[1];
@@ -315,25 +274,27 @@ void BEVObstacleDetector::FillBBox3d(const float *bbox,
   obj->center(1) = static_cast<double>(obj->camera_supplement.local_center[1]);
   obj->center(2) = static_cast<double>(obj->camera_supplement.local_center[2]);
 
-  Eigen::Affine3d cam2imu_affine;
-  Eigen::Affine3d imu2lidar_affine;
-  cam2imu_affine.matrix() = cam2imu_matrix_rt;
-  imu2lidar_affine.matrix() = lidar2imu_matrix_rt;
+  Eigen::Affine3d camera2lidar_affine;
+  Eigen::Affine3d lidar2vehicle_affine;
+  camera2lidar_affine.matrix() = camera2lidar_matrix_rt;
+  lidar2vehicle_affine.matrix() = lidar2vehicle_matrix_rt;
 
   Eigen::AngleAxisd rotation_vector(-M_PI / 2, Eigen::Vector3d(1, 0, 0));
   Eigen::Matrix4d lidar2cam;
   lidar2cam.setIdentity();
   lidar2cam.block<3, 3>(0, 0) = rotation_vector.matrix();
-  Eigen::Affine3d cam2lidar_affine;
-  cam2lidar_affine.matrix() = lidar2cam;
+  Eigen::Affine3d bev_output_to_lidar_affine;
+  bev_output_to_lidar_affine.matrix() = lidar2cam;
 
-  obj->center = cam2world_pose * cam2imu_affine.inverse() * imu2lidar_affine *
-                cam2lidar_affine * obj->center;
+  obj->center = cam2world_pose * camera2lidar_affine.inverse() *
+                lidar2vehicle_affine * bev_output_to_lidar_affine *
+                obj->center;
 
-  Eigen::Matrix3d world2imu_rotation =
-      (cam2world_pose.matrix() * cam2imu_affine.matrix().inverse())
+  Eigen::Matrix3d world2vehicle_rotation =
+      (cam2world_pose.matrix() * camera2lidar_affine.matrix().inverse())
           .block<3, 3>(0, 0);
-  auto heading = std::atan2(world2imu_rotation(1, 0), world2imu_rotation(0, 0));
+  auto heading = std::atan2(world2vehicle_rotation(1, 0),
+                            world2vehicle_rotation(0, 0));
   obj->theta += (heading + M_PI / 2);
 }
 /*
@@ -402,6 +363,8 @@ base::ObjectSubType BEVObstacleDetector::GetObjectSubType(const int label) {
       return base::ObjectSubType::UNKNOWN;
   }
 }
+
+REGISTER_OBSTACLE_DETECTOR(BEVObstacleDetector);
 
 }  // namespace camera
 }  // namespace perception

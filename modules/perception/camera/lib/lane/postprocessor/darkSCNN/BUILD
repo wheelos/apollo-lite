@@ -7,6 +7,9 @@ cc_library(
     name = "darkSCNN_lane_postprocessor",
     srcs = ["darkSCNN_lane_postprocessor.cc"],
     hdrs = ["darkSCNN_lane_postprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/base",

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>whl-toolbox SLAM</title>
+    <style>
+      body { margin: 0; overflow: hidden; background: #09111a; color: #e6eef7; font-family: "Segoe UI", "PingFang SC", sans-serif; }
+      #status { position: absolute; top: 10px; width: 100%; text-align: center; z-index: 10; color: #6bd3ff; font-family: monospace; }
+      #controls { position: absolute; top: 48px; left: 12px; z-index: 10; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: rgba(6, 12, 20, 0.72); border: 1px solid #223348; border-radius: 12px; }
+      #controls button { padding: 8px 12px; border-radius: 10px; border: 1px solid #2d425a; background: #102031; color: #e6eef7; cursor: pointer; }
+      #controls .label { font-size: 13px; color: #91a7be; }
+      #loc-controls.hidden { display: none; }
+      #coordinates-display { font-family: monospace; color: #45b8ff; }
+    </style>
+  </head>
+  <body>
+    <div id="status">连接 SLAM 数据流中...</div>
+    <div id="controls">
+      <div class="label">当前模式: <span id="modeLabel">定位</span></div>
+      <button id="modeToggleBtn" type="button">切换到建图</button>
+      <button id="toggleViewBtn" type="button">切换为跟随视角</button>
+      <div id="loc-controls">
+        <button id="toggleMapBtn" type="button">显示降采样地图</button>
+        <div id="coordinates-display">X: -, Y: -, Z: -</div>
+      </div>
+    </div>
+    <script src="/api/plugins/slam_visualization/assets/three.min.js"></script>
+    <script src="/api/plugins/slam_visualization/assets/OrbitControls.js"></script>
+    <script src="/static/slam.js"></script>
+  </body>
+</html>
+

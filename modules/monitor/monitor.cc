@@ -18,7 +18,6 @@
 #include "cyber/time/clock.h"
 #include "modules/monitor/common/monitor_manager.h"
 #include "modules/monitor/hardware/collision_monitor.h"
-#include "modules/monitor/hardware/esdcan_monitor.h"
 #include "modules/monitor/hardware/gps_monitor.h"
 #include "modules/monitor/hardware/resource_monitor.h"
 #include "modules/monitor/hardware/socket_can_monitor.h"
@@ -42,7 +41,6 @@ bool Monitor::Init() {
   MonitorManager::Instance()->Init(node_);
 
   // Only the one CAN card corresponding to current mode will take effect.
-  runners_.emplace_back(new EsdCanMonitor());
   runners_.emplace_back(new SocketCanMonitor());
   // To enable the GpsMonitor, you must add FLAGS_gps_component_name to the
   // mode's monitored_components.

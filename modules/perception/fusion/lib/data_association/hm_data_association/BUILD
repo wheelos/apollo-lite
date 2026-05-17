@@ -5,6 +5,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "chi_squared_cdf",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     hdrs = [
         "chi_squared_cdf_1_0.0500_0.999900.h",
         "chi_squared_cdf_2_0.0500_0.999900.h",
@@ -15,6 +18,9 @@ cc_library(
     name = "hm_tracks_objects_match",
     srcs = ["hm_tracks_objects_match.cc"],
     hdrs = ["hm_tracks_objects_match.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":track_object_distance",
         "//modules/perception/common/graph:gated_hungarian_bigraph_matcher",
@@ -28,11 +34,17 @@ cc_library(
     name = "probabilities",
     srcs = ["probabilities.cc"],
     hdrs = ["probabilities.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_library(
     name = "projection_cache",
     hdrs = ["projection_cache.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/math",
     ],
@@ -42,6 +54,9 @@ cc_library(
     name = "track_object_distance",
     srcs = ["track_object_distance.cc"],
     hdrs = ["track_object_distance.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":chi_squared_cdf",
         ":probabilities",
@@ -66,6 +81,9 @@ cc_library(
     name = "track_object_similarity",
     srcs = ["track_object_similarity.cc"],
     hdrs = ["track_object_similarity.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":chi_squared_cdf",
         ":probabilities",

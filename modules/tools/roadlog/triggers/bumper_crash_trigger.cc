@@ -29,6 +29,10 @@ BumperCrashTrigger::BumperCrashTrigger()
   trigger_name_ = "BumperCrashTrigger";
 }
 
+std::set<std::string> BumperCrashTrigger::GetObservedChannels() const {
+  return {FLAGS_chassis_topic};
+}
+
 void BumperCrashTrigger::Pull(const cyber::record::RecordMessage& msg) {
   if (!trigger_obj_->enabled()) {
     return;

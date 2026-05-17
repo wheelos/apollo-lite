@@ -7,6 +7,9 @@ cc_library(
     name = "pbf_gatekeeper",
     srcs = ["pbf_gatekeeper.cc"],
     hdrs = ["pbf_gatekeeper.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util",
         "//modules/perception/fusion/base:base_init_options",

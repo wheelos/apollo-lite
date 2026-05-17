@@ -40,7 +40,7 @@ namespace lidar {
  * @return false
  */
 bool BgObjectBuilder(std::vector<base::ObjectPtr>* objects,
-                     Eigen::Affine3d& lidar2novatel_pose);
+                     Eigen::Affine3d& lidar2vehicle_extrinsics);
 
 }  // namespace lidar
 }  // namespace perception

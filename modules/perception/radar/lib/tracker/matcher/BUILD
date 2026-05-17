@@ -19,6 +19,9 @@ cc_library(
     name = "hm_matcher",
     srcs = ["hm_matcher.cc"],
     hdrs = ["hm_matcher.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/base",

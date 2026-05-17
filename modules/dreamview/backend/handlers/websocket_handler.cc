@@ -61,6 +61,13 @@ void WebSocketHandler::handleClose(CivetServer *server,
         << ": Connection closed. Total connections: " << connections_.size();
 }
 
+bool WebSocketHandler::HasConnections() const { return ConnectionCount() > 0; }
+
+size_t WebSocketHandler::ConnectionCount() const {
+  std::unique_lock<std::mutex> lock(mutex_);
+  return connections_.size();
+}
+
 bool WebSocketHandler::BroadcastData(const std::string &data, bool skippable) {
   std::vector<Connection *> connections_to_send;
   {
@@ -77,6 +84,30 @@ bool WebSocketHandler::BroadcastData(const std::string &data, bool skippable) {
   bool all_success = true;
   for (Connection *conn : connections_to_send) {
     if (!SendData(conn, data, skippable)) {
+      all_success = false;
+    }
+  }
+
+  return all_success;
+}
+
+bool WebSocketHandler::BroadcastBinaryData(const std::string &data,
+                                           bool skippable) {
+  std::vector<Connection *> connections_to_send;
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (connections_.empty()) {
+      return true;
+    }
+    for (auto &kv : connections_) {
+      Connection *conn = kv.first;
+      connections_to_send.push_back(conn);
+    }
+  }
+
+  bool all_success = true;
+  for (Connection *conn : connections_to_send) {
+    if (!SendBinaryData(conn, data, skippable)) {
       all_success = false;
     }
   }

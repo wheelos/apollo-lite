@@ -20,9 +20,6 @@ install(
 install(
     name = "install",
     data_dest = "map",
-    data = [
-        ":map.BUILD",
-    ],
     deps = [
         ":pb_map",
         "//modules/map/tools:install",

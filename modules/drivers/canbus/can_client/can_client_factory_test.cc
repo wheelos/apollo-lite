@@ -29,15 +29,6 @@ TEST(CanClientFactoryTest, CreateCanClient) {
   EXPECT_NE(can_factory, nullptr);
 
   can_factory->RegisterCanClients();
-
-#if USE_ESD_CAN
-  CANCardParameter can_card_parameter;
-  can_card_parameter.set_brand(CANCardParameter::ESD_CAN);
-  can_card_parameter.set_type(CANCardParameter::PCI_CARD);
-  can_card_parameter.set_channel_id(CANCardParameter::CHANNEL_ID_ZERO);
-
-  EXPECT_NE(can_factory->CreateCANClient(can_card_parameter), nullptr);
-#endif
 }
 
 }  // namespace canbus

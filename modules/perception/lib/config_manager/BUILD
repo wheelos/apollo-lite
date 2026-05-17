@@ -7,6 +7,9 @@ cc_library(
     name = "config_manager",
     srcs = ["config_manager.cc"],
     hdrs = ["config_manager.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common:perception_gflags",

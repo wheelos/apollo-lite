@@ -7,6 +7,9 @@ cc_library(
     name = "multi_hm_bipartite_graph_matcher",
     srcs = ["multi_hm_bipartite_graph_matcher.cc"],
     hdrs = ["multi_hm_bipartite_graph_matcher.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common/graph:gated_hungarian_bigraph_matcher",
@@ -21,6 +24,9 @@ cc_library(
     name = "gnn_bipartite_graph_matcher",
     srcs = ["gnn_bipartite_graph_matcher.cc"],
     hdrs = ["gnn_bipartite_graph_matcher.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//cyber",
         "//modules/perception/common/graph:gated_hungarian_bigraph_matcher",
@@ -34,6 +40,9 @@ cc_library(
     name = "distance_collection",
     srcs = ["distance_collection.cc"],
     hdrs = ["distance_collection.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/math",
         "//modules/perception/common/geometry:basic",

@@ -2,13 +2,13 @@ pipeline_type: LIDAR_DETECTION
 
 stage_type: POINTCLOUD_PREPROCESSOR
 stage_type: POINTCLOUD_DETECTION_PREPROCESSOR
-stage_type: MAP_MANAGER
-stage_type: HDMAP_ROI_FILTER
-stage_type: GROUND_DETECTOR
+stage_type: HDMAP_CONTEXT_PROVIDER
+stage_type: POINTCLOUD_ROI_FILTER
+stage_type: GROUND_SEGMENTER
 stage_type: CENTER_POINT_TRT_DETECTION
 stage_type: POINTCLOUD_DETECTION_POSTPROCESSOR
-stage_type: OBJECT_BUILDER
-stage_type: OBJECT_FILTER_BANK
+stage_type: OBJECT_GEOMETRY_BUILDER
+stage_type: OBJECT_POST_FILTER_BANK
 
 stage_config: {
   stage_type: POINTCLOUD_PREPROCESSOR
@@ -52,19 +52,19 @@ stage_config: {
 }
 
 stage_config: {
-  stage_type: MAP_MANAGER
+  stage_type: HDMAP_CONTEXT_PROVIDER
   enabled: true
 
-  map_manager_config: {
+  hdmap_context_provider_config: {
     update_pose: false
     roi_search_distance: 120.0
   }
 }
 
 stage_config: {
-  stage_type: HDMAP_ROI_FILTER
+  stage_type: POINTCLOUD_ROI_FILTER
   enabled: true
-  hdmap_roi_filter_config: {
+  pointcloud_roi_filter_config: {
     range: 120.0
     cell_size: 0.25
     extend_dist: 0.0
@@ -74,9 +74,9 @@ stage_config: {
 }
 
 stage_config: {
-  stage_type: GROUND_DETECTOR
+  stage_type: GROUND_SEGMENTER
   enabled: true
-  spatio_temporal_ground_detector_config: {
+  ground_segmenter_config: {
     use_roi: true
     use_ground_service: true
 
@@ -229,22 +229,22 @@ stage_config: {
 }
 
 stage_config: {
-  stage_type: OBJECT_BUILDER
+  stage_type: OBJECT_GEOMETRY_BUILDER
   enabled: true
 
-  object_builder_config: {
+  object_geometry_builder_config: {
   }
 }
 
 stage_config: {
-  stage_type: OBJECT_FILTER_BANK
+  stage_type: OBJECT_POST_FILTER_BANK
   enabled: true
 
   plugin_config: {
-    plugin_type: ROI_BOUNDARY_FILTER
+    plugin_type: HDMAP_BOUNDARY_OBJECT_FILTER
     enabled: true
 
-    roi_boundary_filter_config: {
+    hdmap_boundary_object_filter_config: {
       distance_to_boundary_threshold: -1.0
       confidence_threshold: 0.5
       cross_roi_threshold: 0.6
@@ -252,7 +252,7 @@ stage_config: {
     }
   }
 
-  object_filter_bank_config: {
+  object_post_filter_bank_config: {
   }
 }
 

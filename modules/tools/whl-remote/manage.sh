@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: manage.sh [start|stop|status]
+# Usage: manage.sh [start|stop|status|autostart <on|off|status>]
 
 set -u
 
@@ -16,6 +16,88 @@ LOG="$WORK_DIR/frpc.log"
 PROC="frpc"
 PID_FILE="$WORK_DIR/${PROC}.pid"
 ACTION="${1:-}"
+SUB_ACTION="${2:-}"
+SERVICE_NAME="frpc.service"
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
+
+run_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+ensure_systemd_available() {
+    if ! command -v systemctl >/dev/null 2>&1; then
+        echo "Error: systemctl not found; autostart management requires systemd." >&2
+        exit 1
+    fi
+}
+
+install_service_file() {
+    ensure_systemd_available
+
+    if [ ! -x "$BIN" ]; then
+        echo "Error: executable not found: $BIN" >&2
+        exit 1
+    fi
+    if [ ! -f "$CONF" ]; then
+        echo "Error: configuration file not found: $CONF" >&2
+        exit 1
+    fi
+
+    tmp_service_file="$(mktemp)"
+    cat > "$tmp_service_file" <<EOF
+[Unit]
+Description=FRP Client Service (Car)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=$WORK_DIR
+ExecStart=$BIN -c $CONF
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    run_root cp -f "$tmp_service_file" "$SERVICE_FILE"
+    rm -f "$tmp_service_file"
+    run_root systemctl daemon-reload
+}
+
+set_autostart_on() {
+    install_service_file
+    run_root systemctl enable --now "$SERVICE_NAME"
+    echo "Autostart enabled: $SERVICE_NAME"
+}
+
+set_autostart_off() {
+    ensure_systemd_available
+    run_root systemctl disable --now "$SERVICE_NAME" >/dev/null 2>&1 || true
+    echo "Autostart disabled: $SERVICE_NAME"
+}
+
+show_autostart_status() {
+    ensure_systemd_available
+
+    enabled="no"
+    active="no"
+
+    if systemctl is-enabled "$SERVICE_NAME" >/dev/null 2>&1; then
+        enabled="yes"
+    fi
+    if systemctl is-active "$SERVICE_NAME" >/dev/null 2>&1; then
+        active="yes"
+    fi
+
+    echo "Autostart (enabled): $enabled"
+    echo "Service running      : $active"
+}
 
 is_running() {
     if [ -f "$PID_FILE" ]; then
@@ -113,8 +195,25 @@ case "$ACTION" in
             echo "Log file does not exist: $LOG"
         fi
         ;;
+    autostart)
+        case "$SUB_ACTION" in
+            on)
+                set_autostart_on
+                ;;
+            off)
+                set_autostart_off
+                ;;
+            status)
+                show_autostart_status
+                ;;
+            *)
+                echo "Usage: $0 autostart {on|off|status}"
+                exit 1
+                ;;
+        esac
+        ;;
     *)
-        echo "Usage: $0 {start|stop|status}"
+        echo "Usage: $0 {start|stop|status|autostart <on|off|status>}"
         exit 1
         ;;
 esac

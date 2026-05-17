@@ -16,6 +16,9 @@
 
 #include "modules/planning/math/curve1d/quintic_polynomial_curve1d.h"
 
+#include <fstream>
+#include <iomanip>
+
 #include "gtest/gtest.h"
 
 #include "modules/planning/math/curve1d/quartic_polynomial_curve1d.h"
@@ -71,5 +74,49 @@ TEST(QuinticPolynomialCurve1dTest, IntegratedFromQuarticCurve) {
                 quintic_curve.Evaluate(4, value), 1e-8);
   }
 }
+
+TEST(QuinticPolynomialCurve1dTest, GeneratePlottingData) {
+  // 1. Set curve parameters
+  double x0 = 0.0;
+  double dx0 = 1.0;
+  double ddx0 = 0.8;
+
+  double x1 = 10.0;
+  double dx1 = 5.0;
+  double ddx1 = 0.0;
+
+  double t = 8.0;
+
+  QuinticPolynomialCurve1d curve(x0, dx0, ddx0, x1, dx1, ddx1, t);
+
+  // 2. Create and open a file
+  std::ofstream ofs("/tmp/quintic_curve_data.csv");
+  if (!ofs.is_open()) {
+    std::cerr << "Failed to open file for writing!" << std::endl;
+    FAIL();
+  }
+
+  // 3. Write to CSV header
+  ofs << "param,pos,vel,acc,jerk" << std::endl;
+
+  // 4. Loop sampling and writing data
+  const int num_samples = 200;
+  ofs << std::fixed << std::setprecision(8);  // Set output precision
+
+  for (int i = 0; i <= num_samples; ++i) {
+    double p = t * i / num_samples;
+    double pos = curve.Evaluate(0, p);
+    double vel = curve.Evaluate(1, p);
+    double acc = curve.Evaluate(2, p);
+    double jerk = curve.Evaluate(3, p);
+    ofs << p << "," << pos << "," << vel << "," << acc << "," << jerk
+        << std::endl;
+  }
+
+  // 5. Close file
+  ofs.close();
+  SUCCEED();
+}
+
 }  // namespace planning
 }  // namespace apollo

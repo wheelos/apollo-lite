@@ -33,19 +33,31 @@
 using apollo::cyber::common::GetFileName;
 using apollo::cyber::common::StringToUnixSeconds;
 using apollo::cyber::common::UnixSecondsToString;
+using apollo::cyber::record::ChannelRateFilterConfig;
+using apollo::cyber::record::ChannelRateLimitRule;
 using apollo::cyber::record::HeaderBuilder;
 using apollo::cyber::record::Info;
+using apollo::cyber::record::MessageSizeFilterConfig;
+using apollo::cyber::record::ParseChannelRateLimitRule;
+using apollo::cyber::record::ParseMessageSizeBytes;
 using apollo::cyber::record::Player;
 using apollo::cyber::record::PlayParam;
 using apollo::cyber::record::Recorder;
 using apollo::cyber::record::Recoverer;
 using apollo::cyber::record::Spliter;
+using apollo::cyber::record::ValidateChannelRateFilterConfig;
+using apollo::cyber::record::ValidateMessageSizeFilterConfig;
 
 const char INFO_OPTIONS[] = "h";
 const char RECORD_OPTIONS[] = "o:ac:k:i:m:h";
 const char PLAY_OPTIONS[] = "f:ac:k:lr:b:e:s:d:p:h";
 const char SPLIT_OPTIONS[] = "f:o:c:k:b:e:h";
 const char RECOVER_OPTIONS[] = "f:o:h";
+
+enum LongOnlyOptions {
+  kDropLargeMessageSizeOption = 256,
+  kChannelRateLimitOption,
+};
 
 void DisplayUsage(const std::string& binary);
 void DisplayUsage(const std::string& binary, const std::string& command);
@@ -76,6 +88,15 @@ void DisplayUsage(const std::string& binary, const std::string& command) {
             << std::endl;
   if (command == "record") {
     DisplayUsage(binary, command, RECORD_OPTIONS);
+    std::cout << "\tRecorder filter options:" << std::endl;
+    std::cout << "\t--drop <size>\t\t\tdrop messages at or above the size "
+              << "threshold" << std::endl;
+    std::cout << "\t--drop-large-message-size <bytes>\t"
+              << "drop messages at or above the size threshold" << std::endl;
+    std::cout << "\t--channel-rate-limit <channel@hz>\t"
+              << "cap the saved rate for one channel" << std::endl;
+    std::cout << "\t\t\t\t\tif both are set, size drops run before channel "
+              << "rate limits" << std::endl;
   } else if (command == "play") {
     DisplayUsage(binary, command, PLAY_OPTIONS);
   } else if (command == "split") {
@@ -93,7 +114,10 @@ void DisplayUsage(const std::string& binary, const std::string& command,
   for (char option : options) {
     switch (option) {
       case 'f':
-        std::cout << "\t-f, --file <file>\t\t\tinput record file" << std::endl;
+        if (command != "record") {
+          std::cout << "\t-f, --file <file>\t\t\tinput record file"
+                    << std::endl;
+        }
         break;
       case 'o':
         std::cout << "\t-o, --output <file>\t\t\toutput record file"
@@ -170,12 +194,27 @@ int main(int argc, char** argv) {
   }
 
   int long_index = 0;
-  const std::string short_opts = "f:c:k:o:alr:b:e:s:d:p:i:m:h";
-  static const struct option long_opts[] = {
+  static const struct option kInfoLongOpts[] = {
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  static const struct option kRecordLongOpts[] = {
+      {"output", required_argument, nullptr, 'o'},
+      {"all", no_argument, nullptr, 'a'},
+      {"white-channel", required_argument, nullptr, 'c'},
+      {"black-channel", required_argument, nullptr, 'k'},
+      {"segment-interval", required_argument, nullptr, 'i'},
+      {"segment-size", required_argument, nullptr, 'm'},
+      {"drop", required_argument, nullptr, kDropLargeMessageSizeOption},
+      {"drop-large-message-size", required_argument, nullptr,
+       kDropLargeMessageSizeOption},
+      {"channel-rate-limit", required_argument, nullptr,
+       kChannelRateLimitOption},
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  static const struct option kPlayLongOpts[] = {
       {"files", required_argument, nullptr, 'f'},
       {"white-channel", required_argument, nullptr, 'c'},
       {"black-channel", required_argument, nullptr, 'k'},
-      {"output", required_argument, nullptr, 'o'},
       {"all", no_argument, nullptr, 'a'},
       {"loop", no_argument, nullptr, 'l'},
       {"rate", required_argument, nullptr, 'r'},
@@ -184,9 +223,40 @@ int main(int argc, char** argv) {
       {"start", required_argument, nullptr, 's'},
       {"delay", required_argument, nullptr, 'd'},
       {"preload", required_argument, nullptr, 'p'},
-      {"segment-interval", required_argument, nullptr, 'i'},
-      {"segment-size", required_argument, nullptr, 'm'},
-      {"help", no_argument, nullptr, 'h'}};
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  static const struct option kSplitLongOpts[] = {
+      {"files", required_argument, nullptr, 'f'},
+      {"output", required_argument, nullptr, 'o'},
+      {"white-channel", required_argument, nullptr, 'c'},
+      {"black-channel", required_argument, nullptr, 'k'},
+      {"begin", required_argument, nullptr, 'b'},
+      {"end", required_argument, nullptr, 'e'},
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  static const struct option kRecoverLongOpts[] = {
+      {"files", required_argument, nullptr, 'f'},
+      {"output", required_argument, nullptr, 'o'},
+      {"help", no_argument, nullptr, 'h'},
+      {nullptr, 0, nullptr, 0}};
+  const char* short_opts = "";
+  const struct option* long_opts = kInfoLongOpts;
+  if (command == "record") {
+    short_opts = RECORD_OPTIONS;
+    long_opts = kRecordLongOpts;
+  } else if (command == "play") {
+    short_opts = PLAY_OPTIONS;
+    long_opts = kPlayLongOpts;
+  } else if (command == "split") {
+    short_opts = SPLIT_OPTIONS;
+    long_opts = kSplitLongOpts;
+  } else if (command == "recover") {
+    short_opts = RECOVER_OPTIONS;
+    long_opts = kRecoverLongOpts;
+  } else if (command == "info") {
+    short_opts = INFO_OPTIONS;
+    long_opts = kInfoLongOpts;
+  }
 
   std::vector<std::string> opt_file_vec;
   std::vector<std::string> opt_output_vec;
@@ -201,10 +271,12 @@ int main(int argc, char** argv) {
   uint64_t opt_delay = 0;
   uint32_t opt_preload = 3;
   auto opt_header = HeaderBuilder::GetHeader();
+  MessageSizeFilterConfig opt_message_size_filter_config;
+  ChannelRateFilterConfig opt_channel_rate_filter_config;
+  optind = 2;
 
   do {
-    int opt =
-        getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
+    int opt = getopt_long(argc, argv, short_opts, long_opts, &long_index);
     if (opt == -1) {
       break;
     }
@@ -349,6 +421,29 @@ int main(int argc, char** argv) {
       case 'h':
         DisplayUsage(binary, command);
         return 0;
+      case kDropLargeMessageSizeOption:
+        {
+          std::string filter_error;
+          if (!ParseMessageSizeBytes(
+                  optarg,
+                  &opt_message_size_filter_config.drop_message_size_bytes,
+                  &filter_error)) {
+            std::cout << filter_error << std::endl;
+            return -1;
+          }
+        }
+        break;
+      case kChannelRateLimitOption:
+        {
+          ChannelRateLimitRule rule;
+          std::string filter_error;
+          if (!ParseChannelRateLimitRule(optarg, &rule, &filter_error)) {
+            std::cout << filter_error << std::endl;
+            return -1;
+          }
+          opt_channel_rate_filter_config.rules.push_back(rule);
+        }
+        break;
       default:
         break;
     }
@@ -422,10 +517,24 @@ int main(int argc, char** argv) {
           UnixSecondsToString(time(nullptr), "%Y%m%d%H%M%S") + ".record";
       opt_output_vec.push_back(default_output_file);
     }
+    std::string message_size_filter_error;
+    if (!ValidateMessageSizeFilterConfig(opt_message_size_filter_config,
+                                         &message_size_filter_error)) {
+      std::cout << message_size_filter_error << std::endl;
+      return -1;
+    }
+    std::string channel_rate_filter_error;
+    if (!ValidateChannelRateFilterConfig(opt_channel_rate_filter_config,
+                                         &channel_rate_filter_error)) {
+      std::cout << channel_rate_filter_error << std::endl;
+      return -1;
+    }
     ::apollo::cyber::Init(argv[0]);
     auto recorder = std::make_shared<Recorder>(opt_output_vec[0], opt_all,
                                                opt_white_channels,
-                                               opt_black_channels, opt_header);
+                                               opt_black_channels, opt_header,
+                                               opt_message_size_filter_config,
+                                               opt_channel_rate_filter_config);
     bool record_result = recorder->Start();
     if (record_result) {
       while (!::apollo::cyber::IsShutdown()) {

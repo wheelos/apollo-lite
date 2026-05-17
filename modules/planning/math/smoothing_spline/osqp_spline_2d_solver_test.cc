@@ -20,9 +20,12 @@
 #include "modules/planning/math/smoothing_spline/osqp_spline_2d_solver.h"
 
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
 
 #include "gtest/gtest.h"
 
+#include "cyber/init.h"
 #include "modules/planning/math/curve_math.h"
 
 namespace apollo {
@@ -148,3 +151,12 @@ TEST(OSQPSolverTest, solver_test_01) {
 
 }  // namespace planning
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  apollo::cyber::Init(argv[0]);
+  const int result = RUN_ALL_TESTS();
+  apollo::cyber::Clear();
+  std::fflush(nullptr);
+  std::_Exit(result);
+}

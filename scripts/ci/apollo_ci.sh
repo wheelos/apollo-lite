@@ -23,22 +23,20 @@ source "${TOP_DIR}/scripts/apollo.bashrc"
 source "${TOP_DIR}/scripts/apollo_base.sh"
 ARCH="$(uname -m)"
 
-: ${USE_ESD_CAN:=false}
-
 APOLLO_BUILD_SH="${APOLLO_ROOT_DIR}/scripts/apollo_build.sh"
 APOLLO_TEST_SH="${APOLLO_ROOT_DIR}/scripts/apollo_test.sh"
 APOLLO_LINT_SH="${APOLLO_ROOT_DIR}/scripts/apollo_lint.sh"
 
 function run_ci_build() {
-  env USE_ESD_CAN=${USE_ESD_CAN} bash "${APOLLO_BUILD_SH}"
+  bash "${APOLLO_BUILD_SH}"
 }
 
 function run_ci_test() {
-  env USE_ESD_CAN=${USE_ESD_CAN} bash "${APOLLO_TEST_SH}" --config=unit_test
+  bash "${APOLLO_TEST_SH}" --config=unit_test
 }
 
 function run_ci_lint() {
-  env USE_ESD_CAN=${USE_ESD_CAN} bash "${APOLLO_LINT_SH}" --cpp
+  bash "${APOLLO_LINT_SH}" --cpp
 }
 
 function main() {

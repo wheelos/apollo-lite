@@ -6,7 +6,7 @@ services:
     pid: "host"
 
     environment:
-      - USE_GPU_HOST=1
+      - USE_GPU_HOST=${USE_GPU_HOST}
       - TEST_MODE=false
 
     volumes:
@@ -14,6 +14,3 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /lib/modules:/lib/modules:ro
       - /usr/src:/usr/src:ro
-
-    # GPU access (docker compose v2)
-    runtime: nvidia

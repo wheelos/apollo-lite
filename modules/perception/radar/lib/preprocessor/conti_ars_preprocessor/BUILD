@@ -17,6 +17,9 @@ cc_library(
     name = "conti_ars_preprocessor",
     srcs = ["conti_ars_preprocessor.cc"],
     hdrs = ["conti_ars_preprocessor.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/base",

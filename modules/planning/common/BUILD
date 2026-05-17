@@ -15,6 +15,14 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "gtest_exit_main",
+    srcs = ["gtest_exit_main.cc"],
+    deps = [
+        "@com_google_googletest//:gtest",
+    ],
+)
+
 cc_test(
     name = "indexed_list_test",
     size = "small",
@@ -51,6 +59,33 @@ filegroup(
     srcs = glob([
         "testdata/**",
     ]),
+)
+
+cc_library(
+    name = "obstacle_decider",
+    srcs = ["obstacle_decider.cc"],
+    hdrs = ["obstacle_decider.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        ":obstacle",
+        "//modules/common/configs:vehicle_config_helper",
+        "//modules/planning/reference_line",
+    ],
+)
+
+cc_test(
+    name = "obstacle_decider_test",
+    size = "small",
+    srcs = ["obstacle_decider_test.cc"],
+    data = [
+        "//modules/planning:planning_testdata",
+    ],
+    deps = [
+        ":gtest_exit_main",
+        ":obstacle_decider",
+        "//modules/common_msgs/prediction_msgs:feature_cc_proto",
+        "//modules/map/hdmap",
+    ],
 )
 
 cc_library(
@@ -151,6 +186,7 @@ cc_library(
         ":path_decision",
         ":planning_gflags",
         ":st_graph_data",
+        ":obstacle_decider",
         "//cyber",
         "//modules/common/math",
         "//modules/common/util",

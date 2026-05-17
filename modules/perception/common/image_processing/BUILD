@@ -7,6 +7,9 @@ cc_library(
     name = "hough_transfer",
     srcs = ["hough_transfer.cc"],
     hdrs = ["hough_transfer.h"],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
 )
 
 cc_test(

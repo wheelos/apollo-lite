@@ -36,6 +36,7 @@ namespace msf {
 struct LidarFrame {
   LidarFrame() : measurement_time(0.0) {}
   double measurement_time;  // unix time
+  std::string frame_id;
   std::vector<double> pt_xs;
   std::vector<double> pt_ys;
   std::vector<double> pt_zs;
