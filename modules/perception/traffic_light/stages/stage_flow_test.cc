@@ -48,16 +48,8 @@ TEST(TrafficLightStageTest, PrompterCombinesHistoryMapAndFallback) {
   EXPECT_TRUE(context.metrics.prompter.fallback_used);
 }
 
-TEST(TrafficLightStageTest, DetectorInfersDominantColorFromImage) {
+TEST(TrafficLightStageTest, DetectorDoesNotFallbackWithoutNeuralOutputInYoloMode) {
   std::vector<uint8_t> image_data(12 * 12 * 3, 0);
-  for (int y = 3; y < 9; ++y) {
-    for (int x = 3; x < 9; ++x) {
-      const int offset = (y * 12 + x) * 3;
-      image_data[offset] = 20;
-      image_data[offset + 1] = 220;
-      image_data[offset + 2] = 20;
-    }
-  }
 
   PipelineContext context;
   context.primary_camera_name = "front_6mm";
@@ -73,12 +65,14 @@ TEST(TrafficLightStageTest, DetectorInfersDominantColorFromImage) {
       PromptRegion{Rect2f{2.0f, 2.0f, 8.0f, 8.0f}, 0.95f, PromptSource::MAP,
                    "tl_1", "front_6mm", LaneIntent::STRAIGHT});
 
-  DetectorStage stage{DetectorOptions()};
-  ASSERT_TRUE(stage.Process(&context));
-  ASSERT_EQ(context.visual_lights.size(), 1u);
-  EXPECT_EQ(context.visual_lights.front().color, LightColor::GREEN);
-  EXPECT_GT(context.visual_lights.front().confidence, 0.6f);
-  EXPECT_EQ(context.metrics.detector.output_count, 1);
+  DetectorOptions options;
+  options.backend = DetectorBackendType::YOLO;
+  DetectorStage stage{options};
+  EXPECT_TRUE(stage.Process(&context));
+  EXPECT_TRUE(context.visual_lights.empty());
+  EXPECT_TRUE(context.status.detector_ran);
+  EXPECT_NE(context.status.degrade_reason.find("neural detector unavailable"),
+            std::string::npos);
 }
 
 TEST(TrafficLightStageTest, DetectorDecodesRawYoloSemanticOutput) {
@@ -111,6 +105,7 @@ TEST(TrafficLightStageTest, DetectorDecodesRawYoloSemanticOutput) {
   candidate.signal_id = "sig_left_straight";
   candidate.camera_name = "front_6mm";
   context.raw_yolo_lights.push_back(candidate);
+  context.status.neural_detector_ran = true;
 
   DetectorOptions options;
   options.backend = DetectorBackendType::YOLO;
@@ -294,6 +289,30 @@ TEST(TrafficLightStageTest, FusionKeepsStrongVisionAgainstConflictingV2X) {
   ASSERT_TRUE(stage.Process(&context));
   EXPECT_EQ(context.primary_decision.color, LightColor::RED);
   EXPECT_EQ(context.primary_decision.source, EvidenceSource::VISION);
+}
+
+TEST(TrafficLightStageTest, FusionPublishesDegradedUnknownForMappedSignal) {
+  PipelineContext context;
+  context.nav_topology.ego_lane_intent = LaneIntent::STRAIGHT;
+  context.AppendDegradeReason("neural detector unavailable");
+
+  SignalCandidate signal;
+  signal.signal_id = "Signal_1";
+  signal.lane_id = "Lane_83";
+  signal.camera_name = "front_6mm";
+  signal.topology_confidence = 0.9f;
+  signal.intended_movement = LaneIntent::STRAIGHT;
+  signal.movement_mask = kMovementMaskStraight;
+  signal.stopline_distance_m = 18.0;
+  context.map_signals.push_back(signal);
+
+  FusionStage stage{FusionOptions()};
+  ASSERT_TRUE(stage.Process(&context));
+  ASSERT_EQ(context.final_lights.size(), 1u);
+  EXPECT_EQ(context.final_lights.front().signal_id, "Signal_1");
+  EXPECT_EQ(context.final_lights.front().color, LightColor::UNKNOWN);
+  EXPECT_TRUE(context.final_lights.front().is_degraded);
+  EXPECT_TRUE(context.final_lights.front().controlling_ego_lane);
 }
 
 }  // namespace

@@ -1,5 +1,8 @@
 #include "modules/perception/traffic_light/traffic_light_component.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <unordered_map>
@@ -19,6 +22,81 @@ namespace perception {
 namespace traffic_light {
 
 namespace {
+
+std::string ToLowerAscii(std::string value) {
+  std::transform(value.begin(), value.end(), value.begin(),
+                 [](unsigned char ch) {
+                   return static_cast<char>(std::tolower(ch));
+                 });
+  return value;
+}
+
+int InferImageChannels(const apollo::drivers::Image& image) {
+  const std::string encoding = ToLowerAscii(image.encoding());
+  if (encoding == "rgb8" || encoding == "bgr8" || encoding == "type_8uc3") {
+    return 3;
+  }
+  if (encoding == "rgba8" || encoding == "bgra8" || encoding == "type_8uc4") {
+    return 4;
+  }
+  if (encoding == "mono8" || encoding == "type_8uc1") {
+    return 1;
+  }
+  if (encoding == "yuv422" || encoding == "type_8uc2") {
+    return 2;
+  }
+  if (image.width() > 0 && image.step() > 0) {
+    const int inferred = static_cast<int>(image.step() / image.width());
+    if (inferred >= 1 && inferred <= 4) {
+      return inferred;
+    }
+  }
+  if (image.width() > 0 && image.height() > 0 && !image.data().empty()) {
+    const size_t pixel_count =
+        static_cast<size_t>(image.width()) * static_cast<size_t>(image.height());
+    if (pixel_count > 0) {
+      const size_t inferred = image.data().size() / pixel_count;
+      if (inferred >= 1 && inferred <= 4) {
+        return static_cast<int>(inferred);
+      }
+    }
+  }
+  return 0;
+}
+
+std::shared_ptr<std::vector<uint8_t>> CopyImageStorage(
+    const apollo::drivers::Image& image, int channels) {
+  if (channels <= 0 || image.width() == 0 || image.height() == 0) {
+    return nullptr;
+  }
+
+  const size_t compact_row_bytes =
+      static_cast<size_t>(image.width()) * static_cast<size_t>(channels);
+  const size_t source_row_bytes =
+      image.step() > 0 ? static_cast<size_t>(image.step()) : compact_row_bytes;
+  const size_t expected_bytes =
+      source_row_bytes * static_cast<size_t>(image.height());
+  if (image.data().size() < expected_bytes) {
+    AERROR << "Invalid image buffer, expected at least " << expected_bytes
+           << " bytes but got " << image.data().size();
+    return nullptr;
+  }
+
+  if (source_row_bytes == compact_row_bytes) {
+    return std::make_shared<std::vector<uint8_t>>(image.data().begin(),
+                                                  image.data().end());
+  }
+
+  auto storage = std::make_shared<std::vector<uint8_t>>(
+      compact_row_bytes * static_cast<size_t>(image.height()));
+  const auto* source =
+      reinterpret_cast<const uint8_t*>(image.data().data());
+  for (uint32_t row = 0; row < image.height(); ++row) {
+    std::memcpy(storage->data() + row * compact_row_bytes,
+                source + row * source_row_bytes, compact_row_bytes);
+  }
+  return storage;
+}
 
 apollo::perception::TrafficLight::Color ConvertToProtoColor(LightColor color) {
   switch (color) {
@@ -83,8 +161,6 @@ LaneIntent ConvertV2XType(apollo::v2x::SingleTrafficLight::Type type) {
 DetectorBackendType ConvertDetectorBackend(
     apollo::perception::trafficlight::TrafficLightDetectorBackend backend) {
   switch (backend) {
-    case apollo::perception::trafficlight::TL_DETECTOR_HEURISTIC:
-      return DetectorBackendType::HEURISTIC;
     case apollo::perception::trafficlight::TL_DETECTOR_YOLO:
     default:
       return DetectorBackendType::YOLO;
@@ -102,6 +178,23 @@ LightColor ConvertV2XColor(apollo::v2x::SingleTrafficLight::Color color) {
       return LightColor::GREEN;
     case apollo::v2x::SingleTrafficLight::BLACK:
       return LightColor::BLACK;
+    default:
+      return LightColor::UNKNOWN;
+  }
+}
+
+LightColor ConvertClassColor(
+    apollo::perception::trafficlight::TrafficLightClassColor color) {
+  switch (color) {
+    case apollo::perception::trafficlight::TL_CLASS_RED:
+      return LightColor::RED;
+    case apollo::perception::trafficlight::TL_CLASS_YELLOW:
+      return LightColor::YELLOW;
+    case apollo::perception::trafficlight::TL_CLASS_GREEN:
+      return LightColor::GREEN;
+    case apollo::perception::trafficlight::TL_CLASS_BLACK:
+      return LightColor::BLACK;
+    case apollo::perception::trafficlight::TL_CLASS_UNKNOWN:
     default:
       return LightColor::UNKNOWN;
   }
@@ -165,22 +258,43 @@ ComponentOptions ToOptions(
     const auto& cfg = proto.detector();
     options.detector.backend = ConvertDetectorBackend(cfg.backend());
     options.detector.min_prompt_weight = cfg.min_prompt_weight();
-    options.detector.min_bright_pixel_ratio = cfg.min_bright_pixel_ratio();
-    options.detector.min_color_ratio = cfg.min_color_ratio();
     options.detector.min_roi_area = cfg.min_roi_area();
-    options.detector.sample_grid_divisor = cfg.sample_grid_divisor();
-    options.detector.map_overlap_bonus = cfg.map_overlap_bonus();
-    options.detector.history_bonus = cfg.history_bonus();
-    options.detector.allow_unknown_output = cfg.allow_unknown_output();
-    options.detector.glare_white_ratio_threshold =
-        cfg.glare_white_ratio_threshold();
-    options.detector.glare_penalty = cfg.glare_penalty();
-    options.detector.min_signal_overlap_for_glare_override =
-        cfg.min_signal_overlap_for_glare_override();
     options.detector.min_objectness = cfg.min_objectness();
     options.detector.min_semantic_confidence = cfg.min_semantic_confidence();
     options.detector.prefer_raw_yolo_candidates =
         cfg.prefer_raw_yolo_candidates();
+  }
+  if (proto.has_neural_detector()) {
+    const auto& cfg = proto.neural_detector();
+    options.neural_detector.model_root_dir = cfg.model_root_dir();
+    options.neural_detector.onnx_file = cfg.onnx_file();
+    options.neural_detector.enable_fp16 = cfg.enable_fp16();
+    options.neural_detector.input_name = cfg.input_name();
+    options.neural_detector.output_name = cfg.output_name();
+    options.neural_detector.resize_image_height = cfg.resize_image_height();
+    options.neural_detector.resize_image_width = cfg.resize_image_width();
+    options.neural_detector.conf_threshold = cfg.conf_threshold();
+    options.neural_detector.iou_nms_threshold = cfg.iou_nms_threshold();
+    options.neural_detector.pad_value = cfg.pad_value();
+    options.neural_detector.scale = cfg.scale();
+    options.neural_detector.is_bgr = cfg.is_bgr();
+    options.neural_detector.num_classes = cfg.num_classes();
+    options.neural_detector.num_predictions = cfg.num_predictions();
+    options.neural_detector.green_class_id = cfg.green_class_id();
+    options.neural_detector.red_class_id = cfg.red_class_id();
+    options.neural_detector.yellow_class_id = cfg.yellow_class_id();
+    options.neural_detector.min_box_area = cfg.min_box_area();
+    options.neural_detector.gpu_id = cfg.gpu_id();
+    for (int class_index = 0; class_index < cfg.class_labels_size();
+         ++class_index) {
+      const auto& label = cfg.class_labels(class_index);
+      NeuralDetectorOptions::ClassLabel class_label;
+      class_label.class_id = label.class_id();
+      class_label.class_name = label.class_name();
+      class_label.color = ConvertClassColor(label.color());
+      class_label.accepted = label.accepted();
+      options.neural_detector.class_labels.push_back(class_label);
+    }
   }
   if (proto.has_binder()) {
     const auto& cfg = proto.binder();
@@ -231,8 +345,7 @@ void PopulateDebugInfo(const PipelineContext& context,
 
   debug->set_signal_num(static_cast<int32_t>(context.final_lights.size()));
   debug->set_valid_pos(context.status.tf_available ? 1 : 0);
-  debug->set_project_error(
-      (context.status.hdmap_available && !context.status.glare_detected) ? 0 : 1);
+  debug->set_project_error(context.status.hdmap_available ? 0 : 1);
   if (context.primary_decision.stopline_distance_m >= 0.0) {
     debug->set_distance_to_stop_line(context.primary_decision.stopline_distance_m);
   }
@@ -405,6 +518,11 @@ bool TrafficLightComponent::InitDefaultPorts() {
     map_provider_ = map_provider;
   }
 
+  if (detector_provider_ == nullptr) {
+    detector_provider_ = std::make_shared<NeuralDetectorProviderPort>(
+        options_.neural_detector);
+  }
+
   if (v2x_provider_ == nullptr) {
     auto provider = std::make_shared<BufferedV2XProviderPort>();
     provider->SetMaxBufferSize(options_.max_v2x_msg_buff_size);
@@ -518,15 +636,18 @@ void TrafficLightComponent::OnReceiveImage(
     return;
   }
 
-  auto storage = std::make_shared<std::vector<uint8_t>>(
-      image->data().begin(), image->data().end());
+  const int channels = InferImageChannels(*image);
+  auto storage = CopyImageStorage(*image, channels);
+  if (storage == nullptr) {
+    return;
+  }
   Image frame_image;
   frame_image.storage = storage;
   frame_image.data = storage->empty() ? nullptr : storage->data();
   frame_image.rows = static_cast<int>(image->height());
   frame_image.cols = static_cast<int>(image->width());
-  frame_image.channels = 3;
-  frame_image.encoding = image->encoding();
+  frame_image.channels = channels;
+  frame_image.encoding = ToLowerAscii(image->encoding());
 
   CameraFrameState camera_frame;
   camera_frame.camera_name = camera_name;

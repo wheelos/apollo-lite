@@ -160,6 +160,10 @@ void MultiBatchInference::FileInit() {
 
 bool MultiBatchInference::Init(
     const std::map<std::string, std::vector<int>>& shapes) {
+#if USE_GPU != 1
+  AERROR << "ONNX multi-batch inference requires a USE_GPU=1 build";
+  return false;
+#endif
   if (!CudaOk(cudaSetDevice(gpu_id_), "cudaSetDevice")) {
     return false;
   }
@@ -173,20 +177,6 @@ bool MultiBatchInference::Init(
   }
 
   FileInit();
-  if (!OnnxToTRTModel(model_file_)) {
-    return false;
-  }
-  if (engine_ == nullptr) {
-    AERROR << "Fail to load ONNX model: " << model_file_;
-    return false;
-  }
-
-  context_ = engine_->createExecutionContext();
-  if (context_ == nullptr) {
-    AERROR << "Fail to create Execution Context";
-    return false;
-  }
-
   for (const auto& name : output_names_) {
     auto iter = shapes.find(name);
     if (iter != shapes.end()) {
@@ -202,6 +192,20 @@ bool MultiBatchInference::Init(
                      std::make_shared<apollo::perception::base::Blob<float>>(
                          iter->second));
     }
+  }
+
+  if (!OnnxToTRTModel(model_file_)) {
+    return false;
+  }
+  if (engine_ == nullptr) {
+    AERROR << "Fail to load ONNX model: " << model_file_;
+    return false;
+  }
+
+  context_ = engine_->createExecutionContext();
+  if (context_ == nullptr) {
+    AERROR << "Fail to create Execution Context";
+    return false;
   }
 
   buffers_.resize(input_names_.size() + output_names_.size());
@@ -469,6 +473,10 @@ bool MultiBatchInference::OnnxToTRTModel(const std::string& model_file) {
 }
 
 void MultiBatchInference::Infer() {
+#if USE_GPU != 1
+  AERROR << "ONNX multi-batch inference requires a USE_GPU=1 build";
+  return;
+#endif
   if (!CudaOk(cudaSetDevice(gpu_id_), "cudaSetDevice")) {
     return;
   }

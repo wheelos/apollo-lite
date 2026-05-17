@@ -1,6 +1,6 @@
 cameras {
   camera_name: "front_6mm"
-  channel_name: "/apollo/sensor/camera/front_6mm/image"
+  channel_name: "/apollo/sensor/camera/front/image"
   image_width: 1920
   image_height: 1080
   is_primary: true
@@ -25,7 +25,7 @@ max_v2x_msg_buff_size: 64
 enable_debug_recording: true
 enable_debug_image_stream: true
 enable_perf_logging: true
-enable_heuristic_stage: true
+enable_heuristic_stage: false
 
 prompter {
   history_expand_ratio: 1.4
@@ -42,19 +42,38 @@ prompter {
 detector {
   backend: TL_DETECTOR_YOLO
   min_prompt_weight: 0.12
-  min_bright_pixel_ratio: 0.01
-  min_color_ratio: 0.45
   min_roi_area: 36.0
-  sample_grid_divisor: 16
-  map_overlap_bonus: 0.2
-  history_bonus: 0.15
-  allow_unknown_output: false
-  glare_white_ratio_threshold: 0.35
-  glare_penalty: 0.35
-  min_signal_overlap_for_glare_override: 0.45
   min_objectness: 0.25
   min_semantic_confidence: 0.25
   prefer_raw_yolo_candidates: true
+}
+
+neural_detector {
+  model_root_dir: "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_detection/yolo11n_coco"
+  onnx_file: "yolo11n.onnx"
+  enable_fp16: true
+  input_name: "images"
+  output_name: "output0"
+  resize_image_height: 640
+  resize_image_width: 640
+  conf_threshold: 0.25
+  iou_nms_threshold: 0.45
+  pad_value: 114
+  scale: 0.00392157
+  is_bgr: false
+  num_classes: 80
+  num_predictions: 8400
+  green_class_id: -1
+  red_class_id: -1
+  yellow_class_id: -1
+  min_box_area: 10.0
+  gpu_id: 0
+  class_labels {
+    class_id: 9
+    class_name: "traffic_light"
+    color: TL_CLASS_UNKNOWN
+    accepted: true
+  }
 }
 
 binder {

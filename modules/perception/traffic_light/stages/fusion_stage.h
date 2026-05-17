@@ -170,6 +170,36 @@ class FusionStage : public BaseStage {
     }
 
     if (results.empty()) {
+      for (const auto& signal : context->map_signals) {
+        TrafficLightResult result;
+        result.color = LightColor::UNKNOWN;
+        result.shape = signal.shape_hint;
+        result.confidence = 0.0f;
+        result.existence_confidence = 0.0f;
+        result.state_confidence = 0.0f;
+        result.topology_confidence = signal.topology_confidence;
+        result.signal_id = signal.signal_id;
+        result.lane_id = signal.lane_id;
+        result.signal_group_id = signal.signal_group_id;
+        result.camera_name = signal.camera_name;
+        result.bound_intent = signal.intended_movement;
+        result.signal_movement_mask =
+            NormalizeMovementMask(signal.movement_mask, signal.intended_movement,
+                                  signal.shape_hint);
+        result.controlling_ego_lane = MovementMasksCompatible(
+            result.signal_movement_mask,
+            MovementMaskFromLaneIntent(context->nav_topology.ego_lane_intent));
+        result.stopline_distance_m = signal.stopline_distance_m;
+        result.is_degraded = true;
+        result.source = EvidenceSource::UNKNOWN;
+        result.degrade_reason = context->status.degrade_reason;
+        result.decision_reason =
+            "map signal present but no visual/v2x state estimate";
+        results.push_back(result);
+      }
+    }
+
+    if (results.empty()) {
       context->final_lights.clear();
       context->primary_decision = TrafficLightResult();
       return true;

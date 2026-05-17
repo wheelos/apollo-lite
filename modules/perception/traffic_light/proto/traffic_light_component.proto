@@ -3,8 +3,15 @@ syntax = "proto2";
 package apollo.perception.trafficlight;
 
 enum TrafficLightDetectorBackend {
-  TL_DETECTOR_HEURISTIC = 0;
-  TL_DETECTOR_YOLO = 1;
+  TL_DETECTOR_YOLO = 0;
+}
+
+enum TrafficLightClassColor {
+  TL_CLASS_UNKNOWN = 0;
+  TL_CLASS_RED = 1;
+  TL_CLASS_YELLOW = 2;
+  TL_CLASS_GREEN = 3;
+  TL_CLASS_BLACK = 4;
 }
 
 message CameraSourceConfig {
@@ -31,19 +38,41 @@ message DetectorConfig {
   optional TrafficLightDetectorBackend backend = 1
       [default = TL_DETECTOR_YOLO];
   optional float min_prompt_weight = 2 [default = 0.12];
-  optional float min_bright_pixel_ratio = 3 [default = 0.01];
-  optional float min_color_ratio = 4 [default = 0.45];
   optional float min_roi_area = 5 [default = 36.0];
-  optional int32 sample_grid_divisor = 6 [default = 16];
-  optional float map_overlap_bonus = 7 [default = 0.2];
-  optional float history_bonus = 8 [default = 0.15];
-  optional bool allow_unknown_output = 9 [default = false];
-  optional float glare_white_ratio_threshold = 10 [default = 0.35];
-  optional float glare_penalty = 11 [default = 0.35];
-  optional float min_signal_overlap_for_glare_override = 12 [default = 0.45];
   optional float min_objectness = 13 [default = 0.25];
   optional float min_semantic_confidence = 14 [default = 0.25];
   optional bool prefer_raw_yolo_candidates = 15 [default = true];
+}
+
+message NeuralDetectorConfig {
+  optional string model_root_dir = 1
+      [default = "/apollo/modules/perception/production/data/perception/camera/models/traffic_light_detection/tl_detection_ultralytics"];
+  optional string onnx_file = 2 [default = "yolov11_traffic.onnx"];
+  optional bool enable_fp16 = 3 [default = true];
+  optional string input_name = 4 [default = "images"];
+  optional string output_name = 5 [default = "output0"];
+  optional int32 resize_image_height = 6 [default = 640];
+  optional int32 resize_image_width = 7 [default = 640];
+  optional float conf_threshold = 8 [default = 0.25];
+  optional float iou_nms_threshold = 9 [default = 0.45];
+  optional int32 pad_value = 10 [default = 114];
+  optional float scale = 11 [default = 0.00392157];
+  optional bool is_bgr = 12 [default = false];
+  optional int32 num_classes = 13 [default = 3];
+  optional int32 num_predictions = 14 [default = 8400];
+  optional int32 green_class_id = 15 [default = 0];
+  optional int32 red_class_id = 16 [default = 1];
+  optional int32 yellow_class_id = 17 [default = 2];
+  optional float min_box_area = 18 [default = 10.0];
+  optional int32 gpu_id = 19 [default = 0];
+  repeated NeuralDetectorClassLabel class_labels = 20;
+}
+
+message NeuralDetectorClassLabel {
+  optional int32 class_id = 1;
+  optional string class_name = 2;
+  optional TrafficLightClassColor color = 3 [default = TL_CLASS_UNKNOWN];
+  optional bool accepted = 4 [default = true];
 }
 
 message BinderConfig {
@@ -103,6 +132,7 @@ message TrafficLightComponentConfig {
   optional bool enable_debug_image_stream = 17 [default = true];
   optional bool enable_perf_logging = 18 [default = true];
   optional bool enable_heuristic_stage = 19 [default = true];
+  optional NeuralDetectorConfig neural_detector = 20;
   optional PrompterConfig prompter = 30;
   optional DetectorConfig detector = 31;
   optional BinderConfig binder = 32;

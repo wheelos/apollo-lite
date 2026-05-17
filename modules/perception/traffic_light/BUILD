@@ -37,7 +37,12 @@ cc_library(
         "ports/provider_ports.h",
         "ports/result_writer_port.h",
     ],
-    deps = [":tl_common"],
+    deps = [
+        "//cyber",
+        ":tl_common",
+        "//modules/perception/inference/onnx_multi_batch:onnx_multi_batch_infer",
+        "@opencv//:imgproc",
+    ],
 )
 
 cc_library(
@@ -69,6 +74,7 @@ cc_library(
     name = "tl_component",
     srcs = ["traffic_light_component.cc"],
     hdrs = ["traffic_light_component.h"],
+    alwayslink = True,
     deps = [
         "//cyber",
         ":tl_common",

@@ -43,8 +43,7 @@ enum class EvidenceSource {
 };
 
 enum class DetectorBackendType {
-  HEURISTIC = 0,
-  YOLO = 1,
+  YOLO = 0,
 };
 
 enum class PromptSource {
@@ -151,9 +150,9 @@ struct ProcessingStatus {
   bool tf_available = false;
   bool hdmap_available = false;
   bool v2x_available = false;
+  bool neural_detector_ran = false;
   bool detector_ran = false;
   bool using_full_frame_fallback = false;
-  bool glare_detected = false;
   std::string degrade_reason;
 };
 
@@ -191,7 +190,6 @@ struct VisualLight {
   std::string signal_id;
   std::string camera_name;
   bool blink = false;
-  bool glare_suspected = false;
   int yolo_class_id = -1;
   std::string yolo_class_name;
   PromptSource prompt_source = PromptSource::UNKNOWN;
@@ -301,19 +299,42 @@ struct PrompterOptions {
 struct DetectorOptions {
   DetectorBackendType backend = DetectorBackendType::YOLO;
   float min_prompt_weight = 0.12f;
-  float min_bright_pixel_ratio = 0.01f;
-  float min_color_ratio = 0.45f;
   float min_roi_area = 36.0f;
-  int sample_grid_divisor = 16;
-  float map_overlap_bonus = 0.2f;
-  float history_bonus = 0.15f;
-  bool allow_unknown_output = false;
-  float glare_white_ratio_threshold = 0.35f;
-  float glare_penalty = 0.35f;
-  float min_signal_overlap_for_glare_override = 0.45f;
   float min_objectness = 0.25f;
   float min_semantic_confidence = 0.25f;
   bool prefer_raw_yolo_candidates = true;
+};
+
+struct NeuralDetectorOptions {
+  struct ClassLabel {
+    int class_id = -1;
+    std::string class_name;
+    LightColor color = LightColor::UNKNOWN;
+    bool accepted = true;
+  };
+
+  std::string model_root_dir =
+      "/apollo/modules/perception/production/data/perception/camera/models/"
+      "traffic_light_detection/tl_detection_ultralytics";
+  std::string onnx_file = "yolov11_traffic.onnx";
+  bool enable_fp16 = true;
+  std::string input_name = "images";
+  std::string output_name = "output0";
+  int resize_image_height = 640;
+  int resize_image_width = 640;
+  float conf_threshold = 0.25f;
+  float iou_nms_threshold = 0.45f;
+  int pad_value = 114;
+  float scale = 0.00392157f;
+  bool is_bgr = false;
+  int num_classes = 3;
+  int num_predictions = 8400;
+  int green_class_id = 0;
+  int red_class_id = 1;
+  int yellow_class_id = 2;
+  float min_box_area = 10.0f;
+  int gpu_id = 0;
+  std::vector<ClassLabel> class_labels;
 };
 
 struct BinderOptions {
@@ -372,6 +393,7 @@ struct ComponentOptions {
   bool enable_heuristic_stage = true;
   PrompterOptions prompter;
   DetectorOptions detector;
+  NeuralDetectorOptions neural_detector;
   BinderOptions binder;
   TrackerOptions tracker;
   HeuristicOptions heuristic;

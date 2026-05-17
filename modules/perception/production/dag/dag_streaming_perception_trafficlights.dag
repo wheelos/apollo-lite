@@ -5,7 +5,7 @@ module_config {
     class_name : "TrafficLightComponent"
     config {
       name: "TrafficLightsComponent"
-      config_file_path: "/apollo/modules/perception/production/conf/perception/camera/trafficlights_perception_component.config"
+      config_file_path: "/apollo/modules/perception/traffic_light/conf/traffic_light.pb.txt"
       flag_file_path: "/apollo/modules/perception/production/conf/perception/perception_common.flag"
     }
   }
