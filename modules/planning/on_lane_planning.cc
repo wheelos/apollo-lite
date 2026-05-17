@@ -44,6 +44,7 @@
 #include "modules/planning/learning_based/img_feature_renderer/birdview_img_feature_renderer.h"
 #include "modules/planning/planner/rtk/rtk_replay_planner.h"
 #include "modules/planning/reference_line/reference_line_provider.h"
+#include "modules/planning/scenarios/park/valet_parking/valet_parking_scenario.h"
 #include "modules/planning/tasks/task_factory.h"
 #include "modules/planning/traffic_rules/traffic_decider.h"
 
@@ -138,6 +139,15 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
       injector_->vehicle_state(), hdmap_);
   reference_line_provider_->Start();
 
+  ScenarioConfig valet_parking_config;
+  ACHECK(apollo::cyber::common::GetProtoFromFile(
+      FLAGS_scenario_valet_parking_config_file, &valet_parking_config))
+      << "Failed to load valet parking config file "
+      << FLAGS_scenario_valet_parking_config_file;
+  direct_valet_parking_stage_only_ =
+      scenario::valet_parking::ValetParkingScenario::SupportsDirectParkingEntry(
+          valet_parking_config);
+
   // dispatch planner
   planner_ = planner_dispatcher_->DispatchPlanner(config_, injector_);
   if (!planner_) {
@@ -163,7 +173,8 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
 
 Status OnLanePlanning::InitFrame(const uint32_t sequence_num,
                                  const TrajectoryPoint& planning_start_point,
-                                 const VehicleState& vehicle_state) {
+                                 const VehicleState& vehicle_state,
+                                 bool direct_valet_parking_mode) {
   frame_.reset(new Frame(sequence_num, local_view_, planning_start_point,
                          vehicle_state, reference_line_provider_.get()));
 
@@ -179,6 +190,15 @@ Status OnLanePlanning::InitFrame(const uint32_t sequence_num,
         routing_request.parking_info().parking_space_id();
   } else {
     ADEBUG << "No parking space id from routing";
+  }
+
+  if (direct_valet_parking_mode) {
+    auto status = frame_->InitForOpenSpace(injector_->vehicle_state(),
+                                           injector_->ego_info());
+    if (!status.ok()) {
+      AERROR << "failed to init frame for open space:" << status.ToString();
+    }
+    return status;
   }
 
   std::list<ReferenceLine> reference_lines;
@@ -219,6 +239,11 @@ Status OnLanePlanning::InitFrame(const uint32_t sequence_num,
     return status;
   }
   return Status::OK();
+}
+
+bool OnLanePlanning::ShouldUseDirectValetParkingMode() const {
+  return util::ShouldUseDirectValetParkingMode(
+      direct_valet_parking_stage_only_, local_view_.routing);
 }
 
 // TODO(all): fix this! this will cause unexpected behavior from controller
@@ -294,18 +319,28 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
     vehicle_state = AlignTimeStamp(vehicle_state, start_timestamp);
   }
 
+  const bool direct_valet_parking_mode = ShouldUseDirectValetParkingMode();
+
   // Update reference line provider and reset pull over if necessary
   reference_line_provider_->UpdateVehicleState(vehicle_state);
-  if (util::IsDifferentRouting(last_routing_, *local_view_.routing)) {
+  const bool routing_changed =
+      direct_valet_parking_mode
+          ? !util::HasSameRoutingRequest(last_routing_, *local_view_.routing)
+          : util::IsDifferentRouting(last_routing_, *local_view_.routing);
+  if (routing_changed) {
     last_routing_ = *local_view_.routing;
     ADEBUG << "last_routing_:" << last_routing_.ShortDebugString();
     injector_->history()->Clear();
     injector_->planning_context()->mutable_planning_status()->Clear();
-    reference_line_provider_->UpdateRoutingResponse(*local_view_.routing);
+    last_publishable_trajectory_.reset();
+    if (!direct_valet_parking_mode) {
+      reference_line_provider_->UpdateRoutingResponse(*local_view_.routing);
+    }
     planner_->Init(config_);
   }
 
   failed_to_update_reference_line =
+      !direct_valet_parking_mode &&
       (!reference_line_provider_->UpdatedReferenceLine());
 
   // early return when reference line fails to update after rerouting
@@ -337,7 +372,8 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
 
   injector_->ego_info()->Update(stitching_trajectory.back(), vehicle_state);
   const uint32_t frame_num = static_cast<uint32_t>(seq_num_++);
-  status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state);
+  status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state,
+                     direct_valet_parking_mode);
   AINFO_EVERY(100) << "Planning start frame sequence id = [" << frame_num
                    << "]";
   if (status.ok()) {
@@ -553,6 +589,7 @@ Status OnLanePlanning::Plan(
         frame_->open_space_info().publishable_trajectory_data().second;
     publishable_trajectory.PopulateTrajectoryProtobuf(ptr_trajectory_pb);
     ptr_trajectory_pb->set_gear(publishable_trajectory_gear);
+    ptr_trajectory_pb->set_trajectory_type(ADCTrajectory::NORMAL);
 
     // TODO(QiL): refine engage advice in open space trajectory optimizer.
     auto* engage_advice = ptr_trajectory_pb->mutable_engage_advice();

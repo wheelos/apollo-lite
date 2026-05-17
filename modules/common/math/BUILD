@@ -48,6 +48,7 @@ cc_library(
     srcs = ["math_utils.cc"],
     hdrs = ["math_utils.h"],
     linkopts = ["-lm"],
+    visibility = ["//visibility:public"],
     deps = [
         ":vec2d",
         "@eigen",
@@ -60,6 +61,7 @@ cc_library(
     srcs = ["vec2d.cc"],
     hdrs = ["vec2d.h"],
     linkopts = ["-lm"],
+    visibility = ["//visibility:public"],
     deps = [
         "//cyber",
         "@com_google_absl//absl/strings",
@@ -83,6 +85,7 @@ cc_library(
         "polygon2d.h",
     ],
     linkopts = ["-lm"],
+    visibility = ["//visibility:public"],
     deps = [
         ":math_utils",
         "//cyber",

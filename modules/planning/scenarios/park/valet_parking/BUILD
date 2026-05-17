@@ -7,12 +7,10 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "valet_parking",
     srcs = [
-        "stage_approaching_parking_spot.cc",
         "stage_parking.cc",
         "valet_parking_scenario.cc",
     ],
     hdrs = [
-        "stage_approaching_parking_spot.h",
         "stage_parking.h",
         "valet_parking_scenario.h",
     ],
@@ -21,6 +19,8 @@ cc_library(
         "//cyber",
         "//modules/common_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/scenarios:scenario",
+        "//modules/planning/common/util:common_lib",
+        "//modules/planning/common/util:util_lib",
     ],
 )
 
@@ -35,21 +35,7 @@ cc_test(
     linkstatic = True,
     deps = [
         ":valet_parking",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "stage_approaching_parking_spot_test",
-    size = "small",
-    srcs = ["stage_approaching_parking_spot_test.cc"],
-    data = [
-        "//modules/planning:planning_conf",
-    ],
-    linkopts = ["-lgomp"],
-    linkstatic = True,
-    deps = [
-        ":valet_parking",
+        "//modules/planning/common/util:util_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )

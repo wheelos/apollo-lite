@@ -83,6 +83,23 @@ void OpenSpaceInfo::RecordDebug(apollo::planning_internal::Debug* ptr_debug) {
   open_space->mutable_origin_point()->set_z(0.0);
 
   open_space->set_origin_heading_rad(origin_heading_);
+  open_space->clear_xy_boundary();
+  for (const double value : ROI_xy_boundary_) {
+    open_space->add_xy_boundary(value);
+  }
+  open_space->mutable_parking_roi()->CopyFrom(parking_debug_.parking_roi());
+  open_space->clear_parking_pose_candidates();
+  for (const auto& candidate : parking_debug_.parking_pose_candidates()) {
+    open_space->add_parking_pose_candidates()->CopyFrom(candidate);
+  }
+  if (parking_debug_.has_selected_parking_pose()) {
+    open_space->set_selected_parking_pose(parking_debug_.selected_parking_pose());
+  } else {
+    open_space->clear_selected_parking_pose();
+  }
+  if (parking_debug_.has_end_point()) {
+    open_space->mutable_end_point()->CopyFrom(parking_debug_.end_point());
+  }
 }
 
 }  // namespace planning

@@ -40,6 +40,10 @@ namespace scenario {
 class ScenarioManager final {
  public:
   FRIEND_TEST(ScenarioManagerTest, VerifyScenarioTransitions);
+  FRIEND_TEST(ScenarioManagerDirectParkingTest,
+              DetectsParkingRouteWithoutReferenceLine);
+  FRIEND_TEST(ScenarioManagerDirectParkingTest,
+              RejectsCornerOnlyDirectParkingWithoutReferenceLine);
 
   ScenarioManager() = delete;
   explicit ScenarioManager(const std::shared_ptr<DependencyInjector>& injector);
@@ -100,6 +104,8 @@ class ScenarioManager final {
   void UpdateContextPullOver(const Frame& frame, const ScenarioType& type);
 
   void UpdateContextEmergencyStop(const ScenarioType& type);
+
+  bool ShouldEnterDirectValetParking(const Frame& frame) const;
 
   /**
    * @brief Factory: Create specific scenario instance based on type.

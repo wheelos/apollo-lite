@@ -42,6 +42,15 @@ using apollo::hdmap::Path;
 
 constexpr double kMathEpsilon = 1e-10;
 
+bool PreferHeadIn(const PlannerOpenSpaceConfig& config) {
+  const auto& roi_config = config.roi_config();
+  if (roi_config.has_parking_approach_preference()) {
+    return roi_config.parking_approach_preference() ==
+           ROIConfig::PARKING_APPROACH_PREFER_HEAD_IN;
+  }
+  return roi_config.has_parking_inwards() && roi_config.parking_inwards();
+}
+
 class OpenSpaceROITest {
  public:
   bool OpenSpaceROI() {
@@ -126,14 +135,15 @@ class OpenSpaceROITest {
     parking_spot_heading_ = (left_down - left_top).Angle();
     double end_x = (left_top.x() + right_top.x()) / 2;
     double end_y = 0.0;
+    const bool prefer_head_in = PreferHeadIn(planner_open_space_config_);
     if (parking_spot_heading_ > kMathEpsilon) {
-      if (planner_open_space_config_.roi_config().parking_inwards()) {
+      if (prefer_head_in) {
         end_y = left_top.y() + (left_down.y() - left_top.y()) / 4;
       } else {
         end_y = left_top.y() + 3 * (left_down.y() - left_top.y()) / 4;
       }
     } else {
-      if (planner_open_space_config_.roi_config().parking_inwards()) {
+      if (prefer_head_in) {
         end_y = left_down.y() + 3 * (left_top.y() - left_down.y()) / 4;
       } else {
         end_y = left_down.y() + (left_top.y() - left_down.y()) / 4;
@@ -141,7 +151,7 @@ class OpenSpaceROITest {
     }
     open_space_end_pose_.emplace_back(end_x);
     open_space_end_pose_.emplace_back(end_y);
-    if (planner_open_space_config_.roi_config().parking_inwards()) {
+    if (prefer_head_in) {
       open_space_end_pose_.emplace_back(parking_spot_heading_);
     } else {
       open_space_end_pose_.emplace_back(

@@ -32,6 +32,36 @@ using apollo::common::VehicleState;
 using apollo::hdmap::PathOverlap;
 using apollo::routing::RoutingResponse;
 
+namespace {
+
+RoutingResponse NormalizeRouting(const RoutingResponse& routing) {
+  RoutingResponse normalized;
+  for (const auto& road : routing.road()) {
+    normalized.add_road()->CopyFrom(road);
+  }
+  if (routing.has_routing_request()) {
+    auto* request = normalized.mutable_routing_request();
+    request->CopyFrom(routing.routing_request());
+    request->clear_header();
+  }
+  if (routing.has_map_version()) {
+    normalized.set_map_version(routing.map_version());
+  }
+  return normalized;
+}
+
+apollo::routing::RoutingRequest NormalizeRoutingRequest(
+    const RoutingResponse& routing) {
+  apollo::routing::RoutingRequest normalized;
+  if (routing.has_routing_request()) {
+    normalized.CopyFrom(routing.routing_request());
+    normalized.clear_header();
+  }
+  return normalized;
+}
+
+}  // namespace
+
 bool IsVehicleStateValid(const VehicleState& vehicle_state) {
   if (std::isnan(vehicle_state.x()) || std::isnan(vehicle_state.y()) ||
       std::isnan(vehicle_state.z()) || std::isnan(vehicle_state.heading()) ||
@@ -45,10 +75,55 @@ bool IsVehicleStateValid(const VehicleState& vehicle_state) {
 
 bool IsDifferentRouting(const RoutingResponse& first,
                         const RoutingResponse& second) {
-  if (first.has_header() && second.has_header()) {
-    return first.header().sequence_num() != second.header().sequence_num();
+  const auto normalized_first = NormalizeRouting(first);
+  const auto normalized_second = NormalizeRouting(second);
+  return normalized_first.SerializeAsString() !=
+         normalized_second.SerializeAsString();
+}
+
+bool HasSameRoutingRequest(const RoutingResponse& first,
+                           const RoutingResponse& second) {
+  const auto normalized_first = NormalizeRoutingRequest(first);
+  const auto normalized_second = NormalizeRoutingRequest(second);
+  return normalized_first.SerializeAsString() ==
+         normalized_second.SerializeAsString();
+}
+
+bool HasParkingRoutingCommand(const RoutingResponse& routing_response) {
+  if (!routing_response.has_routing_request() ||
+      !routing_response.routing_request().has_parking_info()) {
+    return false;
   }
-  return true;
+
+  const auto& parking_info = routing_response.routing_request().parking_info();
+  return (parking_info.has_parking_space_id() &&
+          !parking_info.parking_space_id().empty()) ||
+         (parking_info.has_corner_point() &&
+          parking_info.corner_point().point_size() > 0);
+}
+
+bool HasParkingSpaceIdRoutingCommand(const RoutingResponse& routing_response) {
+  return routing_response.has_routing_request() &&
+         routing_response.routing_request().has_parking_info() &&
+         routing_response.routing_request()
+             .parking_info()
+             .has_parking_space_id() &&
+         !routing_response.routing_request()
+              .parking_info()
+              .parking_space_id()
+              .empty();
+}
+
+bool SupportsDirectValetParkingEntry(const ScenarioConfig& config) {
+  return config.stage_type_size() == 1 &&
+         config.stage_type(0) == StageType::VALET_PARKING_PARKING;
+}
+
+bool ShouldUseDirectValetParkingMode(
+    const bool supports_direct_valet_parking_entry,
+    const std::shared_ptr<RoutingResponse>& routing_response) {
+  return supports_direct_valet_parking_entry && routing_response != nullptr &&
+         HasParkingSpaceIdRoutingCommand(*routing_response);
 }
 
 double GetADCStopDeceleration(

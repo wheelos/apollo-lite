@@ -29,8 +29,6 @@
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
-#include "modules/common_msgs/map_msgs/map_id.pb.h"
-
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"
@@ -55,12 +53,6 @@ class OpenSpaceRoiDecider : public Decider {
   apollo::common::Status Process(Frame *frame) override;
 
  private:
-  // @brief generate the path by vehicle location and return the target parking
-  // spot on that path
-  bool GetParkingSpot(Frame *const frame,
-                      std::array<common::math::Vec2d, 4> *vertices,
-                      hdmap::Path *nearby_path);
-
   // @brief get path from reference line and return vertices of pullover spot
   bool GetPullOverSpot(Frame *const frame,
                        std::array<common::math::Vec2d, 4> *vertices,
@@ -70,8 +62,6 @@ class OpenSpaceRoiDecider : public Decider {
   void SetOrigin(Frame *const frame,
                  const std::array<common::math::Vec2d, 4> &vertices);
   void SetOriginFromADC(Frame *const frame, const hdmap::Path &nearby_path);
-  void SetParkingSpotEndPose(
-      Frame *const frame, const std::array<common::math::Vec2d, 4> &vertices);
 
   void SetPullOverSpotEndPose(Frame *const frame);
   void SetParkAndGoEndPose(Frame *const frame);
@@ -92,6 +82,7 @@ class OpenSpaceRoiDecider : public Decider {
   // @brief Get the Road Boundary From Map object
   void GetRoadBoundaryFromMap(
       const hdmap::Path &nearby_path, const double center_line_s,
+      const double sampling_start_s, const double sampling_end_s,
       const common::math::Vec2d &origin_point, const double origin_heading,
       std::vector<common::math::Vec2d> *left_lane_boundary,
       std::vector<common::math::Vec2d> *right_lane_boundary,
@@ -125,32 +116,20 @@ class OpenSpaceRoiDecider : public Decider {
   //                -                  -
   //                -                  -
   //                left_down-------right_down
-  bool GetParkingBoundary(Frame *const frame,
-                          const std::array<common::math::Vec2d, 4> &vertices,
-                          const hdmap::Path &nearby_path,
-                          std::vector<std::vector<common::math::Vec2d>>
-                              *const roi_parking_boundary);
-
   bool GetPullOverBoundary(Frame *const frame,
                            const std::array<common::math::Vec2d, 4> &vertices,
                            const hdmap::Path &nearby_path,
                            std::vector<std::vector<common::math::Vec2d>>
                                *const roi_parking_boundary);
 
+  bool GetParkingBoundary(Frame *const frame,
+                          std::vector<std::vector<common::math::Vec2d>>
+                              *const roi_parking_boundary,
+                          std::string *error);
+
   bool GetParkAndGoBoundary(Frame *const frame, const hdmap::Path &nearby_path,
                             std::vector<std::vector<common::math::Vec2d>>
                                 *const roi_parking_boundary);
-
-  // @brief search target parking spot on the path by vehicle location, if
-  // no return a nullptr in target_parking_spot
-  void SearchTargetParkingSpotOnPath(
-      const hdmap::Path &nearby_path,
-      hdmap::ParkingSpaceInfoConstPtr *target_parking_spot);
-
-  // @brief if not close enough to parking spot, return false
-  bool CheckDistanceToParkingSpot(
-      Frame *const frame, const hdmap::Path &nearby_path,
-      const hdmap::ParkingSpaceInfoConstPtr &target_parking_spot);
 
   // @brief Helper function for fuse line segments into convex vertices set
   bool FuseLineSegments(
@@ -174,43 +153,18 @@ class OpenSpaceRoiDecider : public Decider {
   // inequality as Ax>b
   bool LoadObstacleInHyperPlanes(Frame *const frame);
 
+  // Validate ROI after vertices loaded: connectivity, corridor width, goal
+  // feasibility. This runs before casting to hyperplanes and rejects invalid
+  // ROI early with informative logs and debug messages for visualization.
+  bool ValidateROIOnVertices(Frame *const frame);
+
   // @brief Helper function for LoadObstacleInHyperPlanes()
   bool GetHyperPlanes(const size_t &obstacles_num,
                       const Eigen::MatrixXi &obstacles_edges_num,
                       const std::vector<std::vector<common::math::Vec2d>>
                           &obstacles_vertices_vec,
                       Eigen::MatrixXd *A_all, Eigen::MatrixXd *b_all);
-  /**
-   * @brief check if vehicle is parked in a parking lot
-   *
-   * @return true adc parked in a parking lot
-   * @return false adc parked at a pull-over spot
-   */
-  bool IsInParkingLot(const double adc_init_x, const double adc_init_y,
-                      const double adc_init_heading,
-                      std::array<common::math::Vec2d, 4> *parking_lot_vertices);
-  /**
-   * @brief Get the Park Spot From Map object
-   *
-   * @param parking_lot
-   * @param vertices
-   */
-  void GetParkSpotFromMap(hdmap::ParkingSpaceInfoConstPtr parking_lot,
-                          std::array<common::math::Vec2d, 4> *vertices);
-
-  /**
-   * @brief Collect all the lane segments in the routing reponse.
-   *
-   * @param routing_response The routing response containing the lane segments.
-   * @param routing_segments The output vector of lane segments.
-   */
-  void GetAllLaneSegments(const routing::RoutingResponse &routing_response,
-                          std::vector<routing::LaneSegment> *routing_segments);
-
  private:
-  // @brief parking_spot_id from routing
-  std::string target_parking_spot_id_;
-
   const hdmap::HDMap *hdmap_ = nullptr;
 
   apollo::common::VehicleParam vehicle_params_;
@@ -218,6 +172,9 @@ class OpenSpaceRoiDecider : public Decider {
   ThreadSafeIndexedObstacles *obstacles_by_frame_;
 
   common::VehicleState vehicle_state_;
+
+  std::string last_parking_entry_spot_id_;
+  common::math::Vec2d last_parking_entry_reference_;
 };
 
 }  // namespace planning

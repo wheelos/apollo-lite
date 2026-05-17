@@ -71,10 +71,12 @@ class OnLanePlanning : public PlanningBase {
  private:
   common::Status InitFrame(const uint32_t sequence_num,
                            const common::TrajectoryPoint& planning_start_point,
-                           const common::VehicleState& vehicle_state);
+                           const common::VehicleState& vehicle_state,
+                           bool direct_valet_parking_mode);
 
   common::VehicleState AlignTimeStamp(const common::VehicleState& vehicle_state,
                                       const double curr_timestamp) const;
+  bool ShouldUseDirectValetParkingMode() const;
 
   void ExportReferenceLineDebug(planning_internal::Debug* debug);
   bool CheckPlanningConfig(const PlanningConfig& config);
@@ -106,6 +108,7 @@ class OnLanePlanning : public PlanningBase {
   routing::RoutingResponse last_routing_;
   std::unique_ptr<ReferenceLineProvider> reference_line_provider_;
   Smoother planning_smoother_;
+  bool direct_valet_parking_stage_only_ = false;
 };
 
 }  // namespace planning
