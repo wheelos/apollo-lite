@@ -51,12 +51,13 @@ cc_test(
     srcs = ["vehicle_model_test.cc"],
     data = [
         ":test_data",
+        ":vehicle_model_config_data",
     ],
     deps = [
         ":vehicle_model",
         "//cyber",
+        "//modules/planning/common:gtest_exit_main",
         "//modules/common/vehicle_state:vehicle_state_provider",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

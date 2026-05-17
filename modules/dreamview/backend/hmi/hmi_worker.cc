@@ -101,10 +101,12 @@ std::string TitleCase(std::string_view origin) {
 // List subdirs and return a dict of {subdir_title: subdir_path}.
 Map<std::string, std::string> ListDirAsDict(const std::string &dir) {
   Map<std::string, std::string> result;
-  const auto subdirs = cyber::common::ListSubPaths(dir);
+  const auto subdirs = cyber::common::ListSubPaths(
+      dir, cyber::common::FileTypeFilter::Directories);
   for (const auto &subdir : subdirs) {
-    const auto subdir_title = TitleCase(subdir);
-    const auto subdir_path = absl::StrCat(dir, "/", subdir);
+    const auto subdir_name = subdir.filename().string();
+    const auto subdir_title = TitleCase(subdir_name);
+    const auto subdir_path = subdir.string();
     result.insert({subdir_title, subdir_path});
   }
   return result;

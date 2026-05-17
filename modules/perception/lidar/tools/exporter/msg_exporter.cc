@@ -46,7 +46,7 @@ MsgExporter::MsgExporter(std::shared_ptr<apollo::cyber::Node> node,
     if (cyber::common::DirectoryExists(folder)) {
       cyber::common::Remove(folder);
     }
-    cyber::common::CreateDir(folder);
+    cyber::common::CreateDirectories(folder);
   };
   // bind channels
   for (std::size_t i = 0; i < _channels.size(); ++i) {

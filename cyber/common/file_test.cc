@@ -138,6 +138,11 @@ TEST_F(FileTest, DirectoryModification) {
   EXPECT_TRUE(CreateDirectories(nested_dir.string()));
   EXPECT_TRUE(fs::is_directory(nested_dir));
 
+   const auto conflicting_file = GetTestPath("conflicting_file");
+   { std::ofstream ofs(conflicting_file); }
+   EXPECT_FALSE(CreateDirectory(conflicting_file.string()));
+   EXPECT_FALSE(CreateDirectories(conflicting_file.string()));
+
   // Testing Remove
   EXPECT_FALSE(Remove(GetTestPath("a").string()));
   EXPECT_TRUE(fs::exists(GetTestPath("a")));
@@ -157,6 +162,27 @@ TEST_F(FileTest, RemoveAll_Functionality) {
 
   // Idempotence: Deleting a non-existent directory also returns true
   EXPECT_TRUE(RemoveAll(non_empty_dir.string()));
+}
+
+TEST_F(FileTest, ClearDirectory) {
+  const auto root_dir = GetTestPath("clear_directory");
+  const auto nested_dir = root_dir / "nested";
+  const auto file_path = root_dir / "file.txt";
+  const auto nested_file_path = nested_dir / "nested.txt";
+  fs::create_directories(nested_dir);
+  {
+    std::ofstream ofs(file_path);
+    ofs << "data";
+  }
+  {
+    std::ofstream ofs(nested_file_path);
+    ofs << "nested";
+  }
+
+  EXPECT_TRUE(ClearDirectory(root_dir.string()));
+  EXPECT_FALSE(fs::exists(file_path));
+  EXPECT_FALSE(fs::exists(nested_dir));
+  EXPECT_TRUE(fs::exists(root_dir));
 }
 
 TEST_F(FileTest, RemoveAll_SafetyChecks) {
@@ -218,11 +244,11 @@ TEST_F(FileTest, Enumeration) {
 
   EXPECT_THAT(
       ListSubPaths(test_root_.string(), FileTypeFilter::All),
-      UnorderedElementsAre(dir1.string(), file1.string(), file2.string()));
+      UnorderedElementsAre(dir1, file1, file2));
   EXPECT_THAT(ListSubPaths(test_root_.string(), FileTypeFilter::Directories),
-              ElementsAre(dir1.string()));
+              ElementsAre(dir1));
   EXPECT_THAT(ListSubPaths(test_root_.string(), FileTypeFilter::Files),
-              UnorderedElementsAre(file1.string(), file2.string()));
+              UnorderedElementsAre(file1, file2));
 
   // Glob
   EXPECT_THAT(Glob((test_root_ / "*.txt").string()),
@@ -248,6 +274,58 @@ TEST_F(FileTest, GetAbsolutePath) {
   const std::string expected_path =
       fs::weakly_canonical(fs::current_path() / "xx.txt").string();
   EXPECT_EQ(expected_path, GetAbsolutePath("", "xx.txt"));
+}
+
+TEST_F(FileTest, GetProtoFromFileLoadsBinaryBinFile) {
+  proto::UnitTest message;
+  message.set_class_name("BinaryProto");
+  const auto bin_path = GetTestPath("message.bin");
+
+  ASSERT_TRUE(SetProtoToBinaryFile(message, bin_path.string()));
+
+  proto::UnitTest read_message;
+  ASSERT_TRUE(GetProtoFromFile(bin_path.string(), &read_message));
+  EXPECT_EQ(read_message.class_name(), "BinaryProto");
+}
+
+TEST_F(FileTest, GetProtoFromFileLoadsJsonByExtension) {
+  const auto json_path = GetTestPath("message.json");
+  {
+    std::ofstream ofs(json_path);
+    ofs << R"({"className": "JsonProto"})";
+  }
+
+  proto::UnitTest read_message;
+  ASSERT_TRUE(GetProtoFromFile(json_path.string(), &read_message));
+  EXPECT_EQ(read_message.class_name(), "JsonProto");
+}
+
+TEST_F(FileTest, GetProtoFromFileHonorsExplicitTextFormat) {
+  proto::UnitTest message;
+  message.set_class_name("BinaryProto");
+  const auto bin_path = GetTestPath("message.bin");
+
+  ASSERT_TRUE(SetProtoToBinaryFile(message, bin_path.string()));
+
+  proto::UnitTest read_message;
+  read_message.set_class_name("unchanged");
+  EXPECT_FALSE(
+      GetProtoFromFile(bin_path.string(), &read_message, ProtoFileFormat::Text));
+  EXPECT_EQ(read_message.class_name(), "unchanged");
+}
+
+TEST_F(FileTest, GetProtoFromFileHonorsExplicitBinaryFormat) {
+  proto::UnitTest message;
+  message.set_class_name("TextProto");
+  const auto text_path = GetTestPath("message.pb.txt");
+
+  ASSERT_TRUE(SetProtoToASCIIFile(message, text_path.string()));
+
+  proto::UnitTest read_message;
+  read_message.set_class_name("unchanged");
+  EXPECT_FALSE(GetProtoFromFile(text_path.string(), &read_message,
+                                ProtoFileFormat::Binary));
+  EXPECT_EQ(read_message.class_name(), "unchanged");
 }
 
 }  // namespace common

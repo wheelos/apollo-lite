@@ -19,7 +19,9 @@
 
 #include "cyber/common/file.h"
 
+#include <algorithm>
 #include <fstream>
+#include <memory>
 #include <regex>
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -33,6 +35,85 @@ namespace cyber {
 namespace common {
 
 namespace fs = std::filesystem;
+
+namespace {
+
+bool IsDirectory(const fs::path& path) {
+  std::error_code ec;
+  const bool is_directory = fs::is_directory(path, ec);
+  return !ec && is_directory;
+}
+
+ProtoFileFormat DetectProtoFileFormat(const fs::path& path) {
+  const std::string path_string = path.string();
+  const std::string extension = path.extension().string();
+  if (extension == ".json") {
+    return ProtoFileFormat::Json;
+  }
+  if (extension == ".bin" || extension == ".pb") {
+    return ProtoFileFormat::Binary;
+  }
+  if (extension == ".txt" || extension == ".textproto" ||
+      extension == ".pbtxt" || extension == ".prototxt") {
+    return ProtoFileFormat::Text;
+  }
+  if (path_string.size() >= std::string(".pb.txt").size() &&
+      path_string.compare(path_string.size() - std::string(".pb.txt").size(),
+                          std::string(".pb.txt").size(), ".pb.txt") == 0) {
+    return ProtoFileFormat::Text;
+  }
+  return ProtoFileFormat::Auto;
+}
+
+bool ParseProtoFromFile(const std::string& file_name,
+                        google::protobuf::Message* message,
+                        ProtoFileFormat format) {
+  if (message == nullptr) {
+    AERROR << "Output protobuf message pointer is null.";
+    return false;
+  }
+  std::unique_ptr<google::protobuf::Message> parsed_message(message->New());
+  if (parsed_message == nullptr) {
+    AERROR << "Failed to allocate temporary protobuf message for: " << file_name;
+    return false;
+  }
+  switch (format) {
+    case ProtoFileFormat::Text:
+      if (!GetProtoFromASCIIFile(file_name, parsed_message.get())) {
+        return false;
+      }
+      break;
+    case ProtoFileFormat::Binary:
+      if (!GetProtoFromBinaryFile(file_name, parsed_message.get())) {
+        return false;
+      }
+      break;
+    case ProtoFileFormat::Json:
+      if (!GetProtoFromJsonFile(file_name, parsed_message.get())) {
+        return false;
+      }
+      break;
+    case ProtoFileFormat::Auto:
+      return false;
+  }
+  message->CopyFrom(*parsed_message);
+  return true;
+}
+
+bool MatchesFilter(const fs::directory_entry& entry, FileTypeFilter filter,
+                   std::error_code* ec) {
+  switch (filter) {
+    case FileTypeFilter::All:
+      return true;
+    case FileTypeFilter::Files:
+      return entry.is_regular_file(*ec);
+    case FileTypeFilter::Directories:
+      return entry.is_directory(*ec);
+  }
+  return false;
+}
+
+}  // namespace
 
 // ===================================================================
 //                        Path and Name Utilities
@@ -202,24 +283,40 @@ bool GetProtoFromJsonFile(const std::string& file_name,
 }
 
 bool GetProtoFromFile(const std::string& file_name,
-                      google::protobuf::Message* message) {
+                      google::protobuf::Message* message,
+                      ProtoFileFormat format) {
+  if (message == nullptr) {
+    AERROR << "Output protobuf message pointer is null.";
+    return false;
+  }
   if (!PathExists(file_name)) {
     AERROR << "File does not exist: " << file_name;
     return false;
   }
 
-  if (GetProtoFromASCIIFile(file_name, message)) {
-    return true;
+  const ProtoFileFormat effective_format =
+      format == ProtoFileFormat::Auto ? DetectProtoFileFormat(file_name)
+                                      : format;
+  switch (effective_format) {
+    case ProtoFileFormat::Text:
+      return ParseProtoFromFile(file_name, message, ProtoFileFormat::Text);
+    case ProtoFileFormat::Binary:
+      return ParseProtoFromFile(file_name, message, ProtoFileFormat::Binary);
+    case ProtoFileFormat::Json:
+      return ParseProtoFromFile(file_name, message, ProtoFileFormat::Json);
+    case ProtoFileFormat::Auto:
+      break;
   }
-  AWARN << "Failed to parse file [" << file_name
-        << "] as ASCII format, trying binary format now.";
 
-  if (GetProtoFromBinaryFile(file_name, message)) {
-    return true;
+  for (const auto candidate :
+       {ProtoFileFormat::Text, ProtoFileFormat::Binary, ProtoFileFormat::Json}) {
+    if (ParseProtoFromFile(file_name, message, candidate)) {
+      return true;
+    }
   }
 
   AERROR << "Failed to parse file [" << file_name
-         << "] as both ASCII and binary format.";
+         << "] as text, binary, or json format.";
   return false;
 }
 
@@ -231,9 +328,12 @@ bool CreateDirectory(const std::string& path) {
   if (path.empty()) {
     return false;
   }
+  if (IsDirectory(path)) {
+    return true;
+  }
   std::error_code ec;
   fs::create_directory(path, ec);
-  if (ec && ec != std::errc::file_exists) {
+  if (ec) {
     AERROR << "Failed to create directory: " << path
            << ", Error: " << ec.message();
     return false;
@@ -244,6 +344,9 @@ bool CreateDirectory(const std::string& path) {
 bool CreateDirectories(const std::string& path) {
   if (path.empty()) {
     return false;
+  }
+  if (IsDirectory(path)) {
+    return true;
   }
   std::error_code ec;
   fs::create_directories(path, ec);
@@ -329,11 +432,39 @@ bool RemoveAll(const std::string& path) {
   return true;
 }
 
+bool ClearDirectory(const std::string& directory_path) {
+  std::error_code ec;
+  if (!fs::is_directory(directory_path, ec)) {
+    if (ec) {
+      AERROR << "Cannot open directory " << directory_path
+             << ": " << ec.message();
+    } else {
+      AERROR << "Cannot open directory " << directory_path;
+    }
+    return false;
+  }
+
+  for (const auto& entry : fs::directory_iterator(directory_path, ec)) {
+    if (ec) {
+      AERROR << "Cannot iterate directory " << directory_path
+             << ": " << ec.message();
+      return false;
+    }
+    std::error_code remove_ec;
+    fs::remove_all(entry.path(), remove_ec);
+    if (remove_ec) {
+      AERROR << "Fail to remove path " << entry.path().string()
+             << ": " << remove_ec.message();
+      return false;
+    }
+  }
+  return true;
+}
+
 // ===================================================================
 //                 Filesystem Enumeration Utilities
 // ===================================================================
 
-namespace {
 std::string WildcardToRegex(const std::string& wildcard) {
   std::string r;
   r.reserve(wildcard.size() * 2);
@@ -368,7 +499,6 @@ std::string WildcardToRegex(const std::string& wildcard) {
   }
   return r;
 }
-}  // namespace
 
 std::vector<std::string> Glob(const std::string& pattern) {
   std::vector<std::string> results;
@@ -389,6 +519,7 @@ std::vector<std::string> Glob(const std::string& pattern) {
         results.push_back(entry.path().string());
       }
     }
+    std::sort(results.begin(), results.end());
   } catch (const std::regex_error& e) {
     AERROR << "Invalid glob pattern: " << pattern
            << ", regex error: " << e.what();
@@ -396,9 +527,9 @@ std::vector<std::string> Glob(const std::string& pattern) {
   return results;
 }
 
-std::vector<std::string> ListSubPaths(const std::string& directory_path,
-                                      FileTypeFilter filter) {
-  std::vector<std::string> result;
+std::vector<fs::path> ListSubPaths(const std::string& directory_path,
+                                   FileTypeFilter filter) {
+  std::vector<fs::path> result;
   std::error_code ec;
 
   if (!DirectoryExists(directory_path)) {
@@ -414,28 +545,18 @@ std::vector<std::string> ListSubPaths(const std::string& directory_path,
   }
 
   for (const auto& entry : it) {
-    bool match = false;
     std::error_code type_ec;
-    switch (filter) {
-      case FileTypeFilter::All:
-        match = true;
-        break;
-      case FileTypeFilter::Files:
-        match = entry.is_regular_file(type_ec);
-        break;
-      case FileTypeFilter::Directories:
-        match = entry.is_directory(type_ec);
-        break;
-    }
+    const bool match = MatchesFilter(entry, filter, &type_ec);
     if (type_ec) {
       AWARN << "Failed to check type of path " << entry.path().string() << ": "
             << type_ec.message();
       continue;
     }
     if (match) {
-      result.push_back(entry.path().string());
+      result.push_back(entry.path());
     }
   }
+  std::sort(result.begin(), result.end());
   return result;
 }
 

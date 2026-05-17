@@ -16,6 +16,7 @@
 
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 
+#include <cstdlib>
 #include <string>
 
 #include "gtest/gtest.h"
@@ -36,11 +37,26 @@ namespace vehicle_state_provider {
 using apollo::canbus::Chassis;
 using apollo::localization::LocalizationEstimate;
 
+namespace {
+
+std::string RunfilePath(const std::string& relative_path) {
+  const char* test_srcdir = std::getenv("TEST_SRCDIR");
+  const char* test_workspace = std::getenv("TEST_WORKSPACE");
+  if (test_srcdir != nullptr && test_workspace != nullptr) {
+    return std::string(test_srcdir) + "/" + test_workspace + "/" +
+           relative_path;
+  }
+  return relative_path;
+}
+
+}  // namespace
+
 class VehicleStateProviderTest : public ::testing::Test {
  public:
   virtual void SetUp() {
     std::string localization_file =
-        "modules/common/vehicle_state/testdata/3_localization_result_1.pb.txt";
+        RunfilePath(
+            "modules/common/vehicle_state/testdata/3_localization_result_1.pb.txt");
     ACHECK(cyber::common::GetProtoFromFile(localization_file, &localization_));
     chassis_.set_speed_mps(3.0);
     chassis_.set_gear_location(canbus::Chassis::GEAR_DRIVE);

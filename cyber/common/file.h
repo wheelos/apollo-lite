@@ -38,6 +38,7 @@ namespace common {
 // Enums for path status and filtering.
 enum class PathStatus { NotFound, IsRegularFile, IsDirectory, IsOther, Error };
 enum class FileTypeFilter { All, Files, Directories };
+enum class ProtoFileFormat { Auto, Text, Binary, Json };
 
 // ===================================================================
 //                        Path and Name Utilities
@@ -75,7 +76,8 @@ bool GetProtoFromBinaryFile(const std::string& file_name,
 bool GetProtoFromJsonFile(const std::string& file_name,
                           google::protobuf::Message* message);
 bool GetProtoFromFile(const std::string& file_name,
-                      google::protobuf::Message* message);
+                      google::protobuf::Message* message,
+                      ProtoFileFormat format = ProtoFileFormat::Auto);
 
 // ===================================================================
 //                 Filesystem Modification Utilities
@@ -126,6 +128,7 @@ bool Remove(const std::string& path);
  * @return True on success or if the path did not exist.
  */
 bool RemoveAll(const std::string& path);
+bool ClearDirectory(const std::string& directory_path);
 
 // ===================================================================
 //                 Filesystem Enumeration Utilities
@@ -153,9 +156,8 @@ bool RemoveAll(const std::string& path);
  * entries.
  */
 std::vector<std::string> Glob(const std::string& pattern);
-std::vector<std::string> ListSubPaths(
-    const std::string& directory_path,
-    FileTypeFilter filter = FileTypeFilter::All);
+std::vector<std::filesystem::path> ListSubPaths(
+    const std::string& directory_path, FileTypeFilter filter);
 
 }  // namespace common
 }  // namespace cyber

@@ -320,9 +320,12 @@ cc_test(
     name = "history_test",
     size = "small",
     srcs = ["history_test.cc"],
+    data = [
+        "//modules/planning:planning_testdata",
+    ],
     deps = [
         ":history",
-        "@com_google_googletest//:gtest_main",
+        ":gtest_exit_main",
     ],
 )
 

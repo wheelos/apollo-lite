@@ -85,14 +85,14 @@ void RoadlogSegmentManager::ConfigureRetention(
 }
 
 void RoadlogSegmentManager::RefreshSegments() {
-  std::vector<std::string> files = ListSubPaths(layout_.ring_dir, DT_REG);
+  auto files = ListSubPaths(layout_.ring_dir, cyber::common::FileTypeFilter::Files);
   std::sort(files.begin(), files.end());
-  for (const auto& file_name : files) {
+  for (const auto& file_path : files) {
+    const std::string file_name = file_path.filename().string();
     if (!IsSegmentFile(file_name, ring_file_basename_)) {
       continue;
     }
-    const std::string record_path =
-        absl::StrCat(layout_.ring_dir, "/", file_name);
+    const std::string record_path = file_path.string();
     {
       std::lock_guard<std::mutex> lock(mutex_);
       if (segments_.find(record_path) != segments_.end()) {

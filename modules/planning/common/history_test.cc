@@ -15,6 +15,8 @@ limitations under the License.
 
 #include "modules/planning/common/history.h"
 
+#include <cstdlib>
+
 #include "gtest/gtest.h"
 
 #include "cyber/common/file.h"
@@ -23,6 +25,32 @@ limitations under the License.
 
 namespace apollo {
 namespace planning {
+
+namespace {
+
+std::string RunfilePath(const std::string& relative_path) {
+  const char* test_srcdir = std::getenv("TEST_SRCDIR");
+  const char* test_workspace = std::getenv("TEST_WORKSPACE");
+  if (test_srcdir != nullptr && test_workspace != nullptr) {
+    return std::string(test_srcdir) + "/" + test_workspace + "/" +
+           relative_path;
+  }
+  return relative_path;
+}
+
+const std::string& HistoryPathOne() {
+  static const std::string path =
+      RunfilePath("modules/planning/testdata/common/history_01.pb.txt");
+  return path;
+}
+
+const std::string& HistoryPathTwo() {
+  static const std::string path =
+      RunfilePath("modules/planning/testdata/common/history_02.pb.txt");
+  return path;
+}
+
+}  // namespace
 
 class HistoryTest : public ::testing::Test {
  public:
@@ -39,9 +67,8 @@ TEST_F(HistoryTest, Add) {
   history_->Clear();
 
   ADCTrajectory adc_trajectory;
-  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(
-      "/apollo/modules/planning/testdata/common/history_01.pb.txt",
-      &adc_trajectory));
+  EXPECT_TRUE(
+      apollo::cyber::common::GetProtoFromFile(HistoryPathOne(), &adc_trajectory));
   int ret = history_->Add(adc_trajectory);
   EXPECT_EQ(0, ret);
 }
@@ -52,13 +79,11 @@ TEST_F(HistoryTest, GetLastFrame) {
   history_->Clear();
 
   ADCTrajectory adc_trajectory_1;
-  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(
-      "/apollo/modules/planning/testdata/common/history_01.pb.txt",
-      &adc_trajectory_1));
+  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(HistoryPathOne(),
+                                                      &adc_trajectory_1));
   ADCTrajectory adc_trajectory_2;
-  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(
-      "/apollo/modules/planning/testdata/common/history_02.pb.txt",
-      &adc_trajectory_2));
+  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(HistoryPathTwo(),
+                                                      &adc_trajectory_2));
 
   // seq_num: 1
   history_->Add(adc_trajectory_1);
@@ -89,9 +114,8 @@ TEST_F(HistoryTest, GetObjectDecisions) {
   history_->Clear();
 
   ADCTrajectory adc_trajectory;
-  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(
-      "/apollo/modules/planning/testdata/common/history_01.pb.txt",
-      &adc_trajectory));
+  EXPECT_TRUE(
+      apollo::cyber::common::GetProtoFromFile(HistoryPathOne(), &adc_trajectory));
 
   history_->Add(adc_trajectory);
   EXPECT_NE(nullptr, history_->GetLastFrame());
@@ -143,9 +167,8 @@ TEST_F(HistoryTest, GetStopObjectDecisions) {
   history_->Clear();
 
   ADCTrajectory adc_trajectory;
-  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(
-      "/apollo/modules/planning/testdata/common/history_01.pb.txt",
-      &adc_trajectory));
+  EXPECT_TRUE(
+      apollo::cyber::common::GetProtoFromFile(HistoryPathOne(), &adc_trajectory));
 
   history_->Add(adc_trajectory);
   EXPECT_NE(nullptr, history_->GetLastFrame());
@@ -176,9 +199,8 @@ TEST_F(HistoryTest, GetObjectDecisionsById) {
   history_->Clear();
 
   ADCTrajectory adc_trajectory;
-  EXPECT_TRUE(apollo::cyber::common::GetProtoFromFile(
-      "/apollo/modules/planning/testdata/common/history_01.pb.txt",
-      &adc_trajectory));
+  EXPECT_TRUE(
+      apollo::cyber::common::GetProtoFromFile(HistoryPathOne(), &adc_trajectory));
   history_->Add(adc_trajectory);
   EXPECT_NE(nullptr, history_->GetLastFrame());
 

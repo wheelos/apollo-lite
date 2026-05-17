@@ -21,6 +21,7 @@
 
 #include "modules/world_model/relative_map/navigation_lane.h"
 
+#include <cstdlib>
 #include <fstream>
 
 #include "gtest/gtest.h"
@@ -46,6 +47,16 @@ using apollo::relative_map::NavigationPath;
 using nlohmann::json;
 
 namespace {
+std::string RunfilePath(const std::string& relative_path) {
+  const char* test_srcdir = std::getenv("TEST_SRCDIR");
+  const char* test_workspace = std::getenv("TEST_WORKSPACE");
+  if (test_srcdir != nullptr && test_workspace != nullptr) {
+    return std::string(test_srcdir) + "/" + test_workspace + "/" +
+           relative_path;
+  }
+  return relative_path;
+}
+
 bool GetNavigationPathFromFile(const std::string& filename,
                                NavigationPath* navigation_path) {
   CHECK_NOTNULL(navigation_path);
@@ -97,6 +108,9 @@ bool GenerateNavigationInfo(
 class NavigationLaneTest : public testing::Test {
  public:
   virtual void SetUp() {
+    FLAGS_relative_map_config_filename =
+        RunfilePath(
+            "modules/world_model/relative_map/conf/relative_map_config.pb.txt");
     vehicle_state_provider_ = std::make_shared<VehicleStateProvider>();
     RelativeMapConfig config;
     EXPECT_TRUE(cyber::common::GetProtoFromFile(
@@ -108,7 +122,9 @@ class NavigationLaneTest : public testing::Test {
     navigation_lane_.SetDefaultWidth(map_param_.default_left_width(),
                                      map_param_.default_right_width());
 
-    data_file_dir_ = "modules/map/relative_map/testdata/multi_lane_map/";
+    data_file_dir_ =
+        RunfilePath("modules/world_model/relative_map/testdata/multi_lane_map") +
+        "/";
 
     localization::LocalizationEstimate localization;
     canbus::Chassis chassis;

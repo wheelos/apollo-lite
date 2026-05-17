@@ -34,7 +34,7 @@ cc_test(
     deps = [
         "//cyber",
         "//cyber/proto:unit_test_cc_proto",
-        "@com_google_googletest//:gtest_main",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 
