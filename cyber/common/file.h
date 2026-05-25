@@ -29,6 +29,8 @@
 #include <system_error>
 #include <vector>
 
+#include <glob.h>
+
 #include <google/protobuf/message.h>
 
 namespace apollo {
