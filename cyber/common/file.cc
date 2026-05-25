@@ -444,12 +444,14 @@ bool ClearDirectory(const std::string& directory_path) {
     return false;
   }
 
-  for (const auto& entry : fs::directory_iterator(directory_path, ec)) {
-    if (ec) {
-      AERROR << "Cannot iterate directory " << directory_path
-             << ": " << ec.message();
-      return false;
-    }
+  auto it = fs::directory_iterator(directory_path, ec);
+  if (ec) {
+    AERROR << "Cannot iterate directory " << directory_path
+           << ": " << ec.message();
+    return false;
+  }
+
+  for (const auto& entry : it) {
     std::error_code remove_ec;
     fs::remove_all(entry.path(), remove_ec);
     if (remove_ec) {
@@ -502,28 +504,14 @@ std::string WildcardToRegex(const std::string& wildcard) {
 
 std::vector<std::string> Glob(const std::string& pattern) {
   std::vector<std::string> results;
-  const fs::path p(pattern);
-  const fs::path dir =
-      p.has_parent_path() ? p.parent_path() : fs::current_path();
-
-  if (dir.empty() || !DirectoryExists(dir.string())) {
-    return results;
-  }
-
-  const std::string fname_pattern = p.filename().string();
-
-  try {
-    const std::regex matcher(WildcardToRegex(fname_pattern));
-    for (const auto& entry : fs::directory_iterator(dir)) {
-      if (std::regex_match(entry.path().filename().string(), matcher)) {
-        results.push_back(entry.path().string());
-      }
+  glob_t globs = {};
+  if (glob(pattern.c_str(), GLOB_TILDE, nullptr, &globs) == 0) {
+    for (size_t i = 0; i < globs.gl_pathc; ++i) {
+      results.emplace_back(globs.gl_pathv[i]);
     }
-    std::sort(results.begin(), results.end());
-  } catch (const std::regex_error& e) {
-    AERROR << "Invalid glob pattern: " << pattern
-           << ", regex error: " << e.what();
   }
+  globfree(&globs);
+  std::sort(results.begin(), results.end());
   return results;
 }
 
