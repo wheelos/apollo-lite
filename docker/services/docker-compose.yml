@@ -4,8 +4,8 @@ services:
     restart: "no"
     tty: true
     stdin_open: true
+    init: true
 
-    # need root user to run entrypoint.sh to add user and group, and change ownership of files
     user: "root"
     working_dir: /apollo
     shm_size: ${SHM_SIZE}
@@ -32,3 +32,5 @@ services:
       - ${BAZEL_CACHE_DIR}:${BAZEL_CACHE_DIR}
 
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
+
+    command: ["runuser", "-u", "${USER_NAME}", "--", "/bin/bash", "-l"]
