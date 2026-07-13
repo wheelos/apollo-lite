@@ -56,21 +56,20 @@ if [[ -d "${RCFILES_DIR}" ]]; then
     fi
   done
 fi
-# Set user files ownership to current user, such as .bashrc, .profile, etc.
-chown -R "${USER_ID}:${GROUP_ID}" ${USER_HOME}/.*
+
+find "${USER_HOME}" -maxdepth 1 -name ".*" ! -name "." ! -name " .. " -exec chown -R "${USER_ID}:${GROUP_ID}" {} +
+chown "${USER_ID}:${GROUP_ID}" "${USER_HOME}"
+
 if [ -f "/apollo/cyber/setup.bash" ]; then
     source /apollo/cyber/setup.bash
 fi
 
 # 4. Business logic branch
-# If AUTO_BOOTSTRAP=true is set (usually for one-click startup in Dev mode)
 if [[ "${AUTO_BOOTSTRAP}" == "true" ]]; then
     echo "[Entrypoint] Auto-starting Dreamview..."
-    # run as user
-    # sudo -u ${USER_NAME} bash -c "cd /apollo && source ~/.bashrc && source ~/.bash_aliases && source /apollo/cyber/setup.bash && ./scripts/bootstrap.sh start > /apollo/data/log/bootstrap.log 2>&1"
     runuser -u ${USER_NAME} -- bash -l -c "cd /apollo && ./scripts/bootstrap.sh start > /apollo/data/log/bootstrap.log 2>&1" || true
 fi
 
 # 5. Keep running the container
 echo ">>> Container is ready for user: $USER_NAME"
-exec tail -f /dev/null
+exec "$@"
