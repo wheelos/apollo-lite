@@ -205,6 +205,11 @@ void ControlComponent::OnLocalization(
 
 Status ControlComponent::ProduceControlCommand(ControlCommand *control_command,
                                                bool *used_previous_command) {
+  last_goal_ = BuildControlCommandGoal(local_view_.trajectory());
+  EnsureControlIntentCompatibility(last_goal_, local_view_.mutable_trajectory());
+  last_profile_ = strategy_orchestrator_.Resolve(last_goal_);
+  strategy_orchestrator_.Apply(last_profile_, local_view_.mutable_trajectory());
+
   // 1. Update Vehicle State Estimation
   // This is a prerequisite for control computation.
   injector_->vehicle_state()->Update(local_view_.localization(),
@@ -377,6 +382,8 @@ void ControlComponent::PublishRuntimeStatus(
 
   if (!reason.empty()) {
     runtime_status.set_reason(reason);
+  } else if (!last_profile_.profile_key.empty()) {
+    runtime_status.set_reason("profile=" + last_profile_.profile_key);
   }
 
   control_runtime_status_writer_->Write(runtime_status);

@@ -31,7 +31,9 @@
 #include "cyber/component/timer_component.h"
 #include "cyber/time/time.h"
 #include "modules/common/monitor_log/monitor_log_buffer.h"
+#include "modules/control/common/control_command_goal.h"
 #include "modules/control/common/dependency_injector.h"
+#include "modules/control/common/strategy_orchestrator.h"
 #include "modules/control/controller/controller_agent.h"
 #include "modules/control/safety/safety_manager.h"
 
@@ -93,6 +95,9 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
   // Runtime State
   LocalView local_view_;
   ControlCommand previous_cmd_;
+  ControlCommandGoal last_goal_;
+  SemanticControlProfile last_profile_;
+  StrategyOrchestrator strategy_orchestrator_;
   bool pad_received_ = false;
 
   // Cyber RT Interfaces

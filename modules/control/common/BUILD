@@ -138,15 +138,38 @@ cc_library(
 )
 
 cc_library(
+    name = "control_command_goal",
+    srcs = ["control_command_goal.cc"],
+    hdrs = ["control_command_goal.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "strategy_orchestrator",
+    srcs = ["strategy_orchestrator.cc"],
+    hdrs = ["strategy_orchestrator.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        ":control_command_goal",
+        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
     name = "common",
     copts = CONTROL_COPTS,
     deps = [
+        ":control_command_goal",
         ":control_gflags",
         ":hysteresis_filter",
         ":interpolation_1d",
         ":interpolation_2d",
         ":leadlag_controller",
         ":pid_controller",
+        ":strategy_orchestrator",
         ":terminal_control_helper",
         ":trajectory_analyzer",
     ],
@@ -266,6 +289,16 @@ cc_test(
     deps = [
         ":terminal_control_helper",
         "//modules/planning/common:gtest_exit_main",
+    ],
+)
+
+cc_test(
+    name = "strategy_orchestrator_test",
+    size = "small",
+    srcs = ["strategy_orchestrator_test.cc"],
+    deps = [
+        ":strategy_orchestrator",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
