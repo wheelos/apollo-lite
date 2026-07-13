@@ -20,6 +20,7 @@ cc_library(
       ":safety_defines",
       "//cyber",
       "//modules/common/util:debouncer",
+      "//modules/common/util:message_util",
       "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
       "//modules/control/proto:control_conf_cc_proto",
       "//modules/common_msgs/control_msgs:pad_msg_cc_proto",

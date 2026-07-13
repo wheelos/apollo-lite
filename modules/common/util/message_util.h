@@ -21,7 +21,9 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <limits>
 #include <string>
 
 #include "absl/strings/str_cat.h"
@@ -30,6 +32,7 @@
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
+#include "modules/common_msgs/basic_msgs/header.pb.h"
 
 /**
  * @namespace apollo::common::util
@@ -50,6 +53,27 @@ static void FillHeader(const std::string& module_name, T* msg) {
   header->set_timestamp_sec(timestamp);
   header->set_sequence_num(
       static_cast<unsigned int>(sequence_num.fetch_add(1)));
+}
+
+inline bool IsHeaderSequenceNumUpdated(const apollo::common::Header& header,
+                                      uint32_t* last_sequence_num) {
+  constexpr uint32_t kInvalidSequenceNum = std::numeric_limits<uint32_t>::max();
+
+  if (last_sequence_num == nullptr || !header.has_sequence_num()) {
+    return false;
+  }
+
+  if (*last_sequence_num == kInvalidSequenceNum) {
+    *last_sequence_num = header.sequence_num();
+    return true;
+  }
+
+  if (header.sequence_num() <= *last_sequence_num) {
+    return false;
+  }
+
+  *last_sequence_num = header.sequence_num();
+  return true;
 }
 
 template <typename T, typename std::enable_if<
