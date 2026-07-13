@@ -17,11 +17,11 @@
 
 #include "modules/control/safety/safety_manager.h"
 
+#include <chrono>
 #include <cmath>
 
 #include "cyber/common/log.h"
-#include "cyber/time/clock.h"
-#include "modules/common/configs/vehicle_config_helper.h"
+#include "modules/common/util/message_util.h"
 
 namespace apollo {
 namespace control {
@@ -41,6 +41,7 @@ bool SafetyManager::Init(const ControlConf& conf) {
   // frames) before triggering a trajectory loss fault.
   trajectory_loss_debouncer_ = std::make_unique<CounterDebouncer>(30);
   output_fault_debouncer_ = std::make_unique<CounterDebouncer>(3);
+  last_trajectory_sequence_num_ = std::numeric_limits<uint32_t>::max();
   return true;
 }
 
@@ -49,44 +50,55 @@ SafetyResult SafetyManager::PreCheck(const LocalView& view) {
   active_faults_.clear();
   SafetyResult result;
 
-  CheckPlanningTrajectory(view, &result);
+  CheckPlanningInput(view, &result);
 
   CheckKinematics(view, &result);
 
   return result;
 }
 
-SafetyResult SafetyManager::PostCheck(const ControlCommand& cmd,
-                                      const ControlCommand& prev_cmd) {
+SafetyResult SafetyManager::PostCheck(const ControlCommand& cmd) {
   std::lock_guard<std::mutex> lk(mutex_);
   SafetyResult result;
 
-  CheckControlOutputDynamic(cmd, prev_cmd, &result);
+  CheckControlOutput(cmd, &result);
 
   return result;
 }
 
-void SafetyManager::CheckPlanningTrajectory(const LocalView& view,
-                                            SafetyResult* result) {
-  bool traj_invalid = false;
+void SafetyManager::CheckPlanningInput(const LocalView& view,
+                                       SafetyResult* result) {
+  const auto& trajectory = view.trajectory();
+  const bool trajectory_stale = !common::util::IsHeaderSequenceNumUpdated(
+      trajectory.header(), &last_trajectory_sequence_num_);
 
-  if (view.trajectory().trajectory_point().empty()) {
-    traj_invalid = true;
-  } else {
-    for (const auto& pt : view.trajectory().trajectory_point()) {
-      if (std::isnan(pt.v()) || std::isnan(pt.a()) || std::isinf(pt.v()) ||
-          std::isinf(pt.a())) {
-        traj_invalid = true;
+  const bool trajectory_empty = trajectory.trajectory_point().empty();
+  bool trajectory_point_invalid = false;
+  if (!trajectory_empty) {
+    for (const auto& pt : trajectory.trajectory_point()) {
+      if (!std::isfinite(pt.v()) || !std::isfinite(pt.a()) ||
+          !std::isfinite(pt.relative_time()) ||
+          !std::isfinite(pt.path_point().x()) ||
+          !std::isfinite(pt.path_point().y()) ||
+          !std::isfinite(pt.path_point().theta()) ||
+          !std::isfinite(pt.path_point().s()) ||
+          !std::isfinite(pt.path_point().kappa())) {
+        trajectory_point_invalid = true;
         break;
       }
     }
   }
 
-  if (traj_invalid) {
+  // Missing trajectory points or non-finite trajectory geometry are immediate
+  // bypass conditions. Stale sequence numbers are debounced separately because
+  // planning runs at lower frequency than control.
+  if (trajectory_empty || trajectory_point_invalid) {
     result->must_bypass = true;
   }
 
-  if (trajectory_loss_debouncer_->Update(traj_invalid)) {
+  const bool trajectory_lost =
+      trajectory_stale || trajectory_empty || trajectory_point_invalid;
+  if (trajectory_loss_debouncer_->Update(trajectory_lost)) {
     ReportFault(0x0203, FaultLevel::LEVEL_SOFT_STOP, FaultSource::SOURCE_INPUT);
   }
 }
@@ -107,21 +119,57 @@ void SafetyManager::CheckKinematics(const LocalView& view,
   }
 }
 
-void SafetyManager::CheckControlOutputDynamic(const ControlCommand& cmd,
-                                              const ControlCommand& prev_cmd,
-                                              SafetyResult* result) {
-  const auto& vehicle_param =
-      common::VehicleConfigHelper::GetConfig().vehicle_param();
+void SafetyManager::CheckControlOutput(const ControlCommand& cmd,
+                                       SafetyResult* result) {
+  bool invalid = false;
 
-  // 1. Physical inspection logic: Acceleration over-limit check
-  bool is_accel_insane =
-      std::abs(cmd.acceleration()) > vehicle_param.max_acceleration();
+  auto validate_field = [&](bool has_field, double value, double min_value,
+                            double max_value, const char* name) {
+    if (!has_field) {
+      AERROR_EVERY(10) << "Missing ControlCommand field: " << name;
+      invalid = true;
+      return;
+    }
 
-  if (is_accel_insane) {
-    result->need_freeze = true;  // Intercept this frame
+    if (!std::isfinite(value)) {
+      AERROR_EVERY(10) << "Invalid ControlCommand field: " << name << " = "
+                       << value;
+      invalid = true;
+      return;
+    }
+
+    if (value < min_value || value > max_value) {
+      AERROR_EVERY(10) << "Out-of-range ControlCommand field: " << name << " = "
+                       << value << " (expected [" << min_value << ", "
+                       << max_value << "])";
+      invalid = true;
+    }
+  };
+
+  validate_field(cmd.has_throttle(), cmd.throttle(), 0.0, 100.0, "throttle");
+  validate_field(cmd.has_brake(), cmd.brake(), 0.0, 100.0, "brake");
+  validate_field(cmd.has_steering_target(), cmd.steering_target(), -100.0,
+                 100.0, "steering_target");
+  validate_field(cmd.has_steering_rate(), cmd.steering_rate(), 0.0, 100.0,
+                 "steering_rate");
+
+  // Speed is controller dependent. Only require finite.
+  if (!cmd.has_speed() || !std::isfinite(cmd.speed())) {
+    AERROR_EVERY(10) << "Invalid ControlCommand field: speed";
+    invalid = true;
   }
 
-  if (output_fault_debouncer_->Update(is_accel_insane)) {
+  // Acceleration is controller dependent. Only require finite.
+  if (!cmd.has_acceleration() || !std::isfinite(cmd.acceleration())) {
+    AERROR_EVERY(10) << "Invalid ControlCommand field: acceleration";
+    invalid = true;
+  }
+
+  if (invalid) {
+    result->need_freeze = true;
+  }
+
+  if (output_fault_debouncer_->Update(invalid)) {
     ReportFault(0x0302, FaultLevel::LEVEL_HARD_ESTOP,
                 FaultSource::SOURCE_OUTPUT);
   }
@@ -140,7 +188,8 @@ void SafetyManager::ReportFault(uint32_t id, FaultLevel level,
   e.set_fault_id(id);
   e.set_level(level);
   e.set_source(source);
-  e.set_timestamp_sec(apollo::cyber::Clock::NowInSeconds());
+  const auto now = std::chrono::system_clock::now().time_since_epoch();
+  e.set_timestamp_sec(std::chrono::duration<double>(now).count());
 }
 
 void SafetyManager::Arbitrate() {
@@ -167,18 +216,20 @@ void SafetyManager::Arbitrate() {
 }
 
 void SafetyManager::ExecuteWarningPolicy(ControlCommand* cmd) {
-  // Limited speed for minor issues
-  const double kWarningMaxSpeed = 5.0;
-  if (cmd->speed() > kWarningMaxSpeed) {
-    cmd->set_speed(kWarningMaxSpeed);
-  }
+  // TODO(daohu527): Define warning mitigation strategy.
+  // For example, triggering packet recording via the monitor module.
 }
 
 void SafetyManager::ExecuteSoftStop(ControlCommand* cmd) {
   // Comfortable deceleration, keep steering control if possible
   cmd->set_throttle(0.0);
   cmd->set_brake(conf_.soft_estop_brake());
-  cmd->set_gear_location(apollo::canbus::Chassis::GEAR_DRIVE);
+  cmd->set_speed(0.0);
+
+  // TODO: Replace actuator override with controlled-stop trajectory generation.
+
+  // Hazard warning
+  cmd->mutable_signal()->set_emergency_light(true);
 }
 
 void SafetyManager::ExecuteHardEstop(ControlCommand* cmd) {
@@ -186,9 +237,6 @@ void SafetyManager::ExecuteHardEstop(ControlCommand* cmd) {
   cmd->set_throttle(0.0);
   cmd->set_brake(100.0);
   cmd->set_speed(0.0);
-  cmd->set_parking_brake(true);
-  cmd->set_steering_rate(0.0);
-  cmd->set_gear_location(apollo::canbus::Chassis::GEAR_PARKING);
 
   // Hazard warning
   cmd->mutable_signal()->set_emergency_light(true);

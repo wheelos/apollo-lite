@@ -23,8 +23,6 @@
 
 #include "modules/control/proto/control_conf.pb.h"
 
-#include "modules/common/configs/vehicle_config_helper.h"
-
 namespace apollo {
 namespace control {
 
@@ -32,24 +30,14 @@ class SafetyManagerTest : public ::testing::Test {
  protected:
   /**
    * @brief SetUp runs before each test case.
-   * Uses Static Injection to mock VehicleConfig without file I/O.
    */
   void SetUp() override {
-    // 1. Prepare Mock Vehicle Configuration
-    apollo::common::VehicleConfig mock_config;
-    auto* param = mock_config.mutable_vehicle_param();
-    param->set_max_steer_angle_rate(100.0);
-    param->set_max_acceleration(5.0);
-
-    // 2. Inject mock config into Singleton (Bypasses file loading)
-    apollo::common::VehicleConfigHelper::Init(mock_config);
-
-    // 3. Initialize Control Configuration
+    // 1. Initialize Control Configuration
     ControlConf conf;
     conf.set_control_period(0.01);
     conf.set_soft_estop_brake(20.0);
 
-    // 4. Initialize SafetyManager
+    // 2. Initialize SafetyManager
     ASSERT_TRUE(safety_manager_.Init(conf));
   }
 
@@ -107,26 +95,28 @@ TEST_F(SafetyManagerTest, ImmediateBypassOnInvalidInput) {
  * @test Verify Safety Policy Application for Hard Estop.
  */
 TEST_F(SafetyManagerTest, ApplyHardEstopPolicy) {
-  LocalView view;
   ControlCommand cmd;
 
-  // Hard Estop triggered by: Acceleration exceeding limit (5.0 is the upper
-  // limit)
-  cmd.set_acceleration(7.0);
-  ControlCommand prev_cmd;
-  prev_cmd.set_acceleration(0.0);
+  // Keep all required fields present, and inject one non-finite output.
+  cmd.set_throttle(0.0);
+  cmd.set_brake(0.0);
+  cmd.set_steering_target(std::nan(""));
+  cmd.set_steering_rate(10.0);
+  cmd.set_speed(1.0);
+  cmd.set_acceleration(0.0);
 
   // PostCheck debouncing triggers HardEstop (0x0302) 3 times.
   for (int i = 0; i < 3; ++i) {
-    safety_manager_.PostCheck(cmd, prev_cmd);
+    safety_manager_.PostCheck(cmd);
   }
 
   safety_manager_.ApplySafetyPolicy(&cmd);
   ASSERT_EQ(safety_manager_.GetState(), SafetyState::kHardEstop);
 
   // Verify emergency braking strategy execution
+  EXPECT_DOUBLE_EQ(cmd.throttle(), 0.0);
   EXPECT_DOUBLE_EQ(cmd.brake(), 100.0);
-  EXPECT_EQ(cmd.gear_location(), apollo::canbus::Chassis::GEAR_PARKING);
+  EXPECT_DOUBLE_EQ(cmd.speed(), 0.0);
   EXPECT_TRUE(cmd.signal().emergency_light());
 }
 
@@ -178,6 +168,7 @@ TEST_F(SafetyManagerTest, SoftStopAutoRecovery) {
   auto* pt = view.mutable_trajectory()->add_trajectory_point();
   pt->set_v(1.0);
   pt->set_a(0.0);
+  view.mutable_trajectory()->mutable_header()->set_sequence_num(1);
 
   safety_manager_.PreCheck(view);
   safety_manager_.ApplySafetyPolicy(
@@ -245,6 +236,46 @@ TEST_F(SafetyManagerTest, DebouncerResetsOnValidFrame) {
 
   // State should still be Normal because counter reset to 0
   EXPECT_EQ(safety_manager_.GetState(), SafetyState::kNormal);
+}
+
+/**
+ * @test Verify stale planning trajectory headers trigger SoftStop.
+ */
+TEST_F(SafetyManagerTest, StaleTrajectoryTriggersSoftStop) {
+  LocalView view;
+  auto* pt = view.mutable_trajectory()->add_trajectory_point();
+  pt->set_v(1.0);
+  pt->set_a(0.0);
+  view.mutable_trajectory()->mutable_header()->set_sequence_num(1);
+
+  ControlCommand cmd;
+  cmd.set_speed(5.0);
+
+  SafetyResult first_res = safety_manager_.PreCheck(view);
+  EXPECT_FALSE(first_res.must_bypass);
+
+  for (int i = 0; i < 30; ++i) {
+    safety_manager_.PreCheck(view);
+  }
+
+  safety_manager_.ApplySafetyPolicy(&cmd);
+
+  EXPECT_EQ(safety_manager_.GetState(), SafetyState::kSoftStop);
+  EXPECT_DOUBLE_EQ(cmd.speed(), 0.0);
+  EXPECT_DOUBLE_EQ(cmd.brake(), 20.0);
+}
+
+TEST_F(SafetyManagerTest, PostCheckFreezesOnNonFiniteOutput) {
+  ControlCommand cmd;
+  cmd.set_throttle(0.0);
+  cmd.set_brake(0.0);
+  cmd.set_steering_target(std::nan(""));
+  cmd.set_steering_rate(10.0);
+  cmd.set_speed(0.0);
+  cmd.set_acceleration(0.0);
+
+  const SafetyResult res = safety_manager_.PostCheck(cmd);
+  EXPECT_TRUE(res.need_freeze);
 }
 
 }  // namespace control
