@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -52,8 +54,7 @@ class SafetyManager {
 
   // Phase 2: Post-Computation Check
   // Validates the calculated command
-  SafetyResult PostCheck(const ControlCommand& cmd,
-                         const ControlCommand& prev_cmd);
+  SafetyResult PostCheck(const ControlCommand& cmd);
 
   // Phase 3: Policy Application
   // Overrides the command based on current SafetyState
@@ -65,11 +66,9 @@ class SafetyManager {
   SafetyState GetState() const { return current_state_; }
 
  private:
-  void CheckPlanningTrajectory(const LocalView& view, SafetyResult* result);
+  void CheckPlanningInput(const LocalView& view, SafetyResult* result);
   void CheckKinematics(const LocalView& view, SafetyResult* result);
-  void CheckControlOutputDynamic(const ControlCommand& cmd,
-                                 const ControlCommand& prev_cmd,
-                                 SafetyResult* result);
+  void CheckControlOutput(const ControlCommand& cmd, SafetyResult* result);
   void Arbitrate();
 
   void ExecuteSoftStop(ControlCommand* cmd);
@@ -90,6 +89,7 @@ class SafetyManager {
   // Debouncers for signal stability
   std::unique_ptr<CounterDebouncer> trajectory_loss_debouncer_;
   std::unique_ptr<CounterDebouncer> output_fault_debouncer_;
+  uint32_t last_trajectory_sequence_num_ = std::numeric_limits<uint32_t>::max();
 };
 
 }  // namespace control

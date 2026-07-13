@@ -103,7 +103,7 @@ void ControlComponent::InitReaders() {
   pad_msg_reader_ = node_->CreateReader<PadMessage>(pad_cfg, nullptr);
 }
 
-void ControlComponent::OnPad(const std::shared_ptr<PadMessage> &pad) {
+void ControlComponent::OnPad(const std::shared_ptr<PadMessage>& pad) {
   std::lock_guard<std::mutex> lock(mutex_);
   pad_msg_.CopyFrom(*pad);
 
@@ -114,25 +114,25 @@ void ControlComponent::OnPad(const std::shared_ptr<PadMessage> &pad) {
   }
 }
 
-void ControlComponent::OnChassis(const std::shared_ptr<Chassis> &chassis) {
+void ControlComponent::OnChassis(const std::shared_ptr<Chassis>& chassis) {
   std::lock_guard<std::mutex> lock(mutex_);
   latest_chassis_.CopyFrom(*chassis);
 }
 
 void ControlComponent::OnPlanning(
-    const std::shared_ptr<ADCTrajectory> &trajectory) {
+    const std::shared_ptr<ADCTrajectory>& trajectory) {
   std::lock_guard<std::mutex> lock(mutex_);
   latest_trajectory_.CopyFrom(*trajectory);
 }
 
 void ControlComponent::OnLocalization(
-    const std::shared_ptr<LocalizationEstimate> &localization) {
+    const std::shared_ptr<LocalizationEstimate>& localization) {
   std::lock_guard<std::mutex> lock(mutex_);
   latest_localization_.CopyFrom(*localization);
 }
 
 Status ControlComponent::ProduceControlCommand(
-    ControlCommand *control_command) {
+    ControlCommand* control_command) {
   // 1. Update Vehicle State Estimation
   // This is a prerequisite for control computation.
   injector_->vehicle_state()->Update(local_view_.localization(),
@@ -155,8 +155,7 @@ Status ControlComponent::ProduceControlCommand(
     if (status.ok()) {
       // 4. Safety Post-Check (Output Validation)
       // Sanity check on computed commands (e.g., jerk, steering rate).
-      SafetyResult output_res =
-          safety_manager_->PostCheck(*control_command, previous_cmd_);
+      SafetyResult output_res = safety_manager_->PostCheck(*control_command);
       if (output_res.need_freeze) {
         use_previous_cmd = true;
         status = Status(ErrorCode::CONTROL_COMPUTE_ERROR,
@@ -286,7 +285,7 @@ bool ControlComponent::Proc() {
 }
 
 void ControlComponent::ResetAndProduceZeroControlCommand(
-    ControlCommand *control_command) {
+    ControlCommand* control_command) {
   control_command->set_throttle(0.0);
   // Follow current steering angle to prevent sudden jerks during handover
   control_command->set_steering_target(latest_chassis_.steering_percentage());

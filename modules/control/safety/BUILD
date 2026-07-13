@@ -25,7 +25,6 @@ cc_library(
       "//modules/common_msgs/control_msgs:pad_msg_cc_proto",
       "//modules/control/proto:local_view_cc_proto",
       "//modules/control/proto:safety_status_cc_proto",
-      "//modules/common/configs:vehicle_config_helper",
       "@boost.container",
     ]
 )
