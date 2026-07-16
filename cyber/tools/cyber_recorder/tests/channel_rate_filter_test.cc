@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cyber/tools/cyber_recorder/channel_rate_filter.h"
+#include "cyber/tools/cyber_recorder/record/filters/channel_rate_filter.h"
 
 #include "gtest/gtest.h"
 

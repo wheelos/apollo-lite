@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "cyber/tools/cyber_recorder/recoverer.h"
+#include "cyber/tools/cyber_recorder/recover/recoverer.h"
 
 #include "cyber/base/for_each.h"
 #include "cyber/record/header_builder.h"

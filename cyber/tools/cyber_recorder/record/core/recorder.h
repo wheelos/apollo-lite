@@ -31,8 +31,14 @@
 #include "cyber/proto/record.pb.h"
 #include "cyber/proto/topology_change.pb.h"
 #include "cyber/record/record_writer.h"
-#include "cyber/tools/cyber_recorder/channel_rate_filter.h"
-#include "cyber/tools/cyber_recorder/message_size_filter.h"
+#include "cyber/tools/cyber_recorder/record/core/conflict_warning_emitter.h"
+#include "cyber/tools/cyber_recorder/record/core/recorder_config.h"
+#include "cyber/tools/cyber_recorder/record/core/subscription_set.h"
+#include "cyber/tools/cyber_recorder/record/filters/channel_rate_filter.h"
+#include "cyber/tools/cyber_recorder/record/filters/message_size_filter.h"
+#include "cyber/tools/cyber_recorder/record/filters/qos_stateful_filter.h"
+#include "cyber/tools/cyber_recorder/record/selector/policy_resolver.h"
+#include "cyber/tools/cyber_recorder/record/selector/subscription_selector.h"
 
 using apollo::cyber::Node;
 using apollo::cyber::ReaderBase;
@@ -68,6 +74,8 @@ class Recorder : public std::enable_shared_from_this<Recorder> {
            const proto::Header& header,
            const MessageSizeFilterConfig& message_size_filter_config,
            const ChannelRateFilterConfig& channel_rate_filter_config);
+  Recorder(const std::string& output, const proto::Header& header,
+           const RecorderConfigBundle& config_bundle);
   ~Recorder();
   bool Start();
   bool Stop();
@@ -85,17 +93,15 @@ class Recorder : public std::enable_shared_from_this<Recorder> {
   std::shared_ptr<std::thread> display_thread_ = nullptr;
   Connection<const ChangeMsg&> change_conn_;
   std::string output_;
-  bool all_channels_ = true;
-  std::vector<std::string> white_channels_;
-  std::vector<std::string> black_channels_;
   proto::Header header_;
-  MessageSizeFilter message_size_filter_;
-  ChannelRateFilter channel_rate_filter_;
+  SubscriptionSelector subscription_selector_;
+  PolicyResolver policy_resolver_;
+  QosStatefulFilter qos_stateful_filter_;
+  ConflictWarningEmitter conflict_warning_emitter_;
+  SubscriptionSet subscription_set_;
   mutable std::mutex channel_reader_mutex_;
   std::unordered_map<std::string, ChannelMetadata> channel_metadata_map_;
   std::unordered_set<std::string> written_channels_;
-  std::unordered_map<std::string, std::shared_ptr<ReaderBase>>
-      channel_reader_map_;
   std::atomic<uint64_t> message_count_{0};
   std::atomic<uint64_t> message_time_{0};
   std::atomic<uint64_t> dropped_message_count_{0};
@@ -105,8 +111,8 @@ class Recorder : public std::enable_shared_from_this<Recorder> {
 
   bool FreeReadersImpl();
 
-  bool InitReaderImpl(const std::string& channel_name,
-                      const std::string& message_type);
+  bool EnsureSubscriptionReader(const std::string& channel_name,
+                                const std::string& message_type);
 
   void TopologyCallback(const ChangeMsg& msg);
 

@@ -24,27 +24,28 @@
 #include "cyber/common/file.h"
 #include "cyber/common/time_conversion.h"
 #include "cyber/init.h"
-#include "cyber/tools/cyber_recorder/info.h"
-#include "cyber/tools/cyber_recorder/player/player.h"
-#include "cyber/tools/cyber_recorder/recorder.h"
-#include "cyber/tools/cyber_recorder/recoverer.h"
-#include "cyber/tools/cyber_recorder/spliter.h"
+#include "cyber/tools/cyber_recorder/info/info.h"
+#include "cyber/tools/cyber_recorder/play/player.h"
+#include "cyber/tools/cyber_recorder/record/core/recorder.h"
+#include "cyber/tools/cyber_recorder/record/core/recorder_config.h"
+#include "cyber/tools/cyber_recorder/recover/recoverer.h"
+#include "cyber/tools/cyber_recorder/split/spliter.h"
 
 using apollo::cyber::common::GetFileName;
 using apollo::cyber::common::StringToUnixSeconds;
 using apollo::cyber::common::UnixSecondsToString;
 using apollo::cyber::record::ChannelRateFilterConfig;
-using apollo::cyber::record::ChannelRateLimitRule;
 using apollo::cyber::record::HeaderBuilder;
 using apollo::cyber::record::Info;
 using apollo::cyber::record::MessageSizeFilterConfig;
-using apollo::cyber::record::ParseChannelRateLimitRule;
-using apollo::cyber::record::ParseMessageSizeBytes;
 using apollo::cyber::record::Player;
 using apollo::cyber::record::PlayParam;
 using apollo::cyber::record::Recorder;
+using apollo::cyber::record::RecorderConfigBundle;
 using apollo::cyber::record::Recoverer;
 using apollo::cyber::record::Spliter;
+using apollo::cyber::record::BuildRecorderConfigFromLegacyOptions;
+using apollo::cyber::record::LoadRecorderConfigFromYamlFile;
 using apollo::cyber::record::ValidateChannelRateFilterConfig;
 using apollo::cyber::record::ValidateMessageSizeFilterConfig;
 
@@ -55,8 +56,7 @@ const char SPLIT_OPTIONS[] = "f:o:c:k:b:e:h";
 const char RECOVER_OPTIONS[] = "f:o:h";
 
 enum LongOnlyOptions {
-  kDropLargeMessageSizeOption = 256,
-  kChannelRateLimitOption,
+  kConfigPathOption = 256,
 };
 
 void DisplayUsage(const std::string& binary);
@@ -89,14 +89,8 @@ void DisplayUsage(const std::string& binary, const std::string& command) {
   if (command == "record") {
     DisplayUsage(binary, command, RECORD_OPTIONS);
     std::cout << "\tRecorder filter options:" << std::endl;
-    std::cout << "\t--drop <size>\t\t\tdrop messages at or above the size "
-              << "threshold" << std::endl;
-    std::cout << "\t--drop-large-message-size <bytes>\t"
-              << "drop messages at or above the size threshold" << std::endl;
-    std::cout << "\t--channel-rate-limit <channel@hz>\t"
-              << "cap the saved rate for one channel" << std::endl;
-    std::cout << "\t\t\t\t\tif both are set, size drops run before channel "
-              << "rate limits" << std::endl;
+    std::cout << "\t--config <yaml>\t\t\trecorder pipeline config"
+              << std::endl;
   } else if (command == "play") {
     DisplayUsage(binary, command, PLAY_OPTIONS);
   } else if (command == "split") {
@@ -204,11 +198,7 @@ int main(int argc, char** argv) {
       {"black-channel", required_argument, nullptr, 'k'},
       {"segment-interval", required_argument, nullptr, 'i'},
       {"segment-size", required_argument, nullptr, 'm'},
-      {"drop", required_argument, nullptr, kDropLargeMessageSizeOption},
-      {"drop-large-message-size", required_argument, nullptr,
-       kDropLargeMessageSizeOption},
-      {"channel-rate-limit", required_argument, nullptr,
-       kChannelRateLimitOption},
+      {"config", required_argument, nullptr, kConfigPathOption},
       {"help", no_argument, nullptr, 'h'},
       {nullptr, 0, nullptr, 0}};
   static const struct option kPlayLongOpts[] = {
@@ -273,6 +263,7 @@ int main(int argc, char** argv) {
   auto opt_header = HeaderBuilder::GetHeader();
   MessageSizeFilterConfig opt_message_size_filter_config;
   ChannelRateFilterConfig opt_channel_rate_filter_config;
+  std::string opt_config_path;
   optind = 2;
 
   do {
@@ -421,28 +412,8 @@ int main(int argc, char** argv) {
       case 'h':
         DisplayUsage(binary, command);
         return 0;
-      case kDropLargeMessageSizeOption:
-        {
-          std::string filter_error;
-          if (!ParseMessageSizeBytes(
-                  optarg,
-                  &opt_message_size_filter_config.drop_message_size_bytes,
-                  &filter_error)) {
-            std::cout << filter_error << std::endl;
-            return -1;
-          }
-        }
-        break;
-      case kChannelRateLimitOption:
-        {
-          ChannelRateLimitRule rule;
-          std::string filter_error;
-          if (!ParseChannelRateLimitRule(optarg, &rule, &filter_error)) {
-            std::cout << filter_error << std::endl;
-            return -1;
-          }
-          opt_channel_rate_filter_config.rules.push_back(rule);
-        }
+      case kConfigPathOption:
+        opt_config_path = std::string(optarg);
         break;
       default:
         break;
@@ -502,7 +473,7 @@ int main(int argc, char** argv) {
     const bool play_result = player.Init() && player.Start();
     return play_result ? 0 : -1;
   } else if (command == "record") {
-    if (opt_white_channels.empty() && !opt_all) {
+    if (opt_config_path.empty() && opt_white_channels.empty() && !opt_all) {
       std::cout
           << "MUST specify channels option (-c) or all channels option (-a)."
           << std::endl;
@@ -529,12 +500,26 @@ int main(int argc, char** argv) {
       std::cout << channel_rate_filter_error << std::endl;
       return -1;
     }
+    RecorderConfigBundle recorder_config;
+    std::string recorder_config_error;
+    if (!opt_config_path.empty()) {
+      if (!LoadRecorderConfigFromYamlFile(opt_config_path, &recorder_config,
+                                          &recorder_config_error)) {
+        std::cout << recorder_config_error << std::endl;
+        return -1;
+      }
+    } else {
+      if (!BuildRecorderConfigFromLegacyOptions(
+              opt_all, opt_white_channels, opt_black_channels,
+              opt_message_size_filter_config, opt_channel_rate_filter_config,
+              &recorder_config, &recorder_config_error)) {
+        std::cout << recorder_config_error << std::endl;
+        return -1;
+      }
+    }
     ::apollo::cyber::Init(argv[0]);
-    auto recorder = std::make_shared<Recorder>(opt_output_vec[0], opt_all,
-                                               opt_white_channels,
-                                               opt_black_channels, opt_header,
-                                               opt_message_size_filter_config,
-                                               opt_channel_rate_filter_config);
+    auto recorder =
+        std::make_shared<Recorder>(opt_output_vec[0], opt_header, recorder_config);
     bool record_result = recorder->Start();
     if (record_result) {
       while (!::apollo::cyber::IsShutdown()) {

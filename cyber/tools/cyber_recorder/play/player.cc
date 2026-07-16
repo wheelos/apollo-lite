@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "cyber/tools/cyber_recorder/player/player.h"
+#include "cyber/tools/cyber_recorder/play/player.h"
 
 #include <termios.h>
 

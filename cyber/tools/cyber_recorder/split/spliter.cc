@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "cyber/tools/cyber_recorder/spliter.h"
+#include "cyber/tools/cyber_recorder/split/spliter.h"
 
 namespace apollo {
 namespace cyber {

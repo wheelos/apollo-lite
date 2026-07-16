@@ -23,9 +23,9 @@
 
 #include "modules/tools/roadlog/proto/smart_recorder_triggers.pb.h"
 
-#include "cyber/tools/cyber_recorder/channel_rate_filter.h"
-#include "cyber/tools/cyber_recorder/message_size_filter.h"
-#include "cyber/tools/cyber_recorder/recorder.h"
+#include "cyber/tools/cyber_recorder/record/filters/channel_rate_filter.h"
+#include "cyber/tools/cyber_recorder/record/filters/message_size_filter.h"
+#include "cyber/tools/cyber_recorder/record/core/recorder.h"
 #include "modules/tools/roadlog/common/roadlog_layout.h"
 
 namespace apollo {

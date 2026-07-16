@@ -31,8 +31,8 @@
 #include "cyber/node/node.h"
 #include "cyber/node/writer.h"
 #include "cyber/record/record_reader.h"
-#include "cyber/tools/cyber_recorder/player/play_param.h"
-#include "cyber/tools/cyber_recorder/player/play_task_buffer.h"
+#include "cyber/tools/cyber_recorder/play/play_param.h"
+#include "cyber/tools/cyber_recorder/play/play_task_buffer.h"
 
 namespace apollo {
 namespace cyber {
