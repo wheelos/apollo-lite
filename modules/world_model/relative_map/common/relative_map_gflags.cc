@@ -32,3 +32,7 @@ DEFINE_bool(enable_cyclic_rerouting, false,
 
 DEFINE_bool(relative_map_generate_left_boundray, true,
             "Generate left boundary for detected lanes.");
+
+DEFINE_double(destination_reached_threshold, 5.0,
+              "Distance threshold in meters within which the routing "
+              "destination is considered reached.");

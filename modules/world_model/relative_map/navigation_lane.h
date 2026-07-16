@@ -137,6 +137,37 @@ class NavigationLane {
   bool GeneratePath();
 
   /**
+   * @brief Set the routing destination in ENU coordinates.
+   * @param enu_x East coordinate of the destination.
+   * @param enu_y North coordinate of the destination.
+   * @return None.
+   */
+  void SetDestination(double enu_x, double enu_y) {
+    destination_enu_x_ = enu_x;
+    destination_enu_y_ = enu_y;
+    has_destination_ = true;
+  }
+
+  /**
+   * @brief Clear the routing destination.
+   * @return None.
+   */
+  void ClearDestination() { has_destination_ = false; }
+
+  /**
+   * @brief Check whether the vehicle has reached the destination.
+   * @param threshold Distance threshold in meters.
+   * @return True if vehicle is within threshold of the destination.
+   */
+  bool IsDestinationReached(double threshold) const;
+
+  /**
+   * @brief Check whether a routing destination is set.
+   * @return True if a destination has been set.
+   */
+  bool HasDestination() const { return has_destination_; }
+
+  /**
    * @brief Update perceived lane line information.
    * @param perception_obstacles Perceived lane line information to be updated.
    * @return None.
@@ -265,6 +296,15 @@ class NavigationLane {
    */
   void UpdateStitchIndexInfo();
 
+  /**
+   * @brief Generate a straight path in FLU coordinates pointing toward the
+   * routing destination. Used when no pre-recorded navigation lines are
+   * available and a destination has been set via routing.
+   * @param path The output path in FLU coordinates.
+   * @return None.
+   */
+  void GenerateDestinationBearingPath(common::Path* path);
+
  private:
   // the configuration information required by the `NavigationLane`
   NavigationLaneConfig config_;
@@ -304,6 +344,11 @@ class NavigationLane {
   // in world coordination: ENU
   localization::Pose original_pose_;
   common::VehicleStateProvider* vehicle_state_provider_ = nullptr;
+
+  // routing destination in ENU coordinates
+  double destination_enu_x_ = 0.0;
+  double destination_enu_y_ = 0.0;
+  bool has_destination_ = false;
 };
 
 }  // namespace relative_map

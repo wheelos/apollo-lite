@@ -21,6 +21,7 @@
 #include "cyber/component/timer_component.h"
 #include "cyber/cyber.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
+#include "modules/common_msgs/routing_msgs/routing.pb.h"
 #include "modules/world_model/relative_map/relative_map.h"
 
 namespace apollo {
@@ -42,6 +43,8 @@ class RelativeMapComponent final : public ::apollo::cyber::TimerComponent {
   std::shared_ptr<cyber::Reader<localization::LocalizationEstimate>>
       localization_reader_ = nullptr;
   std::shared_ptr<cyber::Reader<NavigationInfo>> navigation_reader_ = nullptr;
+  std::shared_ptr<cyber::Reader<routing::RoutingRequest>>
+      routing_request_reader_ = nullptr;
 
   std::shared_ptr<common::VehicleStateProvider> vehicle_state_provider_;
   RelativeMap relative_map_;

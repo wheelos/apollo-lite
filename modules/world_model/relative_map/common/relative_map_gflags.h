@@ -23,3 +23,4 @@ DECLARE_string(navigator_config_filename);
 DECLARE_int32(relative_map_loop_rate);
 DECLARE_bool(enable_cyclic_rerouting);
 DECLARE_bool(relative_map_generate_left_boundray);
+DECLARE_double(destination_reached_threshold);

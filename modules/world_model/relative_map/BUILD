@@ -46,6 +46,7 @@ cc_library(
         "//modules/common/util",
         "//modules/world_model/relative_map/common:relative_map_gflags",
         "//modules/common_msgs/planning_msgs:navigation_cc_proto",
+        "//modules/common_msgs/routing_msgs:routing_cc_proto",
         "//modules/world_model/relative_map/proto:relative_map_config_cc_proto",
         "//modules/common_msgs/perception_msgs:perception_obstacle_cc_proto",
     ],
@@ -81,6 +82,7 @@ cc_library(
         ":relative_map_lib",
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
+        "//modules/common_msgs/routing_msgs:routing_cc_proto",
         "@com_github_gflags_gflags//:gflags",
     ],
 )

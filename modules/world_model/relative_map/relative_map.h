@@ -20,6 +20,7 @@
 
 #include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "modules/common_msgs/planning_msgs/navigation.pb.h"
+#include "modules/common_msgs/routing_msgs/routing.pb.h"
 #include "modules/world_model/relative_map/proto/relative_map_config.pb.h"
 
 #include "modules/common/monitor_log/monitor_log_buffer.h"
@@ -73,6 +74,7 @@ class RelativeMap {
   void OnChassis(const canbus::Chassis& chassis);
   void OnLocalization(const localization::LocalizationEstimate& localization);
   void OnNavigationInfo(const NavigationInfo& navigation_info);
+  void OnRoutingRequest(const routing::RoutingRequest& routing_request);
 
  private:
   bool CreateMapFromNavigationLane(MapMsg* map_msg);

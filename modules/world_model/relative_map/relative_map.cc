@@ -32,6 +32,7 @@ using apollo::common::VehicleStateProvider;
 using apollo::common::monitor::MonitorMessageItem;
 using apollo::localization::LocalizationEstimate;
 using apollo::perception::PerceptionObstacles;
+using apollo::routing::RoutingRequest;
 
 RelativeMap::RelativeMap()
     : monitor_logger_buffer_(MonitorMessageItem::RELATIVE_MAP),
@@ -88,6 +89,27 @@ void RelativeMap::OnNavigationInfo(const NavigationInfo& navigation_info) {
   }
 }
 
+void RelativeMap::OnRoutingRequest(const RoutingRequest& routing_request) {
+  if (routing_request.waypoint_size() < 1) {
+    AWARN << "RoutingRequest has no waypoints, ignoring.";
+    return;
+  }
+  // The destination is the last waypoint in the routing request.
+  const auto& dest = routing_request.waypoint(routing_request.waypoint_size() - 1);
+  if (!dest.has_pose()) {
+    AWARN << "Destination waypoint has no pose, ignoring RoutingRequest.";
+    return;
+  }
+  const double dest_x = dest.pose().x();
+  const double dest_y = dest.pose().y();
+  AINFO << "RelativeMap received routing destination: (" << dest_x << ", "
+        << dest_y << ")";
+  {
+    std::lock_guard<std::mutex> lock(navigation_lane_mutex_);
+    navigation_lane_.SetDestination(dest_x, dest_y);
+  }
+}
+
 void RelativeMap::OnPerception(
     const PerceptionObstacles& perception_obstacles) {
   {
@@ -119,6 +141,15 @@ bool RelativeMap::CreateMapFromNavigationLane(MapMsg* map_msg) {
   Chassis const& chassis = chassis_;
   vehicle_state_provider_->Update(localization, chassis);
   map_msg->mutable_localization()->CopyFrom(localization_);
+
+  // Check whether the routing destination has been reached.
+  if (navigation_lane_.HasDestination() &&
+      navigation_lane_.IsDestinationReached(
+          FLAGS_destination_reached_threshold)) {
+    AINFO << "RelativeMap: routing destination reached. Clearing destination.";
+    monitor_logger_buffer_.INFO("RelativeMap: routing destination reached.");
+    navigation_lane_.ClearDestination();
+  }
 
   // update navigation_lane from perception_obstacles (lane marker)
   PerceptionObstacles const& perception = perception_obstacles_;
