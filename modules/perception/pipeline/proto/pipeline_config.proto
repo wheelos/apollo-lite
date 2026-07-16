@@ -13,6 +13,7 @@ import "modules/perception/pipeline/proto/plugin/multi_lidar_fusion_config.proto
 import "modules/perception/pipeline/proto/plugin/pbf_gatekeeper_config.proto";
 import "modules/perception/pipeline/proto/plugin/pointcloud_downsample_config.proto";
 import "modules/perception/pipeline/proto/plugin/pointcloud_get_objects_config.proto";
+import "modules/perception/pipeline/proto/plugin/polygon_region_filter_config.proto";
 import "modules/perception/pipeline/proto/plugin/recover_bbox_config.proto";
 import "modules/perception/pipeline/proto/plugin/resize_and_normalize_config.proto";
 import "modules/perception/pipeline/proto/plugin/roi_boundary_filter_config.proto";
@@ -82,6 +83,7 @@ enum PluginType {
 
   PBF_GATEKEEPER = 13;
   POINTCLOUD_DOWNSAMPLE = 14;
+  POLYGON_REGION_FILTER = 15;
 }
 
 message PluginConfig {
@@ -104,6 +106,7 @@ message PluginConfig {
     lidar.MlfTrackerConfig mlf_tracker_config = 19;
     lidar.CcrfTypeFusionConfig ccrf_type_fusion_config = 20;
     fusion.PbfGatekeeperConfig pbf_gatekeeper_config = 21;
+    lidar.PolygonRegionFilterConfig polygon_region_filter_config = 22;
   }
 }
 

@@ -23,6 +23,7 @@
 #include "modules/perception/camera/lib/obstacle/preprocessor/resize_and_normalize/resize_and_normalize.h"
 #include "modules/perception/fusion/lib/gatekeeper/pbf_gatekeeper/pbf_gatekeeper.h"
 #include "modules/perception/lidar/lib/classifier/fused_classifier/ccrf_type_fusion.h"
+#include "modules/perception/lidar/lib/object_filter_bank/polygon_region_filter/polygon_region_filter.h"
 #include "modules/perception/lidar/lib/object_filter_bank/roi_boundary_filter/roi_boundary_filter.h"
 #include "modules/perception/lidar/lib/pointcloud_detection_postprocessor/pointcloud_get_objects/pointcloud_get_objects.h"
 #include "modules/perception/lidar/lib/pointcloud_detection_preprocessor/pointcloud_down_sample/pointcloud_down_sample.h"
@@ -43,6 +44,11 @@ void PluginFactory::Init() {
   plugin_factory_.Register(PluginType::HDMAP_BOUNDARY_OBJECT_FILTER,
                            [](const PluginConfig& plugin_config) -> Plugin* {
                              return new lidar::HdmapBoundaryObjectFilter(
+                                 plugin_config);
+                           });
+  plugin_factory_.Register(PluginType::POLYGON_REGION_FILTER,
+                           [](const PluginConfig& plugin_config) -> Plugin* {
+                             return new lidar::PolygonRegionObjectFilter(
                                  plugin_config);
                            });
   plugin_factory_.Register(

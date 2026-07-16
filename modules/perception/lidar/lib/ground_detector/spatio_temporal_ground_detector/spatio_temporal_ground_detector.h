@@ -62,6 +62,11 @@ class SpatioTemporalGroundDetector : public BaseGroundDetector {
   void PublishDebugCloud(const LidarFrame& frame,
                          const std::vector<int>& ground_indices);
 
+  void SaveGroundPcd(const LidarFrame& frame,
+                     const std::vector<int>& ground_indices,
+                     const std::vector<int>& non_ground_indices,
+                     const std::vector<int>* processed_indices);
+
   // Internal init logic to share between two Init overrides
   bool InitInternal(const SpatioTemporalGroundDetectorConfig& config);
 
@@ -92,6 +97,10 @@ class SpatioTemporalGroundDetector : public BaseGroundDetector {
   std::shared_ptr<apollo::cyber::Writer<apollo::drivers::PointCloud>>
       debug_writer_ = nullptr;
   uint32_t debug_seq_num_ = 0;
+
+  bool enable_save_ground_pcd_ = false;
+  std::string ground_pcd_save_dir_;
+  uint32_t pcd_save_seq_num_ = 0;
 
   SpatioTemporalGroundDetectorConfig config_;
 };

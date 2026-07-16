@@ -19,12 +19,19 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <unordered_set>
+#include <fstream>
+#include <iomanip>
 
 #include "cyber/common/file.h"
 #include "modules/perception/common/point_cloud_processing/common.h"
 #include "modules/perception/lib/config_manager/config_manager.h"
 #include "modules/perception/lidar/common/lidar_log.h"
 #include "modules/perception/lidar/common/lidar_point_label.h"
+#include "modules/perception/lidar/common/pcl_util.h"
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 namespace apollo {
 namespace perception {
@@ -87,6 +94,34 @@ bool SpatioTemporalGroundDetector::InitInternal(
           << debug_cloud_channel_;
   }
 
+  // Load PCD save settings
+  enable_save_ground_pcd_ = config.enable_save_ground_pcd();
+  ground_pcd_save_dir_ = config.ground_pcd_save_dir();
+
+  // Check environment variable override (GROUND_PCD_SAVE_DIR)
+  // Environment variable takes precedence over config file
+  const char* env_save_dir = std::getenv("GROUND_PCD_SAVE_DIR");
+  if (env_save_dir != nullptr && strlen(env_save_dir) > 0) {
+    ground_pcd_save_dir_ = std::string(env_save_dir);
+    AINFO << "GROUND_PCD_SAVE_DIR environment variable set, using: "
+          << ground_pcd_save_dir_;
+  }
+
+  if (enable_save_ground_pcd_) {
+    // Create directory if it doesn't exist
+    if (!cyber::common::DirectoryExists(ground_pcd_save_dir_)) {
+      if (cyber::common::EnsureDirectory(ground_pcd_save_dir_)) {
+        AINFO << "Created ground PCD save directory: " << ground_pcd_save_dir_;
+      } else {
+        AWARN << "Failed to create ground PCD save directory: "
+              << ground_pcd_save_dir_ << ", PCD saving disabled";
+        enable_save_ground_pcd_ = false;
+      }
+    } else {
+      AINFO << "Ground PCD save enabled, saving to: " << ground_pcd_save_dir_;
+    }
+  }
+
   // 2. Setup Algorithm Parameters
   // Using make_unique for exception safety (though Apollo doesn't use
   // exceptions much)
@@ -137,6 +172,21 @@ bool SpatioTemporalGroundDetector::InitInternal(
 
   ground_service_content_.Init(config.roi_rad_x(), config.roi_rad_y(),
                                coarse_grid, coarse_grid);
+
+  // Print actual loaded configuration for debugging
+  AINFO << "========== SpatioTemporalGroundDetector Actual Config ==========";
+  AINFO << "ground_thres: " << ground_thres_;
+  AINFO << "near_range_ground_thres: " << near_range_ground_thres_;
+  AINFO << "middle_range_ground_thres: " << middle_range_ground_thres_;
+  AINFO << "near_range_dist: " << near_range_dist_;
+  AINFO << "middle_range_dist: " << middle_range_dist_;
+  AINFO << "small_grid_size: " << coarse_grid;
+  AINFO << "big_grid_size: " << param_->nr_grids_fine;
+  AINFO << "planefit_orien_threshold: " << param_->planefit_orien_threshold;
+  AINFO << "planefit_dist_threshold_near: " << param_->planefit_dist_threshold_near;
+  AINFO << "planefit_dist_threshold_far: " << param_->planefit_dist_threshold_far;
+  AINFO << "==============================================================";
+
   return true;
 }
 
@@ -183,6 +233,177 @@ void SpatioTemporalGroundDetector::PublishDebugCloud(
   }
 
   debug_writer_->Write(msg);
+}
+
+void SpatioTemporalGroundDetector::SaveGroundPcd(const LidarFrame& frame,
+                                                 const std::vector<int>& ground_indices,
+                                                 const std::vector<int>& non_ground_indices,
+                                                 const std::vector<int>* processed_indices) {
+  if (!enable_save_ground_pcd_) {
+    return;  // Not enabled
+  }
+
+  const std::string& save_dir = ground_pcd_save_dir_;
+
+  const auto& points = frame.world_cloud->points();
+
+  // Find max index for validation
+  int max_ground_idx = ground_indices.empty() ? -1 : *std::max_element(ground_indices.begin(), ground_indices.end());
+  int max_nonground_idx = non_ground_indices.empty() ? -1 : *std::max_element(non_ground_indices.begin(), non_ground_indices.end());
+
+  AINFO << "SaveGroundPcd: world_cloud_size=" << points.size()
+        << " processed_size=" << (processed_indices ? processed_indices->size() : 0)
+        << " ground_indices=" << ground_indices.size() << " max_idx=" << max_ground_idx
+        << " non_ground_indices=" << non_ground_indices.size() << " max_idx=" << max_nonground_idx;
+
+  // Save FULL world cloud (for reference)
+  {
+    pcl::PointCloud<PCLPointXYZIT> full_cloud;
+    full_cloud.reserve(points.size());
+    for (size_t i = 0; i < points.size(); ++i) {
+      const auto& pt = points[i];
+      PCLPointXYZIT pcl_pt;
+      pcl_pt.x = static_cast<float>(pt.x);
+      pcl_pt.y = static_cast<float>(pt.y);
+      pcl_pt.z = static_cast<float>(pt.z);
+      pcl_pt.intensity = static_cast<uint8_t>(pt.intensity);
+      pcl_pt.timestamp = 0;
+      full_cloud.push_back(pcl_pt);
+    }
+
+    char path[1024];
+    std::snprintf(path, sizeof(path), "%s/%06u_input_full_%.6f.pcd",
+                  save_dir, pcd_save_seq_num_, frame.timestamp);
+    pcl::PCDWriter writer;
+    writer.writeBinary(path, full_cloud);
+    AINFO << "Saved input_full cloud: " << path << " size=" << full_cloud.size();
+  }
+
+  // Save PROCESSED input points (actual input to ground detection - ROI filtered)
+  // This is what the web tool should use to match system results!
+  if (processed_indices && !processed_indices->empty()) {
+    pcl::PointCloud<PCLPointXYZIT> processed_cloud;
+    processed_cloud.reserve(processed_indices->size());
+
+    for (int idx : *processed_indices) {
+      if (idx >= 0 && static_cast<size_t>(idx) < points.size()) {
+        const auto& pt = points[idx];
+        PCLPointXYZIT pcl_pt;
+        pcl_pt.x = static_cast<float>(pt.x);
+        pcl_pt.y = static_cast<float>(pt.y);
+        pcl_pt.z = static_cast<float>(pt.z);
+        pcl_pt.intensity = static_cast<uint8_t>(pt.intensity);
+        pcl_pt.timestamp = 0;
+        processed_cloud.push_back(pcl_pt);
+      }
+    }
+
+    char path[1024];
+    std::snprintf(path, sizeof(path), "%s/%06u_input_%.6f.pcd",
+                  save_dir, pcd_save_seq_num_, frame.timestamp);
+    pcl::PCDWriter writer;
+    writer.writeBinary(path, processed_cloud);
+    AINFO << "Saved input (processed/ROI-filtered) cloud: " << path << " size=" << processed_cloud.size();
+  } else {
+    // No ROI filtering, input == input_full
+    AINFO << "No ROI filtering applied, input same as input_full";
+  }
+
+  // Save full cloud with ground/non-ground marked in intensity
+  {
+    pcl::PointCloud<PCLPointXYZIT> labeled_cloud;
+    labeled_cloud.reserve(points.size());
+
+    // Build ground index set for quick lookup
+    std::unordered_set<int> ground_set(ground_indices.begin(), ground_indices.end());
+
+    for (size_t i = 0; i < points.size(); ++i) {
+      const auto& pt = points[i];
+      PCLPointXYZIT pcl_pt;
+      pcl_pt.x = static_cast<float>(pt.x);
+      pcl_pt.y = static_cast<float>(pt.y);
+      pcl_pt.z = static_cast<float>(pt.z);
+      // Mark ground as intensity=1, non-ground as intensity=255
+      pcl_pt.intensity = (ground_set.find(static_cast<int>(i)) != ground_set.end()) ? 1 : 255;
+      pcl_pt.timestamp = 0;
+      labeled_cloud.push_back(pcl_pt);
+    }
+
+    char path[1024];
+    std::snprintf(path, sizeof(path), "%s/%06u_labeled_%.6f.pcd",
+                  save_dir, pcd_save_seq_num_, frame.timestamp);
+    pcl::PCDWriter writer;
+    writer.writeBinary(path, labeled_cloud);
+    AINFO << "Saved labeled cloud: " << path << " size=" << labeled_cloud.size();
+  }
+
+  // Save ground points only
+  if (!ground_indices.empty()) {
+    pcl::PointCloud<PCLPointXYZIT> ground_cloud;
+    ground_cloud.reserve(ground_indices.size());
+    for (int idx : ground_indices) {
+      if (idx >= 0 && static_cast<size_t>(idx) < points.size()) {
+        const auto& pt = points[idx];
+        PCLPointXYZIT pcl_pt;
+        pcl_pt.x = static_cast<float>(pt.x);
+        pcl_pt.y = static_cast<float>(pt.y);
+        pcl_pt.z = static_cast<float>(pt.z);
+        pcl_pt.intensity = static_cast<uint8_t>(pt.intensity);
+        pcl_pt.timestamp = 0;
+        ground_cloud.push_back(pcl_pt);
+      }
+    }
+
+    char path[1024];
+    std::snprintf(path, sizeof(path), "%s/%06u_ground_%.6f.pcd",
+                  save_dir, pcd_save_seq_num_, frame.timestamp);
+    pcl::PCDWriter writer;
+    writer.writeBinary(path, ground_cloud);
+    AINFO << "Saved ground: " << path << " size=" << ground_cloud.size();
+  }
+
+  // Save non-ground points only
+  if (!non_ground_indices.empty()) {
+    pcl::PointCloud<PCLPointXYZIT> nonground_cloud;
+    nonground_cloud.reserve(non_ground_indices.size());
+    for (int idx : non_ground_indices) {
+      if (idx >= 0 && static_cast<size_t>(idx) < points.size()) {
+        const auto& pt = points[idx];
+        PCLPointXYZIT pcl_pt;
+        pcl_pt.x = static_cast<float>(pt.x);
+        pcl_pt.y = static_cast<float>(pt.y);
+        pcl_pt.z = static_cast<float>(pt.z);
+        pcl_pt.intensity = static_cast<uint8_t>(pt.intensity);
+        pcl_pt.timestamp = 0;
+        nonground_cloud.push_back(pcl_pt);
+      }
+    }
+
+    char path[1024];
+    std::snprintf(path, sizeof(path), "%s/%06u_nonground_%.6f.pcd",
+                  save_dir, pcd_save_seq_num_, frame.timestamp);
+    pcl::PCDWriter writer;
+    writer.writeBinary(path, nonground_cloud);
+    AINFO << "Saved non-ground: " << path << " size=" << nonground_cloud.size();
+  }
+
+  // Save vehicle pose (lidar2world_pose translation) for ground_analyzer tool
+  {
+    char path[1024];
+    std::snprintf(path, sizeof(path), "%s/%06u_vehicle_%.6f.txt",
+                  save_dir, pcd_save_seq_num_, frame.timestamp);
+    std::ofstream pose_file(path);
+    pose_file << std::fixed << std::setprecision(6);
+    pose_file << "# Vehicle pose (lidar2world_pose translation) in world coordinates" << std::endl;
+    pose_file << "# Format: vehicle_x vehicle_y vehicle_z" << std::endl;
+    pose_file << frame.lidar2world_pose.translation().x() << " "
+             << frame.lidar2world_pose.translation().y() << " "
+             << frame.lidar2world_pose.translation().z() << std::endl;
+    pose_file.close();
+    AINFO << "Saved vehicle pose: " << path;
+  }
+
+  pcd_save_seq_num_++;
 }
 
 // =============================================================================
@@ -285,6 +506,7 @@ bool SpatioTemporalGroundDetector::Detect(const GroundDetectorOptions& options,
   frame->non_ground_indices.indices.reserve(valid_count);
 
   std::vector<int> non_ground_indices;
+  std::vector<int> ground_indices;
   if (publish_debug_cloud_) {
     non_ground_indices.reserve(valid_count);
   }
@@ -297,9 +519,19 @@ bool SpatioTemporalGroundDetector::Detect(const GroundDetectorOptions& options,
 
   const uint8_t ground_label = static_cast<uint8_t>(LidarPointLabel::GROUND);
 
+  // Log statistics for debugging
+  int ground_count = 0;
+  int nonground_count = 0;
+  float max_h_above = -1e6;
+  float max_h_below = 1e6;
+
   for (size_t i = 0; i < valid_count; ++i) {
     int idx = idx_ptr[i];
     float h = ground_height_signed_[i];
+
+    // Track statistics
+    if (h > max_h_above) max_h_above = h;
+    if (h < max_h_below) max_h_below = h;
 
     // Using operator[] is safe here as idx comes from valid indices
     height_local[idx] = h;
@@ -331,18 +563,40 @@ bool SpatioTemporalGroundDetector::Detect(const GroundDetectorOptions& options,
       // - otherwise: store absolute point index in the full cloud
       frame->non_ground_indices.indices.push_back(
           actual_use_roi ? static_cast<int>(i) : idx);
-      if (publish_debug_cloud_) {
-        non_ground_indices.push_back(idx);
-      }
+      // Always collect non_ground_indices for PCD saving
+      non_ground_indices.push_back(idx);
+      nonground_count++;
     } else {
       label_local[idx] = ground_label;
       label_world[idx] = ground_label;
+      ground_indices.push_back(idx);
+      ground_count++;
     }
   }
+
+  // Log ground detection statistics
+  // Find max index in ground/non_ground to verify they are within world_cloud bounds
+  int max_ground_idx = ground_indices.empty() ? -1 : *std::max_element(ground_indices.begin(), ground_indices.end());
+  int max_nonground_idx = non_ground_indices.empty() ? -1 : *std::max_element(non_ground_indices.begin(), non_ground_indices.end());
+
+  AINFO << "Ground detection stats: world_cloud_size=" << frame->world_cloud->size()
+        << " roi_size=" << (actual_use_roi ? frame->roi_indices.indices.size() : 0)
+        << " actual_use_roi=" << actual_use_roi
+        << " processed=" << valid_count
+        << " ground=" << ground_count << " (" << (100.0*ground_count/valid_count) << "%)"
+        << " nonground=" << nonground_count << " (" << (100.0*nonground_count/valid_count) << "%)"
+        << " max_ground_idx=" << max_ground_idx
+        << " max_nonground_idx=" << max_nonground_idx
+        << " max_h_above=" << max_h_above << " max_h_below=" << max_h_below;
 
   if (publish_debug_cloud_) {
     PublishDebugCloud(*frame, non_ground_indices);
   }
+
+  // Save ground and non-ground points as PCD files for debugging
+  // Pass ROI indices if ROI was used, otherwise nullptr
+  SaveGroundPcd(*frame, ground_indices, non_ground_indices,
+                actual_use_roi ? &frame->roi_indices.indices : nullptr);
 
   // 7. Update Global Service (Optional, for Map/Tracker)
   if (use_ground_service_) {

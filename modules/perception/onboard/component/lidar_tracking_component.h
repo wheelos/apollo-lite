@@ -25,6 +25,7 @@
 #include "modules/perception/onboard/inner_component_messages/lidar_inner_component_messages.h"
 #include "modules/perception/onboard/proto/lidar_component_config.pb.h"
 #include "modules/perception/pipeline/pipeline.h"
+#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
 
 namespace apollo {
 namespace perception {
@@ -54,6 +55,7 @@ class LidarTrackingComponent : public cyber::Component<LidarFrameMessage> {
   std::string main_sensor_name_;
   std::string output_channel_name_;
   std::shared_ptr<apollo::cyber::Writer<SensorFrameMessage>> writer_;
+  std::shared_ptr<apollo::cyber::Writer<PerceptionObstacles>> debug_writer_;
 };
 
 CYBER_REGISTER_COMPONENT(LidarTrackingComponent);

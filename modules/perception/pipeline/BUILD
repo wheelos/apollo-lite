@@ -54,6 +54,7 @@ cc_library(
     "//modules/perception/camera/lib/obstacle/preprocessor/get_image_data",
     "//modules/perception/camera/lib/obstacle/preprocessor/resize_and_normalize",
     "//modules/perception/lidar/lib/classifier/fused_classifier:ccrf_type_fusion",
+    "//modules/perception/lidar/lib/object_filter_bank/polygon_region_filter",
     "//modules/perception/lidar/lib/object_filter_bank/roi_boundary_filter",
     "//modules/perception/lidar/lib/pointcloud_detection_postprocessor/pointcloud_get_objects",
     "//modules/perception/lidar/lib/pointcloud_detection_preprocessor/pointcloud_down_sample",

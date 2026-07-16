@@ -27,6 +27,7 @@
 #include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
 
 #include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "modules/perception/onboard/proto/lidar_component_config.pb.h"
 
 namespace apollo {
@@ -71,6 +72,7 @@ class LidarDetectionComponent : public cyber::Component<drivers::PointCloud> {
   pipeline::PipelineConfig lidar_detection_config_;
 
   std::shared_ptr<apollo::cyber::Writer<LidarFrameMessage>> writer_;
+  std::shared_ptr<apollo::cyber::Writer<PerceptionObstacles>> debug_writer_;
 };
 
 CYBER_REGISTER_COMPONENT(LidarDetectionComponent);

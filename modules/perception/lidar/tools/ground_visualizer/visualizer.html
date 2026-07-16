@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ground Segmentation Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #container { display: flex; height: 100vh; }
+        #canvas-container { flex: 1; position: relative; }
+        #controls { width: 350px; padding: 20px; background: #f5f5f5; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); }
+        #info { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; }
+        h2 { margin-top: 0; color: #333; }
+        h3 { color: #555; margin-top: 20px; }
+        .param-group { margin-bottom: 15px; }
+        .param-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .param-group input[type="range"] { width: 100%; }
+        .param-group .value { float: right; color: #0066cc; }
+        .analysis { background: #fff; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        .analysis h4 { margin: 0 0 10px 0; }
+        .analysis table { width: 100%; border-collapse: collapse; }
+        .analysis td { padding: 5px; border-bottom: 1px solid #ddd; }
+        .warning { color: #d9534f; }
+        .ok { color: #5cb85c; }
+        button { width: 100%; padding: 10px; margin-top: 10px; background: #0066cc; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0052a3; }
+        #file-input { margin-bottom: 15px; }
+        .legend { display: flex; gap: 15px; margin-bottom: 10px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .color-box { width: 20px; height: 20px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container">
+            <div id="info">
+                <div id="stats">Loading...</div>
+            </div>
+        </div>
+        <div id="controls">
+            <h2>Ground Segmentation Visualizer</h2>
+
+            <div id="file-input">
+                <label><strong>PCD File:</strong></label>
+                <input type="file" id="pcd-file" accept=".pcd">
+                <input type="text" id="pcd-path" placeholder="/path/to/file.pcd" style="width: 100%; margin-top: 5px; padding: 5px;">
+                <button onclick="runFromPath()" style="margin-top: 5px;">Load & Run Segmentation</button>
+            </div>
+
+            <div id="vehicle-pose-input" style="background: #fff3e0; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <label><strong>Vehicle Pose (World Coordinates):</strong></label>
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 12px;">X (m)</label>
+                        <input type="number" id="vehicle-x" step="0.1" placeholder="0.0" style="width: 100%; padding: 5px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 12px;">Y (m)</label>
+                        <input type="number" id="vehicle-y" step="0.1" placeholder="0.0" style="width: 100%; padding: 5px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 12px;">Z (m)</label>
+                        <input type="number" id="vehicle-z" step="0.1" placeholder="0.0" style="width: 100%; padding: 5px;">
+                    </div>
+                </div>
+                <div style="margin-top: 5px;">
+                    <label style="font-size: 12px;">Or load from file:</label>
+                    <input type="file" id="vehicle-pose-file" accept=".txt" style="width: 100%; margin-top: 3px;">
+                </div>
+            </div>
+
+            <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <strong style="color: #1976d2;">ℹ️ This tool runs REAL ground segmentation algorithm!</strong>
+                <p style="margin: 5px 0; font-size: 12px; color: #555;">
+                    Adjust parameters and click "Load & Run Segmentation" to see how different settings affect the results.
+                </p>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="color-box" style="background: #00ff00;"></div>
+                    <span>Ground (intensity=1)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: #ff0000;"></div>
+                    <span>Non-ground (intensity=255)</span>
+                </div>
+            </div>
+
+            <h3>Algorithm Parameters</h3>
+
+            <div class="param-group">
+                <label>small_grid_size <span class="value" id="val-small_grid_size">64</span></label>
+                <input type="range" id="small_grid_size" min="16" max="256" value="64" step="16">
+            </div>
+
+            <div class="param-group">
+                <label>big_grid_size <span class="value" id="val-big_grid_size">512</span></label>
+                <input type="range" id="big_grid_size" min="128" max="1024" value="512" step="64">
+            </div>
+
+            <div class="param-group">
+                <label>grid_size <span class="value" id="val-grid_size">32</span></label>
+                <input type="range" id="grid_size" min="16" max="256" value="32" step="16">
+            </div>
+
+            <div class="param-group">
+                <label>nr_smooth_iter <span class="value" id="val-nr_smooth_iter">6</span></label>
+                <input type="range" id="nr_smooth_iter" min="0" max="20" value="6" step="1">
+            </div>
+
+            <div class="param-group">
+                <label>roi_rad_x (m) <span class="value" id="val-roi_rad_x">120.0</span></label>
+                <input type="range" id="roi_rad_x" min="50" max="200" value="120" step="5">
+            </div>
+
+            <div class="param-group">
+                <label>roi_rad_y (m) <span class="value" id="val-roi_rad_y">120.0</span></label>
+                <input type="range" id="roi_rad_y" min="50" max="200" value="120" step="5">
+            </div>
+
+            <div class="param-group">
+                <label>roi_rad_z (m) <span class="value" id="val-roi_rad_z">100.0</span></label>
+                <input type="range" id="roi_rad_z" min="10" max="200" value="100" step="5">
+            </div>
+
+            <div class="param-group">
+                <label>sample_region_z_lower (m) <span class="value" id="val-sample_region_z_lower">-3.0</span></label>
+                <input type="range" id="sample_region_z_lower" min="-10" max="0" value="-3.0" step="0.5">
+            </div>
+
+            <div class="param-group">
+                <label>sample_region_z_upper (m) <span class="value" id="val-sample_region_z_upper">-1.0</span></label>
+                <input type="range" id="sample_region_z_upper" min="-5" max="5" value="-1.0" step="0.5">
+            </div>
+
+            <div class="param-group">
+                <label>roi_near_rad (m) <span class="value" id="val-roi_near_rad">32.0</span></label>
+                <input type="range" id="roi_near_rad" min="5" max="100" value="32" step="1">
+            </div>
+
+            <div class="param-group">
+                <label>planefit_dist_thres_near (m) <span class="value" id="val-planefit_dist_thres_near">1.00</span></label>
+                <input type="range" id="planefit_dist_thres_near" min="0.1" max="3.0" value="1.00" step="0.1">
+            </div>
+
+            <div class="param-group">
+                <label>planefit_dist_thres_far (m) <span class="value" id="val-planefit_dist_thres_far">1.50</span></label>
+                <input type="range" id="planefit_dist_thres_far" min="0.1" max="3.0" value="1.50" step="0.1">
+            </div>
+
+            <div class="param-group">
+                <label>planefit_orien_threshold (°) <span class="value" id="val-planefit_orien_threshold">30.0</span></label>
+                <input type="range" id="planefit_orien_threshold" min="5" max="90" value="30" step="5">
+            </div>
+
+            <div class="param-group">
+                <label>inliers_min_threshold <span class="value" id="val-inliers_min_threshold">3</span></label>
+                <input type="range" id="inliers_min_threshold" min="1" max="20" value="3" step="1">
+            </div>
+
+            <div class="param-group">
+                <label>z_compare_thres (m) <span class="value" id="val-z_compare_thres">0.30</span></label>
+                <input type="range" id="z_compare_thres" min="0.05" max="2.0" value="0.30" step="0.05">
+            </div>
+
+            <div class="param-group">
+                <label>smooth_z_thres (m) <span class="value" id="val-smooth_z_thres">2.0</span></label>
+                <input type="range" id="smooth_z_thres" min="0.1" max="5.0" value="2.0" step="0.1">
+            </div>
+
+            <div class="param-group">
+                <label>ground_thres (m) <span class="value" id="val-ground_thres">3.00</span></label>
+                <input type="range" id="ground_thres" min="0.5" max="10.0" value="3.00" step="0.5">
+            </div>
+
+            <div class="param-group">
+                <label>near_range_dist (m) <span class="value" id="val-near_range_dist">10.0</span></label>
+                <input type="range" id="near_range_dist" min="1" max="50" value="10" step="1">
+            </div>
+
+            <div class="param-group">
+                <label>near_range_ground_thres (m) <span class="value" id="val-near_range_ground_thres">3.00</span></label>
+                <input type="range" id="near_range_ground_thres" min="0.5" max="10.0" value="3.00" step="0.5">
+            </div>
+
+            <div class="param-group">
+                <label>middle_range_dist (m) <span class="value" id="val-middle_range_dist">20.0</span></label>
+                <input type="range" id="middle_range_dist" min="1" max="100" value="20" step="1">
+            </div>
+
+            <div class="param-group">
+                <label>middle_range_ground_thres (m) <span class="value" id="val-middle_range_ground_thres">3.00</span></label>
+                <input type="range" id="middle_range_ground_thres" min="0.5" max="10.0" value="3.00" step="0.5">
+            </div>
+
+            <div class="analysis">
+                <h4>Ground Fitting Analysis</h4>
+                <div id="analysis-content">
+                    <p style="color: #888;">Load a PCD file to see analysis...</p>
+                </div>
+            </div>
+
+            <button onclick="resetParams()">Reset to Defaults</button>
+        </div>
+    </div>
+
+    <script>
+        // Three.js setup
+        let scene, camera, renderer, controls, pointCloud;
+        let pointsData = [];
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 100000);
+            camera.position.set(50, 50, 0);  // Rear-up position
+            camera.lookAt(0, 0, 0);
+
+            const canvasContainer = document.getElementById('canvas-container');
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            canvasContainer.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.target.set(0, 0, 0);  // Look at origin
+
+            // Grid helper on XZ plane (ground plane)
+            const gridHelper = new THREE.GridHelper(100, 20, 0x444444, 0x333333);
+            scene.add(gridHelper);
+
+            // Custom axes helper for Lidar coordinate system
+            // X (red): forward, Y (green): left, Z (blue): up
+            const axesHelper = new THREE.AxesHelper(15);
+            scene.add(axesHelper);
+
+            // Add labels for axes
+            const axisLabels = [
+                { text: 'X (forward)', color: 0xff0000, pos: [16, 0, 0] },
+                { text: 'Y (left)', color: 0x00ff00, pos: [0, 16, 0] },
+                { text: 'Z (up)', color: 0x0000ff, pos: [0, 0, 16] }
+            ];
+
+            window.addEventListener('resize', onWindowResize);
+            onWindowResize();
+
+            animate();
+        }
+
+        function onWindowResize() {
+            const canvasContainer = document.getElementById('canvas-container');
+            camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function parsePCDFile(arrayBuffer) {
+            const view = new DataView(arrayBuffer);
+            const decoder = new TextDecoder();
+
+            // Find header end (DATA binary followed by newline)
+            let headerEnd = 0;
+            const headerStr = decoder.decode(arrayBuffer.slice(0, Math.min(10000, arrayBuffer.byteLength)));
+
+            // Use regex to find DATA binary line
+            const dataMatch = headerStr.match(/DATA binary\r?\n/);
+            if (!dataMatch) {
+                throw new Error('Not a valid binary PCD file');
+            }
+            headerEnd = dataMatch.index + dataMatch[0].length;
+
+            // Parse header info
+            const lines = headerStr.substring(0, headerEnd).split(/\r?\n/);
+            let numPoints = 0;
+            let fields = [];
+            let sizes = [];
+            let types = [];
+
+            for (const line of lines) {
+                const parts = line.trim().split(/\s+/);
+                if (parts[0] === 'POINTS') {
+                    numPoints = parseInt(parts[1]);
+                } else if (parts[0] === 'FIELDS') {
+                    fields = parts.slice(1);
+                } else if (parts[0] === 'SIZE') {
+                    sizes = parts.slice(1).map(s => parseInt(s));
+                } else if (parts[0] === 'TYPE') {
+                    types = parts.slice(1);
+                }
+            }
+
+            console.log('PCD Info: POINTS=' + numPoints + ' FIELDS=' + fields.join(','));
+            console.log('SIZE: ' + sizes.join(','));
+            console.log('TYPE: ' + types.join(','));
+
+            // Calculate point size and field offsets
+            // Need to handle padding to 4-byte boundaries for each field
+            const fieldOffsets = {};
+            let currentOffset = 0;
+            for (let i = 0; i < fields.length; i++) {
+                fieldOffsets[fields[i]] = currentOffset;
+                const size = sizes[i];
+                // Pad to next 4-byte boundary
+                currentOffset += Math.ceil(size / 4) * 4;
+            }
+
+            const pointSize = currentOffset;
+
+            console.log('Point size:', pointSize, 'bytes');
+            console.log('Field offsets:', fieldOffsets);
+
+            // Parse points
+            const points = [];
+            let offset = headerEnd;
+
+            while (offset + pointSize <= arrayBuffer.byteLength && points.length < numPoints) {
+                const baseOffset = offset;
+                const x = view.getFloat32(baseOffset + fieldOffsets['x'], true);
+                const y = view.getFloat32(baseOffset + fieldOffsets['y'], true);
+                const z = view.getFloat32(baseOffset + fieldOffsets['z'], true);
+
+                let intensity = 0;
+                if ('intensity' in fieldOffsets) {
+                    intensity = view.getUint8(baseOffset + fieldOffsets['intensity'], true);
+                }
+
+                // Debug: print first point
+                if (points.length === 0) {
+                    console.log('First point: x=' + x + ' y=' + y + ' z=' + z + ' intensity=' + intensity);
+                    console.log('Raw bytes at x:', Array.from(new Uint8Array(arrayBuffer, baseOffset + fieldOffsets['x'], 4)));
+                }
+
+                if (isFinite(x) && isFinite(y) && isFinite(z)) {
+                    points.push({ x, y, z, intensity });
+                }
+
+                offset += pointSize;
+            }
+
+            console.log('Parsed', points.length, 'points');
+            return points;
+        }
+
+        function displayPoints(points) {
+            pointsData = points;
+
+            if (pointCloud) {
+                scene.remove(pointCloud);
+                pointCloud.geometry.dispose();
+                pointCloud.material.dispose();
+            }
+
+            // Calculate stats
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+            let minZ = Infinity, maxZ = -Infinity;
+            let sumZ = 0;
+
+            points.forEach(p => {
+                minX = Math.min(minX, p.x);
+                maxX = Math.max(maxX, p.x);
+                minY = Math.min(minY, p.y);
+                maxY = Math.max(maxY, p.y);
+                minZ = Math.min(minZ, p.z);
+                maxZ = Math.max(maxZ, p.z);
+                sumZ += p.z;
+            });
+
+            const meanZ = sumZ / points.length;
+            const zRange = maxZ - minZ;
+            const xyRange = Math.sqrt(Math.pow(maxX - minX, 2) + Math.pow(maxY - minY, 2));
+            const slopeDeg = Math.atan2(zRange, xyRange) * 180 / Math.PI;
+
+            document.getElementById('stats').innerHTML =
+                `Points: ${points.length.toLocaleString()}<br>` +
+                `X: [${minX.toFixed(1)}, ${maxX.toFixed(1)}]<br>` +
+                `Y: [${minY.toFixed(1)}, ${maxY.toFixed(1)}]<br>` +
+                `Z: [${minZ.toFixed(1)}, ${maxZ.toFixed(1)}]<br>` +
+                `Estimated Slope: ${slopeDeg.toFixed(1)}°`;
+
+            updateAnalysis(points, slopeDeg);
+
+            // Create geometry
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+
+            points.forEach(p => {
+                positions.push(p.x, p.y, p.z);
+
+                // Use intensity to determine color
+                // intensity = 1 -> ground (green)
+                // intensity = 255 -> non-ground (red)
+                // Other values -> use height
+                let isGround = false;
+                if (p.intensity === 1) {
+                    isGround = true;
+                } else if (p.intensity === 255) {
+                    isGround = false;
+                } else {
+                    // Use height threshold for unlabeled data
+                    isGround = p.z < meanZ + 0.5;
+                }
+
+                if (isGround) {
+                    colors.push(0, 1, 0);
+                } else {
+                    colors.push(1, 0, 0);
+                }
+            });
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            console.log('Created geometry, positions count:', positions.length / 3, 'colors count:', colors.length / 3);
+            console.log('Position range:', {
+                minX: Math.min(...positions.filter((_, i) => i % 3 === 0)),
+                maxX: Math.max(...positions.filter((_, i) => i % 3 === 0)),
+                minY: Math.min(...positions.filter((_, i) => i % 3 === 1)),
+                maxY: Math.max(...positions.filter((_, i) => i % 3 === 1)),
+                minZ: Math.min(...positions.filter((_, i) => i % 3 === 2)),
+                maxZ: Math.max(...positions.filter((_, i) => i % 3 === 2))
+            });
+
+            const material = new THREE.PointsMaterial({
+                size: 1.5,
+                vertexColors: true,
+                sizeAttenuation: false,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            pointCloud = new THREE.Points(geometry, material);
+            scene.add(pointCloud);
+
+            // Don't auto-adjust camera, keep user's position
+            // const centerX = (minX + maxX) / 2;
+            // const centerY = (minZ + maxZ) / 2;
+            // const centerZ = (minY + maxY) / 2;
+            // controls.target.set(centerX, centerY, centerZ);
+            // camera.position.set(centerX + 30, centerY + 50, centerZ + 30);
+            // controls.update();
+        }
+
+        function updateAnalysis(points, slopeDeg) {
+            const nrGrids = parseInt(document.getElementById('small_grid_size').value);
+            const roiRadX = parseFloat(document.getElementById('roi_rad_x').value);
+            const thresNear = parseFloat(document.getElementById('planefit_dist_thres_near').value);
+            const thresFar = parseFloat(document.getElementById('planefit_dist_thres_far').value);
+
+            const gridSize = roiRadX / nrGrids;
+
+            let html = `
+                <p><strong>Grid cell size:</strong> ${gridSize.toFixed(2)}m x ${gridSize.toFixed(2)}m</p>
+                <p><strong>Estimated slope:</strong> ${slopeDeg.toFixed(1)}°</p>
+                <table>
+                    <tr><td><strong>Slope</strong></td><td><strong>Height Variation</strong></td><td><strong>Status</strong></td></tr>
+            `;
+
+            [5, 10, 15, 20].forEach(slope => {
+                const hVar = gridSize * Math.tan(slope * Math.PI / 180);
+                const status = hVar > thresNear
+                    ? '<span class="warning">❌ EXCEEDS</span>'
+                    : '<span class="ok">✓ OK</span>';
+                html += `<tr><td>${slope}°</td><td>${hVar.toFixed(3)}m</td><td>${status}</td></tr>`;
+            });
+
+            html += '</table>';
+
+            if (slopeDeg > 10) {
+                html += '<p class="warning" style="margin-top:10px;">⚠️ Slope exceeds 10° - RANSAC will likely fail!</p>';
+            }
+
+            document.getElementById('analysis-content').innerHTML = html;
+        }
+
+        function resetParams() {
+            document.getElementById('small_grid_size').value = 64;
+            document.getElementById('big_grid_size').value = 512;
+            document.getElementById('nr_smooth_iter').value = 6;
+            document.getElementById('roi_rad_x').value = 120;
+            document.getElementById('roi_rad_y').value = 120;
+            document.getElementById('roi_rad_z').value = 100;
+            document.getElementById('roi_near_rad').value = 32;
+            document.getElementById('planefit_dist_thres_near').value = 1.00;
+            document.getElementById('planefit_dist_thres_far').value = 1.50;
+            document.getElementById('planefit_orien_threshold').value = 30;
+            document.getElementById('z_compare_thres').value = 0.30;
+            document.getElementById('smooth_z_thres').value = 2.0;
+            document.getElementById('ground_thres').value = 3.00;
+            document.getElementById('near_range_dist').value = 10;
+            document.getElementById('near_range_ground_thres').value = 3.00;
+            document.getElementById('middle_range_dist').value = 20;
+            document.getElementById('middle_range_ground_thres').value = 3.00;
+            document.getElementById('grid_size').value = 32;
+            document.getElementById('sample_region_z_lower').value = -3.0;
+            document.getElementById('sample_region_z_upper').value = -1.0;
+            document.getElementById('inliers_min_threshold').value = 3;
+            updateAllValues();
+            if (pointsData.length > 0 && document.getElementById('pcd-path').value) {
+                runSegmentation(document.getElementById('pcd-path').value);
+            }
+        }
+
+        function updateAllValues() {
+            document.getElementById('val-small_grid_size').textContent = document.getElementById('small_grid_size').value;
+            document.getElementById('val-big_grid_size').textContent = document.getElementById('big_grid_size').value;
+            document.getElementById('val-grid_size').textContent = document.getElementById('grid_size').value;
+            document.getElementById('val-nr_smooth_iter').textContent = document.getElementById('nr_smooth_iter').value;
+            document.getElementById('val-roi_rad_x').textContent = parseFloat(document.getElementById('roi_rad_x').value).toFixed(1);
+            document.getElementById('val-roi_rad_y').textContent = parseFloat(document.getElementById('roi_rad_y').value).toFixed(1);
+            document.getElementById('val-roi_rad_z').textContent = parseFloat(document.getElementById('roi_rad_z').value).toFixed(1);
+            document.getElementById('val-roi_near_rad').textContent = parseFloat(document.getElementById('roi_near_rad').value).toFixed(1);
+            document.getElementById('val-sample_region_z_lower').textContent = parseFloat(document.getElementById('sample_region_z_lower').value).toFixed(1);
+            document.getElementById('val-sample_region_z_upper').textContent = parseFloat(document.getElementById('sample_region_z_upper').value).toFixed(1);
+            document.getElementById('val-planefit_dist_thres_near').textContent = parseFloat(document.getElementById('planefit_dist_thres_near').value).toFixed(2);
+            document.getElementById('val-planefit_dist_thres_far').textContent = parseFloat(document.getElementById('planefit_dist_thres_far').value).toFixed(2);
+            document.getElementById('val-planefit_orien_threshold').textContent = parseFloat(document.getElementById('planefit_orien_threshold').value).toFixed(1);
+            document.getElementById('val-inliers_min_threshold').textContent = document.getElementById('inliers_min_threshold').value;
+            document.getElementById('val-z_compare_thres').textContent = parseFloat(document.getElementById('z_compare_thres').value).toFixed(2);
+            document.getElementById('val-smooth_z_thres').textContent = parseFloat(document.getElementById('smooth_z_thres').value).toFixed(1);
+            document.getElementById('val-ground_thres').textContent = parseFloat(document.getElementById('ground_thres').value).toFixed(2);
+            document.getElementById('val-near_range_dist').textContent = parseFloat(document.getElementById('near_range_dist').value).toFixed(1);
+            document.getElementById('val-near_range_ground_thres').textContent = parseFloat(document.getElementById('near_range_ground_thres').value).toFixed(2);
+            document.getElementById('val-middle_range_dist').textContent = parseFloat(document.getElementById('middle_range_dist').value).toFixed(1);
+            document.getElementById('val-middle_range_ground_thres').textContent = parseFloat(document.getElementById('middle_range_ground_thres').value).toFixed(2);
+        }
+
+        // Slider event listeners
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            slider.addEventListener('input', () => {
+                updateAllValues();
+                if (pointsData.length > 0 && document.getElementById('pcd-path').value) {
+                    let minX = Infinity, maxX = -Infinity;
+                    let minY = Infinity, maxY = -Infinity;
+                    let minZ = Infinity, maxZ = -Infinity;
+                    pointsData.forEach(p => {
+                        minX = Math.min(minX, p[0]);
+                        maxX = Math.max(maxX, p[0]);
+                        minY = Math.min(minY, p[1]);
+                        maxY = Math.max(maxY, p[1]);
+                        minZ = Math.min(minZ, p[2]);
+                        maxZ = Math.max(maxZ, p[2]);
+                    });
+                    const zRange = maxZ - minZ;
+                    const xyRange = Math.sqrt(Math.pow(maxX - minX, 2) + Math.pow(maxY - minY, 2));
+                    const slopeDeg = Math.atan2(zRange, xyRange) * 180 / Math.PI;
+                    updateAnalysisFromPoints(pointsData, slopeDeg);
+                }
+            });
+        });
+
+        // Add "Re-run" button for parameters change
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            slider.addEventListener('change', () => {
+                // When slider change completes, re-run segmentation if we have a file
+                if (document.getElementById('pcd-path').value) {
+                    console.log('Parameter changed, re-running segmentation...');
+                    runSegmentation(document.getElementById('pcd-path').value);
+                }
+            });
+        });
+
+        // Run ground segmentation on PCD file
+        async function runSegmentation(pcdPath) {
+            console.log('Running segmentation for:', pcdPath);
+
+            // Get all parameter values
+            const params = new URLSearchParams({
+                path: pcdPath,
+                small_grid_size: document.getElementById('small_grid_size').value,
+                big_grid_size: document.getElementById('big_grid_size').value,
+                grid_size: document.getElementById('grid_size').value,
+                nr_smooth_iter: document.getElementById('nr_smooth_iter').value,
+                roi_rad_x: document.getElementById('roi_rad_x').value,
+                roi_rad_y: document.getElementById('roi_rad_y').value,
+                roi_rad_z: document.getElementById('roi_rad_z').value,
+                roi_near_rad: document.getElementById('roi_near_rad').value,
+                sample_region_z_lower: document.getElementById('sample_region_z_lower').value,
+                sample_region_z_upper: document.getElementById('sample_region_z_upper').value,
+                planefit_dist_thres_near: document.getElementById('planefit_dist_thres_near').value,
+                planefit_dist_thres_far: document.getElementById('planefit_dist_thres_far').value,
+                planefit_orien_threshold: document.getElementById('planefit_orien_threshold').value,
+                inliers_min_threshold: document.getElementById('inliers_min_threshold').value,
+                z_compare_thres: document.getElementById('z_compare_thres').value,
+                smooth_z_thres: document.getElementById('smooth_z_thres').value,
+                ground_thres: document.getElementById('ground_thres').value,
+                near_range_dist: document.getElementById('near_range_dist').value,
+                near_range_ground_thres: document.getElementById('near_range_ground_thres').value,
+                middle_range_dist: document.getElementById('middle_range_dist').value,
+                middle_range_ground_thres: document.getElementById('middle_range_ground_thres').value,
+                // Vehicle pose parameters
+                vehicle_x: document.getElementById('vehicle-x').value || '0.0',
+                vehicle_y: document.getElementById('vehicle-y').value || '0.0',
+                vehicle_z: document.getElementById('vehicle-z').value || '0.0',
+            });
+
+            console.log('Fetching:', '/api/segment?' + params.toString());
+
+            // Show loading status
+            document.getElementById('stats').innerHTML = '<span style="color: yellow;">Running ground segmentation... Please wait...</span>';
+
+            try {
+                const response = await fetch('/api/segment?' + params.toString());
+                const data = await response.json();
+
+                console.log('Response:', data);
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                displaySegmentedPoints(data);
+            } catch (err) {
+                console.error('Segmentation error:', err);
+                document.getElementById('stats').innerHTML = '<span style="color: red;">Error: ' + err.message + '</span>';
+                alert('Error running segmentation: ' + err.message);
+            }
+        }
+
+        function displaySegmentedPoints(data) {
+            // Debug: show points count immediately
+            if (data.points) {
+                document.getElementById('stats').innerHTML =
+                    'Points received: ' + data.points.length.toLocaleString() + '<br>Processing...';
+            }
+
+            if (data.error) {
+                alert('Error: ' + data.error);
+                document.getElementById('stats').innerHTML = 'Error: ' + data.error;
+                return;
+            }
+
+            const points = data.points;  // [[x,y,z,label], ...]
+            console.log('Points count:', points.length);
+
+            pointsData = points;
+
+            if (pointCloud) {
+                scene.remove(pointCloud);
+                pointCloud.geometry.dispose();
+                pointCloud.material.dispose();
+            }
+
+            // Calculate stats
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+            let minZ = Infinity, maxZ = -Infinity;
+            let sumZ = 0;
+            let groundCount = 0;
+            let nonGroundCount = 0;
+
+            points.forEach((p) => {
+                // Convert from Lidar to Three.js coordinates for display
+                const x = p[0];  // X stays X (forward)
+                const y = p[1];  // Y becomes Z (left)
+                const z = p[2];  // Z becomes Y (up)
+                const label = p[3];
+
+                minX = Math.min(minX, x);
+                maxX = Math.max(maxX, x);
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
+                minZ = Math.min(minZ, z);
+                maxZ = Math.max(maxZ, z);
+                sumZ += z;  // Use height (Z in Lidar = Y in Three.js)
+
+                if (label === 1) {
+                    groundCount++;
+                } else {
+                    nonGroundCount++;
+                }
+            });
+
+            const meanZ = sumZ / points.length;
+            const zRange = maxZ - minZ;
+            const xyRange = Math.sqrt(Math.pow(maxX - minX, 2) + Math.pow(maxY - minY, 2));
+            const slopeDeg = Math.atan2(zRange, xyRange) * 180 / Math.PI;
+
+            document.getElementById('stats').innerHTML =
+                `Points: ${points.length.toLocaleString()}<br>` +
+                `Ground: ${groundCount.toLocaleString()} (${(100*groundCount/points.length).toFixed(1)}%)<br>` +
+                `Non-ground: ${nonGroundCount.toLocaleString()} (${(100*nonGroundCount/points.length).toFixed(1)}%)<br>` +
+                `X [Forward]: [${minX.toFixed(1)}, ${maxX.toFixed(1)}]<br>` +
+                `Y [Left]: [${minY.toFixed(1)}, ${maxY.toFixed(1)}]<br>` +
+                `Z [Up]: [${minZ.toFixed(1)}, ${maxZ.toFixed(1)}]<br>` +
+                `Estimated Slope: ${slopeDeg.toFixed(1)}°`;
+
+            updateAnalysisFromPoints(points, slopeDeg);
+
+            // Create geometry
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+
+            console.log('Starting to render points, total:', points.length);
+
+            points.forEach((p) => {
+                // Input is Apollo coordinates: p[0]=right, p[1]=forward, p[2]=up
+                // Three.js coordinates: X=right, Y=up, Z=forward
+                // Direct Apollo → Three.js transform:
+                // Apollo right → Three.js X
+                // Apollo forward → Three.js Z
+                // Apollo up → Three.js Y
+
+                positions.push(p[0], p[2], -p[1]);  // right→X, up→Y, forward→-Z
+
+                // Use label to determine color (4th element)
+                if (p[3] === 1) {
+                    colors.push(0, 1, 0);  // Green for ground
+                } else {
+                    colors.push(1, 0, 0);  // Red for non-ground
+                }
+            });
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            console.log('Created geometry, positions count:', positions.length / 3, 'colors count:', colors.length / 3);
+            console.log('Position range:', {
+                minX: Math.min(...positions.filter((_, i) => i % 3 === 0)),
+                maxX: Math.max(...positions.filter((_, i) => i % 3 === 0)),
+                minY: Math.min(...positions.filter((_, i) => i % 3 === 1)),
+                maxY: Math.max(...positions.filter((_, i) => i % 3 === 1)),
+                minZ: Math.min(...positions.filter((_, i) => i % 3 === 2)),
+                maxZ: Math.max(...positions.filter((_, i) => i % 3 === 2))
+            });
+
+            const material = new THREE.PointsMaterial({
+                size: 1.5,
+                vertexColors: true,
+                sizeAttenuation: false,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            pointCloud = new THREE.Points(geometry, material);
+            scene.add(pointCloud);
+
+            // Don't auto-adjust camera, keep user's position
+            // const centerX = (minX + maxX) / 2;
+            // const centerY = (minZ + maxZ) / 2;
+            // const centerZ = (minY + maxY) / 2;
+            // controls.target.set(centerX, centerY, centerZ);
+            // camera.position.set(centerX + 30, centerY + 50, centerZ + 30);
+            // controls.update();
+        }
+
+        function updateAnalysisFromPoints(points, slopeDeg) {
+            // Reuse updateAnalysis but adapted for the new point format
+            const nrGrids = parseInt(document.getElementById('small_grid_size').value);
+            const roiRadX = parseFloat(document.getElementById('roi_rad_x').value);
+            const thresNear = parseFloat(document.getElementById('planefit_dist_thres_near').value);
+            const thresFar = parseFloat(document.getElementById('planefit_dist_thres_far').value);
+
+            const gridSize = roiRadX / nrGrids;
+
+            let html = `
+                <p><strong>Grid cell size:</strong> ${gridSize.toFixed(2)}m x ${gridSize.toFixed(2)}m</p>
+                <p><strong>Estimated slope:</strong> ${slopeDeg.toFixed(1)}°</p>
+                <table>
+                    <tr><td><strong>Slope</strong></td><td><strong>Height Variation</strong></td><td><strong>Status</strong></td></tr>
+            `;
+
+            [5, 10, 15, 20].forEach(slope => {
+                const hVar = gridSize * Math.tan(slope * Math.PI / 180);
+                const status = hVar > thresNear
+                    ? '<span class="warning">❌ EXCEEDS</span>'
+                    : '<span class="ok">✓ OK</span>';
+                html += `<tr><td>${slope}°</td><td>${hVar.toFixed(3)}m</td><td>${status}</td></tr>`;
+            });
+
+            html += '</table>';
+
+            if (slopeDeg > 10) {
+                html += '<p class="warning" style="margin-top:10px;">⚠️ Slope exceeds 10° - RANSAC will likely fail!</p>';
+            }
+
+            document.getElementById('analysis-content').innerHTML = html;
+        }
+
+        // File input handler
+        document.getElementById('pcd-file').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // For local file input, we need to read it client-side
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const points = parsePCDFile(event.target.result);
+                        if (points.length > 0) {
+                            displayPoints(points);
+                        } else {
+                            alert('No points parsed from PCD file');
+                        }
+                    } catch (err) {
+                        alert('Error parsing PCD: ' + err.message);
+                        console.error(err);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // Vehicle pose file input handler
+        document.getElementById('vehicle-pose-file').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const text = event.target.result;
+                        const lines = text.split('\n');
+                        for (const line of lines) {
+                            const trimmed = line.trim();
+                            if (trimmed && !trimmed.startsWith('#')) {
+                                const parts = trimmed.split(/\s+/);
+                                if (parts.length >= 3) {
+                                    document.getElementById('vehicle-x').value = parseFloat(parts[0]).toFixed(6);
+                                    document.getElementById('vehicle-y').value = parseFloat(parts[1]).toFixed(6);
+                                    document.getElementById('vehicle-z').value = parseFloat(parts[2]).toFixed(6);
+                                    console.log('Loaded vehicle pose:', parts[0], parts[1], parts[2]);
+                                    alert('Vehicle pose loaded successfully!');
+                                    return;
+                                }
+                            }
+                        }
+                        alert('Failed to parse vehicle pose from file. Expected format: "x y z"');
+                    } catch (err) {
+                        alert('Error reading vehicle pose file: ' + err.message);
+                        console.error(err);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Load PCD from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        // Run segmentation from path input
+        function runFromPath() {
+            const path = document.getElementById('pcd-path').value;
+            if (!path) {
+                alert('Please enter a PCD file path');
+                return;
+            }
+            runSegmentation(path);
+        }
+
+        // Initialize first
+        init();
+        updateAllValues();
+
+        // Load PCD from URL parameter on page load and auto-run
+        const pcdPathParam = urlParams.get('pcd_path');
+        console.log('Page loaded. URL param pcd_path:', pcdPathParam);
+
+        if (pcdPathParam) {
+            document.getElementById('pcd-path').value = pcdPathParam;
+            console.log('Auto-loading PCD:', pcdPathParam);
+
+            // Auto-run segmentation after page is ready
+            setTimeout(async () => {
+                try {
+                    console.log('Starting auto-segmentation...');
+                    await runSegmentation(pcdPathParam);
+                } catch (err) {
+                    console.error('Auto-segmentation failed:', err);
+                    alert('Failed to auto-load PCD: ' + err.message);
+                }
+            }, 1000);
+        } else {
+            console.log('No pcd_path parameter found, waiting for user input');
+            document.getElementById('stats').innerHTML = 'Please enter a PCD file path or select a file';
+        }
+    </script>
+</body>
+</html>

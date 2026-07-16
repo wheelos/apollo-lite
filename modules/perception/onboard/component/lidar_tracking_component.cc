@@ -16,6 +16,7 @@
 #include "modules/perception/onboard/component/lidar_tracking_component.h"
 
 #include "cyber/time/clock.h"
+#include "modules/perception/onboard/msg_serializer/msg_serializer.h"
 #include "modules/common/util/perf_util.h"
 #include "modules/perception/base/object_pool_types.h"
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
@@ -39,6 +40,7 @@ bool LidarTrackingComponent::Init() {
   output_channel_name_ = comp_config.output_channel_name();
   main_sensor_name_ = comp_config.main_sensor_name();
   writer_ = node_->CreateWriter<SensorFrameMessage>(output_channel_name_);
+  debug_writer_ = node_->CreateWriter<PerceptionObstacles>("/apollo/perception/obstacles");
 
   // read pipeline config
   std::string lidar_tracking_conf_dir = comp_config.lidar_tracking_conf_dir();
@@ -75,6 +77,18 @@ bool LidarTrackingComponent::Proc(
   if (InternalProc(message, out_message)) {
     writer_->Write(out_message);
     AINFO << "Send lidar recognition output message.";
+
+    // 额外输出protobuf到 /apollo/perception/obstacles 用于调试
+    auto debug_msg = std::make_shared<PerceptionObstacles>();
+    MsgSerializer::SerializeMsg(
+        out_message->timestamp_,
+        out_message->lidar_timestamp_,
+        out_message->seq_num_,
+        out_message->frame_->objects,
+        out_message->error_code_,
+        debug_msg.get());
+    debug_writer_->Write(debug_msg);
+    AINFO << "Send tracking debug output to /apollo/perception/obstacles";
     return true;
   }
   return false;

@@ -45,6 +45,7 @@ proto_library(
         "//modules/perception/pipeline/proto/plugin:pbf_gatekeeper_config_proto",
         "//modules/perception/pipeline/proto/plugin:pointcloud_downsample_config_proto",
         "//modules/perception/pipeline/proto/plugin:pointcloud_get_objects_config_proto",
+        "//modules/perception/pipeline/proto/plugin:polygon_region_filter_config_proto",
         "//modules/perception/pipeline/proto/plugin:recover_bbox_config_proto",
         "//modules/perception/pipeline/proto/plugin:resize_and_normalize_config_proto",
         "//modules/perception/pipeline/proto/plugin:roi_boundary_filter_config_proto",
