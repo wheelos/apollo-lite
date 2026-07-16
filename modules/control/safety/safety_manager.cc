@@ -122,12 +122,12 @@ void SafetyManager::CheckKinematics(const LocalView& view,
 void SafetyManager::CheckControlOutput(const ControlCommand& cmd,
                                        SafetyResult* result) {
   bool invalid = false;
+  constexpr double kMaxDouble = std::numeric_limits<double>::max();
 
   auto validate_field = [&](bool has_field, double value, double min_value,
                             double max_value, const char* name) {
+    // Optional field.
     if (!has_field) {
-      AERROR_EVERY(10) << "Missing ControlCommand field: " << name;
-      invalid = true;
       return;
     }
 
@@ -152,18 +152,10 @@ void SafetyManager::CheckControlOutput(const ControlCommand& cmd,
                  100.0, "steering_target");
   validate_field(cmd.has_steering_rate(), cmd.steering_rate(), 0.0, 100.0,
                  "steering_rate");
-
-  // Speed is controller dependent. Only require finite.
-  if (!cmd.has_speed() || !std::isfinite(cmd.speed())) {
-    AERROR_EVERY(10) << "Invalid ControlCommand field: speed";
-    invalid = true;
-  }
-
-  // Acceleration is controller dependent. Only require finite.
-  if (!cmd.has_acceleration() || !std::isfinite(cmd.acceleration())) {
-    AERROR_EVERY(10) << "Invalid ControlCommand field: acceleration";
-    invalid = true;
-  }
+  validate_field(cmd.has_speed(), cmd.speed(), -kMaxDouble, kMaxDouble,
+                 "speed");
+  validate_field(cmd.has_acceleration(), cmd.acceleration(), -kMaxDouble,
+                 kMaxDouble, "acceleration");
 
   if (invalid) {
     result->need_freeze = true;
