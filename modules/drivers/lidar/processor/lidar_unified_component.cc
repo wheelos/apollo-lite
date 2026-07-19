@@ -173,11 +173,18 @@ bool LidarUnifiedComponent::Init() {
   const size_t max_points = std::max<size_t>(
       1, static_cast<size_t>(config_.max_full_pointcloud_points()));
   full_pointcloud_buffer_.resize(max_points);
+  fusion_flush_timer_.reset(new apollo::cyber::Timer(
+      config_.fusion_flush_interval_ms(),
+      [this]() { this->OnFusionFlushTimer(); }, false));
+  fusion_flush_timer_->Start();
 
   AINFO << "LidarUnifiedComponent initialized. compute_mode=" << policy_mode
         << ", main_sensor=<auto>"
         << ", aux_count=" << auxiliary_inputs_.size()
-        << ", max_points=" << max_points;
+        << ", max_points=" << max_points
+        << ", fusion_wait_timeout_ms=" << config_.fusion_wait_timeout_ms()
+        << ", pending_fusion_queue_size="
+        << config_.pending_fusion_queue_size();
   return true;
 }
 
@@ -233,18 +240,18 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
     }
   }
 
-  FrameMetrics frame_metrics;
-  std::vector<FrameHandle> frame_handles;
-  if (!CollectNearestFrames(point_cloud->measurement_time(), primary_sensor_id_,
-                            &frame_handles, &frame_metrics)) {
-    AERROR << "Failed to collect nearest frames for ref timestamp "
-           << point_cloud->measurement_time();
-    return false;
-  }
+  EnqueuePendingFusionFrame(point_cloud, primary_sensor_id_);
+  TryFlushPendingFusionFrames(false);
+  return true;
+}
 
+bool LidarUnifiedComponent::ProcessFusionFrame(
+    const PendingFusionFrame& pending_frame,
+    std::vector<FrameHandle> frame_handles, FrameMetrics frame_metrics) {
   for (const auto& frame_handle : frame_handles) {
     if (!frame_handle.is_primary) {
-      UpdateSensorTimingModel(frame_handle, point_cloud->measurement_time(),
+      UpdateSensorTimingModel(frame_handle,
+                              pending_frame.reference_timestamp_sec,
                               &frame_metrics);
     }
   }
@@ -262,8 +269,8 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
   }
 
   std::shared_ptr<::apollo::drivers::PointCloud> unified_output;
-  if (!BuildUnifiedPointCloud(point_cloud, frame_handles, &frame_metrics,
-                              &unified_output)) {
+  if (!BuildUnifiedPointCloud(pending_frame.main_frame, frame_handles,
+                              &frame_metrics, &unified_output)) {
     AERROR << "Failed to build unified point cloud";
     return false;
   }
@@ -273,6 +280,109 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
   LogFrameMetrics(frame_metrics);
   writer_->Write(unified_output);
   return true;
+}
+
+void LidarUnifiedComponent::EnqueuePendingFusionFrame(
+    const PointCloudConstPtr& main_frame, const std::string& primary_sensor_id) {
+  if (main_frame == nullptr || primary_sensor_id.empty()) {
+    return;
+  }
+
+  PendingFusionFrame pending_frame;
+  pending_frame.main_frame = main_frame;
+  pending_frame.primary_sensor_id = primary_sensor_id;
+  pending_frame.reference_timestamp_sec = main_frame->measurement_time();
+  pending_frame.enqueue_time_sec = cyber::Time::Now().ToSecond();
+  pending_frame.deadline_sec =
+      pending_frame.enqueue_time_sec +
+      static_cast<double>(config_.fusion_wait_timeout_ms()) / 1000.0;
+
+  std::lock_guard<std::mutex> lock(pending_fusion_mutex_);
+  const size_t queue_limit = std::max<size_t>(
+      1, static_cast<size_t>(config_.pending_fusion_queue_size()));
+  if (pending_fusion_frames_.size() >= queue_limit) {
+    total_pending_fusion_dropped_.fetch_add(1);
+    AWARN << "Drop primary lidar frame because pending fusion queue is full. "
+          << "queue_size=" << pending_fusion_frames_.size()
+          << ", limit=" << queue_limit
+          << ", ref_timestamp=" << pending_frame.reference_timestamp_sec;
+    return;
+  }
+  pending_fusion_frames_.push_back(std::move(pending_frame));
+}
+
+void LidarUnifiedComponent::OnFusionFlushTimer() {
+  TryFlushPendingFusionFrames(true);
+}
+
+void LidarUnifiedComponent::TryFlushPendingFusionFrames(
+    bool flush_expired_only) {
+  std::lock_guard<std::mutex> process_lock(fusion_process_mutex_);
+
+  while (true) {
+    PendingFusionFrame pending_frame;
+    {
+      std::lock_guard<std::mutex> lock(pending_fusion_mutex_);
+      if (pending_fusion_frames_.empty()) {
+        return;
+      }
+      pending_frame = pending_fusion_frames_.front();
+    }
+
+    FrameMetrics frame_metrics;
+    std::vector<FrameHandle> frame_handles;
+    const bool collected = CollectNearestFrames(
+        pending_frame.reference_timestamp_sec, pending_frame.primary_sensor_id,
+        &frame_handles, &frame_metrics);
+    const double now_sec = cyber::Time::Now().ToSecond();
+    const bool deadline_exceeded = now_sec >= pending_frame.deadline_sec;
+    const bool all_sensors_matched =
+        collected && frame_metrics.matched_sensor_count >=
+                         frame_metrics.expected_sensor_count;
+    const bool should_flush =
+        all_sensors_matched ||
+        (!flush_expired_only && auxiliary_inputs_.empty()) ||
+        deadline_exceeded;
+
+    if (!should_flush) {
+      return;
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(pending_fusion_mutex_);
+      if (pending_fusion_frames_.empty() ||
+          pending_fusion_frames_.front().main_frame !=
+              pending_frame.main_frame) {
+        continue;
+      }
+      pending_fusion_frames_.pop_front();
+    }
+
+    if (!collected) {
+      AERROR << "Failed to collect frames for pending fusion. ref_timestamp="
+             << pending_frame.reference_timestamp_sec
+             << ", deadline_exceeded=" << deadline_exceeded;
+      continue;
+    }
+
+    frame_metrics.fusion_deadline_exceeded = deadline_exceeded;
+    frame_metrics.fusion_wait_ms =
+        std::max(0.0, (now_sec - pending_frame.enqueue_time_sec) * 1000.0);
+    if (deadline_exceeded && !all_sensors_matched) {
+      total_fusion_deadline_exceeded_.fetch_add(1);
+      AWARN << "Publish lidar fusion frame after wait timeout. matched_sensors="
+            << frame_metrics.matched_sensor_count << "/"
+            << frame_metrics.expected_sensor_count
+            << ", wait_ms=" << frame_metrics.fusion_wait_ms
+            << ", ref_timestamp=" << pending_frame.reference_timestamp_sec;
+    }
+
+    if (!ProcessFusionFrame(pending_frame, std::move(frame_handles),
+                            frame_metrics)) {
+      AERROR << "Failed to process pending lidar fusion frame. ref_timestamp="
+             << pending_frame.reference_timestamp_sec;
+    }
+  }
 }
 
 void LidarUnifiedComponent::PushToBuffer(

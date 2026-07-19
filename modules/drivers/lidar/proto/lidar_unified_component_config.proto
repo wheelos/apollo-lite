@@ -81,4 +81,13 @@ message LidarUnifiedComponentConfig {
   optional double overlap_quality_ema_alpha = 38 [default = 0.2];
   optional double auxiliary_min_overlap_quality_weight = 39 [default = 0.0];
   optional uint32 overlap_quality_sample_stride = 40 [default = 16];
+
+  // Main-frame triggered fusion waits briefly in wall-clock time for
+  // auxiliary messages whose measurement_time already aligns with the primary.
+  optional uint32 fusion_wait_timeout_ms = 41 [default = 20];
+  // Maximum queued primary frames waiting for auxiliary arrivals. New primary
+  // frames are dropped when the queue is full to avoid unbounded latency.
+  optional uint32 pending_fusion_queue_size = 42 [default = 2];
+  // Periodic flush interval for deadline-based publication.
+  optional uint32 fusion_flush_interval_ms = 43 [default = 5];
 }

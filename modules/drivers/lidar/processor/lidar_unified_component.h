@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -57,6 +58,13 @@ class LidarUnifiedComponent
       LidarUnifiedComponentTest_UpdatesLargeFixedDelayWhenInnovationIsWithinLimit_Test;
   friend class
       LidarUnifiedComponentTest_CollectNearestFramesSkipsLowQualityAuxiliary_Test;
+  friend class
+      LidarUnifiedComponentTest_CollectNearestFramesMatchesThreeSensors_Test;
+  friend class
+      LidarUnifiedComponentTest_CollectNearestFramesAllowsMissingAuxiliary_Test;
+  friend class
+      LidarUnifiedComponentTest_CollectNearestFramesFailsStrictMissingAuxiliary_Test;
+  friend class LidarUnifiedComponentTest_RejectsDuplicateAuxiliaryTopics_Test;
   friend class LidarUnifiedComponentTest_EstimatesOverlapQualityWeight_Test;
 
   enum class FrameLookupFailureReason {
@@ -97,6 +105,16 @@ class LidarUnifiedComponent
     size_t output_points = 0;
     double max_abs_clock_offset_ms = 0.0;
     double min_overlap_quality_weight = 1.0;
+    double fusion_wait_ms = 0.0;
+    bool fusion_deadline_exceeded = false;
+  };
+
+  struct PendingFusionFrame {
+    PointCloudConstPtr main_frame;
+    std::string primary_sensor_id;
+    double reference_timestamp_sec = 0.0;
+    double enqueue_time_sec = 0.0;
+    double deadline_sec = 0.0;
   };
 
   bool PrepareBufferedFrame(const std::string& sensor_id,
@@ -118,6 +136,13 @@ class LidarUnifiedComponent
                             const std::string& primary_sensor_id,
                             std::vector<FrameHandle>* frame_handles,
                             FrameMetrics* frame_metrics);
+  void EnqueuePendingFusionFrame(const PointCloudConstPtr& main_frame,
+                                 const std::string& primary_sensor_id);
+  void TryFlushPendingFusionFrames(bool flush_expired_only);
+  void OnFusionFlushTimer();
+  bool ProcessFusionFrame(const PendingFusionFrame& pending_frame,
+                          std::vector<FrameHandle> frame_handles,
+                          FrameMetrics frame_metrics);
   bool FindNearestFrame(const std::shared_ptr<SensorState>& sensor_state,
                         const std::string& sensor_id, double ref_timestamp,
                         uint32_t max_ref_time_delta_ms,
@@ -170,6 +195,11 @@ class LidarUnifiedComponent
   DegradePolicy degrade_policy_;
   DtcReporter dtc_reporter_;
   std::shared_ptr<apollo::cyber::Writer<::apollo::drivers::PointCloud>> writer_;
+  std::unique_ptr<apollo::cyber::Timer> fusion_flush_timer_;
+
+  std::mutex pending_fusion_mutex_;
+  std::mutex fusion_process_mutex_;
+  std::deque<PendingFusionFrame> pending_fusion_frames_;
 
   std::vector<::apollo::drivers::PointXYZIT> full_pointcloud_buffer_;
   std::atomic<uint32_t> sequence_num_{0};
@@ -178,6 +208,8 @@ class LidarUnifiedComponent
   std::atomic<uint64_t> total_output_points_{0};
   std::atomic<uint64_t> total_missing_auxiliary_frames_{0};
   std::atomic<uint64_t> total_time_delta_exceeded_{0};
+  std::atomic<uint64_t> total_fusion_deadline_exceeded_{0};
+  std::atomic<uint64_t> total_pending_fusion_dropped_{0};
   std::atomic<uint64_t> total_pose_prefetch_timeouts_{0};
   mutable std::atomic<uint64_t> total_tf_query_failures_{0};
 };

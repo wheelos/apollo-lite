@@ -227,11 +227,11 @@ TEST(CpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
     "map", "lidar", cyber::Time(10.0),
       Eigen::Translation3d(0.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
   tf_buffer.AddTransform(
+    "map", "lidar", cyber::Time(10.5),
+      Eigen::Translation3d(0.5, 0.0, 0.0) * Eigen::Quaterniond::Identity());
+  tf_buffer.AddTransform(
     "map", "lidar", cyber::Time(11.0),
       Eigen::Translation3d(1.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
-  tf_buffer.AddTransform(
-    "map", "lidar", cyber::Time(12.0),
-      Eigen::Translation3d(2.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
   CpuLidarDeskewPolicy policy;
   ASSERT_TRUE(policy.Init(MakeConfig(), &tf_buffer));
@@ -239,9 +239,9 @@ TEST(CpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
   SensorFrameContext frame_context;
   frame_context.sensor_id = "lidar";
   frame_context.point_cloud =
-      MakePointCloud("lidar", 12.0,
+      MakePointCloud("lidar", 11.0,
                      {{0.0f, 0.0f, 0.0f, 10 * kSecondToNano},
-                      {0.0f, 0.0f, 0.0f, 12 * kSecondToNano}});
+                      {0.0f, 0.0f, 0.0f, 11 * kSecondToNano}});
 
   std::vector<double> sample_times;
   std::vector<Eigen::Affine3d> poses;
@@ -250,11 +250,11 @@ TEST(CpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
   ASSERT_EQ(sample_times.size(), 3U);
   ASSERT_EQ(poses.size(), 3U);
   EXPECT_DOUBLE_EQ(sample_times[0], 10.0);
-  EXPECT_DOUBLE_EQ(sample_times[1], 11.0);
-  EXPECT_DOUBLE_EQ(sample_times[2], 12.0);
+  EXPECT_DOUBLE_EQ(sample_times[1], 10.5);
+  EXPECT_DOUBLE_EQ(sample_times[2], 11.0);
   EXPECT_DOUBLE_EQ(poses[0].translation().x(), 0.0);
-  EXPECT_DOUBLE_EQ(poses[1].translation().x(), 1.0);
-  EXPECT_DOUBLE_EQ(poses[2].translation().x(), 2.0);
+  EXPECT_DOUBLE_EQ(poses[1].translation().x(), 0.5);
+  EXPECT_DOUBLE_EQ(poses[2].translation().x(), 1.0);
 }
 
 TEST(CpuLidarDeskewPolicyTest,
@@ -592,6 +592,131 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesSkipsLowQualityAuxiliary) {
   ASSERT_EQ(frame_handles.size(), 1U);
   EXPECT_TRUE(frame_handles.front().is_primary);
   EXPECT_EQ(metrics.missing_auxiliary_count, 1U);
+}
+
+TEST(LidarUnifiedComponentTest, CollectNearestFramesMatchesThreeSensors) {
+  LidarUnifiedComponent component;
+  component.config_.set_strict_auxiliary_sync(false);
+  component.config_.set_max_ref_time_delta_ms(80);
+  component.config_.set_auxiliary_min_overlap_quality_weight(0.0);
+  component.auxiliary_inputs_.push_back(
+      LidarUnifiedComponent::SensorInput{"/left"});
+  component.auxiliary_inputs_.push_back(
+      LidarUnifiedComponent::SensorInput{"/right"});
+  component.auxiliary_sensor_ids_by_topic_["/left"] = "left_lidar";
+  component.auxiliary_sensor_ids_by_topic_["/right"] = "right_lidar";
+
+  auto make_buffered_frame = [](const std::string& sensor_id,
+                                double timestamp_sec) {
+    auto frame = std::make_shared<BufferedFrame>();
+    frame->point_cloud = MakePointCloud(sensor_id, timestamp_sec, {});
+    frame->pose_prefetch_ok = true;
+    return frame;
+  };
+
+  auto primary_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
+  primary_state->frames.push_back(make_buffered_frame("primary", 10.0));
+  component.sensor_states_["primary"] = primary_state;
+
+  auto left_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
+  left_state->frames.push_back(make_buffered_frame("left_lidar", 10.02));
+  component.sensor_states_["left_lidar"] = left_state;
+
+  auto right_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
+  right_state->frames.push_back(make_buffered_frame("right_lidar", 9.97));
+  component.sensor_states_["right_lidar"] = right_state;
+
+  std::vector<FrameHandle> frame_handles;
+  LidarUnifiedComponent::FrameMetrics metrics;
+  ASSERT_TRUE(component.CollectNearestFrames(10.0, "primary", &frame_handles,
+                                             &metrics));
+  EXPECT_EQ(frame_handles.size(), 3U);
+  EXPECT_EQ(metrics.expected_sensor_count, 3U);
+  EXPECT_EQ(metrics.matched_sensor_count, 3U);
+  EXPECT_EQ(metrics.missing_auxiliary_count, 0U);
+}
+
+TEST(LidarUnifiedComponentTest, CollectNearestFramesAllowsMissingAuxiliary) {
+  LidarUnifiedComponent component;
+  component.config_.set_strict_auxiliary_sync(false);
+  component.config_.set_max_ref_time_delta_ms(80);
+  component.auxiliary_inputs_.push_back(
+      LidarUnifiedComponent::SensorInput{"/left"});
+  component.auxiliary_inputs_.push_back(
+      LidarUnifiedComponent::SensorInput{"/right"});
+  component.auxiliary_sensor_ids_by_topic_["/left"] = "left_lidar";
+
+  auto make_buffered_frame = [](const std::string& sensor_id,
+                                double timestamp_sec) {
+    auto frame = std::make_shared<BufferedFrame>();
+    frame->point_cloud = MakePointCloud(sensor_id, timestamp_sec, {});
+    frame->pose_prefetch_ok = true;
+    return frame;
+  };
+
+  auto primary_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
+  primary_state->frames.push_back(make_buffered_frame("primary", 10.0));
+  component.sensor_states_["primary"] = primary_state;
+
+  auto left_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
+  left_state->frames.push_back(make_buffered_frame("left_lidar", 10.02));
+  component.sensor_states_["left_lidar"] = left_state;
+
+  std::vector<FrameHandle> frame_handles;
+  LidarUnifiedComponent::FrameMetrics metrics;
+  ASSERT_TRUE(component.CollectNearestFrames(10.0, "primary", &frame_handles,
+                                             &metrics));
+  EXPECT_EQ(frame_handles.size(), 2U);
+  EXPECT_EQ(metrics.expected_sensor_count, 3U);
+  EXPECT_EQ(metrics.matched_sensor_count, 2U);
+  EXPECT_EQ(metrics.missing_auxiliary_count, 1U);
+}
+
+TEST(LidarUnifiedComponentTest,
+     CollectNearestFramesFailsStrictMissingAuxiliary) {
+  LidarUnifiedComponent component;
+  component.config_.set_strict_auxiliary_sync(true);
+  component.config_.set_max_ref_time_delta_ms(80);
+  component.auxiliary_inputs_.push_back(
+      LidarUnifiedComponent::SensorInput{"/left"});
+  component.auxiliary_sensor_ids_by_topic_["/left"] = "left_lidar";
+
+  auto primary_frame = std::make_shared<BufferedFrame>();
+  primary_frame->point_cloud = MakePointCloud("primary", 10.0, {});
+  primary_frame->pose_prefetch_ok = true;
+  auto primary_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
+  primary_state->frames.push_back(primary_frame);
+  component.sensor_states_["primary"] = primary_state;
+
+  std::vector<FrameHandle> frame_handles;
+  LidarUnifiedComponent::FrameMetrics metrics;
+  EXPECT_FALSE(component.CollectNearestFrames(10.0, "primary", &frame_handles,
+                                              &metrics));
+}
+
+TEST(LidarUnifiedComponentTest, RejectsDuplicateAuxiliaryTopics) {
+  LidarUnifiedComponent component;
+  component.config_ = MakeConfig();
+  component.config_.set_output_channel("/out");
+  component.config_.set_sensor_buffer_size(2);
+  component.config_.set_max_full_pointcloud_points(16);
+  component.config_.set_max_ref_time_delta_ms(80);
+  component.config_.set_metrics_log_interval(1);
+  component.config_.set_sensor_pose_cache_duration_sec(1.0);
+  component.config_.set_sensor_pose_cache_max_extrapolation_sec(0.1);
+  component.config_.set_sensor_pose_query_timeout_sec(0.0);
+  component.config_.set_fixed_delay_ema_alpha(0.5);
+  component.config_.set_clock_offset_ema_alpha(0.5);
+  component.config_.set_overlap_quality_ema_alpha(0.5);
+  component.config_.set_overlap_quality_sample_stride(1);
+  component.config_.set_pending_fusion_queue_size(2);
+  component.config_.set_fusion_flush_interval_ms(5);
+  auto* first = component.config_.add_auxiliary_lidar_inputs();
+  first->set_topic_name("/aux");
+  auto* second = component.config_.add_auxiliary_lidar_inputs();
+  second->set_topic_name("/aux");
+
+  EXPECT_FALSE(component.ValidateConfig());
 }
 
 TEST(LidarUnifiedComponentTest, EstimatesOverlapQualityWeight) {

@@ -1,5 +1,7 @@
 #include "modules/drivers/lidar/processor/lidar_unified_component.h"
 
+#include <set>
+
 namespace apollo {
 namespace drivers {
 namespace lidar {
@@ -99,6 +101,16 @@ bool LidarUnifiedComponent::ValidateConfig() const {
     return false;
   }
 
+  if (config_.pending_fusion_queue_size() == 0) {
+    AERROR << "pending_fusion_queue_size must be > 0";
+    return false;
+  }
+
+  if (config_.fusion_flush_interval_ms() == 0) {
+    AERROR << "fusion_flush_interval_ms must be > 0";
+    return false;
+  }
+
   if (config_.overlap_region_forward_x() <
       config_.overlap_region_backward_x()) {
     AERROR << "overlap_region_forward_x must be >= overlap_region_backward_x";
@@ -136,9 +148,14 @@ bool LidarUnifiedComponent::ValidateConfig() const {
     }
   }
 
+  std::set<std::string> auxiliary_topics;
   for (const auto& input_cfg : config_.auxiliary_lidar_inputs()) {
     if (input_cfg.topic_name().empty()) {
       AERROR << "auxiliary_lidar_inputs.topic_name is required";
+      return false;
+    }
+    if (!auxiliary_topics.insert(input_cfg.topic_name()).second) {
+      AERROR << "Duplicate auxiliary lidar topic: " << input_cfg.topic_name();
       return false;
     }
   }

@@ -41,6 +41,9 @@ void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
   const uint64_t total_output = total_output_points_.load();
   const uint64_t total_aux_missing = total_missing_auxiliary_frames_.load();
   const uint64_t total_time_delta = total_time_delta_exceeded_.load();
+  const uint64_t total_deadline_exceeded =
+      total_fusion_deadline_exceeded_.load();
+  const uint64_t total_pending_dropped = total_pending_fusion_dropped_.load();
   const uint64_t total_pose_prefetch_timeouts =
       total_pose_prefetch_timeouts_.load();
   const uint64_t total_tf_failures = total_tf_query_failures_.load();
@@ -60,6 +63,9 @@ void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
         << ", max_abs_clock_offset_ms=" << frame_metrics.max_abs_clock_offset_ms
         << ", min_overlap_quality_weight="
         << frame_metrics.min_overlap_quality_weight
+        << ", fusion_wait_ms=" << frame_metrics.fusion_wait_ms
+        << ", fusion_deadline_exceeded="
+        << frame_metrics.fusion_deadline_exceeded
         << ", ts_anomalies=" << ts_anomalies
         << ", degrade_transitions=" << degrade_transitions
         << ", avg_output_ratio="
@@ -70,6 +76,10 @@ void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
         << ", avg_time_window_violations="
         << static_cast<double>(total_time_delta) /
                static_cast<double>(total_frames)
+        << ", avg_fusion_deadline_exceeded="
+        << static_cast<double>(total_deadline_exceeded) /
+               static_cast<double>(total_frames)
+        << ", pending_fusion_dropped=" << total_pending_dropped
         << ", avg_pose_prefetch_timeouts="
         << static_cast<double>(total_pose_prefetch_timeouts) /
                static_cast<double>(total_frames)

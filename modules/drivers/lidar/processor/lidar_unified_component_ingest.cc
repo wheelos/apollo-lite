@@ -244,6 +244,7 @@ void LidarUnifiedComponent::OnAuxiliaryLidarMessage(
   }
 
   PushToBuffer(sensor_id, buffered_frame);
+  TryFlushPendingFusionFrames(false);
 }
 
 }  // namespace lidar
