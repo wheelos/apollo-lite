@@ -7,6 +7,8 @@ sources {
   publish {
     channel_name: "/apollo/sensor/camera/left/image"
     frame_id: "left_camera"
+    output_fps: 15.0
+    queue_capacity: 2
   }
 }
 
@@ -19,6 +21,8 @@ sources {
   publish {
     channel_name: "/apollo/sensor/camera/right/image"
     frame_id: "right_camera"
+    output_fps: 15.0
+    queue_capacity: 2
   }
 }
 
@@ -40,15 +44,27 @@ tile_width: 1920
 tile_height: 1080
 fps: 30.0
 capture_retry_ms: 20
+publish_gpu_channel: true
+validate_nvidia_plugins: true
+zero_copy_required: true
+
+platform {
+  target: "jetson-orin"
+  require_nvmm: true
+  require_nvidia_plugins: true
+}
 
 stream {
   enable: true
   auto_start: true
-  queue_size: 3
-  publish_queue_size: 1
-  ingest_queue_size: 3
   emit_eos_on_detach: true
   force_keyframe_on_attach: true
   keyframe_element_name: "stream_encoder"
-  branch_pipeline: "queue name=stream_queue leaky=downstream max-size-buffers=3 ! nvv4l2h264enc name=stream_encoder insert-sps-pps=true iframeinterval=30 idrinterval=30 bitrate=4000000 ! tcpserversink host=0.0.0.0 port=5600 sync=false"
+  host: "127.0.0.1"
+  port: 5600
+  bitrate: 4000000
+  iframe_interval: 30
+  idr_interval: 30
+  queue_capacity: 3
+  rtp_payload_type: 96
 }

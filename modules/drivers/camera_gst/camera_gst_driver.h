@@ -20,6 +20,7 @@
 #include <memory>
 
 #include "modules/drivers/camera_gst/proto/config.pb.h"
+
 #include "modules/drivers/camera_gst/streamer.h"
 
 namespace apollo {
@@ -30,6 +31,7 @@ class CameraGstDriver {
  public:
   using PublishCallback = CameraGstStreamer::PublishCallback;
   using SourcePublishCallback = CameraGstStreamer::SourcePublishCallback;
+  using GpuFrameCallback = CameraGstStreamer::GpuFrameCallback;
 
   explicit CameraGstDriver(
       std::unique_ptr<CameraGstStreamer> streamer = nullptr);
@@ -37,13 +39,15 @@ class CameraGstDriver {
 
   bool Init(const config::Config& config,
             SourcePublishCallback source_publish_callback,
-            PublishCallback stitched_publish_callback);
+            PublishCallback stitched_publish_callback,
+            GpuFrameCallback gpu_frame_callback);
 
   void StartStreaming();
   void StopStreaming();
 
   int output_width() const;
   int output_height() const;
+  StreamStats stats() const;
 
  private:
   config::Config config_;

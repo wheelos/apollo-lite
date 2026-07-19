@@ -16,6 +16,8 @@
 
 #include "modules/drivers/camera_gst/camera_gst_driver.h"
 
+#include <utility>
+
 #include "cyber/cyber.h"
 
 namespace apollo {
@@ -37,7 +39,8 @@ CameraGstDriver::~CameraGstDriver() {
 
 bool CameraGstDriver::Init(const config::Config& config,
                            SourcePublishCallback source_publish_callback,
-                           PublishCallback stitched_publish_callback) {
+                           PublishCallback stitched_publish_callback,
+                           GpuFrameCallback gpu_frame_callback) {
   config_ = config;
   if (config_.sources_size() == 0) {
     AERROR << "camera_gst requires at least one source.";
@@ -46,7 +49,8 @@ bool CameraGstDriver::Init(const config::Config& config,
   stream_enabled_ = config_.stream().enable();
 
   if (!streamer_->Start(config_, std::move(source_publish_callback),
-                        std::move(stitched_publish_callback))) {
+                        std::move(stitched_publish_callback),
+                        std::move(gpu_frame_callback))) {
     AERROR << "camera_gst failed to start the GPU capture graph.";
     return false;
   }
@@ -80,6 +84,10 @@ int CameraGstDriver::output_width() const {
 
 int CameraGstDriver::output_height() const {
   return streamer_ == nullptr ? 0 : streamer_->output_height();
+}
+
+StreamStats CameraGstDriver::stats() const {
+  return streamer_ == nullptr ? StreamStats() : streamer_->stats();
 }
 
 }  // namespace camera_gst

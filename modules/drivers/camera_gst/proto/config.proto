@@ -23,6 +23,11 @@ message LayoutSlot {
 message PublishConfig {
   optional string channel_name = 1;
   optional string frame_id = 2 [default = "camera_gst"];
+  optional uint32 output_width = 3 [default = 0];
+  optional uint32 output_height = 4 [default = 0];
+  optional double output_fps = 5 [default = 0.0];
+  optional uint32 queue_capacity = 6 [default = 4];
+  optional uint32 buffer_pool_size = 7 [default = 4];
 }
 
 message StreamConfig {
@@ -39,6 +44,20 @@ message StreamConfig {
   optional bool emit_eos_on_detach = 11 [default = true];
   optional bool force_keyframe_on_attach = 12 [default = true];
   optional string keyframe_element_name = 13;
+  optional string host = 14 [default = "127.0.0.1"];
+  optional uint32 port = 15 [default = 5600];
+  optional uint32 bitrate = 16 [default = 4000000];
+  optional uint32 iframe_interval = 17 [default = 30];
+  optional uint32 idr_interval = 18 [default = 30];
+  optional uint32 queue_capacity = 19 [default = 4];
+  optional bool insert_sps_pps = 20 [default = true];
+  optional uint32 rtp_payload_type = 21 [default = 96];
+}
+
+message PlatformContract {
+  optional string target = 1 [default = "jetson-orin"];
+  optional bool require_nvmm = 2 [default = true];
+  optional bool require_nvidia_plugins = 3 [default = true];
 }
 
 message Config {
@@ -53,4 +72,8 @@ message Config {
   optional double publish_rate = 9 [default = 30.0];
   optional PublishConfig publish = 10;
   optional StreamConfig stream = 11;
+  optional bool publish_gpu_channel = 12 [default = false];
+  optional bool validate_nvidia_plugins = 13 [default = false];
+  optional bool zero_copy_required = 14 [default = false];
+  optional PlatformContract platform = 15;
 }

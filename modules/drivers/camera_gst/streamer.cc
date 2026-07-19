@@ -17,14 +17,13 @@
 #include "modules/drivers/camera_gst/streamer.h"
 
 #include <algorithm>
-#include <cmath>
-#include <cctype>
+#include <chrono>
 #include <set>
-#include <sstream>
+#include <thread>
 #include <utility>
 
 #include "cyber/cyber.h"
-#include "cyber/time/time.h"
+#include "modules/drivers/camera_gst/frame_extractor.h"
 
 namespace apollo {
 namespace drivers {
@@ -32,13 +31,10 @@ namespace camera_gst {
 
 namespace {
 
-constexpr const char* kSourceSinkPrefix = "source_publish_sink_";
-constexpr const char* kSourceTeePrefix = "source_tee_";
 constexpr const char* kStitchedTeeName = "stitched_tee";
 constexpr const char* kStitchedPublishSinkName = "stitched_publish_sink";
-constexpr const char* kGpuPixelFormat = "NV12";
-constexpr const char* kPublishPixelFormat = "RGB";
 constexpr GstClockTime kBusPollInterval = 100 * GST_MSECOND;
+constexpr auto kRecoveryDelay = std::chrono::milliseconds(250);
 
 GstPad* RequestPadCompat(GstElement* element, const char* name_template) {
 #if GST_CHECK_VERSION(1, 20, 0)
@@ -57,77 +53,13 @@ void GstInitOnce() {
   });
 }
 
-bool IsDevicePath(const std::string& uri) {
-  return uri.rfind("/dev/", 0) == 0;
-}
-
-bool IsNumericIndex(const std::string& uri) {
-  return !uri.empty() &&
-         std::all_of(uri.begin(), uri.end(),
-                     [](unsigned char c) { return std::isdigit(c) != 0; });
-}
-
-bool IsArgusUri(const std::string& uri) {
-  return uri.rfind("csi://", 0) == 0 || uri.rfind("argus://", 0) == 0;
-}
-
-bool ParseArgusSensorId(const std::string& uri, int* sensor_id) {
-  if (sensor_id == nullptr || !IsArgusUri(uri)) {
-    return false;
+double MeasurementTimeFromSample(GstSample* sample) {
+  GstBuffer* buffer = gst_sample_get_buffer(sample);
+  if (buffer != nullptr && GST_BUFFER_PTS_IS_VALID(buffer)) {
+    return static_cast<double>(GST_BUFFER_PTS(buffer)) /
+           static_cast<double>(GST_SECOND);
   }
-  const size_t separator = uri.find("://");
-  if (separator == std::string::npos || separator + 3 >= uri.size()) {
-    return false;
-  }
-  try {
-    *sensor_id = std::stoi(uri.substr(separator + 3));
-  } catch (const std::exception&) {
-    return false;
-  }
-  return true;
-}
-
-std::string ToUpperCopy(std::string value) {
-  std::transform(value.begin(), value.end(), value.begin(),
-                 [](unsigned char c) {
-                   return static_cast<char>(std::toupper(c));
-                 });
-  return value;
-}
-
-std::string BuildFramerate(double fps) {
-  const int fps_num = std::max(1, static_cast<int>(std::lround(fps)));
-  return std::to_string(fps_num) + "/1";
-}
-
-std::string QuoteForGst(const std::string& value) {
-  std::string quoted = "\"";
-  quoted.reserve(value.size() + 2);
-  for (char c : value) {
-    if (c == '\\' || c == '\"') {
-      quoted.push_back('\\');
-    }
-    quoted.push_back(c);
-  }
-  quoted.push_back('\"');
-  return quoted;
-}
-
-std::string GstRawFormatForFourcc(const std::string& fourcc) {
-  const std::string upper = ToUpperCopy(fourcc);
-  if (upper == "YUYV" || upper == "YUY2") {
-    return "YUY2";
-  }
-  if (upper == "UYVY") {
-    return "UYVY";
-  }
-  if (upper == "YVYU") {
-    return "YVYU";
-  }
-  if (upper == "NV12") {
-    return "NV12";
-  }
-  return "";
+  return apollo::cyber::Time::Now().ToSecond();
 }
 
 }  // namespace
@@ -136,7 +68,8 @@ CameraGstStreamer::~CameraGstStreamer() { Stop(); }
 
 bool CameraGstStreamer::Start(const config::Config& config,
                               SourcePublishCallback source_publish_callback,
-                              PublishCallback stitched_publish_callback) {
+                              PublishCallback stitched_publish_callback,
+                              GpuFrameCallback gpu_frame_callback) {
   GstInitOnce();
   std::lock_guard<std::mutex> lock(mutex_);
   if (running_) {
@@ -146,16 +79,23 @@ bool CameraGstStreamer::Start(const config::Config& config,
   config_ = config;
   source_publish_callback_ = std::move(source_publish_callback);
   stitched_publish_callback_ = std::move(stitched_publish_callback);
+  gpu_frame_callback_ = std::move(gpu_frame_callback);
   stream_enabled_ = config_.stream().enable();
   stop_requested_ = false;
   stream_attached_ = false;
   output_width_ = 0;
   output_height_ = 0;
+  pipeline_warning_count_ = 0;
+  pipeline_error_count_ = 0;
+  pipeline_restart_count_ = 0;
+  state_ = RunState::kStarting;
 
   if (!ValidateConfigLocked()) {
+    state_ = RunState::kFailed;
     return false;
   }
   if (!BuildPipelineLocked()) {
+    state_ = RunState::kFailed;
     return false;
   }
 
@@ -163,10 +103,12 @@ bool CameraGstStreamer::Start(const config::Config& config,
       !StartStreamBranchLocked()) {
     AERROR << "camera_gst failed to auto-start stream branch.";
     ReleasePipelineLocked();
+    state_ = RunState::kFailed;
     return false;
   }
 
   running_ = true;
+  state_ = RunState::kRunning;
   bus_thread_ = std::thread(&CameraGstStreamer::BusLoop, this);
   return true;
 }
@@ -185,6 +127,7 @@ void CameraGstStreamer::Stop() {
   std::lock_guard<std::mutex> lock(mutex_);
   ReleasePipelineLocked();
   running_ = false;
+  state_ = RunState::kStopped;
 }
 
 bool CameraGstStreamer::StartStreaming() {
@@ -209,6 +152,28 @@ bool CameraGstStreamer::streaming_active() const {
   return stream_attached_;
 }
 
+StreamStats CameraGstStreamer::stats() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  StreamStats snapshot;
+  snapshot.pipeline_warning_count = pipeline_warning_count_;
+  snapshot.pipeline_error_count = pipeline_error_count_;
+  snapshot.pipeline_restart_count = pipeline_restart_count_;
+  snapshot.stream_attached = stream_attached_;
+  snapshot.source_stats.reserve(source_states_.size());
+  for (const auto& source_state : source_states_) {
+    SourceStats source;
+    source.source_name = source_state->source_name;
+    source.cpu_frames = source_state->cpu_frames.load();
+    source.gpu_frames = source_state->gpu_frames.load();
+    source.cpu_rate_limited_frames =
+        source_state->cpu_rate_limited_frames.load();
+    source.cpu_drop_frames = source_state->cpu_drop_frames.load();
+    source.gpu_drop_frames = source_state->gpu_drop_frames.load();
+    snapshot.source_stats.push_back(std::move(source));
+  }
+  return snapshot;
+}
+
 bool CameraGstStreamer::ValidateConfigLocked() {
   if (config_.sources_size() == 0) {
     AERROR << "camera_gst requires at least one source.";
@@ -216,6 +181,8 @@ bool CameraGstStreamer::ValidateConfigLocked() {
   }
 
   layout_slots_.clear();
+  source_states_.clear();
+  source_states_.reserve(static_cast<size_t>(config_.sources_size()));
   output_width_ = static_cast<int>(config_.cols() * config_.tile_width());
   output_height_ = static_cast<int>(config_.rows() * config_.tile_height());
 
@@ -229,6 +196,29 @@ bool CameraGstStreamer::ValidateConfigLocked() {
       AERROR << "Duplicate camera_gst source name: " << source_config.name();
       return false;
     }
+    if (source_config.uri().empty() &&
+        source_config.capture_pipeline().empty()) {
+      AERROR << "camera_gst source " << source_config.name()
+             << " requires a uri or capture_pipeline.";
+      return false;
+    }
+    if (source_config.has_publish()) {
+      const bool has_output_width = source_config.publish().output_width() > 0;
+      const bool has_output_height =
+          source_config.publish().output_height() > 0;
+      if (has_output_width != has_output_height) {
+        AERROR << "camera_gst source " << source_config.name()
+               << " publish output_width/output_height must be set together.";
+        return false;
+      }
+      if (source_config.publish().output_fps() < 0.0) {
+        AERROR << "camera_gst source " << source_config.name()
+               << " publish output_fps must be non-negative.";
+        return false;
+      }
+    }
+    source_states_.emplace_back(
+        std::make_unique<SourceRuntimeState>(source_config.name()));
   }
 
   const bool stitched_consumer_enabled =
@@ -274,26 +264,60 @@ bool CameraGstStreamer::ValidateConfigLocked() {
              << ")";
       return false;
     }
-    layout_slots_.push_back(LayoutSlot{slot.source_name(),
-                                       static_cast<size_t>(index), row, col});
+    layout_slots_.push_back(PipelineLayoutSlot{
+        slot.source_name(), static_cast<size_t>(index), row, col});
   }
 
   for (const auto& source_config : config_.sources()) {
-    const bool publish_enabled = source_config.has_publish() &&
-                                 !source_config.publish().channel_name().empty();
-    const bool stitch_selected = FindLayoutSlotLocked(source_config.name()) != nullptr;
-    if (!publish_enabled && !stitch_selected) {
+    const bool publish_enabled =
+        source_config.has_publish() &&
+        !source_config.publish().channel_name().empty();
+    const bool stitch_selected =
+        FindLayoutSlotLocked(source_config.name()) != nullptr;
+    const bool gpu_publish_enabled =
+        config_.publish_gpu_channel() && static_cast<bool>(gpu_frame_callback_);
+    if (!publish_enabled && !stitch_selected && !gpu_publish_enabled) {
       AERROR << "camera_gst source " << source_config.name()
              << " is not connected to publish or stitch output.";
       return false;
     }
   }
 
+  if (config_.has_platform()) {
+    if (!config_.platform().target().empty() &&
+        config_.platform().target() != "jetson-orin") {
+      AWARN << "camera_gst platform target is " << config_.platform().target()
+            << "; the GPU zero-copy reference path is tuned for jetson-orin.";
+    }
+    if (config_.platform().require_nvmm() && !config_.zero_copy_required()) {
+      AWARN << "camera_gst platform.require_nvmm is set while "
+            << "zero_copy_required is false; non-NVMM GPU samples will be "
+            << "skipped instead of failing the graph.";
+    }
+  }
+
+  if (stream_enabled_ && config_.stream().branch_pipeline().empty() &&
+      config_.stream().pipeline_suffix().empty() &&
+      config_.stream().host().empty()) {
+    AERROR << "camera_gst stream.host must not be empty when using default "
+           << "NVENC/RTP stream branch.";
+    return false;
+  }
+
   return true;
 }
 
 bool CameraGstStreamer::BuildPipelineLocked() {
-  const std::string description = BuildPipelineDescriptionLocked();
+  const auto builder = MakePipelineBuilderLocked();
+  const bool validate_factories =
+      config_.validate_nvidia_plugins() || config_.zero_copy_required() ||
+      (config_.has_platform() && config_.platform().require_nvidia_plugins());
+  if (validate_factories && !builder.ValidateRequiredFactories()) {
+    AERROR << "camera_gst required NVIDIA/GStreamer plugins are unavailable.";
+    return false;
+  }
+
+  const std::string description = builder.BuildPipelineDescription();
   if (description.empty()) {
     AERROR << "camera_gst built an empty pipeline description.";
     return false;
@@ -324,14 +348,16 @@ bool CameraGstStreamer::BuildPipelineLocked() {
   source_sink_contexts_.reserve(static_cast<size_t>(config_.sources_size()));
   for (int index = 0; index < config_.sources_size(); ++index) {
     const auto& source_config = config_.sources(index);
-    const bool publish_enabled = source_config.has_publish() &&
-                                 !source_config.publish().channel_name().empty();
+    const bool publish_enabled =
+        source_config.has_publish() &&
+        !source_config.publish().channel_name().empty();
     if (!publish_enabled) {
       continue;
     }
 
     GstElement* appsink = gst_bin_get_by_name(
-        GST_BIN(pipeline_), SourcePublishSinkName(static_cast<size_t>(index)).c_str());
+        GST_BIN(pipeline_),
+        builder.SourcePublishSinkName(static_cast<size_t>(index)).c_str());
     if (appsink == nullptr) {
       AERROR << "camera_gst failed to locate appsink for source "
              << source_config.name();
@@ -342,14 +368,49 @@ bool CameraGstStreamer::BuildPipelineLocked() {
     auto context = std::make_unique<SinkContext>();
     context->owner = this;
     context->source_name = source_config.name();
+    context->source_state = source_states_[static_cast<size_t>(index)].get();
+    if (source_config.publish().output_fps() > 0.0) {
+      context->min_publish_interval_sec =
+          1.0 / source_config.publish().output_fps();
+    }
     GstAppSinkCallbacks callbacks = {};
     callbacks.new_sample = &CameraGstStreamer::OnSourceSample;
     g_object_set(appsink, "sync", FALSE, "max-buffers", 1u, "drop", TRUE,
                  nullptr);
-    gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks,
-                               context.get(), nullptr);
+    gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks, context.get(),
+                               nullptr);
     gst_object_unref(appsink);
     source_sink_contexts_.push_back(std::move(context));
+  }
+
+  gpu_sink_contexts_.clear();
+  if (gpu_frame_callback_ && config_.publish_gpu_channel()) {
+    gpu_sink_contexts_.reserve(static_cast<size_t>(config_.sources_size()));
+    for (int index = 0; index < config_.sources_size(); ++index) {
+      const auto& source_config = config_.sources(index);
+      GstElement* appsink = gst_bin_get_by_name(
+          GST_BIN(pipeline_),
+          builder.SourceGpuSinkName(static_cast<size_t>(index)).c_str());
+      if (appsink == nullptr) {
+        AERROR << "camera_gst failed to locate GPU appsink for source "
+               << source_config.name();
+        ReleasePipelineLocked();
+        return false;
+      }
+
+      auto context = std::make_unique<SinkContext>();
+      context->owner = this;
+      context->source_name = source_config.name();
+      context->source_state = source_states_[static_cast<size_t>(index)].get();
+      GstAppSinkCallbacks callbacks = {};
+      callbacks.new_sample = &CameraGstStreamer::OnGpuSample;
+      g_object_set(appsink, "sync", FALSE, "max-buffers", 1u, "drop", TRUE,
+                   nullptr);
+      gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks,
+                                 context.get(), nullptr);
+      gst_object_unref(appsink);
+      gpu_sink_contexts_.push_back(std::move(context));
+    }
   }
 
   stitched_publish_sink_ = nullptr;
@@ -381,6 +442,30 @@ bool CameraGstStreamer::BuildPipelineLocked() {
   }
 
   gst_element_get_state(pipeline_, nullptr, nullptr, GST_SECOND);
+  return true;
+}
+
+bool CameraGstStreamer::RebuildPipelineLocked(const std::string& reason) {
+  const bool restore_stream =
+      stream_enabled_ && (stream_attached_ || config_.stream().auto_start());
+  ++pipeline_restart_count_;
+  AWARN << "camera_gst rebuilding capture graph after " << reason;
+
+  ReleasePipelineLocked();
+  if (!BuildPipelineLocked()) {
+    state_ = RunState::kFailed;
+    stop_requested_ = true;
+    AERROR << "camera_gst failed to rebuild capture graph.";
+    return false;
+  }
+  if (restore_stream && !StartStreamBranchLocked()) {
+    ReleasePipelineLocked();
+    state_ = RunState::kFailed;
+    stop_requested_ = true;
+    AERROR << "camera_gst failed to restore stream branch.";
+    return false;
+  }
+  state_ = RunState::kRunning;
   return true;
 }
 
@@ -497,6 +582,7 @@ void CameraGstStreamer::ReleasePipelineLocked() {
     stitched_publish_sink_ = nullptr;
   }
   source_sink_contexts_.clear();
+  gpu_sink_contexts_.clear();
   stitched_sink_context_.reset();
   if (stitched_tee_ != nullptr) {
     gst_object_unref(stitched_tee_);
@@ -531,9 +617,8 @@ bool CameraGstStreamer::ForceKeyFrameLocked() {
     }
   }
 
-  GstStructure* structure =
-      gst_structure_new("GstForceKeyUnit", "all-headers", G_TYPE_BOOLEAN, TRUE,
-                        nullptr);
+  GstStructure* structure = gst_structure_new("GstForceKeyUnit", "all-headers",
+                                              G_TYPE_BOOLEAN, TRUE, nullptr);
   const bool sent = gst_element_send_event(
       target, gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, structure));
   if (target != stream_branch_bin_) {
@@ -565,254 +650,111 @@ void CameraGstStreamer::BusLoop() {
       continue;
     }
 
-    switch (GST_MESSAGE_TYPE(message)) {
-      case GST_MESSAGE_ERROR: {
-        GError* error = nullptr;
-        gchar* debug = nullptr;
-        gst_message_parse_error(message, &error, &debug);
-        AERROR << "camera_gst GStreamer error: "
-               << (error == nullptr ? "unknown" : error->message)
-               << (debug == nullptr ? "" : std::string(" debug: ") + debug);
-        if (error != nullptr) {
-          g_error_free(error);
-        }
-        if (debug != nullptr) {
-          g_free(debug);
-        }
-        break;
-      }
-      case GST_MESSAGE_WARNING: {
-        GError* error = nullptr;
-        gchar* debug = nullptr;
-        gst_message_parse_warning(message, &error, &debug);
-        AWARN << "camera_gst GStreamer warning: "
-              << (error == nullptr ? "unknown" : error->message)
-              << (debug == nullptr ? "" : std::string(" debug: ") + debug);
-        if (error != nullptr) {
-          g_error_free(error);
-        }
-        if (debug != nullptr) {
-          g_free(debug);
-        }
-        break;
-      }
-      case GST_MESSAGE_EOS:
-        AWARN << "camera_gst capture graph reached EOS.";
-        break;
-      default:
-        break;
-    }
-    gst_message_unref(message);
+    HandleBusMessage(message);
   }
 }
 
-CameraGstStreamer::PublishedFrame CameraGstStreamer::ExtractFrame(
-    GstSample* sample) const {
-  PublishedFrame frame;
-  if (sample == nullptr) {
-    return frame;
+void CameraGstStreamer::HandleBusMessage(GstMessage* message) {
+  bool recover = false;
+  std::string recovery_reason;
+
+  switch (GST_MESSAGE_TYPE(message)) {
+    case GST_MESSAGE_ERROR: {
+      GError* error = nullptr;
+      gchar* debug = nullptr;
+      gst_message_parse_error(message, &error, &debug);
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        ++pipeline_error_count_;
+      }
+      recovery_reason =
+          error == nullptr ? "unknown GStreamer error" : error->message;
+      AERROR << "camera_gst GStreamer error: " << recovery_reason
+             << (debug == nullptr ? "" : std::string(" debug: ") + debug);
+      recover = true;
+      if (error != nullptr) {
+        g_error_free(error);
+      }
+      if (debug != nullptr) {
+        g_free(debug);
+      }
+      break;
+    }
+    case GST_MESSAGE_WARNING: {
+      GError* error = nullptr;
+      gchar* debug = nullptr;
+      gst_message_parse_warning(message, &error, &debug);
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        ++pipeline_warning_count_;
+      }
+      AWARN << "camera_gst GStreamer warning: "
+            << (error == nullptr ? "unknown" : error->message)
+            << (debug == nullptr ? "" : std::string(" debug: ") + debug);
+      if (error != nullptr) {
+        g_error_free(error);
+      }
+      if (debug != nullptr) {
+        g_free(debug);
+      }
+      break;
+    }
+    case GST_MESSAGE_EOS:
+      AWARN << "camera_gst capture graph reached EOS.";
+      recovery_reason = "EOS";
+      recover = true;
+      break;
+    default:
+      break;
+  }
+  gst_message_unref(message);
+
+  if (!recover) {
+    return;
   }
 
-  GstBuffer* buffer = gst_sample_get_buffer(sample);
-  GstCaps* caps = gst_sample_get_caps(sample);
-  if (buffer == nullptr || caps == nullptr) {
-    return frame;
+  std::this_thread::sleep_for(kRecoveryDelay);
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (stop_requested_ || !running_) {
+    return;
   }
-
-  GstStructure* structure = gst_caps_get_structure(caps, 0);
-  int width = 0;
-  int height = 0;
-  if (!gst_structure_get_int(structure, "width", &width) ||
-      !gst_structure_get_int(structure, "height", &height) || width <= 0 ||
-      height <= 0) {
-    return frame;
-  }
-
-  GstMapInfo map_info;
-  if (!gst_buffer_map(buffer, &map_info, GST_MAP_READ)) {
-    return frame;
-  }
-
-  if (map_info.size == 0 || map_info.size % static_cast<size_t>(height) != 0) {
-    gst_buffer_unmap(buffer, &map_info);
-    return frame;
-  }
-
-  frame.width = static_cast<uint32_t>(width);
-  frame.height = static_cast<uint32_t>(height);
-  frame.step = static_cast<uint32_t>(map_info.size / static_cast<size_t>(height));
-  frame.measurement_time =
-      GST_BUFFER_PTS_IS_VALID(buffer)
-          ? static_cast<double>(GST_BUFFER_PTS(buffer)) / GST_SECOND
-          : apollo::cyber::Time::Now().ToSecond();
-  frame.data.assign(reinterpret_cast<const char*>(map_info.data), map_info.size);
-
-  gst_buffer_unmap(buffer, &map_info);
-  return frame;
+  state_ = RunState::kRecovering;
+  RebuildPipelineLocked(recovery_reason);
 }
 
 std::string CameraGstStreamer::StreamBranchDescriptionLocked() const {
   if (!config_.stream().branch_pipeline().empty()) {
     return config_.stream().branch_pipeline();
   }
-  return config_.stream().pipeline_suffix();
+  if (!config_.stream().pipeline_suffix().empty()) {
+    return config_.stream().pipeline_suffix();
+  }
+  return MakePipelineBuilderLocked().BuildDefaultStreamBranch();
 }
 
-std::string CameraGstStreamer::BuildPipelineDescriptionLocked() const {
-  std::ostringstream pipeline;
-  const bool stitched_consumer_enabled =
-      static_cast<bool>(stitched_publish_callback_) || stream_enabled_;
-  if (stitched_consumer_enabled) {
-    pipeline << BuildCompositorDescriptionLocked();
-  }
-
-  for (int index = 0; index < config_.sources_size(); ++index) {
-    const auto& source_config = config_.sources(index);
-    const std::string source_description =
-        BuildSourceDescriptionLocked(static_cast<size_t>(index), source_config,
-                                     FindLayoutSlotLocked(source_config.name()));
-    if (source_description.empty()) {
-      AERROR << "camera_gst could not build a GPU source branch for "
-             << source_config.name() << " uri: " << source_config.uri();
-      return "";
-    }
-    pipeline << source_description << ' ';
-  }
-
-  return pipeline.str();
-}
-
-std::string CameraGstStreamer::BuildCompositorDescriptionLocked() const {
-  std::ostringstream compositor;
-  compositor << "nvcompositor name=comp ";
-  for (const auto& slot : layout_slots_) {
-    compositor << "sink_" << slot.pad_index << "::xpos="
-               << slot.col * static_cast<int>(config_.tile_width()) << ' '
-               << "sink_" << slot.pad_index << "::ypos="
-               << slot.row * static_cast<int>(config_.tile_height()) << ' '
-               << "sink_" << slot.pad_index << "::width="
-               << config_.tile_width() << ' '
-               << "sink_" << slot.pad_index << "::height="
-               << config_.tile_height() << ' ';
-  }
-
-  compositor << "! queue leaky=downstream max-size-buffers=2 ! nvvidconv ! "
-             << "video/x-raw(memory:NVMM),format=(string)" << kGpuPixelFormat
-             << ",width=(int)" << output_width_ << ",height=(int)"
-             << output_height_ << ",framerate=(fraction)"
-             << BuildFramerate(config_.fps()) << " ! tee name="
-             << kStitchedTeeName << ' ';
-
-  if (stitched_publish_callback_) {
-    compositor << kStitchedTeeName
-               << ". ! queue leaky=downstream max-size-buffers=1 ! nvvidconv ! "
-               << "video/x-raw,format=(string)" << kPublishPixelFormat
-               << " ! appsink name=" << kStitchedPublishSinkName
-               << " sync=false max-buffers=1 drop=true ";
-  }
-
-  return compositor.str();
-}
-
-std::string CameraGstStreamer::BuildSourceDescriptionLocked(
-    size_t source_index, const config::CameraSourceConfig& source_config,
-    const LayoutSlot* layout_slot) const {
-  const bool publish_enabled = source_config.has_publish() &&
-                               !source_config.publish().channel_name().empty();
-  std::ostringstream source;
-  source << [&]() {
-    if (!source_config.capture_pipeline().empty()) {
-      return source_config.capture_pipeline();
-    }
-
-    const std::string framerate = BuildFramerate(source_config.fps());
-    if (IsArgusUri(source_config.uri())) {
-      int sensor_id = 0;
-      if (!ParseArgusSensorId(source_config.uri(), &sensor_id)) {
-        return std::string();
-      }
-      return "nvarguscamerasrc sensor-id=" + std::to_string(sensor_id) +
-             " do-timestamp=true ! video/x-raw(memory:NVMM),width=(int)" +
-             std::to_string(source_config.width()) + ",height=(int)" +
-             std::to_string(source_config.height()) +
-             ",format=(string)NV12,framerate=(fraction)" + framerate;
-    }
-
-    std::string device_path;
-    if (IsNumericIndex(source_config.uri())) {
-      device_path = "/dev/video" + source_config.uri();
-    } else if (IsDevicePath(source_config.uri())) {
-      device_path = source_config.uri();
-    }
-    if (device_path.empty()) {
-      return std::string();
-    }
-
-    const std::string caps_common =
-        "width=(int)" + std::to_string(source_config.width()) +
-        ",height=(int)" + std::to_string(source_config.height()) +
-        ",framerate=(fraction)" + framerate;
-    const std::string upper_fourcc = ToUpperCopy(source_config.fourcc());
-    if (upper_fourcc == "MJPG" || upper_fourcc == "JPEG") {
-      return "v4l2src device=" + QuoteForGst(device_path) +
-             " io-mode=4 do-timestamp=true ! image/jpeg," + caps_common +
-             " ! jpegparse ! nvv4l2decoder mjpeg=1";
-    }
-
-    const std::string raw_format = GstRawFormatForFourcc(source_config.fourcc());
-    if (raw_format.empty()) {
-      return std::string();
-    }
-    return "v4l2src device=" + QuoteForGst(device_path) +
-           " io-mode=4 do-timestamp=true ! video/x-raw,format=(string)" +
-           raw_format + "," + caps_common;
-  }();
-
-  const std::string source_head = source.str();
-  if (source_head.empty()) {
-    return std::string();
-  }
-
-  const std::string tee_name = SourceTeeName(source_index);
-  std::ostringstream branch;
-  branch << source_head << " ! queue leaky=downstream max-size-buffers=2 ! "
-         << "nvvidconv ! video/x-raw(memory:NVMM),format=(string)"
-         << kGpuPixelFormat << ",width=(int)" << source_config.width()
-         << ",height=(int)" << source_config.height()
-         << ",framerate=(fraction)" << BuildFramerate(source_config.fps())
-         << " ! tee name=" << tee_name << ' ';
-
-  if (publish_enabled) {
-    branch << tee_name
-           << ". ! queue leaky=downstream max-size-buffers=1 ! nvvidconv ! "
-           << "video/x-raw,format=(string)" << kPublishPixelFormat
-           << " ! appsink name=" << SourcePublishSinkName(source_index)
-           << " sync=false max-buffers=1 drop=true ";
-  }
-  if (layout_slot != nullptr) {
-    branch << tee_name << ". ! queue leaky=downstream max-size-buffers=2 ! "
-           << "comp.sink_" << layout_slot->pad_index << ' ';
-  }
-
-  return branch.str();
-}
-
-const CameraGstStreamer::LayoutSlot* CameraGstStreamer::FindLayoutSlotLocked(
+const PipelineLayoutSlot* CameraGstStreamer::FindLayoutSlotLocked(
     const std::string& source_name) const {
   const auto iter =
       std::find_if(layout_slots_.begin(), layout_slots_.end(),
-                   [&source_name](const LayoutSlot& slot) {
+                   [&source_name](const PipelineLayoutSlot& slot) {
                      return slot.source_name == source_name;
                    });
   return iter == layout_slots_.end() ? nullptr : &(*iter);
 }
 
-std::string CameraGstStreamer::SourceTeeName(size_t source_index) const {
-  return std::string(kSourceTeePrefix) + std::to_string(source_index);
-}
-
-std::string CameraGstStreamer::SourcePublishSinkName(size_t source_index) const {
-  return std::string(kSourceSinkPrefix) + std::to_string(source_index);
+CameraGstPipelineBuilder CameraGstStreamer::MakePipelineBuilderLocked() const {
+  bool has_source_publish = false;
+  for (const auto& source_config : config_.sources()) {
+    if (source_config.has_publish() &&
+        !source_config.publish().channel_name().empty()) {
+      has_source_publish = true;
+      break;
+    }
+  }
+  return CameraGstPipelineBuilder(
+      config_, layout_slots_, has_source_publish,
+      static_cast<bool>(stitched_publish_callback_), stream_enabled_,
+      config_.publish_gpu_channel() && static_cast<bool>(gpu_frame_callback_));
 }
 
 GstFlowReturn CameraGstStreamer::OnSourceSample(GstAppSink* appsink,
@@ -827,11 +769,31 @@ GstFlowReturn CameraGstStreamer::OnSourceSample(GstAppSink* appsink,
     return GST_FLOW_EOS;
   }
 
-  PublishedFrame frame = context->owner->ExtractFrame(sample);
+  const double measurement_time = MeasurementTimeFromSample(sample);
+  if (context->min_publish_interval_sec > 0.0 &&
+      context->has_last_measurement_time &&
+      measurement_time - context->last_measurement_time <
+          context->min_publish_interval_sec) {
+    if (context->source_state != nullptr) {
+      ++context->source_state->cpu_rate_limited_frames;
+    }
+    gst_sample_unref(sample);
+    return GST_FLOW_OK;
+  }
+
+  PublishedFrame frame = ExtractCpuFrame(sample);
   gst_sample_unref(sample);
   if (frame.data.empty()) {
+    if (context->source_state != nullptr) {
+      ++context->source_state->cpu_drop_frames;
+    }
     return GST_FLOW_ERROR;
   }
+  if (context->source_state != nullptr) {
+    frame.sequence = ++context->source_state->cpu_frames;
+  }
+  context->last_measurement_time = measurement_time;
+  context->has_last_measurement_time = true;
   if (context->owner->source_publish_callback_) {
     context->owner->source_publish_callback_(context->source_name,
                                              std::move(frame));
@@ -851,13 +813,49 @@ GstFlowReturn CameraGstStreamer::OnStitchedSample(GstAppSink* appsink,
     return GST_FLOW_EOS;
   }
 
-  PublishedFrame frame = context->owner->ExtractFrame(sample);
+  PublishedFrame frame = ExtractCpuFrame(sample);
   gst_sample_unref(sample);
   if (frame.data.empty()) {
     return GST_FLOW_ERROR;
   }
   if (context->owner->stitched_publish_callback_) {
     context->owner->stitched_publish_callback_(std::move(frame));
+  }
+  return GST_FLOW_OK;
+}
+
+GstFlowReturn CameraGstStreamer::OnGpuSample(GstAppSink* appsink,
+                                             gpointer user_data) {
+  auto* context = static_cast<SinkContext*>(user_data);
+  if (context == nullptr || context->owner == nullptr) {
+    return GST_FLOW_ERROR;
+  }
+
+  GstSample* sample = gst_app_sink_pull_sample(appsink);
+  if (sample == nullptr) {
+    return GST_FLOW_EOS;
+  }
+
+  GpuFrame frame = ExtractNvmmFrame(sample, context->source_name);
+  gst_sample_unref(sample);
+  if (frame.empty()) {
+    if (context->owner->config_.zero_copy_required()) {
+      AERROR << "camera_gst zero-copy GPU frame extraction failed for source "
+             << context->source_name;
+      if (context->source_state != nullptr) {
+        ++context->source_state->gpu_drop_frames;
+      }
+      return GST_FLOW_ERROR;
+    }
+    AWARN_EVERY(100) << "camera_gst skipped non-NVMM GPU sample for source "
+                     << context->source_name;
+    return GST_FLOW_OK;
+  }
+  if (context->source_state != nullptr) {
+    ++context->source_state->gpu_frames;
+  }
+  if (context->owner->gpu_frame_callback_) {
+    context->owner->gpu_frame_callback_(std::move(frame));
   }
   return GST_FLOW_OK;
 }

@@ -31,10 +31,15 @@ cc_library(
     name = "camera_gst_core",
     srcs = [
         "camera_gst_driver.cc",
+        "frame_extractor.cc",
+        "pipeline_builder.cc",
         "streamer.cc",
     ],
     hdrs = [
         "camera_gst_driver.h",
+        "frame_extractor.h",
+        "frame_types.h",
+        "pipeline_builder.h",
         "streamer.h",
     ],
     copts = CAMERA_GST_COPTS,
@@ -64,6 +69,17 @@ cc_binary(
     linkshared = True,
     linkstatic = True,
     deps = [":camera_gst_component_lib"],
+)
+
+cc_test(
+    name = "streamer_test",
+    size = "small",
+    srcs = ["streamer_test.cc"],
+    copts = CAMERA_GST_COPTS,
+    deps = [
+        ":camera_gst_core",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cpplint()

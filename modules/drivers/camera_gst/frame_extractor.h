@@ -17,40 +17,17 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
-#include "opencv2/core/mat.hpp"
+#include "gst/gst.h"
 
-#include "modules/drivers/camera_gst/frame_source.h"
-#include "modules/drivers/camera_gst/proto/config.pb.h"
+#include "modules/drivers/camera_gst/frame_types.h"
 
 namespace apollo {
 namespace drivers {
 namespace camera_gst {
 
-class GridFrameStitcher {
- public:
-  explicit GridFrameStitcher(const config::Config& config);
-
-  bool valid() const { return valid_; }
-  int output_width() const;
-  int output_height() const;
-  bool Stitch(const std::vector<CapturedFrame>& frames,
-              cv::Mat* stitched_rgb) const;
-
- private:
-  struct LayoutSlot {
-    std::string source_name;
-    int row = 0;
-    int col = 0;
-  };
-
-  bool ValidateConfig() const;
-
-  bool valid_ = false;
-  config::Config config_;
-  std::vector<LayoutSlot> slots_;
-};
+PublishedFrame ExtractCpuFrame(GstSample* sample);
+GpuFrame ExtractNvmmFrame(GstSample* sample, const std::string& source_name);
 
 }  // namespace camera_gst
 }  // namespace drivers

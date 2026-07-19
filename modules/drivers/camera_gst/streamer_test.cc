@@ -14,16 +14,12 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/drivers/camera_gst/streamer.h"
-
-#include <chrono>
-#include <condition_variable>
-#include <mutex>
-#include <thread>
-#include <utility>
+#include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
+
+#include "modules/drivers/camera_gst/pipeline_builder.h"
 
 namespace apollo {
 namespace drivers {
@@ -31,122 +27,92 @@ namespace camera_gst {
 
 namespace {
 
-class PublishedFrameCollector {
- public:
-  void OnFrame(CameraGstStreamer::PublishedFrame&& frame) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    frames_.push_back(std::move(frame));
-    condition_.notify_all();
-  }
-
-  bool WaitForFrames(size_t expected) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    return condition_.wait_for(lock, std::chrono::seconds(2), [this, expected]() {
-      return frames_.size() >= expected;
-    });
-  }
-
-  CameraGstStreamer::PublishedFrame LatestFrame() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return frames_.back();
-  }
-
-  size_t size() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return frames_.size();
-  }
-
- private:
-  mutable std::mutex mutex_;
-  std::condition_variable condition_;
-  std::vector<CameraGstStreamer::PublishedFrame> frames_;
-};
-
-cv::Mat MakeRgbFrame(uint8_t r, uint8_t g, uint8_t b) {
-  return cv::Mat(1, 1, CV_8UC3, cv::Scalar(r, g, b)).clone();
+config::CameraSourceConfig* AddSource(config::Config* config,
+                                      const std::string& name,
+                                      const std::string& uri) {
+  auto* source = config->add_sources();
+  source->set_name(name);
+  source->set_uri(uri);
+  source->set_width(1920);
+  source->set_height(1080);
+  source->set_fps(30.0);
+  return source;
 }
 
-config::StreamConfig BuildConfig(bool enable, bool auto_start,
-                                 const std::string& branch_pipeline) {
-  config::StreamConfig config;
-  config.set_enable(enable);
-  config.set_auto_start(auto_start);
-  config.set_queue_size(3);
-  config.set_publish_queue_size(1);
-  config.set_ingest_queue_size(2);
-  config.set_emit_eos_on_detach(true);
-  config.set_force_keyframe_on_attach(true);
-  config.set_keyframe_element_name("stream_identity");
-  config.set_branch_pipeline(branch_pipeline);
-  return config;
+PipelineLayoutSlot MakeSlot(const std::string& source_name, size_t pad_index,
+                            int row, int col) {
+  PipelineLayoutSlot slot;
+  slot.source_name = source_name;
+  slot.pad_index = pad_index;
+  slot.row = row;
+  slot.col = col;
+  return slot;
 }
 
 }  // namespace
 
-TEST(CameraGstStreamerTest, PublishesSubmittedFramesThroughAppsinkBranch) {
-  PublishedFrameCollector collector;
-  CameraGstStreamer streamer;
+TEST(CameraGstPipelineBuilderTest, BuildsGpuHandleAndCpuPublishBranches) {
+  config::Config config;
+  auto* source = AddSource(&config, "front", "csi://0");
+  source->mutable_publish()->set_channel_name("/apollo/sensor/camera/front");
+  source->mutable_publish()->set_output_width(1280);
+  source->mutable_publish()->set_output_height(720);
+  source->mutable_publish()->set_output_fps(15.0);
+  config.set_rows(1);
+  config.set_cols(1);
+  config.set_tile_width(1920);
+  config.set_tile_height(1080);
 
-  ASSERT_TRUE(streamer.Start(
-      1, 1, 30.0, BuildConfig(false, false, ""),
-      [&collector](CameraGstStreamer::PublishedFrame&& frame) {
-        collector.OnFrame(std::move(frame));
-      }));
-  ASSERT_TRUE(streamer.Submit(MakeRgbFrame(150, 100, 50), 12.25));
-  ASSERT_TRUE(collector.WaitForFrames(1));
+  const std::vector<PipelineLayoutSlot> layout_slots = {
+      MakeSlot("front", 0, 0, 0)};
+  CameraGstPipelineBuilder builder(config, layout_slots, true, false, true,
+                                   true);
 
-  const auto frame = collector.LatestFrame();
-  ASSERT_EQ(frame.image_rgb.rows, 1);
-  ASSERT_EQ(frame.image_rgb.cols, 1);
-  EXPECT_NEAR(frame.measurement_time, 12.25, 1e-3);
-
-  streamer.Stop();
+  const std::string pipeline = builder.BuildPipelineDescription();
+  EXPECT_NE(pipeline.find("nvarguscamerasrc sensor-id=0"), std::string::npos);
+  EXPECT_NE(pipeline.find("video/x-raw(memory:NVMM)"), std::string::npos);
+  EXPECT_NE(pipeline.find("appsink name=source_publish_sink_0"),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("appsink name=source_gpu_sink_0"), std::string::npos);
+  EXPECT_NE(pipeline.find("nvcompositor name=comp"), std::string::npos);
+  EXPECT_NE(pipeline.find("video/x-raw,width=(int)1280,height=(int)720"),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("videorate ! video/x-raw,format=(string)RGB,"
+                          "framerate=(fraction)15/1"),
+            std::string::npos);
 }
 
-TEST(CameraGstStreamerTest, AttachesAndDetachesDynamicStreamBranchSafely) {
-  PublishedFrameCollector collector;
-  CameraGstStreamer streamer;
+TEST(CameraGstPipelineBuilderTest, BuildsMjpegHardwareDecodeSource) {
+  config::Config config;
+  auto* source = AddSource(&config, "usb", "/dev/video0");
+  source->set_fourcc("MJPG");
 
-  ASSERT_TRUE(streamer.Start(
-      1, 1, 30.0,
-      BuildConfig(true, false,
-                  "queue name=stream_queue leaky=downstream "
-                  "max-size-buffers=1 ! identity name=stream_identity silent=true "
-                  "! fakesink name=stream_sink sync=false async=false"),
-      [&collector](CameraGstStreamer::PublishedFrame&& frame) {
-        collector.OnFrame(std::move(frame));
-      }));
-  EXPECT_FALSE(streamer.streaming_active());
+  CameraGstPipelineBuilder builder(config, {}, false, false, false, true);
 
-  ASSERT_TRUE(streamer.StartStreaming());
-  EXPECT_TRUE(streamer.streaming_active());
-  ASSERT_TRUE(streamer.Submit(MakeRgbFrame(30, 20, 10), 1.0));
-  ASSERT_TRUE(collector.WaitForFrames(1));
-
-  ASSERT_TRUE(streamer.StopStreaming());
-  EXPECT_FALSE(streamer.streaming_active());
-  ASSERT_TRUE(streamer.StartStreaming());
-  EXPECT_TRUE(streamer.streaming_active());
-
-  streamer.Stop();
+  const std::string pipeline = builder.BuildPipelineDescription();
+  EXPECT_NE(pipeline.find("v4l2src device=\"/dev/video0\""), std::string::npos);
+  EXPECT_NE(pipeline.find("jpegparse ! nvv4l2decoder mjpeg=1"),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("appsink name=source_gpu_sink_0"), std::string::npos);
 }
 
-TEST(CameraGstStreamerTest, RunsStreamOnlyPipelineWithoutPublishCallback) {
-  CameraGstStreamer streamer;
+TEST(CameraGstPipelineBuilderTest, BuildsDefaultNvencRtpStreamBranch) {
+  config::Config config;
+  config.mutable_stream()->set_host("192.0.2.10");
+  config.mutable_stream()->set_port(5600);
+  config.mutable_stream()->set_bitrate(8000000);
+  config.mutable_stream()->set_rtp_payload_type(98);
 
-  ASSERT_TRUE(streamer.Start(
-      1, 1, 30.0,
-      BuildConfig(true, false,
-                  "queue name=stream_queue leaky=downstream "
-                  "max-size-buffers=1 ! identity name=stream_identity silent=true "
-                  "! fakesink name=stream_sink sync=false async=false"),
-      CameraGstStreamer::PublishCallback()));
-  EXPECT_FALSE(streamer.streaming_active());
-  ASSERT_TRUE(streamer.StartStreaming());
-  EXPECT_TRUE(streamer.streaming_active());
-  ASSERT_TRUE(streamer.Submit(MakeRgbFrame(1, 2, 3), 2.0));
+  CameraGstPipelineBuilder builder(config, {}, false, false, true, false);
 
-  streamer.Stop();
+  const std::string branch = builder.BuildDefaultStreamBranch();
+  EXPECT_NE(branch.find("nvv4l2h264enc name=stream_encoder"),
+            std::string::npos);
+  EXPECT_NE(branch.find("bitrate=8000000"), std::string::npos);
+  EXPECT_NE(branch.find("rtph264pay config-interval=1 pt=98"),
+            std::string::npos);
+  EXPECT_NE(branch.find("udpsink host=\"192.0.2.10\" port=5600"),
+            std::string::npos);
 }
 
 }  // namespace camera_gst
