@@ -60,11 +60,9 @@ bool DenselineLanePostprocessor::Init(
     AERROR << "Read config detect_param failed: " << postprocessor_config;
     return false;
   }
-  std::string param_str;
-  google::protobuf::TextFormat::PrintToString(lane_postprocessor_param_,
-                                              &param_str);
-  AINFO << "lane_postprocessor param: " << param_str;
-  //
+
+  AINFO << "lane_postprocessor param: " << lane_postprocessor_param_.DebugString();
+
   omit_bottom_line_num_ = lane_postprocessor_param_.omit_bottom_line_num();
   laneline_map_score_thresh_ =
       lane_postprocessor_param_.laneline_map_score_thresh();

@@ -41,7 +41,7 @@ cc_library(
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:config_gflags",
-        "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "@civetweb//:civetserver",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",

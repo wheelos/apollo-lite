@@ -7,7 +7,7 @@ import signal
 import time
 
 from cyber.python.cyber_py3 import cyber
-from modules.common_msgs.chassis_msgs.chassis_detail_pb2 import ChassisDetail
+from wheelos_msgs.chassis_msgs.chassis_detail_pb2 import ChassisDetail
 
 # Override module path for specific message classes if needed.
 MODULE_OVERRIDES = {

@@ -2,8 +2,8 @@ syntax = "proto2";
 
 package apollo.common;
 
-import "modules/common_msgs/chassis_msgs/chassis.proto";
-import "modules/common_msgs/localization_msgs/pose.proto";
+import "wheelos_msgs/chassis_msgs/chassis.proto";
+import "wheelos_msgs/localization_msgs/pose.proto";
 
 message VehicleState {
   optional double x = 1 [default = 0.0];

@@ -23,7 +23,7 @@
 #include <memory>
 #include <vector>
 
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 #include "modules/planning/proto/reference_line_smoother_config.pb.h"
 
 #include "modules/planning/math/smoothing_spline/spline_2d_solver.h"

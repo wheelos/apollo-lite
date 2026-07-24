@@ -101,10 +101,7 @@ bool DarkSCNNLanePostprocessor::Init(
     AERROR << "Failed to read config detect_param: " << postprocessor_config;
     return false;
   }
-  std::string param_str;
-  google::protobuf::TextFormat::PrintToString(lane_postprocessor_param_,
-                                              &param_str);
-  AINFO << "lane_postprocessor param: " << param_str;
+  AINFO << "lane_postprocessor param: " << lane_postprocessor_param_.DebugString();
 
   roi_height_ = lane_postprocessor_param_.roi_height();
   roi_start_ = lane_postprocessor_param_.roi_start();

@@ -10,7 +10,7 @@ import aiohttp
 import aiohttp.web
 import click
 from cyber.python.cyber_py3 import cyber
-from modules.common_msgs.sensor_msgs import nano_radar_pb2
+from wheelos_msgs.sensor_msgs import nano_radar_pb2
 
 
 class NanoRadarDataReceiver:

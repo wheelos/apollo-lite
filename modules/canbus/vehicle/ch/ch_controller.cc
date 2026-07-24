@@ -18,7 +18,7 @@
 
 #include <string>
 
-#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
+#include "wheelos_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"

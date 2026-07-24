@@ -58,7 +58,7 @@ proto_library(
     name = "velodyne_proto",
     srcs = ["velodyne.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

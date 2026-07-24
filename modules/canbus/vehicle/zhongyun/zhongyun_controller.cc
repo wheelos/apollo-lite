@@ -16,7 +16,7 @@ limitations under the License.
 #include "modules/canbus/vehicle/zhongyun/zhongyun_controller.h"
 
 #include "modules/canbus/vehicle/zhongyun/proto/zhongyun.pb.h"
-#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
+#include "wheelos_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"

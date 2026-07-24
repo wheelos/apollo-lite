@@ -7,7 +7,7 @@ cc_library(
     name = "base_teller",
     hdrs = ["base_teller.h"],
     deps = [
-        "//modules/common_msgs/storytelling_msgs:story_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/storytelling_msgs:story_cc_proto",
     ],
 )
 
@@ -19,7 +19,7 @@ cc_library(
         ":base_teller",
         "//modules/common/adapters:adapter_gflags",
         "//modules/map/hdmap:hdmap_util",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/storytelling:frame_manager",
         "//modules/storytelling/common:storytelling_gflags",
         "//modules/storytelling/proto:storytelling_config_cc_proto",

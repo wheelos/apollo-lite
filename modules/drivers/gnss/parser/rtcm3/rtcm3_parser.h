@@ -23,7 +23,7 @@
 #include <memory>
 #include <vector>
 
-#include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_raw_observation.pb.h"
 
 #include "modules/drivers/gnss/parser/parser.h"
 #include "modules/drivers/gnss/parser/rtcm_decode.h"

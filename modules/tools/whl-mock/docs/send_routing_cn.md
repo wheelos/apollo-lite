@@ -298,7 +298,7 @@ A:
 ### 消息格式
 
 工具发送的是 Apollo `RoutingRequest` 消息，定义位于：
-`modules/common_msgs/routing_msgs/routing.proto`
+`routing_msgs/routing.proto`
 
 ### 通道信息
 

@@ -18,8 +18,8 @@
 
 #include "gtest/gtest.h"
 
-#include "modules/common_msgs/basic_msgs/error_code.pb.h"
-#include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+#include "wheelos_msgs/basic_msgs/error_code.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis_detail.pb.h"
 
 #include "modules/drivers/canbus/can_client/fake/fake_can_client.h"
 #include "modules/drivers/canbus/can_comm/protocol_data.h"

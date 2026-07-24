@@ -25,7 +25,7 @@
 #include <string>
 #include <vector>
 
-#include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 
 #include "modules/control/common/leadlag_controller.h"
 #include "modules/control/common/pid_controller.h"

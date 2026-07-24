@@ -2,16 +2,16 @@ syntax = "proto2";
 
 package apollo.planning;
 
-import "modules/common_msgs/chassis_msgs/chassis.proto";
-import "modules/common_msgs/basic_msgs/geometry.proto";
-import "modules/common_msgs/basic_msgs/header.proto";
-import "modules/common_msgs/basic_msgs/pnc_point.proto";
-import "modules/common_msgs/map_msgs/map_lane.proto";
-import "modules/common_msgs/perception_msgs/perception_obstacle.proto";
-import "modules/common_msgs/prediction_msgs/feature.proto";
-import "modules/common_msgs/prediction_msgs/prediction_obstacle.proto";
-import "modules/common_msgs/perception_msgs/traffic_light_detection.proto";
-import "modules/common_msgs/routing_msgs/routing.proto";
+import "wheelos_msgs/chassis_msgs/chassis.proto";
+import "wheelos_msgs/basic_msgs/geometry.proto";
+import "wheelos_msgs/basic_msgs/header.proto";
+import "wheelos_msgs/basic_msgs/pnc_point.proto";
+import "wheelos_msgs/map_msgs/map_lane.proto";
+import "wheelos_msgs/perception_msgs/perception_obstacle.proto";
+import "wheelos_msgs/prediction_msgs/feature.proto";
+import "wheelos_msgs/prediction_msgs/prediction_obstacle.proto";
+import "wheelos_msgs/perception_msgs/traffic_light_detection.proto";
+import "wheelos_msgs/routing_msgs/routing.proto";
 
 message OverlapFeature {
   optional string id = 1;

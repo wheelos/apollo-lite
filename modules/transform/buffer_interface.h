@@ -21,7 +21,7 @@
 #include "tf2/convert.h"
 
 #include "cyber/time/time.h"
-#include "modules/common_msgs/transform_msgs/transform.pb.h"
+#include "wheelos_msgs/transform_msgs/transform.pb.h"
 
 namespace apollo {
 namespace transform {

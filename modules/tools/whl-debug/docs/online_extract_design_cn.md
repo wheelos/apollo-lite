@@ -304,7 +304,7 @@ CHANNEL_MESSAGE_TYPE_MAP = {
 
 1. 导入消息类型：
 ```python
-from modules/common_msgs/xxx_msgs/xxx_pb2 import XxxMessage
+from xxx_msgs/xxx_pb2 import XxxMessage
 ```
 
 2. 添加到 `CHANNEL_MESSAGE_TYPE_MAP`：

@@ -22,7 +22,7 @@
 #include "absl/strings/str_cat.h"
 #include "google/protobuf/text_format.h"
 
-#include "modules/common_msgs/map_msgs/map_id.pb.h"
+#include "wheelos_msgs/map_msgs/map_id.pb.h"
 
 #include "cyber/common/log.h"
 #include "modules/common/configs/config_gflags.h"

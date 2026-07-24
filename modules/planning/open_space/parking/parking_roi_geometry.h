@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 #include "modules/common/math/box2d.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/planning/open_space/parking/parking_slot.h"

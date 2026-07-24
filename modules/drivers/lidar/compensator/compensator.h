@@ -27,7 +27,7 @@
 #undef ALIVE
 #endif
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/drivers/lidar/compensator/proto/lidar_compensator_config.pb.h"
 
 #include "modules/transform/transform_query.h"

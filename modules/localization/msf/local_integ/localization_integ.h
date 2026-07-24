@@ -24,14 +24,14 @@
 #include "localization_msf/gnss_struct.h"
 #include "localization_msf/sins_struct.h"
 #include "modules/common/status/status.h"
-#include "modules/common_msgs/sensor_msgs/gnss_best_pose.pb.h"
-#include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
-#include "modules/common_msgs/sensor_msgs/heading.pb.h"
-#include "modules/common_msgs/sensor_msgs/imu.pb.h"
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_raw_observation.pb.h"
+#include "wheelos_msgs/sensor_msgs/heading.pb.h"
+#include "wheelos_msgs/sensor_msgs/imu.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/localization/msf/local_integ/localization_lidar.h"
 #include "modules/localization/msf/local_integ/localization_params.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
 
 /**
  * @namespace apollo::localization::msf

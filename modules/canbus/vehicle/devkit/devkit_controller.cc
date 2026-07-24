@@ -19,7 +19,7 @@
 #include <string>
 
 #include "modules/canbus/vehicle/devkit/proto/devkit.pb.h"
-#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
+#include "wheelos_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"

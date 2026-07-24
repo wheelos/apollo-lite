@@ -19,7 +19,7 @@
 
 #include <memory>
 
-#include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 
 #include "modules/common/filters/digital_filter.h"
 #include "modules/common/filters/mean_filter.h"

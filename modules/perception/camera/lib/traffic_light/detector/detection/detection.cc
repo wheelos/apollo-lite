@@ -44,9 +44,7 @@ bool TrafficLightDetection::Init(
     return false;
   }
 
-  std::string param_str;
-  google::protobuf::TextFormat::PrintToString(detection_param_, &param_str);
-  AINFO << "TL detection param: " << param_str;
+  AINFO << "TL detection param: " << detection_param_.DebugString();
   detector_type_ = detection_param_.detector_type();
 
   if (detector_type_ == TL_DETECTION_YOLO_SINGLE_STAGE_DECTOR) {

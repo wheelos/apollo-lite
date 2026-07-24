@@ -298,7 +298,7 @@ A:
 ### Message Format
 
 The tool sends Apollo `RoutingRequest` message, defined at:
-`modules/common_msgs/routing_msgs/routing.proto`
+`routing_msgs/routing.proto`
 
 ### Channel Information
 

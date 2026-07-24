@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "Eigen/Dense"
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 #include "modules/prediction/common/prediction_gflags.h"
 
 namespace apollo {

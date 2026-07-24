@@ -26,7 +26,7 @@ cc_library(
     alwayslink = True,
     deps = [
         "//cyber",
-        "//modules/common_msgs/map_msgs:map_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
     ],
 )
 

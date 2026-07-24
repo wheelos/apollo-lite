@@ -7,10 +7,10 @@ py_binary(
     srcs = ["record.py"],
     deps = [
         "//cyber/proto:unit_test_py_pb2",
+        "//cyber/proto:simple_py_pb2",
         "//cyber/python/cyber_py3:record",
-        "//modules/common_msgs/basic_msgs:error_code_py_pb2",
-        "//modules/common_msgs/basic_msgs:header_py_pb2",
-        "//modules/common/util/proto:simple_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_py_pb2",
     ],
 )
 

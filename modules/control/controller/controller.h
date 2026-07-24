@@ -26,10 +26,10 @@
 
 #include "modules/common/status/status.h"
 #include "modules/control/common/dependency_injector.h"
-#include "modules/common_msgs/control_msgs/control_cmd.pb.h"
+#include "wheelos_msgs/control_msgs/control_cmd.pb.h"
 #include "modules/control/proto/control_conf.pb.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 /**
  * @namespace apollo::control

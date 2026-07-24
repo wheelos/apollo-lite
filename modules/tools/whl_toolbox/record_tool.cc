@@ -37,8 +37,8 @@
 
 #include "cyber/record/record_message.h"
 #include "cyber/record/record_reader.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/localization/msf/common/io/pcl_point_types.h"
 
 DEFINE_string(mode, "", "inspect | count | extract");

@@ -54,9 +54,9 @@ qt_cc_library(
     ]),
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
-        "//modules/common_msgs/sensor_msgs:radar_cc_proto",
-        "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:radar_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "@qt//:qt_core",
         "@qt//:qt_gui",
         "@qt//:qt_opengl",

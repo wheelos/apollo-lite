@@ -21,12 +21,12 @@
 #include <vector>
 
 #include "cyber/component/component.h"
-#include "modules/common_msgs/map_msgs/map_geometry.pb.h"
-#include "modules/common_msgs/map_msgs/map_signal.pb.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
-#include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
-#include "modules/common_msgs/v2x_msgs/v2x_traffic_light.pb.h"
+#include "wheelos_msgs/map_msgs/map_geometry.pb.h"
+#include "wheelos_msgs/map_msgs/map_signal.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/perception_msgs/traffic_light_detection.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/v2x_msgs/v2x_traffic_light.pb.h"
 #include "modules/perception/camera/app/traffic_light_camera_perception.h"
 #include "modules/perception/camera/common/util.h"
 #include "modules/perception/camera/lib/traffic_light/preprocessor/tl_preprocessor.h"

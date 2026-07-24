@@ -24,8 +24,8 @@
 #include <string>
 #include <vector>
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 #include "modules/common/status/status.h"
 #include "modules/common/util/factory.h"

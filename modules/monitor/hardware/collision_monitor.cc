@@ -2,7 +2,7 @@
 
 #include "absl/strings/str_cat.h"
 
-#include "modules/common_msgs/perception_msgs/collision_warning.pb.h"
+#include "wheelos_msgs/perception_msgs/collision_warning.pb.h"
 
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/util/map_util.h"

@@ -26,8 +26,8 @@
 #include <unordered_map>
 #include <utility>
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "modules/planning/proto/planning_status.pb.h"
 
 #include "cyber/time/clock.h"

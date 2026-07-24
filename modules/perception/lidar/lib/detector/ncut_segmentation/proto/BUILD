@@ -17,8 +17,8 @@ proto_library(
     name = "ncut_debug_proto",
     srcs = ["ncut_debug.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
-        "//modules/common_msgs/sensor_msgs:pointcloud_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_proto",
     ],
 )
 

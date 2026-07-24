@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/map_msgs/map_lane.pb.h"
+#include "wheelos_msgs/map_msgs/map_lane.pb.h"
 
 #include "cyber/common/file.h"
 #include "cyber/record/record_reader.h"

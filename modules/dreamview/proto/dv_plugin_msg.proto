@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package apollo.dreamview;
 
-import "modules/common_msgs/basic_msgs/header.proto";
+import "wheelos_msgs/basic_msgs/header.proto";
 // used for dv communicate with dv's plugin
 message DvPluginMsg {
     optional apollo.common.Header header = 1;

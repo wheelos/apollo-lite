@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["discretized_trajectory.h"],
     deps = [
         "//modules/common/math",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/planning/common:planning_context",
         "@eigen",
@@ -36,7 +36,7 @@ cc_library(
     hdrs = ["publishable_trajectory.h"],
     deps = [
         ":discretized_trajectory",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

@@ -24,11 +24,11 @@
 #include <utility>
 #include <vector>
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
-#include "modules/common_msgs/map_msgs/map.pb.h"
-#include "modules/common_msgs/map_msgs/map_geometry.pb.h"
-#include "modules/common_msgs/planning_msgs/sl_boundary.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/map_msgs/map.pb.h"
+#include "wheelos_msgs/map_msgs/map_geometry.pb.h"
+#include "wheelos_msgs/planning_msgs/sl_boundary.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 
 #include "modules/common/math/vec2d.h"
 #include "modules/map/pnc_map/path.h"

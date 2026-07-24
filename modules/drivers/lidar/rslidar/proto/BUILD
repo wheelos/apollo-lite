@@ -36,7 +36,7 @@ proto_library(
     name = "rslidar_proto",
     srcs = ["rslidar.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

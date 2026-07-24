@@ -16,7 +16,7 @@
 
 #include "modules/tools/roadlog/triggers/emergency_mode_trigger.h"
 
-#include "modules/common_msgs/control_msgs/control_cmd.pb.h"
+#include "wheelos_msgs/control_msgs/control_cmd.pb.h"
 
 #include "cyber/common/log.h"
 #include "modules/common/adapters/adapter_gflags.h"

@@ -18,7 +18,7 @@
 
 #include <memory>
 
-#include "modules/common_msgs/sensor_msgs/radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/radar.pb.h"
 #include "modules/drivers/radar/yg_radar/proto/yg_radar.pb.h"
 
 #include "cyber/node/writer.h"

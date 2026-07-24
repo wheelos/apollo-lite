@@ -21,7 +21,7 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "modules/common_msgs/planning_msgs/scenario_type.pb.h"
+#include "wheelos_msgs/planning_msgs/scenario_type.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 
 #include "modules/common/status/status.h"

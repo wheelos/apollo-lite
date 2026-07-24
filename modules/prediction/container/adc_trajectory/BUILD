@@ -11,10 +11,10 @@ cc_library(
         "-DMODULE_NAME=\\\"prediction\\\"",
     ],
     deps = [
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/prediction/common:prediction_map",
         "//modules/prediction/container",
-        "//modules/common_msgs/prediction_msgs:lane_graph_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:lane_graph_cc_proto",
     ],
 )
 

@@ -21,7 +21,7 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"

@@ -27,7 +27,7 @@ cc_library(
         "//modules/planning/common:planning_common",
         "//modules/planning/common/util:common_lib",
         "//modules/planning/common/util:util_lib",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/scenarios:scenario",
         "//modules/planning/scenarios/util:scenario_util_lib",
         "//modules/planning/tasks/deciders/path_bounds_decider",

@@ -16,7 +16,7 @@
 
 #include "modules/drivers/radar/yg_radar/yg_radar_message_manager.h"
 
-#include "modules/common_msgs/sensor_msgs/radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/radar.pb.h"
 
 #include "cyber/time/time.h"
 #include "modules/common/util/message_util.h"

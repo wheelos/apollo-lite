@@ -45,9 +45,9 @@ cc_library(
         "//modules/common/status",
         "//modules/common/util",
         "//modules/world_model/relative_map/common:relative_map_gflags",
-        "//modules/common_msgs/planning_msgs:navigation_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "//modules/world_model/relative_map/proto:relative_map_config_cc_proto",
-        "//modules/common_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
     ],
 )
 
@@ -58,10 +58,10 @@ cc_library(
     copts = MAP_COPTS,
     deps = [
         "//cyber",
-        "//modules/common_msgs/localization_msgs:localization_cc_proto",
-        "//modules/common_msgs/map_msgs:map_lane_cc_proto",
-        "//modules/common_msgs/perception_msgs:perception_obstacle_cc_proto",
-        "//modules/common_msgs/planning_msgs:navigation_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_lane_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "//modules/common/math",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",

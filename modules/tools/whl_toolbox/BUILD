@@ -8,8 +8,8 @@ cc_binary(
     srcs = ["record_tool.cc"],
     deps = [
         "//cyber",
-        "//modules/common_msgs/localization_msgs:localization_cc_proto",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/localization/msf/common/io:common_io",
         "@boost.filesystem",
         "@local_config_pcl//:common",
@@ -22,7 +22,7 @@ cc_binary(
     srcs = ["live_pointcloud_viewer.cc"],
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/transform:transform_query",
         "@civetweb//:civetserver",

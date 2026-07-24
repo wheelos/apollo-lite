@@ -16,8 +16,8 @@ proto_library(
     name = "sins_pva_proto",
     srcs = ["sins_pva.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:geometry_proto",
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 
@@ -54,7 +54,7 @@ proto_library(
     name = "gnss_pnt_result_proto",
     srcs = ["gnss_pnt_result.proto"],
     deps = [
-        "//modules/common_msgs/sensor_msgs:gnss_raw_observation_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_proto",
     ],
 )
 
@@ -91,8 +91,8 @@ proto_library(
     name = "measure_proto",
     srcs = ["measure.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:geometry_proto",
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

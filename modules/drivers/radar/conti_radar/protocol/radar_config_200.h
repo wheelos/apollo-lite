@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "modules/common_msgs/sensor_msgs/conti_radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/conti_radar.pb.h"
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 #include "modules/drivers/radar/conti_radar/proto/conti_radar_conf.pb.h"
 

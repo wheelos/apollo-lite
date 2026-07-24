@@ -23,7 +23,7 @@
 
 #include "behaviortree_cpp/behavior_tree.h"
 
-#include "modules/common_msgs/basic_msgs/geometry.pb.h"
+#include "wheelos_msgs/basic_msgs/geometry.pb.h"
 
 namespace BT {
 

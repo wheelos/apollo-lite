@@ -19,7 +19,7 @@ cc_library(
     deps=[
         "//cyber",
         "//modules/common/util:util_tool",
-        "//modules/common_msgs/drivers_msgs:can_card_parameter_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_client/fake:fake_can_client",
         "//modules/drivers/canbus/can_client/socket:socket_can_client_raw",
@@ -33,7 +33,7 @@ cc_library(
     hdrs=["can_client.h"],
     deps=[
         "//modules/common/util",
-        "//modules/common_msgs/drivers_msgs:can_card_parameter_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
         "//modules/drivers/canbus/common:canbus_common",
     ],
     alwayslink=True,
@@ -44,7 +44,7 @@ cc_binary(
     srcs=["can_client_tool.cc"],
     deps=[
         "//cyber",
-        "//modules/common_msgs/drivers_msgs:can_card_parameter_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "@com_github_gflags_gflags//:gflags",
     ],
@@ -55,7 +55,7 @@ cc_test(
     size="small",
     srcs=["can_client_factory_test.cc"],
     deps=[
-        "//modules/common_msgs/drivers_msgs:can_card_parameter_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "@com_google_googletest//:gtest_main",
     ],

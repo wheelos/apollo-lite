@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package apollo.dreamview;
 
-import "modules/common_msgs/simulation_msgs/scenario.proto";
+import "wheelos_msgs/simulation_msgs/scenario.proto";
 
 message SimTicket {
   optional string id = 1;

@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "modules/common_msgs/planning_msgs/pad_msg.pb.h"
+#include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
 
 #include "modules/common/util/future.h"
 #include "modules/planning/planner/navi_planner_dispatcher.h"

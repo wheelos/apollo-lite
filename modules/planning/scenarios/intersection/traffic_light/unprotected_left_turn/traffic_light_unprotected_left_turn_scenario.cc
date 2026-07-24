@@ -20,8 +20,8 @@
 
 #include "modules/planning/scenarios/intersection/traffic_light/unprotected_left_turn/traffic_light_unprotected_left_turn_scenario.h"
 
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
-#include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/perception_msgs/traffic_light_detection.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 
 #include "cyber/common/log.h"

@@ -22,7 +22,7 @@ cc_library(
         "//modules/planning/lattice/trajectory_generation:trajectory_combiner",
         "//modules/planning/lattice/trajectory_generation:trajectory_evaluator",
         "//modules/planning/planner",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

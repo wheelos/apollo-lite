@@ -22,7 +22,7 @@
 
 #include <memory>
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 
 #include "modules/common/status/status.h"
 #include "modules/planning/reference_line/reference_line.h"

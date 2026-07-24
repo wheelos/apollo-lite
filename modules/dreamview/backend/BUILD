@@ -36,7 +36,7 @@ cc_library(
         #"//modules/dreamview/backend/sim_control_manager/proto:fnn_model_cc_proto",
         "//modules/map/hdmap:hdmap_util",
         "//modules/map/pnc_map",
-        "//modules/common_msgs/planning_msgs:pad_msg_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
         "@civetweb//:civetserver",
     ] + if_teleop(["//modules/dreamview/backend/teleop"]),
 )

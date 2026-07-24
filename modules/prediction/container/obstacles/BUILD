@@ -17,7 +17,7 @@ cc_library(
         "//modules/prediction/common:prediction_constants",
         "//modules/prediction/container",
         "//modules/prediction/container/obstacles:obstacle",
-        "//modules/common_msgs/prediction_msgs:prediction_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "//modules/prediction/submodules:submodule_output",
     ],
 )
@@ -34,7 +34,7 @@ cc_library(
         "//modules/prediction/common:prediction_constants",
         "//modules/prediction/network/rnn_model",
         "//modules/prediction/proto:prediction_conf_cc_proto",
-        "//modules/common_msgs/prediction_msgs:prediction_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
     ],
 )
 
@@ -76,7 +76,7 @@ cc_library(
     deps = [
         "//modules/common/util",
         "//modules/prediction/common:road_graph",
-        "//modules/common_msgs/prediction_msgs:feature_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
     ],
 )
 

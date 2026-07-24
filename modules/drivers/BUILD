@@ -38,10 +38,10 @@ install_files(
     name = "pb_drivers",
     dest = "drivers",
     files = [
-        "//modules/common_msgs/sensor_msgs:conti_radar_py_pb2",
-        "//modules/common_msgs/sensor_msgs:ins_py_pb2",
-        "//modules/common_msgs/sensor_msgs:pointcloud_py_pb2",
-        "//modules/common_msgs/sensor_msgs:sensor_image_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:conti_radar_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:ins_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_py_pb2",
         "//modules/drivers/radar/conti_radar/proto:conti_radar_conf_py_pb2",
     ],
 )

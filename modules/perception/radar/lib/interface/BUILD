@@ -48,7 +48,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common_msgs/sensor_msgs:conti_radar_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:conti_radar_cc_proto",
     ],
 )
 
@@ -59,7 +59,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common_msgs/sensor_msgs:conti_radar_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:conti_radar_cc_proto",
     ],
 )
 

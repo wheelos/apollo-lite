@@ -18,7 +18,7 @@ cc_library(
     copts = [],
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common/proto:lidar_config_base_cc_proto",
         "@boost.format",
     ],

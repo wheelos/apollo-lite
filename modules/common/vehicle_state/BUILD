@@ -24,8 +24,8 @@ cc_library(
     hdrs = ["vehicle_state_provider.h"],
     deps = [
         "//cyber",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
         "//modules/common/status",
@@ -45,8 +45,8 @@ cc_test(
     deps = [
         ":vehicle_state_provider",
         "//cyber",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/common/configs:config_gflags",
         "//modules/planning/common:gtest_exit_main",
         "@eigen",

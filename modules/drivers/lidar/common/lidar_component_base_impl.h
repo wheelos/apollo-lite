@@ -19,7 +19,7 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/drivers/lidar/common/proto/lidar_config_base.pb.h"
 
 #include "cyber/cyber.h"

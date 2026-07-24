@@ -28,10 +28,10 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/common/math",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/localization/msf/common/io:common_io",
-        "//modules/common_msgs/localization_msgs:gps_cc_proto",
-        "//modules/common_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/localization/proto:measure_cc_proto",
         "@eigen",
         "@local_config_pcl//:common",

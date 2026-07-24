@@ -12,9 +12,9 @@ cc_library(
         "*.h",
     ]),
     deps = [
-        "//modules/common_msgs/basic_msgs:header_cc_proto",
-        "//modules/common_msgs/drivers_msgs:can_card_parameter_cc_proto",
-        "//modules/common_msgs/sensor_msgs:nano_radar_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:nano_radar_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/radar/nano_radar/proto:nano_radar_conf_cc_proto",
     ],

@@ -16,8 +16,8 @@ proto_library(
     name = "vehicle_parameter_proto",
     srcs = ["vehicle_parameter.proto"],
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_proto",
-        "//modules/common_msgs/config_msgs:vehicle_config_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_proto",
     ],
 )
 
@@ -38,7 +38,7 @@ proto_library(
     srcs = ["canbus_conf.proto"],
     deps = [
         ":vehicle_parameter_proto",
-        "//modules/common_msgs/drivers_msgs:can_card_parameter_proto",
+        "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_proto",
     ],
 )
 

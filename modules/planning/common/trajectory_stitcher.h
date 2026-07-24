@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 
 #include "modules/planning/common/trajectory/publishable_trajectory.h"
 #include "modules/planning/reference_line/reference_line.h"

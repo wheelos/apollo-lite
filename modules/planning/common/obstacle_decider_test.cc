@@ -21,7 +21,7 @@
 
 #include "modules/map/hdmap/hdmap.h"
 
-#include "modules/common_msgs/prediction_msgs/feature.pb.h"
+#include "wheelos_msgs/prediction_msgs/feature.pb.h"
 
 #include "modules/planning/reference_line/reference_line.h"
 

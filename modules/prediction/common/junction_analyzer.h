@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "modules/prediction/common/prediction_map.h"
-#include "modules/common_msgs/prediction_msgs/feature.pb.h"
+#include "wheelos_msgs/prediction_msgs/feature.pb.h"
 
 namespace apollo {
 namespace prediction {

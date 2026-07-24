@@ -26,8 +26,8 @@
 #include <utility>
 #include <vector>
 
-#include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
-#include "modules/common_msgs/planning_msgs/decision.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
+#include "wheelos_msgs/planning_msgs/decision.pb.h"
 
 #include "modules/common/status/status.h"
 #include "modules/planning/common/history.h"

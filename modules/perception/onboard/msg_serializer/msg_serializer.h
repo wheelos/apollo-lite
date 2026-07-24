@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "modules/perception/base/object.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
 
 namespace apollo {
 namespace perception {

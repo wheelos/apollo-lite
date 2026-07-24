@@ -21,10 +21,10 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "modules/common_msgs/basic_msgs/geometry.pb.h"
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/basic_msgs/geometry.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 
 #include "cyber/common/macros.h"
 #include "cyber/cyber.h"

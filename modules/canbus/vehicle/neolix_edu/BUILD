@@ -33,7 +33,7 @@ cc_library(
     ],
     copts = CANBUS_COPTS,
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle/neolix_edu/protocol:canbus_neolix_edu_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
@@ -51,7 +51,7 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         ":neolix_edu_message_manager",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/neolix_edu/protocol:canbus_neolix_edu_protocol",
         "//modules/drivers/canbus/can_comm:can_sender",

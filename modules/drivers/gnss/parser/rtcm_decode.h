@@ -18,7 +18,7 @@
 
 #include "third_party/rtklib/rtklib.h"
 
-#include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_raw_observation.pb.h"
 
 namespace apollo {
 namespace drivers {

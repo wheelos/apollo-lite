@@ -1,7 +1,7 @@
 syntax = "proto2";
 
 package apollo.dreamview;
-import "modules/common_msgs/perception_msgs/perception_obstacle.proto";
+import "wheelos_msgs/perception_msgs/perception_obstacle.proto";
 
 
 message CameraUpdate {

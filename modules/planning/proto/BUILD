@@ -16,7 +16,7 @@ proto_library(
     name = "auto_tuning_raw_feature_proto",
     srcs = ["auto_tuning_raw_feature.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:pnc_point_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_proto",
     ],
 )
 
@@ -37,9 +37,9 @@ proto_library(
     srcs = ["planning_status.proto"],
     deps = [
         ":planning_config_proto",
-        "//modules/common_msgs/basic_msgs:geometry_proto",
-        "//modules/common_msgs/planning_msgs:scenario_type_proto",
-        "//modules/common_msgs/routing_msgs:routing_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:scenario_type_proto",
+        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_proto",
     ],
 )
 
@@ -185,16 +185,16 @@ proto_library(
     name = "learning_data_proto",
     srcs = ["learning_data.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:geometry_proto",
-        "//modules/common_msgs/basic_msgs:header_proto",
-        "//modules/common_msgs/basic_msgs:pnc_point_proto",
-        "//modules/common_msgs/chassis_msgs:chassis_proto",
-        "//modules/common_msgs/map_msgs:map_lane_proto",
-        "//modules/common_msgs/perception_msgs:perception_obstacle_proto",
-        "//modules/common_msgs/perception_msgs:traffic_light_detection_proto",
-        "//modules/common_msgs/prediction_msgs:feature_proto",
-        "//modules/common_msgs/prediction_msgs:prediction_obstacle_proto",
-        "//modules/common_msgs/routing_msgs:routing_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_lane_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_proto",
+        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_proto",
     ],
 )
 
@@ -250,7 +250,7 @@ proto_library(
     deps = [
         ":open_space_task_config_proto",
         ":task_config_proto",
-        "//modules/common_msgs/planning_msgs:scenario_type_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:scenario_type_proto",
     ],
 )
 

@@ -8,7 +8,7 @@ cc_library(
     srcs = ["fake_can_client.cc"],
     hdrs = ["fake_can_client.h"],
     deps = [
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/drivers/canbus/can_client",
     ],
 )

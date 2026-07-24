@@ -23,8 +23,8 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/map_msgs/map_id.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/map_msgs/map_id.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"

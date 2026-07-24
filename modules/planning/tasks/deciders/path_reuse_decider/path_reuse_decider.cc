@@ -23,7 +23,7 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 #include "modules/planning/common/planning_context.h"
 

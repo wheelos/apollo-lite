@@ -18,7 +18,7 @@ cc_library(
         "//modules/map/hdmap:hdmap_util",
         "//modules/routing/core",
         "//modules/routing/proto:routing_config_cc_proto",
-        "//modules/common_msgs/monitor_msgs:monitor_log_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_cc_proto",
     ],
     alwayslink = True,
 )
@@ -86,7 +86,7 @@ install_files(
     name = "pb_routing",
     dest = "routing",
     files = [
-        "//modules/common_msgs/routing_msgs:routing_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_py_pb2",
     ],
 )
 

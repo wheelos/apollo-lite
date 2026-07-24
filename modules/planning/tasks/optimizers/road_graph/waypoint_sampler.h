@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 #include "modules/planning/proto/dp_poly_path_config.pb.h"
 
 #include "modules/common/status/status.h"

@@ -30,7 +30,7 @@
 
 #include "absl/strings/str_cat.h"
 
-#include "modules/common_msgs/routing_msgs/poi.pb.h"
+#include "wheelos_msgs/routing_msgs/poi.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/cyber.h"

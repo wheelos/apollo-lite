@@ -13,7 +13,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
         "//modules/drivers/gnss/util",
         "//modules/drivers/gnss/parser",
         "//modules/drivers/gnss/parser:rtcm_decode",

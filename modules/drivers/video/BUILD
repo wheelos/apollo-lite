@@ -55,7 +55,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "//modules/drivers/video/proto:video_h265cfg_cc_proto",
     ],
 )
@@ -69,10 +69,10 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
-        "//modules/common_msgs/basic_msgs:header_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "//modules/common/util",
-        "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
     ],
 )
 

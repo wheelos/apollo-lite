@@ -10,10 +10,10 @@ cc_library(
     hdrs = ["mission_context.h"],
     deps = [
         "//cyber",
-        "//modules/common_msgs/basic_msgs:geometry_cc_proto",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/localization_msgs:localization_cc_proto",
-        "//modules/common_msgs/routing_msgs:routing_cc_proto"
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto"
     ],
 )
 

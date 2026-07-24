@@ -17,7 +17,7 @@ proto_library(
     srcs = ["audio.proto"],
     deps = [
         ":microphone_config_proto",
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

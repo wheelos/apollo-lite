@@ -21,7 +21,7 @@
 #include <string>
 #include <thread>
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/drivers/gnss/proto/config.pb.h"
 #include "modules/drivers/gnss/proto/gnss_status.pb.h"
 

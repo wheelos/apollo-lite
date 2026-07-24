@@ -25,7 +25,7 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/drivers/camera/proto:config_cc_proto",
-        "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "@ffmpeg//:avcodec",
         "@ffmpeg//:avformat",
         "@ffmpeg//:avutil",

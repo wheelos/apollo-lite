@@ -2,8 +2,8 @@ syntax = "proto2";
 
 package apollo.control;
 
-import "modules/common_msgs/chassis_msgs/chassis.proto";
-import "modules/common_msgs/control_msgs/pad_msg.proto";
+import "wheelos_msgs/chassis_msgs/chassis.proto";
+import "wheelos_msgs/control_msgs/pad_msg.proto";
 
 message ControlCommonConf {
   // configs from gflags

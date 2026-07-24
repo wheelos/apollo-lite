@@ -35,15 +35,15 @@ CHANNEL_MESSAGE_TYPE_MAP = {
 }
 
 # Import message types for parsing
-from modules.common_msgs.chassis_msgs.chassis_pb2 import Chassis
-from modules.common_msgs.chassis_msgs.chassis_detail_pb2 import ChassisDetail
-from modules.common_msgs.control_msgs.control_cmd_pb2 import ControlCommand
-from modules.common_msgs.dreamview_msgs.hmi_status_pb2 import HMIStatus
-from modules.common_msgs.localization_msgs.localization_pb2 import LocalizationEstimate
-from modules.common_msgs.planning_msgs.planning_pb2 import ADCTrajectory
-from modules.common_msgs.perception_msgs.perception_obstacle_pb2 import PerceptionObstacles
-from modules.common_msgs.prediction_msgs.prediction_obstacle_pb2 import PredictionObstacles
-from modules.common_msgs.routing_msgs.routing_pb2 import RoutingRequest, RoutingResponse
+from wheelos_msgs.chassis_msgs.chassis_pb2 import Chassis
+from wheelos_msgs.chassis_msgs.chassis_detail_pb2 import ChassisDetail
+from wheelos_msgs.control_msgs.control_cmd_pb2 import ControlCommand
+from wheelos_msgs.dreamview_msgs.hmi_status_pb2 import HMIStatus
+from wheelos_msgs.localization_msgs.localization_pb2 import LocalizationEstimate
+from wheelos_msgs.planning_msgs.planning_pb2 import ADCTrajectory
+from wheelos_msgs.perception_msgs.perception_obstacle_pb2 import PerceptionObstacles
+from wheelos_msgs.prediction_msgs.prediction_obstacle_pb2 import PredictionObstacles
+from wheelos_msgs.routing_msgs.routing_pb2 import RoutingRequest, RoutingResponse
 
 MESSAGE_TYPE_MAP = {
     "/apollo/canbus/chassis": Chassis,

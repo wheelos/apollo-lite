@@ -21,7 +21,7 @@ set -euo pipefail
 
 # Define the root directories to search for .proto files.
 # These directories are typically the top-level directories containing your protobuf definitions.
-roots=(cyber modules modules/common_msgs)
+roots=(cyber modules)
 
 # --- Main Logic ---
 

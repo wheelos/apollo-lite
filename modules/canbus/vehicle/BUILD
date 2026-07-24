@@ -11,7 +11,7 @@ cc_library(
     name = "chassis_extension_tools",
     hdrs = ["chassis_extension_tools.h"],
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -24,9 +24,9 @@ cc_library(
         "//modules/canbus/proto:canbus_conf_cc_proto",
         "//modules/canbus/proto:vehicle_parameter_cc_proto",
         "//modules/common/configs:vehicle_config_helper",
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
-        "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -41,7 +41,7 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/vehicle:vehicle_controller_base",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "//modules/common/util:registry",

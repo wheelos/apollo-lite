@@ -35,7 +35,7 @@ cc_library(
     copts = SEYOND_COPTS + ["-std=c++17"],
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/seyond/proto:seyond_cc_proto",
         "//modules/drivers/lidar/seyond/proto:seyond_config_cc_proto",

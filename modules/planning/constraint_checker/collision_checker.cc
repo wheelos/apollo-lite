@@ -22,7 +22,7 @@
 
 #include <utility>
 
-#include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
+#include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
 
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"

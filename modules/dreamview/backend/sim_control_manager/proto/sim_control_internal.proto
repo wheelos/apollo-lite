@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package apollo.sim_control;
 
-import "modules/common_msgs/basic_msgs/header.proto";
+import "wheelos_msgs/basic_msgs/header.proto";
 
 enum SimControlSpawnMode {
     SIM_CONTROL_SPAWN_MODE_UNKNOWN = 0;

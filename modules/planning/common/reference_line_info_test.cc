@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 namespace apollo {
 namespace planning {

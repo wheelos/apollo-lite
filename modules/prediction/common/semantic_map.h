@@ -24,7 +24,7 @@
 #include "opencv2/imgproc.hpp"
 
 #include "cyber/common/macros.h"
-#include "modules/common_msgs/prediction_msgs/feature.pb.h"
+#include "wheelos_msgs/prediction_msgs/feature.pb.h"
 
 namespace apollo {
 namespace prediction {

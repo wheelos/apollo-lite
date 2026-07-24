@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
+#include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
 
 #include "modules/common/math/box2d.h"
 #include "modules/planning/common/obstacle.h"

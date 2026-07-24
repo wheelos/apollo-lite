@@ -55,8 +55,8 @@ cc_library(
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/proto:sensor_canbus_conf_cc_proto",
         "//modules/drivers/radar/conti_radar/protocol:drivers_conti_radar_protocol",
-        "//modules/common_msgs/localization_msgs:localization_cc_proto",
-        "//modules/common_msgs/localization_msgs:pose_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:pose_cc_proto",
         "@eigen",
     ],
 )

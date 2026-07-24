@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/drivers/camera/proto/config.pb.h"
 
 #include "modules/drivers/camera/backend/image_processor.h"

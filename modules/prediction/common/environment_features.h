@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "modules/common_msgs/basic_msgs/geometry.pb.h"
+#include "wheelos_msgs/basic_msgs/geometry.pb.h"
 
 namespace apollo {
 namespace prediction {

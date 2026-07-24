@@ -20,8 +20,8 @@
 
 #include "Eigen/Geometry"
 
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/prediction_msgs/feature.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/prediction_msgs/feature.pb.h"
 #include "modules/perception/pipeline/proto/plugin/multi_lidar_fusion_config.pb.h"
 #include "modules/perception/pipeline/proto/stage/mlf_engine_config.pb.h"
 

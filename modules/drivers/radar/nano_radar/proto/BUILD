@@ -16,8 +16,8 @@ proto_library(
     name = "nano_radar_conf_proto",
     srcs = ["nano_radar_conf.proto"],
     deps = [
-        "//modules/common_msgs/drivers_msgs:can_card_parameter_proto",
-        "//modules/common_msgs/sensor_msgs:nano_radar_proto",
+        "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:nano_radar_proto",
     ],
 )
 

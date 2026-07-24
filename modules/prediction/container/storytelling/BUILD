@@ -13,7 +13,7 @@ cc_library(
     deps = [
         "//modules/prediction/common:prediction_map",
         "//modules/prediction/container",
-        "//modules/common_msgs/storytelling_msgs:story_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/storytelling_msgs:story_cc_proto",
     ],
 )
 

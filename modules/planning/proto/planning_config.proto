@@ -4,7 +4,7 @@ package apollo.planning;
 
 import "modules/planning/proto/open_space_task_config.proto";
 import "modules/planning/proto/task_config.proto";
-import "modules/common_msgs/planning_msgs/scenario_type.proto";
+import "wheelos_msgs/planning_msgs/scenario_type.proto";
 
 // Planning's configuration is based on the following architecture
 // * Scenario has one more multiple stages

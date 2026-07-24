@@ -25,7 +25,7 @@
 
 #include "boost/container/static_vector.hpp"
 
-#include "modules/common_msgs/control_msgs/control_cmd.pb.h"
+#include "wheelos_msgs/control_msgs/control_cmd.pb.h"
 #include "modules/control/proto/control_conf.pb.h"
 #include "modules/control/proto/local_view.pb.h"
 #include "modules/control/proto/safety_status.pb.h"

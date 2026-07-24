@@ -29,13 +29,13 @@
 #include <utility>
 #include <vector>
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/dreamview_msgs/hmi_status.pb.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
-#include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
-#include "modules/common_msgs/storytelling_msgs/story.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/dreamview_msgs/hmi_status.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/perception_msgs/traffic_light_detection.pb.h"
+#include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/storytelling_msgs/story.pb.h"
 #include "modules/planning/proto/learning_data.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 

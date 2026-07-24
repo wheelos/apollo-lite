@@ -29,7 +29,7 @@
 
 #include "absl/strings/str_cat.h"
 
-#include "modules/common_msgs/transform_msgs/transform.pb.h"
+#include "wheelos_msgs/transform_msgs/transform.pb.h"
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"

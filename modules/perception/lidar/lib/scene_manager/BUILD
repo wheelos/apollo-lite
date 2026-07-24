@@ -38,7 +38,7 @@ cc_test(
     deps = [
         ":scene_manager",
         "//modules/map/hdmap",
-        "//modules/common_msgs/map_msgs:map_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/perception/base",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/common/io:io_util",

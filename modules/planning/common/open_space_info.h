@@ -26,9 +26,9 @@
 #include "Eigen/Dense"
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/map_msgs/map_id.pb.h"
-#include "modules/common_msgs/planning_msgs/planning_internal.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/map_msgs/map_id.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_internal.pb.h"
 
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"

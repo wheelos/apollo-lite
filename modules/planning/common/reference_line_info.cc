@@ -24,7 +24,7 @@
 
 #include "absl/strings/str_cat.h"
 
-#include "modules/common_msgs/planning_msgs/sl_boundary.pb.h"
+#include "wheelos_msgs/planning_msgs/sl_boundary.pb.h"
 #include "modules/planning/proto/planning_status.pb.h"
 
 #include "cyber/task/task.h"

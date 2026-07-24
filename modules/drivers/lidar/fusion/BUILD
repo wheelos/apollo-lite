@@ -35,7 +35,7 @@ cc_library(
     copts = LIDAR_FUSION_COPTS,
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/fusion/proto:lidar_fusion_config_cc_proto",
         "//modules/transform:transform_query",
         "@eigen",

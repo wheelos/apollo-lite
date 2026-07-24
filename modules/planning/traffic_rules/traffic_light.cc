@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-#include "modules/common_msgs/planning_msgs/planning_internal.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_internal.pb.h"
 
 #include "modules/common/util/util.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"

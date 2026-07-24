@@ -12,8 +12,8 @@ cc_library(
     ],
     deps = [
         "//modules/common/math",
-        "//modules/common_msgs/localization_msgs:localization_cc_proto",
-        "//modules/common_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container",
     ],

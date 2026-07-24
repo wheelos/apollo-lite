@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "modules/common_msgs/map_msgs/map_parking_space.pb.h"
+#include "wheelos_msgs/map_msgs/map_parking_space.pb.h"
 #include "modules/map/hdmap/hdmap_common.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/planning/open_space/parking/parking_slot.h"

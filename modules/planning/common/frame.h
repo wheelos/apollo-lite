@@ -29,13 +29,13 @@
 #include <vector>
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
-#include "modules/common_msgs/basic_msgs/geometry.pb.h"
-#include "modules/common_msgs/localization_msgs/pose.pb.h"
-#include "modules/common_msgs/planning_msgs/pad_msg.pb.h"
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
-#include "modules/common_msgs/planning_msgs/planning_internal.pb.h"
-#include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/basic_msgs/geometry.pb.h"
+#include "wheelos_msgs/localization_msgs/pose.pb.h"
+#include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_internal.pb.h"
+#include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 
 #include "modules/common/math/vec2d.h"

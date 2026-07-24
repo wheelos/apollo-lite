@@ -16,6 +16,8 @@
 
 #include "absl/strings/str_cat.h"
 
+#include <fstream>
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/common/util/eigen_defs.h"
@@ -119,7 +121,7 @@ bool lane_postprocessor_eval() {
   lane_postprocessor->Init(postprocessor_init_options);
 
   // Read image list
-  std::ifstream list_file(FLAGS_list.c_str());
+  std::ifstream list_file(FLAGS_list);
   std::string imname;
   std::vector<std::string> imnames;
   while (list_file >> imname) {

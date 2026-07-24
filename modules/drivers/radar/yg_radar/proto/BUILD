@@ -33,7 +33,7 @@ proto_library(
     name = "yg_radar_config_proto",
     srcs = ["yg_radar_config.proto"],
     deps = [
-        "//modules/common_msgs/drivers_msgs:can_card_parameter_proto",
+        "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_proto",
     ],
 )
 

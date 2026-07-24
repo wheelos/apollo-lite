@@ -2,8 +2,8 @@ syntax = "proto2";
 
 package apollo.perception.lidar;
 
-import "modules/common_msgs/basic_msgs/header.proto";
-import "modules/common_msgs/sensor_msgs/pointcloud.proto";
+import "wheelos_msgs/basic_msgs/header.proto";
+import "wheelos_msgs/sensor_msgs/pointcloud.proto";
 
 // Debug information for a single segmented object
 message DebugObject {

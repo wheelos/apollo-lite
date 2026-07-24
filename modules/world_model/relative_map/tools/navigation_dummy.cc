@@ -22,7 +22,7 @@
 #include "cyber/time/rate.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/util/message_util.h"
-#include "modules/common_msgs/planning_msgs/navigation.pb.h"
+#include "wheelos_msgs/planning_msgs/navigation.pb.h"
 
 using apollo::cyber::Rate;
 

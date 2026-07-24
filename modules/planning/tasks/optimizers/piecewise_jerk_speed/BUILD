@@ -11,8 +11,8 @@ cc_library(
     hdrs = ["piecewise_jerk_speed_optimizer.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:speed_profile_generator",
         "//modules/planning/common:st_graph_data",
         "//modules/planning/math/piecewise_jerk:piecewise_jerk_speed_problem",
@@ -28,8 +28,8 @@ cc_library(
     deps = [
         ":piecewise_jerk_speed_nonlinear_ipopt_interface",
         "//modules/common/util",
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:speed_profile_generator",
         "//modules/planning/common:st_graph_data",
         "//modules/planning/common/path:path_data",
@@ -47,7 +47,7 @@ cc_library(
     hdrs = ["piecewise_jerk_speed_nonlinear_ipopt_interface.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common/path:path_data",
         "//modules/planning/common/trajectory1d:piecewise_jerk_trajectory1d",
         "@ipopt",

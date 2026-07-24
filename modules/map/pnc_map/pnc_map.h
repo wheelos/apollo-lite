@@ -28,7 +28,7 @@
 #include "gtest/gtest_prod.h"
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 
 #include "modules/map/hdmap/hdmap.h"
 #include "modules/map/pnc_map/path.h"

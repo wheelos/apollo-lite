@@ -20,7 +20,7 @@
 
 #include "google/protobuf/text_format.h"
 
-#include "modules/common_msgs/control_msgs/control_cmd.pb.h"
+#include "wheelos_msgs/control_msgs/control_cmd.pb.h"
 
 #include "cyber/common/file.h"
 #include "modules/common/util/util.h"

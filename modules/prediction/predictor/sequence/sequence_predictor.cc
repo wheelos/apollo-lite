@@ -19,7 +19,7 @@
 #include <limits>
 #include <memory>
 
-#include "modules/common_msgs/basic_msgs/geometry.pb.h"
+#include "wheelos_msgs/basic_msgs/geometry.pb.h"
 #include "modules/prediction/common/prediction_gflags.h"
 #include "modules/prediction/container/container_manager.h"
 #include "modules/prediction/container/pose/pose_container.h"

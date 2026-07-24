@@ -32,7 +32,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/hesai/proto:hesai_cc_proto",
         "//modules/drivers/lidar/hesai/proto:hesai_config_cc_proto",

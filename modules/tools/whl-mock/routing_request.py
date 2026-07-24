@@ -25,8 +25,8 @@ from google.protobuf.message import Message
 
 from cyber.python.cyber_py3 import cyber
 
-from modules.common_msgs.localization_msgs.localization_pb2 import LocalizationEstimate
-from modules.common_msgs.routing_msgs.routing_pb2 import RoutingRequest
+from wheelos_msgs.localization_msgs.localization_pb2 import LocalizationEstimate
+from wheelos_msgs.routing_msgs.routing_pb2 import RoutingRequest
 
 # ================= USER CONFIGURATION =================
 

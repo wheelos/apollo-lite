@@ -25,7 +25,7 @@
 #include "absl/strings/str_split.h"
 #include "pcl/io/pcd_io.h"
 
-#include "modules/common_msgs/transform_msgs/transform.pb.h"
+#include "wheelos_msgs/transform_msgs/transform.pb.h"
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"

@@ -21,7 +21,7 @@ cc_library(
         "rtcm_decode.h",
     ],
     deps = [
-        "//modules/common_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
     ],
 )
 
@@ -55,13 +55,13 @@ cc_library(
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:proj_helper",
         "//modules/common/util:util_tool",
-        "//modules/common_msgs/localization_msgs:gps_cc_proto",
-        "//modules/common_msgs/localization_msgs:imu_cc_proto",
-        "//modules/common_msgs/sensor_msgs:gnss_best_pose_cc_proto",
-        "//modules/common_msgs/sensor_msgs:gnss_cc_proto",
-        "//modules/common_msgs/sensor_msgs:heading_cc_proto",
-        "//modules/common_msgs/sensor_msgs:imu_cc_proto",
-        "//modules/common_msgs/sensor_msgs:ins_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:imu_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:heading_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:imu_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:ins_cc_proto",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/gnss/util",
         "@eigen",
@@ -83,7 +83,7 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
-        "//modules/common_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
         "//modules/drivers/gnss/parser/rtcm3:rtcm3_parser",
         "//modules/drivers/gnss/proto:config_cc_proto",
         "//modules/drivers/gnss/util",

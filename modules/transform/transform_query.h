@@ -21,7 +21,7 @@
 
 #include "Eigen/Geometry"
 
-#include "modules/common_msgs/transform_msgs/transform.pb.h"
+#include "wheelos_msgs/transform_msgs/transform.pb.h"
 
 #include "cyber/time/time.h"
 

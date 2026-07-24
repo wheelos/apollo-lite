@@ -26,8 +26,8 @@
 #include "Eigen/StdVector"
 
 #include "cyber/component/component.h"
-#include "modules/common_msgs/perception_msgs/perception_lane.pb.h"
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_lane.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/common/util/eigen_defs.h"
 #include "modules/common/util/util.h"
 #include "modules/perception/base/object_types.h"

@@ -17,7 +17,7 @@ proto_library(
     name = "hesai_proto",
     srcs = ["hesai.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

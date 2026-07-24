@@ -16,7 +16,7 @@
 
 #include "modules/planning/planning_base.h"
 
-#include "modules/common_msgs/planning_msgs/planning_internal.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_internal.pb.h"
 
 #include "cyber/time/clock.h"
 #include "modules/map/hdmap/hdmap_util.h"

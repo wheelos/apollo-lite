@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/sensor_msgs/radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/radar.pb.h"
 #include "modules/tools/visualizer/renderable_object.h"
 
 class QOpenGLShaderProgram;
