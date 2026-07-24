@@ -20,7 +20,7 @@
 #include <tuple>
 #include <vector>
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/planning_context.h"

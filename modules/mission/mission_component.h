@@ -23,10 +23,10 @@
 
 #include "behaviortree_cpp/bt_factory.h"
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/mission_msgs/mission_request.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/mission_msgs/mission_request.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 #include "modules/mission/proto/mission_config.pb.h"
 
 #include "cyber/component/component.h"

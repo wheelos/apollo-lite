@@ -16,7 +16,7 @@ proto_library(
     name = "daemon_rpt_proto",
     srcs = ["daemon_rpt.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 
@@ -36,7 +36,7 @@ proto_library(
     name = "daemon_cmd_proto",
     srcs = ["daemon_cmd.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 
@@ -56,7 +56,7 @@ proto_library(
     name = "modem_info_proto",
     srcs = ["modem_info.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

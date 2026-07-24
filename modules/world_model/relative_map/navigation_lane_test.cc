@@ -28,8 +28,8 @@
 
 #include "nlohmann/json.hpp"
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/planning_msgs/navigation.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/planning_msgs/navigation.pb.h"
 #include "modules/world_model/relative_map/proto/relative_map_config.pb.h"
 
 #include "cyber/common/file.h"

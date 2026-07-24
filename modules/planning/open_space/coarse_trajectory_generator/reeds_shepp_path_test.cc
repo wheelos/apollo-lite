@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 #include "modules/planning/proto/planner_open_space_config.pb.h"
 
 #include "cyber/common/file.h"

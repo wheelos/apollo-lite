@@ -16,7 +16,7 @@ proto_library(
     name = "latency_record_proto",
     srcs = ["latency_record.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

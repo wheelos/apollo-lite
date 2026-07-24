@@ -26,7 +26,7 @@
 #include "modules/control/common/control_gflags.h"
 #include "modules/control/proto/control_conf.pb.h"
 #include "modules/common/configs/config_gflags.h"
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 namespace apollo {
 namespace control {

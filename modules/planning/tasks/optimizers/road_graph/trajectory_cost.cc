@@ -20,7 +20,7 @@
 
 #include "modules/planning/tasks/optimizers/road_graph/trajectory_cost.h"
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"

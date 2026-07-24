@@ -67,7 +67,7 @@ proto_library(
     name = "motion_service_proto",
     srcs = ["motion_service.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 
@@ -87,8 +87,8 @@ proto_library(
     name = "perception_ultrasonic_proto",
     srcs = ["perception_ultrasonic.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:geometry_proto",
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

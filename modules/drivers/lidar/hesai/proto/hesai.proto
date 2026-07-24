@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package apollo.drivers.lidar;
 
-import "modules/common_msgs/basic_msgs/header.proto";
+import "wheelos_msgs/basic_msgs/header.proto";
 
 // field		size(byte)
 // SOB 		2

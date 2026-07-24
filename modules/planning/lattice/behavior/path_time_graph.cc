@@ -23,7 +23,7 @@
 #include <algorithm>
 #include <limits>
 
-#include "modules/common_msgs/planning_msgs/sl_boundary.pb.h"
+#include "wheelos_msgs/planning_msgs/sl_boundary.pb.h"
 
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/linear_interpolation.h"

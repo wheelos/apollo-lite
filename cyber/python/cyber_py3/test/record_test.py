@@ -27,7 +27,7 @@ from cyber.proto.simple_pb2 import SimpleMessage
 
 TEST_RECORD_FILE = "/tmp/test02.record"
 CHAN_1 = "channel/chatter"
-MSG_TYPE = "apollo.common.util.test.SimpleMessage"
+MSG_TYPE = "apollo.cyber.proto.SimpleMessage"
 PROTO_DESC = b"1234567890"
 MSG_DATA = b"0123456789"
 TIME = 999

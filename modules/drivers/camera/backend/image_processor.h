@@ -4,7 +4,7 @@
 #include <mutex>
 #include <vector>
 
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 
 // Forward declarations for FFmpeg structs to avoid pulling in FFmpeg headers
 // into the header file unnecessarily.

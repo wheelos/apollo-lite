@@ -37,7 +37,7 @@
 #include "cyber/record/record_reader.h"
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/math/math_utils.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/prediction/container/obstacles/obstacles_container.h"
 #include "modules/prediction/predictor/free_move/free_move_predictor.h"

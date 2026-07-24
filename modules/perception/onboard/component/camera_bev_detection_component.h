@@ -20,9 +20,9 @@
 #include <string>
 #include <vector>
 
-#include "modules/common_msgs/perception_msgs/perception_camera.pb.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_camera.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/perception/camera/app/proto/perception.pb.h"
 #include "modules/perception/onboard/proto/fusion_camera_detection_component.pb.h"
 #include "modules/perception/pipeline/proto/pipeline_config.pb.h"

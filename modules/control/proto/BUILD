@@ -39,7 +39,7 @@ proto_library(
     name = "safety_status_proto",
     srcs = ["safety_status.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 
@@ -59,11 +59,11 @@ proto_library(
     name = "local_view_proto",
     srcs = ["local_view.proto"],
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_proto",
-        "//modules/common_msgs/basic_msgs:header_proto",
-        "//modules/common_msgs/control_msgs:pad_msg_proto",
-        "//modules/common_msgs/localization_msgs:localization_proto",
-        "//modules/common_msgs/planning_msgs:planning_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_proto",
     ],
 )
 
@@ -158,8 +158,8 @@ proto_library(
     name = "control_conf_proto",
     srcs = ["control_conf.proto"],
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_proto",
-        "//modules/common_msgs/control_msgs:pad_msg_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_proto",
         ":lat_controller_conf_proto",
         ":lon_controller_conf_proto",
         ":mpc_controller_conf_proto",
@@ -183,8 +183,8 @@ proto_library(
     name = "control_common_conf_proto",
     srcs = ["control_common_conf.proto"],
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_proto",
-        "//modules/common_msgs/control_msgs:pad_msg_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_proto",
     ],
 )
 
@@ -272,9 +272,9 @@ proto_library(
     name = "preprocessor_proto",
     srcs = ["preprocessor.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
-        "//modules/common_msgs/basic_msgs:drive_state_proto",
-        "//modules/common_msgs/control_msgs:input_debug_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_state_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_proto",
         ":local_view_proto",
     ],
 )

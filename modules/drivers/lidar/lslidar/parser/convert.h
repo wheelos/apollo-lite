@@ -20,7 +20,7 @@
 #include <string>
 
 // #include "modules/drivers/proto/pointcloud.pb.h"
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/drivers/lidar/lslidar/proto/config.pb.h"
 #include "modules/drivers/lidar/lslidar/proto/lslidar.pb.h"
 

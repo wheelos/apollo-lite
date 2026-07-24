@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
-#include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 
 #include "cyber/common/log.h"

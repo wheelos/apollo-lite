@@ -13,7 +13,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "//cyber",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/scenarios:scenario",
     ],
 )

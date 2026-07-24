@@ -16,8 +16,8 @@ proto_library(
     name = "vehicle_state_proto",
     srcs = ["vehicle_state.proto"],
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_proto",
-        "//modules/common_msgs/localization_msgs:pose_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:pose_proto",
     ],
 )
 

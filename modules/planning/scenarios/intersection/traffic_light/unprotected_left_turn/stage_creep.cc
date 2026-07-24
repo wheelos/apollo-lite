@@ -22,7 +22,7 @@
 
 #include <string>
 
-#include "modules/common_msgs/perception_msgs/traffic_light_detection.pb.h"
+#include "wheelos_msgs/perception_msgs/traffic_light_detection.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"

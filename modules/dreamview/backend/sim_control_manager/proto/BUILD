@@ -50,7 +50,7 @@ proto_library(
     name = "sim_control_internal_proto",
     srcs = ["sim_control_internal.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

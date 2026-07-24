@@ -22,10 +22,10 @@
 
 #include <memory>
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/control_msgs/control_cmd.pb.h"
-#include "modules/common_msgs/guardian_msgs/guardian.pb.h"
-#include "modules/common_msgs/monitor_msgs/system_status.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/control_msgs/control_cmd.pb.h"
+#include "wheelos_msgs/guardian_msgs/guardian.pb.h"
+#include "wheelos_msgs/monitor_msgs/system_status.pb.h"
 #include "modules/guardian/proto/guardian_conf.pb.h"
 
 #include "cyber/common/macros.h"

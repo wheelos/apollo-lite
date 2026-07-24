@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["autotuning_raw_feature_generator.h"],
     deps = [
         "//modules/common/status",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:frame",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/common:speed_limit",

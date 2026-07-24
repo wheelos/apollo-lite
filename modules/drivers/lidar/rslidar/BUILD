@@ -50,7 +50,7 @@ cc_library(
         "-lpcap",
     ],
     deps = [
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/rslidar/proto:rslidar_cc_proto",
         "//modules/drivers/lidar/rslidar/proto:rslidar_config_cc_proto",

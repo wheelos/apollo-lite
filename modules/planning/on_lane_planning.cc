@@ -25,8 +25,8 @@
 
 #include "absl/strings/str_cat.h"
 
-#include "modules/common_msgs/planning_msgs/planning_internal.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_internal.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 #include "modules/planning/proto/planning_semantic_map_config.pb.h"
 
 #include "cyber/common/file.h"

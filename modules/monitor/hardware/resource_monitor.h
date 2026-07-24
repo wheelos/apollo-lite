@@ -17,7 +17,7 @@
 
 #include "modules/dreamview/proto/hmi_mode.pb.h"
 #include "modules/monitor/common/recurrent_runner.h"
-#include "modules/common_msgs/monitor_msgs/system_status.pb.h"
+#include "wheelos_msgs/monitor_msgs/system_status.pb.h"
 
 namespace apollo {
 namespace monitor {

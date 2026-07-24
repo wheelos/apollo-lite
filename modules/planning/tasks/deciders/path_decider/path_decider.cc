@@ -22,7 +22,7 @@
 
 #include <memory>
 
-#include "modules/common_msgs/planning_msgs/decision.pb.h"
+#include "wheelos_msgs/planning_msgs/decision.pb.h"
 
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/util/util.h"

@@ -19,8 +19,8 @@ limitations under the License.
 #include <string>
 
 #include "absl/strings/str_cat.h"
-#include "modules/common_msgs/map_msgs/map_id.pb.h"
-#include "modules/common_msgs/planning_msgs/navigation.pb.h"
+#include "wheelos_msgs/map_msgs/map_id.pb.h"
+#include "wheelos_msgs/planning_msgs/navigation.pb.h"
 #include "modules/common/configs/config_gflags.h"
 #include "modules/map/hdmap/hdmap.h"
 

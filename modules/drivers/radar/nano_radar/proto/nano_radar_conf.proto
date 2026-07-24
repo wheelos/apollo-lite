@@ -2,8 +2,8 @@ syntax = "proto2";
 
 package apollo.drivers.nano_radar;
 
-import "modules/common_msgs/sensor_msgs/nano_radar.proto";
-import "modules/common_msgs/drivers_msgs/can_card_parameter.proto";
+import "wheelos_msgs/sensor_msgs/nano_radar.proto";
+import "wheelos_msgs/drivers_msgs/can_card_parameter.proto";
 
 message CanConf {
   optional apollo.drivers.canbus.CANCardParameter can_card_parameter = 1;

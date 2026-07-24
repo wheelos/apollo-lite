@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 #include "modules/planning/common/trajectory/discretized_trajectory.h"
 

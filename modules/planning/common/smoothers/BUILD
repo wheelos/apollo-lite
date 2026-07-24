@@ -12,7 +12,7 @@ cc_library(
         "//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_gflags",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

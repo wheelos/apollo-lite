@@ -20,7 +20,7 @@
 
 #include "Eigen/Eigen"
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/drivers/lidar/fusion/proto/lidar_fusion_config.pb.h"
 
 #include "cyber/component/component.h"

@@ -25,7 +25,7 @@ cc_library(
     hdrs = ["transit_message_manager.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/transit/protocol:canbus_transit_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -42,7 +42,7 @@ cc_library(
         ":transit_message_manager",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/common/kv_db",
-        "//modules/common_msgs/basic_msgs:vehicle_signal_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:vehicle_signal_cc_proto",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/common:canbus_common",
     ],

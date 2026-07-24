@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "modules/canbus/vehicle/ge3/ge3_controller.h"
 
-#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
+#include "wheelos_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/time/time.h"
 #include "modules/canbus/vehicle/chassis_extension_tools.h"

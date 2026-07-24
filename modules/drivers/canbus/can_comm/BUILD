@@ -7,7 +7,7 @@ cc_library(
     name = "can_receiver",
     hdrs = ["can_receiver.h"],
     deps = [
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_comm:message_manager_base",
     ],
@@ -17,7 +17,7 @@ cc_library(
     name = "can_sender",
     hdrs = ["can_sender.h"],
     deps = [
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "@com_google_googletest//:gtest",
@@ -32,7 +32,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/drivers/canbus/common:canbus_common",
     ],
 )
@@ -43,8 +43,8 @@ cc_test(
     srcs = ["can_sender_test.cc"],
     deps = [
         "//cyber",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_client/fake:fake_can_client",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/common:canbus_common",
@@ -58,12 +58,12 @@ cc_test(
     srcs = ["can_receiver_test.cc"],
     deps = [
         "//cyber",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
-        "//modules/common_msgs/config_msgs:vehicle_config_cc_proto",
-        "//modules/common_msgs/basic_msgs:drive_state_cc_proto",
-        "//modules/common_msgs/basic_msgs:header_cc_proto",
-        "//modules/common_msgs/basic_msgs:vehicle_signal_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_state_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:vehicle_signal_cc_proto",
         "//modules/drivers/canbus/can_client/fake:fake_can_client",
         "//modules/drivers/canbus/can_comm:can_receiver",
         "//modules/drivers/canbus/common:canbus_common",
@@ -77,8 +77,8 @@ cc_test(
     size = "small",
     srcs = ["protocol_data_test.cc"],
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "@com_google_googletest//:gtest_main",
     ],
@@ -91,7 +91,7 @@ cc_test(
     srcs = ["message_manager_test.cc"],
     deps = [
         "//cyber",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "@com_google_googletest//:gtest_main",
     ],

@@ -18,8 +18,8 @@
 
 #include "gtest/gtest.h"
 
-#include "modules/common_msgs/basic_msgs/drive_state.pb.h"
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/drive_state.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 
 #include "modules/map/hdmap/hdmap_common.h"
 #include "modules/map/hdmap/hdmap_util.h"

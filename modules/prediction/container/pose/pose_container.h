@@ -23,8 +23,8 @@
 
 #include <memory>
 
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "modules/prediction/container/container.h"
 
 namespace apollo {

@@ -25,8 +25,8 @@
 #include <utility>
 #include <vector>
 
-#include "modules/common_msgs/drivers_msgs/can_card_parameter.pb.h"
-#include "modules/common_msgs/sensor_msgs/nano_radar.pb.h"
+#include "wheelos_msgs/drivers_msgs/can_card_parameter.pb.h"
+#include "wheelos_msgs/sensor_msgs/nano_radar.pb.h"
 
 #include "cyber/cyber.h"
 #include "modules/common/monitor_log/monitor_log_buffer.h"

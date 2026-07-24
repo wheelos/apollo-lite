@@ -19,7 +19,7 @@ cc_library(
     name = "status",
     hdrs = ["status.h"],
     deps = [
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/common/util:util_tool",
         "@com_google_protobuf//:protobuf",
     ],

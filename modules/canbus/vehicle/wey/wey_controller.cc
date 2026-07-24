@@ -17,7 +17,7 @@
 #include "modules/canbus/vehicle/wey/wey_controller.h"
 
 #include "modules/canbus/vehicle/wey/proto/wey.pb.h"
-#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
+#include "wheelos_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/time/time.h"
 #include "modules/canbus/vehicle/chassis_extension_tools.h"

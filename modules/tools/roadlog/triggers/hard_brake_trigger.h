@@ -18,7 +18,7 @@
 
 #include <deque>
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/tools/roadlog/proto/smart_recorder_triggers.pb.h"
 
 #include "modules/tools/roadlog/triggers/trigger_base.h"

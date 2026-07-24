@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/linear_interpolation.h"

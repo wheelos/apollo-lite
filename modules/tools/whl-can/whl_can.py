@@ -21,7 +21,7 @@ import time
 import logging
 
 from cyber.python.cyber_py3 import cyber
-from modules.common_msgs.control_msgs import control_cmd_pb2
+from wheelos_msgs.control_msgs import control_cmd_pb2
 
 CONTROL_TOPIC = "/apollo/control"
 

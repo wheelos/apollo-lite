@@ -19,7 +19,7 @@
 #include <memory>
 #include <vector>
 
-#include "modules/common_msgs/sensor_msgs/ultrasonic_radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/ultrasonic_radar.pb.h"
 #include "modules/drivers/radar/udas_ultrasonic_radar/proto/ultrasonic_radar_config.pb.h"
 
 #include "cyber/component/timer_component.h"

@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 #include "modules/planning/proto/st_drivable_boundary.pb.h"
 #include "modules/planning/proto/task_config.pb.h"
 

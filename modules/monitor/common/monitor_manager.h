@@ -24,8 +24,8 @@
 #include "modules/common/monitor_log/monitor_log_buffer.h"
 #include "modules/dreamview/proto/hmi_config.pb.h"
 #include "modules/dreamview/proto/hmi_mode.pb.h"
-#include "modules/common_msgs/dreamview_msgs/hmi_status.pb.h"
-#include "modules/common_msgs/monitor_msgs/system_status.pb.h"
+#include "wheelos_msgs/dreamview_msgs/hmi_status.pb.h"
+#include "wheelos_msgs/monitor_msgs/system_status.pb.h"
 
 /**
  * @namespace apollo::monitor

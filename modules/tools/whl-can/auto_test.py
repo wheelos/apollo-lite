@@ -21,8 +21,8 @@ from datetime import datetime
 from typing import Dict, Any, List
 
 from cyber.python.cyber_py3 import cyber
-from modules.common_msgs.control_msgs import control_cmd_pb2
-from modules.common_msgs.chassis_msgs import chassis_pb2
+from wheelos_msgs.control_msgs import control_cmd_pb2
+from wheelos_msgs.chassis_msgs import chassis_pb2
 
 
 # --- Global Configuration ---

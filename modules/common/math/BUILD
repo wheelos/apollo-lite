@@ -35,8 +35,8 @@ cc_library(
         "//cyber",
         "//modules/common/math/qp_solver",
         "//modules/common/util:util_tool",
-        "//modules/common_msgs/basic_msgs:geometry_cc_proto",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@com_google_absl//absl/strings",
         "@eigen",
         "@osqp",
@@ -130,7 +130,7 @@ cc_library(
     deps = [
         ":euler_angles_zxy",
         ":geometry",
-        "//modules/common_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@eigen",
     ],
     alwayslink = True,
@@ -190,7 +190,7 @@ cc_library(
     hdrs = ["path_matcher.h"],
     deps = [
         ":linear_interpolation",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 
@@ -231,7 +231,7 @@ cc_library(
     hdrs = ["linear_interpolation.h"],
     deps = [
         ":geometry",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
     alwayslink = True,
 )

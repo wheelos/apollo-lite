@@ -30,8 +30,8 @@
 #include "pcl/point_cloud.h"
 #include "pcl/point_types.h"
 
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/cyber.h"

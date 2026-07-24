@@ -23,10 +23,10 @@
 
 #include "Eigen/Dense"
 
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/localization_msgs/pose.pb.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/localization_msgs/pose.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/dreamview/proto/camera_update.pb.h"
 
 #include "cyber/cyber.h"

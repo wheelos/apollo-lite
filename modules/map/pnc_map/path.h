@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-#include "modules/common_msgs/map_msgs/map_lane.pb.h"
+#include "wheelos_msgs/map_msgs/map_lane.pb.h"
 #include "modules/common/math/box2d.h"
 #include "modules/common/math/line_segment2d.h"
 #include "modules/common/math/vec2d.h"

@@ -20,11 +20,11 @@
 #include <mutex>
 #include <string>
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/control_msgs/control_cmd.pb.h"
-#include "modules/common_msgs/control_msgs/pad_msg.pb.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/control_msgs/control_cmd.pb.h"
+#include "wheelos_msgs/control_msgs/pad_msg.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 #include "modules/control/proto/control_conf.pb.h"
 
 #include "cyber/component/timer_component.h"

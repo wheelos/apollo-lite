@@ -30,8 +30,8 @@
 
 #include "cyber/cyber.h"
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
 
 #include "modules/common/status/status.h"
 #include "modules/common/util/eigen_defs.h"

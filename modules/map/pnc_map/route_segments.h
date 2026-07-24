@@ -24,8 +24,8 @@
 #include <string>
 #include <vector>
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 
 #include "modules/map/hdmap/hdmap.h"

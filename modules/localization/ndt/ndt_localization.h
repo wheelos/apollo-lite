@@ -20,12 +20,12 @@
 #include <string>
 
 #include "Eigen/Geometry"
-#include "modules/common_msgs/sensor_msgs/ins.pb.h"
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/ins.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/localization/ndt/localization_pose_buffer.h"
 #include "modules/localization/ndt/ndt_locator/lidar_locator_ndt.h"
-#include "modules/common_msgs/localization_msgs/gps.pb.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/localization_msgs/gps.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {

@@ -69,9 +69,9 @@ cc_library(
         "//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
-        "//modules/common_msgs/basic_msgs:header_cc_proto",
-        "//modules/common_msgs/basic_msgs:geometry_cc_proto",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@com_github_gflags_gflags//:gflags",
     ]
 )
@@ -94,7 +94,7 @@ cc_library(
     hdrs = ["point_factory.h"],
     deps = [
         "//modules/common/math",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ]
 )
 
@@ -151,7 +151,7 @@ cc_library(
         "//cyber",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
-        "//modules/common_msgs/basic_msgs:header_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
     ]
 )
 
@@ -236,8 +236,8 @@ cc_library(
         "//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
-        "//modules/common_msgs/basic_msgs:geometry_cc_proto",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@com_github_gflags_gflags//:gflags",
     ],
 )
@@ -278,7 +278,7 @@ cc_test(
     srcs = ["json_util_test.cc"],
     deps = [
         ":json_util",
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )

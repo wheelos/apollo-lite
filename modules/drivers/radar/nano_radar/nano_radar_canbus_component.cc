@@ -25,7 +25,7 @@
 
 #include "Eigen/Geometry"
 
-#include "modules/common_msgs/sensor_msgs/nano_radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/nano_radar.pb.h"
 #include "modules/drivers/canbus/proto/sensor_canbus_conf.pb.h"
 
 #include "modules/common/adapters/adapter_gflags.h"

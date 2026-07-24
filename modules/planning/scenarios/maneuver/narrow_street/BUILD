@@ -14,7 +14,7 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/common/configs:vehicle_config_helper",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/scenarios:scenario",
     ],
 )

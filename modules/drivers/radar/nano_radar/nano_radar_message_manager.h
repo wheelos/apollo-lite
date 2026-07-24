@@ -22,7 +22,7 @@
 
 #include <memory>
 
-#include "modules/common_msgs/sensor_msgs/nano_radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/nano_radar.pb.h"
 
 #include "cyber/cyber.h"
 #include "modules/drivers/canbus/can_client/can_client_factory.h"

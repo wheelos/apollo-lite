@@ -21,7 +21,7 @@
 
 #include "gtest/gtest.h"
 
-#include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 #include "modules/control/proto/control_conf.pb.h"
 #include "modules/control/proto/mrac_conf.pb.h"
 

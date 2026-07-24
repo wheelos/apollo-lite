@@ -17,7 +17,7 @@
 #include "modules/canbus/vehicle/neolix_edu/neolix_edu_controller.h"
 
 #include "modules/canbus/vehicle/neolix_edu/proto/neolix_edu.pb.h"
-#include "modules/common_msgs/basic_msgs/vehicle_signal.pb.h"
+#include "wheelos_msgs/basic_msgs/vehicle_signal.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/time.h"

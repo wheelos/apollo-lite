@@ -22,10 +22,10 @@
 #include <variant>
 #include <vector>
 
-#include "modules/common_msgs/sensor_msgs/gnss_best_pose.pb.h"
-#include "modules/common_msgs/sensor_msgs/heading.pb.h"
-#include "modules/common_msgs/sensor_msgs/imu.pb.h"
-#include "modules/common_msgs/sensor_msgs/ins.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
+#include "wheelos_msgs/sensor_msgs/heading.pb.h"
+#include "wheelos_msgs/sensor_msgs/imu.pb.h"
+#include "wheelos_msgs/sensor_msgs/ins.pb.h"
 #include "modules/drivers/gnss/proto/config.pb.h"
 
 #include "modules/drivers/gnss/parser/forsense/forsense_messages.h"

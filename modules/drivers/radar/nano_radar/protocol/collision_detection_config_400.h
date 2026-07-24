@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "modules/common_msgs/sensor_msgs/nano_radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/nano_radar.pb.h"
 #include "modules/drivers/radar/nano_radar/proto/nano_radar_conf.pb.h"
 
 #include "modules/drivers/canbus/can_comm/protocol_data.h"

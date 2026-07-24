@@ -40,9 +40,9 @@ cc_library(
     deps = [
         ":config_gflags",
         "//cyber",
-        "//modules/common_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/common/math",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
     visibility = ["//visibility:public"],
 )

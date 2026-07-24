@@ -22,8 +22,8 @@
 
 #include "moduls/common/configs/vehicle_config_helper.h"
 
-#include "modules/common_msgs/basic_msgs/error_code.pb.h"
-#include "modules/common_msgs/planning_msgs/planning_internal.pb.h"
+#include "wheelos_msgs/basic_msgs/error_code.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_internal.pb.h"
 #include "modules/planning/proto/planning_status.pb.h"
 
 #include "cyber/common/log.h"

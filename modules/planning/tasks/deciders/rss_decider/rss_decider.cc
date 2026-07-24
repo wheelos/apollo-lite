@@ -20,7 +20,7 @@
 
 #include "modules/planning/tasks/deciders/rss_decider/rss_decider.h"
 
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/planning/common/planning_gflags.h"

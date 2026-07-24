@@ -41,7 +41,7 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
         "//modules/drivers/lidar/proto:velodyne_config_cc_proto",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/transform:transform_query",
         "@eigen",
     ],

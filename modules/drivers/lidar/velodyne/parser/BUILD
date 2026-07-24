@@ -56,7 +56,7 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/drivers/lidar/proto:velodyne_config_cc_proto",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "@boost.array",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@eigen",

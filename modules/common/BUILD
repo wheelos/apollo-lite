@@ -33,7 +33,7 @@ install(
     data = [
         "//modules/common/adapters/proto:adapter_config_cc_proto",
         "//modules/common/latency_recorder/proto:latency_record_cc_proto",
-        "//modules/common_msgs/monitor_msgs:monitor_log_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_cc_proto",
         "//modules/common/vehicle_model/proto:vehicle_model_config_cc_proto",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
     ],
@@ -43,14 +43,14 @@ install_files(
     name = "pb_common",
     dest = "common",
     files = [
-        "//modules/common_msgs/basic_msgs:direction_py_pb2",
-        "//modules/common_msgs/basic_msgs:drive_state_py_pb2",
-        "//modules/common_msgs/basic_msgs:error_code_py_pb2",
-        "//modules/common_msgs/basic_msgs:geometry_py_pb2",
-        "//modules/common_msgs/basic_msgs:header_py_pb2",
-        "//modules/common_msgs/basic_msgs:pnc_point_py_pb2",
-        "//modules/common_msgs/basic_msgs:vehicle_signal_py_pb2",
-        "//modules/common_msgs/basic_msgs:drive_event_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:direction_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_state_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:vehicle_signal_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_event_py_pb2",
     ],
 )
 

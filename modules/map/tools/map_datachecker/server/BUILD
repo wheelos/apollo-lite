@@ -117,7 +117,7 @@ cc_library(
         ":pose_collection",
         "//cyber",
         "//modules/common/util:time_conversion",
-        "//modules/common_msgs/sensor_msgs:gnss_best_pose_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
     ],
 )
 
@@ -177,7 +177,7 @@ cc_library(
         ":worker_agent",
         ":worker_gflags",
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:gnss_best_pose_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
         "//modules/map/tools/map_datachecker/proto:collection_error_code_cc_proto",
         "//modules/map/tools/map_datachecker/proto:collection_service_cc_grpc",
     ],

@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/common_msgs/planning_msgs/pad_msg.pb.h"
+#include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 
 #include "cyber/common/log.h"

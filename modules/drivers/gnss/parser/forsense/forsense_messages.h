@@ -17,10 +17,10 @@
 #include <cstdint>
 #include <string>
 
-#include "modules/common_msgs/sensor_msgs/gnss_best_pose.pb.h"
-#include "modules/common_msgs/sensor_msgs/heading.pb.h"
-#include "modules/common_msgs/sensor_msgs/imu.pb.h"
-#include "modules/common_msgs/sensor_msgs/ins.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
+#include "wheelos_msgs/sensor_msgs/heading.pb.h"
+#include "wheelos_msgs/sensor_msgs/imu.pb.h"
+#include "wheelos_msgs/sensor_msgs/ins.pb.h"
 
 namespace apollo {
 namespace drivers {

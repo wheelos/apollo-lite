@@ -22,7 +22,7 @@
 
 #include "Eigen/Eigen"
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
 namespace apollo {
 namespace drivers {

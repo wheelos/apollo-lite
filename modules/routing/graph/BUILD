@@ -59,7 +59,7 @@ cc_library(
         ":routing_topo_range",
         "//cyber",
         "//modules/common/util:util_tool",
-        "//modules/common_msgs/routing_msgs:routing_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "//modules/routing/proto:topo_graph_cc_proto",
     ],
 )

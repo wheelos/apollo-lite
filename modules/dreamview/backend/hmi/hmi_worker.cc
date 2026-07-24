@@ -28,7 +28,7 @@
 #include "absl/strings/str_split.h"
 
 #include "cyber/proto/dag_conf.pb.h"
-#include "modules/common_msgs/monitor_msgs/system_status.pb.h"
+#include "wheelos_msgs/monitor_msgs/system_status.pb.h"
 #include "modules/dreamview/proto/scenario.pb.h"
 
 #include "cyber/common/file.h"

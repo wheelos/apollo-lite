@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/perception/pipeline/proto/stage/spatio_temporal_ground_detector_config.pb.h"
 
 #include "cyber/cyber.h"

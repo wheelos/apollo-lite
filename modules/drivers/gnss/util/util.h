@@ -29,7 +29,7 @@
 
 #include "google/protobuf/message.h"
 
-#include "modules/common_msgs/basic_msgs/geometry.pb.h"
+#include "wheelos_msgs/basic_msgs/geometry.pb.h"
 
 // Anonymous namespace that contains helper constants and functions.
 namespace {

@@ -39,7 +39,7 @@ cc_library(
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/compensator/proto:lidar_compensator_config_cc_proto",
         "//modules/transform:transform_query",
         "@eigen",

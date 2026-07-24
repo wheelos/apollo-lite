@@ -15,7 +15,7 @@ cc_library(
         "//modules/monitor/common:recurrent_runner",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:map_util",
-        "//modules/common_msgs/perception_msgs:collision_warning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:collision_warning_cc_proto",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -27,7 +27,7 @@ cc_library(
     copts=MONITOR_COPTS,
     deps=[
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:gnss_best_pose_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
         "//modules/monitor/software:summary_monitor",

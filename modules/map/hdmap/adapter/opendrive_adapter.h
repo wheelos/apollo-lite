@@ -16,7 +16,7 @@ limitations under the License.
 
 #include <string>
 
-#include "modules/common_msgs/map_msgs/map.pb.h"
+#include "wheelos_msgs/map_msgs/map.pb.h"
 
 namespace apollo {
 namespace hdmap {

@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/monitor_msgs/smart_recorder_status.pb.h"
+#include "wheelos_msgs/monitor_msgs/smart_recorder_status.pb.h"
 #include "modules/tools/roadlog/proto/smart_recorder_triggers.pb.h"
 
 #include "cyber/cyber.h"

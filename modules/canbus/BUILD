@@ -18,7 +18,7 @@ cc_library(
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "//modules/common/status",
-        "//modules/common_msgs/guardian_msgs:guardian_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/guardian_msgs:guardian_cc_proto",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",
@@ -66,7 +66,7 @@ install_files(
     name = "pb_canbus",
     dest = "modules/canbus",
     files = [
-        "//modules/common_msgs/chassis_msgs:chassis_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_py_pb2",
     ],
 )
 

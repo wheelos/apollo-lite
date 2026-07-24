@@ -29,7 +29,7 @@ cc_library(
     ],
     deps = [
         "//modules/drivers/canbus/common:canbus_common",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/canbus/vehicle/mk_mini/protocol:canbus_mk_mini_protocol",
     ],
@@ -47,7 +47,7 @@ cc_library(
         ":mk_mini_message_manager",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/common:canbus_common",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/mk_mini/protocol:canbus_mk_mini_protocol",

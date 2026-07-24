@@ -78,7 +78,7 @@ install_files(
     name = "pb_dreamview",
     dest = "dreamview",
     files = [
-        "//modules/common_msgs/dreamview_msgs:chart_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/dreamview_msgs:chart_py_pb2",
         "//modules/dreamview/proto:preprocess_table_py_pb2",
     ],
 )

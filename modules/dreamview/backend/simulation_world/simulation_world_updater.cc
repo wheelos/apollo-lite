@@ -20,7 +20,7 @@
 
 #include "google/protobuf/util/json_util.h"
 
-#include "modules/common_msgs/mission_msgs/mission_request.pb.h"
+#include "wheelos_msgs/mission_msgs/mission_request.pb.h"
 
 #include "cyber/common/file.h"
 #include "modules/common/util/json_util.h"

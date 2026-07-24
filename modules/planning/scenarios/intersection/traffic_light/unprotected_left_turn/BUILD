@@ -22,7 +22,7 @@ cc_library(
         "//cyber",
         "//modules/common/util",
         "//modules/common/util:util_tool",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/scenarios:scenario",
         "//modules/planning/scenarios/common:stage_intersection_cruise_impl",
         "//modules/planning/tasks/deciders/creep_decider",

@@ -18,7 +18,7 @@
 
 #include <vector>
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 #include "modules/planning/proto/auto_tuning_raw_feature.pb.h"
 
 #include "modules/common/status/status.h"

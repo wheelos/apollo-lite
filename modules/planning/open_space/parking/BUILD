@@ -41,7 +41,7 @@ cc_library(
         "//modules/common/math:geometry",
         "//modules/common/math:math_utils",
         "//modules/common/math:vec2d",
-        "//modules/common_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "@boost.geometry",
     ],
 )
@@ -56,7 +56,7 @@ cc_library(
         "//cyber",
         "//modules/common/math:geometry",
         "//modules/common/math:vec2d",
-        "//modules/common_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/planning/open_space/coarse_trajectory_generator:node3d",
         "//modules/planning/proto:planning_config_cc_proto",
     ],
@@ -84,7 +84,7 @@ cc_test(
     deps = [
         ":parking_slot",
         ":parking_slot_provider",
-        "//modules/common_msgs/map_msgs:map_parking_space_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_parking_space_cc_proto",
         "//modules/planning/testing:gtest_exit_main",
         "//modules/map/pnc_map:path",
     ],

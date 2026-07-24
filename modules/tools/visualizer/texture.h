@@ -20,7 +20,7 @@
 #include <QtGui/QOpenGLBuffer>
 #include <memory>
 
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 
 class Texture {
  public:

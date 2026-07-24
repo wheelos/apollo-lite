@@ -23,9 +23,9 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
-#include "modules/common_msgs/sensor_msgs/radar.pb.h"
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/tools/visualizer/channel_reader.h"
 #include "modules/tools/visualizer/msg_dialog.h"
 

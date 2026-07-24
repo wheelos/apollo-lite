@@ -54,7 +54,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_error_code",
         "//modules/perception/lidar/common:lidar_frame",
@@ -86,7 +86,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/pipeline:stage",

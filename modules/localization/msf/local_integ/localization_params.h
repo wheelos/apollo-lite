@@ -23,7 +23,7 @@
 
 #include <string>
 
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
 
 /**
  * @namespace apollo::localization

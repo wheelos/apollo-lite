@@ -33,7 +33,7 @@ cc_library(
         "util.h",
     ],
     deps = [
-        "//modules/common_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
     ],
 )
 

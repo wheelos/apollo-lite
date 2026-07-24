@@ -103,14 +103,14 @@ install_files(
         "//modules/perception/pipeline/proto/plugin:dst_existence_fusion_config_py_pb2",
         "//modules/perception/pipeline/proto/plugin:dst_type_fusion_config_py_pb2",
         "//modules/perception/proto:motion_service_py_pb2",
-        "//modules/common_msgs/perception_msgs:perception_camera_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_camera_py_pb2",
         "//modules/perception/proto:perception_config_schema_py_pb2",
-        "//modules/common_msgs/perception_msgs:perception_lane_py_pb2",
-        "//modules/common_msgs/perception_msgs:perception_obstacle_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_py_pb2",
         "//modules/perception/pipeline/proto/plugin:roi_boundary_filter_config_py_pb2",
         "//modules/perception/proto:perception_ultrasonic_py_pb2",
         "//modules/perception/proto:tracker_config_py_pb2",
-        "//modules/common_msgs/perception_msgs:traffic_light_detection_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_py_pb2",
     ],
 )
 

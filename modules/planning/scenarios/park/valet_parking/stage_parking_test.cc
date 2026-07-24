@@ -21,7 +21,7 @@
 
 #include "gtest/gtest.h"
 
-#include "modules/common_msgs/basic_msgs/pnc_point.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 
 namespace apollo {

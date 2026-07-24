@@ -28,7 +28,7 @@
 #include "seyond/sdk_common/inno_lidar_packet.h"
 #include "seyond/sdk_common/inno_lidar_packet_utils.h"
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/drivers/lidar/seyond/proto/seyond.pb.h"
 
 namespace apollo {

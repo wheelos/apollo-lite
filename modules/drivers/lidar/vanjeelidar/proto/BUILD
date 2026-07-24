@@ -16,7 +16,7 @@ proto_library(
     name = "vanjeelidar_proto",
     srcs = ["vanjeelidar.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 

@@ -14,8 +14,8 @@ cc_library(
         "//cyber",
         "//modules/perception/base",
         "//modules/perception/onboard/common_flags",
-        "//modules/common_msgs/perception_msgs:perception_obstacle_cc_proto",
-        "//modules/common_msgs/prediction_msgs:feature_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
         "@eigen",
     ],
 )

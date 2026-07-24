@@ -32,7 +32,7 @@
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
-#include "modules/common_msgs/basic_msgs/header.pb.h"
+#include "wheelos_msgs/basic_msgs/header.pb.h"
 
 /**
  * @namespace apollo::common::util

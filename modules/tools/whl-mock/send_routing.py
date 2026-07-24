@@ -31,8 +31,8 @@ from google.protobuf import text_format
 
 from cyber.python.cyber_py3 import cyber
 
-from modules.common_msgs.localization_msgs.localization_pb2 import LocalizationEstimate
-from modules.common_msgs.routing_msgs.routing_pb2 import RoutingRequest
+from wheelos_msgs.localization_msgs.localization_pb2 import LocalizationEstimate
+from wheelos_msgs.routing_msgs.routing_pb2 import RoutingRequest
 
 # Defaults
 DEFAULT_FILE = "RoutingRequest.txt"
@@ -118,7 +118,7 @@ def add_current_pose(request: RoutingRequest,
 
 
 def fill_header(request: RoutingRequest, seq: int):
-    from modules.common_msgs.basic_msgs.header_pb2 import Header
+    from wheelos_msgs.basic_msgs.header_pb2 import Header
     if not request.HasField("header"):
         request.header.CopyFrom(Header())
     request.header.timestamp_sec = time.time()

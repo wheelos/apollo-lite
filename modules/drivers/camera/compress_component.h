@@ -23,7 +23,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/drivers/camera/proto/config.pb.h"
 
 #include "cyber/base/concurrent_object_pool.h"

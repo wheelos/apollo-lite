@@ -33,7 +33,7 @@ proto_library(
     name = "topo_graph_proto",
     srcs = ["topo_graph.proto"],
     deps = [
-        "//modules/common_msgs/map_msgs:map_geometry_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_geometry_proto",
     ],
 )
 

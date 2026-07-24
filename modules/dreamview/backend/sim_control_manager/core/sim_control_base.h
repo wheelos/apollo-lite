@@ -21,8 +21,8 @@
 
 #include "nlohmann/json.hpp"
 
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
 #include "modules/dreamview/backend/sim_control_manager/proto/sim_control_internal.pb.h"
 
 #include "cyber/common/log.h"

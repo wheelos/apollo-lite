@@ -23,7 +23,7 @@
 #include <memory>
 
 #include "modules/canbus/proto/vehicle_parameter.pb.h"
-#include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis_detail.pb.h"
 
 #include "modules/canbus/vehicle/vehicle_controller.h"
 #include "modules/common/util/registry.h"

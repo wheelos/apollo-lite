@@ -12,7 +12,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "//modules/common/math",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 
@@ -34,7 +34,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "//modules/common/math",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

@@ -8,7 +8,7 @@ cc_library(
     srcs = ["socket_can_client_raw.cc"],
     hdrs = ["socket_can_client_raw.h"],
     deps = [
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/drivers/canbus/can_client",
         "@com_google_absl//absl/strings",
     ],

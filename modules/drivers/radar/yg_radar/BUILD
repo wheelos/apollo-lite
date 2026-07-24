@@ -36,7 +36,7 @@ cc_library(
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:message_util",
-        "//modules/common_msgs/sensor_msgs:radar_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:radar_cc_proto",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",

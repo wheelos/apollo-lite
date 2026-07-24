@@ -23,7 +23,7 @@ cc_library(
         ":monitor_log_buffer",
         ":monitor_logger",
         "//cyber",
-        "//modules/common_msgs/monitor_msgs:monitor_log_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_cc_proto",
         "//modules/common/util:util_tool",
         "@com_google_googletest//:gtest",
         "@com_google_absl//absl/strings",
@@ -38,7 +38,7 @@ cc_library(
     alwayslink = True,
     deps = [
         "//cyber",
-        "//modules/common_msgs/monitor_msgs:monitor_log_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_cc_proto",
         "//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
     ],
@@ -52,7 +52,7 @@ cc_library(
     deps = [
         ":monitor_logger",
         "//cyber",
-        "//modules/common_msgs/monitor_msgs:monitor_log_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_cc_proto",
         "@com_google_googletest//:gtest",
     ],
 )

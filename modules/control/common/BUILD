@@ -64,7 +64,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         "//cyber",
-        "//modules/common_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/common/math",
         "//modules/common/status",
         "//modules/control/proto:mrac_conf_cc_proto",
@@ -119,9 +119,9 @@ cc_library(
         ":control_gflags",
         "//cyber",
         "//modules/common/math",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/vehicle_state:vehicle_state_provider",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@eigen",
     ],
 )
@@ -198,7 +198,7 @@ cc_test(
     deps = [
         ":mrac_controller",
         "//cyber",
-        "//modules/common_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:mrac_conf_cc_proto",
         "@com_google_googletest//:gtest_main",

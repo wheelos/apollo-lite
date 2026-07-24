@@ -23,7 +23,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"

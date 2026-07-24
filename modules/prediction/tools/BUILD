@@ -14,7 +14,7 @@ cc_binary(
         "//cyber/record:record_reader",
         "//modules/common/configs:config_gflags",
         "//modules/common/math:math",
-        "//modules/common_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
         "//modules/map/hdmap:hdmap_util",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container/obstacles:obstacles_container",

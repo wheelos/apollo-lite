@@ -21,9 +21,9 @@
 #include <vector>
 
 #include "cyber/component/component.h"
-#include "modules/common_msgs/perception_msgs/perception_camera.pb.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
-#include "modules/common_msgs/sensor_msgs/sensor_image.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_camera.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/common/util/eigen_defs.h"
 #include "modules/perception/base/object_types.h"
 #include "modules/perception/base/object.h"

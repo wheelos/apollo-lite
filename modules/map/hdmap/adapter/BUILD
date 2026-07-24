@@ -20,7 +20,7 @@ cc_library(
     deps = [
         ":proto_organizer",
         "//cyber",
-        "//modules/common_msgs/map_msgs:map_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/common/math",
         "//modules/common/status",
         "//modules/common/util",
@@ -42,7 +42,7 @@ cc_library(
         "//modules/common/math",
         "//modules/common/util",
         "//modules/map/hdmap/adapter/xml_parser",
-        "//modules/common_msgs/map_msgs:map_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "@com_google_absl//absl/strings",
     ],
     visibility = ["//visibility:private"],

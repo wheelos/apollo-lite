@@ -19,7 +19,7 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_raw_observation.pb.h"
 
 #include "cyber/cyber.h"
 #include "modules/drivers/gnss/parser/parser.h"

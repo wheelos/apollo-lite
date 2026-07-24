@@ -20,7 +20,7 @@
 #include "Eigen/Geometry"
 #include "cyber/cyber.h"
 #include "cyber/common/log.h"
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/dreamview/backend/handlers/websocket_handler.h"
 #include "modules/transform/transform_query.h"
 

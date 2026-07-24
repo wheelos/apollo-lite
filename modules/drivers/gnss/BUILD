@@ -21,13 +21,13 @@ cc_library(
     alwayslink = True,
     deps = [
         "//cyber",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/common/monitor_log",
-        "//modules/common_msgs/basic_msgs:drive_state_cc_proto",
-        "//modules/common_msgs/basic_msgs:vehicle_signal_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_state_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:vehicle_signal_cc_proto",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
-        "//modules/common_msgs/sensor_msgs:ins_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:ins_cc_proto",
         "//modules/drivers/gnss/stream:raw_stream",
     ],
 )

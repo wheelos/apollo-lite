@@ -26,7 +26,7 @@
 
 #include "modules/prediction/common/prediction_map.h"
 #include "modules/prediction/container/container.h"
-#include "modules/common_msgs/storytelling_msgs/story.pb.h"
+#include "wheelos_msgs/storytelling_msgs/story.pb.h"
 
 namespace apollo {
 namespace prediction {

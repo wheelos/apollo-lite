@@ -25,14 +25,14 @@
 
 #include <proj.h>
 
-#include "modules/common_msgs/localization_msgs/gps.pb.h"
-#include "modules/common_msgs/localization_msgs/imu.pb.h"
-#include "modules/common_msgs/sensor_msgs/gnss.pb.h"
-#include "modules/common_msgs/sensor_msgs/gnss_best_pose.pb.h"
-#include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
-#include "modules/common_msgs/sensor_msgs/heading.pb.h"
-#include "modules/common_msgs/sensor_msgs/imu.pb.h"
-#include "modules/common_msgs/sensor_msgs/ins.pb.h"
+#include "wheelos_msgs/localization_msgs/gps.pb.h"
+#include "wheelos_msgs/localization_msgs/imu.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_raw_observation.pb.h"
+#include "wheelos_msgs/sensor_msgs/heading.pb.h"
+#include "wheelos_msgs/sensor_msgs/imu.pb.h"
+#include "wheelos_msgs/sensor_msgs/ins.pb.h"
 #include "modules/drivers/gnss/proto/config.pb.h"
 #include "modules/drivers/gnss/proto/gnss_status.pb.h"
 

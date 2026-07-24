@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "modules/common_msgs/sensor_msgs/racobit_radar.pb.h"
+#include "wheelos_msgs/sensor_msgs/racobit_radar.pb.h"
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 #include "modules/drivers/radar/racobit_radar/proto/racobit_radar_conf.pb.h"
 

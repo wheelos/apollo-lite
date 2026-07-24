@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 #include "modules/planning/proto/dp_poly_path_config.pb.h"
 
 #include "modules/common/math/box2d.h"

@@ -17,7 +17,7 @@
 
 #include "modules/planning/scenarios/deciders/emergency_decider.h"
 
-#include "modules/common_msgs/planning_msgs/pad_msg.pb.h"
+#include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
 
 #include "modules/planning/common/planning_gflags.h"
 

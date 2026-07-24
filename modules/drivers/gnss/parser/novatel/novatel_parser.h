@@ -31,12 +31,12 @@
 // needs to be removed
 #undef lock
 
-#include "modules/common_msgs/sensor_msgs/gnss.pb.h"
-#include "modules/common_msgs/sensor_msgs/gnss_best_pose.pb.h"
-#include "modules/common_msgs/sensor_msgs/gnss_raw_observation.pb.h"
-#include "modules/common_msgs/sensor_msgs/heading.pb.h"
-#include "modules/common_msgs/sensor_msgs/imu.pb.h"
-#include "modules/common_msgs/sensor_msgs/ins.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_raw_observation.pb.h"
+#include "wheelos_msgs/sensor_msgs/heading.pb.h"
+#include "wheelos_msgs/sensor_msgs/imu.pb.h"
+#include "wheelos_msgs/sensor_msgs/ins.pb.h"
 
 #include "modules/drivers/gnss/parser/novatel/novatel_messages.h"
 #include "modules/drivers/gnss/parser/parser.h"

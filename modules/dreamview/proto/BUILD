@@ -16,7 +16,7 @@ proto_library(
     name = "dv_plugin_msg_proto",
     srcs = ["dv_plugin_msg.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 
@@ -104,13 +104,13 @@ proto_library(
     name = "simulation_world_proto",
     srcs = ["simulation_world.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:pnc_point_proto",
-        "//modules/common_msgs/chassis_msgs:chassis_proto",
-        "//modules/common_msgs/monitor_msgs:monitor_log_proto",
-        "//modules/common_msgs/perception_msgs:perception_obstacle_proto",
-        "//modules/common_msgs/planning_msgs:planning_internal_proto",
-        "//modules/common_msgs/prediction_msgs:feature_proto",
-        "//modules/common_msgs/routing_msgs:routing_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_proto",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_proto",
+        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_proto",
     ],
 )
 
@@ -147,7 +147,7 @@ proto_library(
     name = "camera_update_proto",
     srcs = ["camera_update.proto"],
     deps = [
-        "//modules/common_msgs/perception_msgs:perception_obstacle_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_proto",
     ],
 )
 
@@ -201,7 +201,7 @@ proto_library(
     name = "scenario_proto",
     srcs = ["scenario.proto"],
     deps = [
-        "//modules/common_msgs/simulation_msgs:scenario_proto",
+        "@wheelos_msgs//wheelos_msgs/simulation_msgs:scenario_proto",
     ],
 )
 

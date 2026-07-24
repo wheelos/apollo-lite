@@ -13,7 +13,7 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/common/vehicle_state:vehicle_state_provider",
-        "//modules/common_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:discretized_trajectory",
     ],
@@ -42,7 +42,7 @@ cc_library(
         "//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
-        "//modules/common_msgs/prediction_msgs:prediction_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "//modules/planning/common:frame",
         "//modules/planning/common:obstacle",
         "//modules/planning/common/trajectory:discretized_trajectory",

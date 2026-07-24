@@ -18,7 +18,7 @@
 #include <memory>
 
 #include "cyber/cyber.h"
-#include "modules/common_msgs/sensor_msgs/gnss_best_pose.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
 
 namespace apollo {
 namespace hdmap {

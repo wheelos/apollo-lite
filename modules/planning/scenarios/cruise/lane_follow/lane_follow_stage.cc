@@ -22,7 +22,7 @@
 
 #include <utility>
 
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"

@@ -17,7 +17,7 @@
 #pragma once
 
 #include "modules/canbus/vehicle/ch/proto/ch.pb.h"
-#include "modules/common_msgs/chassis_msgs/chassis_detail.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis_detail.pb.h"
 
 #include "modules/drivers/canbus/can_comm/protocol_data.h"
 

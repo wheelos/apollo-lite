@@ -25,8 +25,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
-#include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
 
 #include "modules/common/util/point_factory.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"

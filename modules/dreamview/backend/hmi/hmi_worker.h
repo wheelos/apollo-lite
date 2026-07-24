@@ -28,12 +28,12 @@
 
 #include "nlohmann/json.hpp"
 
-#include "modules/common_msgs/audio_msgs/audio_event.pb.h"
-#include "modules/common_msgs/basic_msgs/drive_event.pb.h"
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/control_msgs/pad_msg.pb.h"
-#include "modules/common_msgs/dreamview_msgs/hmi_status.pb.h"
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/audio_msgs/audio_event.pb.h"
+#include "wheelos_msgs/basic_msgs/drive_event.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/control_msgs/pad_msg.pb.h"
+#include "wheelos_msgs/dreamview_msgs/hmi_status.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
 #include "modules/dreamview/proto/hmi_config.pb.h"
 #include "modules/dreamview/proto/hmi_mode.pb.h"
 

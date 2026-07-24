@@ -30,7 +30,7 @@
 #include <thread>
 #include <vector>
 
-#include "modules/common_msgs/basic_msgs/error_code.pb.h"
+#include "wheelos_msgs/basic_msgs/error_code.pb.h"
 
 #include "cyber/common/macros.h"
 #include "cyber/cyber.h"

@@ -100,7 +100,7 @@ cc_library(
         "//cyber/common:file",
         "//cyber/common:log",
         "//cyber:init",
-        "//modules/common_msgs/monitor_msgs:smart_recorder_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:smart_recorder_status_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/tools/roadlog/common:roadlog_layout",
         "@com_google_absl//absl/strings",

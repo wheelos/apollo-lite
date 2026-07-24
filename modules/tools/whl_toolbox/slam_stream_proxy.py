@@ -7,7 +7,7 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 import numpy as np
 
 from cyber.python.cyber_py3 import cyber
-from modules.common_msgs.localization_msgs.localization_pb2 import LocalizationEstimate
+from wheelos_msgs.localization_msgs.localization_pb2 import LocalizationEstimate
 from modules.slam_localization.proto.visualization_pb2 import Correction, KeyFrame, ScanMatchingStatus
 from modules.slam_localization.proto.odometry_pb2 import Odometry
 

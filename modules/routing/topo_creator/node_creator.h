@@ -18,7 +18,7 @@
 
 #include <string>
 
-#include "modules/common_msgs/map_msgs/map_lane.pb.h"
+#include "wheelos_msgs/map_msgs/map_lane.pb.h"
 #include "modules/routing/proto/routing_config.pb.h"
 #include "modules/routing/proto/topo_graph.pb.h"
 

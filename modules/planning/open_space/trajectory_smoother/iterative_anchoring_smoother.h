@@ -25,7 +25,7 @@
 
 #include "Eigen/Eigen"
 
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 #include "modules/planning/proto/planner_open_space_config.pb.h"
 
 #include "modules/common/math/box2d.h"

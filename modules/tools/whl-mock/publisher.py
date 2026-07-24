@@ -34,87 +34,87 @@ from cyber.python.cyber_py3 import cyber
 CHANNEL_MESSAGE_TYPE_MAP: Dict[str, tuple] = {
     # Planning
     "/apollo/planning": (
-        "modules.common_msgs.planning_msgs.planning_pb2",
+        "wheelos_msgs.planning_msgs.planning_pb2",
         "ADCTrajectory"
     ),
     "/apollo/planning/pad": (
-        "modules.common_msgs.planning_msgs.planning_pb2",
+        "wheelos_msgs.planning_msgs.planning_pb2",
         "PlanningPadMsg"
     ),
 
     # Prediction
     "/apollo/prediction": (
-        "modules.common_msgs.prediction_msgs.prediction_obstacle_pb2",
+        "wheelos_msgs.prediction_msgs.prediction_obstacle_pb2",
         "PredictionObstacles"
     ),
 
     # Routing
     "/apollo/routing_request": (
-        "modules.common_msgs.routing_msgs.routing_pb2",
+        "wheelos_msgs.routing_msgs.routing_pb2",
         "RoutingRequest"
     ),
     "/apollo/routing_response": (
-        "modules.common_msgs.routing_msgs.routing_pb2",
+        "wheelos_msgs.routing_msgs.routing_pb2",
         "RoutingResponse"
     ),
 
     # Control
     "/apollo/control": (
-        "modules.common_msgs.control_msgs.control_cmd_pb2",
+        "wheelos_msgs.control_msgs.control_cmd_pb2",
         "ControlCommand"
     ),
     "/apollo/control/pad": (
-        "modules.common_msgs.control_msgs.pad_msg_pb2",
+        "wheelos_msgs.control_msgs.pad_msg_pb2",
         "PadMessage"
     ),
 
     # Canbus
     "/apollo/canbus/chassis": (
-        "modules.common_msgs.chassis_msgs.chassis_pb2",
+        "wheelos_msgs.chassis_msgs.chassis_pb2",
         "Chassis"
     ),
     "/apollo/canbus/chassis_detail": (
-        "modules.common_msgs.chassis_msgs.chassis_detail_pb2",
+        "wheelos_msgs.chassis_msgs.chassis_detail_pb2",
         "ChassisDetail"
     ),
 
     # Localization
     "/apollo/localization/pose": (
-        "modules.common_msgs.localization_msgs.localization_pb2",
+        "wheelos_msgs.localization_msgs.localization_pb2",
         "LocalizationEstimate"
     ),
     "/apollo/localization/msf_gnss": (
-        "modules.common_msgs.localization_msgs.localization_pb2",
+        "wheelos_msgs.localization_msgs.localization_pb2",
         "LocalizationEstimate"
     ),
     "/apollo/localization/msf_lidar": (
-        "modules.common_msgs.localization_msgs.localization_pb2",
+        "wheelos_msgs.localization_msgs.localization_pb2",
         "LocalizationEstimate"
     ),
     "/apollo/localization/ndt_lidar": (
-        "modules.common_msgs.localization_msgs.localization_pb2",
+        "wheelos_msgs.localization_msgs.localization_pb2",
         "LocalizationEstimate"
     ),
 
     # Perception
     "/apollo/perception/obstacles": (
-        "modules.common_msgs.perception_msgs.perception_obstacle_pb2",
+        "wheelos_msgs.perception_msgs.perception_obstacle_pb2",
         "PerceptionObstacles"
     ),
     "/apollo/perception/traffic_light": (
-        "modules.common_msgs.perception_msgs.traffic_light_detection_pb2",
+        "wheelos_msgs.perception_msgs.traffic_light_detection_pb2",
         "TrafficLightDetection"
     ),
 
     # Dreamview
     "/apollo/dreamview": (
-        "modules.common_msgs.dreamview_msgs.chart_pb2",
+        "wheelos_msgs.dreamview_msgs.chart_pb2",
         "Chart"
     ),
 
     # Storytelling
     "/apollo/storytelling": (
-        "modules.common_msgs.storytelling_msgs.storytelling_pb2",
+        "wheelos_msgs.storytelling_msgs.storytelling_pb2",
         "Storytelling"
     ),
 }
@@ -128,14 +128,14 @@ CHANNEL_MESSAGE_TYPE_MAP: Dict[str, tuple] = {
 # This affects the generated template and the message type that will be published.
 # Make sure it matches the actual message type you want to use.
 
-# from modules.common_msgs.planning_msgs.planning_pb2 import ADCTrajectory as MessageType
+# from wheelos_msgs.planning_msgs.planning_pb2 import ADCTrajectory as MessageType
 
-from modules.common_msgs.prediction_msgs.prediction_obstacle_pb2 import (
+from wheelos_msgs.prediction_msgs.prediction_obstacle_pb2 import (
     PredictionObstacles as MessageType, )
-# from modules.common_msgs.routing_msgs.routing_pb2 import (
+# from wheelos_msgs.routing_msgs.routing_pb2 import (
 #     RoutingRequest as MessageType,
 # )
-# from modules.common_msgs.planning_msgs.planning_pb2 import ADCTrajectory as MessageType
+# from wheelos_msgs.planning_msgs.planning_pb2 import ADCTrajectory as MessageType
 
 # ========================================================
 
@@ -148,7 +148,7 @@ def import_message_type(import_path: str, class_name: str) -> Type[Message]:
     Dynamically import a message type by import path and class name.
 
     Args:
-        import_path: Module import path (e.g., "modules.common_msgs.planning_msgs.planning_pb2")
+        import_path: Module import path (e.g., "wheelos_msgs.planning_msgs.planning_pb2")
         class_name: Name of the message class (e.g., "ADCTrajectory")
 
     Returns:
@@ -510,7 +510,7 @@ def main():
          the predefined mapping. Use --list-topics to see all available channels.
 
       2. Use --msg-type to override the message type. Format: "import_path:ClassName"
-         Example: --msg-type "modules.common_msgs.planning_msgs.planning_pb2:ADCTrajectory"
+         Example: --msg-type "wheelos_msgs.planning_msgs.planning_pb2:ADCTrajectory"
 
       3. For backward compatibility, you can still modify the # USER CONFIGURATION
          section to set the default MessageType.
@@ -521,7 +521,7 @@ def main():
       $ python publisher.py --publish -i planning_template.txt -t /apollo/planning -p 0.1
 
       # Use custom message type for a channel
-      $ python publisher.py --gen -t /custom/channel --msg-type "modules.common_msgs.routing_msgs.routing_pb2:RoutingRequest"
+      $ python publisher.py --gen -t /custom/channel --msg-type "wheelos_msgs.routing_msgs.routing_pb2:RoutingRequest"
 
       # List all available predefined channels
       $ python publisher.py --list-topics
@@ -579,7 +579,7 @@ def main():
         help=(
             "Message type in format 'import_path:ClassName'. "
             "If not specified, will be looked up from --topic if provided. "
-            "Example: 'modules.common_msgs.planning_msgs.planning_pb2:ADCTrajectory'"
+            "Example: 'wheelos_msgs.planning_msgs.planning_pb2:ADCTrajectory'"
         ),
     )
     parser.add_argument(

@@ -27,7 +27,7 @@
 
 #include "absl/strings/str_cat.h"
 
-#include "modules/common_msgs/map_msgs/map_lane.pb.h"
+#include "wheelos_msgs/map_msgs/map_lane.pb.h"
 
 #include "cyber/common/log.h"
 #include "modules/common/math/math_utils.h"

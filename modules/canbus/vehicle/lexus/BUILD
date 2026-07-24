@@ -27,7 +27,7 @@ cc_library(
     hdrs = ["lexus_message_manager.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle/lexus/protocol:canbus_lexus_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
@@ -41,7 +41,7 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         ":lexus_message_manager",
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/lexus/protocol:canbus_lexus_protocol",
         "//modules/drivers/canbus/can_comm:can_sender",

@@ -21,7 +21,7 @@
 #include "absl/strings/str_cat.h"
 #include "gtest/gtest.h"
 #include "modules/map/hdmap/hdmap.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 
 using Point = apollo::common::PointENU;
 using AABox2d = apollo::common::math::AABox2d;

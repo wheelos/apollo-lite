@@ -30,7 +30,7 @@
 #endif
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
-#include "modules/common_msgs/config_msgs/vehicle_config.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 #include "modules/planning/proto/open_space_task_config.pb.h"
 
 #include "modules/common/math/vec2d.h"

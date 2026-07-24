@@ -25,11 +25,11 @@
 
 #include "gtest/gtest_prod.h"
 
-#include "modules/common_msgs/localization_msgs/localization.pb.h"
-#include "modules/common_msgs/perception_msgs/perception_obstacle.pb.h"
-#include "modules/common_msgs/planning_msgs/navigation.pb.h"
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
-#include "modules/common_msgs/prediction_msgs/prediction_obstacle.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/planning_msgs/navigation.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
 
 #include "cyber/cyber.h"
 #include "modules/dreamview/backend/common/dreamview_gflags.h"

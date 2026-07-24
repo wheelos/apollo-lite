@@ -16,7 +16,7 @@ cc_library(
     deps = [
         ":buffer_interface",
         "//cyber",
-        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//third_party/tf2",
         "@com_google_absl//absl/strings",
@@ -30,7 +30,7 @@ cc_library(
     deps = [
         "//cyber/common:log",
         "//cyber/time:time",
-        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "//modules/transform:buffer_interface",
         "//third_party/tf2",
         "@eigen",
@@ -65,7 +65,7 @@ cc_library(
     hdrs = ["buffer_interface.h"],
     deps = [
         "//cyber/time:time",
-        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "//third_party/tf2",
     ],
 )
@@ -105,7 +105,7 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
-        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
 )
 
@@ -120,7 +120,7 @@ cc_library(
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/transform/proto:static_transform_conf_cc_proto",
-        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
     ],
 )

@@ -33,8 +33,8 @@ proto_library(
     name = "prediction_conf_proto",
     srcs = ["prediction_conf.proto"],
     deps = [
-        "//modules/common_msgs/perception_msgs:perception_obstacle_proto",
-        "//modules/common_msgs/prediction_msgs:feature_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_proto",
     ],
 )
 
@@ -89,9 +89,9 @@ proto_library(
     srcs = ["offline_features.proto"],
     deps = [
         ":prediction_conf_proto",
-        "//modules/common_msgs/basic_msgs:pnc_point_proto",
-        "//modules/common_msgs/prediction_msgs:feature_proto",
-        "//modules/common_msgs/prediction_msgs:scenario_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:scenario_proto",
     ],
 )
 

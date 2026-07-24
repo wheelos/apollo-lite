@@ -33,9 +33,9 @@ cc_library(
     alwayslink = True,
     deps = [
         "//cyber",
-        "//modules/common_msgs/basic_msgs:error_code_cc_proto",
-        "//modules/common_msgs/basic_msgs:header_cc_proto",
-        "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "//modules/drivers/tools/image_decompress/proto:config_cc_proto",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",

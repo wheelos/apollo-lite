@@ -18,7 +18,7 @@ cc_library(
         "//modules/prediction/container/obstacles:obstacle_clusters",
         "//modules/prediction/container/obstacles:obstacles_container",
         "//modules/prediction/predictor/sequence:sequence_predictor",
-        "//modules/common_msgs/prediction_msgs:lane_graph_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:lane_graph_cc_proto",
     ],
 )
 

@@ -19,7 +19,7 @@
 #include <memory>
 #include <string>
 
-#include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "wheelos_msgs/planning_msgs/planning.pb.h"
 #include "modules/storytelling/story_tellers/base_teller.h"
 
 namespace apollo {

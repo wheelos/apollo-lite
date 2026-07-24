@@ -13,13 +13,13 @@ cc_library(
     copts = GUARDIAN_COPTS,
     deps = [
         "//cyber",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
-        "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
-        "//modules/common_msgs/guardian_msgs:guardian_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/guardian_msgs:guardian_cc_proto",
         "//modules/guardian/proto:guardian_conf_cc_proto",
-        "//modules/common_msgs/monitor_msgs:system_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:system_status_cc_proto",
     ],
     alwayslink = True,
 )

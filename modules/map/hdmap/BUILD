@@ -30,8 +30,8 @@ cc_library(
     copts = MAP_COPTS,
     deps = [
         "//cyber",
-        "//modules/common_msgs/map_msgs:map_cc_proto",
-        "//modules/common_msgs/planning_msgs:navigation_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
         "//modules/common/util:util_tool",
@@ -53,8 +53,8 @@ cc_library(
     deps = [
         ":hdmap",
         "//cyber",
-        "//modules/common_msgs/map_msgs:map_id_cc_proto",
-        "//modules/common_msgs/planning_msgs:navigation_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_id_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "//modules/common/configs:config_gflags",
         "@com_google_absl//absl/strings",
     ],

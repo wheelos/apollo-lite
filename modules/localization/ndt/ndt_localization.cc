@@ -25,7 +25,7 @@
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/math/quaternion.h"
 #include "modules/localization/common/rigid_transform_helper.h"
-#include "modules/common_msgs/sensor_msgs/gnss_best_pose.pb.h"
+#include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
 #include "modules/localization/common/localization_gflags.h"
 
 namespace apollo {

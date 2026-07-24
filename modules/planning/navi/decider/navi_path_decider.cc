@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "modules/common_msgs/planning_msgs/sl_boundary.pb.h"
+#include "wheelos_msgs/planning_msgs/sl_boundary.pb.h"
 
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"

@@ -16,7 +16,7 @@ proto_library(
     name = "sensor_canbus_conf_proto",
     srcs = ["sensor_canbus_conf.proto"],
     deps = [
-        "//modules/common_msgs/drivers_msgs:can_card_parameter_proto",
+        "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_proto",
     ],
 )
 

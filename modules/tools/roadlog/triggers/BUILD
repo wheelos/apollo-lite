@@ -20,8 +20,8 @@ cc_library(
     deps = [
         ":trigger_base",
         "//modules/common/adapters:adapter_gflags",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
     ],
 )
 
@@ -32,7 +32,7 @@ cc_library(
     deps = [
         ":trigger_base",
         "//modules/common/adapters:adapter_gflags",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
     ],
 )
 
@@ -43,8 +43,8 @@ cc_library(
     deps = [
         ":trigger_base",
         "//modules/common/adapters:adapter_gflags",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
     ],
 )
 
@@ -55,8 +55,8 @@ cc_library(
     deps = [
         ":trigger_base",
         "//modules/common/adapters:adapter_gflags",
-        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
-        "//modules/common_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
     ],
 )
 

@@ -42,7 +42,7 @@ cc_library(
         "scu_vcu_2_313.h",
     ],
     deps = [
-        "//modules/common_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/ge3/proto:ge3_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",

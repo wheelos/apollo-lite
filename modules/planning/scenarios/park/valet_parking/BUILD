@@ -17,7 +17,7 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
         "//cyber",
-        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/scenarios:scenario",
         "//modules/planning/common/util:common_lib",
         "//modules/planning/common/util:util_lib",

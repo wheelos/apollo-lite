@@ -5,8 +5,8 @@
 
 #include <Eigen/Geometry>
 
-#include "modules/common_msgs/perception_msgs/collision_warning.pb.h"
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/perception_msgs/collision_warning.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/perception/onboard/proto/collision_guardian_component.pb.h"
 
 #include "cyber/component/component.h"

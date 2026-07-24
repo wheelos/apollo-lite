@@ -21,8 +21,8 @@
 #include "gtest/gtest.h"
 
 #include "modules/canbus/proto/canbus_conf.pb.h"
-#include "modules/common_msgs/chassis_msgs/chassis.pb.h"
-#include "modules/common_msgs/control_msgs/control_cmd.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/control_msgs/control_cmd.pb.h"
 
 #include "cyber/common/file.h"
 #include "modules/canbus/vehicle/wey/wey_message_manager.h"

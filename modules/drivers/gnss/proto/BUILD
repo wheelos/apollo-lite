@@ -33,7 +33,7 @@ proto_library(
     name = "gnss_status_proto",
     srcs = ["gnss_status.proto"],
     deps = [
-        "//modules/common_msgs/basic_msgs:header_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
     ],
 )
 
