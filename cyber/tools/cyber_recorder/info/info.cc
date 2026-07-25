@@ -14,7 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "cyber/tools/cyber_recorder/info.h"
+#include "cyber/tools/cyber_recorder/info/info.h"
 
 #include "cyber/record/record_message.h"
 

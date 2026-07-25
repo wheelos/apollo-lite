@@ -22,7 +22,7 @@
 #include <memory>
 #include <mutex>
 
-#include "cyber/tools/cyber_recorder/player/play_task.h"
+#include "cyber/tools/cyber_recorder/play/play_task.h"
 
 namespace apollo {
 namespace cyber {

@@ -1,0 +1,25 @@
+version: 1
+
+subscription:
+  default_action: include
+  selectors:
+    - name: exclude_video
+      match:
+        type: regex
+        pattern: "^/video/.*"
+      action: exclude
+
+policies:
+  rules:
+    - name: lidar_front_rate
+      match:
+        type: channel
+        value: "/lidar/front"
+      policy:
+        sample_rate: 10
+        compression: zstd
+
+  default:
+    policy:
+      drop_message_size_bytes: 10485760
+      compression: none
