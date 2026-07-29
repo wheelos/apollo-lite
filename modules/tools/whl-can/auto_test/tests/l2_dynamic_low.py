@@ -5,50 +5,104 @@ from core.reporter import DataRecorder
 from modules.common_msgs.chassis_msgs import chassis_pb2
 
 
+def _run_linearity_sequence(
+    runner,
+    cmd,
+    test_points,
+    hold_sec,
+    tolerance,
+    recorder,
+    feedback_getter,
+    command_setter,
+):
+    for target in test_points:
+        if runner.estop_triggered.is_set():
+            return fail("Aborted")
+
+        command_setter(cmd, float(target))
+        runner.update_command(cmd)
+
+        start_hold = time.time()
+        while time.time() - start_hold < hold_sec:
+            chassis = runner.get_latest_chassis()
+            if chassis:
+                recorder.record(float(target), feedback_getter(chassis), chassis.speed_mps)
+            time.sleep(0.01)
+
+        chassis = runner.get_latest_chassis()
+        if not chassis:
+            return fail("No chassis feedback")
+
+        actual = feedback_getter(chassis)
+        if abs(actual - target) > tolerance:
+            return fail(f"Linearity error at {target}%")
+
+    return success("Linearity OK")
+
+
+def _run_step_response_test(
+    runner,
+    recorder,
+    cmd,
+    target,
+    timeout_sec,
+    feedback_getter,
+    command_setter,
+):
+    recorder.start()
+    command_setter(cmd, target)
+    start_time = time.time()
+    runner.update_command(cmd)
+
+    t90 = -1.0
+
+    try:
+        while time.time() - start_time < timeout_sec:
+            chassis = runner.get_latest_chassis()
+            if chassis:
+                actual = feedback_getter(chassis)
+                recorder.record(target, actual, chassis.speed_mps)
+                if t90 < 0 and actual >= target * 0.9:
+                    t90 = (time.time() - start_time) * 1000
+            time.sleep(0.01)
+    finally:
+        recorder.stop()
+
+    if t90 < 0:
+        return fail("Response Timeout")
+    if t90 > 400:
+        return fail(f"Response too slow: {t90:.0f}ms")
+    return success(f"Response Time: {t90:.0f}ms")
+
+
 def test_l2_throttle_linearity(runner):
     """TC-CTRL-01: Throttle Linearity (0-30%)"""
     if not runner.prepare_for_drive():
         return fail("Prep Failed")
 
     recorder = DataRecorder("L2_Throttle_Linearity")
-    recorder.start()
 
     cmd = create_base_command()
     cmd.parking_brake = False
     cmd.gear_location = chassis_pb2.Chassis.GEAR_DRIVE
 
+    recorder.start()
     try:
-        for throttle in [0, 10, 20, 30]:
-            if runner.estop_triggered.is_set():
-                return fail("Aborted")
-
-            cmd.throttle = float(throttle)
-            runner.update_command(cmd)
-
-            # Hold for 3s, recording at high freq
-            start_hold = time.time()
-            while time.time() - start_hold < 3.0:
-                chassis = runner.get_latest_chassis()
-                if chassis:
-                    recorder.record(
-                        throttle, chassis.throttle_percentage, chassis.speed_mps
-                    )
-                time.sleep(0.01)
-
-            chassis = runner.get_latest_chassis()
-            if not chassis:
-                return fail("No chassis feedback")
-
-            actual = chassis.throttle_percentage
-            if abs(actual - throttle) > 3.0:
-                return fail(f"Linearity error at {throttle}%")
-
+        result = _run_linearity_sequence(
+            runner=runner,
+            cmd=cmd,
+            test_points=[0, 10, 20, 30],
+            hold_sec=3.0,
+            tolerance=3.0,
+            recorder=recorder,
+            feedback_getter=lambda msg: msg.throttle_percentage,
+            command_setter=lambda c, v: setattr(c, "throttle", v),
+        )
     finally:
         recorder.stop()
         path = recorder.save_and_plot("Linearity Test", "Throttle %", "throttle_lin")
         runner.ui.log(f"Plot saved: {path}", "CYAN")
-
-    return success("Linearity OK")
+    return result
 
 
 def test_l2_brake_linearity(runner):
@@ -57,7 +111,6 @@ def test_l2_brake_linearity(runner):
         return fail("Prep Failed")
 
     recorder = DataRecorder("L2_Brake_Linearity")
-    recorder.start()
 
     cmd = create_base_command()
     cmd.parking_brake = False
@@ -70,35 +123,23 @@ def test_l2_brake_linearity(runner):
     cmd.throttle = 0.0
     runner.update_command(cmd)
 
+    recorder.start()
     try:
-        for brake in [0, 10, 20, 30]:
-            if runner.estop_triggered.is_set():
-                return fail("Aborted")
-
-            cmd.brake = float(brake)
-            runner.update_command(cmd)
-
-            start_hold = time.time()
-            while time.time() - start_hold < 3.0:
-                chassis = runner.get_latest_chassis()
-                if chassis:
-                    recorder.record(brake, chassis.brake_percentage, chassis.speed_mps)
-                time.sleep(0.01)
-
-            chassis = runner.get_latest_chassis()
-            if not chassis:
-                return fail("No chassis feedback")
-
-            actual = chassis.brake_percentage
-            if abs(actual - brake) > 3.0:
-                return fail(f"Linearity error at {brake}%")
-
+        result = _run_linearity_sequence(
+            runner=runner,
+            cmd=cmd,
+            test_points=[0, 10, 20, 30],
+            hold_sec=3.0,
+            tolerance=3.0,
+            recorder=recorder,
+            feedback_getter=lambda msg: msg.brake_percentage,
+            command_setter=lambda c, v: setattr(c, "brake", v),
+        )
     finally:
         recorder.stop()
         path = recorder.save_and_plot("Linearity Test", "Brake %", "brake_lin")
         runner.ui.log(f"Plot saved: {path}", "CYAN")
-
-    return success("Linearity OK")
+    return result
 
 
 def test_l2_brake_response_time(runner):
@@ -109,33 +150,22 @@ def test_l2_brake_response_time(runner):
     time.sleep(1.0)
 
     recorder = DataRecorder("L2_Brake_Response")
-    recorder.start()
 
     target = 20.0
-    cmd.brake = target
-    start_time = time.time()
-    runner.update_command(cmd)
-
-    t90 = -1
-
-    try:
-        while time.time() - start_time < 2.0:
-            chassis = runner.get_latest_chassis()
-            if chassis:
-                recorder.record(target, chassis.brake_percentage)
-                if t90 < 0 and chassis.brake_percentage >= target * 0.9:
-                    t90 = (time.time() - start_time) * 1000
-            time.sleep(0.01)
-    finally:
-        recorder.stop()
+    result = _run_step_response_test(
+        runner=runner,
+        recorder=recorder,
+        cmd=cmd,
+        target=target,
+        timeout_sec=2.0,
+        feedback_getter=lambda msg: msg.brake_percentage,
+        command_setter=lambda c, v: setattr(c, "brake", v),
+    )
+    if not result["pass"]:
         path = recorder.save_and_plot("Step Response", "Brake %", "brake_resp")
-
-    if t90 < 0:
-        return fail("Response Timeout")
-    if t90 > 400:
-        return fail(f"Response too slow: {t90:.0f}ms")
-
-    return success(f"Response Time: {t90:.0f}ms", plot=path)
+        return fail(result["details"], plot=path)
+    path = recorder.save_and_plot("Step Response", "Brake %", "brake_resp")
+    return success(result["details"], plot=path)
 
 
 def test_l2_speed_control_loop(runner):
@@ -196,8 +226,8 @@ def test_l2_gear_protection(runner):
     runner.update_command(cmd)
 
     try:
-        if not runner.wait_for_condition(
-            lambda: runner.get_latest_chassis().speed_mps > 1.0, 5.0, "Speed > 1m/s"
+        if not runner.wait_for_chassis_condition(
+            lambda msg: msg.speed_mps > 1.0, 5.0, "Speed > 1m/s"
         ):
             return fail("Could not build speed")
 
@@ -236,8 +266,8 @@ def test_l2_mode_protection(runner):
     cmd.speed = 2.0
     runner.update_command(cmd)
 
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis().speed_mps > 1.5, 5.0, "Speed > 1.5m/s"
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.speed_mps > 1.5, 5.0, "Speed > 1.5m/s"
     ):
         return fail("Could not build speed")
 
@@ -282,30 +312,19 @@ def test_l2_throttle_response_time(runner):
     time.sleep(0.5)
 
     recorder = DataRecorder("L2_Throttle_Response")
-    recorder.start()
 
     target = 20.0
-    cmd.throttle = target
-    start_time = time.time()
-    runner.update_command(cmd)
-
-    t90 = -1
-
-    try:
-        while time.time() - start_time < 2.0:
-            chassis = runner.get_latest_chassis()
-            if chassis:
-                recorder.record(target, chassis.throttle_percentage, chassis.speed_mps)
-                if t90 < 0 and chassis.throttle_percentage >= target * 0.9:
-                    t90 = (time.time() - start_time) * 1000
-            time.sleep(0.01)
-    finally:
-        recorder.stop()
+    result = _run_step_response_test(
+        runner=runner,
+        recorder=recorder,
+        cmd=cmd,
+        target=target,
+        timeout_sec=2.0,
+        feedback_getter=lambda msg: msg.throttle_percentage,
+        command_setter=lambda c, v: setattr(c, "throttle", v),
+    )
+    if not result["pass"]:
         path = recorder.save_and_plot("Step Response", "Throttle %", "throttle_resp")
-
-    if t90 < 0:
-        return fail("Response Timeout")
-    if t90 > 400:
-        return fail(f"Response too slow: {t90:.0f}ms")
-
-    return success(f"Response Time: {t90:.0f}ms", plot=path)
+        return fail(result["details"], plot=path)
+    path = recorder.save_and_plot("Step Response", "Throttle %", "throttle_resp")
+    return success(result["details"], plot=path)

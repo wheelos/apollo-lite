@@ -1,7 +1,6 @@
 import threading
 import time
-import logging
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 from cyber.python.cyber_py3 import cyber
 from modules.common_msgs.control_msgs import control_cmd_pb2
@@ -121,15 +120,27 @@ class TestRunner:
             if self.estop_triggered.is_set():
                 self.ui.log(f"Aborted: {desc}", "RED")
                 return False
-            try:
-                if condition_fn():
-                    return True
-            except Exception as exc:
-                # Log and continue polling so transient condition errors don't abort the test.
-                logging.exception("Error while evaluating wait_for_condition '%s': %s", desc, exc)
+            if condition_fn():
+                return True
             time.sleep(0.01)
         self.ui.log(f"Timeout: {desc}", "YELLOW")
         return False
+
+    def wait_for_chassis_condition(
+        self,
+        predicate: Callable[[chassis_pb2.Chassis], bool],
+        timeout_sec: float,
+        desc: str,
+    ) -> bool:
+        def condition() -> bool:
+            msg = self.get_latest_chassis()
+            return bool(msg and predicate(msg))
+
+        return self.wait_for_condition(
+            condition,
+            timeout_sec,
+            desc,
+        )
 
     def prepare_for_drive(self) -> bool:
         """Request AUTO + Drive with parking brake released in a safe sequence."""
@@ -144,10 +155,8 @@ class TestRunner:
         cmd.gear_location = chassis_pb2.Chassis.GEAR_NEUTRAL
         self.update_cmd(cmd)
 
-        if not self.wait_for_condition(
-            lambda: self.get_latest_chassis()
-            and self.get_latest_chassis().driving_mode
-            == chassis_pb2.Chassis.COMPLETE_AUTO_DRIVE,
+        if not self.wait_for_chassis_condition(
+            lambda msg: msg.driving_mode == chassis_pb2.Chassis.COMPLETE_AUTO_DRIVE,
             5.0,
             "Enter Auto Mode",
         ):

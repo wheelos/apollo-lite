@@ -89,8 +89,8 @@ def run_staged_brake(runner, start_kph, brake_pct):
     cmd.acceleration = 2.0
     runner.update_command(cmd)
 
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis().speed_mps >= start_mps * 0.95,
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.speed_mps >= start_mps * 0.95,
         30.0,
         f"Reach {start_kph} km/h",
     ):

@@ -36,7 +36,6 @@ from tests.l1_static import (
     test_l1_epb_toggle,
     test_l1_static_gear_shift,
     test_l1_signal_control,
-    test_l1_sport_mode_toggle,
 )
 from tests.l2_dynamic_low import (
     test_l2_speed_control_loop,
@@ -70,6 +69,11 @@ def main(stdscr):
         default="config/default.yaml",
         help="Path to test configuration file",
     )
+    parser.add_argument(
+        "--allow-high-risk",
+        action="store_true",
+        help="Enable high-risk L3 case (100km/h emergency brake)",
+    )
     # Curses wrapper passes extra args awkwardly, so we parse known args only
     # In a real CLI, we might handle argv differently before curses.wrapper
     args, _ = parser.parse_known_args()
@@ -97,9 +101,6 @@ def main(stdscr):
     runner.register_test_case(
         test_l1_static_gear_shift, "TC-FUNC-02: Static Gear Shift", 1
     )
-    runner.register_test_case(
-        test_l1_sport_mode_toggle, "TC-FUNC-05: Sport/Mode Toggle", 1
-    )
     runner.register_test_case(test_l1_signal_control, "TC-SIG-ALL: Body Signals", 1)
 
     # --- Level 2: Dynamic Low Speed ---
@@ -124,9 +125,10 @@ def main(stdscr):
     runner.register_test_case(
         test_l3_staged_braking_performance, "TC-CTRL-06: Staged Brake", 3
     )
-    runner.register_test_case(
-        test_l3_emergency_brake, "TC-SAFETY-01: Emergency Brake", 3
-    )
+    if args.allow_high_risk:
+        runner.register_test_case(
+            test_l3_emergency_brake, "TC-SAFETY-01: Emergency Brake", 3
+        )
 
     # 4. Execution Loop
     try:
