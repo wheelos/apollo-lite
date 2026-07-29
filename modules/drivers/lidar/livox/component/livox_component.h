@@ -49,9 +49,6 @@ typedef union {
   int64_t stamp;
 } LdsStamp;
 
-uint64_t GetEthPacketTimestamp(uint8_t timestamp_type, uint8_t* time_stamp,
-                               uint8_t size);
-
 class LivoxLidarComponent final : public LidarComponentBase<livox::LivoxScan> {
  public:
   void BinaryDataProcess(const unsigned char* data, int data_type,
@@ -68,6 +65,11 @@ class LivoxLidarComponent final : public LidarComponentBase<livox::LivoxScan> {
   static void OnDeviceStateUpdate(const DeviceInfo* device, DeviceEvent event);
   static void OnLidarStartSamplingCb(livox_status status, uint8_t handle,
                                      uint8_t response, void* client_data);
+
+ private:
+  uint64_t GetEthPacketTimestamp(uint8_t handle, uint8_t timestamp_type,
+                                 uint8_t* time_stamp, uint8_t size);
+
   livox::Config config_;
   std::deque<PointXYZIT> integral_queue_;
   uint64_t last_pointcloud_pub_timestamp_{0};
@@ -75,6 +77,7 @@ class LivoxLidarComponent final : public LidarComponentBase<livox::LivoxScan> {
   double integral_time_ = {0.4};
   uint8_t lidar_handle_ = {0};
   bool sdk_initialized_ = {false};
+  bool warned_not_use_lidar_clock_ = {false};
 };
 CYBER_REGISTER_COMPONENT(LivoxLidarComponent)
 }  // namespace lidar
