@@ -18,3 +18,9 @@ python3 cli.py --level 1 --config config/default.yaml
 
 This will start the program with non-blocking keyboard listening and send
 control commands in real time.
+
+For high-risk L3 emergency braking, enable it explicitly:
+
+```bash
+python3 cli.py --level 3 --allow-high-risk --config config/default.yaml
+```

@@ -9,18 +9,16 @@ def test_l1_driving_mode_transition(runner):
     cmd = create_base_command()
     runner.update_command(cmd)
 
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis().driving_mode
-        == chassis_pb2.Chassis.COMPLETE_AUTO_DRIVE,
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.driving_mode == chassis_pb2.Chassis.COMPLETE_AUTO_DRIVE,
         5.0,
         "Enter Auto",
     ):
         return fail("Failed to enter Auto Mode")
 
     runner.ui.log("Step 2: Press Brake to disengage...", "YELLOW")
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis().driving_mode
-        == chassis_pb2.Chassis.COMPLETE_MANUAL,
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.driving_mode == chassis_pb2.Chassis.COMPLETE_MANUAL,
         15.0,
         "Manual Disengagement",
     ):
@@ -97,6 +95,9 @@ def test_l1_static_max_steering_rate(runner):
 
         while time.time() - start_time < timeout:
             chassis = runner.get_latest_chassis()
+            if not chassis:
+                time.sleep(0.1)
+                continue
             actual = chassis.steering_percentage
 
             # Check for error codes (such as EPS overheating).
@@ -185,8 +186,8 @@ def test_l1_static_gear_shift(runner):
     ]:
         cmd.gear_location = gear
         runner.update_command(cmd)
-        if not runner.wait_for_condition(
-            lambda: runner.get_latest_chassis().gear_location == gear,
+        if not runner.wait_for_chassis_condition(
+            lambda msg: msg.gear_location == gear,
             3.0,
             f"Shift Gear {gear}",
         ):
@@ -200,15 +201,15 @@ def test_l1_epb_toggle(runner):
 
     cmd.parking_brake = True
     runner.update_command(cmd)
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis().parking_brake, 3.0, "EPB Engage"
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.parking_brake, 3.0, "EPB Engage"
     ):
         return fail("EPB Engage Failed")
 
     cmd.parking_brake = False
     runner.update_command(cmd)
-    if not runner.wait_for_condition(
-        lambda: not runner.get_latest_chassis().parking_brake, 3.0, "EPB Release"
+    if not runner.wait_for_chassis_condition(
+        lambda msg: not msg.parking_brake, 3.0, "EPB Release"
     ):
         return fail("EPB Release Failed")
     return success("EPB OK")
@@ -221,9 +222,8 @@ def test_l1_signal_control(runner):
     # TC-SIG-01: Turn Signals
     cmd.signal.turn_signal = 1  # LEFT
     runner.update_command(cmd)
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis()
-        and runner.get_latest_chassis().signal.turn_signal == 1,
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.signal.turn_signal == 1,
         1.0,
         "Left turn signal",
     ):
@@ -231,9 +231,8 @@ def test_l1_signal_control(runner):
 
     cmd.signal.turn_signal = 2  # RIGHT
     runner.update_command(cmd)
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis()
-        and runner.get_latest_chassis().signal.turn_signal == 2,
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.signal.turn_signal == 2,
         1.0,
         "Right turn signal",
     ):
@@ -245,9 +244,8 @@ def test_l1_signal_control(runner):
     # TC-SIG-02: High/Low Beam
     cmd.signal.high_beam = True
     runner.update_command(cmd)
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis()
-        and runner.get_latest_chassis().signal.high_beam,
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.signal.high_beam,
         1.0,
         "High beam",
     ):
@@ -255,9 +253,8 @@ def test_l1_signal_control(runner):
     cmd.signal.high_beam = False
     cmd.signal.low_beam = True
     runner.update_command(cmd)
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis()
-        and runner.get_latest_chassis().signal.low_beam,
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.signal.low_beam,
         1.0,
         "Low beam",
     ):
@@ -268,9 +265,8 @@ def test_l1_signal_control(runner):
     # TC-SIG-03: Hazard
     cmd.signal.emergency_light = True
     runner.update_command(cmd)
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis()
-        and runner.get_latest_chassis().signal.emergency_light,
+    if not runner.wait_for_chassis_condition(
+        lambda msg: msg.signal.emergency_light,
         1.0,
         "Emergency light",
     ):
@@ -281,20 +277,13 @@ def test_l1_signal_control(runner):
     # TC-SIG-04: Horn
     cmd.signal.horn = True
     runner.update_command(cmd)
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis() and runner.get_latest_chassis().signal.horn,
-        1.0,
-        "Horn ON",
-    ):
+    if not runner.wait_for_chassis_condition(lambda msg: msg.signal.horn, 1.0, "Horn ON"):
         return fail("Horn Failed")
 
     cmd.signal.horn = False
     runner.update_command(cmd)
-    if not runner.wait_for_condition(
-        lambda: runner.get_latest_chassis()
-        and not runner.get_latest_chassis().signal.horn,
-        1.0,
-        "Horn OFF",
+    if not runner.wait_for_chassis_condition(
+        lambda msg: not msg.signal.horn, 1.0, "Horn OFF"
     ):
         return fail("Horn Release Failed")
 
