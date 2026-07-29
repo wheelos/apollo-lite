@@ -40,6 +40,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":control_lib",
+        "//cyber/common:config_loader",
         "//modules/control/common:dependency_injector",
     ],
     alwayslink = True
