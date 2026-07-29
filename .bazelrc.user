@@ -1,0 +1,1 @@
+build --define vehicle=devkit
