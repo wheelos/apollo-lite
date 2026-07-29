@@ -10,7 +10,7 @@ cc_library(
     ],
     copts = ["-Ithird_party/rtklib"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",

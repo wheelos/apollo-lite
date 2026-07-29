@@ -22,7 +22,7 @@ cc_library(
     copts = MONITOR_COPTS,
     visibility = ["//visibility:private"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/monitor/common:recurrent_runner",
         "//modules/monitor/hardware:collision_monitor",

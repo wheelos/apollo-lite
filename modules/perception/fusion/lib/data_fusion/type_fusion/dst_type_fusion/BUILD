@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/fusion/base:base_init_options",
         "//modules/perception/fusion/base:scene",

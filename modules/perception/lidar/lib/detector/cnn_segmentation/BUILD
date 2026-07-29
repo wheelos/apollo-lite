@@ -15,7 +15,7 @@ cc_library(
         ":disjoint_set",
         ":feature_generator",
         ":util",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/perception/base",
         "//modules/perception/inference:inference_factory",

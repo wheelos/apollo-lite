@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["rtk_replay_planner.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/util",
         "//modules/common/util:util_tool",
@@ -33,7 +33,7 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":rtk_planner",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],

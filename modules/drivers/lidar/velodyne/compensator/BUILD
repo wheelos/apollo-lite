@@ -25,7 +25,7 @@ cc_library(
     hdrs = ["compensator_component.h"],
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
         "//modules/drivers/lidar/proto:velodyne_cc_proto",

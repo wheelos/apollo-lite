@@ -12,7 +12,7 @@ cc_library(
     ],
     deps = [
         ":obj_postprocessor",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/pipeline/proto/stage:location_refiner_cc_proto",

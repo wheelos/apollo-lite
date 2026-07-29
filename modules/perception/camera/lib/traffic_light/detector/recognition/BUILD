@@ -38,7 +38,7 @@ cc_library(
     ],
     deps = [
         ":classify",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",

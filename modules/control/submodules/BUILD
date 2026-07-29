@@ -43,7 +43,7 @@ cc_library(
     hdrs = ["preprocessor_submodule.h"],
     copts = PREPROCESS_SUB_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
@@ -76,7 +76,7 @@ cc_library(
     hdrs = ["mpc_controller_submodule.h"],
     copts = PREPROCESS_SUB_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
@@ -111,7 +111,7 @@ cc_library(
     hdrs = ["lat_lon_controller_submodule.h"],
     copts = PREPROCESS_SUB_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
         "//modules/common/monitor_log",
@@ -140,7 +140,7 @@ cc_library(
     hdrs = ["postprocessor_submodule.h"],
     copts = PREPROCESS_SUB_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
         "//modules/common/monitor_log",

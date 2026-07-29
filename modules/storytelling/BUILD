@@ -9,7 +9,7 @@ cc_library(
     srcs = ["frame_manager.cc"],
     hdrs = ["frame_manager.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/monitor_log",
     ],
 )
@@ -20,7 +20,7 @@ cc_library(
     hdrs = ["storytelling.h"],
     copts = ['-DMODULE_NAME=\\"storytelling\\"'],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/storytelling/story_tellers:close_to_junction_teller",
     ],
     alwayslink = True,

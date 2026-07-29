@@ -32,7 +32,7 @@ cc_library(
         ":postprocess_cuda",
         ":preprocess_points",
         ":scatter_cuda",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/common:perception_gflags",
         "@libtorch_gpu",
         "@local_config_tensorrt//:tensorrt",
@@ -53,7 +53,7 @@ cc_library(
     ],
     deps = [
         ":point_pillars",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/lib/thread",
         "//modules/perception/lidar/common",

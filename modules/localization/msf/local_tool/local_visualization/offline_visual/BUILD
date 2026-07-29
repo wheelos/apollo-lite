@@ -17,7 +17,7 @@ cc_library(
     srcs = ["offline_local_visualizer.cc"],
     hdrs = ["offline_local_visualizer.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/localization/msf/common/io:common_io",
         "//modules/localization/msf/local_pyramid_map/base_map",

@@ -39,7 +39,7 @@ cc_library(
         "-fopenmp",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/status",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",

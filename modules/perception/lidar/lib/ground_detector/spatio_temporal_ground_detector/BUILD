@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["spatio_temporal_ground_detector.h"],
     copts = PERCEPTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/perception/lib/registerer",

@@ -8,7 +8,7 @@ cc_binary(
     name = "ndt_map_creator",
     srcs = ["ndt_map_creator.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/localization/msf/common/io:common_io",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/common/util:system_utility",

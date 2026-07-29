@@ -24,7 +24,7 @@ cc_binary(
     name = "map_tool",
     srcs = ["map_tool.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/map/hdmap:hdmap_util",
@@ -48,7 +48,7 @@ cc_binary(
     name = "refresh_default_end_way_point",
     srcs = ["refresh_default_end_way_point.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:poi_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "//modules/map/hdmap:hdmap_util",
@@ -59,7 +59,7 @@ cc_binary(
     name = "sim_map_generator",
     srcs = ["sim_map_generator.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/util",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
@@ -74,7 +74,7 @@ cc_binary(
     name = "proto_map_generator",
     srcs = ["proto_map_generator.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/map/hdmap:hdmap_util",
         "//modules/map/hdmap/adapter:opendrive_adapter",
@@ -86,7 +86,7 @@ cc_binary(
     name = "bin_map_generator",
     srcs = ["bin_map_generator.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/map/hdmap:hdmap_util",
         "@com_github_gflags_gflags//:gflags",

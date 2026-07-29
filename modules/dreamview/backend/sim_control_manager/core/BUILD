@@ -12,7 +12,7 @@ cc_library(
         "sim_control_base.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/status",
         "//modules/common/util:message_util",

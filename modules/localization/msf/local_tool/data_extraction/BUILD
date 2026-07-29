@@ -26,7 +26,7 @@ cc_library(
         "pcd_exporter.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/localization/msf/common/io:common_io",
@@ -45,7 +45,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":data_extraction",
-        "//cyber",
+        "@core//cyber",
         "@boost.filesystem",
         "@boost.program_options",
         "@eigen",
@@ -59,7 +59,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":data_extraction",
-        "//cyber",
+        "@core//cyber",
         "@boost.filesystem",
         "@boost.program_options",
         "@eigen",

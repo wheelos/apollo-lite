@@ -19,7 +19,7 @@ cc_library(
     hdrs = ["prediction_component.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/prediction/common:message_process",
         "//modules/prediction/evaluator:evaluator_manager",

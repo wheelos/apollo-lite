@@ -25,7 +25,7 @@ cc_library(
     hdrs = ["common_define.h"],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
     ],
 )
@@ -144,7 +144,7 @@ cc_library(
         ":common_define",
         ":coordinate_convert_tool",
         ":status",
-        "//cyber",
+        "@core//cyber",
         "@tinyxml2",
     ],
 )

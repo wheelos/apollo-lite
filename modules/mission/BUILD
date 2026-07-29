@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["mission_component.h"],
     copts = MISSION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/mission/nodes/action",
         "//modules/mission/nodes/condition",
         "//modules/mission/common:mission_context",

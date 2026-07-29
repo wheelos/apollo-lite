@@ -12,7 +12,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":evaluator_logger",
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:trajectory_evaluator",
         "//modules/planning/common/util:util_lib",
@@ -25,7 +25,7 @@ cc_library(
     hdrs = ["evaluator_logger.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/common:planning_gflags",
     ],
 )

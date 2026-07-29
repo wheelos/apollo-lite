@@ -59,7 +59,7 @@ cc_library(
     alwayslink = True,
     deps = [
         ":racobit_radar_message_manager",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "//modules/common/status",

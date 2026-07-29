@@ -10,7 +10,7 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "//modules/dreamview/backend/handlers:websocket_handler",

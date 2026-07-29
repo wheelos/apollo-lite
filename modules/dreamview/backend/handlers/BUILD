@@ -11,7 +11,7 @@ cc_library(
     copts = DREAMVIEW_COPTS,
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "@civetweb//:civetweb",
         "@civetweb//:civetserver",
@@ -38,7 +38,7 @@ cc_library(
     copts = DREAMVIEW_COPTS,
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:config_gflags",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
@@ -54,7 +54,7 @@ cc_test(
     srcs = ["websocket_handler_test.cc"],
     deps = [
         ":websocket_handler",
-        "//cyber",
+        "@core//cyber",
         "@civetweb//:civetserver",
         "@com_google_googletest//:gtest_main",
     ],

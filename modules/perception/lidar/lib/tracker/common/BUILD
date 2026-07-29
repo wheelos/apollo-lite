@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:object",
         "//modules/perception/base:object_pool_types",
         "//modules/perception/base:point_cloud",
@@ -29,7 +29,7 @@ cc_library(
     ],
     deps = [
         ":tracked_object",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:object_pool",
     ],
 )
@@ -49,7 +49,7 @@ cc_library(
     ],
     deps = [
         ":track_data",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:object_pool",
         "@eigen",
     ],

@@ -64,7 +64,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":scenario_decider",
-        "//cyber/time:clock",
+        "@core//cyber/time:clock",
         "//modules/planning/common:dependency_injector",
     ],
 )

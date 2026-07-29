@@ -17,7 +17,7 @@ cc_library(
     ],
     copts = PERCEPTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/common/graph:graph_segmentor",
         "//modules/perception/lidar/common",
         "//modules/perception/lidar/lib/detector/cnn_segmentation/spp_engine:spp_cluster_list",

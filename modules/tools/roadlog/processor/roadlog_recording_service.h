@@ -23,8 +23,6 @@
 
 #include "modules/tools/roadlog/proto/smart_recorder_triggers.pb.h"
 
-#include "cyber/tools/cyber_recorder/record/filters/channel_rate_filter.h"
-#include "cyber/tools/cyber_recorder/record/filters/message_size_filter.h"
 #include "cyber/tools/cyber_recorder/record/core/recorder.h"
 #include "modules/tools/roadlog/common/roadlog_layout.h"
 
@@ -35,12 +33,11 @@ class RoadlogRecordingService {
  public:
   struct RecorderOptions {
     std::string output_path;
-    bool all_channels = true;
     std::vector<std::string> include_channels;
     std::vector<std::string> exclude_channels;
+    std::vector<std::string> rate_limited_channels;
     apollo::cyber::proto::Header header;
-    apollo::cyber::record::MessageSizeFilterConfig message_size_filter_config;
-    apollo::cyber::record::ChannelRateFilterConfig channel_rate_filter_config;
+    apollo::cyber::record::RecorderConfigBundle recorder_config_bundle;
   };
 
   explicit RoadlogRecordingService(const RoadlogLayout& layout);
@@ -56,10 +53,6 @@ class RoadlogRecordingService {
                                    std::string* error);
 
  private:
-  static bool BuildLargeMessageFilterConfig(
-      const RecorderPolicy& recorder_policy,
-      apollo::cyber::record::MessageSizeFilterConfig* config,
-      std::string* error);
   static bool ValidateChannelPolicies(const RecorderPolicy& recorder_policy,
                                       const RecorderOptions& options,
                                       std::string* error);

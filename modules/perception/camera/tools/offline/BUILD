@@ -37,7 +37,7 @@ cc_library(
     srcs = ["transform_server.cc"],
     hdrs = ["transform_server.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/common/util:util_tool",

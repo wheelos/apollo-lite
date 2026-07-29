@@ -10,7 +10,7 @@ cc_library(
     hdrs = ["node3d.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/planning/common:obstacle",
         "//modules/planning/constraint_checker:collision_checker",
@@ -28,7 +28,7 @@ cc_library(
     ],
     linkopts = ["-lgomp"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/planning/common:planning_gflags",
@@ -44,7 +44,7 @@ cc_library(
     hdrs = ["grid_search.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
     ],
@@ -67,7 +67,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":open_space_utils",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/planning/common:obstacle",
         "//modules/planning/common:planning_gflags",
@@ -83,7 +83,7 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":open_space_utils",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
@@ -98,7 +98,7 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":open_space_utils",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
 )

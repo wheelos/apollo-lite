@@ -15,7 +15,7 @@ cc_library(
     srcs = ["check_battery.cc"],
     hdrs = ["check_battery.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/mission/common:mission_context",
         "@behaviortree_cpp//:behaviortree_cpp",
     ],

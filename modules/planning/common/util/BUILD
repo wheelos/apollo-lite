@@ -12,7 +12,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":print_debug_info",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
@@ -42,7 +42,7 @@ cc_library(
     hdrs = ["common.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/planning/common:frame",
         "//modules/planning/common:reference_line_info",
@@ -55,7 +55,7 @@ cc_library(
     hdrs = ["math_util.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
     ],
 )
@@ -65,7 +65,7 @@ cc_library(
     hdrs = ["print_debug_info.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
 )
 

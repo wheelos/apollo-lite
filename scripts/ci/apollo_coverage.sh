@@ -103,7 +103,7 @@ function determine_disabled_targets() {
 function determine_test_targets() {
   local targets_all
   if [ "$#" -eq 0 ]; then
-    targets_all="//modules/... union //cyber/..."
+    targets_all="//modules/... union @core//cyber:cyber_core"
     echo "${targets_all}"
     return
   fi
@@ -111,7 +111,7 @@ function determine_test_targets() {
   for component in $@; do
     local test_targets
     if [ "${component}" = "cyber" ]; then
-      test_targets="//cyber/..."
+      test_targets="@core//cyber:cyber_core"
     elif [ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]; then
       test_targets="//modules/${component}/..."
     else

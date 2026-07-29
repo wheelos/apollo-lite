@@ -36,7 +36,7 @@ cc_test(
         ":test_data",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/local_map/base_map",
         "//modules/localization/msf/local_map/lossless_map",

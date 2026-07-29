@@ -11,7 +11,7 @@ cc_library(
     ],
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
@@ -34,7 +34,7 @@ cc_library(
 #     ],
 #     deps = [
 #         ":sim_perfect_control",
-#         "//cyber",
+#         "@core//cyber",
 #         "@com_google_googletest//:gtest_main",
 #     ],
 # )

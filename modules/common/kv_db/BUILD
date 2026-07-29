@@ -21,7 +21,7 @@ cc_library(
     ],
     hdrs = ["kv_db.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "@com_github_gflags_gflags//:gflags",
@@ -46,7 +46,7 @@ cc_binary(
     srcs = ["kv_db_tool.cc"],
     deps = [
         ":kv_db",
-        "//cyber",
+        "@core//cyber",
         "@com_github_gflags_gflags//:gflags",
     ],
 )

@@ -17,7 +17,6 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":visualizer_lib",
-        "@wheelos_fastdds//:fastdds",
         "@qt//:qt_core",
         "@qt//:qt_gui",
         "@qt//:qt_opengl",
@@ -53,7 +52,7 @@ qt_cc_library(
         "uis/*.ui",
     ]),
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:radar_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",

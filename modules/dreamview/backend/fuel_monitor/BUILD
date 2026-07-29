@@ -21,7 +21,7 @@ cc_library(
     deps = [
         ":fuel_monitor",
         ":fuel_monitor_gflags",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:vehicle_config_helper",
@@ -58,7 +58,7 @@ cc_library(
     deps = [
         ":fuel_monitor",
         ":fuel_monitor_gflags",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:vehicle_config_helper",
@@ -88,7 +88,7 @@ cc_library(
     copts = DREAMVIEW_COPTS,
     deps = [
         ":fuel_monitor",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "@boost.thread",
     ],

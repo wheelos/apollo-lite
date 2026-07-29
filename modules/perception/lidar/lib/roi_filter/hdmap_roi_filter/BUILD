@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["bitmap2d.h"],
     copts = PERCEPTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/lidar/common:lidar_log",
         "@boost.format",
         "@eigen",
@@ -27,7 +27,7 @@ cc_library(
         ":bitmap2d",
         ":polygon_mask",
         ":polygon_scan_cvter",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:point_cloud",
         "//modules/perception/lidar/common:lidar_point_label",
         "//modules/perception/lidar/lib/interface:base_object_filter",

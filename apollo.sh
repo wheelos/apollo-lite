@@ -75,9 +75,17 @@ function apollo_env_setup() {
     info "${TAB}USE_GPU: USE_GPU_HOST=${USE_GPU_HOST} USE_GPU_TARGET=${USE_GPU_TARGET}"
 
     if [[ -z "${APOLLO_BAZEL_DIST_DIR}" ]]; then
-        source "${TOP_DIR}/cyber/setup.bash"
+        local cyber_setup="${TOP_DIR}/cyber/setup.bash"
+        if [[ -f "${cyber_setup}" ]]; then
+            source "${cyber_setup}"
+        else
+            # wheelos_core-based workspaces may not contain /apollo/cyber.
+            # TODO(core-integration): Replace this fallback by sourcing a stable
+            # environment setup script exported by wheelos_core release artifacts.
+            export APOLLO_BAZEL_DIST_DIR="${TOP_DIR}/bazel-bin"
+        fi
     fi
-    if [[ ! -d "${APOLLO_BAZEL_DIST_DIR}" ]]; then
+    if [[ ! -d "${APOLLO_BAZEL_DIST_DIR}" && ! -L "${APOLLO_BAZEL_DIST_DIR}" ]]; then
         mkdir -p "${APOLLO_BAZEL_DIST_DIR}"
     fi
 

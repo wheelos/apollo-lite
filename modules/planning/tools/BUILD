@@ -8,7 +8,7 @@ cc_binary(
     name = "pad_terminal",
     srcs = ["pad_terminal.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/planning/common:planning_gflags",

@@ -47,7 +47,7 @@ cc_library(
     linkopts = ["-lleveldb"],
     copts = PERCEPTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
@@ -128,7 +128,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
@@ -168,7 +168,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/onboard/proto:collision_guardian_component_cc_proto",
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:system_status_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
@@ -187,7 +187,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/fusion/app:obstacle_multi_sensor_fusion",
@@ -221,7 +221,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
@@ -266,7 +266,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
@@ -295,7 +295,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/onboard/inner_component_messages:lidar_inner_component_messages",
         "//modules/perception/onboard/msg_serializer",
     ],

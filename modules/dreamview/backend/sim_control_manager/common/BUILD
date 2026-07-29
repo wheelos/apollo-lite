@@ -44,7 +44,7 @@ cc_library(
     ],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
 )
 

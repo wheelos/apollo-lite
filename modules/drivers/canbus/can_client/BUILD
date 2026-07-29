@@ -17,7 +17,7 @@ cc_library(
     srcs=["can_client_factory.cc"],
     hdrs=["can_client_factory.h"],
     deps=[
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
         "//modules/drivers/canbus/can_client",
@@ -43,7 +43,7 @@ cc_binary(
     name="can_client_tool",
     srcs=["can_client_tool.cc"],
     deps=[
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "@com_github_gflags_gflags//:gflags",

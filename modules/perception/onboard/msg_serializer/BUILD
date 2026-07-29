@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/onboard/common_flags",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",

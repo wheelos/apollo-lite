@@ -26,7 +26,7 @@ cc_library(
     ],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/planning/scenarios:scenario",
         "//modules/planning/common:frame",

@@ -17,7 +17,7 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"localization\\\""],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/common/monitor_log",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
@@ -48,7 +48,7 @@ cc_test(
     srcs = ["rtk_localization_test.cc"],
     data = ["//modules/localization:localization_testdata"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/localization/rtk:rtk_localization_component_lib",
         "@com_google_googletest//:gtest_main",

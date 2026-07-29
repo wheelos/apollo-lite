@@ -43,20 +43,26 @@ TEST(RoadlogRecordingServiceTest, BuildsRecorderOptionsFromPolicy) {
       trigger_conf, "/tmp/test.record", &options, &error));
   EXPECT_TRUE(error.empty());
   EXPECT_EQ("/tmp/test.record", options.output_path);
-  EXPECT_FALSE(options.all_channels);
   ASSERT_EQ(1U, options.include_channels.size());
   EXPECT_EQ("/apollo/planning", options.include_channels.front());
   ASSERT_EQ(1U, options.exclude_channels.size());
   EXPECT_EQ("/apollo/debug", options.exclude_channels.front());
-  ASSERT_EQ(1U, options.channel_rate_filter_config.rules.size());
+  ASSERT_EQ(1U, options.rate_limited_channels.size());
   EXPECT_EQ("/apollo/sensor/lidar/fusion/PointCloud2",
-            options.channel_rate_filter_config.rules.front().channel_name);
-  EXPECT_DOUBLE_EQ(
-      1.0, options.channel_rate_filter_config.rules.front().max_rate_hz);
+            options.rate_limited_channels.front());
   EXPECT_EQ(5ULL * 1000000000ULL, options.header.segment_interval());
   EXPECT_EQ(64ULL * 1024ULL * 1024ULL, options.header.segment_raw_size());
+  const auto& recorder_config = options.recorder_config_bundle;
+  EXPECT_EQ(1U, recorder_config.version);
+  EXPECT_EQ(
+      apollo::cyber::record::SelectorAction::kExclude,
+      recorder_config.subscription.default_action);
+  ASSERT_EQ(2U, recorder_config.subscription.selectors.size());
+  EXPECT_EQ(1U, recorder_config.policies.rules.size());
+  EXPECT_DOUBLE_EQ(1.0,
+                   recorder_config.policies.rules.front().policy.max_rate_hz);
   EXPECT_EQ(1ULL * 1024ULL * 1024ULL,
-            options.message_size_filter_config.drop_message_size_bytes);
+            recorder_config.policies.default_policy.drop_message_size_bytes);
 }
 
 TEST(RoadlogRecordingServiceTest, RejectsDuplicateRateRule) {
@@ -76,23 +82,7 @@ TEST(RoadlogRecordingServiceTest, RejectsDuplicateRateRule) {
   EXPECT_FALSE(error.empty());
 }
 
-TEST(RoadlogRecordingServiceTest,
-     RejectsMixedLegacyAndExplicitLargeMessagePolicy) {
-  SmartRecordTrigger trigger_conf;
-  auto* recorder_policy = trigger_conf.mutable_recorder_policy();
-  recorder_policy->set_legacy_message_size_filter_policy(
-      "throttle=256@2,drop=1m");
-  recorder_policy->mutable_large_message_policy()->set_drop_message_size_bytes(
-      1ULL * 1024ULL * 1024ULL);
-
-  RoadlogRecordingService::RecorderOptions options;
-  std::string error;
-  EXPECT_FALSE(RoadlogRecordingService::BuildRecorderOptions(
-      trigger_conf, "/tmp/test.record", &options, &error));
-  EXPECT_FALSE(error.empty());
-}
-
-TEST(RoadlogRecordingServiceTest, RejectsLegacyThrottlePolicy) {
+TEST(RoadlogRecordingServiceTest, RejectsLegacyMessageSizePolicy) {
   SmartRecordTrigger trigger_conf;
   auto* recorder_policy = trigger_conf.mutable_recorder_policy();
   recorder_policy->set_legacy_message_size_filter_policy("throttle=256@2");

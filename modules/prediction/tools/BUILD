@@ -10,8 +10,8 @@ cc_binary(
         "-DMODULE_NAME=\\\"prediction\\\"",
     ],
     deps = [
-        "//cyber",
-        "//cyber/record:record_reader",
+        "@core//cyber",
+        "@core//cyber/record:record_reader",
         "//modules/common/configs:config_gflags",
         "//modules/common/math:math",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",

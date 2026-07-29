@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:point_cloud",
         "//modules/perception/common/geometry:common",
         "//modules/perception/lib/config_manager",

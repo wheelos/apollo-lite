@@ -30,7 +30,7 @@ cc_library(
     copts = ROUTING_COPTS,
     deps = [
         ":routing",
-        "//cyber",
+        "@core//cyber",
     ],
     alwayslink = True,
 )

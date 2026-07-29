@@ -57,7 +57,7 @@ cc_library(
     hdrs = ["navigation_lane.h"],
     copts = MAP_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_lane_cc_proto",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
@@ -79,7 +79,7 @@ cc_library(
     copts = MAP_COPTS,
     deps = [
         ":relative_map_lib",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "@com_github_gflags_gflags//:gflags",
     ],

@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["simulation_world_service.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",

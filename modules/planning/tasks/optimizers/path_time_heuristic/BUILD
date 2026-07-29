@@ -39,7 +39,7 @@ cc_library(
     deps = [
         ":dp_st_cost",
         ":st_graph_point",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/status",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",

@@ -16,7 +16,7 @@ cc_binary(
     name = "parser_cli",
     srcs = ["parser_cli.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/hal/stream",
         "//modules/drivers/gnss/parser:data_parser",

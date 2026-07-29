@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["point_cloud_updater.h"],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/math",
         "//modules/dreamview/backend/common:dreamview_gflags",

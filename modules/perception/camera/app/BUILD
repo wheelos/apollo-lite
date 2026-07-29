@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
@@ -27,7 +27,7 @@ cc_library(
     ],
     deps = [
         ":debug_info",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app/proto:perception_cc_proto",
@@ -63,7 +63,7 @@ cc_library(
     ],
     deps = [
         ":debug_info",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app/proto:perception_cc_proto",
@@ -101,7 +101,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/camera/app/proto:perception_cc_proto",
         "//modules/perception/camera/common",
@@ -122,7 +122,7 @@ cc_library(
     ],
     deps = [
         ":debug_info",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app/proto:perception_cc_proto",
@@ -150,7 +150,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/perception/base",

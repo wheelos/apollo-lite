@@ -40,7 +40,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/inference/utils:inference_cuda_util_lib",
@@ -59,7 +59,7 @@ cc_library(
         ":frame_list",
         ":obstacle_reference",
         ":target",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/camera/lib/obstacle/tracker/common",
@@ -80,7 +80,7 @@ cc_library(
     deps = [
         ":frame_list",
         ":target",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/pipeline/proto/stage:omt_cc_proto",

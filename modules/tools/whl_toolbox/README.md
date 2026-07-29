@@ -122,4 +122,4 @@ toolbox 不会自动编译目标。
 - `//modules/perception/tool/benchmark/lidar:lidar_web_visualizer_exporter`
 - `//modules/perception/tool/benchmark/lidar:lidar_benchmark`
 - `//modules/localization/endpoint/tools:endpoint_static_visualizer_exporter`
-- `//cyber/tools/cyber_recorder:cyber_recorder`
+- `@core//cyber/tools/cyber_recorder:cyber_recorder`

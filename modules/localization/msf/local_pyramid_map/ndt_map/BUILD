@@ -108,7 +108,7 @@ cc_test(
     srcs = ["ndt_map_test.cc"],
     data = [":test_data"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/localization/msf/common/io:common_io",
         "//modules/localization/msf/local_pyramid_map/ndt_map",
         "//modules/localization/msf/local_pyramid_map/ndt_map:ndt_map_pool",
@@ -122,7 +122,7 @@ cc_test(
     timeout = "short",
     srcs = ["ndt_map_config_test.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/localization/msf/local_pyramid_map/ndt_map:ndt_map_config",
         "@com_google_googletest//:gtest_main",
         "@eigen",

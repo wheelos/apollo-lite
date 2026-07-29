@@ -31,7 +31,7 @@ cc_library(
     hdrs = ["interpolation_1d.h"],
     copts = CONTROL_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -42,7 +42,7 @@ cc_library(
     hdrs = ["interpolation_2d.h"],
     copts = CONTROL_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -52,7 +52,7 @@ cc_library(
     hdrs = ["leadlag_controller.h"],
     copts = CONTROL_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/control/proto:leadlag_conf_cc_proto",
     ],
 )
@@ -63,7 +63,7 @@ cc_library(
     hdrs = ["mrac_controller.h"],
     copts = CONTROL_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/common/math",
         "//modules/common/status",
@@ -79,7 +79,7 @@ cc_library(
     hdrs = ["pid_controller.h"],
     copts = CONTROL_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/control/proto:pid_conf_cc_proto",
     ],
 )
@@ -91,7 +91,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":pid_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/control/proto:pid_conf_cc_proto",
     ],
@@ -104,7 +104,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":pid_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/control/proto:pid_conf_cc_proto",
     ],
@@ -117,7 +117,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":control_gflags",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/vehicle_state:vehicle_state_provider",
@@ -157,7 +157,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":interpolation_1d",
-        "//cyber",
+        "@core//cyber",
         "//modules/control/proto:control_conf_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
@@ -170,7 +170,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":interpolation_2d",
-        "//cyber",
+        "@core//cyber",
         "//modules/control/proto:control_conf_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
@@ -183,7 +183,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":leadlag_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:leadlag_conf_cc_proto",
         "@com_google_googletest//:gtest_main",
@@ -197,7 +197,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":mrac_controller",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:mrac_conf_cc_proto",
@@ -212,7 +212,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":pid_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:pid_conf_cc_proto",
         "@com_google_googletest//:gtest_main",
@@ -226,7 +226,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":pid_BC_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:pid_conf_cc_proto",
         "@com_google_googletest//:gtest_main",
@@ -240,7 +240,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":pid_IC_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:pid_conf_cc_proto",
         "@com_google_googletest//:gtest_main",
@@ -253,7 +253,7 @@ cc_test(
     srcs = ["trajectory_analyzer_test.cc"],
     deps = [
         ":trajectory_analyzer",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
 )

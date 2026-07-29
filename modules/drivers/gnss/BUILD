@@ -20,7 +20,7 @@ cc_library(
     copts = GNSS_COPTS,
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/common/monitor_log",

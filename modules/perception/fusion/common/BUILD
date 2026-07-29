@@ -48,7 +48,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@boost.format",
     ],
 )
@@ -96,7 +96,7 @@ cc_library(
     ],
     deps = [
         ":base_filter",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 

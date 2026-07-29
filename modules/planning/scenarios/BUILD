@@ -12,8 +12,8 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":stage",
-        "//cyber/common:file",
-        "//cyber/common:log",
+        "@core//cyber/common:file",
+        "@core//cyber/common:log",
         "//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:dependency_injector",

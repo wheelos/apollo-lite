@@ -26,7 +26,7 @@ cc_library(
     hdrs=["gps_monitor.h"],
     copts=MONITOR_COPTS,
     deps=[
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",

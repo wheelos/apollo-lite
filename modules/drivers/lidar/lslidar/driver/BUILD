@@ -19,7 +19,7 @@ cc_library(
         "-lpcap",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/drivers/lidar/lslidar/proto:config_cc_proto",
     ],

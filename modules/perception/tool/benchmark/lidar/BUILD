@@ -32,7 +32,7 @@ cc_binary(
         "-llz4",
     ],
     deps = [
-        "//cyber/common:file",
+        "@core//cyber/common:file",
         "//modules/perception/tool/benchmark/lidar/base:benchmark_base",
         "//modules/perception/tool/benchmark/lidar/eval:benchmark_eval",
         "//modules/perception/tool/benchmark/lidar/loader:benchmark_loader",

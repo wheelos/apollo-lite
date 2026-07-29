@@ -12,7 +12,7 @@ cc_library(
         "rtcm3_parser.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
         "//modules/drivers/gnss/util",
         "//modules/drivers/gnss/parser",

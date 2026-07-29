@@ -42,7 +42,7 @@ cc_library(
     hdrs = ["piecewise_jerk_path_ipopt_solver.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@eigen",
         "@ipopt",
     ],

@@ -39,7 +39,7 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"video\\"'],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/drivers/video:driver",
         "//modules/drivers/video:socket",
@@ -54,7 +54,7 @@ cc_library(
         "socket_input.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "//modules/drivers/video/proto:video_h265cfg_cc_proto",
     ],
@@ -68,7 +68,7 @@ cc_library(
         "socket_input.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "//modules/common/util",

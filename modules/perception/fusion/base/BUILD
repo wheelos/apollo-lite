@@ -93,7 +93,7 @@ cc_library(
     ],
     deps = [
         ":base_forward_declaration",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
         "@com_google_googletest//:gtest_main",
@@ -171,7 +171,7 @@ cc_library(
     ],
     deps = [
         ":sensor",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest",
     ],
 )

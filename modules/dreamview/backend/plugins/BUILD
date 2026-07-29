@@ -10,7 +10,7 @@ cc_library(
     alwayslink = True,
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/dreamview/proto:dv_plugin_msg_cc_proto",
         "//modules/dreamview/proto:plugin_config_cc_proto",
         "//modules/dreamview/backend/handlers:websocket_handler",

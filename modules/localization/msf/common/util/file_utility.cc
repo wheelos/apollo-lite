@@ -28,76 +28,86 @@
 #undef BOOST_NO_CXX11_SCOPED_ENUMS
 
 #include "cyber/common/log.h"
-#include "fastrtps/TopicDataType.h"
+#include "modules/localization/msf/common/util/md5.h"
 
 namespace apollo {
 namespace localization {
 namespace msf {
 const size_t kBufferSize = 20480000;
+namespace {
+
+bool ComputeFileMd5Internal(const std::string &file_path,
+                            unsigned char res[FileUtility::kUcharMd5Length]) {
+  FILE *file = fopen(file_path.c_str(), "rb");
+  if (file == nullptr) {
+    AERROR << "Can't find the file: " << file_path;
+    std::memset(res, 0, FileUtility::kUcharMd5Length);
+    return false;
+  }
+
+  MD5 md5;
+  md5.init();
+
+  std::vector<unsigned char> buf(kBufferSize);
+  while (true) {
+    const size_t read_size =
+        fread(buf.data(), sizeof(unsigned char), buf.size(), file);
+    if (read_size > 0) {
+      md5.update(buf.data(), static_cast<unsigned int>(read_size));
+    }
+    if (read_size < buf.size()) {
+      if (ferror(file)) {
+        AERROR << "Read file failed: " << file_path;
+        std::memset(res, 0, FileUtility::kUcharMd5Length);
+        fclose(file);
+        return false;
+      }
+      break;
+    }
+  }
+
+  md5.finalize();
+  std::memcpy(res, md5.digest, FileUtility::kUcharMd5Length);
+  fclose(file);
+  return true;
+}
+
+}  // namespace
 
 void FileUtility::ComputeFileMd5(const std::string &file_path,
                                  unsigned char res[kUcharMd5Length]) {
-  std::vector<unsigned char> buf(kBufferSize);
-  unsigned char *buf_pt = &buf[0];
-
-  FILE *file = fopen(file_path.c_str(), "rb");
-  size_t total_size = 0;
-  if (file) {
-    int count = 1;
-    while (!feof(file)) {
-      if (count > 1) {
-        buf.resize(kBufferSize * count);
-        buf_pt = &buf[count - 1];
-      }
-
-      size_t size = fread(buf_pt, sizeof(unsigned char), kBufferSize, file);
-      total_size += size;
-
-      ++count;
-    }
-  } else {
-    AERROR << "Can't find the file: " << file_path;
-    return;
-  }
-
-  ComputeBinaryMd5(&buf[0], total_size, res);
-  fclose(file);
+  ComputeFileMd5Internal(file_path, res);
 }
 
 void FileUtility::ComputeFileMd5(const std::string &file_path,
                                  char res[kCharMd5Lenth]) {
-  std::vector<unsigned char> buf(kBufferSize);
-  unsigned char *buf_pt = &buf[0];
-
-  FILE *file = fopen(file_path.c_str(), "rb");
-  size_t total_size = 0;
-  if (file) {
-    int count = 1;
-    while (!feof(file)) {
-      if (count > 1) {
-        buf.resize(kBufferSize * count);
-        buf_pt = &buf[count - 1];
-      }
-
-      size_t size = fread(buf_pt, sizeof(unsigned char), kBufferSize, file);
-      total_size += size;
-
-      ++count;
-    }
-  } else {
-    AERROR << "Can't find the file: " << file_path;
-    return;
+  unsigned char md[kUcharMd5Length] = {0};
+  ComputeFileMd5Internal(file_path, md);
+  for (size_t i = 0; i < kUcharMd5Length; ++i) {
+    std::snprintf(res + i * 2, 3, "%02X", md[i]);
   }
-
-  ComputeBinaryMd5(&buf[0], total_size, res);
-  fclose(file);
+  res[kCharMd5Lenth - 1] = '\0';
 }
 
 void FileUtility::ComputeBinaryMd5(const unsigned char *binary, size_t size,
                                    unsigned char res[kUcharMd5Length]) {
+  if (binary == nullptr && size > 0) {
+    AERROR << "Null binary input for md5.";
+    std::memset(res, 0, kUcharMd5Length);
+    return;
+  }
+
   MD5 md5;
   md5.init();
-  md5.update(binary, static_cast<unsigned int>(size));
+
+  const size_t kMaxChunkSize = std::numeric_limits<unsigned int>::max();
+  size_t offset = 0;
+  while (offset < size) {
+    const size_t chunk_size = std::min(kMaxChunkSize, size - offset);
+    md5.update(binary + offset, static_cast<unsigned int>(chunk_size));
+    offset += chunk_size;
+  }
+
   md5.finalize();
   for (uint8_t i = 0; i < kUcharMd5Length; ++i) {
     res[i] = md5.digest[i];
@@ -106,18 +116,14 @@ void FileUtility::ComputeBinaryMd5(const unsigned char *binary, size_t size,
 
 void FileUtility::ComputeBinaryMd5(const unsigned char *binary, size_t size,
                                    char res[kCharMd5Lenth]) {
-  unsigned char md[kUcharMd5Length] = {"\0"};
-  char buf[kCharMd5Lenth] = {'\0'};
-  char tmp[3] = {'\0'};
+  unsigned char md[kUcharMd5Length] = {0};
 
   ComputeBinaryMd5(binary, size, md);
 
-  for (unsigned int i = 0; i < kUcharMd5Length; i++) {
-    snprintf(tmp, sizeof(tmp), "%02X", md[i]);
-    strncat(buf, tmp, sizeof(tmp));
+  for (size_t i = 0; i < kUcharMd5Length; ++i) {
+    std::snprintf(res + i * 2, 3, "%02X", md[i]);
   }
-
-  memcpy(res, buf, sizeof(buf));
+  res[kCharMd5Lenth - 1] = '\0';
 }
 
 }  // namespace msf

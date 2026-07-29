@@ -1,5 +1,5 @@
 # WheelOS Bazel configuration file.
-# Local machine overrides should go to `.custom.bazelrc`.
+# Local machine overrides should go to `.bazelrc.user`.
 
 # +------------------------------------------------------------+
 # | Startup Options                                            |
@@ -17,7 +17,6 @@ common --enable_bzlmod
 common --distdir=.cache/distdir
 
 # Prefer https://bcr.bazel.build/
-#build --registry=file:///apollo/data/bazel-central-registry
 build --registry=https://bcr.wheelos.cn/
 build --registry=https://bcr.bazel.build/
 
@@ -130,4 +129,4 @@ coverage --test_tag_filters=-cpplint
 # Consider adding Python linting and testing configurations here.
 
 # Optional developer-specific overrides.
-try-import %workspace%/.custom.bazelrc
+try-import %workspace%/.bazelrc.user

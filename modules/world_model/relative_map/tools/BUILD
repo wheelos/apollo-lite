@@ -21,7 +21,7 @@ cc_binary(
     srcs = ["navigation_dummy.cc"],
     copts = MAP_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util",
         "//modules/world_model/relative_map:relative_map_lib",
@@ -33,7 +33,7 @@ cc_binary(
     srcs = ["navigator.cc"],
     copts = MAP_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util",
         "//modules/world_model/relative_map:relative_map_lib",

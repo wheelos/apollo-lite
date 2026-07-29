@@ -7,7 +7,7 @@ cc_binary(
     name = "canbus_tester",
     srcs = ["canbus_tester.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/canbus:canbus_component_lib",
         "//modules/canbus/common:canbus_common",
         "//modules/common/adapters:adapter_gflags",
@@ -19,7 +19,7 @@ cc_binary(
     name = "teleop",
     srcs = ["teleop.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/canbus/common:canbus_common",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",

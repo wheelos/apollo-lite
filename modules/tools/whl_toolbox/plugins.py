@@ -431,7 +431,7 @@ class EndpointStaticPlugin(ToolboxPlugin):
         exporter_bin = ensure_container_binary(
             "//modules/localization/endpoint/tools:endpoint_static_visualizer_exporter", ctx
         )
-        recorder_bin = ensure_container_binary("//cyber/tools/cyber_recorder:cyber_recorder", ctx)
+        recorder_bin = ensure_container_binary("@core//cyber/tools/cyber_recorder:cyber_recorder", ctx)
         supports_progress_file = container_binary_supports_flag(exporter_bin, "--progress_file")
         supports_expected_exports = container_binary_supports_flag(exporter_bin, "--expected_exports")
         dag_config = params.get("dag_config") or _first_existing(

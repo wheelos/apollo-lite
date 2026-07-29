@@ -296,7 +296,7 @@ function run_cpp_lint() {
   done
   popd >/dev/null
 
-  local bazel_targets=("//cyber/...")
+  local bazel_targets=("@core//cyber:cyber_core")
   if [[ "${STAGE}" == "dev" ]]; then
     bazel_targets+=("//modules/...")
   fi

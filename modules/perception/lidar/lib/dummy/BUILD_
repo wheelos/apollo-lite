@@ -22,7 +22,7 @@ cc_library(
         "dummy_segmentation.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common/point_cloud_processing",
         "//modules/perception/lib/registerer",

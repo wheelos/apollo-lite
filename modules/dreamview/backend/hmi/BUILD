@@ -23,7 +23,7 @@ cc_library(
     hdrs = ["vehicle_manager.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/dreamview/proto:hmi_config_cc_proto",
         "@com_github_gflags_gflags//:gflags",
@@ -37,7 +37,7 @@ cc_binary(
     copts = DREAMVIEW_COPTS,
     deps = [
         ":vehicle_manager",
-        "//cyber",
+        "@core//cyber",
         "@com_github_gflags_gflags//:gflags",
     ],
 )
@@ -49,7 +49,7 @@ cc_test(
     data = glob(["testdata/**"]),
     deps = [
         ":vehicle_manager",
-        "//cyber",
+        "@core//cyber",
         "@com_github_gflags_gflags//:gflags",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
@@ -64,7 +64,7 @@ cc_library(
     alwayslink = True,
     deps = [
         ":hmi_worker",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/monitor_log",
@@ -88,8 +88,8 @@ cc_library(
     copts = DREAMVIEW_COPTS,
     deps = [
         ":vehicle_manager",
-        "//cyber",
-        "//cyber/proto:dag_conf_cc_proto",
+        "@core//cyber",
+        "@core//cyber/proto:dag_conf_cc_proto",
         "@wheelos_msgs//wheelos_msgs/audio_msgs:audio_event_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_event_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",

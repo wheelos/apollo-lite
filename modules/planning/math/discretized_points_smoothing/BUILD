@@ -12,7 +12,7 @@ cc_library(
     ],
     deps = [
         ":cos_theta_ipopt_interface",
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/proto/math:cos_theta_smoother_config_cc_proto",
         "@ipopt",
     ],
@@ -26,7 +26,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@adolc",
         "@ipopt",
     ],
@@ -43,7 +43,7 @@ cc_library(
         ":fem_pos_deviation_ipopt_interface",
         ":fem_pos_deviation_osqp_interface",
         ":fem_pos_deviation_sqp_osqp_interface",
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/proto/math:fem_pos_deviation_smoother_config_cc_proto",
         "@ipopt",
     ],
@@ -57,7 +57,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@adolc",
         "@ipopt",
     ],
@@ -71,7 +71,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@osqp",
     ],
 )
@@ -84,7 +84,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@osqp",
     ],
 )
@@ -95,7 +95,7 @@ cc_test(
     srcs = ["fem_pos_deviation_osqp_interface_test.cc"],
     deps = [
         ":fem_pos_deviation_osqp_interface",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest",
     ],
 )
@@ -106,7 +106,7 @@ cc_test(
     srcs = ["fem_pos_deviation_sqp_osqp_interface_test.cc"],
     deps = [
         ":fem_pos_deviation_sqp_osqp_interface",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest",
     ],
 )

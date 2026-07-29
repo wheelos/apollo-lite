@@ -30,7 +30,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/inference:inference_lib",
         "@libtorch_gpu",

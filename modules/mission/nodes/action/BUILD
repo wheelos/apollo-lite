@@ -17,7 +17,7 @@ cc_library(
     srcs = ["charge_node.cc"],
     hdrs = ["charge_node.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/mission/common:mission_context",
         "@behaviortree_cpp//:behaviortree_cpp"
     ],
@@ -28,7 +28,7 @@ cc_library(
     srcs = ["move_to_node.cc"],
     hdrs = ["move_to_node.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/mission/common:mission_context",
         "//modules/mission/common:bt_type_converters",
         "@behaviortree_cpp//:behaviortree_cpp"
@@ -40,7 +40,7 @@ cc_library(
     srcs = ["station_wait_node.cc"],
     hdrs = ["station_wait_node.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/mission/common:mission_context",
         "@behaviortree_cpp//:behaviortree_cpp"
     ],

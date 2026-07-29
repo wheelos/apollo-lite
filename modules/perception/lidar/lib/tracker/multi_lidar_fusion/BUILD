@@ -25,7 +25,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/lib/interface:base_multi_target_tracker",
         "//modules/perception/lidar/lib/tracker/common:mlf_track_data_with_track_pool_types",
@@ -49,7 +49,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/common/geometry:basic",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/lib/tracker/multi_lidar_fusion:mlf_base_filter",
@@ -82,7 +82,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/common/geometry:basic",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/lib/tracker/common:mlf_track_data_with_track_pool_types",
@@ -99,7 +99,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/common/geometry:convex_hull_2d",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/common:lidar_object_util",
@@ -117,7 +117,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/lib/tracker/association:distance_collection",
         "//modules/perception/lidar/lib/tracker/common:mlf_track_data_with_track_pool_types",
@@ -135,7 +135,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/common/graph:secure_matrix",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/lib/interface:base_bipartite_graph_matcher",
@@ -156,7 +156,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/lib/tracker/common:mlf_track_data_with_track_pool_types",
         "//modules/perception/lidar/lib/tracker/common:tracked_object",

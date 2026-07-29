@@ -15,7 +15,7 @@ cc_library(
     ],
     deps = [
         ":buffer_interface",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//third_party/tf2",
@@ -28,8 +28,8 @@ cc_library(
     srcs = ["transform_query.cc"],
     hdrs = ["transform_query.h"],
     deps = [
-        "//cyber/common:log",
-        "//cyber/time:time",
+        "@core//cyber/common:log",
+        "@core//cyber/time:time",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "//modules/transform:buffer_interface",
         "//third_party/tf2",
@@ -51,9 +51,9 @@ cc_library(
     srcs = ["timed_transform_resolver.cc"],
     hdrs = ["timed_transform_resolver.h"],
     deps = [
-        "//cyber/common:global_data",
-        "//cyber/common:log",
-        "//cyber/time:time",
+        "@core//cyber/common:global_data",
+        "@core//cyber/common:log",
+        "@core//cyber/time:time",
         "//modules/common/util:string_util",
         "//modules/transform:transform_query_core",
         "@eigen",
@@ -64,7 +64,7 @@ cc_library(
     name = "buffer_interface",
     hdrs = ["buffer_interface.h"],
     deps = [
-        "//cyber/time:time",
+        "@core//cyber/time:time",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "//third_party/tf2",
     ],
@@ -103,7 +103,7 @@ cc_library(
     ],
     hdrs = ["transform_broadcaster.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
@@ -116,7 +116,7 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"static_transform\\"'],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/transform/proto:static_transform_conf_cc_proto",

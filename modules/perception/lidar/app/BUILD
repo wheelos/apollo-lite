@@ -22,7 +22,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/common:lidar_error_code",
@@ -52,7 +52,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
