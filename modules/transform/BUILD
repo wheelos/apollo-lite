@@ -48,7 +48,10 @@ cc_library(
 
 cc_library(
     name = "timed_transform_resolver",
-    srcs = ["timed_transform_resolver.cc"],
+    srcs = [
+        "pose_cache.cc",
+        "timed_transform_resolver.cc",
+    ],
     hdrs = ["timed_transform_resolver.h"],
     deps = [
         "@core//cyber/common:global_data",
@@ -86,11 +89,15 @@ cc_test(
 cc_test(
     name = "timed_transform_resolver_test",
     size = "small",
-    srcs = ["timed_transform_resolver_test.cc"],
+    srcs = [
+        "pose_cache_test.cc",
+        "timed_transform_resolver_test.cc",
+    ],
     deps = [
         ":buffer_interface",
         ":timed_transform_resolver",
         ":transform_query_core",
+        "//modules/common_msgs/transform_msgs:transform_cc_proto",
         "@com_google_googletest//:gtest_main",
         "@eigen",
     ],

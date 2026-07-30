@@ -9,6 +9,30 @@ message Config {
   optional string broadcast_code = 2;
   optional double integral_time = 3 [default = 0.1];
   optional bool enable_sdk_console_log = 4 [default = false];
+  // Use lidar clock (packet timestamp) instead of system time
+  // When true, use lidar hardware timestamp (laser scan time)
+  // When false, use system time (data arrival time)
+  // Default: true (use lidar clock for accurate laser scan time)
+  optional bool use_lidar_clock = 5 [default = true];
+
+  // Max allowed diff between packet timestamp and system time (seconds)
+  // If the diff exceeds this value and use_lidar_clock is true,
+  // fall back to system time and warn about time sync issue
+  // This helps detect when lidar hardware time is not synchronized
+  //
+  // Livox timestamp sync modes (timestamp_type in packet):
+  //   0 = NoSync    - No sync signal mode (may have time drift)
+  //   1 = PTP       - 1588v2.0 PTP sync mode
+  //   2 = Reserved  - Reserved for future use
+  //   3 = PPS+GPS   - PPS (Pulse Per Second) + GPS sync mode
+  //   4 = PPS       - PPS only sync mode
+  //   5 = Unknown   - Unknown sync mode
+  //
+  // Default: 10.0 seconds
+  optional double max_timestamp_diff_s = 6 [default = 10.0];
+
+  // timestamp offset in seconds, applyed to point cloud timestamp
+  optional double timestamp_offset = 7 [default = 0];
 }
 
 message LivoxScan {

@@ -16,9 +16,11 @@
 #include "modules/perception/camera/tools/offline/visualizer.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <sstream>
 
 #include "absl/strings/str_cat.h"
 #include "cyber/common/file.h"
@@ -31,6 +33,83 @@
 namespace apollo {
 namespace perception {
 namespace camera {
+
+namespace {
+
+constexpr char kLidarFrameId[] = "velodyne128";
+constexpr char kVehicleFrameId[] = "base_link";
+
+struct PoseDebugInfo {
+  bool has_world_pose = false;
+  bool has_lidar_to_vehicle = false;
+  Eigen::Affine3d world_pose = Eigen::Affine3d::Identity();
+  Eigen::Affine3d lidar_to_vehicle = Eigen::Affine3d::Identity();
+  Eigen::Affine3d lidar_to_world = Eigen::Affine3d::Identity();
+};
+
+PoseDebugInfo QueryPoseDebugInfo(TransformServer* tf_server,
+                                 double timestamp) {
+  PoseDebugInfo pose_info;
+  if (tf_server != nullptr) {
+    pose_info.has_world_pose =
+        tf_server->QueryPos(timestamp, &pose_info.world_pose);
+    pose_info.has_lidar_to_vehicle = tf_server->QueryTransform(
+        kLidarFrameId, kVehicleFrameId, &pose_info.lidar_to_vehicle);
+  }
+  if (!pose_info.has_world_pose) {
+    pose_info.world_pose.setIdentity();
+  }
+  if (!pose_info.has_lidar_to_vehicle) {
+    pose_info.lidar_to_vehicle.setIdentity();
+  }
+  pose_info.lidar_to_world =
+      pose_info.world_pose * pose_info.lidar_to_vehicle;
+  return pose_info;
+}
+
+std::string FormatLidarPoseText(const Eigen::Affine3d& pose) {
+  std::ostringstream stream;
+  stream << std::fixed << std::setprecision(2)
+         << "lidar xyz: (" << pose.translation()(0) << ", "
+         << pose.translation()(1) << ", " << pose.translation()(2) << ")"
+         << " yaw(deg): "
+         << atan2(pose.linear()(1, 0), pose.linear()(0, 0)) * 180.0 / M_PI;
+  return stream.str();
+}
+
+std::string FormatTimestampText(double timestamp) {
+  std::ostringstream stream;
+  stream << std::fixed << std::setprecision(6)
+         << "timestamp: " << timestamp;
+  return stream.str();
+}
+
+void DrawOverlayLine(cv::Mat* image, int* line_pos, const std::string& text,
+                     double font_scale = 0.85, int thickness = 2) {
+  *line_pos += 36;
+  cv::putText(*image, text, cv::Point(10, *line_pos),
+              cv::FONT_HERSHEY_DUPLEX, font_scale, red_color, thickness);
+}
+
+void DrawPoseOverlay(cv::Mat* image, int* line_pos, double timestamp,
+                     const PoseDebugInfo& pose_info,
+                     std::size_t tracked_object_count) {
+  DrawOverlayLine(image, line_pos, FormatTimestampText(timestamp));
+  DrawOverlayLine(image, line_pos,
+                  absl::StrCat("tracked objects: ", tracked_object_count));
+  DrawOverlayLine(image, line_pos,
+                  pose_info.has_world_pose
+                      ? "world pose source: tf_server"
+                      : "world pose source: identity fallback");
+  DrawOverlayLine(image, line_pos,
+                  pose_info.has_lidar_to_vehicle
+                      ? "lidar extrinsic: velodyne128 -> base_link"
+                      : "lidar extrinsic: missing tf");
+  DrawOverlayLine(image, line_pos,
+                  FormatLidarPoseText(pose_info.lidar_to_world), 0.75, 2);
+}
+
+}  // namespace
 
 std::vector<cv::Scalar> colorlistobj = {magenta_color,  // last digit 0
                                         purple_color,   // last digit 1
@@ -888,17 +967,12 @@ bool Visualizer::DrawTrajectories(const base::ObjectPtr &object,
 
 void Visualizer::Draw2Dand3D(const cv::Mat &img, const CameraFrame &frame) {
   cv::Mat image = img.clone();
-  Eigen::Affine3d pose;
-  if (!tf_server_->QueryPos(frame.timestamp, &pose)) {
-    pose.setIdentity();
-  }
-  Eigen::Affine3d lidar2vehicle;
-  if (!tf_server_->QueryTransform("velodyne128", "base_link",
-                                  &lidar2vehicle)) {
+  const PoseDebugInfo pose_info = QueryPoseDebugInfo(tf_server_, frame.timestamp);
+  if (!pose_info.has_lidar_to_vehicle) {
     AWARN << "Failed to query transform from lidar to ground.";
     return;
   }
-  Eigen::Affine3d lidar2world = pose * lidar2vehicle;
+  Eigen::Affine3d lidar2world = pose_info.lidar_to_world;
   Eigen::Affine3d world2lidar = lidar2world.inverse();
   for (const auto &object : frame.tracked_objects) {
     base::RectF rect(object->camera_supplement.box);
@@ -1012,10 +1086,15 @@ void Visualizer::ShowResult(const cv::Mat &img, const CameraFrame &frame) {
     draw_range_circle();
   }
 
+  int line_pos = 100;
   cv::putText(image, camera_name, cv::Point(10, 50), cv::FONT_HERSHEY_DUPLEX,
               1.3, red_color, 3);
   cv::putText(image, absl::StrCat("frame #: ", frame.frame_id),
-              cv::Point(10, 100), cv::FONT_HERSHEY_DUPLEX, 1.3, red_color, 3);
+              cv::Point(10, line_pos), cv::FONT_HERSHEY_DUPLEX, 1.3,
+              red_color, 3);
+  const PoseDebugInfo pose_info = QueryPoseDebugInfo(tf_server_, frame.timestamp);
+  DrawPoseOverlay(&image, &line_pos, frame.timestamp, pose_info,
+                  frame.tracked_objects.size());
   Draw2Dand3D(image, frame);
 }
 
@@ -1405,6 +1484,9 @@ void Visualizer::ShowResult_all_info_single_camera(
   cv::putText(image, absl::StrCat("frame id: ", frame.frame_id),
               cv::Point(10, line_pos), cv::FONT_HERSHEY_DUPLEX, 1.3, red_color,
               3);
+  const PoseDebugInfo pose_info = QueryPoseDebugInfo(tf_server_, frame.timestamp);
+  DrawPoseOverlay(&image, &line_pos, frame.timestamp, pose_info,
+                  frame.tracked_objects.size());
   line_pos += 50;
   if (motion_buffer != nullptr) {
     cv::putText(

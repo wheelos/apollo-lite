@@ -32,7 +32,7 @@ bool Compensator::QueryPoseAffineFromTF2(const uint64_t& timestamp, void* pose,
   Eigen::Affine3d* tmp_pose = static_cast<Eigen::Affine3d*>(pose);
   std::string err_string;
   if (!transform_query_.LookupTransformToAffine(
-          config_.world_frame_id(), child_frame_id, query_time, tmp_pose,
+      config_.map_frame_id(), child_frame_id, query_time, tmp_pose,
           config_.transform_query_timeout(), &err_string)) {
     AERROR << "Can not find transform. " << timestamp
            << " frame_id:" << child_frame_id << " Error info: " << err_string;

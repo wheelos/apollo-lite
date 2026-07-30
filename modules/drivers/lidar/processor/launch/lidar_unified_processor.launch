@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>lidar_unified_processor</name>
+        <dag_conf>/apollo/modules/drivers/lidar/processor/dag/lidar_unified_processor.dag</dag_conf>
+        <process_name>lidar_unified_processor</process_name>
+    </module>
+</cyber>

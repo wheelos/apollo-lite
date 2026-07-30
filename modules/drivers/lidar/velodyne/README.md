@@ -22,7 +22,7 @@ Compensation relies on `tf` to query the coordination transform, so gnss_driver 
   proto: [modules/drivers/proto/pointcloud.proto]https://github.com/ApolloAuto/apollo/blob/master/modules/drivers/proto/pointcloud.proto
 
 ### Coordination
-* world
+* map
 * novatel
 * velodyne128
 

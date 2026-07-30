@@ -145,6 +145,12 @@ bool TransformQuery::GetLatestStaticTransformToAffine(
     Eigen::Affine3d* transform) const {
   CHECK_NOTNULL(transform);
 
+  // If target and source frame are identical, the transform is identity.
+  if (target_frame_id == source_frame_id) {
+    *transform = Eigen::Affine3d::Identity();
+    return true;
+  }
+
   TransformStamped stamped_transform;
   if (!GetLatestStaticTransform(target_frame_id, source_frame_id,
                                 &stamped_transform)) {

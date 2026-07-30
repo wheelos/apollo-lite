@@ -24,16 +24,15 @@ cc_library(
     ],
 )
 
-# todo(zero): need fix
-# cc_test(
-#     name = "object_filter_bank_test",
-#     size = "small",
-#     srcs = ["object_filter_bank_test.cc"],
-#     deps = [
-#         ":object_filter_bank",
-#         "@com_github_gflags_gflags//:gflags",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
+cc_test(
+    name = "object_filter_bank_test",
+    size = "small",
+    srcs = ["object_filter_bank_test.cc"],
+    deps = [
+        ":object_filter_bank",
+        "@com_github_gflags_gflags//:gflags",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cpplint()

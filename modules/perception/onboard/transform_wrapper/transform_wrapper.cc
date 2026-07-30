@@ -22,9 +22,7 @@ namespace apollo {
 namespace perception {
 namespace onboard {
 
-namespace {
-
-}  // namespace
+namespace {}  // namespace
 
 DEFINE_string(obs_sensor2vehicle_tf2_frame_id, "base_link",
               "parent frame id for sensor extrinsics");
@@ -44,9 +42,9 @@ namespace {
 apollo::transform::TimedTransformResolverOptions
 BuildTimedTransformResolverOptions() {
   apollo::transform::TimedTransformResolverOptions options;
-  options.tf2_buffer_size_sec = static_cast<float>(FLAGS_obs_tf2_buff_size);
+  options.query_timeout_sec = static_cast<float>(FLAGS_obs_tf2_buff_size);
   options.cache_duration_sec = FLAGS_obs_transform_cache_size;
-  options.max_extrapolation_latency_sec =
+  options.max_extrapolation_sec =
       FLAGS_obs_max_local_pose_extrapolation_latency;
   options.enable_extrapolation = FLAGS_obs_enable_local_pose_extrapolation;
   options.hardware_trigger = FLAGS_hardware_trigger;
@@ -62,6 +60,8 @@ void TransformWrapper::Init(
   vehicle2world_tf2_frame_id_ = FLAGS_obs_vehicle2world_tf2_frame_id;
   vehicle2world_tf2_child_frame_id_ =
       FLAGS_obs_vehicle2world_tf2_child_frame_id;
+  timed_transform_resolver_.ConfigureFrames(vehicle2world_tf2_frame_id_,
+                                            vehicle2world_tf2_child_frame_id_);
   timed_transform_resolver_.SetOptions(BuildTimedTransformResolverOptions());
   inited_ = true;
 }
@@ -75,6 +75,8 @@ void TransformWrapper::Init(
   sensor2vehicle_tf2_child_frame_id_ = sensor2vehicle_tf2_child_frame_id;
   vehicle2world_tf2_frame_id_ = vehicle2world_tf2_frame_id;
   vehicle2world_tf2_child_frame_id_ = vehicle2world_tf2_child_frame_id;
+  timed_transform_resolver_.ConfigureFrames(vehicle2world_tf2_frame_id_,
+                                            vehicle2world_tf2_child_frame_id_);
   timed_transform_resolver_.SetOptions(BuildTimedTransformResolverOptions());
   inited_ = true;
 }
@@ -93,8 +95,7 @@ bool TransformWrapper::GetSensor2worldTrans(
   }
 
   apollo::transform::StampedTransform trans_vehicle2world;
-  if (!QueryTrans(timestamp, &trans_vehicle2world,
-                  vehicle2world_tf2_frame_id_,
+  if (!QueryTrans(timestamp, &trans_vehicle2world, vehicle2world_tf2_frame_id_,
                   vehicle2world_tf2_child_frame_id_)) {
     return false;
   }
@@ -136,11 +137,16 @@ bool TransformWrapper::GetTrans(double timestamp, Eigen::Affine3d* trans,
   return true;
 }
 
-bool TransformWrapper::QueryTrans(
-  double timestamp, apollo::transform::StampedTransform* trans,
-  const std::string& frame_id, const std::string& child_frame_id) {
-  return timed_transform_resolver_.Resolve(timestamp, frame_id,
-                                           child_frame_id, trans);
+bool TransformWrapper::QueryTrans(double timestamp,
+                                  apollo::transform::StampedTransform* trans,
+                                  const std::string& frame_id,
+                                  const std::string& child_frame_id) {
+  if (frame_id == vehicle2world_tf2_frame_id_ &&
+      child_frame_id == vehicle2world_tf2_child_frame_id_) {
+    return timed_transform_resolver_.Resolve(timestamp, trans);
+  }
+  return timed_transform_resolver_.Resolve(timestamp, frame_id, child_frame_id,
+                                           trans);
 }
 
 bool TransformWrapper::QueryStaticTrans(const std::string& frame_id,
@@ -151,9 +157,8 @@ bool TransformWrapper::QueryStaticTrans(const std::string& frame_id,
     return false;
   }
 
-  if (!transform_query_.GetLatestStaticTransformToAffine(frame_id,
-                                                         child_frame_id,
-                                                         trans)) {
+  if (!transform_query_.GetLatestStaticTransformToAffine(
+          frame_id, child_frame_id, trans)) {
     AERROR << "Failed to query static transform from " << child_frame_id
            << " to " << frame_id;
     return false;
@@ -167,8 +172,8 @@ bool TransformWrapper::EnsureSensor2VehicleExtrinsics() {
     return true;
   }
 
-  auto sensor2vehicle_extrinsics = std::make_unique<Eigen::Affine3d>(
-      Eigen::Affine3d::Identity());
+  auto sensor2vehicle_extrinsics =
+      std::make_unique<Eigen::Affine3d>(Eigen::Affine3d::Identity());
   if (!QueryStaticTrans(sensor2vehicle_tf2_frame_id_,
                         sensor2vehicle_tf2_child_frame_id_,
                         sensor2vehicle_extrinsics.get())) {

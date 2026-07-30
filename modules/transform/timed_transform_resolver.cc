@@ -17,9 +17,9 @@
 
 #include "modules/transform/timed_transform_resolver.h"
 
-#include <algorithm>
 #include <cmath>
-#include <limits>
+#include <iomanip>
+#include <sstream>
 
 #include "cyber/common/global_data.h"
 #include "cyber/common/log.h"
@@ -28,224 +28,288 @@
 namespace apollo {
 namespace transform {
 
-Eigen::Quaterniond Slerp(const Eigen::Quaterniond& source, const double& t,
-                         const Eigen::Quaterniond& other);
-
 namespace {
 
-std::string BuildTransformCacheKey(const std::string& frame_id,
-                                   const std::string& child_frame_id) {
-  return frame_id + "\n" + child_frame_id;
+constexpr int kTransformMissLogFrequency = 10;
+constexpr double kTimeCompareEpsilonSec = 1e-6;
+
+std::string FormatTimestampForLog(double timestamp_sec) {
+  std::ostringstream stream;
+  if (!std::isfinite(timestamp_sec) || timestamp_sec < 0.0) {
+    stream << timestamp_sec << "s";
+    return stream.str();
+  }
+
+  stream << std::fixed << std::setprecision(9) << timestamp_sec << "s";
+  if (timestamp_sec > 0.0) {
+    stream << " [" << cyber::Time(timestamp_sec).ToString() << "]";
+  }
+  return stream.str();
 }
 
-void InterpolateStampedTransform(const StampedTransform& first,
-                                 const StampedTransform& second,
-                                 double timestamp,
-                                 StampedTransform* transform) {
-  CHECK_NOTNULL(transform);
-
-  const double duration = second.timestamp - first.timestamp;
-  if (duration <= std::numeric_limits<double>::epsilon()) {
-    *transform = second;
-    transform->timestamp = timestamp;
-    return;
+std::string FormatDeltaForLog(double delta_sec) {
+  const double abs_delta_sec = std::fabs(delta_sec);
+  std::ostringstream stream;
+  stream << std::showpos << std::fixed
+         << std::setprecision(abs_delta_sec >= 1.0 ? 3 : 6) << delta_sec
+         << "s" << std::noshowpos;
+  if (abs_delta_sec >= 86400.0) {
+    stream << " (~" << std::fixed << std::setprecision(3)
+           << abs_delta_sec / 86400.0 << " days)";
+  } else if (abs_delta_sec >= 3600.0) {
+    stream << " (~" << std::fixed << std::setprecision(3)
+           << abs_delta_sec / 3600.0 << " h)";
+  } else if (abs_delta_sec >= 60.0) {
+    stream << " (~" << std::fixed << std::setprecision(3)
+           << abs_delta_sec / 60.0 << " min)";
+  } else if (abs_delta_sec > 0.0 && abs_delta_sec < 1.0) {
+    stream << " (~" << std::fixed << std::setprecision(3)
+           << abs_delta_sec * 1000.0 << " ms)";
   }
-
-  const double ratio = (timestamp - first.timestamp) / duration;
-  transform->timestamp = timestamp;
-  transform->rotation = Slerp(first.rotation, ratio, second.rotation);
-  transform->translation.x() =
-      first.translation.x() * (1 - ratio) + second.translation.x() * ratio;
-  transform->translation.y() =
-      first.translation.y() * (1 - ratio) + second.translation.y() * ratio;
-  transform->translation.z() =
-      first.translation.z() * (1 - ratio) + second.translation.z() * ratio;
+  return stream.str();
 }
 
-}  // namespace
-
-void TransformCache::AddTransform(const StampedTransform& transform) {
-  if (transforms_.empty()) {
-    transforms_.push_back(transform);
-    return;
+const char* DescribeTimeRelation(double delta_sec) {
+  if (std::fabs(delta_sec) <= kTimeCompareEpsilonSec) {
+    return "aligned";
   }
-  double delt = transform.timestamp - transforms_.back().timestamp;
-  if (delt < 0.0) {
-    ADEBUG << "Ignore out-of-order transform at " << transform.timestamp
-           << " for transform cache.";
-    return;
-  }
+  return delta_sec > 0.0 ? "ahead" : "behind";
+}
 
-  if (delt <= std::numeric_limits<double>::epsilon()) {
-    transforms_.back() = transform;
-    return;
-  }
+bool TryExtractBoundaryTimeSec(const std::string& reason,
+                               double* boundary_time_sec,
+                               std::string* boundary_label) {
+  RETURN_VAL_IF_NULL2(boundary_time_sec, false);
+  RETURN_VAL_IF_NULL2(boundary_label, false);
 
-  do {
-    delt = transform.timestamp - transforms_.front().timestamp;
-    if (delt < cache_duration_) {
-      break;
+  struct Marker {
+    const char* needle;
+    const char* label;
+  };
+  constexpr Marker kMarkers[] = {
+      {"latest data is at time ", "latest_tf"},
+      {"earliest data is at time ", "earliest_tf"},
+  };
+
+  for (const auto& marker : kMarkers) {
+    const size_t marker_pos = reason.find(marker.needle);
+    if (marker_pos == std::string::npos) {
+      continue;
     }
-    transforms_.pop_front();
-  } while (!transforms_.empty());
-
-  transforms_.push_back(transform);
-}
-
-Eigen::Quaterniond Slerp(const Eigen::Quaterniond& source, const double& t,
-                         const Eigen::Quaterniond& other) {
-  const double one = 1.0 - std::numeric_limits<double>::epsilon();
-  double d = source.x() * other.x() + source.y() * other.y() +
-             source.z() * other.z() + source.w() * other.w();
-  double abs_d = std::abs(d);
-
-  double scale0;
-  double scale1;
-
-  if (abs_d >= one) {
-    scale0 = 1.0 - t;
-    scale1 = t;
-  } else {
-    double theta = std::acos(abs_d);
-    double sin_theta = std::sin(theta);
-
-    scale0 = std::sin((1.0 - t) * theta) / sin_theta;
-    scale1 = std::sin((t * theta)) / sin_theta;
-  }
-  if (d < 0) {
-    scale1 = -scale1;
-  }
-
-  return Eigen::Quaterniond(scale0 * source.w() + scale1 * other.w(),
-                            scale0 * source.x() + scale1 * other.x(),
-                            scale0 * source.y() + scale1 * other.y(),
-                            scale0 * source.z() + scale1 * other.z());
-}
-
-bool TransformCache::QueryTransform(double timestamp,
-                                    StampedTransform* transform,
-                                    double max_duration) {
-  if (transforms_.empty() || transform == nullptr) {
-    return false;
-  }
-
-  if (timestamp < transforms_.front().timestamp) {
-    ADEBUG << "Transform cache miss: requested timestamp " << timestamp
-           << " is earlier than cached range.";
-    return false;
-  }
-
-  const double delt = timestamp - transforms_.back().timestamp;
-  if (delt > max_duration) {
-    ADEBUG << "Transform cache miss: requested timestamp is " << delt
-           << "s newer than the latest cached sample.";
-    return false;
-  }
-
-  const int size = static_cast<int>(transforms_.size());
-  if (size == 1) {
-    *transform = transforms_.back();
-    transform->timestamp = timestamp;
-    ADEBUG << "Reuse latest cached transform at "
-           << transforms_.back().timestamp << " for " << timestamp << ".";
-    return true;
-  }
-
-  if (timestamp >= transforms_.back().timestamp) {
-    InterpolateStampedTransform(transforms_[size - 2], transforms_[size - 1],
-                                timestamp, transform);
-    ADEBUG << "Extrapolate cached transform at " << timestamp
-           << " using samples at " << transforms_[size - 2].timestamp
-           << " and " << transforms_[size - 1].timestamp << ".";
-    return true;
-  }
-
-  for (int index = 1; index < size; ++index) {
-    const auto& previous = transforms_[index - 1];
-    const auto& current = transforms_[index];
-    if (timestamp <= current.timestamp) {
-      if (std::abs(timestamp - current.timestamp) <=
-          std::numeric_limits<double>::epsilon()) {
-        *transform = current;
-        transform->timestamp = timestamp;
-      } else {
-        InterpolateStampedTransform(previous, current, timestamp, transform);
-      }
+    const size_t digits_begin = marker_pos + std::strlen(marker.needle);
+    size_t digits_end = digits_begin;
+    while (digits_end < reason.size() && std::isdigit(reason[digits_end])) {
+      ++digits_end;
+    }
+    if (digits_end == digits_begin) {
+      continue;
+    }
+    try {
+      const uint64_t nanoseconds =
+          std::stoull(reason.substr(digits_begin, digits_end - digits_begin));
+      *boundary_time_sec = static_cast<double>(nanoseconds) / 1e9;
+      *boundary_label = marker.label;
       return true;
+    } catch (const std::exception&) {
+      return false;
     }
   }
 
   return false;
 }
 
+void LogTransformQueryFailure(const std::string& target_frame,
+                              const std::string& source_frame,
+                              double requested_time_sec,
+                              const cyber::Time& lookup_time,
+                              float timeout_sec,
+                              const std::string& reason) {
+  const double now_sec = cyber::Time::Now().ToSecond();
+  const double request_vs_now_sec = requested_time_sec - now_sec;
+
+  std::ostringstream message;
+  message << "Transform unavailable target=" << target_frame
+          << " source=" << source_frame
+          << ", requested=" << FormatTimestampForLog(requested_time_sec);
+  if (lookup_time.IsZero() && requested_time_sec > 0.0) {
+    message << ", lookup=latest(0)";
+  } else {
+    message << ", lookup=" << FormatTimestampForLog(lookup_time.ToSecond());
+  }
+
+  double boundary_time_sec = 0.0;
+  std::string boundary_label;
+  if (TryExtractBoundaryTimeSec(reason, &boundary_time_sec, &boundary_label)) {
+    const double request_vs_boundary_sec =
+        requested_time_sec - boundary_time_sec;
+    message << ", " << boundary_label << "="
+            << FormatTimestampForLog(boundary_time_sec)
+            << ", requested_vs_" << boundary_label << "="
+            << FormatDeltaForLog(request_vs_boundary_sec) << " ("
+            << DescribeTimeRelation(request_vs_boundary_sec) << ")";
+  }
+
+  message << ", requested_vs_now=" << FormatDeltaForLog(request_vs_now_sec)
+          << " (" << DescribeTimeRelation(request_vs_now_sec) << ")"
+          << ", timeout=" << std::fixed << std::setprecision(3)
+          << timeout_sec << "s"
+          << ", reason=" << reason;
+  AINFO_EVERY(kTransformMissLogFrequency) << message.str();
+}
+
+}  // namespace
+
+TimedTransformResolver::TimedTransformResolver(
+    BufferInterface* buffer, const std::string& target_frame,
+    const std::string& source_frame,
+    const TimedTransformResolverOptions& options) {
+  Configure(buffer, target_frame, source_frame, options);
+}
+
+void TimedTransformResolver::SetTransformQuery(TransformQuery* query) {
+  owned_query_.reset();
+  transform_query_ = query;
+  ClearCache();
+}
+
+void TimedTransformResolver::Configure(
+    BufferInterface* buffer, const std::string& target_frame,
+    const std::string& source_frame,
+    const TimedTransformResolverOptions& options) {
+  owned_query_ = std::make_unique<TransformQuery>(buffer);
+  transform_query_ = owned_query_.get();
+  ConfigureFrames(target_frame, source_frame);
+  SetOptions(options);
+}
+
+void TimedTransformResolver::ConfigureFrames(const std::string& target_frame,
+                                             const std::string& source_frame) {
+  target_frame_ = target_frame;
+  source_frame_ = source_frame;
+  ClearCache();
+}
+
 void TimedTransformResolver::SetOptions(
     const TimedTransformResolverOptions& options) {
   options_ = options;
-  options_.tf2_buffer_size_sec = std::max(0.0f, options_.tf2_buffer_size_sec);
+  options_.query_timeout_sec = std::max(0.0f, options_.query_timeout_sec);
   options_.cache_duration_sec = std::max(0.0, options_.cache_duration_sec);
-  options_.max_extrapolation_latency_sec =
-      std::max(0.0, options_.max_extrapolation_latency_sec);
+  options_.max_extrapolation_sec =
+      std::max(0.0, options_.max_extrapolation_sec);
   options_.latest_lookup_fallback_tolerance_sec =
       std::max(0.0, options_.latest_lookup_fallback_tolerance_sec);
-  for (auto& entry : transform_caches_) {
-    entry.second.SetCacheDuration(options_.cache_duration_sec);
-  }
 }
 
-TransformCache* TimedTransformResolver::GetTransformCache(
-    const std::string& frame_id, const std::string& child_frame_id) {
-  const std::string cache_key =
-      BuildTransformCacheKey(frame_id, child_frame_id);
-  auto [iter, inserted] = transform_caches_.try_emplace(cache_key);
-  if (inserted) {
-    iter->second.SetCacheDuration(options_.cache_duration_sec);
-  }
-  return &iter->second;
-}
-
-bool TimedTransformResolver::Resolve(double timestamp,
-                                     const std::string& frame_id,
-                                     const std::string& child_frame_id,
-                                     StampedTransform* transform) {
-  CHECK_NOTNULL(transform_query_);
+bool TimedTransformResolver::Resolve(double timestamp_sec,
+                                     StampedTransform* transform,
+                                     TransformResolveStatus* status) {
   CHECK_NOTNULL(transform);
 
-  if (QueryTransform(timestamp, frame_id, child_frame_id, transform)) {
+  TransformStamped stamped_transform;
+  if (QueryTransform(timestamp_sec, &stamped_transform)) {
+    const double resolved_timestamp =
+        stamped_transform.header().timestamp_sec() > 0.0
+            ? stamped_transform.header().timestamp_sec()
+            : timestamp_sec;
+    const Eigen::Affine3d pose = ToAffine(stamped_transform);
     if (options_.enable_extrapolation) {
-      GetTransformCache(frame_id, child_frame_id)->AddTransform(*transform);
+      InsertSample(resolved_timestamp, pose);
+    }
+    ToStamped(resolved_timestamp, pose, transform);
+    if (status != nullptr) {
+      *status = TransformResolveStatus::kOk;
     }
     return true;
   }
 
   if (!options_.enable_extrapolation) {
+    if (status != nullptr) {
+      *status = TransformResolveStatus::kQueryFailed;
+    }
     return false;
   }
 
-  return GetTransformCache(frame_id, child_frame_id)
-      ->QueryTransform(timestamp, transform,
-                       options_.max_extrapolation_latency_sec);
+  Eigen::Affine3d pose = Eigen::Affine3d::Identity();
+  if (!QueryCachedInternal(timestamp_sec, options_.max_extrapolation_sec, &pose,
+                           status)) {
+    return false;
+  }
+  ToStamped(timestamp_sec, pose, transform);
+  return true;
 }
 
-bool TimedTransformResolver::QueryTransform(double timestamp,
-                                            const std::string& frame_id,
-                                            const std::string& child_frame_id,
-                                            StampedTransform* transform) {
+bool TimedTransformResolver::Resolve(double timestamp_sec,
+                                     const std::string& target_frame,
+                                     const std::string& source_frame,
+                                     StampedTransform* transform,
+                                     TransformResolveStatus* status) {
+  CHECK_NOTNULL(transform);
+  if (transform_query_ == nullptr) {
+    if (status != nullptr) {
+      *status = TransformResolveStatus::kQueryFailed;
+    }
+    return false;
+  }
+
+  TimedTransformResolver scoped_resolver(transform_query_);
+  scoped_resolver.ConfigureFrames(target_frame, source_frame);
+  scoped_resolver.SetOptions(options_);
+  return scoped_resolver.Resolve(timestamp_sec, transform, status);
+}
+
+bool TimedTransformResolver::ResolveToAffine(double timestamp_sec,
+                                             Eigen::Affine3d* pose,
+                                             TransformResolveStatus* status) {
+  CHECK_NOTNULL(pose);
+
+  double resolved_timestamp_sec = timestamp_sec;
+  if (QueryTransform(timestamp_sec, pose, &resolved_timestamp_sec)) {
+    if (options_.enable_extrapolation) {
+      InsertSample(resolved_timestamp_sec, *pose);
+    }
+    if (status != nullptr) {
+      *status = TransformResolveStatus::kOk;
+    }
+    return true;
+  }
+
+  if (!options_.enable_extrapolation) {
+    if (status != nullptr) {
+      *status = TransformResolveStatus::kQueryFailed;
+    }
+    return false;
+  }
+
+  return QueryCachedInternal(timestamp_sec, options_.max_extrapolation_sec,
+                             pose, status);
+}
+
+bool TimedTransformResolver::QueryTransform(double timestamp_sec,
+                                            TransformStamped* transform) const {
   CHECK_NOTNULL(transform_query_);
   CHECK_NOTNULL(transform);
 
-  cyber::Time query_time(timestamp);
+  if (target_frame_.empty() || source_frame_.empty()) {
+    return false;
+  }
+
+  cyber::Time query_time(timestamp_sec);
   std::string err_string;
-  if (!transform_query_->CanTransform(frame_id, child_frame_id, query_time,
-                                      options_.tf2_buffer_size_sec,
+  if (!transform_query_->CanTransform(target_frame_, source_frame_, query_time,
+                                      options_.query_timeout_sec,
                                       &err_string)) {
-    apollo::transform::TransformStamped latest_transform;
     double latest_buffer_time = 0.0;
     if (!options_.hardware_trigger) {
       std::string lookup_error;
+      apollo::transform::TransformStamped latest_transform;
       if (!transform_query_->LookupTransform(
-              frame_id, child_frame_id, apollo::cyber::Time(0),
-              &latest_transform, options_.tf2_buffer_size_sec, &lookup_error)) {
-        AERROR << lookup_error;
+              target_frame_, source_frame_, apollo::cyber::Time(0),
+              &latest_transform, options_.query_timeout_sec, &lookup_error)) {
+        LogTransformQueryFailure(
+            target_frame_, source_frame_, timestamp_sec, apollo::cyber::Time(0),
+            options_.query_timeout_sec,
+            "failed to fetch latest transform while diagnosing miss: " +
+                lookup_error + "; canTransform=" + err_string);
         return false;
       }
       latest_buffer_time = latest_transform.header().timestamp_sec();
@@ -253,39 +317,68 @@ bool TimedTransformResolver::QueryTransform(double timestamp,
     if (!cyber::common::GlobalData::Instance()->IsRealityMode()) {
       query_time = cyber::Time(0);
     } else if (!options_.hardware_trigger &&
-               (timestamp - latest_buffer_time <
+               (timestamp_sec - latest_buffer_time <
                 options_.latest_lookup_fallback_tolerance_sec) &&
-               (timestamp - latest_buffer_time > 0)) {
+               (timestamp_sec - latest_buffer_time > 0)) {
       query_time = apollo::cyber::Time(0);
     } else {
-      AERROR << "Can not find transform. " << FORMAT_TIMESTAMP(timestamp)
-             << " frame_id: " << frame_id
-             << " child_frame_id: " << child_frame_id
-             << " Error info: " << err_string;
+      LogTransformQueryFailure(target_frame_, source_frame_, timestamp_sec,
+                               query_time, options_.query_timeout_sec,
+                               err_string);
       return false;
     }
   }
 
-  apollo::transform::TransformStamped stamped_transform;
   std::string lookup_error;
   if (!transform_query_->LookupTransform(
-          frame_id, child_frame_id, query_time, &stamped_transform,
-          options_.tf2_buffer_size_sec, &lookup_error)) {
-    AERROR << lookup_error;
+          target_frame_, source_frame_, query_time, transform,
+          options_.query_timeout_sec, &lookup_error)) {
+    LogTransformQueryFailure(target_frame_, source_frame_, timestamp_sec,
+                             query_time, options_.query_timeout_sec,
+                             lookup_error);
     return false;
   }
 
-  transform->timestamp = stamped_transform.header().timestamp_sec();
-  transform->translation =
-      Eigen::Translation3d(stamped_transform.transform().translation().x(),
-                           stamped_transform.transform().translation().y(),
-                           stamped_transform.transform().translation().z());
-  transform->rotation =
-      Eigen::Quaterniond(stamped_transform.transform().rotation().qw(),
-                         stamped_transform.transform().rotation().qx(),
-                         stamped_transform.transform().rotation().qy(),
-                         stamped_transform.transform().rotation().qz());
   return true;
+}
+
+bool TimedTransformResolver::QueryTransform(
+    double timestamp_sec, Eigen::Affine3d* pose,
+    double* resolved_timestamp_sec) const {
+  CHECK_NOTNULL(pose);
+
+  TransformStamped stamped_transform;
+  if (!QueryTransform(timestamp_sec, &stamped_transform)) {
+    return false;
+  }
+
+  *pose = ToAffine(stamped_transform);
+  if (resolved_timestamp_sec != nullptr) {
+    *resolved_timestamp_sec = stamped_transform.header().timestamp_sec() > 0.0
+                                  ? stamped_transform.header().timestamp_sec()
+                                  : timestamp_sec;
+  }
+  return true;
+}
+
+Eigen::Affine3d TimedTransformResolver::ToAffine(
+    const TransformStamped& transform) {
+  const auto& translation = transform.transform().translation();
+  const auto& rotation = transform.transform().rotation();
+  return Eigen::Translation3d(translation.x(), translation.y(),
+                              translation.z()) *
+         Eigen::Quaterniond(rotation.qw(), rotation.qx(), rotation.qy(),
+                            rotation.qz());
+}
+
+void TimedTransformResolver::ToStamped(double timestamp_sec,
+                                       const Eigen::Affine3d& pose,
+                                       StampedTransform* transform) {
+  CHECK_NOTNULL(transform);
+  transform->timestamp = timestamp_sec;
+  transform->translation = Eigen::Translation3d(
+      pose.translation().x(), pose.translation().y(), pose.translation().z());
+  transform->rotation = Eigen::Quaterniond(pose.linear());
 }
 
 }  // namespace transform

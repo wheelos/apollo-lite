@@ -16,6 +16,9 @@
 
 #include "modules/transform/timed_transform_resolver.h"
 
+#include <map>
+#include <tuple>
+
 #include "gtest/gtest.h"
 
 #include "modules/transform/buffer_interface.h"
@@ -23,15 +26,6 @@
 namespace apollo {
 namespace transform {
 namespace {
-
-StampedTransform MakeStampedTransform(double timestamp_sec, double x, double y,
-                                      double z) {
-  StampedTransform transform;
-  transform.timestamp = timestamp_sec;
-  transform.translation = Eigen::Translation3d(x, y, z);
-  transform.rotation = Eigen::Quaterniond::Identity();
-  return transform;
-}
 
 TransformStamped MakeTransformMessage(double timestamp_sec, double x, double y,
                                       double z) {
@@ -51,6 +45,31 @@ TransformStamped MakeTransformMessage(double timestamp_sec, double x, double y,
 
 class FakeBuffer : public BufferInterface {
  public:
+  using Key = std::tuple<std::string, std::string, uint64_t>;
+
+  void AddTransform(const std::string& target_frame,
+                    const std::string& source_frame, double timestamp_sec,
+                    const Eigen::Affine3d& transform) {
+    const auto key = Key(target_frame, source_frame,
+                         cyber::Time(timestamp_sec).ToNanosecond());
+    TransformStamped stamped;
+    stamped.mutable_header()->set_frame_id(target_frame);
+    stamped.mutable_header()->set_timestamp_sec(timestamp_sec);
+    stamped.set_child_frame_id(source_frame);
+    stamped.mutable_transform()->mutable_translation()->set_x(
+        transform.translation().x());
+    stamped.mutable_transform()->mutable_translation()->set_y(
+        transform.translation().y());
+    stamped.mutable_transform()->mutable_translation()->set_z(
+        transform.translation().z());
+    const Eigen::Quaterniond rotation(transform.linear());
+    stamped.mutable_transform()->mutable_rotation()->set_qw(rotation.w());
+    stamped.mutable_transform()->mutable_rotation()->set_qx(rotation.x());
+    stamped.mutable_transform()->mutable_rotation()->set_qy(rotation.y());
+    stamped.mutable_transform()->mutable_rotation()->set_qz(rotation.z());
+    transforms_[key] = stamped;
+  }
+
   TransformStamped lookupTransform(const std::string& target_frame,
                                    const std::string& source_frame,
                                    const cyber::Time& time,
@@ -60,6 +79,11 @@ class FakeBuffer : public BufferInterface {
     last_query_time_ = time;
     last_timeout_sec_ = timeout_second;
     ++lookup_call_count_;
+    const auto it = transforms_.find(
+        Key(target_frame, source_frame, time.ToNanosecond()));
+    if (it != transforms_.end()) {
+      return it->second;
+    }
     return lookup_transform_;
   }
 
@@ -88,6 +112,10 @@ class FakeBuffer : public BufferInterface {
     last_query_time_ = time;
     last_timeout_sec_ = timeout_second;
     ++can_transform_call_count_;
+    if (transforms_.count(
+            Key(target_frame, source_frame, time.ToNanosecond())) > 0) {
+      return true;
+    }
     if (!can_transform_result_ && errstr != nullptr) {
       *errstr = "can transform failed";
     }
@@ -135,30 +163,51 @@ class FakeBuffer : public BufferInterface {
   bool can_transform_result_ = true;
   TransformStamped lookup_transform_;
   TransformStamped static_transform_;
+  std::map<Key, TransformStamped> transforms_;
 };
 
-TEST(TransformCacheTest, InterpolatesBetweenSamples) {
-  TransformCache cache;
-  cache.SetCacheDuration(5.0);
-  cache.AddTransform(MakeStampedTransform(10.0, 0.0, 0.0, 0.0));
-  cache.AddTransform(MakeStampedTransform(12.0, 10.0, 0.0, 0.0));
+TEST(TimedTransformResolverTest, QueryCachedInterpolatesBetweenSamples) {
+  FakeBuffer buffer;
+  buffer.AddTransform(
+      "map", "base_link", 10.0,
+      Eigen::Translation3d(0.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
+  buffer.AddTransform(
+      "map", "base_link", 12.0,
+      Eigen::Translation3d(10.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
-  StampedTransform resolved;
-  EXPECT_TRUE(cache.QueryTransform(11.0, &resolved, 0.0));
-  EXPECT_DOUBLE_EQ(resolved.timestamp, 11.0);
-  EXPECT_NEAR(resolved.translation.x(), 5.0, 1e-9);
+  TimedTransformResolver resolver(
+      &buffer, "map", "base_link",
+      TimedTransformResolverOptions{0.01f, 5.0, 1.0, 0.015, true, true});
+  ASSERT_TRUE(resolver.PrefetchBatch({10.0, 12.0}));
+
+  Eigen::Affine3d pose = Eigen::Affine3d::Identity();
+  TransformResolveStatus status = TransformResolveStatus::kEmpty;
+  EXPECT_TRUE(resolver.QueryCached(11.0, &pose, &status));
+  EXPECT_EQ(status, TransformResolveStatus::kOk);
+  EXPECT_NEAR(pose.translation().x(), 5.0, 1e-9);
 }
 
-TEST(TransformCacheTest, RejectsExtrapolationBeyondLimit) {
-  TransformCache cache;
-  cache.SetCacheDuration(5.0);
-  cache.AddTransform(MakeStampedTransform(10.0, 0.0, 0.0, 0.0));
-  cache.AddTransform(MakeStampedTransform(12.0, 10.0, 0.0, 0.0));
+TEST(TimedTransformResolverTest, QueryCachedExtrapolatesWithinLimit) {
+  FakeBuffer buffer;
+  buffer.AddTransform(
+      "map", "base_link", 10.0,
+      Eigen::Translation3d(0.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
+  buffer.AddTransform(
+      "map", "base_link", 12.0,
+      Eigen::Translation3d(10.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
-  StampedTransform resolved;
-  EXPECT_FALSE(cache.QueryTransform(13.5, &resolved, 1.0));
-  EXPECT_TRUE(cache.QueryTransform(12.5, &resolved, 1.0));
-  EXPECT_NEAR(resolved.translation.x(), 12.5, 1e-9);
+  TimedTransformResolver resolver(
+      &buffer, "map", "base_link",
+      TimedTransformResolverOptions{0.01f, 5.0, 1.0, 0.015, true, true});
+  ASSERT_TRUE(resolver.PrefetchBatch({10.0, 12.0}));
+
+  Eigen::Affine3d pose = Eigen::Affine3d::Identity();
+  TransformResolveStatus status = TransformResolveStatus::kEmpty;
+  EXPECT_FALSE(resolver.QueryCached(13.5, &pose, &status));
+  EXPECT_EQ(status, TransformResolveStatus::kTooOld);
+  EXPECT_TRUE(resolver.QueryCached(12.5, &pose, &status));
+  EXPECT_EQ(status, TransformResolveStatus::kOk);
+  EXPECT_NEAR(pose.translation().x(), 12.5, 1e-9);
 }
 
 TEST(TimedTransformResolverTest, ResolveUsesInjectedTransformQueryOnce) {
@@ -169,10 +218,11 @@ TEST(TimedTransformResolverTest, ResolveUsesInjectedTransformQueryOnce) {
   TimedTransformResolver resolver(&query);
   TimedTransformResolverOptions options;
   options.enable_extrapolation = false;
+  resolver.ConfigureFrames("map", "base_link");
   resolver.SetOptions(options);
 
   StampedTransform resolved;
-  EXPECT_TRUE(resolver.Resolve(20.0, "map", "base_link", &resolved));
+  EXPECT_TRUE(resolver.Resolve(20.0, &resolved));
   EXPECT_EQ(buffer.can_transform_call_count_, 1);
   EXPECT_EQ(buffer.lookup_call_count_, 1);
   EXPECT_EQ(buffer.last_target_frame_, "map");
