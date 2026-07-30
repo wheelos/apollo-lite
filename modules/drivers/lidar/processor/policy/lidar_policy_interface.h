@@ -6,7 +6,7 @@
 
 #include "Eigen/Geometry"
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/drivers/lidar/proto/lidar_unified_component_config.pb.h"
 
 #include "modules/transform/buffer_interface.h"

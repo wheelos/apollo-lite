@@ -7,7 +7,7 @@
 
 #include "Eigen/Geometry"
 
-#include "modules/common_msgs/sensor_msgs/pointcloud.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
 #include "cyber/time/time.h"
 #include "modules/drivers/lidar/processor/policy/lidar_policy_interface.h"

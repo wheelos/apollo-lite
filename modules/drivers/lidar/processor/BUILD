@@ -63,8 +63,8 @@ cc_library(
         "//conditions:default": [],
     }),
     deps=[
-        "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
         "//modules/transform:buffer",
         "//modules/transform:transform_query_core",
@@ -88,7 +88,7 @@ cc_library(
         "safety/ts_sanity.h",
     ],
     deps=[
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -117,8 +117,8 @@ cc_library(
         "//conditions:default": [],
     }),
     deps=[
-        "//cyber",
-        "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
         ":lidar_policy_lib",
         ":safety_policy_lib",
@@ -148,7 +148,7 @@ cc_test(
     deps=[
         ":lidar_unified_component_lib",
         ":lidar_policy_lib",
-        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "@com_google_googletest//:gtest",
     ],
 )
