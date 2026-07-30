@@ -29,6 +29,8 @@ namespace camera_gst {
 
 class CameraGstDriver {
  public:
+  // CPU publish callback aliases are retained for interface compatibility.
+  // GPU-only deployments pass empty callbacks and consume GpuFrameCallback.
   using PublishCallback = CameraGstStreamer::PublishCallback;
   using SourcePublishCallback = CameraGstStreamer::SourcePublishCallback;
   using GpuFrameCallback = CameraGstStreamer::GpuFrameCallback;

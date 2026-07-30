@@ -180,6 +180,17 @@ bool CameraGstStreamer::ValidateConfigLocked() {
     return false;
   }
 
+  if (source_publish_callback_) {
+    AERROR << "camera_gst source CPU publish callbacks are unsupported in "
+           << "GPU-only mode.";
+    return false;
+  }
+  if (stitched_publish_callback_) {
+    AERROR << "camera_gst stitched CPU publish callback is unsupported in "
+           << "GPU-only mode.";
+    return false;
+  }
+
   layout_slots_.clear();
   source_states_.clear();
   source_states_.reserve(static_cast<size_t>(config_.sources_size()));
@@ -203,19 +214,10 @@ bool CameraGstStreamer::ValidateConfigLocked() {
       return false;
     }
     if (source_config.has_publish()) {
-      const bool has_output_width = source_config.publish().output_width() > 0;
-      const bool has_output_height =
-          source_config.publish().output_height() > 0;
-      if (has_output_width != has_output_height) {
-        AERROR << "camera_gst source " << source_config.name()
-               << " publish output_width/output_height must be set together.";
-        return false;
-      }
-      if (source_config.publish().output_fps() < 0.0) {
-        AERROR << "camera_gst source " << source_config.name()
-               << " publish output_fps must be non-negative.";
-        return false;
-      }
+      AERROR << "camera_gst source " << source_config.name()
+             << " declares CPU publish config, which is unsupported in "
+             << "GPU-only mode.";
+      return false;
     }
     source_states_.emplace_back(
         std::make_unique<SourceRuntimeState>(source_config.name()));
@@ -269,9 +271,7 @@ bool CameraGstStreamer::ValidateConfigLocked() {
   }
 
   for (const auto& source_config : config_.sources()) {
-    const bool publish_enabled =
-        source_config.has_publish() &&
-        !source_config.publish().channel_name().empty();
+    const bool publish_enabled = false;
     const bool stitch_selected =
         FindLayoutSlotLocked(source_config.name()) != nullptr;
     const bool gpu_publish_enabled =
@@ -301,6 +301,13 @@ bool CameraGstStreamer::ValidateConfigLocked() {
       config_.stream().host().empty()) {
     AERROR << "camera_gst stream.host must not be empty when using default "
            << "NVENC/RTP stream branch.";
+    return false;
+  }
+
+  if (config_.stream().perception_transcode_before_publish() &&
+      !config_.publish_gpu_channel()) {
+    AERROR << "camera_gst perception_transcode_before_publish requires "
+           << "publish_gpu_channel=true.";
     return false;
   }
 
@@ -743,17 +750,8 @@ const PipelineLayoutSlot* CameraGstStreamer::FindLayoutSlotLocked(
 }
 
 CameraGstPipelineBuilder CameraGstStreamer::MakePipelineBuilderLocked() const {
-  bool has_source_publish = false;
-  for (const auto& source_config : config_.sources()) {
-    if (source_config.has_publish() &&
-        !source_config.publish().channel_name().empty()) {
-      has_source_publish = true;
-      break;
-    }
-  }
   return CameraGstPipelineBuilder(
-      config_, layout_slots_, has_source_publish,
-      static_cast<bool>(stitched_publish_callback_), stream_enabled_,
+      config_, layout_slots_, false, false, stream_enabled_,
       config_.publish_gpu_channel() && static_cast<bool>(gpu_frame_callback_));
 }
 

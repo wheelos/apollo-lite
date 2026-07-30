@@ -39,6 +39,8 @@ namespace camera_gst {
 
 class CameraGstStreamer {
  public:
+  // CPU callback types are maintained for backward compatibility; GPU-first
+  // runtime should prefer GpuFrameCallback.
   using PublishCallback = std::function<void(PublishedFrame&&)>;
   using SourcePublishCallback =
       std::function<void(const std::string&, PublishedFrame&&)>;
@@ -78,6 +80,11 @@ class CameraGstStreamer {
     std::atomic<uint64_t> cpu_rate_limited_frames{0};
     std::atomic<uint64_t> cpu_drop_frames{0};
     std::atomic<uint64_t> gpu_drop_frames{0};
+    std::atomic<uint64_t> published_frames{0};
+    std::atomic<uint64_t> queue_drop_frames{0};
+    std::atomic<uint64_t> last_sequence{0};
+    std::atomic<uint32_t> queue_depth{0};
+    std::atomic<double> last_measurement_time{0.0};
   };
 
   struct SinkContext {
@@ -88,6 +95,7 @@ class CameraGstStreamer {
     double last_measurement_time = 0.0;
     bool has_last_measurement_time = false;
     bool stitched = false;
+    bool cpu_readback = false;
   };
 
   static GstFlowReturn OnSourceSample(GstAppSink* appsink, gpointer user_data);

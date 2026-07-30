@@ -14,6 +14,7 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -74,7 +75,8 @@ TEST(CameraGstPipelineBuilderTest, BuildsGpuHandleAndCpuPublishBranches) {
   EXPECT_NE(pipeline.find("appsink name=source_publish_sink_0"),
             std::string::npos);
   EXPECT_NE(pipeline.find("appsink name=source_gpu_sink_0"), std::string::npos);
-  EXPECT_NE(pipeline.find("nvcompositor name=comp"), std::string::npos);
+  EXPECT_EQ(pipeline.find("nvcompositor name=comp"), std::string::npos);
+  EXPECT_NE(pipeline.find("tee name=stitched_tee"), std::string::npos);
   EXPECT_NE(pipeline.find("video/x-raw,width=(int)1280,height=(int)720"),
             std::string::npos);
   EXPECT_NE(pipeline.find("videorate ! video/x-raw,format=(string)RGB,"
@@ -96,6 +98,101 @@ TEST(CameraGstPipelineBuilderTest, BuildsMjpegHardwareDecodeSource) {
   EXPECT_NE(pipeline.find("appsink name=source_gpu_sink_0"), std::string::npos);
 }
 
+TEST(CameraGstPipelineBuilderTest, BuildsGpuPublishOnlyRgbBranch) {
+  config::Config config;
+  auto* source = AddSource(&config, "video2", "/dev/video2");
+  source->set_fourcc("YUYV");
+  source->mutable_publish()->set_channel_name(
+      "/apollo/sensor/camera/video2/image");
+  source->mutable_publish()->set_output_width(1280);
+  source->mutable_publish()->set_output_height(720);
+  source->mutable_publish()->set_output_fps(15.0);
+
+  CameraGstPipelineBuilder builder(config, {}, true, false, false, false);
+
+  const std::string pipeline = builder.BuildPipelineDescription();
+  EXPECT_NE(pipeline.find("nvv4l2camerasrc device=\"/dev/video2\""),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("video/x-raw(memory:NVMM),format=(string)NV12"),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("tee name=source_tee_0"), std::string::npos);
+  EXPECT_NE(
+      pipeline.find(
+          "video/x-raw,width=(int)1280,height=(int)720,format=(string)BGRx ! "
+          "videoconvert ! video/x-raw,format=(string)RGB"),
+      std::string::npos);
+  EXPECT_NE(pipeline.find("videorate ! video/x-raw,format=(string)RGB,"
+                          "framerate=(fraction)15/1"),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("appsink name=source_publish_sink_0"),
+            std::string::npos);
+}
+
+TEST(CameraGstPipelineBuilderTest, PrefersArgusForCsiSources) {
+  config::Config config;
+  auto* source = AddSource(&config, "front", "csi://0");
+  source->set_capture_backend("AUTO");
+  source->mutable_publish()->set_channel_name("/apollo/sensor/camera/front");
+
+  CameraGstPipelineBuilder builder(config, {}, true, false, false, false);
+
+  const std::string pipeline = builder.BuildPipelineDescription();
+  EXPECT_NE(pipeline.find("nvarguscamerasrc sensor-id=0"), std::string::npos);
+  EXPECT_EQ(pipeline.find("v4l2src device="), std::string::npos);
+}
+
+TEST(CameraGstPipelineBuilderTest, UsesNvv4l2CameraSrcForSupportedV4l2Yuv) {
+  config::Config config;
+  auto* source = AddSource(&config, "video3", "/dev/video3");
+  source->set_fourcc("UYVY");
+  source->set_capture_backend("NVV4L2_DMABUF");
+
+  CameraGstPipelineBuilder builder(config, {}, false, false, false, false);
+
+  const std::string pipeline = builder.BuildPipelineDescription();
+  EXPECT_NE(pipeline.find("nvv4l2camerasrc device="), std::string::npos);
+  EXPECT_NE(pipeline.find("memory:NVMM"), std::string::npos);
+}
+
+TEST(CameraGstPipelineBuilderTest, DefaultsQueueCapacityToOneForPublish) {
+  config::Config config;
+  auto* source = AddSource(&config, "video2", "/dev/video2");
+  source->set_fourcc("YUYV");
+  source->mutable_publish()->set_channel_name(
+      "/apollo/sensor/camera/video2/image");
+
+  CameraGstPipelineBuilder builder(config, {}, true, false, false, false);
+
+  const std::string pipeline = builder.BuildPipelineDescription();
+  EXPECT_NE(pipeline.find("max-buffers=1"), std::string::npos);
+}
+
+TEST(CameraGstPipelineBuilderTest, BuildsGpuPublishOnlyYuyvBranch) {
+  config::Config config;
+  auto* source = AddSource(&config, "video2", "/dev/video2");
+  source->set_fourcc("YUYV");
+  source->mutable_publish()->set_channel_name(
+      "/apollo/sensor/camera/video2/image");
+  source->mutable_publish()->set_output_format("YUYV");
+  source->mutable_publish()->set_output_fps(15.0);
+
+  CameraGstPipelineBuilder builder(config, {}, true, false, false, false);
+
+  const std::string pipeline = builder.BuildPipelineDescription();
+  EXPECT_NE(pipeline.find("nvv4l2camerasrc device=\"/dev/video2\""),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("tee name=source_tee_0"), std::string::npos);
+  EXPECT_NE(pipeline.find("video/x-raw,format=(string)YUY2"),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("video/x-raw(memory:NVMM),format=(string)NV12"),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("videorate ! video/x-raw,format=(string)YUY2,"
+                          "framerate=(fraction)15/1"),
+            std::string::npos);
+  EXPECT_EQ(pipeline.find("videoconvert ! video/x-raw,format=(string)RGB"),
+            std::string::npos);
+}
+
 TEST(CameraGstPipelineBuilderTest, BuildsDefaultNvencRtpStreamBranch) {
   config::Config config;
   config.mutable_stream()->set_host("192.0.2.10");
@@ -115,6 +212,38 @@ TEST(CameraGstPipelineBuilderTest, BuildsDefaultNvencRtpStreamBranch) {
             std::string::npos);
 }
 
+TEST(CameraGstPipelineBuilderTest, BuildsPerceptionTranscodePublishBranch) {
+  config::Config config;
+  auto* source = AddSource(&config, "video2", "/dev/video2");
+  source->set_fourcc("YUYV");
+  config.mutable_stream()->set_enable(true);
+  config.mutable_stream()->set_host("192.0.2.20");
+  config.mutable_stream()->set_port(5600);
+  config.set_publish_gpu_channel(true);
+  config.mutable_stream()->set_perception_transcode_before_publish(true);
+  config.mutable_stream()->set_perception_bitrate(6000000);
+
+  CameraGstPipelineBuilder builder(config, {}, false, false, true, true);
+
+  const std::string pipeline = builder.BuildPipelineDescription();
+  EXPECT_NE(
+      pipeline.find("queue name=perception_codec_queue_0 leaky=downstream"),
+      std::string::npos);
+  EXPECT_NE(pipeline.find("nvv4l2h264enc name=perception_codec_encoder_0"),
+            std::string::npos);
+  EXPECT_NE(pipeline.find("bitrate=6000000"), std::string::npos);
+  EXPECT_NE(pipeline.find("h264parse ! nvv4l2decoder"), std::string::npos);
+  EXPECT_EQ(pipeline.find("perception_stream_encoder"), std::string::npos);
+  EXPECT_NE(pipeline.find("appsink name=source_gpu_sink_0"), std::string::npos);
+}
+
 }  // namespace camera_gst
 }  // namespace drivers
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  // Avoid environment-specific GStreamer/GLib shutdown crashes after tests.
+  const int result = RUN_ALL_TESTS();
+  _Exit(result);
+}

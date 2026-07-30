@@ -9,9 +9,9 @@ CAMERA_GST_COPTS = ['-DMODULE_NAME=\\"camera_gst\\"']
 filegroup(
     name = "runtime_data",
     srcs = glob([
-        "conf/*.txt",
-        "dag/*.dag",
-        "launch/*.launch",
+        "conf/**/*.txt",
+        "dag/**/*.dag",
+        "launch/**/*.launch",
     ]),
 )
 
@@ -78,7 +78,7 @@ cc_test(
     copts = CAMERA_GST_COPTS,
     deps = [
         ":camera_gst_core",
-        "@com_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest",
     ],
 )
 

@@ -56,7 +56,12 @@ def _pkg_config(repository_ctx, sysroot_dir):
     )
     if result.return_code != 0:
         return None
-    return result.stdout.strip().split()
+    tokens = []
+    for line in result.stdout.strip().split("\n"):
+        for token in line.split(" "):
+            if token:
+                tokens.append(token)
+    return tokens
 
 
 def _configure_from_pkg_config(repository_ctx, sysroot_dir):

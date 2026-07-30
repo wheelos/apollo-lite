@@ -35,6 +35,14 @@ struct PipelineLayoutSlot {
 
 class CameraGstPipelineBuilder {
  public:
+  enum class CaptureBackend {
+    kAuto,
+    kArgus,
+    kNvV4l2Dmabuf,
+    kV4l2Dmabuf,
+    kCustom,
+  };
+
   CameraGstPipelineBuilder(const config::Config& config,
                            const std::vector<PipelineLayoutSlot>& layout_slots,
                            bool source_publish_enabled,
@@ -55,8 +63,14 @@ class CameraGstPipelineBuilder {
       const PipelineLayoutSlot* layout_slot) const;
   std::string BuildSourceHead(
       const config::CameraSourceConfig& source_config) const;
+  std::string BuildGpuPublishBranch(size_t source_index,
+                                    const std::string& tee_name) const;
+  CaptureBackend ResolveCaptureBackend(
+      const config::CameraSourceConfig& source_config) const;
   const PipelineLayoutSlot* FindLayoutSlot(
       const std::string& source_name) const;
+  bool IsDirectSingleSourceStream() const;
+  bool GpuPublishViaCodecEnabled() const;
   std::string SourceTeeName(size_t source_index) const;
   std::string VideoConvertElement() const;
 

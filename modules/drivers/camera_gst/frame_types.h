@@ -44,6 +44,11 @@ struct SourceStats {
   uint64_t cpu_rate_limited_frames = 0;
   uint64_t cpu_drop_frames = 0;
   uint64_t gpu_drop_frames = 0;
+  uint64_t published_frames = 0;
+  uint64_t queue_drop_frames = 0;
+  uint64_t last_sequence = 0;
+  double last_measurement_time = 0.0;
+  uint32_t queue_depth = 0;
 };
 
 struct StreamStats {

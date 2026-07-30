@@ -12,6 +12,13 @@ message CameraSourceConfig {
   optional PublishConfig publish = 7;
   optional string capture_pipeline = 8;
   optional uint32 read_timeout_ms = 9 [default = 1000];
+  optional string capture_backend = 10 [default = "AUTO"];
+  optional uint32 sensor_id = 11 [default = 0];
+  optional uint32 sensor_mode = 12 [default = 0];
+  optional string device = 13;
+  optional uint32 virtual_channel_id = 14 [default = 0];
+  optional uint32 gmsl_link_id = 15 [default = 0];
+  optional bool allow_backend_fallback = 16 [default = true];
 }
 
 message LayoutSlot {
@@ -26,21 +33,25 @@ message PublishConfig {
   optional uint32 output_width = 3 [default = 0];
   optional uint32 output_height = 4 [default = 0];
   optional double output_fps = 5 [default = 0.0];
-  optional uint32 queue_capacity = 6 [default = 4];
+  optional uint32 queue_capacity = 6 [default = 1];
   optional uint32 buffer_pool_size = 7 [default = 4];
+  optional string output_format = 8 [default = "RGB"];
+  optional bool channel_publish_enabled = 9 [default = true];
 }
 
 message StreamConfig {
   optional bool enable = 1 [default = false];
   optional bool auto_start = 2 [default = false];
+  // Legacy compatibility fields. They are kept for proto wire stability and
+  // are not used by the current GPU-only camera_gst runtime path.
   optional string gst_launch_command = 3 [default = "gst-launch-1.0"];
   optional string pipeline_suffix = 4;
-  optional uint32 queue_size = 5 [default = 3];
+  optional uint32 queue_size = 5 [default = 1];
   optional uint32 write_timeout_ms = 6 [default = 20];
   optional string pixel_format = 7 [default = "bgr"];
   optional string branch_pipeline = 8;
   optional uint32 publish_queue_size = 9 [default = 1];
-  optional uint32 ingest_queue_size = 10 [default = 3];
+  optional uint32 ingest_queue_size = 10 [default = 1];
   optional bool emit_eos_on_detach = 11 [default = true];
   optional bool force_keyframe_on_attach = 12 [default = true];
   optional string keyframe_element_name = 13;
@@ -52,6 +63,15 @@ message StreamConfig {
   optional uint32 queue_capacity = 19 [default = 4];
   optional bool insert_sps_pps = 20 [default = true];
   optional uint32 rtp_payload_type = 21 [default = 96];
+
+  // Optional perception branch: source tee -> NVENC -> H264 parse/decode ->
+  // NVMM appsink (no RTP).
+  optional bool perception_transcode_before_publish = 22 [default = false];
+  optional uint32 perception_bitrate = 23 [default = 4000000];
+  optional uint32 perception_iframe_interval = 24 [default = 30];
+  optional uint32 perception_idr_interval = 25 [default = 30];
+  optional uint32 perception_queue_capacity = 26 [default = 2];
+  optional bool perception_insert_sps_pps = 27 [default = true];
 }
 
 message PlatformContract {
@@ -76,4 +96,5 @@ message Config {
   optional bool validate_nvidia_plugins = 13 [default = false];
   optional bool zero_copy_required = 14 [default = false];
   optional PlatformContract platform = 15;
+  optional bool allow_high_bandwidth_raw_publish = 16 [default = false];
 }
