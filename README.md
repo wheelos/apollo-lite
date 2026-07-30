@@ -110,6 +110,25 @@ yes | sudo bash docker/setup_host/setup_host.sh
 
 ---
 
+## External `wheelos_core` runtime (cyber tools)
+
+When using external `wheelos_core` (`@core//...`), initialize runtime through the unified entrypoint:
+
+```bash
+export APOLLO_CORE_ROOT=/path/to/core
+source scripts/runtime_env.sh
+```
+
+Then build cyber runtime targets from this workspace:
+
+```bash
+./apollo.sh build cyber
+```
+
+This builds the stable `@core//cyber` runtime surface: `cyber_core`, `mainboard`, and the `cyber_tools` binaries used by the repo.
+
+---
+
 ## Copyright and License
 
 Apollo-Lite is licensed under the [Apache License 2.0](LICENSE). Please comply

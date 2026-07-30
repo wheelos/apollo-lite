@@ -21,6 +21,7 @@ set -euo pipefail
 # Get project root directory
 APOLLO_ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${APOLLO_ROOT_DIR}/scripts/apollo.bashrc"
+source "${APOLLO_ROOT_DIR}/scripts/cyber_targets.sh"
 
 STAGE="${STAGE:-dev}"
 DIFF_MODE=0
@@ -296,7 +297,7 @@ function run_cpp_lint() {
   done
   popd >/dev/null
 
-  local bazel_targets=("@core//cyber:cyber_core")
+  local bazel_targets=("$(cyber_core_target)")
   if [[ "${STAGE}" == "dev" ]]; then
     bazel_targets+=("//modules/...")
   fi

@@ -22,8 +22,8 @@ source ${TOP_DIR}/scripts/apollo.bashrc
 HOST_ARCH="$(uname -m)"
 
 function set_lib_path() {
-  local CYBER_SETUP="${APOLLO_ROOT_DIR}/cyber/setup.bash"
-  [ -e "${CYBER_SETUP}" ] && . "${CYBER_SETUP}"
+  local RUNTIME_SETUP="${APOLLO_ROOT_DIR}/scripts/runtime_env.sh"
+  [ -e "${RUNTIME_SETUP}" ] && . "${RUNTIME_SETUP}"
   pathprepend ${APOLLO_ROOT_DIR}/modules/tools PYTHONPATH
   pathprepend ${APOLLO_ROOT_DIR}/modules/teleop/common PYTHONPATH
   pathprepend /apollo/modules/teleop/common/scripts

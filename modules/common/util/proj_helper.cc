@@ -35,8 +35,8 @@ void SetError(const std::string& message, std::string* error) {
 bool HasProjData(std::string* error) {
   const char* proj_data = std::getenv("PROJ_DATA");
   if (proj_data == nullptr || proj_data[0] == '\0') {
-    SetError("PROJ_DATA is not set. Source cyber/setup.bash after building the "
-             "targets so bazel-bin/external/proj~/data is available.",
+    SetError("PROJ_DATA is not set. Source scripts/runtime_env.sh after building "
+             "the targets so bazel-bin/external/proj~/data is available.",
              error);
     return false;
   }

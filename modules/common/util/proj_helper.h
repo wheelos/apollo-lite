@@ -28,7 +28,7 @@ namespace util {
 
 class ProjHelper {
  public:
-  // PROJ runtime data is injected by cyber/setup.bash via PROJ_DATA.
+  // PROJ runtime data is injected by scripts/runtime_env.sh via PROJ_DATA.
   static PJ* CreateNormalizedCrsToCrs(PJ_CONTEXT* proj_context,
                                       const std::string& source_crs,
                                       const std::string& target_crs,

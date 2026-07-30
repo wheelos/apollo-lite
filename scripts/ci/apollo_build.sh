@@ -20,6 +20,7 @@ set -e
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 source "${TOP_DIR}/scripts/apollo_base.sh"
+source "${TOP_DIR}/scripts/cyber_targets.sh"
 
 ARCH="$(uname -m)"
 
@@ -111,18 +112,14 @@ function determine_build_targets_and_defines() {
   local defines_all=""
 
   if [[ "$#" -eq 0 ]]; then
-    # TODO(core-integration): Switch back to a broader @core//cyber/... scope
-    # once all external cyber packages are consistently consumable from core.
-    targets_all="//modules/... union @core//cyber:cyber_core"
+    targets_all="//modules/... union $(cyber_runtime_targets)"
   else
     for component in "$@"; do
       if [[ "$component" == "cyber" ]]; then
         if [[ "${HOST_OS}" == "Linux" ]]; then
-          # TODO(core-integration): Revisit target scope after core cyber package
-          # layout is stabilized for downstream consumers.
-          targets_all+=" @core//cyber:cyber_core //modules/tools/visualizer/..."
+          targets_all+=" $(cyber_runtime_targets) //modules/tools/visualizer/..."
         else
-          targets_all+=" @core//cyber:cyber_core"
+          targets_all+=" $(cyber_runtime_targets)"
         fi
       elif [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
         targets_all+=" //modules/${component}/..."

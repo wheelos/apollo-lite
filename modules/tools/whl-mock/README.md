@@ -21,7 +21,7 @@ Compile `cyber` and `common_msgs`:
 Source the environment variables:
 
 ```shell
-source cyber/setup.bash
+source scripts/runtime_env.sh
 ```
 
 ## Publishing Messages

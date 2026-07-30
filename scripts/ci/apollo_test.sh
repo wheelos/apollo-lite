@@ -21,6 +21,7 @@ set -e
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 source "${TOP_DIR}/scripts/apollo.bashrc"
 source "${TOP_DIR}/scripts/apollo_base.sh"
+source "${TOP_DIR}/scripts/cyber_targets.sh"
 
 ARCH="$(uname -m)"
 
@@ -31,6 +32,7 @@ SHORTHAND_TARGETS=
 DISABLED_TARGETS=
 
 function _determine_drivers_disabled() {
+  :
 }
 
 function _determine_localization_disabled() {
@@ -98,7 +100,7 @@ function determine_disabled_targets() {
 function determine_test_targets() {
   local targets_all
   if [ "$#" -eq 0 ]; then
-    targets_all="//modules/... union @core//cyber:cyber_core"
+    targets_all="//modules/... union $(cyber_core_target)"
     echo "${targets_all}"
     return
   fi
@@ -106,7 +108,7 @@ function determine_test_targets() {
   for component in $@; do
     local test_targets
     if [ "${component}" = "cyber" ]; then
-      test_targets="@core//cyber:cyber_core"
+      test_targets="$(cyber_core_target)"
     elif [ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]; then
       test_targets="//modules/${component}/..."
     else
