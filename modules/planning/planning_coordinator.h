@@ -25,6 +25,7 @@
 #include "modules/planning/common/local_view.h"
 #include "modules/planning/mode/mode_resolution.h"
 #include "modules/planning/mode/shell_transition_policy.h"
+#include "modules/planning/mission_session/mission_session_manager.h"
 #include "modules/planning/open_space_planning.h"
 #include "modules/planning/planning_base.h"
 #include "modules/planning/planning_runtime_context.h"
@@ -41,12 +42,28 @@ class PlanningCoordinator {
 
   common::Status Init(const PlanningConfig& config, bool use_navigation_mode);
 
+  MissionAdmissionResult ApplyMissionDirective(
+      const MissionDirective& directive,
+      const localization::LocalizationEstimate& localization,
+      double now_sec);
+  MissionAdmissionResult ConfirmMissionCancellation(
+      bool terminal_motion_confirmed);
+  MissionAdmissionResult MarkMissionExecuting();
+  MissionAdmissionResult UpdateMissionRoute(
+      const MissionCommandIdentity& expected_identity,
+      const MissionRouteContext& route);
+  MissionAdmissionResult BeginMissionCompleting();
+  MissionAdmissionResult CompleteMission();
+
   PlanningCoordinatorState PreviewState(const LocalView& local_view) const;
 
   void RunOnce(const LocalView& local_view,
                ADCTrajectory* const adc_trajectory);
 
   const PlanningCoordinatorState& state() const { return state_; }
+  const MissionSessionManager& mission_session_manager() const {
+    return mission_session_manager_;
+  }
 
  private:
   PlanningCoordinatorState BuildState(const LocalView& local_view) const;
@@ -62,6 +79,7 @@ class PlanningCoordinator {
   mutable ShellTransitionPolicyState shell_transition_state_;
   std::shared_ptr<DependencyInjector> injector_;
   PlanningShellRegistry shell_registry_;
+  MissionSessionManager mission_session_manager_;
 };
 
 }  // namespace planning

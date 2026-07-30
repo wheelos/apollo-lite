@@ -148,6 +148,48 @@ cc_library(
 )
 
 cc_library(
+    name = "motion_execution_validator",
+    srcs = ["motion_execution_validator.cc"],
+    hdrs = ["motion_execution_validator.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "//modules/common_msgs/planning_msgs:motion_execution_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "executor_arbiter",
+    srcs = ["executor_arbiter.cc"],
+    hdrs = ["executor_arbiter.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "//modules/common_msgs/planning_msgs:motion_execution_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "motion_command_adapter",
+    srcs = ["motion_command_adapter.cc"],
+    hdrs = ["motion_command_adapter.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "//modules/common_msgs/planning_msgs:motion_execution_cc_proto",
+        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "motion_execution_manager",
+    srcs = ["motion_execution_manager.cc"],
+    hdrs = ["motion_execution_manager.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        ":motion_execution_validator",
+        "//modules/common_msgs/planning_msgs:motion_execution_cc_proto",
+    ],
+)
+
+cc_library(
     name = "strategy_orchestrator",
     srcs = ["strategy_orchestrator.cc"],
     hdrs = ["strategy_orchestrator.h"],
@@ -168,10 +210,47 @@ cc_library(
         ":interpolation_1d",
         ":interpolation_2d",
         ":leadlag_controller",
+        ":executor_arbiter",
+        ":motion_command_adapter",
+        ":motion_execution_manager",
+        ":motion_execution_validator",
         ":pid_controller",
         ":strategy_orchestrator",
         ":terminal_control_helper",
         ":trajectory_analyzer",
+    ],
+)
+
+cc_test(
+    name = "executor_arbiter_test",
+    size = "small",
+    srcs = ["executor_arbiter_test.cc"],
+    deps = [
+        ":executor_arbiter",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_command_adapter_test",
+    size = "small",
+    srcs = ["motion_command_adapter_test.cc"],
+    deps = [
+        ":motion_command_adapter",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_chain_contract_test",
+    size = "small",
+    srcs = ["motion_chain_contract_test.cc"],
+    linkopts = ["-fopenmp"],
+    deps = [
+        ":executor_arbiter",
+        ":motion_execution_manager",
+        "//modules/planning/common:gtest_exit_main",
+        "//modules/planning/common:motion_plan_builder",
     ],
 )
 
@@ -298,6 +377,26 @@ cc_test(
     srcs = ["strategy_orchestrator_test.cc"],
     deps = [
         ":strategy_orchestrator",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_execution_validator_test",
+    size = "small",
+    srcs = ["motion_execution_validator_test.cc"],
+    deps = [
+        ":motion_execution_validator",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_execution_manager_test",
+    size = "small",
+    srcs = ["motion_execution_manager_test.cc"],
+    deps = [
+        ":motion_execution_manager",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -33,6 +33,8 @@ DEFINE_string(planning_learning_data_topic, "/apollo/planning/learning_data",
               "planning learning data");
 DEFINE_string(planning_trajectory_topic, "/apollo/planning",
               "planning trajectory topic name");
+DEFINE_string(motion_directive_topic, "/apollo/planning/motion_directive",
+              "authoritative planning-to-control motion directive topic");
 DEFINE_string(planning_pad_topic, "/apollo/planning/pad",
               "planning pad topic name");
 DEFINE_string(monitor_topic, "/apollo/monitor", "Monitor");

@@ -315,6 +315,19 @@ LateralIntent InferLateralIntent(const PlanningSemanticSummary& summary) {
   return LAT_INTENT_TRACK_PATH;
 }
 
+ControlExecutionChannel InferExecutionChannel(
+    const ControlIntent& control_intent, const ADCTrajectory* trajectory) {
+  if (control_intent.primitive_type() != CONTROL_PRIMITIVE_NONE ||
+      control_intent.tracking_mode() == TRACKING_MODE_POSE_SERVO ||
+      control_intent.tracking_mode() == TRACKING_MODE_STANDSTILL_HOLD) {
+    return EXECUTION_CHANNEL_PRIMITIVE;
+  }
+  if (trajectory != nullptr && trajectory->trajectory_point_size() > 0) {
+    return EXECUTION_CHANNEL_TRAJECTORY;
+  }
+  return EXECUTION_CHANNEL_UNKNOWN;
+}
+
 bool ShouldMarkTerminalCommandCompleted(
     const PlanningSemanticSummary& summary) {
   if (summary.stop_class != STOP_CLASS_TERMINAL_GOAL ||
@@ -508,6 +521,8 @@ void ApplyPlanningSemanticsToTrajectory(const PlanningSemanticSummary& summary,
   if (summary.has_target_stop_heading) {
     control_intent->set_target_stop_heading(summary.target_stop_heading);
   }
+  control_intent->set_execution_channel(
+      InferExecutionChannel(*control_intent, trajectory));
 }
 
 }  // namespace planning

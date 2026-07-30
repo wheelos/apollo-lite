@@ -23,6 +23,25 @@ GoalSemantic InferSemanticFromIntent(const planning::ControlIntent& intent) {
   return GoalSemantic::kRoadTracking;
 }
 
+planning::ControlExecutionChannel ResolveGoalExecutionChannel(
+    const ControlCommandGoal& goal) {
+  if (goal.has_control_intent &&
+      goal.control_intent.has_execution_channel() &&
+      goal.control_intent.execution_channel() !=
+          planning::EXECUTION_CHANNEL_UNKNOWN) {
+    return goal.control_intent.execution_channel();
+  }
+  if (goal.semantic == GoalSemantic::kPoseServo ||
+      goal.semantic == GoalSemantic::kStandstillHold ||
+      goal.semantic == GoalSemantic::kEmergencyStop) {
+    return planning::EXECUTION_CHANNEL_PRIMITIVE;
+  }
+  if (goal.has_trajectory) {
+    return planning::EXECUTION_CHANNEL_TRAJECTORY;
+  }
+  return planning::EXECUTION_CHANNEL_UNKNOWN;
+}
+
 }  // namespace
 
 ControlCommandGoal BuildControlCommandGoal(
@@ -39,6 +58,9 @@ ControlCommandGoal BuildControlCommandGoal(
     if (execution.has_active_mode()) {
       goal.active_mode = execution.active_mode();
     }
+    if (execution.has_execution_channel()) {
+      goal.execution_channel = execution.execution_channel();
+    }
     if (execution.has_reason()) {
       goal.reason = execution.reason();
     }
@@ -50,6 +72,9 @@ ControlCommandGoal BuildControlCommandGoal(
     goal.has_target_pose = goal.control_intent.has_target_stop_point();
     if (goal.reason.empty() && goal.control_intent.has_reason()) {
       goal.reason = goal.control_intent.reason();
+    }
+    if (goal.control_intent.has_execution_channel()) {
+      goal.execution_channel = goal.control_intent.execution_channel();
     }
   } else {
     goal.semantic = goal.has_trajectory ? GoalSemantic::kRoadTracking
@@ -95,6 +120,9 @@ void EnsureControlIntentCompatibility(const ControlCommandGoal& goal,
   }
   if (!control_intent->has_reason() && !goal.reason.empty()) {
     control_intent->set_reason(goal.reason);
+  }
+  if (!control_intent->has_execution_channel()) {
+    control_intent->set_execution_channel(ResolveGoalExecutionChannel(goal));
   }
 }
 

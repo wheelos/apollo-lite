@@ -45,6 +45,7 @@ proto_library(
         "//modules/common_msgs/basic_msgs:header_proto",
         "//modules/common_msgs/chassis_msgs:chassis_proto",
         "//modules/common_msgs/planning_msgs:decision_proto",
+        "//modules/common_msgs/planning_msgs:motion_execution_proto",
         "//modules/common_msgs/planning_msgs:planning_command_proto",
         "//modules/common_msgs/planning_msgs:planning_proto",
         "//modules/common_msgs/planning_msgs:planning_runtime_status_proto",

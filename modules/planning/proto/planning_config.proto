@@ -291,8 +291,9 @@ message TopicConfig {
   optional string planning_trajectory_topic = 5;
   optional string prediction_topic = 6;
   optional string relative_map_topic = 7;
-  optional string routing_request_topic = 8;
-  optional string routing_response_topic = 9;
+  reserved 8, 9;
+  reserved "routing_request_topic";
+  reserved "routing_response_topic";
   optional string story_telling_topic = 10;
   optional string traffic_light_detection_topic = 11;
   optional string planning_learning_data_topic = 12;
@@ -300,6 +301,12 @@ message TopicConfig {
       [default = "/apollo/planning/command"];
   optional string planning_runtime_status_topic = 14
       [default = "/apollo/planning/runtime_status"];
+  optional string mission_directive_topic = 15
+      [default = "/apollo/mission/directive"];
+  optional string motion_directive_topic = 16
+      [default = "/apollo/planning/motion_directive"];
+  optional string control_runtime_status_topic = 17
+      [default = "/apollo/control/runtime_status"];
 }
 
 message PlanningConfig {

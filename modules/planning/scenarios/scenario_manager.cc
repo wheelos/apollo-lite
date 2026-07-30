@@ -26,6 +26,7 @@
 
 #include "modules/common/util/util.h"
 #include "modules/planning/common/planning_context.h"
+#include "modules/planning/planning_runtime_context.h"
 #include "modules/planning/scenarios/cruise/lane_follow/lane_follow_scenario.h"
 #include "modules/planning/scenarios/cruise/lane_keeping/lane_keeping_scenario.h"
 #include "modules/planning/scenarios/deciders/cruise_decider.h"
@@ -273,6 +274,17 @@ void ScenarioManager::ScenarioDispatch(const Frame& frame) {
     auto decision = decider->MakeDecision(context);
 
     if (!decision.IsValid()) continue;
+
+    const bool has_parent_mission_session =
+        context.planning_state != nullptr &&
+        context.planning_state->mission_session_state !=
+            MISSION_SESSION_UNKNOWN;
+    if (has_parent_mission_session && !IsLocalScenarioGrade(decision.grade)) {
+      AERROR << "Flat ScenarioManager rejected MISSION-grade candidate "
+             << ScenarioType_Name(decision.type)
+             << " while a parent Mission session is active";
+      continue;
+    }
 
     AINFO_EVERY(100) << decision.DebugString();
 

@@ -29,7 +29,6 @@
 #include "modules/common_msgs/mission_msgs/mission_request.pb.h"
 #include "modules/common_msgs/mission_msgs/mission_runtime_status.pb.h"
 #include "modules/common_msgs/planning_msgs/planning_runtime_status.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
 #include "modules/mission/proto/mission_config.pb.h"
 
 #include "cyber/component/component.h"

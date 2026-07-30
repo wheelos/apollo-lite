@@ -379,25 +379,6 @@ void MissionCommandSupervisor::EvaluateActivateOrUpdateCommand(
   }
 
   const auto active_iter = command_specs_.find(active_command_id_);
-  if (active_iter != command_specs_.end() &&
-      active_iter->second.has_preemptible() &&
-      active_iter->second.preemptible() && command.has_priority() &&
-      (!active_iter->second.has_priority() ||
-       command.priority() > active_iter->second.priority())) {
-    RemoveQueuedCommand(command_id);
-    queued_command_ids_.push_front(command_id);
-    status->state = CommandLifecycleState::kQueued;
-    status->reason = "queued higher-priority command while active command cancels";
-    auto* active_status = FindOrCreateCommandLifecycle(active_command_id_);
-    active_status->state = CommandLifecycleState::kCancelling;
-    active_status->reason = "mission preempted active command by priority";
-    dispatch_next_queued_after_cancel_command_id_ = active_command_id_;
-    ResetRecoveryState();
-    if (commands_to_publish != nullptr) {
-      commands_to_publish->push_back(BuildCancelCommand(active_iter->second));
-    }
-    return;
-  }
 
   RemoveQueuedCommand(command_id);
   queued_command_ids_.push_back(command_id);
@@ -577,6 +558,7 @@ void MissionCommandSupervisor::UpdatePlanningRuntimeStatus(
 void MissionCommandSupervisor::UpdateControlRuntimeStatus(
     const control::ControlRuntimeStatus& status,
     std::vector<planning::PlanningCommand>* commands_to_publish) {
+  (void)commands_to_publish;
   if (!status.has_command_id() || status.command_id().empty()) {
     return;
   }
@@ -588,37 +570,9 @@ void MissionCommandSupervisor::UpdateControlRuntimeStatus(
     return;
   }
   command_status->control_state = status.state();
-  switch (status.state()) {
-    case control::CONTROL_RUNTIME_RUNNING:
-    case control::CONTROL_RUNTIME_DEGRADED:
-      if (!IsTerminalLifecycleState(command_status->state)) {
-        command_status->state = CommandLifecycleState::kRunning;
-      }
-      break;
-    case control::CONTROL_RUNTIME_HOLDING:
-    case control::CONTROL_RUNTIME_WAITING_INPUT:
-      if (!IsTerminalLifecycleState(command_status->state)) {
-        command_status->state = CommandLifecycleState::kHolding;
-      }
-      break;
-    case control::CONTROL_RUNTIME_SOFT_STOP:
-    case control::CONTROL_RUNTIME_ESTOP:
-    case control::CONTROL_RUNTIME_FAULTED:
-    case control::CONTROL_RUNTIME_MANUAL:
-      command_status->state = CommandLifecycleState::kFailed;
-      break;
-    case control::CONTROL_RUNTIME_UNKNOWN:
-    default:
-      break;
-  }
   if (status.has_reason() && !status.reason().empty()) {
     command_status->reason = status.reason();
   }
-
-  if (IsTerminalLifecycleState(command_status->state)) {
-    HandleActiveTerminalState(*command_status, commands_to_publish);
-  }
-  UpdateRecoveryTimeoutState();
 }
 
 }  // namespace mission

@@ -29,8 +29,8 @@
 #include "modules/common_msgs/control_msgs/control_runtime_status.pb.h"
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
 #include "modules/common_msgs/planning_msgs/planning_command.pb.h"
+#include "modules/common_msgs/planning_msgs/mission_directive.pb.h"
 #include "modules/common_msgs/planning_msgs/planning_runtime_status.pb.h"
-#include "modules/common_msgs/routing_msgs/routing.pb.h"
 #include "modules/mission/common/mission_command_supervisor.h"
 
 namespace apollo {
@@ -38,10 +38,9 @@ namespace mission {
 
 class MissionContext {
  public:
-  void SetRoutingWriter(
-      const std::shared_ptr<cyber::Writer<routing::RoutingRequest>>& writer);
-  void SetPlanningCommandWriter(
-      const std::shared_ptr<cyber::Writer<planning::PlanningCommand>>& writer);
+  void SetMissionDirectiveWriter(
+      const std::shared_ptr<cyber::Writer<planning::MissionDirective>>& writer);
+  void SetProducerEpoch(const std::string& producer_epoch);
 
   void UpdateChassis(const std::shared_ptr<canbus::Chassis>& msg);
   void UpdateLocalization(
@@ -60,7 +59,6 @@ class MissionContext {
       const std::string& command_id) const;
   bool GetWaypoint(const std::string& name, common::PointENU* out_pose);
 
-  void SendRoutingRequest(const common::PointENU& end_pose);
   void SendPlanningCommand(const planning::PlanningCommand& command);
   bool AcknowledgeRecovery();
   bool ResumeRecovery();
@@ -74,15 +72,24 @@ class MissionContext {
 
  private:
   void PublishPlanningCommands(
-      const std::shared_ptr<cyber::Writer<planning::PlanningCommand>>& writer,
+      const std::shared_ptr<cyber::Writer<planning::MissionDirective>>& writer,
       const std::vector<planning::PlanningCommand>& commands);
+  bool BuildMissionDirective(const planning::PlanningCommand& command,
+                             planning::MissionDirective* directive);
+  planning::MissionPlan BuildMissionPlan(
+      const planning::PlanningCommand& command) const;
 
   mutable std::mutex mutex_;
 
   MissionCommandSupervisor command_supervisor_;
-  std::shared_ptr<cyber::Writer<routing::RoutingRequest>> routing_writer_;
-  std::shared_ptr<cyber::Writer<planning::PlanningCommand>>
-      planning_command_writer_;
+  std::shared_ptr<cyber::Writer<planning::MissionDirective>>
+      mission_directive_writer_;
+  std::unordered_map<std::string, planning::MissionCommandIdentity>
+      mission_identities_;
+  std::unordered_map<std::string, planning::MissionDirective>
+      pending_mission_directives_;
+  std::unordered_map<std::string, planning::MissionPlan> mission_plans_;
+  std::string producer_epoch_;
   std::shared_ptr<canbus::Chassis> chassis_;
   std::shared_ptr<localization::LocalizationEstimate> localization_;
   std::shared_ptr<planning::PlanningRuntimeStatus> planning_runtime_status_;

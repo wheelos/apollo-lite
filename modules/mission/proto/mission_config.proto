@@ -20,4 +20,6 @@ message MissionConfig {
 
   optional string mission_runtime_status_topic = 6
       [default = "/apollo/mission/runtime_status"];
+  optional string mission_directive_topic = 7
+      [default = "/apollo/mission/directive"];
 }

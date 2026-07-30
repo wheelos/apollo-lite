@@ -117,7 +117,7 @@ ScenarioDecisionResult ParkDecider::CheckValetParking(
     if (current_scenario->GetStatus() !=
         Scenario::ScenarioStatus::STATUS_DONE) {
       return ScenarioDecisionResult(
-          ScenarioType::VALET_PARKING, ScenarioGrade::MISSION,
+          ScenarioType::VALET_PARKING, ScenarioGrade::MANEUVER,
           scenario_entry_score, "Valet Parking In Progress (Sticky)");
     }
   }
@@ -158,7 +158,7 @@ ScenarioDecisionResult ParkDecider::CheckValetParking(
   }
 
   return ScenarioDecisionResult(ScenarioType::VALET_PARKING,
-                                ScenarioGrade::MISSION, scenario_entry_score,
+                                ScenarioGrade::MANEUVER, scenario_entry_score,
                                 "Target Parking Spot Found & Within Range");
 }
 
@@ -275,7 +275,7 @@ ScenarioDecisionResult ParkDecider::CheckPullOver(
         injector_->planning_context()->planning_status().pull_over();
     if (pull_over_status.has_position() || dist_to_dest >= min_dist) {
       return ScenarioDecisionResult(
-          ScenarioType::PULL_OVER, ScenarioGrade::MISSION, scenario_entry_score,
+          ScenarioType::PULL_OVER, ScenarioGrade::MANEUVER, scenario_entry_score,
           "Pull Over In Progress (Sticky)");
     }
     ADEBUG << "PullOver no longer feasible before target selection. distance["
@@ -366,8 +366,7 @@ ScenarioDecisionResult ParkDecider::CheckPullOver(
   }
 
   // 8. Success: Generate positive decision
-  // We assign MISSION grade to PullOver.
-  return ScenarioDecisionResult(ScenarioType::PULL_OVER, ScenarioGrade::MISSION,
+  return ScenarioDecisionResult(ScenarioType::PULL_OVER, ScenarioGrade::MANEUVER,
                                 scenario_entry_score,
                                 "Destination Approach & Safe to PullOver");
 }

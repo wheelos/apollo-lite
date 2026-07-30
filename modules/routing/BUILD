@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
 load("//tools:cpplint.bzl", "cpplint")
 
@@ -7,7 +7,7 @@ package(default_visibility = ["//visibility:public"])
 ROUTING_COPTS = ['-DMODULE_NAME=\\"routing\\"']
 
 cc_library(
-    name = "routing",
+    name = "routing_service",
     srcs = ["routing.cc"],
     hdrs = ["routing.h"],
     copts = ROUTING_COPTS,
@@ -15,31 +15,12 @@ cc_library(
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "//modules/common/util",
+        "//modules/routing/proto:routing_config_cc_proto",
         "//modules/map/hdmap:hdmap_util",
         "//modules/routing/core",
-        "//modules/routing/proto:routing_config_cc_proto",
         "//modules/common_msgs/monitor_msgs:monitor_log_cc_proto",
     ],
     alwayslink = True,
-)
-
-cc_library(
-    name = "routing_component_lib",
-    srcs = ["routing_component.cc"],
-    hdrs = ["routing_component.h"],
-    copts = ROUTING_COPTS,
-    deps = [
-        ":routing",
-        "//cyber",
-    ],
-    alwayslink = True,
-)
-
-cc_binary(
-    name = "librouting_component.so",
-    linkshared = True,
-    linkstatic = True,
-    deps = [":routing_component_lib"],
 )
 
 filegroup(
@@ -47,8 +28,6 @@ filegroup(
     srcs = glob([
         "conf/*.conf",
         "conf/*.pb.txt",
-        "dag/*.dag",
-        "launch/*.launch",
     ]),
 )
 
@@ -61,7 +40,7 @@ install(
         ":routing.BUILD",
     ],
     targets = [
-        ":librouting_component.so",
+        ":routing_service",
     ],
     deps = [
         ":pb_routing",

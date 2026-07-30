@@ -213,6 +213,31 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "motion_plan_builder",
+    srcs = ["motion_plan_builder.cc"],
+    hdrs = ["motion_plan_builder.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        ":planning_semantics",
+        "//modules/common_msgs/chassis_msgs:chassis_cc_proto",
+        "//modules/common_msgs/localization_msgs:localization_cc_proto",
+        "//modules/common_msgs/planning_msgs:motion_execution_cc_proto",
+        "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "//modules/planning:planning_runtime_context",
+    ],
+)
+
+cc_test(
+    name = "motion_plan_builder_test",
+    size = "small",
+    srcs = ["motion_plan_builder_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":motion_plan_builder",
+    ],
+)
+
 cc_test(
     name = "planning_semantics_test",
     size = "small",

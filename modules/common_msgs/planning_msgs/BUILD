@@ -6,6 +6,52 @@ load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 package(default_visibility = ["//visibility:public"])
 
 cc_proto_library(
+    name = "mission_directive_cc_proto",
+    deps = [
+        ":mission_directive_proto",
+    ],
+)
+
+proto_library(
+    name = "mission_directive_proto",
+    srcs = ["mission_directive.proto"],
+    deps = [
+        ":planning_command_proto",
+        "//modules/common_msgs/basic_msgs:geometry_proto",
+        "//modules/common_msgs/basic_msgs:header_proto",
+    ],
+)
+
+py_proto_library(
+    name = "mission_directive_py_pb2",
+    deps = [":mission_directive_proto"],
+)
+
+cc_proto_library(
+    name = "motion_execution_cc_proto",
+    deps = [
+        ":motion_execution_proto",
+    ],
+)
+
+proto_library(
+    name = "motion_execution_proto",
+    srcs = ["motion_execution.proto"],
+    deps = [
+        ":mission_directive_proto",
+        "//modules/common_msgs/basic_msgs:geometry_proto",
+        "//modules/common_msgs/basic_msgs:header_proto",
+        "//modules/common_msgs/basic_msgs:pnc_point_proto",
+        "//modules/common_msgs/chassis_msgs:chassis_proto",
+    ],
+)
+
+py_proto_library(
+    name = "motion_execution_py_pb2",
+    deps = [":motion_execution_proto"],
+)
+
+cc_proto_library(
     name = "planning_command_cc_proto",
     deps = [
         ":planning_command_proto",
@@ -40,6 +86,7 @@ proto_library(
     srcs = ["planning_runtime_status.proto"],
     deps = [
         ":planning_command_proto",
+        ":mission_directive_proto",
         "//modules/common_msgs/basic_msgs:header_proto",
     ],
 )

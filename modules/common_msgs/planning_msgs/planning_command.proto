@@ -62,6 +62,12 @@ enum PlanningOperatingDomain {
   DOMAIN_SAFETY_HOLD = 4;
 }
 
+enum ControlExecutionChannel {
+  EXECUTION_CHANNEL_UNKNOWN = 0;
+  EXECUTION_CHANNEL_TRAJECTORY = 1;
+  EXECUTION_CHANNEL_PRIMITIVE = 2;
+}
+
 enum OpenSpaceNavigationType {
   OPEN_SPACE_NAV_UNKNOWN = 0;
   OPEN_SPACE_NAV_ROI_ONLY = 1;
@@ -113,6 +119,7 @@ message PlanningExecutionContext {
   repeated string blockers = 8;
   optional PlanningOperatingDomain active_domain = 9;
   optional HybridManeuverStatus hybrid_maneuver = 10;
+  optional ControlExecutionChannel execution_channel = 11;
 }
 
 message GoalSpec {

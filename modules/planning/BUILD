@@ -28,6 +28,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
+        "//modules/common_msgs/planning_msgs:mission_directive_cc_proto",
         "//modules/common_msgs/planning_msgs:planning_command_cc_proto",
     ],
 )
@@ -45,6 +46,9 @@ cc_library(
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/common_msgs/localization_msgs:localization_cc_proto",
+        "//modules/common_msgs/control_msgs:control_runtime_status_cc_proto",
+        "//modules/common_msgs/planning_msgs:mission_directive_cc_proto",
+        "//modules/common_msgs/planning_msgs:motion_execution_cc_proto",
         "//modules/common_msgs/planning_msgs:navigation_cc_proto",
         "//modules/common_msgs/perception_msgs:traffic_light_detection_cc_proto",
         "//modules/common_msgs/planning_msgs:planning_command_cc_proto",
@@ -52,6 +56,7 @@ cc_library(
         "//modules/planning/common:history",
         "//modules/planning/common:hybrid_maneuver_supervisor",
         "//modules/planning/common:message_process",
+        "//modules/planning/common:motion_plan_builder",
         "//modules/planning/common:planning_semantics",
         "//modules/planning/common:terminal_servo_guard",
         "//modules/planning/environment:capability_extractor",
@@ -60,6 +65,7 @@ cc_library(
         "//modules/common_msgs/planning_msgs:planning_cc_proto",
         "//modules/common_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "//modules/common_msgs/storytelling_msgs:story_cc_proto",
+        "//modules/routing:routing_service",
     ],
     alwayslink = True,
 )
@@ -87,6 +93,7 @@ cc_library(
     deps = [
         "//modules/planning/mode:mode_resolution",
         "//modules/planning/mode:shell_transition_policy",
+        "//modules/planning/mission_session:mission_session_manager",
         ":navi_planning",
         ":open_space_planning",
         ":on_lane_planning",
@@ -94,6 +101,8 @@ cc_library(
         ":planning_shell_bridge",
         ":planning_runtime_context",
         "//modules/common/status",
+        "//modules/common_msgs/localization_msgs:localization_cc_proto",
+        "//modules/common_msgs/planning_msgs:mission_directive_cc_proto",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:local_view",
         "//modules/planning/common:published_trajectory_gear",

@@ -3,6 +3,7 @@ syntax = "proto2";
 package apollo.planning;
 
 import "modules/common_msgs/basic_msgs/header.proto";
+import "modules/common_msgs/planning_msgs/mission_directive.proto";
 import "modules/common_msgs/planning_msgs/planning_command.proto";
 
 enum RuntimeState {
@@ -107,4 +108,12 @@ message PlanningRuntimeStatus {
   optional PlanningShellType active_shell = 16;
   optional PlanningOperatingDomain active_domain = 17;
   optional HybridManeuverStatus hybrid_maneuver = 18;
+  optional ControlExecutionChannel execution_channel = 19;
+  optional MissionCommandIdentity mission_identity = 20;
+  optional MissionSessionState mission_session_state = 21;
+  optional MissionStartSnapshot accepted_start = 22;
+  optional bool terminal_motion_confirmed = 23;
+  optional MissionSessionPhase mission_phase = 24;
+  optional MissionRouteContext mission_route = 25;
+  optional MissionCommandIdentity accepted_directive_identity = 26;
 }

@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -58,6 +58,7 @@ cc_library(
         ":scenario",
         ":transition_guard",
         "//modules/common/status",
+        "//modules/planning:planning_runtime_context",
         "//modules/planning/common:frame",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/scenarios/deciders:all_deciders",
@@ -81,6 +82,17 @@ cc_library(
         "//modules/planning/scenarios/maneuver/escape:escape_scenario",
         "//modules/planning/scenarios/maneuver/deadend_turnaround:deadend_turnaround_scenario",
         "//modules/planning/proto:planning_config_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "scenario_grade_test",
+    size = "small",
+    srcs = ["scenario_grade_test.cc"],
+    linkopts = ["-fopenmp"],
+    deps = [
+        ":scenario",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 

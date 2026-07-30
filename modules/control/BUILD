@@ -29,6 +29,7 @@ cc_library(
         "//modules/control/submodules:preprocessor_submodule_lib",
         "//modules/common_msgs/localization_msgs:localization_cc_proto",
         "//modules/common_msgs/planning_msgs:planning_cc_proto",
+        "//modules/common_msgs/planning_msgs:motion_execution_cc_proto",
         "//modules/control/safety:safety_manager",
         "@com_github_gflags_gflags//:gflags",
     ],
@@ -42,6 +43,9 @@ cc_library(
     deps = [
         ":control_lib",
         "//modules/control/common:dependency_injector",
+        "//modules/control/common:executor_arbiter",
+        "//modules/control/common:motion_command_adapter",
+        "//modules/control/common:motion_execution_manager",
     ],
     alwayslink = True
 )

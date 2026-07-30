@@ -1,0 +1,130 @@
+syntax = "proto2";
+
+package apollo.planning;
+
+import "modules/common_msgs/basic_msgs/geometry.proto";
+import "modules/common_msgs/basic_msgs/header.proto";
+import "modules/common_msgs/planning_msgs/planning_command.proto";
+
+message MissionCommandIdentity {
+  optional string producer_epoch = 1;
+  optional string aggregate_id = 2;
+  optional string command_id = 3;
+  optional uint64 revision = 4;
+}
+
+enum MissionTaskType {
+  MISSION_TASK_UNKNOWN = 0;
+  MISSION_TASK_A_TO_B = 1;
+  MISSION_TASK_PARK_IN = 2;
+  MISSION_TASK_PULL_OVER = 3;
+  MISSION_TASK_DOCK = 4;
+  MISSION_TASK_SUMMON = 5;
+}
+
+message ExplicitMissionStart {
+  optional apollo.common.PointENU position = 1;
+  optional double heading = 2;
+  optional string reference_frame_id = 3;
+  optional double max_position_error_m = 4;
+  optional double max_heading_error_rad = 5;
+}
+
+message MissionStart {
+  oneof source {
+    bool current_pose_at_acceptance = 1;
+    ExplicitMissionStart explicit_start = 2;
+  }
+}
+
+message MissionStartSnapshot {
+  optional apollo.common.PointENU position = 1;
+  optional double heading = 2;
+  optional string reference_frame_id = 3;
+  optional double snapshot_time_sec = 4;
+}
+
+message MissionPlan {
+  optional MissionTaskType task_type = 1;
+  optional MissionStart start = 2;
+  optional GoalSpec goal = 3;
+  optional RouteHint route_hint = 4;
+  optional PlanningMode preferred_mode = 5;
+  optional uint32 priority = 6;
+  optional bool preemptible = 7 [default = true];
+  optional CompletionCondition completion = 8;
+  optional FallbackPolicy fallback = 9;
+  optional RecoveryPolicy recovery = 10;
+  optional DomainPolicy domain_policy = 11;
+  optional OpenSpaceCommandContext open_space = 12;
+  repeated string tags = 13;
+}
+
+message MissionActivate {
+  optional MissionPlan plan = 1;
+}
+
+message MissionReplace {
+  optional MissionCommandIdentity expected_active_identity = 1;
+  optional MissionPlan plan = 2;
+}
+
+enum MissionCancelPostcondition {
+  MISSION_CANCEL_POSTCONDITION_UNKNOWN = 0;
+  MISSION_CANCEL_CONTROLLED_STOP_THEN_HOLD = 1;
+}
+
+message MissionCancel {
+  optional MissionCommandIdentity expected_active_identity = 1;
+  optional MissionCancelPostcondition postcondition = 2
+      [default = MISSION_CANCEL_CONTROLLED_STOP_THEN_HOLD];
+  optional string reason = 3;
+}
+
+message MissionDirective {
+  optional apollo.common.Header header = 1;
+  optional MissionCommandIdentity identity = 2;
+
+  oneof operation {
+    MissionActivate activate = 10;
+    MissionReplace replace = 11;
+    MissionCancel cancel = 12;
+  }
+}
+
+enum MissionSessionState {
+  MISSION_SESSION_UNKNOWN = 0;
+  MISSION_SESSION_ACCEPTED = 1;
+  MISSION_SESSION_EXECUTING = 2;
+  MISSION_SESSION_SUSPENDED = 3;
+  MISSION_SESSION_CANCELLING = 4;
+  MISSION_SESSION_COMPLETING = 5;
+  MISSION_SESSION_COMPLETED = 6;
+  MISSION_SESSION_CANCELLED = 7;
+  MISSION_SESSION_FAILED = 8;
+}
+
+enum MissionSessionPhase {
+  MISSION_PHASE_UNKNOWN = 0;
+  MISSION_PHASE_ROUTING = 1;
+  MISSION_PHASE_ENROUTE = 2;
+  MISSION_PHASE_APPROACH = 3;
+  MISSION_PHASE_HANDOFF = 4;
+  MISSION_PHASE_LOCAL_MANEUVER = 5;
+  MISSION_PHASE_SETTLING = 6;
+}
+
+enum MissionRouteState {
+  MISSION_ROUTE_NONE = 0;
+  MISSION_ROUTE_REQUESTED = 1;
+  MISSION_ROUTE_READY = 2;
+  MISSION_ROUTE_FAILED = 3;
+}
+
+message MissionRouteContext {
+  optional string request_id = 1;
+  optional bytes map_version = 2;
+  optional string route_id = 3;
+  optional MissionRouteState state = 4;
+  optional string reason = 5;
+}

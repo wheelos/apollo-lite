@@ -53,6 +53,8 @@ TEST(PlanningSemanticsTest, MissionCompletePublishesCompletedTerminalIntent) {
   EXPECT_EQ(trajectory.control_intent().reason(), "stop for mission destination");
   EXPECT_EQ(trajectory.control_intent().tracking_mode(),
             TRACKING_MODE_STANDSTILL_HOLD);
+  EXPECT_EQ(trajectory.control_intent().execution_channel(),
+            EXECUTION_CHANNEL_PRIMITIVE);
   EXPECT_EQ(trajectory.control_intent().longitudinal_intent(),
             LON_INTENT_PRECISE_STOP);
   EXPECT_EQ(trajectory.control_intent().lateral_intent(),
@@ -85,6 +87,8 @@ TEST(PlanningSemanticsTest, SafetyHoldPublishesHoldIntent) {
   EXPECT_FALSE(trajectory.control_intent().has_stop_reason_code());
   EXPECT_EQ(trajectory.control_intent().tracking_mode(),
             TRACKING_MODE_STANDSTILL_HOLD);
+  EXPECT_EQ(trajectory.control_intent().execution_channel(),
+            EXECUTION_CHANNEL_PRIMITIVE);
   EXPECT_EQ(trajectory.control_intent().longitudinal_intent(),
             LON_INTENT_HOLD_STOP);
 }
@@ -120,6 +124,8 @@ TEST(PlanningSemanticsTest, RegulatoryStopMapsToYieldIntent) {
   ApplyPlanningSemanticsToTrajectory(summary, &trajectory);
   EXPECT_EQ(trajectory.control_intent().tracking_mode(),
             TRACKING_MODE_STANDSTILL_HOLD);
+  EXPECT_EQ(trajectory.control_intent().execution_channel(),
+            EXECUTION_CHANNEL_PRIMITIVE);
   EXPECT_EQ(trajectory.control_intent().longitudinal_intent(),
             LON_INTENT_YIELD_STOP);
   EXPECT_EQ(trajectory.control_intent().lateral_intent(),
@@ -164,6 +170,8 @@ TEST(PlanningSemanticsTest, NearTerminalHeadingMismatchPublishesTerminalAlign) {
             STOP_REASON_DESTINATION);
   EXPECT_EQ(trajectory.control_intent().tracking_mode(),
             TRACKING_MODE_POSE_SERVO);
+  EXPECT_EQ(trajectory.control_intent().execution_channel(),
+            EXECUTION_CHANNEL_PRIMITIVE);
   EXPECT_EQ(trajectory.control_intent().lateral_intent(),
             LAT_INTENT_ALIGN_GOAL_HEADING);
 }

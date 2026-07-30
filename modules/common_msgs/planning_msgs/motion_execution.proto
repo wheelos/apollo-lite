@@ -1,0 +1,262 @@
+syntax = "proto2";
+
+package apollo.planning;
+
+import "modules/common_msgs/basic_msgs/geometry.proto";
+import "modules/common_msgs/basic_msgs/header.proto";
+import "modules/common_msgs/basic_msgs/pnc_point.proto";
+import "modules/common_msgs/chassis_msgs/chassis.proto";
+import "modules/common_msgs/planning_msgs/mission_directive.proto";
+
+enum MotionPrimitiveType {
+  MOTION_PRIMITIVE_UNKNOWN = 0;
+  MOTION_PRIMITIVE_STANDSTILL_HOLD = 1;
+  MOTION_PRIMITIVE_POSE_SERVO = 2;
+  MOTION_PRIMITIVE_CORRIDOR_SERVO = 3;
+  MOTION_PRIMITIVE_ROTATE_IN_PLACE = 4;
+}
+
+enum MotionCapability {
+  MOTION_CAPABILITY_UNKNOWN = 0;
+  MOTION_CAPABILITY_TRAJECTORY_TRACKING = 1;
+  MOTION_CAPABILITY_STANDSTILL_HOLD = 2;
+  MOTION_CAPABILITY_POSE_SERVO = 3;
+  MOTION_CAPABILITY_CORRIDOR_SERVO = 4;
+  MOTION_CAPABILITY_ROTATE_IN_PLACE = 5;
+}
+
+enum MotionFallbackAction {
+  MOTION_FALLBACK_UNKNOWN = 0;
+  MOTION_FALLBACK_HOLD = 1;
+  MOTION_FALLBACK_REQUEST_REPLAN = 2;
+  MOTION_FALLBACK_REQUEST_MRM = 3;
+}
+
+enum MotionDirection {
+  MOTION_DIRECTION_UNKNOWN = 0;
+  MOTION_DIRECTION_FORWARD = 1;
+  MOTION_DIRECTION_REVERSE = 2;
+}
+
+enum RotationDirection {
+  ROTATION_DIRECTION_UNKNOWN = 0;
+  ROTATION_DIRECTION_CLOCKWISE = 1;
+  ROTATION_DIRECTION_COUNTERCLOCKWISE = 2;
+}
+
+message MotionConstraints {
+  optional double max_speed_mps = 1;
+  optional double max_acceleration_mps2 = 2;
+  optional double max_deceleration_mps2 = 3;
+  optional double max_jerk_mps3 = 4;
+  reserved 5, 6, 10, 11;
+  reserved "max_steering_percentage";
+  reserved "max_steering_rate_percentage_per_sec";
+  reserved "max_front_wheel_steering_angle_rad";
+  reserved "max_front_wheel_steering_rate_radps";
+  optional double max_distance_m = 7;
+  optional double max_yaw_rate_radps = 8;
+  optional double max_yaw_acceleration_radps2 = 9;
+  optional double max_abs_curvature_per_m = 12;
+  optional double max_abs_curvature_derivative_per_m2 = 13;
+}
+
+message MotionCompletionCondition {
+  optional double position_tolerance_m = 1;
+  optional double heading_tolerance_rad = 2;
+  optional double speed_tolerance_mps = 3;
+  optional double settle_time_sec = 4;
+  optional double execution_timeout_sec = 5;
+}
+
+message MotionSpatialEnvelope {
+  reserved 1;
+  reserved "frame_id";
+  repeated apollo.common.PointENU boundary = 2;
+  optional double max_lateral_deviation_m = 3;
+  repeated apollo.common.PointENU reference_centerline = 4;
+}
+
+message StandstillHoldPrimitive {
+  optional double reauthorization_period_sec = 1;
+}
+
+message PoseServoPrimitive {
+  optional apollo.common.PointENU target_position = 1;
+  optional double target_heading = 2;
+  reserved 3;
+  reserved "allow_reverse";
+  optional MotionDirection direction = 4;
+}
+
+message CorridorServoPrimitive {
+  optional apollo.common.PointENU target_position = 1;
+  optional double target_heading = 2;
+  reserved 3, 4;
+  reserved "corridor_half_width_m";
+  reserved "allow_reverse";
+  optional MotionDirection direction = 5;
+}
+
+message RotateInPlacePrimitive {
+  optional double target_heading = 1;
+  optional apollo.common.PointENU pivot_position = 2;
+  optional double max_position_deviation_m = 3;
+  optional RotationDirection direction = 4;
+}
+
+message ControlPrimitiveCommand {
+  optional MotionPrimitiveType type = 1;
+  oneof specification {
+    StandstillHoldPrimitive standstill_hold = 2;
+    PoseServoPrimitive pose_servo = 3;
+    CorridorServoPrimitive corridor_servo = 4;
+    RotateInPlacePrimitive rotate_in_place = 5;
+  }
+}
+
+message MotionCommandIdentity {
+  optional string producer_epoch = 1;
+  optional string aggregate_id = 2;
+  optional string command_id = 3;
+  optional uint64 revision = 4;
+}
+
+message MotionStartCondition {
+  optional apollo.common.PointENU expected_position = 1;
+  optional double expected_heading = 2;
+  optional apollo.canbus.Chassis.GearPosition expected_gear = 3;
+  optional double max_position_error_m = 4;
+  optional double max_heading_error_rad = 5;
+  optional double max_abs_speed_mps = 6;
+  optional double snapshot_time_sec = 7;
+  optional string reference_frame_id = 8;
+}
+
+message MotionTrajectoryPoint {
+  optional apollo.common.PathPoint path_point = 1;
+  optional double speed_mps = 2;
+  optional double acceleration_mps2 = 3;
+  optional double relative_time_sec = 4;
+  optional double jerk_mps3 = 5;
+}
+
+message MotionTrajectoryCommand {
+  optional string trajectory_id = 1;
+  optional apollo.canbus.Chassis.GearPosition gear = 2;
+  repeated MotionTrajectoryPoint point = 3;
+}
+
+message MotionExecutionCommand {
+  optional apollo.common.Header header = 1;
+  optional MotionCommandIdentity identity = 2;
+  reserved 3;
+  reserved "command_revision";
+  optional double effective_time_sec = 4;
+  optional double expiry_time_sec = 5;
+  optional uint32 priority = 6;
+  optional bool preemptible = 7 [default = true];
+  optional MotionConstraints constraints = 8;
+  optional MotionCompletionCondition completion = 9;
+  repeated MotionCapability required_capability = 10;
+  optional MotionFallbackAction failure_fallback = 11
+      [default = MOTION_FALLBACK_HOLD];
+  optional MotionSpatialEnvelope spatial_envelope = 12;
+  optional string reference_frame_id = 13;
+  optional MotionStartCondition start_condition = 14;
+
+  oneof payload {
+    MotionTrajectoryCommand trajectory = 20;
+    ControlPrimitiveCommand primitive = 21;
+  }
+}
+
+message MotionExecute {
+  optional MotionExecutionCommand command = 1;
+}
+
+message MotionReplace {
+  optional MotionCommandIdentity expected_active_identity = 1;
+  optional MotionExecutionCommand command = 2;
+}
+
+message MotionCancel {
+  optional MotionCommandIdentity target_identity = 1;
+  optional bool fence_parent_mission = 2 [default = false];
+  optional string reason = 3;
+}
+
+enum MotionDirectiveScope {
+  MOTION_SCOPE_UNKNOWN = 0;
+  MOTION_SCOPE_MISSION_DESCENDANT = 1;
+  MOTION_SCOPE_PLANNING_IDLE_HOLD = 2;
+}
+
+message MotionDirective {
+  optional apollo.common.Header header = 1;
+  optional MissionCommandIdentity parent_mission_identity = 2;
+  optional MotionDirectiveScope scope = 3;
+
+  oneof operation {
+    MotionExecute execute = 10;
+    MotionReplace replace = 11;
+    MotionCancel cancel = 12;
+  }
+}
+
+enum MotionExecutionType {
+  MOTION_EXECUTION_TYPE_UNKNOWN = 0;
+  MOTION_EXECUTION_TYPE_TRAJECTORY = 1;
+  MOTION_EXECUTION_TYPE_PRIMITIVE = 2;
+}
+
+enum MotionExecutionState {
+  MOTION_EXECUTION_UNKNOWN = 0;
+  MOTION_EXECUTION_RECEIVED = 1;
+  MOTION_EXECUTION_VALIDATED = 2;
+  MOTION_EXECUTION_REJECTED = 3;
+  MOTION_EXECUTION_ARMED = 4;
+  MOTION_EXECUTION_EXECUTING_TRAJECTORY = 5;
+  MOTION_EXECUTION_EXECUTING_PRIMITIVE = 6;
+  MOTION_EXECUTION_SUCCEEDED = 7;
+  MOTION_EXECUTION_CANCELLED = 8;
+  MOTION_EXECUTION_TIMED_OUT = 9;
+  MOTION_EXECUTION_FAILED = 10;
+  MOTION_EXECUTION_HOLDING = 11;
+  MOTION_EXECUTION_CANCELLING = 12;
+}
+
+enum MotionCommandRejectReason {
+  MOTION_REJECT_NONE = 0;
+  MOTION_REJECT_MISSING_CONTEXT = 1;
+  MOTION_REJECT_INVALID_TIME = 2;
+  MOTION_REJECT_STALE = 3;
+  MOTION_REJECT_INVALID_PAYLOAD = 4;
+  MOTION_REJECT_INVALID_CONSTRAINTS = 5;
+  MOTION_REJECT_INVALID_COMPLETION = 6;
+  MOTION_REJECT_UNSUPPORTED_CAPABILITY = 7;
+  MOTION_REJECT_CHANNEL_MISMATCH = 8;
+  MOTION_REJECT_REPLAY = 9;
+  MOTION_REJECT_BUSY = 10;
+  MOTION_REJECT_INVALID_TRANSITION = 11;
+  MOTION_REJECT_INVALID_FRAME = 12;
+  MOTION_REJECT_CAS_MISMATCH = 13;
+  MOTION_REJECT_PARENT_FENCED = 14;
+  MOTION_REJECT_INVALID_START_CONDITION = 15;
+}
+
+message MotionExecutionStatus {
+  optional apollo.common.Header header = 1;
+  optional MotionCommandIdentity identity = 2;
+  optional string reference_frame_id = 3;
+  optional MotionExecutionType execution_type = 4;
+  optional MotionExecutionState state = 5;
+  optional MotionCommandRejectReason reject_reason = 6;
+  optional string reason = 7;
+  optional double accepted_time_sec = 8;
+  optional double execution_start_time_sec = 9;
+  optional double terminal_time_sec = 10;
+  optional MotionFallbackAction requested_fallback = 11
+      [default = MOTION_FALLBACK_UNKNOWN];
+  optional MissionCommandIdentity parent_mission_identity = 12;
+}

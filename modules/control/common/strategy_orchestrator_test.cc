@@ -20,6 +20,8 @@ TEST(StrategyOrchestratorTest, LegacyTrajectoryFallsBackToTracking) {
             planning::TRACKING_MODE_TRAJECTORY);
   EXPECT_EQ(trajectory.control_intent().primitive_type(),
             planning::CONTROL_PRIMITIVE_NONE);
+  EXPECT_EQ(trajectory.control_intent().execution_channel(),
+            planning::EXECUTION_CHANNEL_TRAJECTORY);
 }
 
 TEST(StrategyOrchestratorTest, PoseServoIntentSelectsPoseServoProfile) {
@@ -39,6 +41,8 @@ TEST(StrategyOrchestratorTest, PoseServoIntentSelectsPoseServoProfile) {
   EXPECT_TRUE(trajectory.control_intent().suppress_large_steer());
   EXPECT_EQ(trajectory.control_intent().tracking_mode(),
             planning::TRACKING_MODE_POSE_SERVO);
+  EXPECT_EQ(trajectory.control_intent().execution_channel(),
+            planning::EXECUTION_CHANNEL_PRIMITIVE);
 }
 
 TEST(StrategyOrchestratorTest, HoldSceneForcesStandstillHold) {
@@ -57,6 +61,8 @@ TEST(StrategyOrchestratorTest, HoldSceneForcesStandstillHold) {
             planning::LON_INTENT_HOLD_STOP);
   EXPECT_EQ(trajectory.control_intent().primitive_type(),
             planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD);
+  EXPECT_EQ(trajectory.control_intent().execution_channel(),
+            planning::EXECUTION_CHANNEL_PRIMITIVE);
 }
 
 }  // namespace control

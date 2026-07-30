@@ -8,6 +8,7 @@ import "modules/common_msgs/planning_msgs/decision.proto";
 import "modules/common_msgs/planning_msgs/planning_command.proto";
 import "modules/common_msgs/planning_msgs/planning.proto";
 import "modules/common_msgs/planning_msgs/planning_runtime_status.proto";
+import "modules/common_msgs/planning_msgs/motion_execution.proto";
 
 enum ControlRuntimeState {
   CONTROL_RUNTIME_UNKNOWN = 0;
@@ -56,4 +57,8 @@ message ControlRuntimeStatus {
   optional apollo.planning.ControlPrimitiveType primitive_type = 23;
   optional bool primitive_active = 24;
   optional bool trajectory_optional = 25;
+  optional apollo.planning.ControlExecutionChannel execution_channel = 26;
+  optional apollo.planning.MotionExecutionStatus motion_execution = 27;
+  optional apollo.planning.MotionDirectiveScope motion_scope = 28;
+  optional bool executor_owner_active = 29;
 }

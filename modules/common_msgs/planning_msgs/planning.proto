@@ -106,6 +106,7 @@ message ControlIntent {
   optional double reference_line_heading = 18;
   optional double target_lateral_offset_m = 19;
   optional double primitive_speed_mps = 20;
+  optional ControlExecutionChannel execution_channel = 21;
 }
 
 // next id: 26

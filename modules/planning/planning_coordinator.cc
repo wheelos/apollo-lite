@@ -40,6 +40,37 @@ PlanningCoordinator::PlanningCoordinator(
     const std::shared_ptr<DependencyInjector>& injector)
     : injector_(injector) {}
 
+MissionAdmissionResult PlanningCoordinator::ApplyMissionDirective(
+    const MissionDirective& directive,
+    const localization::LocalizationEstimate& localization,
+    double now_sec) {
+  return mission_session_manager_.Apply(directive, localization, now_sec);
+}
+
+MissionAdmissionResult PlanningCoordinator::ConfirmMissionCancellation(
+    bool terminal_motion_confirmed) {
+  return mission_session_manager_.ConfirmCancellation(
+      terminal_motion_confirmed);
+}
+
+MissionAdmissionResult PlanningCoordinator::MarkMissionExecuting() {
+  return mission_session_manager_.MarkExecuting();
+}
+
+MissionAdmissionResult PlanningCoordinator::UpdateMissionRoute(
+    const MissionCommandIdentity& expected_identity,
+    const MissionRouteContext& route) {
+  return mission_session_manager_.UpdateRoute(expected_identity, route);
+}
+
+MissionAdmissionResult PlanningCoordinator::BeginMissionCompleting() {
+  return mission_session_manager_.BeginCompleting();
+}
+
+MissionAdmissionResult PlanningCoordinator::CompleteMission() {
+  return mission_session_manager_.Complete();
+}
+
 common::Status PlanningCoordinator::Init(const PlanningConfig& config,
                                          bool use_navigation_mode) {
   config_ = config;
@@ -159,8 +190,28 @@ PlanningCoordinatorState PlanningCoordinator::BuildState(
 
   std::string command_id;
   PlanningSceneType active_scene = SCENE_LANE_CRUISE;
-  if (local_view.planning_command != nullptr) {
-    const auto& command = *local_view.planning_command;
+  PlanningCommand mission_command;
+  const PlanningCommand* authoritative_command = nullptr;
+  const auto& mission_guidance = mission_session_manager_.guidance();
+  if (mission_guidance.identity.has_revision()) {
+    mission_command.set_mission_id(
+        mission_guidance.identity.aggregate_id());
+    mission_command.set_command_id(
+        mission_guidance.identity.command_id());
+    if (mission_guidance.plan.has_preferred_mode()) {
+      mission_command.set_preferred_mode(
+          mission_guidance.plan.preferred_mode());
+    }
+    if (mission_guidance.plan.has_goal()) {
+      mission_command.mutable_goal()->CopyFrom(
+          mission_guidance.plan.goal());
+    }
+    authoritative_command = &mission_command;
+  } else if (local_view.planning_command != nullptr) {
+    authoritative_command = local_view.planning_command.get();
+  }
+  if (authoritative_command != nullptr) {
+    const auto& command = *authoritative_command;
     if (command.has_command_id()) {
       command_id = command.command_id();
     }
@@ -170,7 +221,7 @@ PlanningCoordinatorState PlanningCoordinator::BuildState(
   }
 
   const auto resolution = ModeResolution::Resolve(
-      local_view.planning_command.get(), local_view.capability_set.get(),
+      authoritative_command, local_view.capability_set.get(),
       availability, ResolveLegacyMode());
   state.requested_mode = resolution.requested_mode;
   const auto transition = ShellTransitionPolicy::Apply(
@@ -186,13 +237,24 @@ PlanningCoordinatorState PlanningCoordinator::BuildState(
   state.reason = transition.reason;
   state.blockers = resolution.blockers;
 
-  if (local_view.planning_command != nullptr) {
-    const auto& command = *local_view.planning_command;
+  if (authoritative_command != nullptr) {
+    const auto& command = *authoritative_command;
     if (command.has_mission_id()) {
       state.mission_id = command.mission_id();
     }
     state.command_id = command_id;
     state.active_scene = active_scene;
+  }
+
+  if (mission_guidance.identity.has_revision()) {
+    state.mission_identity.CopyFrom(mission_guidance.identity);
+    state.mission_task = mission_guidance.plan.task_type();
+    state.mission_session_state = mission_guidance.state;
+    state.mission_phase = mission_guidance.phase;
+    state.accepted_start.CopyFrom(mission_guidance.accepted_start);
+    state.mission_route.CopyFrom(mission_guidance.route);
+    state.mission_cancellation_fenced =
+        mission_guidance.cancellation_fenced;
   }
 
   if (state.resolved_mode != MODE_UNKNOWN &&

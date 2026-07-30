@@ -56,6 +56,8 @@ struct TrajectoryRuntimeContext {
   apollo::planning::PlanningMode active_mode = apollo::planning::MODE_UNKNOWN;
   apollo::planning::PlanningShellType active_shell =
       apollo::planning::PLANNING_SHELL_UNKNOWN;
+  apollo::planning::ControlExecutionChannel execution_channel =
+      apollo::planning::EXECUTION_CHANNEL_UNKNOWN;
   bool has_control_intent = false;
   apollo::planning::ControlIntent control_intent;
 };
@@ -84,6 +86,13 @@ TrajectoryRuntimeContext ExtractTrajectoryRuntimeContext(
     if (execution.has_active_shell()) {
       context.active_shell = execution.active_shell();
     }
+    if (execution.has_execution_channel()) {
+      context.execution_channel = execution.execution_channel();
+    }
+  }
+  if (context.has_control_intent &&
+      context.control_intent.has_execution_channel()) {
+    context.execution_channel = context.control_intent.execution_channel();
   }
   return context;
 }
@@ -125,6 +134,13 @@ bool ControlComponent::Init() {
     monitor_logger_buffer_.ERROR("Control init controller agent failed!");
     return false;
   }
+  MotionExecutionCapabilities capabilities;
+  capabilities.supported = {
+      planning::MOTION_CAPABILITY_TRAJECTORY_TRACKING,
+      planning::MOTION_CAPABILITY_STANDSTILL_HOLD,
+  };
+  motion_execution_manager_ = std::make_unique<MotionExecutionManager>(
+      MotionExecutionValidator(std::move(capabilities)));
 
   // 2. Initialize Safety Manager
   safety_manager_ = std::make_unique<SafetyManager>();
@@ -157,11 +173,9 @@ void ControlComponent::InitReaders() {
   chassis_cfg.pending_queue_size = FLAGS_chassis_pending_queue_size;
   chassis_reader_ = node_->CreateReader<Chassis>(chassis_cfg, nullptr);
 
-  cyber::ReaderConfig planning_cfg;
-  planning_cfg.channel_name = FLAGS_planning_trajectory_topic;
-  planning_cfg.pending_queue_size = FLAGS_planning_pending_queue_size;
-  trajectory_reader_ =
-      node_->CreateReader<ADCTrajectory>(planning_cfg, nullptr);
+  motion_directive_reader_ =
+      node_->CreateReader<planning::MotionDirective>(
+          FLAGS_motion_directive_topic, nullptr);
 
   cyber::ReaderConfig loc_cfg;
   loc_cfg.channel_name = FLAGS_localization_topic;
@@ -191,16 +205,121 @@ void ControlComponent::OnChassis(const std::shared_ptr<Chassis> &chassis) {
   latest_chassis_.CopyFrom(*chassis);
 }
 
-void ControlComponent::OnPlanning(
-    const std::shared_ptr<ADCTrajectory> &trajectory) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  latest_trajectory_.CopyFrom(*trajectory);
-}
-
 void ControlComponent::OnLocalization(
     const std::shared_ptr<LocalizationEstimate> &localization) {
   std::lock_guard<std::mutex> lock(mutex_);
   latest_localization_.CopyFrom(*localization);
+}
+
+MotionExecutionVehicleState ControlComponent::BuildMotionVehicleState() const {
+  MotionExecutionVehicleState state;
+  if (local_view_.localization().has_pose()) {
+    state.position.CopyFrom(local_view_.localization().pose().position());
+    state.heading = local_view_.localization().pose().heading();
+  }
+  state.gear = local_view_.chassis().gear_location();
+  state.speed_mps = local_view_.chassis().speed_mps();
+  state.timestamp_sec =
+      local_view_.localization().has_measurement_time()
+          ? local_view_.localization().measurement_time()
+          : local_view_.localization().header().timestamp_sec();
+  state.reference_frame_id =
+      local_view_.localization().header().has_frame_id()
+          ? local_view_.localization().header().frame_id()
+          : "map";
+  return state;
+}
+
+void ControlComponent::ProcessMotionDirective(double now_sec) {
+  if (motion_execution_manager_ == nullptr) {
+    return;
+  }
+  auto directive = motion_directive_reader_->GetLatestObserved();
+  if (directive == nullptr) {
+    latest_motion_execution_status_ =
+        motion_execution_manager_->Tick(now_sec);
+    if (latest_motion_execution_status_.state() ==
+            planning::MOTION_EXECUTION_TIMED_OUT ||
+        latest_motion_execution_status_.state() ==
+            planning::MOTION_EXECUTION_FAILED ||
+        latest_motion_execution_status_.state() ==
+            planning::MOTION_EXECUTION_SUCCEEDED ||
+        latest_motion_execution_status_.state() ==
+            planning::MOTION_EXECUTION_CANCELLED) {
+      executor_arbiter_.Release();
+      controller_agent_.Reset();
+      latest_trajectory_.Clear();
+      local_view_.mutable_trajectory()->Clear();
+    }
+    return;
+  }
+  const std::string fingerprint = directive->SerializeAsString();
+  if (fingerprint == applied_motion_directive_fingerprint_) {
+    latest_motion_execution_status_ =
+        motion_execution_manager_->Tick(now_sec);
+    if (latest_motion_execution_status_.state() ==
+            planning::MOTION_EXECUTION_TIMED_OUT ||
+        latest_motion_execution_status_.state() ==
+            planning::MOTION_EXECUTION_FAILED ||
+        latest_motion_execution_status_.state() ==
+            planning::MOTION_EXECUTION_SUCCEEDED ||
+        latest_motion_execution_status_.state() ==
+            planning::MOTION_EXECUTION_CANCELLED) {
+      executor_arbiter_.Release();
+      controller_agent_.Reset();
+      latest_trajectory_.Clear();
+      local_view_.mutable_trajectory()->Clear();
+    }
+    return;
+  }
+  applied_motion_directive_fingerprint_ = fingerprint;
+  active_motion_scope_ = directive->scope();
+  auto execution_status =
+      motion_execution_manager_->Apply(*directive, now_sec);
+  if (execution_status.state() == planning::MOTION_EXECUTION_REJECTED) {
+    latest_motion_execution_status_ = execution_status;
+    AERROR << "MotionDirective rejected: " << execution_status.reason();
+    return;
+  }
+  if (execution_status.state() ==
+      planning::MOTION_EXECUTION_CANCELLING) {
+    executor_arbiter_.Release();
+    controller_agent_.Reset();
+    execution_status = motion_execution_manager_->ConfirmExecutorRevoked(
+        now_sec, "normal executor ownership revoked at control-cycle boundary");
+  }
+
+  if (execution_status.state() ==
+      planning::MOTION_EXECUTION_VALIDATED) {
+    const auto* command = motion_execution_manager_->active_command();
+    std::string reason;
+    planning::ADCTrajectory controller_input;
+    if (command == nullptr || !executor_arbiter_.Acquire(*command) ||
+        !motion_command_adapter_.ToLegacyControllerInput(
+            *command, &controller_input, &reason)) {
+      executor_arbiter_.Release();
+      latest_motion_execution_status_ =
+          motion_execution_manager_->Fail(now_sec, reason);
+      return;
+    }
+    latest_trajectory_.CopyFrom(controller_input);
+    local_view_.mutable_trajectory()->CopyFrom(controller_input);
+    execution_status = motion_execution_manager_->Arm(now_sec);
+    if (execution_status.state() == planning::MOTION_EXECUTION_ARMED) {
+      execution_status = motion_execution_manager_->Start(
+          BuildMotionVehicleState(), now_sec);
+      if (execution_status.state() ==
+          planning::MOTION_EXECUTION_REJECTED) {
+        executor_arbiter_.Release();
+        controller_agent_.Reset();
+        latest_trajectory_.Clear();
+        local_view_.mutable_trajectory()->Clear();
+        execution_status = motion_execution_manager_->Fail(
+            now_sec, "live start condition rejected at ownership handoff");
+      }
+    }
+  }
+  latest_motion_execution_status_ = execution_status;
 }
 
 Status ControlComponent::ProduceControlCommand(ControlCommand *control_command,
@@ -312,6 +431,18 @@ void ControlComponent::PublishRuntimeStatus(
                                        : SafetyState::kNormal;
   const auto control_safety_state = TranslateSafetyState(safety_state);
   runtime_status.set_safety_state(control_safety_state);
+  if (latest_motion_execution_status_.has_identity()) {
+    if (!runtime_status.has_command_id() &&
+        latest_motion_execution_status_.identity().has_command_id()) {
+      runtime_status.set_command_id(
+          latest_motion_execution_status_.identity().command_id());
+    }
+  }
+  if (latest_motion_execution_status_.has_parent_mission_identity() &&
+      !runtime_status.has_mission_id()) {
+    runtime_status.set_mission_id(
+        latest_motion_execution_status_.parent_mission_identity().aggregate_id());
+  }
 
   if (runtime_context.has_control_intent) {
     runtime_status.set_tracking_mode(
@@ -328,10 +459,20 @@ void ControlComponent::PublishRuntimeStatus(
         apollo::planning::CONTROL_PRIMITIVE_NONE);
     runtime_status.set_trajectory_optional(
         IsTrajectorylessControlPrimitive(local_view_.trajectory()));
+    runtime_status.set_execution_channel(runtime_context.execution_channel);
     if (runtime_context.control_intent.has_stop_reason_code()) {
       runtime_status.set_stop_reason_code(
           runtime_context.control_intent.stop_reason_code());
     }
+  } else if (runtime_context.execution_channel !=
+             apollo::planning::EXECUTION_CHANNEL_UNKNOWN) {
+    runtime_status.set_execution_channel(runtime_context.execution_channel);
+  }
+  if (latest_motion_execution_status_.has_state()) {
+    runtime_status.mutable_motion_execution()->CopyFrom(
+        latest_motion_execution_status_);
+    runtime_status.set_motion_scope(active_motion_scope_);
+    runtime_status.set_executor_owner_active(executor_arbiter_.has_owner());
   }
 
   std::string reason;
@@ -394,7 +535,7 @@ bool ControlComponent::Proc() {
 
   // 1. Data Observation (Lock-Free Read)
   chassis_reader_->Observe();
-  trajectory_reader_->Observe();
+  motion_directive_reader_->Observe();
   localization_reader_->Observe();
   pad_msg_reader_->Observe();
 
@@ -404,14 +545,6 @@ bool ControlComponent::Proc() {
     return false;
   }
   OnChassis(chassis_msg);
-
-  auto trajectory_msg = trajectory_reader_->GetLatestObserved();
-  if (trajectory_msg) {
-    if (latest_trajectory_.header().sequence_num() !=
-        trajectory_msg->header().sequence_num()) {
-      OnPlanning(trajectory_msg);
-    }
-  }
 
   auto localization_msg = localization_reader_->GetLatestObserved();
   if (localization_msg) {
@@ -432,6 +565,7 @@ bool ControlComponent::Proc() {
     if (pad_msg != nullptr) {
       local_view_.mutable_pad_msg()->CopyFrom(pad_msg_);
     }
+
   }
 
   // 3. Main Control Loop
@@ -442,8 +576,16 @@ bool ControlComponent::Proc() {
   // Check driving mode
   if (local_view_.chassis().driving_mode() ==
       apollo::canbus::Chassis::COMPLETE_AUTO_DRIVE) {
+    ProcessMotionDirective(Clock::NowInSeconds());
     status = ProduceControlCommand(&control_command, &used_previous_command);
   } else {
+    if (executor_arbiter_.has_owner()) {
+      executor_arbiter_.Release();
+      latest_motion_execution_status_ = motion_execution_manager_->Fail(
+          Clock::NowInSeconds(), "manual mode revoked normal executor");
+      latest_trajectory_.Clear();
+      local_view_.mutable_trajectory()->Clear();
+    }
     // In Manual Mode, reset algorithms and produce neutral command.
     ResetAndProduceZeroControlCommand(&control_command);
     status = Status::OK();
@@ -500,7 +642,6 @@ void ControlComponent::ResetAndProduceZeroControlCommand(
 
   // Clear trajectory cache to prevent using stale data upon re-engaging
   latest_trajectory_.mutable_trajectory_point()->Clear();
-  trajectory_reader_->ClearData();
 }
 
 }  // namespace control

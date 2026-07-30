@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "modules/common_msgs/planning_msgs/mission_directive.pb.h"
 #include "modules/common_msgs/planning_msgs/planning_command.pb.h"
 
 namespace apollo {
@@ -29,6 +30,13 @@ inline PlanningOperatingDomain ResolveOperatingDomainForMode(
 struct PlanningCoordinatorState {
   std::string mission_id;
   std::string command_id;
+  MissionCommandIdentity mission_identity;
+  MissionTaskType mission_task = MISSION_TASK_UNKNOWN;
+  MissionSessionState mission_session_state = MISSION_SESSION_UNKNOWN;
+  MissionSessionPhase mission_phase = MISSION_PHASE_UNKNOWN;
+  MissionStartSnapshot accepted_start;
+  MissionRouteContext mission_route;
+  bool mission_cancellation_fenced = false;
   PlanningSceneType active_scene = SCENE_LANE_CRUISE;
   PlanningOperatingDomain active_domain = DOMAIN_UNKNOWN;
   PlanningShellType previous_shell = PLANNING_SHELL_UNKNOWN;

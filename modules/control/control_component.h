@@ -26,12 +26,16 @@
 #include "modules/common_msgs/control_msgs/pad_msg.pb.h"
 #include "modules/common_msgs/localization_msgs/localization.pb.h"
 #include "modules/common_msgs/planning_msgs/planning.pb.h"
+#include "modules/common_msgs/planning_msgs/motion_execution.pb.h"
 #include "modules/control/proto/control_conf.pb.h"
 
 #include "cyber/component/timer_component.h"
 #include "cyber/time/time.h"
 #include "modules/common/monitor_log/monitor_log_buffer.h"
 #include "modules/control/common/control_command_goal.h"
+#include "modules/control/common/executor_arbiter.h"
+#include "modules/control/common/motion_command_adapter.h"
+#include "modules/control/common/motion_execution_manager.h"
 #include "modules/control/common/dependency_injector.h"
 #include "modules/control/common/strategy_orchestrator.h"
 #include "modules/control/controller/controller_agent.h"
@@ -60,11 +64,11 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
   // Data Callbacks
   void OnPad(const std::shared_ptr<PadMessage> &pad);
   void OnChassis(const std::shared_ptr<apollo::canbus::Chassis> &chassis);
-  void OnPlanning(
-      const std::shared_ptr<apollo::planning::ADCTrajectory> &trajectory);
   void OnLocalization(
       const std::shared_ptr<apollo::localization::LocalizationEstimate>
           &localization);
+  void ProcessMotionDirective(double now_sec);
+  MotionExecutionVehicleState BuildMotionVehicleState() const;
 
   // Core Logic
   void InitReaders();
@@ -84,6 +88,7 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
   localization::LocalizationEstimate latest_localization_;
   canbus::Chassis latest_chassis_;
   planning::ADCTrajectory latest_trajectory_;
+  planning::MotionDirective latest_motion_directive_;
   PadMessage pad_msg_;
 
   // Modules
@@ -98,6 +103,13 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
   ControlCommandGoal last_goal_;
   SemanticControlProfile last_profile_;
   StrategyOrchestrator strategy_orchestrator_;
+  std::unique_ptr<MotionExecutionManager> motion_execution_manager_;
+  MotionCommandAdapter motion_command_adapter_;
+  ExecutorArbiter executor_arbiter_;
+  planning::MotionExecutionStatus latest_motion_execution_status_;
+  planning::MotionDirectiveScope active_motion_scope_ =
+      planning::MOTION_SCOPE_UNKNOWN;
+  std::string applied_motion_directive_fingerprint_;
   bool pad_received_ = false;
 
   // Cyber RT Interfaces
@@ -105,8 +117,8 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
   std::shared_ptr<cyber::Reader<PadMessage>> pad_msg_reader_;
   std::shared_ptr<cyber::Reader<apollo::localization::LocalizationEstimate>>
       localization_reader_;
-  std::shared_ptr<cyber::Reader<apollo::planning::ADCTrajectory>>
-      trajectory_reader_;
+  std::shared_ptr<cyber::Reader<apollo::planning::MotionDirective>>
+      motion_directive_reader_;
 
   std::shared_ptr<cyber::Writer<ControlCommand>> control_cmd_writer_;
   std::shared_ptr<cyber::Writer<ControlRuntimeStatus>>

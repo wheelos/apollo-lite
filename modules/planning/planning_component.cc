@@ -66,6 +66,54 @@ PlanningShellType ResolveShellForMode(PlanningMode mode) {
   }
 }
 
+bool BuildRoutingRequest(
+    const PlanningCommand& command,
+    const localization::LocalizationEstimate& localization,
+    RoutingRequest* request) {
+  CHECK_NOTNULL(request);
+  if (!command.has_goal() || !localization.has_pose() ||
+      !localization.pose().has_position()) {
+    return false;
+  }
+
+  auto* start = request->add_waypoint();
+  start->mutable_pose()->CopyFrom(localization.pose().position());
+  if (localization.pose().has_heading()) {
+    start->set_heading(localization.pose().heading());
+  }
+
+  if (command.has_route_hint()) {
+    for (const auto& waypoint : command.route_hint().waypoint()) {
+      request->add_waypoint()->CopyFrom(waypoint);
+    }
+  }
+
+  auto* destination = request->add_waypoint();
+  switch (command.goal().target_case()) {
+    case GoalSpec::kGoalPose:
+      destination->mutable_pose()->CopyFrom(command.goal().goal_pose());
+      break;
+    case GoalSpec::kParkingGoal:
+      request->mutable_parking_info()->CopyFrom(
+          command.goal().parking_goal());
+      if (!command.goal().parking_goal().has_parking_point()) {
+        return false;
+      }
+      destination->mutable_pose()->CopyFrom(
+          command.goal().parking_goal().parking_point());
+      break;
+    case GoalSpec::kTargetPolygon:
+    case GoalSpec::kSemanticTargetId:
+    case GoalSpec::TARGET_NOT_SET:
+    default:
+      return false;
+  }
+  if (command.goal().has_goal_heading()) {
+    destination->set_heading(command.goal().goal_heading());
+  }
+  return true;
+}
+
 PlanningSemanticInput BuildSemanticInput(
     const LocalView& local_view,
     const PlanningCoordinator* planning_coordinator,
@@ -83,10 +131,25 @@ PlanningSemanticInput BuildSemanticInput(
   return input;
 }
 
+ControlExecutionChannel ResolveExecutionChannel(
+    const ADCTrajectory& trajectory) {
+  if (trajectory.has_control_intent() &&
+      trajectory.control_intent().has_execution_channel()) {
+    return trajectory.control_intent().execution_channel();
+  }
+  if (trajectory.trajectory_point_size() > 0) {
+    return EXECUTION_CHANNEL_TRAJECTORY;
+  }
+  return EXECUTION_CHANNEL_UNKNOWN;
+}
+
 }  // namespace
 
 bool PlanningComponent::Init() {
   injector_ = std::make_shared<DependencyInjector>();
+  motion_plan_builder_.SetProducerEpoch(
+      "planning-" +
+      std::to_string(cyber::Time::Now().ToNanosecond()));
   planning_coordinator_ = std::make_unique<PlanningCoordinator>(injector_);
 
   ACHECK(ComponentBase::GetProtoConfig(&config_))
@@ -108,12 +171,18 @@ bool PlanningComponent::Init() {
     return false;
   }
 
-  routing_reader_ = node_->CreateReader<RoutingResponse>(
-      config_.topic_config().routing_response_topic(),
-      [this](const std::shared_ptr<RoutingResponse>& routing) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        routing_.CopyFrom(*routing);
-      });
+  if (!FLAGS_use_navigation_mode) {
+    routing_service_ = std::make_unique<routing::RoutingService>();
+    auto routing_status = routing_service_->Init();
+    if (routing_status.ok()) {
+      routing_status = routing_service_->Start();
+    }
+    if (!routing_status.ok()) {
+      AERROR << "failed to initialize RoutingService: "
+             << routing_status.ToString();
+      return false;
+    }
+  }
 
   traffic_light_reader_ = node_->CreateReader<TrafficLightDetection>(
       config_.topic_config().traffic_light_detection_topic(),
@@ -136,6 +205,20 @@ bool PlanningComponent::Init() {
         planning_command_.CopyFrom(*planning_command);
       });
 
+  mission_directive_reader_ = node_->CreateReader<MissionDirective>(
+      config_.topic_config().mission_directive_topic(),
+      [this](const std::shared_ptr<MissionDirective>& directive) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        mission_directive_.CopyFrom(*directive);
+      });
+  control_runtime_status_reader_ =
+      node_->CreateReader<control::ControlRuntimeStatus>(
+          config_.topic_config().control_runtime_status_topic(),
+          [this](const std::shared_ptr<control::ControlRuntimeStatus>& status) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            control_runtime_status_.CopyFrom(*status);
+          });
+
   story_telling_reader_ = node_->CreateReader<Stories>(
       config_.topic_config().story_telling_topic(),
       [this](const std::shared_ptr<Stories>& stories) {
@@ -153,14 +236,103 @@ bool PlanningComponent::Init() {
       config_.topic_config().planning_trajectory_topic());
   planning_runtime_status_writer_ = node_->CreateWriter<PlanningRuntimeStatus>(
       config_.topic_config().planning_runtime_status_topic());
-
-  rerouting_writer_ = node_->CreateWriter<RoutingRequest>(
-      config_.topic_config().routing_request_topic());
+  motion_directive_writer_ = node_->CreateWriter<MotionDirective>(
+      config_.topic_config().motion_directive_topic());
 
   planning_learning_data_writer_ = node_->CreateWriter<PlanningLearningData>(
       config_.topic_config().planning_learning_data_topic());
 
   return true;
+}
+
+void PlanningComponent::ApplyControlMotionStatus() {
+  control::ControlRuntimeStatus status;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    status.CopyFrom(control_runtime_status_);
+  }
+  if (!status.has_motion_execution() || !status.has_motion_scope()) {
+    return;
+  }
+  const std::string fingerprint = status.SerializeAsString();
+  if (fingerprint == applied_control_motion_status_fingerprint_) {
+    return;
+  }
+  applied_control_motion_status_fingerprint_ = fingerprint;
+  motion_plan_builder_.ObserveControlStatus(status.motion_execution(),
+                                            status.motion_scope());
+  if (planning_coordinator_ != nullptr &&
+      planning_coordinator_->state().mission_session_state ==
+          MISSION_SESSION_ACCEPTED &&
+      status.motion_scope() == MOTION_SCOPE_MISSION_DESCENDANT &&
+      status.executor_owner_active() &&
+      (status.motion_execution().state() ==
+           MOTION_EXECUTION_EXECUTING_TRAJECTORY ||
+       status.motion_execution().state() ==
+           MOTION_EXECUTION_EXECUTING_PRIMITIVE)) {
+    const auto result = planning_coordinator_->MarkMissionExecuting();
+    if (!result.accepted) {
+      AERROR << "Failed to mark Mission executing: " << result.reason;
+    }
+  }
+  if (planning_coordinator_ != nullptr &&
+      planning_coordinator_->state().mission_session_state ==
+          MISSION_SESSION_CANCELLING &&
+      status.motion_scope() == MOTION_SCOPE_PLANNING_IDLE_HOLD &&
+      status.executor_owner_active() &&
+      (status.motion_execution().state() ==
+           MOTION_EXECUTION_EXECUTING_PRIMITIVE ||
+       status.motion_execution().state() == MOTION_EXECUTION_HOLDING)) {
+    const auto result =
+        planning_coordinator_->ConfirmMissionCancellation(true);
+    if (!result.accepted) {
+      AERROR << "Failed to confirm Mission cancellation: " << result.reason;
+    }
+  }
+  if (planning_coordinator_ != nullptr &&
+      planning_coordinator_->state().mission_session_state ==
+          MISSION_SESSION_COMPLETING &&
+      status.motion_scope() == MOTION_SCOPE_PLANNING_IDLE_HOLD &&
+      status.executor_owner_active() &&
+      (status.motion_execution().state() ==
+           MOTION_EXECUTION_EXECUTING_PRIMITIVE ||
+       status.motion_execution().state() == MOTION_EXECUTION_HOLDING)) {
+    const auto result = planning_coordinator_->CompleteMission();
+    if (!result.accepted) {
+      AERROR << "Failed to complete Mission: " << result.reason;
+    }
+  }
+}
+
+void PlanningComponent::PublishMotionPlan(
+    const PlanningCoordinatorState& coordinator_state,
+    const PlanningSemanticSummary& semantic_summary,
+    const canbus::Chassis& chassis,
+    const localization::LocalizationEstimate& localization,
+    const ADCTrajectory& trajectory) {
+  if (motion_directive_writer_ == nullptr) {
+    return;
+  }
+  auto motion_state = coordinator_state;
+  if (semantic_summary.command_completed &&
+      semantic_summary.full_stop_reached &&
+      coordinator_state.mission_session_state ==
+          MISSION_SESSION_EXECUTING) {
+    const auto transition =
+        planning_coordinator_->BeginMissionCompleting();
+    if (transition.accepted) {
+      motion_state.mission_session_state = MISSION_SESSION_COMPLETING;
+    }
+  }
+  auto result = motion_plan_builder_.Build(
+      motion_state, semantic_summary, chassis, localization, trajectory,
+      cyber::Clock::NowInSeconds());
+  if (!result.has_directive) {
+    AWARN_EVERY(100) << "MotionPlanBuilder did not emit: " << result.reason;
+    return;
+  }
+  common::util::FillHeader(node_->Name(), &result.directive);
+  motion_directive_writer_->Write(result.directive);
 }
 
 void PlanningComponent::RefreshLocalView(
@@ -192,6 +364,30 @@ void PlanningComponent::RefreshEnvironmentState() {
       environment_model_builder_.Build(local_view_));
   local_view_.capability_set = std::make_shared<CapabilitySet>(
       capability_extractor_.Extract(*local_view_.environment_model));
+}
+
+void PlanningComponent::ApplyPendingMissionDirective(
+    const localization::LocalizationEstimate& localization) {
+  MissionDirective directive;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    directive.CopyFrom(mission_directive_);
+  }
+  if (!directive.has_identity() || planning_coordinator_ == nullptr) {
+    return;
+  }
+  const std::string fingerprint = directive.SerializeAsString();
+  if (fingerprint == applied_mission_directive_fingerprint_) {
+    return;
+  }
+  const auto result = planning_coordinator_->ApplyMissionDirective(
+      directive, localization, cyber::Clock::NowInSeconds());
+  if (!result.accepted) {
+    AERROR << "Mission Directive V2 rejected: " << result.reason;
+  } else {
+    applied_mission_directive_fingerprint_ = fingerprint;
+    AINFO << "Mission Directive V2 admitted: " << result.reason;
+  }
 }
 
 void PlanningComponent::ProcessLearningInputs() {
@@ -233,6 +429,19 @@ RuntimeState PlanningComponent::InferCoordinatorRuntimeState() const {
   if (planning_coordinator_ == nullptr) {
     return RUNTIME_UNKNOWN;
   }
+  switch (planning_coordinator_->state().mission_session_state) {
+    case MISSION_SESSION_COMPLETED:
+      return RUNTIME_COMPLETED;
+    case MISSION_SESSION_CANCELLED:
+      return RUNTIME_CANCELLED;
+    case MISSION_SESSION_FAILED:
+      return RUNTIME_FAILED;
+    case MISSION_SESSION_CANCELLING:
+    case MISSION_SESSION_COMPLETING:
+      return RUNTIME_HOLDING;
+    default:
+      break;
+  }
   if (planning_coordinator_->state().requested_mode !=
       planning_coordinator_->state().resolved_mode) {
     return planning_coordinator_->state().resolved_mode == MODE_UNKNOWN
@@ -265,6 +474,7 @@ PlanningExecutionContext PlanningComponent::ResolvePublishedExecutionContext(
   execution.set_active_mode(coordinator_state.resolved_mode);
   execution.set_active_shell(coordinator_state.active_shell);
   execution.set_active_domain(coordinator_state.active_domain);
+  execution.set_execution_channel(ResolveExecutionChannel(trajectory));
   if (!coordinator_state.reason.empty()) {
     execution.set_reason(coordinator_state.reason);
   }
@@ -292,6 +502,9 @@ PlanningExecutionContext PlanningComponent::ResolvePublishedExecutionContext(
       execution.add_blockers(blocker);
     }
   }
+  if (published_execution.has_execution_channel()) {
+    execution.set_execution_channel(published_execution.execution_channel());
+  }
   return execution;
 }
 
@@ -310,6 +523,9 @@ bool PlanningComponent::Proc(
 
   // Step 2: build the cycle snapshot from fast inputs and latched inputs.
   RefreshLocalView(prediction_obstacles, chassis, localization_estimate);
+  ApplyPendingMissionDirective(*localization_estimate);
+  UpdateRoutingForMission(*localization_estimate);
+  ApplyControlMotionStatus();
   RefreshEnvironmentState();
   if (planning_coordinator_ != nullptr) {
     cycle_state.preview_state =
@@ -364,6 +580,9 @@ bool PlanningComponent::Proc(
     PopulateTrajectoryExecutionContext(
         planning_coordinator_->state(), cycle_state.semantic_summary,
         cycle_state.hybrid_summary, &adc_trajectory_pb);
+    PublishMotionPlan(planning_coordinator_->state(),
+                      cycle_state.semantic_summary, *chassis,
+                      *localization_estimate, adc_trajectory_pb);
     planning_writer_->Write(adc_trajectory_pb);
     PublishRuntimeStatus(
         cycle_state.semantic_summary, cycle_state.hybrid_summary,
@@ -396,6 +615,9 @@ bool PlanningComponent::Proc(
   PopulateTrajectoryExecutionContext(
       planning_coordinator_->state(), guarded_semantic_summary,
       cycle_state.hybrid_summary, &adc_trajectory_pb);
+  PublishMotionPlan(planning_coordinator_->state(),
+                    guarded_semantic_summary, *chassis,
+                    *localization_estimate, adc_trajectory_pb);
   planning_writer_->Write(adc_trajectory_pb);
   PublishRuntimeStatus(
       guarded_semantic_summary, cycle_state.hybrid_summary,
@@ -418,9 +640,137 @@ void PlanningComponent::CheckRerouting() {
   if (!rerouting->need_rerouting()) {
     return;
   }
-  common::util::FillHeader(node_->Name(), rerouting->mutable_routing_request());
   rerouting->set_need_rerouting(false);
-  rerouting_writer_->Write(rerouting->routing_request());
+  if (routing_service_ == nullptr) {
+    AERROR << "rerouting requested without RoutingService";
+    return;
+  }
+  auto request = rerouting->routing_request();
+  common::util::FillHeader(node_->Name(), &request);
+  RoutingResponse response;
+  if (!routing_service_->ComputeRoute(request, &response)) {
+    AERROR << "RoutingService failed to recompute route";
+    return;
+  }
+  common::util::FillHeader(node_->Name(), &response);
+  std::lock_guard<std::mutex> lock(mutex_);
+  routing_.CopyFrom(response);
+}
+
+void PlanningComponent::UpdateRoutingForCommand(
+    const localization::LocalizationEstimate& localization) {
+  PlanningCommand command;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    command.CopyFrom(planning_command_);
+  }
+
+  if (!command.has_command_id() || command.command_id().empty()) {
+    return;
+  }
+  const std::string fingerprint = command.SerializeAsString();
+  if (fingerprint == routed_command_fingerprint_) {
+    return;
+  }
+  if (command.has_action() && command.action() == COMMAND_CANCEL) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    routing_.Clear();
+    routed_command_fingerprint_ = fingerprint;
+    return;
+  }
+
+  RoutingRequest request;
+  if (!BuildRoutingRequest(command, localization, &request)) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    routing_.Clear();
+    routed_command_fingerprint_ = fingerprint;
+    AINFO << "planning command has no routed A-to-B goal";
+    return;
+  }
+  if (routing_service_ == nullptr) {
+    AERROR << "routed planning command received without RoutingService";
+    std::lock_guard<std::mutex> lock(mutex_);
+    routing_.Clear();
+    routed_command_fingerprint_ = fingerprint;
+    return;
+  }
+  common::util::FillHeader(node_->Name(), &request);
+  RoutingResponse response;
+  if (!routing_service_->ComputeRoute(request, &response)) {
+    AERROR << "RoutingService failed for planning command "
+           << command.command_id();
+    std::lock_guard<std::mutex> lock(mutex_);
+    routing_.Clear();
+    routed_command_fingerprint_ = fingerprint;
+    return;
+  }
+  common::util::FillHeader(node_->Name(), &response);
+  std::lock_guard<std::mutex> lock(mutex_);
+  routing_.CopyFrom(response);
+  routed_command_fingerprint_ = fingerprint;
+}
+
+void PlanningComponent::UpdateRoutingForMission(
+    const localization::LocalizationEstimate& localization) {
+  if (planning_coordinator_ == nullptr ||
+      !planning_coordinator_->mission_session_manager().HasActiveSession()) {
+    return;
+  }
+  const auto& guidance =
+      planning_coordinator_->mission_session_manager().guidance();
+  if (guidance.state == MISSION_SESSION_CANCELLING) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    routing_.Clear();
+    return;
+  }
+  const std::string fingerprint =
+      guidance.identity.SerializeAsString() + guidance.plan.SerializeAsString();
+  if (fingerprint == routed_command_fingerprint_) {
+    return;
+  }
+
+  PlanningCommand command;
+  command.set_mission_id(guidance.identity.aggregate_id());
+  command.set_command_id(guidance.identity.command_id());
+  command.set_action(COMMAND_ACTIVATE);
+  if (guidance.plan.has_goal()) {
+    command.mutable_goal()->CopyFrom(guidance.plan.goal());
+  }
+  if (guidance.plan.has_route_hint()) {
+    command.mutable_route_hint()->CopyFrom(guidance.plan.route_hint());
+  }
+  RoutingRequest request;
+  if (!BuildRoutingRequest(command, localization, &request)) {
+    return;
+  }
+  common::util::FillHeader(node_->Name(), &request);
+  RoutingResponse response;
+  MissionRouteContext route;
+  route.set_request_id(guidance.identity.command_id() + "-" +
+                       std::to_string(guidance.identity.revision()));
+  if (routing_service_ == nullptr ||
+      !routing_service_->ComputeRoute(request, &response)) {
+    route.set_state(MISSION_ROUTE_FAILED);
+    route.set_reason("RoutingService failed for MissionDirective");
+    planning_coordinator_->UpdateMissionRoute(guidance.identity, route);
+    return;
+  }
+  common::util::FillHeader(node_->Name(), &response);
+  route.set_state(MISSION_ROUTE_READY);
+  route.set_map_version(response.has_map_version() ? response.map_version()
+                                                   : "unknown");
+  route.set_route_id(route.request_id());
+  const auto update =
+      planning_coordinator_->UpdateMissionRoute(guidance.identity, route);
+  if (!update.accepted) {
+    AERROR << "Mission route correlation failed: " << update.reason;
+    return;
+  }
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    routing_.CopyFrom(response);
+  }
+  routed_command_fingerprint_ = fingerprint;
 }
 
 bool PlanningComponent::CheckInput(
@@ -496,6 +846,9 @@ void PlanningComponent::PopulateTrajectoryExecutionContext(
   trajectory->mutable_execution()->CopyFrom(
       ResolvePublishedExecutionContext(coordinator_state, *trajectory));
   auto* execution = trajectory->mutable_execution();
+  if (!execution->has_execution_channel()) {
+    execution->set_execution_channel(ResolveExecutionChannel(*trajectory));
+  }
   hybrid_maneuver_supervisor_.Apply(hybrid_summary, execution);
 }
 
@@ -527,6 +880,9 @@ void PlanningComponent::PublishRuntimeStatus(
   runtime_status.set_active_domain(execution.has_active_domain()
                                        ? execution.active_domain()
                                        : coordinator_state.active_domain);
+  if (execution.has_execution_channel()) {
+    runtime_status.set_execution_channel(execution.execution_channel());
+  }
   if (coordinator_state.transition_pending) {
     auto* transition = runtime_status.mutable_transition();
     transition->set_from_mode(coordinator_state.resolved_mode);
@@ -586,6 +942,28 @@ void PlanningComponent::PublishRuntimeStatus(
     runtime_status.set_command_id(execution.command_id());
   } else if (!coordinator_state.command_id.empty()) {
     runtime_status.set_command_id(coordinator_state.command_id);
+  }
+  if (coordinator_state.mission_identity.has_revision()) {
+    runtime_status.mutable_mission_identity()->CopyFrom(
+        coordinator_state.mission_identity);
+    runtime_status.set_mission_session_state(
+        coordinator_state.mission_session_state);
+    runtime_status.set_mission_phase(coordinator_state.mission_phase);
+    if (coordinator_state.accepted_start.has_snapshot_time_sec()) {
+      runtime_status.mutable_accepted_start()->CopyFrom(
+          coordinator_state.accepted_start);
+    }
+    const auto& accepted_directive =
+        planning_coordinator_->mission_session_manager()
+            .last_accepted_directive_identity();
+    if (accepted_directive.has_revision()) {
+      runtime_status.mutable_accepted_directive_identity()->CopyFrom(
+          accepted_directive);
+    }
+    if (coordinator_state.mission_route.has_state()) {
+      runtime_status.mutable_mission_route()->CopyFrom(
+          coordinator_state.mission_route);
+    }
   }
   if (execution.blockers_size() > 0) {
     for (const auto& blocker : execution.blockers()) {

@@ -28,6 +28,7 @@ DECLARE_string(chassis_detail_topic);
 DECLARE_string(localization_topic);
 DECLARE_string(planning_learning_data_topic);
 DECLARE_string(planning_trajectory_topic);
+DECLARE_string(motion_directive_topic);
 DECLARE_string(planning_pad_topic);
 DECLARE_string(monitor_topic);
 DECLARE_string(pad_topic);

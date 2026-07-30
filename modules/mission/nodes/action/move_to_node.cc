@@ -60,7 +60,6 @@ BT::NodeStatus MoveToNode::onStart() {
   command.set_preemptible(true);
   *command.mutable_goal()->mutable_goal_pose() = target_pose;
   MissionContext::Instance()->SendPlanningCommand(command);
-  MissionContext::Instance()->SendRoutingRequest(target_pose);
   return BT::NodeStatus::RUNNING;
 }
 
