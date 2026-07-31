@@ -51,8 +51,7 @@ filegroup(
     name = "recorder",
     srcs = [
         "cyberfile.xml",
-        "record_bag.py",
-        "record_bag.sh",
+        "recording_launcher.py",
     ],
 )
 

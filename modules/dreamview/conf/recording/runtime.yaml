@@ -1,0 +1,20 @@
+version: 1
+
+subscription:
+  default_action: include
+  selectors:
+    - name: exclude_raw_lidar
+      match:
+        type: regex
+        pattern: "^/apollo/sensor/lidar(/.*)?$"
+      action: exclude
+    - name: exclude_raw_camera
+      match:
+        type: regex
+        pattern: "^/apollo/sensor/camera(/.*)?$"
+      action: exclude
+
+policies:
+  default:
+    policy:
+      compression: none

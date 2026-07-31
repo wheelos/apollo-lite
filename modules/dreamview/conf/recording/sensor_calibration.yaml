@@ -1,0 +1,9 @@
+version: 1
+
+subscription:
+  default_action: include
+
+policies:
+  default:
+    policy:
+      compression: none

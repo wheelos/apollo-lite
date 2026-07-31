@@ -25,6 +25,7 @@ filegroup(
         "conf/*.conf",
         "conf/*.txt",
         "conf/hmi_modes/**/*.txt",
+        "conf/recording/**/*.yaml",
         "launch/*.launch",
     ]),
 )
