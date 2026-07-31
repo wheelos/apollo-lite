@@ -48,6 +48,7 @@ cc_library(
         "//modules/drivers/camera_gst/proto:config_cc_proto",
         "@gstreamer//:gstreamer",
     ],
+    target_compatible_with = ["//tools/platform:jetson_orin"],
 )
 
 cc_library(
@@ -62,6 +63,7 @@ cc_library(
         "@gstreamer//:gstreamer",
     ],
     alwayslink = True,
+    target_compatible_with = ["//tools/platform:jetson_orin"],
 )
 
 cc_binary(
@@ -69,6 +71,7 @@ cc_binary(
     linkshared = True,
     linkstatic = True,
     deps = [":camera_gst_component_lib"],
+    target_compatible_with = ["//tools/platform:jetson_orin"],
 )
 
 cc_test(
@@ -80,6 +83,7 @@ cc_test(
         ":camera_gst_core",
         "@com_google_googletest//:gtest",
     ],
+    target_compatible_with = ["//tools/platform:jetson_orin"],
 )
 
 cpplint()

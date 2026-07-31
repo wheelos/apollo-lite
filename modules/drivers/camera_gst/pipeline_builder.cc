@@ -397,7 +397,7 @@ std::string CameraGstPipelineBuilder::BuildSourceDescription(
          << ",width=(int)" << source_config.width() << ",height=(int)"
          << source_config.height() << ",framerate=(fraction)"
          << BuildFramerate(source_config.fps()) << " ! tee name=" << tee_name
-         << ' ';
+         << (direct_single_source_stream ? " allow-not-linked=true" : "") << ' ';
 
   if (publish_enabled) {
     const uint32_t publish_width = source_config.publish().output_width() == 0

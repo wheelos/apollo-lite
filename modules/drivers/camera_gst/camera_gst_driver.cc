@@ -55,27 +55,36 @@ bool CameraGstDriver::Init(const config::Config& config,
     return false;
   }
 
-  stream_started_ = streamer_->streaming_active();
   return true;
 }
 
-void CameraGstDriver::StartStreaming() {
-  if (!stream_enabled_ || stream_started_ || streamer_ == nullptr) {
-    return;
+bool CameraGstDriver::StartStreaming() {
+  if (!stream_enabled_ || streamer_ == nullptr) {
+    return false;
+  }
+  if (streamer_->streaming_active()) {
+    return true;
   }
   if (!streamer_->StartStreaming()) {
     AERROR << "Failed to start camera_gst stream branch.";
-    return;
+    return false;
   }
-  stream_started_ = true;
+  return true;
 }
 
-void CameraGstDriver::StopStreaming() {
-  if (!stream_started_ || streamer_ == nullptr) {
-    return;
+bool CameraGstDriver::StopStreaming() {
+  if (streamer_ == nullptr || !streamer_->streaming_active()) {
+    return true;
   }
-  streamer_->StopStreaming();
-  stream_started_ = false;
+  if (!streamer_->StopStreaming()) {
+    AERROR << "Failed to stop camera_gst stream branch.";
+    return false;
+  }
+  return true;
+}
+
+bool CameraGstDriver::streaming_active() const {
+  return streamer_ != nullptr && streamer_->streaming_active();
 }
 
 int CameraGstDriver::output_width() const {

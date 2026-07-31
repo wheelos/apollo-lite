@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>camera_gst</name>
+        <dag_conf>/apollo/modules/drivers/camera_gst/dag/camera_gst.dag</dag_conf>
+        <process_name>camera_gst</process_name>
+    </module>
+</cyber>

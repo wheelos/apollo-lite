@@ -44,8 +44,9 @@ class CameraGstDriver {
             PublishCallback stitched_publish_callback,
             GpuFrameCallback gpu_frame_callback);
 
-  void StartStreaming();
-  void StopStreaming();
+  bool StartStreaming();
+  bool StopStreaming();
+  bool streaming_active() const;
 
   int output_width() const;
   int output_height() const;
@@ -55,7 +56,6 @@ class CameraGstDriver {
   config::Config config_;
   std::unique_ptr<CameraGstStreamer> streamer_;
   bool stream_enabled_ = false;
-  bool stream_started_ = false;
 };
 
 }  // namespace camera_gst

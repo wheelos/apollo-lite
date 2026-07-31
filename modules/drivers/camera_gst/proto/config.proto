@@ -72,6 +72,18 @@ message StreamConfig {
   optional uint32 perception_idr_interval = 25 [default = 30];
   optional uint32 perception_queue_capacity = 26 [default = 2];
   optional bool perception_insert_sps_pps = 27 [default = true];
+  optional string control_service_name = 28
+      [default = "/apollo/drivers/camera_gst/stream_control"];
+}
+
+message StreamControlRequest {
+  optional bool enable = 1;
+}
+
+message StreamControlResponse {
+  optional bool success = 1;
+  optional bool streaming = 2;
+  optional string message = 3;
 }
 
 message PlatformContract {

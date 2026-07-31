@@ -36,6 +36,19 @@ source cyber/setup.bash
 cyber_launch start modules/drivers/camera_gst/launch/camera_gst.launch
 ```
 
+### Build platform
+
+`camera_gst` is an opt-in Jetson Orin target because it requires the NVIDIA
+L4T GStreamer plugins. Build it only on an Orin-compatible toolchain:
+
+```bash
+bazel build --config=jetson_orin //modules/drivers/camera_gst:libcamera_gst_component.so
+```
+
+Other target platforms exclude `camera_gst` from `//modules/drivers:install`
+and mark its C++ targets incompatible, so they do not resolve or compile the
+Jetson-only GStreamer implementation.
+
 ### Config notes
 
 - `sources[*].uri` can be a V4L2 node such as `/dev/video0`, a numeric camera
@@ -51,6 +64,11 @@ cyber_launch start modules/drivers/camera_gst/launch/camera_gst.launch
 - `stream.branch_pipeline` should begin with a `queue` and consume stitched
   `video/x-raw(memory:NVMM),format=NV12`. A production branch can be NVENC + RTP,
   or a `webrtcbin` branch if the surrounding system provides signaling.
+- When `stream.enable=true`, the component serves
+  `StreamControlRequest { enable: true|false }` at
+  `stream.control_service_name`. The response reports `success` and the current
+  `streaming` state. The H.264 and dual-role scenarios default to
+  `auto_start=false`, so RTP transmission begins only after an enable request.
 - For autonomous driving efficiency, the recommended deployment is: per-source
   Cyber publish for inference, stitched GPU branch for operator stream, and no
   CPU copies anywhere else in the graph.

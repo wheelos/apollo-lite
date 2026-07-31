@@ -23,6 +23,7 @@ namespace drivers {
 namespace camera_gst {
 
 CameraGstComponent::~CameraGstComponent() {
+  stream_control_service_.reset();
   driver_.reset();
   if (gpu_frames_.load() > 0) {
     AINFO << "camera_gst gpu frames observed=" << gpu_frames_.load();
@@ -89,7 +90,52 @@ bool CameraGstComponent::Init() {
     driver_.reset();
     return false;
   }
+  if (config_.stream().enable()) {
+    stream_control_service_ =
+        node_->CreateService<config::StreamControlRequest,
+                             config::StreamControlResponse>(
+            config_.stream().control_service_name(),
+            [this](const std::shared_ptr<config::StreamControlRequest>& request,
+                   std::shared_ptr<config::StreamControlResponse>& response) {
+              HandleStreamControl(request, response);
+            });
+    if (stream_control_service_ == nullptr) {
+      AERROR << "Failed to create camera_gst stream control service: "
+             << config_.stream().control_service_name();
+      driver_.reset();
+      return false;
+    }
+  }
   return true;
+}
+
+void CameraGstComponent::HandleStreamControl(
+    const std::shared_ptr<config::StreamControlRequest>& request,
+    std::shared_ptr<config::StreamControlResponse>& response) {
+  if (response == nullptr) {
+    return;
+  }
+  if (request == nullptr || !request->has_enable()) {
+    response->set_success(false);
+    response->set_streaming(driver_ != nullptr && driver_->streaming_active());
+    response->set_message("stream control request must set enable");
+    return;
+  }
+  if (driver_ == nullptr) {
+    response->set_success(false);
+    response->set_streaming(false);
+    response->set_message("camera_gst driver is unavailable");
+    return;
+  }
+
+  const bool success =
+      request->enable() ? driver_->StartStreaming() : driver_->StopStreaming();
+  response->set_success(success);
+  response->set_streaming(driver_->streaming_active());
+  response->set_message(
+      success ? (request->enable() ? "stream enabled" : "stream disabled")
+              : (request->enable() ? "failed to enable stream"
+                                   : "failed to disable stream"));
 }
 
 }  // namespace camera_gst

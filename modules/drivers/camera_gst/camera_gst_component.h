@@ -8,6 +8,7 @@
 #include "modules/drivers/camera_gst/proto/config.pb.h"
 
 #include "cyber/component/component.h"
+#include "cyber/service/service.h"
 #include "modules/drivers/camera_gst/camera_gst_driver.h"
 
 namespace apollo {
@@ -21,9 +22,15 @@ class CameraGstComponent : public apollo::cyber::Component<> {
 
  private:
   bool ValidateGpuOnlyConfig() const;
+  void HandleStreamControl(
+      const std::shared_ptr<config::StreamControlRequest>& request,
+      std::shared_ptr<config::StreamControlResponse>& response);
 
   config::Config config_;
   std::unique_ptr<CameraGstDriver> driver_;
+  std::shared_ptr<apollo::cyber::Service<config::StreamControlRequest,
+                                         config::StreamControlResponse>>
+      stream_control_service_;
   std::atomic<uint64_t> gpu_frames_{0};
 };
 

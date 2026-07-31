@@ -588,9 +588,6 @@ void CameraGstStreamer::ReleasePipelineLocked() {
     gst_object_unref(stitched_publish_sink_);
     stitched_publish_sink_ = nullptr;
   }
-  source_sink_contexts_.clear();
-  gpu_sink_contexts_.clear();
-  stitched_sink_context_.reset();
   if (stitched_tee_ != nullptr) {
     gst_object_unref(stitched_tee_);
     stitched_tee_ = nullptr;
@@ -601,9 +598,13 @@ void CameraGstStreamer::ReleasePipelineLocked() {
   }
   if (pipeline_ != nullptr) {
     gst_element_set_state(pipeline_, GST_STATE_NULL);
+    gst_element_get_state(pipeline_, nullptr, nullptr, GST_CLOCK_TIME_NONE);
     gst_object_unref(pipeline_);
     pipeline_ = nullptr;
   }
+  source_sink_contexts_.clear();
+  gpu_sink_contexts_.clear();
+  stitched_sink_context_.reset();
 }
 
 bool CameraGstStreamer::ForceKeyFrameLocked() {

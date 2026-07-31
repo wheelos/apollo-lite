@@ -76,7 +76,8 @@ TEST(CameraGstPipelineBuilderTest, BuildsGpuHandleAndCpuPublishBranches) {
             std::string::npos);
   EXPECT_NE(pipeline.find("appsink name=source_gpu_sink_0"), std::string::npos);
   EXPECT_EQ(pipeline.find("nvcompositor name=comp"), std::string::npos);
-  EXPECT_NE(pipeline.find("tee name=stitched_tee"), std::string::npos);
+  EXPECT_NE(pipeline.find("tee name=stitched_tee allow-not-linked=true"),
+            std::string::npos);
   EXPECT_NE(pipeline.find("video/x-raw,width=(int)1280,height=(int)720"),
             std::string::npos);
   EXPECT_NE(pipeline.find("videorate ! video/x-raw,format=(string)RGB,"
