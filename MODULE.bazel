@@ -33,6 +33,9 @@ qt_ext = use_extension("//third_party/qt5:extensions.bzl", "qt")
 libtorch_ext = use_extension("//third_party/libtorch:extensions.bzl", "libtorch_ext")
 use_repo(libtorch_ext, "libtorch_cpu", "libtorch_gpu")
 
+gstreamer_ext = use_extension("//third_party/gstreamer:extensions.bzl", "gstreamer")
+use_repo(gstreamer_ext, "gstreamer")
+
 use_repo(ffmpeg_ext, "ffmpeg")
 use_repo(qt_ext, "qt")
 

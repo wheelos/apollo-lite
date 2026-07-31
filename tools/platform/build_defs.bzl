@@ -32,3 +32,9 @@ def if_aarch64(if_true, if_false = []):
         "@platforms//cpu:aarch64": if_true,
         "//conditions:default": if_false,
     })
+
+def if_jetson_orin(if_true, if_false = []):
+    return select({
+        "//tools/platform:is_jetson_orin": if_true,
+        "//conditions:default": if_false,
+    })

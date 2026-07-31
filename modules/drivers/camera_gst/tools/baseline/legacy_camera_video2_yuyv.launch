@@ -1,0 +1,7 @@
+<cyber>
+  <module>
+    <name>legacy_camera_video2_yuyv</name>
+    <dag_conf>/apollo/modules/drivers/camera_gst/tools/baseline/legacy_camera_video2_yuyv.dag</dag_conf>
+    <process_name>legacy_camera_video2_yuyv</process_name>
+  </module>
+</cyber>
