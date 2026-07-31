@@ -42,13 +42,10 @@ class HMI {
                                  const std::string &scenario_set_name);
   bool UpdateDynamicModelToStatus(const std::string &dynamic_model_name);
   bool UpdateRecordToStatus();
-  bool UpdateVehicleToStatus();
   bool UpdateCameraChannelToStatus(const std::string& channel_name);
   bool UpdatePointChannelToStatus(const std::string& channel_name);
 
  private:
-  // Send VehicleParam to the given conn, or broadcast if conn is null.
-  void SendVehicleParam(WebSocketHandler::Connection *conn = nullptr);
   void SendStatus(WebSocketHandler::Connection *conn = nullptr);
 
   void RegisterMessageHandlers();

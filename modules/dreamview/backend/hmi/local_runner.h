@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2017 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,28 +17,21 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
-#include "cyber/common/macros.h"
+#include "modules/dreamview/backend/hmi/process_types.h"
 
-#include "modules/dreamview/proto/hmi_config.pb.h"
-
-/**
- * @namespace apollo::dreamview
- * @brief apollo::dreamview
- */
 namespace apollo {
 namespace dreamview {
 
-class VehicleManager {
+class LocalRunner {
  public:
-  bool UseVehicle(const std::string& vehicle_data_path);
-  const std::string& GetVehicleDataPath() const;
+  bool Start(const std::string& raw_command, ProcessHandle* handle) const;
+  bool Stop(const ProcessHandle& handle,
+            const std::vector<std::string>& keywords) const;
 
  private:
-  std::string vehicle_data_path_;
-  VehicleData vehicle_data_;
-
-  DECLARE_SINGLETON(VehicleManager)
+  static std::string NormalizeStartCommand(const std::string& raw_command);
 };
 
 }  // namespace dreamview

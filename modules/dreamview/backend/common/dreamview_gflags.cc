@@ -100,15 +100,6 @@ DEFINE_string(default_preprocess_config_path,
               "/apollo/modules/dreamview/conf/preprocess_table.pb.txt",
               "Sensor calibration preprocess table config path.");
 
-DEFINE_string(vehicle_calibration_mode, "Vehicle Calibration",
-              "Name of vehicle calibration mode.");
-
-DEFINE_string(lidar_calibration_mode, "Lidar-IMU Sensor Calibration",
-              "Name of lidar_to_gnss calibration mode.");
-
-DEFINE_string(camera_calibration_mode, "Camera-Lidar Sensor Calibration",
-              "Name of camera_to_lidar calibration mode.");
-
 DEFINE_double(parking_routing_distance_threshold, 20.0,
               "For open space planner parking situation: get the routing"
               "end point based on this threshold.");

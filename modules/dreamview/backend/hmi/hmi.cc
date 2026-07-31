@@ -28,7 +28,6 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/util/json_util.h"
 #include "modules/dreamview/backend/common/dreamview_gflags.h"
-#include "modules/dreamview/backend/fuel_monitor/fuel_monitor_manager.h"
 #include "modules/dreamview/backend/point_cloud/point_cloud_updater.h"
 
 namespace apollo {
@@ -66,16 +65,12 @@ void HMI::RegisterMessageHandlers() {
         if (status->current_map().empty()) {
           monitor_log_buffer_.WARN("You haven't selected a map yet!");
         }
-        if (status->current_vehicle().empty()) {
-          monitor_log_buffer_.WARN("You haven't selected a vehicle yet!");
-        }
       });
 
   // Send current status and vehicle param to newly joined client.
   websocket_->RegisterConnectionReadyHandler(
       [this](WebSocketHandler::Connection* conn) {
         SendStatus(conn);
-        SendVehicleParam(conn);
       });
 
   websocket_->RegisterMessageHandler(
@@ -105,10 +100,6 @@ void HMI::RegisterMessageHandlers() {
           // Reload simulation map after changing map.
           ACHECK(map_service_->ReloadMap(true))
               << "Failed to load new simulation map: " << value;
-        } else if (hmi_action == HMIAction::CHANGE_VEHICLE) {
-          // Reload lidar params for point cloud service.
-          PointCloudUpdater::LoadLidarHeight(FLAGS_lidar_height_yaml);
-          SendVehicleParam();
         }
       });
 
@@ -171,15 +162,14 @@ void HMI::RegisterMessageHandlers() {
   websocket_->RegisterMessageHandler(
       "SensorCalibrationPreprocess",
       [this](const Json& json, WebSocketHandler::Connection* conn) {
-        // json should contain type and data.
-        std::string current_mode = hmi_worker_->GetStatus().current_mode();
-        std::string task_type;
-        if (current_mode == FLAGS_lidar_calibration_mode) {
-          task_type = "lidar_to_gnss";
-        } else if (current_mode == FLAGS_camera_calibration_mode) {
-          task_type = "camera_to_lidar";
-        } else {
-          AERROR << "Unsupported mode:" << current_mode;
+        const auto type_iter = json.find("type");
+        if (type_iter == json.end() || !type_iter->is_string()) {
+          AERROR << "The json has no valid key: type";
+          return;
+        }
+        const std::string task_type = type_iter->get<std::string>();
+        if (task_type != "lidar_to_gnss" && task_type != "camera_to_lidar") {
+          AERROR << "Unsupported sensor calibration type: " << task_type;
           return;
         }
 
@@ -205,27 +195,6 @@ void HMI::RegisterMessageHandlers() {
         hmi_worker_->SensorCalibrationPreprocess(task_type);
       });
 
-  websocket_->RegisterMessageHandler(
-      "VehicleCalibrationPreprocess",
-      [this](const Json& json, WebSocketHandler::Connection* conn) {
-        hmi_worker_->VehicleCalibrationPreprocess();
-      });
-}
-
-void HMI::SendVehicleParam(WebSocketHandler::Connection* conn) {
-  if (websocket_ == nullptr) {
-    return;
-  }
-
-  const auto& vehicle_param =
-      apollo::common::VehicleConfigHelper::GetConfig().vehicle_param();
-  const std::string json_str =
-      JsonUtil::ProtoToTypedJson("VehicleParam", vehicle_param).dump();
-  if (conn != nullptr) {
-    websocket_->SendData(conn, json_str);
-  } else {
-    websocket_->BroadcastData(json_str);
-  }
 }
 
 void HMI::SendStatus(WebSocketHandler::Connection* conn) {
@@ -245,8 +214,6 @@ bool HMI::UpdateDynamicModelToStatus(const std::string& dynamic_model_name) {
 }
 
 bool HMI::UpdateRecordToStatus() { return hmi_worker_->LoadRecords(); }
-
-bool HMI::UpdateVehicleToStatus() { return hmi_worker_->ReloadVehicles(); }
 
 bool HMI::UpdateCameraChannelToStatus(const std::string& channel_name) {
   hmi_worker_->UpdateCameraSensorChannelToStatus(channel_name);

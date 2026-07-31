@@ -86,6 +86,10 @@ class ArgManager(object):
                                  'that case, the False value is ignored.')
         self.parser.add_argument('--stop', default=False, action="store_true",
                                  help='Stop recorder.')
+        self.parser.add_argument('--foreground', default=False,
+                                 action="store_true",
+                                 help='Keep the recorder attached to the '
+                                 'calling process.')
         self.parser.add_argument('--split_duration', default="1m",
                                  help='Duration to split bags, will be applied '
                                  'as parameter to "rosbag record --duration".')
@@ -164,6 +168,14 @@ class Recorder(object):
             source /apollo/scripts/runtime_env.sh
             nohup cyber_recorder record -c {} >{} 2>&1 &
         '''.format(task_dir, topics_str, log_file)
+        if self.args.foreground:
+            os.chdir(task_dir)
+            os.execv('/bin/bash', [
+                'bash', '-lc',
+                'source /apollo/scripts/apollo_base.sh && '
+                'source /apollo/scripts/runtime_env.sh && '
+                'exec cyber_recorder record -c {} >{} 2>&1'.format(
+                    topics_str, log_file)])
         shell_cmd(cmd)
 
     @staticmethod

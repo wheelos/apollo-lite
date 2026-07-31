@@ -20,9 +20,12 @@ According to the HMIConfig, HMI Worker could trigger actions like:
 - Submit DriveEvent which will be recorded as a ROS message.
 - Get current HMIConfig and HMIStatus, which could be used for UI update.
 
-## Vehicle Manager
+### Process Orchestration Modules
 
-VehicleManager is the one to actually config everything when changing vehicles.
-The major thing is to copy all vehicle-wised parameter files to right place. The
-source and destination mappings are defined by
-modules/dreamview/conf/vehicle_data.pb.txt.
+To keep process control logic decoupled, HMI now separates responsibilities:
+
+- `ModeRegistry`: load mode files and deeply merge `base_mode` inheritance.
+- `ProcessManager`: own lifecycle state, dependencies, and exclusivity.
+- `LocalRunner`: execute, stop, and reap dedicated process groups.
+- `ReadinessProbe`: verify the managed process identity and readiness keywords.
+- `HMIStatusBridge`: write module running state into `HMIStatus`.

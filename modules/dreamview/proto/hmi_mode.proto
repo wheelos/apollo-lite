@@ -107,6 +107,13 @@ message Module {
   optional ProcessMonitorConfig process_monitor_config = 3;
   // Whether to trigger safe-mode if the module is down.
   optional bool required_for_safety = 4 [default = true];
+  // Module dependencies. A module starts only after dependencies are started,
+  // and stops before dependencies.
+  repeated string depends_on = 5;
+  // Whether SETUP_MODE starts this module automatically.
+  optional bool auto_start = 6 [default = true];
+  // Modules in the same non-empty group cannot run simultaneously.
+  optional string exclusive_group = 7;
 }
 
 // A CyberModule will be translated to a regular Module upon loading.
@@ -121,4 +128,6 @@ message HMIMode {
   map<string, Module> modules = 2;
   map<string, MonitoredComponent> monitored_components = 3;
   map<string, ProcessMonitorConfig> other_components = 4;
+  // Relative or absolute path to the base mode config.
+  optional string base_mode = 5;
 }

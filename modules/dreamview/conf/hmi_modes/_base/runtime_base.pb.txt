@@ -1,11 +1,4 @@
 cyber_modules {
-  key: "Camera"
-  value: {
-    dag_files: "/apollo/modules/drivers/camera/dag/camera.dag"
-    dag_files: "/apollo/modules/drivers/video/dag/video.dag"
-  }
-}
-cyber_modules {
   key: "Canbus"
   value: {
     dag_files: "/apollo/modules/canbus/dag/canbus.dag"
@@ -23,6 +16,17 @@ cyber_modules {
     dag_files: "/apollo/modules/drivers/gnss/dag/gnss.dag"
   }
 }
+modules {
+  key: "Localization"
+  value: {
+    start_command: "mainboard -d /apollo/modules/localization/dag/dag_streaming_rtk_localization.dag"
+    process_monitor_config {
+      command_keywords: "mainboard"
+      command_keywords: "/apollo/modules/localization/dag/dag_streaming_rtk_localization.dag"
+    }
+    depends_on: "GPS"
+  }
+}
 cyber_modules {
   key: "Guardian"
   value: {
@@ -30,15 +34,9 @@ cyber_modules {
   }
 }
 cyber_modules {
-  key: "Localization"
-  value: {
-    dag_files: "/apollo/modules/localization/dag/dag_streaming_rtk_localization.dag"
-  }
-}
-cyber_modules {
   key: "Perception"
   value: {
-    dag_files: "/apollo/modules/perception/production/dag/dag_streaming_perception_lgsvl.dag"
+    dag_files: "/apollo/modules/perception/production/dag/dag_streaming_perception.dag"
   }
 }
 cyber_modules {
@@ -83,23 +81,10 @@ cyber_modules {
     dag_files: "/apollo/modules/transform/dag/static_transform.dag"
   }
 }
-cyber_modules {
-  key: "Velodyne"
-  value: {
-    dag_files: "/apollo/modules/drivers/lidar/velodyne/dag/velodyne.dag"
-  }
-}
-cyber_modules {
-  key: "Third Party Perception"
-  value: {
-    dag_files: "/apollo/modules/third_party_perception/dag/third_party_perception.dag"
-  }
-}
 modules {
   key: "Recorder"
   value: {
-    start_command: "/apollo/scripts/record_bag.py --start"
-    stop_command: "/apollo/scripts/record_bag.py --stop"
+    start_command: "python3 /apollo/scripts/record_bag.py --start --foreground"
     process_monitor_config {
       command_keywords: "cyber_recorder record"
     }
@@ -113,13 +98,11 @@ monitored_components {
     }
     resource {
       disk_spaces {
-        # For logs.
         path: "/apollo/data"
         insufficient_space_warning: 8
         insufficient_space_error: 2
       }
       disk_spaces {
-        # For records.
         path: "/media/apollo/internal_nvme"
         insufficient_space_warning: 128
         insufficient_space_error: 32
@@ -134,20 +117,10 @@ monitored_components {
       command_keywords: "mainboard"
       command_keywords: "/apollo/modules/drivers/gnss/dag/gnss.dag"
     }
-    # We also have a special GPSMonitor to check message status.
   }
 }
 monitored_components {
   key: "Localization"
   value: {
-    # Special LocalizationMonitor.
-  }
-}
-monitored_components {
-  key: "Lidar 128"
-  value: {
-    channel {
-      name: "/apollo/sensor/lidar128/compensator/PointCloud2"
-    }
   }
 }

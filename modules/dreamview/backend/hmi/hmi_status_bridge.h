@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2020 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
-#include "modules/dreamview/backend/fuel_monitor/fuel_monitor_gflags.h"
 
-DEFINE_string(data_collection_monitor_name, "DataCollectionMonitor",
-              "Name of the data collection monitor");
+#pragma once
 
-DEFINE_string(preprocess_monitor_name, "PreprocessMonitor",
-              "Name of the preprocess monitor");
+#include <string>
 
-DEFINE_string(progress_topic, "/apollo/dreamview/progress",
-              "Sensor calibration preprocess progress topic name.");
+#include "wheelos_msgs/dreamview_msgs/hmi_status.pb.h"
+#include "modules/dreamview/proto/hmi_mode.pb.h"
+
+namespace apollo {
+namespace dreamview {
+
+class HMIStatusBridge {
+ public:
+  static void PopulateModeStatus(const HMIMode& mode, HMIStatus* status);
+  static bool SetModuleRunning(HMIStatus* status, const std::string& module,
+                               bool running);
+};
+
+}  // namespace dreamview
+}  // namespace apollo

@@ -12,48 +12,8 @@ install(
     runtime_dest = "dreamview/bin",
     targets = [
         ":hmi_worker",
-        ":vehicle_manager_main",
     ],
     visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "vehicle_manager",
-    srcs = ["vehicle_manager.cc"],
-    hdrs = ["vehicle_manager.h"],
-    copts = DREAMVIEW_COPTS,
-    deps = [
-        "@core//cyber",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/dreamview/proto:hmi_config_cc_proto",
-        "@com_github_gflags_gflags//:gflags",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_binary(
-    name = "vehicle_manager_main",
-    srcs = ["vehicle_manager_main.cc"],
-    copts = DREAMVIEW_COPTS,
-    deps = [
-        ":vehicle_manager",
-        "@core//cyber",
-        "@com_github_gflags_gflags//:gflags",
-    ],
-)
-
-cc_test(
-    name = "vehicle_manager_test",
-    size = "small",
-    srcs = ["vehicle_manager_test.cc"],
-    data = glob(["testdata/**"]),
-    deps = [
-        ":vehicle_manager",
-        "@core//cyber",
-        "@com_github_gflags_gflags//:gflags",
-        "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
-    ],
 )
 
 cc_library(
@@ -71,7 +31,6 @@ cc_library(
         "//modules/common/util:util_tool",
         "//modules/common/util:string_util",
         "//modules/dreamview/backend/common:dreamview_gflags",
-        "//modules/dreamview/backend/fuel_monitor:fuel_monitor_manager",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/backend/map:map_service",
         "//modules/dreamview/backend/point_cloud:point_cloud_updater",
@@ -82,14 +41,25 @@ cc_library(
 cc_library(
     name = "hmi_worker",
     srcs = [
+        "hmi_status_bridge.cc",
         "hmi_worker.cc",
+        "local_runner.cc",
+        "mode_registry.cc",
+        "process_manager.cc",
+        "readiness_probe.cc",
     ],
-    hdrs = ["hmi_worker.h"],
+    hdrs = [
+        "hmi_status_bridge.h",
+        "hmi_worker.h",
+        "local_runner.h",
+        "mode_registry.h",
+        "process_manager.h",
+        "process_types.h",
+        "readiness_probe.h",
+    ],
     copts = DREAMVIEW_COPTS,
     deps = [
-        ":vehicle_manager",
         "@core//cyber",
-        "@core//cyber/proto:dag_conf_cc_proto",
         "@wheelos_msgs//wheelos_msgs/audio_msgs:audio_event_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_event_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
@@ -102,10 +72,6 @@ cc_library(
         "//modules/common/kv_db",
         "//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
-        "//modules/dreamview/backend/fuel_monitor:data_collection_monitor",
-        "//modules/dreamview/backend/fuel_monitor:fuel_monitor_gflags",
-        "//modules/dreamview/backend/fuel_monitor:fuel_monitor_manager",
-        "//modules/dreamview/backend/fuel_monitor:preprocess_monitor",
         "//modules/dreamview/proto:hmi_config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/dreamview_msgs:hmi_status_cc_proto",
         "//modules/dreamview/proto:scenario_cc_proto",
@@ -120,6 +86,7 @@ cc_test(
     name = "hmi_worker_test",
     size = "small",
     srcs = ["hmi_worker_test.cc"],
+    data = ["//modules/dreamview:dreamview_conf"],
     deps = [
         ":hmi_worker",
         "@com_google_googletest//:gtest_main",

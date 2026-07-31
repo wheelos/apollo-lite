@@ -26,7 +26,6 @@
 #include "modules/common/util/json_util.h"
 #include "modules/common/util/map_util.h"
 #include "modules/dreamview/backend/common/dreamview_gflags.h"
-#include "modules/dreamview/backend/fuel_monitor/fuel_monitor_manager.h"
 #include "modules/map/hdmap/hdmap_util.h"
 
 namespace apollo {
@@ -544,42 +543,12 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
       });
 
   websocket_->RegisterMessageHandler(
-      "RequestDataCollectionProgress",
-      [this](const Json &json, WebSocketHandler::Connection *conn) {
-        auto *monitors = FuelMonitorManager::Instance()->GetCurrentMonitors();
-        if (monitors) {
-          const auto iter = monitors->find("DataCollectionMonitor");
-          if (iter != monitors->end() && iter->second->IsEnabled()) {
-            Json response;
-            response["type"] = "DataCollectionProgress";
-            response["data"] = iter->second->GetProgressAsJson();
-            websocket_->SendData(conn, response.dump());
-          }
-        }
-      });
-
-  websocket_->RegisterMessageHandler(
       "GetParkingRoutingDistance",
       [this](const Json &json, WebSocketHandler::Connection *conn) {
         Json response;
         response["type"] = "ParkingRoutingDistance";
         response["threshold"] = FLAGS_parking_routing_distance_threshold;
         websocket_->SendData(conn, response.dump());
-      });
-
-  websocket_->RegisterMessageHandler(
-      "RequestPreprocessProgress",
-      [this](const Json &json, WebSocketHandler::Connection *conn) {
-        auto *monitors = FuelMonitorManager::Instance()->GetCurrentMonitors();
-        if (monitors) {
-          const auto iter = monitors->find("PreprocessMonitor");
-          if (iter != monitors->end() && iter->second->IsEnabled()) {
-            Json response;
-            response["type"] = "PreprocessProgress";
-            response["data"] = iter->second->GetProgressAsJson();
-            websocket_->SendData(conn, response.dump());
-          }
-        }
       });
 
   websocket_->RegisterMessageHandler(

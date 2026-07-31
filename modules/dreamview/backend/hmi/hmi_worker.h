@@ -47,6 +47,8 @@
 namespace apollo {
 namespace dreamview {
 
+class ProcessManager;
+
 // Singleton worker which does the actual work of HMI actions.
 class HMIWorker {
  public:
@@ -54,6 +56,7 @@ class HMIWorker {
       const std::string& function_name, const nlohmann::json& param_json)>;
   HMIWorker() : HMIWorker(cyber::CreateNode("HMI")) {}
   explicit HMIWorker(const std::shared_ptr<apollo::cyber::Node>& node);
+  ~HMIWorker();
   void Start(DvCallback callback_api);
   void Stop();
 
@@ -84,9 +87,6 @@ class HMIWorker {
   // Run sensor calibration preprocess
   void SensorCalibrationPreprocess(const std::string& task_type);
 
-  // Run vehicle calibration preprocess
-  void VehicleCalibrationPreprocess();
-
   // Get current HMI status.
   HMIStatus GetStatus() const;
 
@@ -101,7 +101,6 @@ class HMIWorker {
   // bool UpdateRecordToStatus(const std::string& record_id,
   //                     const std::string& record_status);
   bool LoadRecords();
-  bool ReloadVehicles();
   void GetScenarioSetPath(const std::string& scenario_set_id,
                           std::string* scenario_set_path);
   void UpdateCameraSensorChannelToStatus(const std::string& channel_name);
@@ -116,14 +115,13 @@ class HMIWorker {
   void StatusUpdateThreadLoop();
 
   // Start / reset current mode.
-  void SetupMode() const;
-  void ResetMode() const;
+  void SetupMode();
+  void ResetMode();
   bool ResetSimObstacle(const std::string& scenario_id);
 
-  // Change current mode, launch, map, vehicle and driving mode.
+  // Change current mode, launch, map, and driving mode.
   void ChangeMode(const std::string& mode_name);
   bool ChangeMap(const std::string& map_name);
-  void ChangeVehicle(const std::string& vehicle_name);
   void ChangeScenarioSet(const std::string& scenario_set_id);
   void ChangeRecord(const std::string& record_id);
   void ChangeDynamicModel(const std::string& dynamic_model_name);
@@ -144,8 +142,8 @@ class HMIWorker {
   bool RePlayRecord(const std::string& record_id);
 
   // Start / stop a module.
-  void StartModule(const std::string& module) const;
-  void StopModule(const std::string& module) const;
+  void StartModule(const std::string& module);
+  void StopModule(const std::string& module);
   bool StopModuleByCommand(const std::string& stop_command) const;
   void StopRecordPlay();
 
@@ -160,11 +158,11 @@ class HMIWorker {
   HMIMode current_mode_;
   bool status_changed_ = false;
   size_t last_status_fingerprint_{};
-  bool stop_ = false;
+  std::atomic<bool> stop_{false};
   mutable boost::shared_mutex status_mutex_;
-  mutable size_t record_count_ = 0;
   std::future<void> thread_future_;
   std::vector<StatusUpdateHandler> status_update_handlers_;
+  std::unique_ptr<ProcessManager> process_manager_;
 
   // Cyber members.
   std::shared_ptr<apollo::cyber::Node> node_;

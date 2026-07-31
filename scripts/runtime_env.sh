@@ -2,8 +2,8 @@
 
 # Unified runtime environment bootstrap for cyber tools.
 # Priority:
-# 1) Legacy in-repo cyber/setup.bash (if present)
-# 2) External wheelos_core runtime script (preferred)
+# 1) External wheelos_core runtime script (preferred)
+# 2) Existing PATH/PYTHONPATH state
 
 if [[ "${APOLLO_RUNTIME_ENV_SOURCED:-0}" == "1" ]]; then
   return 0
@@ -61,11 +61,15 @@ _source_core_runtime() {
 
 _inject_apollo_external_core_outputs() {
   local repo_name
+  local proj_repo_name
   local output_root
   local core_execroot
   local py_internal_dir
+  local proj_data_dir
+  local proj_data_found=0
   local bazel_bin_from_info
   local repo_candidates=(wheelos_core~ core~ core+ core)
+  local proj_repo_candidates=(proj~ proj+ proj)
   local output_roots=("${APOLLO_ROOT_DIR}/bazel-bin")
   local tool_dirs=(
     "cyber/mainboard"
@@ -100,15 +104,19 @@ _inject_apollo_external_core_outputs() {
         _pathprepend "${py_internal_dir}" PYTHONPATH
       fi
     done
+    for proj_repo_name in "${proj_repo_candidates[@]}"; do
+      proj_data_dir="${output_root}/external/${proj_repo_name}/data"
+      if [[ -f "${proj_data_dir}/proj.db" ]]; then
+        export PROJ_DATA="${proj_data_dir}"
+        proj_data_found=1
+        break
+      fi
+    done
+    if [[ "${proj_data_found}" == "1" ]]; then
+      break
+    fi
   done
 }
-
-# Legacy compatibility: old Apollo layout still ships cyber/setup.bash.
-if _source_if_exists "${APOLLO_ROOT_DIR}/cyber/setup.bash" ||
-  _source_if_exists "/apollo/cyber/setup.bash"; then
-  _inject_apollo_external_core_outputs
-  return 0
-fi
 
 # Preferred: external wheelos_core runtime env.
 for core_root in \

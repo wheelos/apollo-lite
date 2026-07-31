@@ -1,0 +1,50 @@
+modules {
+  key: "Mock Prediction"
+  value: {
+    start_command: "python3 /apollo/modules/tools/whl-mock/publisher.py --publish --input /apollo/modules/tools/whl-mock/PredictionObstacles_empty_template.txt --topic /apollo/prediction --period 0.1"
+    process_monitor_config {
+      command_keywords: "publisher.py --publish"
+      command_keywords: "PredictionObstacles_empty_template.txt"
+      command_keywords: "/apollo/prediction"
+    }
+    required_for_safety: false
+    auto_start: false
+  }
+}
+modules {
+  key: "Mock Traffic Light"
+  value: {
+    start_command: "python3 /apollo/modules/tools/whl-mock/publisher.py --publish --input /apollo/modules/tools/whl-mock/TrafficLightDetection_mock_template.txt --topic /apollo/perception/traffic_light --period 0.1"
+    process_monitor_config {
+      command_keywords: "publisher.py --publish"
+      command_keywords: "TrafficLightDetection_mock_template.txt"
+      command_keywords: "/apollo/perception/traffic_light"
+    }
+    required_for_safety: false
+    auto_start: false
+  }
+}
+modules {
+  key: "CyberRecorder Full"
+  value: {
+    start_command: "python3 /apollo/scripts/record_bag.py --start --all --foreground"
+    process_monitor_config {
+      command_keywords: "cyber_recorder record"
+    }
+    required_for_safety: false
+    auto_start: false
+    exclusive_group: "recorder"
+  }
+}
+modules {
+  key: "CyberRecorder Small"
+  value: {
+    start_command: "python3 /apollo/scripts/record_bag.py --start --foreground"
+    process_monitor_config {
+      command_keywords: "cyber_recorder record"
+    }
+    required_for_safety: false
+    auto_start: false
+    exclusive_group: "recorder"
+  }
+}

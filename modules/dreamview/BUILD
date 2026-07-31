@@ -24,7 +24,7 @@ filegroup(
     srcs = glob([
         "conf/*.conf",
         "conf/*.txt",
-        "conf/hmi_modes/*.txt",
+        "conf/hmi_modes/**/*.txt",
         "launch/*.launch",
     ]),
 )

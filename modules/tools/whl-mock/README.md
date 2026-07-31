@@ -42,6 +42,13 @@ python publisher.py --publish -i ADCTrajectory_template.txt -t /apollo/planning
 # python publisher.py --publish -i your_message_template.txt -t /your_topic -p 0.1
 ```
 
+For HMI-managed debug publishing, this directory also provides:
+
+- `PredictionObstacles_empty_template.txt`
+- `TrafficLightDetection_mock_template.txt`
+
+These templates are referenced by HMI mode module configs directly.
+
 3. In another terminal, run:
 
 ```shell

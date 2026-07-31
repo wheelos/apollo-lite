@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 2017 The Apollo Authors. All Rights Reserved.
+ * Copyright 2026 The Apollo Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,17 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "modules/dreamview/backend/hmi/vehicle_manager.h"
+#pragma once
 
-#include "cyber/common/log.h"
-#include "gflags/gflags.h"
+#include <sys/types.h>
 
-DEFINE_string(vehicle_data_path, "modules/calibration/data/mkz_example",
-              "Vehicle data path.");
+namespace apollo {
+namespace dreamview {
 
-int main(int argc, char **argv) {
-  FLAGS_logtostderr = true;
-  google::InitGoogleLogging(argv[0]);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+struct ProcessHandle {
+  pid_t pid = -1;
+  pid_t pgid = -1;
+};
 
-  apollo::dreamview::VehicleManager::Instance()->UseVehicle(
-      FLAGS_vehicle_data_path);
-  AINFO << "Switched to vehicle with data from " << FLAGS_vehicle_data_path;
-
-  return 0;
-}
+}  // namespace dreamview
+}  // namespace apollo

@@ -36,21 +36,12 @@ using std::string;
 // scenario_set: update one scenario set from studio to local
 // scenarios: update all scenarios
 namespace {
-std::map<string, int> data_type_dict = {{
-                                            "scenario_set", 0,
-                                        },
-                                        {
-                                            "scenarios", 1,
-                                        },
-                                        {
-                                            "dynamic_model", 2,
-                                        },
-                                        {
-                                            "records", 3,
-                                        },
-                                        {
-                                            "vehicles", 4,
-                                        }};
+std::map<string, int> data_type_dict = {
+    {"scenario_set", 0},
+    {"scenarios", 1},
+    {"dynamic_model", 2},
+    {"records", 3},
+};
 }  // namespace
 namespace apollo {     // namespace apollo
 namespace dreamview {  // namespace dreamview
@@ -385,9 +376,6 @@ bool PluginManager::UpdateData(const DvPluginMsg& msg, const string& json_str) {
     case 3: {
       update_data_res = callback_api_("UpdateRecordToStatus", info);
       break;
-    }
-    case 4: {
-      update_data_res = callback_api_("UpdateVehicleToStatus", info);
     }
     default:
       break;

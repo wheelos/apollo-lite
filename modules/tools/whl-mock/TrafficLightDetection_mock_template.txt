@@ -1,0 +1,6 @@
+traffic_light {
+  color: RED
+  id: "1083"
+  confidence: 1.0
+  tracking_time: 1.0
+}

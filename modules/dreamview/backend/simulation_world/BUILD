@@ -66,7 +66,6 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/mission_msgs:mission_request_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:poi_cc_proto",
         "//modules/dreamview/backend/common:dreamview_gflags",
-        "//modules/dreamview/backend/fuel_monitor:fuel_monitor_manager",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/backend/map:map_service",
         "//modules/dreamview/backend/perception_camera_updater",
