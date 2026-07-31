@@ -7,7 +7,6 @@ cc_library(
     name = "point_cloud_updater",
     srcs = ["point_cloud_updater.cc"],
     hdrs = ["point_cloud_updater.h"],
-    alwayslink = True,
     deps = [
         "@core//cyber",
         "//modules/common/adapters:adapter_gflags",

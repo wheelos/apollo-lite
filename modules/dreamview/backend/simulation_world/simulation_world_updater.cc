@@ -17,19 +17,31 @@
 #include "modules/dreamview/backend/simulation_world/simulation_world_updater.h"
 
 #include <cmath>
+#include <memory>
 
+#include "absl/strings/str_cat.h"
 #include "google/protobuf/util/json_util.h"
 
 #include "wheelos_msgs/mission_msgs/mission_request.pb.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/log.h"
+#include "cyber/cyber.h"
 #include "modules/common/util/json_util.h"
 #include "modules/common/util/map_util.h"
 #include "modules/dreamview/backend/common/dreamview_gflags.h"
+#include "modules/dreamview/backend/handlers/websocket_handler.h"
+#include "modules/dreamview/backend/map/map_service.h"
+#include "modules/dreamview/backend/perception_camera_updater/perception_camera_updater.h"
+#include "modules/dreamview/backend/plugins/plugin_manager.h"
+#include "modules/dreamview/backend/sim_control_manager/sim_control_manager.h"
+#include "modules/dreamview/backend/simulation_world/simulation_world_service.h"
 #include "modules/map/hdmap/hdmap_util.h"
 
 namespace apollo {
 namespace dreamview {
+
+SimulationWorldUpdater::~SimulationWorldUpdater() = default;
 
 using apollo::common::monitor::MonitorMessageItem;
 using apollo::common::util::ContainsKey;
@@ -169,7 +181,9 @@ SimulationWorldUpdater::SimulationWorldUpdater(
     WebSocketHandler *plugin_ws, const MapService *map_service,
     PerceptionCameraUpdater *perception_camera_updater,
     PluginManager *plugin_manager, bool routing_from_file)
-    : sim_world_service_(map_service, routing_from_file),
+    : sim_world_service_(
+          std::make_unique<SimulationWorldService>(map_service,
+                                                   routing_from_file)),
       map_service_(map_service),
       websocket_(websocket),
       map_ws_(map_ws),
@@ -228,7 +242,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
         // Navigation info in binary format
         auto navigation_info = std::make_shared<NavigationInfo>();
         if (navigation_info->ParseFromString(data)) {
-          sim_world_service_.PublishNavigationInfo(navigation_info);
+          sim_world_service_->PublishNavigationInfo(navigation_info);
         } else {
           AERROR << "Failed to parse navigation info from string. String size: "
                  << data.size();
@@ -255,7 +269,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
         response["mapRadius"] = *radius;
 
         MapElementIds ids;
-        sim_world_service_.GetMapElementIds(*radius, &ids);
+        sim_world_service_->GetMapElementIds(*radius, &ids);
         std::string elementIds;
         MessageToJsonString(ids, &elementIds);
         response["mapElementIds"] = Json::parse(elementIds);
@@ -278,11 +292,11 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
 
         bool succeed = ConstructRoutingRequest(json, routing_request.get());
         if (succeed) {
-          sim_world_service_.PublishRoutingRequest(routing_request);
-          sim_world_service_.PublishMonitorMessage(MonitorMessageItem::INFO,
+          sim_world_service_->PublishRoutingRequest(routing_request);
+          sim_world_service_->PublishMonitorMessage(MonitorMessageItem::INFO,
                                                    "Routing request sent.");
         } else {
-          sim_world_service_.PublishMonitorMessage(
+          sim_world_service_->PublishMonitorMessage(
               MonitorMessageItem::ERROR, "Failed to send a routing request.");
         }
       });
@@ -311,7 +325,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
           }
         }
 
-        sim_world_service_.PublishMissionRequest(mission_request);
+        sim_world_service_->PublishMissionRequest(mission_request);
       });
 
   websocket_->RegisterMessageHandler(
@@ -326,15 +340,15 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
         }
         bool succeed = ConstructRoutingRequest(json, routing_request.get());
         if (succeed) {
-          sim_world_service_.PublishRoutingRequest(routing_request);
+          sim_world_service_->PublishRoutingRequest(routing_request);
           AINFO << "Direct cycle routing request sent without task_manager:\n"
                 << routing_request->DebugString();
-          sim_world_service_.PublishMonitorMessage(
+          sim_world_service_->PublishMonitorMessage(
               MonitorMessageItem::WARN,
               "Default cycle routing request sent once. task_manager was "
               "removed, so automatic repeated cycling is disabled.");
         } else {
-          sim_world_service_.PublishMonitorMessage(
+          sim_world_service_->PublishMonitorMessage(
               MonitorMessageItem::ERROR,
               "Failed to send a default cycle routing request.");
         }
@@ -351,13 +365,13 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
         auto routing_request = std::make_shared<RoutingRequest>();
         bool succeed = ConstructRoutingRequest(json, routing_request.get());
         if (succeed) {
-          sim_world_service_.PublishRoutingRequest(routing_request);
-          sim_world_service_.PublishMonitorMessage(
+          sim_world_service_->PublishRoutingRequest(routing_request);
+          sim_world_service_->PublishMonitorMessage(
               MonitorMessageItem::WARN,
               "Park-go routing task_manager flow was removed. Sent a direct "
               "routing request only, without park-time automation.");
         } else {
-          sim_world_service_.PublishMonitorMessage(
+          sim_world_service_->PublishMonitorMessage(
               MonitorMessageItem::ERROR,
               "Failed to send a park go routing request.");
         }
@@ -369,13 +383,13 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
         auto routing_request = std::make_shared<RoutingRequest>();
         bool succeed = ConstructRoutingRequest(json, routing_request.get());
         if (succeed) {
-          sim_world_service_.PublishRoutingRequest(routing_request);
+          sim_world_service_->PublishRoutingRequest(routing_request);
           AINFO << "Parking routing request sent directly:\n"
                 << routing_request->DebugString();
-          sim_world_service_.PublishMonitorMessage(
+          sim_world_service_->PublishMonitorMessage(
               MonitorMessageItem::INFO, "Parking routing request sent.");
         } else {
-          sim_world_service_.PublishMonitorMessage(
+          sim_world_service_->PublishMonitorMessage(
               MonitorMessageItem::ERROR,
               "Failed to send a parking routing request.");
         }
@@ -384,7 +398,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
   websocket_->RegisterMessageHandler(
       "RequestSimulationWorld",
       [this](const Json &json, WebSocketHandler::Connection *conn) {
-        if (!sim_world_service_.ReadyToPush()) {
+        if (!sim_world_service_->ReadyToPush()) {
           AWARN_EVERY(100)
               << "Not sending simulation world as the data is not ready!";
           return;
@@ -414,7 +428,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
   websocket_->RegisterMessageHandler(
       "RequestRoutePath",
       [this](const Json &json, WebSocketHandler::Connection *conn) {
-        Json response = sim_world_service_.GetRoutePathAsJson();
+        Json response = sim_world_service_->GetRoutePathAsJson();
         response["type"] = "RoutePath";
         websocket_->SendData(conn, response.dump());
       });
@@ -445,7 +459,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
             poi_list.push_back(place);
           }
         } else {
-          sim_world_service_.PublishMonitorMessage(MonitorMessageItem::ERROR,
+          sim_world_service_->PublishMonitorMessage(MonitorMessageItem::ERROR,
                                                    "Failed to load default "
                                                    "POI. Please make sure the "
                                                    "file exists at " +
@@ -477,7 +491,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
             default_routing_list.push_back(drouting);
           }
         } else {
-          sim_world_service_.PublishMonitorMessage(
+          sim_world_service_->PublishMonitorMessage(
               MonitorMessageItem::ERROR,
               "Failed to load default "
               "routing. Please make sure the "
@@ -507,7 +521,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
             park_go_routing_list.push_back(park_go_routing);
           }
           //  } else {
-          //   sim_world_service_.PublishMonitorMessage(
+          //   sim_world_service_->PublishMonitorMessage(
           //       MonitorMessageItem::ERROR,
           //       "Failed to load park go "
           //       "routing. Please make sure the "
@@ -520,13 +534,13 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
 
   websocket_->RegisterMessageHandler(
       "Reset", [this](const Json &json, WebSocketHandler::Connection *conn) {
-        sim_world_service_.SetToClear();
+        sim_world_service_->SetToClear();
         sim_control_manager_->Reset();
       });
 
   websocket_->RegisterMessageHandler(
       "Dump", [this](const Json &json, WebSocketHandler::Connection *conn) {
-        sim_world_service_.DumpMessages();
+        sim_world_service_->DumpMessages();
       });
 
   websocket_->RegisterMessageHandler(
@@ -556,7 +570,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
       [this](const Json &json, WebSocketHandler::Connection *conn) {
         bool succeed = AddDefaultRouting(json);
         if (succeed) {
-          sim_world_service_.PublishMonitorMessage(
+          sim_world_service_->PublishMonitorMessage(
               MonitorMessageItem::INFO, "Successfully add a routing.");
           if (!default_routing_) {
             AERROR << "Failed to add a routing" << std::endl;
@@ -566,7 +580,7 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
           response["routingType"] = json["routingType"];
           websocket_->SendData(conn, response.dump());
         } else {
-          sim_world_service_.PublishMonitorMessage(MonitorMessageItem::ERROR,
+          sim_world_service_->PublishMonitorMessage(MonitorMessageItem::ERROR,
                                                    "Failed to add a routing.");
         }
       });
@@ -830,17 +844,17 @@ void SimulationWorldUpdater::OnTimer() {
   }
 
   cached_outputs_cleared_ = false;
-  sim_world_service_.Update();
+  sim_world_service_->Update();
 
   {
     boost::unique_lock<boost::shared_mutex> writer_lock(mutex_);
     last_pushed_adc_timestamp_sec_.store(
         needs_adc_timestamp
-            ? sim_world_service_.world().auto_driving_car().timestamp_sec()
+            ? sim_world_service_->world().auto_driving_car().timestamp_sec()
             : 0.0,
         std::memory_order_relaxed);
     if (needs_sim_world) {
-      sim_world_service_.GetWireFormatString(
+      sim_world_service_->GetWireFormatString(
           FLAGS_sim_map_radius, &simulation_world_,
           &simulation_world_with_planning_data_);
     } else {
@@ -848,7 +862,7 @@ void SimulationWorldUpdater::OnTimer() {
       std::string().swap(simulation_world_with_planning_data_);
     }
     if (needs_map_data) {
-      sim_world_service_.GetRelativeMap().SerializeToString(
+      sim_world_service_->GetRelativeMap().SerializeToString(
           &relative_map_string_);
     } else {
       std::string().swap(relative_map_string_);

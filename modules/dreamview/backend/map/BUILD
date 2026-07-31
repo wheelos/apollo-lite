@@ -17,7 +17,6 @@ cc_library(
         "map_service.cc",
     ],
     hdrs = ["map_service.h"],
-    alwayslink = True,
     deps = [
         "//modules/common/util:util_tool",
         "//modules/dreamview/proto:simulation_world_cc_proto",

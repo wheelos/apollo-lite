@@ -8,7 +8,6 @@ cc_library(
     srcs = ["perception_camera_updater.cc"],
     hdrs = ["perception_camera_updater.h"],
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
-    alwayslink = True,
     deps = [
         "@core//cyber",
         "//modules/common/adapters:adapter_gflags",

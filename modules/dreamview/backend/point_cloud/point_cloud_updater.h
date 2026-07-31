@@ -20,6 +20,9 @@
 
 #pragma once
 
+#include <atomic>
+#include <functional>
+#include <future>
 #include <memory>
 #include <string>
 #include <vector>
@@ -27,17 +30,30 @@
 #include <boost/thread/locks.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
-#include "pcl/point_cloud.h"
-#include "pcl/point_types.h"
+namespace pcl {
+struct PointXYZ;
+template <typename PointT>
+class PointCloud;
+}  // namespace pcl
 
-#include "wheelos_msgs/localization_msgs/localization.pb.h"
-#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+namespace apollo {
+namespace cyber {
+class Node;
+template <typename MessageT>
+class Reader;
+}  // namespace cyber
+namespace drivers {
+class PointCloud;
+}  // namespace drivers
+namespace localization {
+class LocalizationEstimate;
+}  // namespace localization
+namespace dreamview {
+class SimulationWorldUpdater;
+class WebSocketHandler;
+}  // namespace dreamview
+}  // namespace apollo
 
-#include "cyber/common/log.h"
-#include "cyber/cyber.h"
-#include "modules/common/util/string_util.h"
-#include "modules/dreamview/backend/handlers/websocket_handler.h"
-#include "modules/dreamview/backend/simulation_world/simulation_world_updater.h"
 /**
  * @namespace apollo::dreamview
  * @brief apollo::dreamview
@@ -84,12 +100,13 @@ class PointCloudUpdater {
   void UpdatePointCloud(
       const std::shared_ptr<drivers::PointCloud> &point_cloud);
 
-  void FilterPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_ptr);
+  void FilterPointCloud(
+      std::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> pcl_ptr);
 
   void UpdateLocalizationTime(
       const std::shared_ptr<apollo::localization::LocalizationEstimate>
           &localization);
-  pcl::PointCloud<pcl::PointXYZ>::Ptr ConvertPCLPointCloud(
+  std::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> ConvertPCLPointCloud(
       const std::shared_ptr<drivers::PointCloud> &point_cloud);
 
   void GetChannelMsg(std::vector<std::string> *channels);

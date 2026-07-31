@@ -28,18 +28,17 @@
 #include <boost/thread/locks.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
-#include "absl/strings/str_cat.h"
+#include "nlohmann/json.hpp"
 
 #include "wheelos_msgs/routing_msgs/poi.pb.h"
 
-#include "cyber/common/log.h"
-#include "cyber/cyber.h"
-#include "modules/dreamview/backend/handlers/websocket_handler.h"
-#include "modules/dreamview/backend/map/map_service.h"
-#include "modules/dreamview/backend/perception_camera_updater/perception_camera_updater.h"
-#include "modules/dreamview/backend/plugins/plugin_manager.h"
-#include "modules/dreamview/backend/sim_control_manager/sim_control_manager.h"
-#include "modules/dreamview/backend/simulation_world/simulation_world_service.h"
+namespace google::protobuf {
+class Message;
+}
+
+namespace apollo::cyber {
+class Timer;
+}
 
 /**
  * @namespace apollo::dreamview
@@ -47,6 +46,13 @@
  */
 namespace apollo {
 namespace dreamview {
+
+class MapService;
+class PerceptionCameraUpdater;
+class PluginManager;
+class SimControlManager;
+class SimulationWorldService;
+class WebSocketHandler;
 
 /**
  * @class SimulationWorldUpdater
@@ -74,6 +80,7 @@ class SimulationWorldUpdater {
                          PerceptionCameraUpdater *perception_camera_updater,
                          PluginManager *plugin_manager,
                          bool routing_from_file = false);
+  ~SimulationWorldUpdater();
 
   /**
    * @brief Starts to push simulation_world to frontend.
@@ -165,7 +172,7 @@ class SimulationWorldUpdater {
 
   void RegisterMessageHandlers();
 
-  SimulationWorldService sim_world_service_;
+  std::unique_ptr<SimulationWorldService> sim_world_service_;
   const MapService *map_service_ = nullptr;
   WebSocketHandler *websocket_ = nullptr;
   WebSocketHandler *map_ws_ = nullptr;

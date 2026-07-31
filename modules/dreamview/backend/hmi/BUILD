@@ -21,7 +21,6 @@ cc_library(
     srcs = ["hmi.cc"],
     hdrs = ["hmi.h"],
     copts = DREAMVIEW_COPTS,
-    alwayslink = True,
     deps = [
         ":hmi_worker",
         "@core//cyber",

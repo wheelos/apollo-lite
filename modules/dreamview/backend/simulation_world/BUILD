@@ -74,7 +74,6 @@ cc_library(
         "//modules/map/hdmap:hdmap_util",
         "@boost.thread",
     ],
-    alwayslink = True,
 )
 
 cpplint()

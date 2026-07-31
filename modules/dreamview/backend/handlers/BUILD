@@ -9,7 +9,6 @@ cc_library(
     srcs = ["websocket_handler.cc"],
     hdrs = ["websocket_handler.h"],
     copts = DREAMVIEW_COPTS,
-    alwayslink = True,
     deps = [
         "@core//cyber",
         "//modules/common/util:util_tool",
@@ -24,7 +23,6 @@ cc_library(
     srcs = ["map_data_handler.cc"],
     hdrs = ["map_data_handler.h"],
     copts = DREAMVIEW_COPTS,
-    alwayslink = True,
     deps = [
         "@civetweb//:civetweb",
         "@civetweb//:civetserver",
@@ -36,7 +34,6 @@ cc_library(
     srcs = ["image_handler.cc"],
     hdrs = ["image_handler.h"],
     copts = DREAMVIEW_COPTS,
-    alwayslink = True,
     deps = [
         "@core//cyber",
         "//modules/common/adapters:adapter_gflags",

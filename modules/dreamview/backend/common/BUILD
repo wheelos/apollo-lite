@@ -17,7 +17,6 @@ cc_library(
         "dreamview_gflags.cc",
     ],
     hdrs = ["dreamview_gflags.h"],
-    alwayslink = True,
     deps = [
         "@com_github_gflags_gflags//:gflags",
     ],

@@ -31,7 +31,6 @@ cc_library(
     hdrs = [
         "interpolation_2d.h",
     ],
-    alwayslink = True,
 )
 
 cc_library(
@@ -42,7 +41,6 @@ cc_library(
     hdrs = [
         "sim_control_util.h",
     ],
-    alwayslink = True,
     deps = [
         "@core//cyber",
     ],
