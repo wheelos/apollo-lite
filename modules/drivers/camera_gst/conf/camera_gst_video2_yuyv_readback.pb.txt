@@ -1,0 +1,19 @@
+sources {
+  name: "video2"
+  uri: "/dev/video2"
+  width: 1920
+  height: 1080
+  fps: 30.0
+  fourcc: "YUYV"
+  capture_backend: "NVV4L2_DMABUF"
+}
+
+publish_gpu_channel: true
+validate_nvidia_plugins: true
+zero_copy_required: true
+
+platform {
+  target: "jetson-orin"
+  require_nvmm: true
+  require_nvidia_plugins: true
+}

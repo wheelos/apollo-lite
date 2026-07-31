@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>camera_gst_video2_dual_role</name>
+        <dag_conf>/apollo/modules/drivers/camera_gst/dag/camera_gst_video2_dual_role.dag</dag_conf>
+        <process_name>camera_gst_video2_dual_role</process_name>
+    </module>
+</cyber>

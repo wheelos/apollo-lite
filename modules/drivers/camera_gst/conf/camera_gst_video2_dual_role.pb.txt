@@ -1,0 +1,59 @@
+sources {
+  name: "video2"
+  uri: "/dev/video2"
+  width: 1920
+  height: 1080
+  fps: 30.0
+  fourcc: "YUYV"
+  capture_backend: "NVV4L2_DMABUF"
+}
+
+layout_slots {
+  source_name: "video2"
+  row: 0
+  col: 0
+}
+
+rows: 1
+cols: 1
+tile_width: 1920
+tile_height: 1080
+fps: 30.0
+
+# Perception path uses source tee with GPU capture + in-pipeline encode/decode
+# before GPU publish (no RTP).
+publish_gpu_channel: true
+validate_nvidia_plugins: true
+zero_copy_required: true
+
+stream {
+  # Remote driving path: stitched tee -> NVENC -> RTP.
+  enable: true
+  auto_start: false
+  control_service_name: "/apollo/drivers/camera_gst/video2/stream_control"
+  emit_eos_on_detach: true
+  force_keyframe_on_attach: false
+  keyframe_element_name: "stream_encoder"
+  host: "127.0.0.1"
+  port: 5600
+  bitrate: 8000000
+  iframe_interval: 30
+  idr_interval: 30
+  queue_capacity: 2
+  insert_sps_pps: true
+  rtp_payload_type: 96
+
+  # Perception path: source tee -> NVENC -> H264 parse/decode -> GPU publish.
+  perception_transcode_before_publish: true
+  perception_bitrate: 6000000
+  perception_iframe_interval: 30
+  perception_idr_interval: 30
+  perception_queue_capacity: 2
+  perception_insert_sps_pps: true
+}
+
+platform {
+  target: "jetson-orin"
+  require_nvmm: true
+  require_nvidia_plugins: true
+}

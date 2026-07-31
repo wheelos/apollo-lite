@@ -1,0 +1,13 @@
+camera_dev: "/dev/video2"
+frame_id: "camera_video2"
+pixel_format: "yuyv"
+io_method: IO_METHOD_USERPTR
+width: 1920
+height: 1080
+frame_rate: 30
+bytes_per_pixel: 2
+channel_name: "/apollo/sensor/camera/video2_legacy_rgb/image"
+device_wait_ms: 2000
+spin_rate: 200
+output_type: RGB
+publish_rate: 30

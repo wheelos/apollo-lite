@@ -1,0 +1,12 @@
+# Define camera_gst component.
+module_config {
+  module_library: "/apollo/bazel-bin/modules/drivers/camera_gst/libcamera_gst_component.so"
+
+  components {
+    class_name: "CameraGstComponent"
+    config {
+      name: "camera_gst"
+      config_file_path: "/apollo/modules/drivers/camera_gst/conf/camera_gst_demo.pb.txt"
+    }
+  }
+}
