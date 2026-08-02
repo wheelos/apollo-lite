@@ -69,7 +69,7 @@ cc_library(
 cc_binary(
     name = "libcamera_gst_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":camera_gst_component_lib"],
     target_compatible_with = ["//tools/platform:jetson_orin"],
 )

@@ -15,7 +15,7 @@ install(
 cc_binary(
     name = "libvelodyne_fusion_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":fusion_component_lib"],
 )
 

@@ -18,7 +18,7 @@ filegroup(
 cc_binary(
     name = "libseyond_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":seyond_component_lib"],
 )
 

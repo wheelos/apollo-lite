@@ -18,7 +18,7 @@ filegroup(
 cc_binary(
     name = "liblidar_compensator_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":lidar_compensator_component_lib",
     ],

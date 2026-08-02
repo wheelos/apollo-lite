@@ -13,7 +13,7 @@ cc_binary(
         "-latomic",
     ],
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":camera_component_lib",
         ":compress_component_lib",

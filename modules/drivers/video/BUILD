@@ -28,7 +28,7 @@ filegroup(
 cc_binary(
     name = "libvideo_driver_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":video_driver_component_lib"],
 )
 

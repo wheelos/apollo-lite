@@ -42,7 +42,7 @@ cc_test(
 cc_binary(
     name = "libcanbus_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":canbus_component_lib",
     ],

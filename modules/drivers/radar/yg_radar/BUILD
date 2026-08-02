@@ -16,7 +16,7 @@ filegroup(
 cc_binary(
     name = "libyg_radar_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":yg_radar_component_lib",
     ],

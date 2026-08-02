@@ -64,7 +64,7 @@ cc_library(
 cc_binary(
     name = "libconti_radar.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":conti_radar_canbus_lib"],
 )
 

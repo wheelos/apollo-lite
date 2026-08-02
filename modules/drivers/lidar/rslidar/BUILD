@@ -31,7 +31,7 @@ filegroup(
 cc_binary(
     name = "librslidar_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":rslidar_component_lib",
     ],

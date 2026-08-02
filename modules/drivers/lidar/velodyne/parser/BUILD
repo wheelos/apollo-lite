@@ -15,7 +15,7 @@ install(
 cc_binary(
     name = "libvelodyne_convert_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":velodyne_convert_component_lib"],
 )
 

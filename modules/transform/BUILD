@@ -145,7 +145,7 @@ cc_test(
 cc_binary(
     name = "libstatic_transform_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":static_transform_component_lib"],
 )
 

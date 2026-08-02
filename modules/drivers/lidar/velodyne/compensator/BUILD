@@ -15,7 +15,7 @@ install(
 cc_binary(
     name = "libvelodyne_compensator_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":compensator_component_lib"],
 )
 

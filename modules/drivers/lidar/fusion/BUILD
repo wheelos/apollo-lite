@@ -18,7 +18,7 @@ filegroup(
 cc_binary(
     name = "liblidar_fusion_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":lidar_fusion_component_lib",
     ],

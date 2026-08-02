@@ -17,7 +17,7 @@ install(
 cc_binary(
     name = "libplanning_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":planning_component_lib"],
 )
 

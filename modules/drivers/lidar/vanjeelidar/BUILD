@@ -31,7 +31,7 @@ filegroup(
 cc_binary(
     name = "libvanjeelidar_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":vanjeelidar_component_lib",
     ],

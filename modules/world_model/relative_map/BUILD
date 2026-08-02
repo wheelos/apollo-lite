@@ -89,7 +89,7 @@ cc_binary(
     name = "librelative_map_component.so",
     copts = MAP_COPTS,
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":relative_map_component_lib"],
 )
 

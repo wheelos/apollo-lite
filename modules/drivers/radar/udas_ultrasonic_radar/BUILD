@@ -16,7 +16,7 @@ filegroup(
 cc_binary(
     name = "libudas_ultrasonic_radar_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":udas_ultrasonic_radar_component_lib",
     ],

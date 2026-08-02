@@ -46,7 +46,7 @@ cc_library(
 cc_binary(
     name = "libndt_localization_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":ndt_localization_component_lib"],
 )
 

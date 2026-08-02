@@ -49,7 +49,7 @@ cc_library(
 cc_binary(
     name = "libnano_radar.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":nano_radar_lib"],
 )
 

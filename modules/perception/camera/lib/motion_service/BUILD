@@ -38,7 +38,7 @@ cc_library(
 cc_binary(
     name = "libmotion_service.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":motion_service_lib"],
 )
 

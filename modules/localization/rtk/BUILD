@@ -38,7 +38,7 @@ cc_library(
 cc_binary(
     name = "librtk_localization_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":rtk_localization_component_lib"],
 )
 

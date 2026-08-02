@@ -9,7 +9,7 @@ GNSS_COPTS = ['-DMODULE_NAME=\\"gnss\\"']
 cc_binary(
     name = "libgnss_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":gnss_component_lib"],
 )
 

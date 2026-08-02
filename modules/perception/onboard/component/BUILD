@@ -9,7 +9,7 @@ PERCEPTION_COPTS = ['-DMODULE_NAME=\\"perception\\"']
 cc_binary(
     name = "libperception_component_camera.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":perception_component_inner_camera"],
 )
 
@@ -100,7 +100,7 @@ cc_library(
 cc_binary(
     name = "libperception_component_lidar.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":perception_component_inner_lidar"],
 )
 
@@ -156,7 +156,7 @@ cc_library(
 cc_binary(
     name = "libcollision_guardian_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":collision_guardian_component_lib"],
 )
 

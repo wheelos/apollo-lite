@@ -38,7 +38,7 @@ cc_library(
 cc_binary(
     name = "librouting_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":routing_component_lib"],
 )
 

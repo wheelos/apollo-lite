@@ -8,7 +8,7 @@ HESAI_COPTS = ['-DMODULE_NAME=\\"hesai\\"']
 cc_binary(
     name = "libhesai_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":hesai_component_lib"],
 )
 

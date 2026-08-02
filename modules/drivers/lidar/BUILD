@@ -44,7 +44,7 @@ cc_library(
 cc_binary(
     name = "liblidar_driver_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":lidar_driver_component_lib"],
 )
 

@@ -9,7 +9,7 @@ cc_binary(
         "adapter_gflags.h",
     ],
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_gflags_gflags//:gflags",

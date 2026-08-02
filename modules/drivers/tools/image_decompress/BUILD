@@ -55,7 +55,7 @@ cc_test(
 cc_binary(
     name = "libimage_decompress.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":image_decompress_lib"],
 )
 

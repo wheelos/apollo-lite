@@ -95,7 +95,7 @@ cc_library(
 cc_binary(
     name = "libultrasonic_radar_canbus_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":ultrasonic_radar_canbus_component_lib"],
 )
 

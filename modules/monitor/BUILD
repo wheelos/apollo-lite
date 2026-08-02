@@ -9,7 +9,7 @@ MONITOR_COPTS = ['-DMODULE_NAME=\\"monitor\\"']
 cc_binary(
     name = "libmonitor.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":monitor_lib",
     ],

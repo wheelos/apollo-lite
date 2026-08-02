@@ -75,7 +75,7 @@ cc_library(
 cc_binary(
     name = "libracobit_radar_canbus_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":racobit_radar_canbus_lib"],
 )
 

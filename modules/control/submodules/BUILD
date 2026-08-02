@@ -33,7 +33,7 @@ cc_library(
 cc_binary(
     name = "control_module.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":control_module_lib"],
 )
 
@@ -66,7 +66,7 @@ cc_library(
 cc_binary(
     name = "preprocessor_submodule.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":preprocessor_submodule_lib"],
 )
 
@@ -101,7 +101,7 @@ cc_library(
 cc_binary(
     name = "mpc_controller_submodule.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":mpc_controller_submodule_lib"],
 )
 
@@ -130,7 +130,7 @@ cc_library(
 cc_binary(
     name = "lat_lon_controller_submodule.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":lat_lon_controller_submodule_lib"],
 )
 
@@ -164,7 +164,7 @@ cc_library(
 cc_binary(
     name = "postprocessor_submodule.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":postprocessor_submodule_lib"],
 )
 

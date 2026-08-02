@@ -27,7 +27,7 @@ cc_library(
 cc_binary(
     name = "libguardian_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":guardian_component_lib",
     ],

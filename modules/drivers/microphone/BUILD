@@ -9,7 +9,7 @@ MICROPHONE_COPTS = ['-DMODULE_NAME=\\"microphone\\"']
 cc_binary(
     name = "libmicrophone_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":microphone_component_lib",
     ],

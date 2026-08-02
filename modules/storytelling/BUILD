@@ -29,7 +29,7 @@ cc_library(
 cc_binary(
     name = "libstorytelling_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":storytelling_lib"],
 )
 

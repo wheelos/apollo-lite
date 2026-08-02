@@ -55,7 +55,7 @@ cc_test(
 cc_binary(
     name = "libprediction_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":prediction_component_lib"],
 )
 

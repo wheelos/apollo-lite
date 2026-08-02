@@ -31,7 +31,7 @@ cc_library(
 cc_binary(
     name = "libmission_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":mission_component_lib"],
 )
 
