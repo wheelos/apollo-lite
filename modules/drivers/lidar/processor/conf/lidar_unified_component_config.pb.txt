@@ -1,11 +1,41 @@
 output_channel: "/apollo/sensor/lidar/unified/PointCloud2"
+primary_lidar_topic: "/apollo/sensor/rslidar/front_left/PointCloud2"
 
-auxiliary_lidar_inputs {
-	topic_name: "/apollo/sensor/vanjeelidar/right_back/PointCloud2"
+primary_time_settings {
+  measurement_time_anchor: SCAN_END
+  static_time_offset_ns: 0
+  expected_scan_duration_ms: 100.0
+  max_scan_duration_ms: 200.0
 }
 
 auxiliary_lidar_inputs {
-	topic_name: "/apollo/sensor/lidar16/front/up/PointCloud2"
+  topic_name: "/apollo/sensor/rslidar/rear_right/PointCloud2"
+  time_settings {
+    measurement_time_anchor: SCAN_END
+    static_time_offset_ns: 0
+    expected_scan_duration_ms: 100.0
+    max_scan_duration_ms: 200.0
+  }
+}
+
+auxiliary_lidar_inputs {
+  topic_name: "/apollo/sensor/seyond/front/PointCloud2"
+  time_settings {
+    measurement_time_anchor: SCAN_BEGIN
+    static_time_offset_ns: 0
+    expected_scan_duration_ms: 100.0
+    max_scan_duration_ms: 200.0
+  }
+}
+
+auxiliary_lidar_inputs {
+  topic_name: "/apollo/sensor/seyond/rear/PointCloud2"
+  time_settings {
+    measurement_time_anchor: SCAN_BEGIN
+    static_time_offset_ns: 0
+    expected_scan_duration_ms: 100.0
+    max_scan_duration_ms: 200.0
+  }
 }
 
 sensor_buffer_size: 16
@@ -22,8 +52,12 @@ ego_box_forward_y: 1.4
 ego_box_backward_y: -1.4
 
 voxel_size: 0.15
+enable_voxel_filter: false
 max_ref_time_delta_ms: 80
 motion_compensation_bins: 12
+compensation_mode: OFF
+enable_online_time_offset_update: false
+enable_overlap_quality_gate: false
 metrics_log_interval: 50
 strict_auxiliary_sync: false
 fusion_wait_timeout_ms: 20

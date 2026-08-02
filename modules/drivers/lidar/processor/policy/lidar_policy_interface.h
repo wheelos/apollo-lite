@@ -1,5 +1,20 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -26,6 +41,9 @@ struct PointCloudBuffer {
   size_t item_size = 0;      // sizeof(PointT) e.g., sizeof(PointXYZIT)
   MemoryDeviceType device_type = MemoryDeviceType::kHost;
   int device_id = -1;  // -1: Host, 0-N: CUDA device index
+  size_t unfiltered_valid_count = 0;
+  size_t prefiltered_ego_count = 0;
+  bool ego_filter_applied = false;
 };
 
 /// @brief Context carrying all necessary data for a single sensor frame.
@@ -35,6 +53,11 @@ struct SensorFrameContext {
   bool is_primary = false;
   double min_timestamp_sec = 0.0;
   double max_timestamp_sec = 0.0;
+  double fallback_timestamp_sec = 0.0;
+  double timestamp_offset_sec = 0.0;
+  uint64_t fallback_timestamp_ns = 0;
+  int64_t timestamp_offset_ns = 0;
+  bool all_points_have_timestamps = false;
 };
 
 // ============================================================================

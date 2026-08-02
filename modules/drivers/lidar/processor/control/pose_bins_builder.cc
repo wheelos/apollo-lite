@@ -1,3 +1,17 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "modules/drivers/lidar/processor/control/pose_bins_builder.h"
 
 #include "cyber/cyber.h"
@@ -40,6 +54,22 @@ bool PoseBinsBuilder::Build(
     context.sensor_id = handle.sensor_id;
     context.point_cloud = handle.point_cloud;
     context.is_primary = handle.is_primary;
+    context.min_timestamp_sec =
+        static_cast<double>(handle.time_contract.scan_begin_ns) / 1e9;
+    context.max_timestamp_sec =
+        static_cast<double>(handle.time_contract.scan_end_ns) / 1e9;
+    context.fallback_timestamp_sec =
+        static_cast<double>(handle.time_contract.canonical_anchor_ns -
+                            handle.time_contract.static_offset_ns) /
+        1e9;
+    context.timestamp_offset_sec =
+        static_cast<double>(handle.time_contract.static_offset_ns) / 1e9;
+    context.fallback_timestamp_ns = static_cast<uint64_t>(
+        handle.time_contract.canonical_anchor_ns -
+        handle.time_contract.static_offset_ns);
+    context.timestamp_offset_ns = handle.time_contract.static_offset_ns;
+    context.all_points_have_timestamps =
+        handle.time_contract.all_points_have_timestamps;
 
     std::vector<double> sample_times;
     std::vector<Eigen::Affine3d> poses;

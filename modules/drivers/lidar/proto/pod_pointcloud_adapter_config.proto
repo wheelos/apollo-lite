@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package apollo.drivers.lidar;
+
+message PodPointCloudAdapterConfig {
+  message Channel {
+    optional string input_channel = 1;
+    optional string output_channel = 2;
+    optional uint32 expected_schema_hash = 3 [default = 0];
+  }
+
+  repeated Channel channels = 1;
+}

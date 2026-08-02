@@ -22,8 +22,15 @@ config_setting(
 cc_binary(
     name="liblidar_unified_component.so",
     linkshared=True,
-    linkstatic=True,
+    linkstatic=False,
     deps=[":lidar_unified_component_lib"],
+)
+
+cc_binary(
+    name = "libpod_pointcloud_adapter.so",
+    linkshared = True,
+    linkstatic = False,
+    deps = [":pod_pointcloud_adapter_lib"],
 )
 
 cuda_library(
@@ -93,10 +100,24 @@ cc_library(
 )
 
 cc_library(
+    name = "pod_pointcloud_adapter_lib",
+    srcs = ["transport/pod_pointcloud_adapter.cc"],
+    hdrs = ["transport/pod_pointcloud_adapter.h"],
+    alwayslink = True,
+    deps = [
+        "@core//cyber",
+        "@core//cyber/transport/message:pod_message",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
+        "//modules/drivers/lidar/proto:pod_pointcloud_adapter_config_cc_proto",
+    ],
+)
+
+cc_library(
     name="lidar_unified_component_lib",
     srcs=[
         "control/pose_bins_builder.cc",
         "control/sync_gate.cc",
+        "control/time_contract.cc",
         "lidar_unified_component.cc",
         "lidar_unified_component_config.cc",
         "lidar_unified_component_ingest.cc",
@@ -106,6 +127,7 @@ cc_library(
         "control/frame_handle.h",
         "control/pose_bins_builder.h",
         "control/sync_gate.h",
+        "control/time_contract.h",
         "lidar_unified_component.h",
         "policy/cpu_lidar_policy.h",
         "policy/gpu_lidar_policy.h",
@@ -150,6 +172,16 @@ cc_test(
         ":lidar_policy_lib",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "@com_google_googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "pod_pointcloud_adapter_test",
+    size = "small",
+    srcs = ["transport/pod_pointcloud_adapter_test.cc"],
+    deps = [
+        ":pod_pointcloud_adapter_lib",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

@@ -1,3 +1,17 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "modules/drivers/lidar/processor/control/sync_gate.h"
 
 #include "cyber/cyber.h"
@@ -6,8 +20,7 @@ namespace apollo {
 namespace drivers {
 namespace lidar {
 
-bool SyncGate::SelectFrames(double ref_timestamp,
-                            const std::string& primary_sensor_id,
+bool SyncGate::SelectFrames(const FrameHandle& primary_handle,
                             const std::vector<std::string>& auxiliary_topics,
                             uint32_t max_ref_time_delta_ms,
                             bool strict_auxiliary_sync,
@@ -15,7 +28,8 @@ bool SyncGate::SelectFrames(double ref_timestamp,
                             const LookupNearestFrameFn& lookup_nearest_frame,
                             std::vector<FrameHandle>* frame_handles,
                             SyncGateMetrics* metrics) const {
-  if (primary_sensor_id.empty() || !resolve_sensor_id ||
+  if (primary_handle.sensor_id.empty() ||
+      primary_handle.buffered_frame == nullptr || !resolve_sensor_id ||
       !lookup_nearest_frame || frame_handles == nullptr || metrics == nullptr) {
     return false;
   }
@@ -26,16 +40,6 @@ bool SyncGate::SelectFrames(double ref_timestamp,
   metrics->missing_auxiliary_count = 0;
   metrics->time_delta_exceeded_count = 0;
 
-  FrameHandle primary_handle;
-  bool primary_time_delta_exceeded = false;
-  if (!lookup_nearest_frame(primary_sensor_id, ref_timestamp,
-                            max_ref_time_delta_ms, &primary_handle,
-                            &primary_time_delta_exceeded)) {
-    AERROR << "Primary sensor frame unavailable around reference timestamp";
-    return false;
-  }
-  primary_handle.sensor_id = primary_sensor_id;
-  primary_handle.is_primary = true;
   frame_handles->push_back(primary_handle);
 
   for (const auto& topic_name : auxiliary_topics) {
@@ -52,7 +56,8 @@ bool SyncGate::SelectFrames(double ref_timestamp,
 
     FrameHandle nearest_handle;
     bool time_delta_exceeded = false;
-    if (!lookup_nearest_frame(sensor_id, ref_timestamp, max_ref_time_delta_ms,
+    if (!lookup_nearest_frame(sensor_id, primary_handle.time_contract,
+                              max_ref_time_delta_ms,
                               &nearest_handle, &time_delta_exceeded)) {
       ++metrics->missing_auxiliary_count;
       if (time_delta_exceeded) {

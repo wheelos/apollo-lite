@@ -14,40 +14,37 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "Eigen/Geometry"
+#include <cstdint>
 
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
-#include "modules/drivers/lidar/processor/control/time_contract.h"
+#include "modules/drivers/lidar/proto/lidar_unified_component_config.pb.h"
 
 namespace apollo {
 namespace drivers {
 namespace lidar {
 
-struct BufferedFrame {
-  uint64_t frame_id = 0;
-  std::shared_ptr<const ::apollo::drivers::PointCloud> point_cloud;
-  TimeContract time_contract;
-  std::vector<double> motion_sample_times;
-  std::vector<Eigen::Affine3d> motion_poses;
-  bool pose_prefetch_ok = false;
-
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+enum class TimestampQuality {
+  kPointTimestamps = 0,
+  kMeasurementTimeFallback = 1,
 };
 
-struct FrameHandle {
-  std::string sensor_id;
-  std::shared_ptr<const ::apollo::drivers::PointCloud> point_cloud;
-  std::shared_ptr<const BufferedFrame> buffered_frame;
-  bool is_primary = false;
-  uint64_t frame_id = 0;
-  TimeContract time_contract;
-  double clock_offset_residual_ms = 0.0;
-  double overlap_quality_weight = 1.0;
+struct TimeContract {
+  int64_t scan_begin_ns = 0;
+  int64_t scan_end_ns = 0;
+  int64_t canonical_anchor_ns = 0;
+  int64_t static_offset_ns = 0;
+  TimestampQuality quality = TimestampQuality::kMeasurementTimeFallback;
+  bool all_points_have_timestamps = false;
+
+  double CanonicalAnchorSec() const;
 };
+
+bool NormalizePointCloudTime(
+    const PointCloud& cloud,
+    const LidarUnifiedComponentConfig::TimeSettings& settings,
+    TimeContract* contract);
+
+int64_t IntervalOverlapNs(const TimeContract& lhs, const TimeContract& rhs);
 
 }  // namespace lidar
 }  // namespace drivers

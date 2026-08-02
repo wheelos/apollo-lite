@@ -1,3 +1,17 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "modules/drivers/lidar/processor/policy/lidar_policy_common.h"
 
 #include <algorithm>
@@ -219,6 +233,147 @@ bool InterpolateAffinePose(double point_time,
   return true;
 }
 
+bool BuildUniformPoseInterpolation(
+    const std::vector<double>& sample_times,
+    const std::vector<Eigen::Affine3d>& poses,
+    UniformPoseInterpolation* interpolation) {
+  if (interpolation == nullptr || sample_times.size() < 2U ||
+      sample_times.size() != poses.size()) {
+    return false;
+  }
+
+  const double first_time = sample_times.front();
+  const double last_time = sample_times.back();
+  const double duration = last_time - first_time;
+  if (!std::isfinite(first_time) || !std::isfinite(last_time) ||
+      duration <= 1e-9) {
+    return false;
+  }
+
+  const double bin_duration =
+      duration / static_cast<double>(sample_times.size() - 1U);
+  for (size_t index = 1U; index + 1U < sample_times.size(); ++index) {
+    const double expected =
+        first_time + static_cast<double>(index) * bin_duration;
+    if (std::fabs(sample_times[index] - expected) > 1e-6) {
+      return false;
+    }
+  }
+
+  interpolation->first_time_sec = first_time;
+  interpolation->last_time_sec = last_time;
+  interpolation->inverse_bin_duration_sec = 1.0 / bin_duration;
+  if (!std::isfinite(interpolation->inverse_bin_duration_sec)) {
+    return false;
+  }
+  interpolation->translations.clear();
+  interpolation->rotations.clear();
+  interpolation->translations.reserve(poses.size());
+  interpolation->rotations.reserve(poses.size());
+  for (const auto& pose : poses) {
+    interpolation->translations.push_back(pose.translation());
+    interpolation->rotations.emplace_back(pose.linear());
+  }
+  return true;
+}
+
+namespace {
+
+bool InterpolateUniformPose(
+    double point_time, const std::vector<double>& sample_times,
+    const UniformPoseInterpolation& interpolation,
+    Eigen::Vector3d* translation, Eigen::Quaterniond* rotation) {
+  if (translation == nullptr || rotation == nullptr ||
+      sample_times.size() < 2U ||
+      sample_times.size() != interpolation.translations.size() ||
+      sample_times.size() != interpolation.rotations.size()) {
+    return false;
+  }
+  if (point_time <= interpolation.first_time_sec) {
+    *translation = interpolation.translations.front();
+    *rotation = interpolation.rotations.front();
+    return true;
+  }
+  if (point_time > interpolation.last_time_sec) {
+    *translation = interpolation.translations.back();
+    *rotation = interpolation.rotations.back();
+    return true;
+  }
+
+  const double scaled =
+      (point_time - interpolation.first_time_sec) *
+      interpolation.inverse_bin_duration_sec;
+  const size_t right_index = std::clamp(
+      static_cast<size_t>(std::ceil(scaled)), size_t{1U},
+      interpolation.translations.size() - 1U);
+  const size_t left_index = right_index - 1U;
+  const double ratio =
+      std::clamp((point_time - sample_times[left_index]) /
+                     (sample_times[right_index] - sample_times[left_index]),
+                 0.0, 1.0);
+  *translation = interpolation.translations[left_index] +
+                 ratio * (interpolation.translations[right_index] -
+                          interpolation.translations[left_index]);
+  Eigen::Quaterniond right_rotation = interpolation.rotations[right_index];
+  if (interpolation.rotations[left_index].dot(right_rotation) < 0.0) {
+    right_rotation.coeffs() *= -1.0;
+  }
+  *rotation =
+      interpolation.rotations[left_index].slerp(ratio, right_rotation);
+  return true;
+}
+
+bool TransformPointWithPose(
+    const PointXYZIT& point, uint64_t fallback_timestamp_ns,
+    int64_t timestamp_offset_ns, const std::vector<double>& sample_times,
+    const std::vector<Eigen::Affine3d>& base_from_sensor_poses,
+    const UniformPoseInterpolation* uniform_interpolation,
+    PointXYZIT* output_point) {
+  if (output_point == nullptr || !std::isfinite(point.x()) ||
+      !std::isfinite(point.y()) || !std::isfinite(point.z()) ||
+      std::fabs(point.x()) > kPointInfThreshold ||
+      std::fabs(point.y()) > kPointInfThreshold ||
+      std::fabs(point.z()) > kPointInfThreshold) {
+    return false;
+  }
+
+  const uint64_t raw_timestamp =
+      point.timestamp() == 0U ? fallback_timestamp_ns : point.timestamp();
+  const double point_time = static_cast<double>(
+      static_cast<int64_t>(raw_timestamp) + timestamp_offset_ns) /
+      kSecondToNano;
+  Eigen::Vector3d target;
+  if (uniform_interpolation != nullptr) {
+    Eigen::Vector3d translation;
+    Eigen::Quaterniond rotation;
+    if (!InterpolateUniformPose(point_time, sample_times,
+                                *uniform_interpolation, &translation,
+                                &rotation)) {
+      return false;
+    }
+    target = rotation * Eigen::Vector3d(point.x(), point.y(), point.z()) +
+             translation;
+  } else {
+    Eigen::Affine3d base_from_sensor = Eigen::Affine3d::Identity();
+    if (!InterpolateAffinePose(point_time, sample_times,
+                               base_from_sensor_poses,
+                               &base_from_sensor)) {
+      return false;
+    }
+    target =
+        base_from_sensor * Eigen::Vector3d(point.x(), point.y(), point.z());
+  }
+  output_point->set_x(static_cast<float>(target.x()));
+  output_point->set_y(static_cast<float>(target.y()));
+  output_point->set_z(static_cast<float>(target.z()));
+  output_point->set_intensity(point.intensity());
+  output_point->set_timestamp(static_cast<uint64_t>(
+      static_cast<int64_t>(raw_timestamp) + timestamp_offset_ns));
+  return true;
+}
+
+}  // namespace
+
 bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
                           const std::string& target_frame,
                           const std::string& source_frame,
@@ -323,6 +478,7 @@ size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
 }
 
 bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
+                          double timestamp_offset_sec,
                           const std::vector<double>& sample_times,
                           const std::vector<Eigen::Affine3d>& map_from_sensor,
                           const Eigen::Affine3d& map2base_ref,
@@ -341,7 +497,8 @@ bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
     return false;
   }
 
-  const double point_time = ResolvePointTimestampSec(point, measurement_time);
+  const double point_time =
+      ResolvePointTimestampSec(point, measurement_time) + timestamp_offset_sec;
   Eigen::Affine3d interpolated_map_from_sensor = Eigen::Affine3d::Identity();
   if (!InterpolateAffinePose(point_time, sample_times, map_from_sensor,
                              &interpolated_map_from_sensor)) {
@@ -358,8 +515,34 @@ bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
   output_point->set_y(static_cast<float>(target.y()));
   output_point->set_z(static_cast<float>(target.z()));
   output_point->set_intensity(point.intensity());
-  output_point->set_timestamp(ResolvePointTimestampNs(point, measurement_time));
+  const int64_t offset_ns =
+      static_cast<int64_t>(std::llround(timestamp_offset_sec * kSecondToNano));
+  const uint64_t raw_timestamp =
+      ResolvePointTimestampNs(point, measurement_time);
+  output_point->set_timestamp(static_cast<uint64_t>(
+      static_cast<int64_t>(raw_timestamp) + offset_ns));
   return true;
+}
+
+bool TransformPointWithInterpolatedPoses(
+    const PointXYZIT& point, uint64_t fallback_timestamp_ns,
+    int64_t timestamp_offset_ns, const std::vector<double>& sample_times,
+    const std::vector<Eigen::Affine3d>& base_from_sensor_poses,
+    PointXYZIT* output_point) {
+  return TransformPointWithPose(point, fallback_timestamp_ns,
+                                timestamp_offset_ns, sample_times,
+                                base_from_sensor_poses, nullptr, output_point);
+}
+
+bool TransformPointWithUniformInterpolatedPoses(
+    const PointXYZIT& point, uint64_t fallback_timestamp_ns,
+    int64_t timestamp_offset_ns, const std::vector<double>& sample_times,
+    const std::vector<Eigen::Affine3d>& base_from_sensor_poses,
+    const UniformPoseInterpolation& interpolation, PointXYZIT* output_point) {
+  return TransformPointWithPose(point, fallback_timestamp_ns,
+                                timestamp_offset_ns, sample_times,
+                                base_from_sensor_poses, &interpolation,
+                                output_point);
 }
 
 PointXYZIT* GetHostPoints(PointCloudBuffer* buffer) {
@@ -386,13 +569,17 @@ bool EnsureGpuBackendAvailable(const char* policy_name) {
 
 #ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
 CudaPointXYZIT ToCudaPoint(const PointXYZIT& point,
-                           double measurement_time_sec) {
+                           double measurement_time_sec,
+                           int64_t timestamp_offset_ns) {
   CudaPointXYZIT out;
   out.x = point.x();
   out.y = point.y();
   out.z = point.z();
   out.intensity = point.intensity();
-  out.timestamp = ResolvePointTimestampNs(point, measurement_time_sec);
+  out.timestamp = static_cast<uint64_t>(
+      static_cast<int64_t>(
+          ResolvePointTimestampNs(point, measurement_time_sec)) +
+      timestamp_offset_ns);
   return out;
 }
 

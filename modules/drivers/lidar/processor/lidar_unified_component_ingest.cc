@@ -1,3 +1,17 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -129,6 +143,7 @@ std::string LidarUnifiedComponent::ResolveSensorId(
 
 bool LidarUnifiedComponent::PrepareBufferedFrame(
     const std::string& sensor_id, const PointCloudConstPtr& point_cloud,
+    const LidarUnifiedComponentConfig::TimeSettings& time_settings,
     std::shared_ptr<BufferedFrame>* buffered_frame) {
   if (sensor_id.empty() || point_cloud == nullptr ||
       buffered_frame == nullptr) {
@@ -136,23 +151,52 @@ bool LidarUnifiedComponent::PrepareBufferedFrame(
   }
 
   const auto sensor_state = EnsureSensorState(sensor_id);
-  if (sensor_state == nullptr || sensor_state->pose_resolver == nullptr) {
+  if (sensor_state == nullptr) {
     return false;
   }
 
-  const size_t bins = std::max<size_t>(
+  const size_t configured_bins = std::max<size_t>(
       1, static_cast<size_t>(config_.motion_compensation_bins()));
   auto frame = std::make_shared<BufferedFrame>();
+  frame->frame_id = buffered_frame_id_.fetch_add(1) + 1;
   frame->point_cloud = point_cloud;
-  bool used_measurement_time_fallback = false;
-  if (!BuildMotionSampleTimes(*point_cloud, bins,
-                              config_.compute_mode() ==
-                                  LidarUnifiedComponentConfig::COMPUTE_MODE_GPU,
-                              static_cast<int>(config_.gpu_device_id()),
-                              &frame->motion_sample_times,
-                              &used_measurement_time_fallback)) {
-    AWARN << "Failed to build motion sample times for sensor " << sensor_id;
+  if (!NormalizePointCloudTime(*point_cloud, time_settings,
+                               &frame->time_contract)) {
+    AWARN << "Invalid point cloud time contract for sensor " << sensor_id;
     return false;
+  }
+
+  if (config_.compensation_mode() == LidarUnifiedComponentConfig::OFF) {
+    frame->pose_prefetch_ok = true;
+    *buffered_frame = frame;
+    return true;
+  }
+
+  if (sensor_state->pose_resolver == nullptr) {
+    return false;
+  }
+
+  bool used_measurement_time_fallback =
+      frame->time_contract.quality ==
+      TimestampQuality::kMeasurementTimeFallback;
+  if (config_.compensation_mode() ==
+          LidarUnifiedComponentConfig::RIGID_FRAME ||
+      used_measurement_time_fallback) {
+    frame->motion_sample_times = {frame->time_contract.CanonicalAnchorSec()};
+  } else {
+    frame->motion_sample_times.resize(configured_bins);
+    const double begin_sec =
+        static_cast<double>(frame->time_contract.scan_begin_ns) / 1e9;
+    const double end_sec =
+        static_cast<double>(frame->time_contract.scan_end_ns) / 1e9;
+    for (size_t index = 0; index < configured_bins; ++index) {
+      const double ratio =
+          configured_bins == 1 ? 0.0
+                               : static_cast<double>(index) /
+                                     static_cast<double>(configured_bins - 1);
+      frame->motion_sample_times[index] =
+          begin_sec + ratio * (end_sec - begin_sec);
+    }
   }
 
   if (used_measurement_time_fallback) {
@@ -195,10 +239,12 @@ LidarUnifiedComponent::EnsureSensorState(const std::string& sensor_id) {
   }
 
   auto sensor_state = std::make_shared<SensorState>(sensor_buffer_capacity_);
-  sensor_state->pose_resolver =
-      std::make_unique<apollo::transform::TimedTransformResolver>(
-          tf_buffer_, config_.map_frame_id(), sensor_id,
-          BuildTransformResolverOptions(config_));
+  if (config_.compensation_mode() != LidarUnifiedComponentConfig::OFF) {
+    sensor_state->pose_resolver =
+        std::make_unique<apollo::transform::TimedTransformResolver>(
+            tf_buffer_, config_.map_frame_id(), sensor_id,
+            BuildTransformResolverOptions(config_));
+  }
   sensor_states_.emplace(sensor_id, sensor_state);
   return sensor_state;
 }
@@ -219,6 +265,9 @@ void LidarUnifiedComponent::OnAuxiliaryLidarMessage(
     return;
   }
 
+  AINFO_EVERY(20) << "OnAuxiliaryLidarMessage topic=" << topic_name
+                  << ", measurement_time=" << point_cloud->measurement_time()
+                  << ", points=" << point_cloud->point_size();
   const std::string sensor_id = ResolveSensorId(point_cloud, topic_name);
   if (sensor_id.empty()) {
     AWARN << "Skip auxiliary lidar message due to empty sensor id. topic="
@@ -226,13 +275,6 @@ void LidarUnifiedComponent::OnAuxiliaryLidarMessage(
     return;
   }
 
-  std::shared_ptr<BufferedFrame> buffered_frame;
-  if (!PrepareBufferedFrame(sensor_id, point_cloud, &buffered_frame)) {
-    AINFO_EVERY(kPosePrefetchLogFrequency)
-        << "Skip auxiliary lidar frame due to pose prefetch failure. sensor="
-        << sensor_id << ", topic=" << topic_name;
-    return;
-  }
   {
     std::lock_guard<std::mutex> lock(sensor_registry_mutex_);
     auto& mapped_sensor_id = auxiliary_sensor_ids_by_topic_[topic_name];
@@ -243,6 +285,20 @@ void LidarUnifiedComponent::OnAuxiliaryLidarMessage(
     mapped_sensor_id = sensor_id;
   }
 
+  std::shared_ptr<BufferedFrame> buffered_frame;
+  const auto input = std::find_if(
+      auxiliary_inputs_.begin(), auxiliary_inputs_.end(),
+      [&topic_name](const SensorInput& candidate) {
+        return candidate.topic_name == topic_name;
+      });
+  if (input == auxiliary_inputs_.end() ||
+      !PrepareBufferedFrame(sensor_id, point_cloud, input->time_settings,
+                            &buffered_frame)) {
+    AINFO_EVERY(kPosePrefetchLogFrequency)
+        << "Skip auxiliary lidar frame due to pose prefetch failure. sensor="
+        << sensor_id << ", topic=" << topic_name;
+    return;
+  }
   PushToBuffer(sensor_id, buffered_frame);
   TryFlushPendingFusionFrames(false);
 }

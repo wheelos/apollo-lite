@@ -1,5 +1,21 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "modules/drivers/lidar/processor/lidar_unified_component.h"
 
+#include <cmath>
+#include <limits>
 #include <set>
 
 namespace apollo {
@@ -7,6 +23,26 @@ namespace drivers {
 namespace lidar {
 
 bool LidarUnifiedComponent::ValidateConfig() const {
+  const auto valid_time_settings =
+      [](const LidarUnifiedComponentConfig::TimeSettings& settings,
+         const std::string& name) {
+        if (!std::isfinite(settings.expected_scan_duration_ms()) ||
+            !std::isfinite(settings.max_scan_duration_ms()) ||
+            settings.expected_scan_duration_ms() <= 0.0 ||
+            settings.max_scan_duration_ms() <= 0.0 ||
+            settings.max_scan_duration_ms() >
+                static_cast<double>(std::numeric_limits<int64_t>::max()) /
+                    1e6 ||
+            settings.expected_scan_duration_ms() >
+                settings.max_scan_duration_ms()) {
+          AERROR << name
+                 << " requires 0 < expected_scan_duration_ms <= "
+                    "max_scan_duration_ms";
+          return false;
+        }
+        return true;
+      };
+
   if (config_.output_channel().empty()) {
     AERROR << "output_channel is required";
     return false;
@@ -127,6 +163,16 @@ bool LidarUnifiedComponent::ValidateConfig() const {
     return false;
   }
 
+  if (!valid_time_settings(config_.primary_time_settings(),
+                           "primary_time_settings")) {
+    return false;
+  }
+
+  if (config_.primary_lidar_topic().empty()) {
+    AERROR << "primary_lidar_topic is required";
+    return false;
+  }
+
   if (config_.ts_sanity_enabled()) {
     if (config_.ts_sanity_min_interval_ms() == 0) {
       AERROR << "ts_sanity_min_interval_ms must be > 0";
@@ -149,13 +195,24 @@ bool LidarUnifiedComponent::ValidateConfig() const {
   }
 
   std::set<std::string> auxiliary_topics;
+  const std::string primary_topic = config_.primary_lidar_topic();
   for (const auto& input_cfg : config_.auxiliary_lidar_inputs()) {
     if (input_cfg.topic_name().empty()) {
       AERROR << "auxiliary_lidar_inputs.topic_name is required";
       return false;
     }
+    if (input_cfg.topic_name() == primary_topic) {
+      AERROR << "primary_lidar_topic must be different from auxiliary topic: "
+             << primary_topic;
+      return false;
+    }
     if (!auxiliary_topics.insert(input_cfg.topic_name()).second) {
       AERROR << "Duplicate auxiliary lidar topic: " << input_cfg.topic_name();
+      return false;
+    }
+    if (!valid_time_settings(input_cfg.time_settings(),
+                             "auxiliary time_settings for " +
+                                 input_cfg.topic_name())) {
       return false;
     }
   }

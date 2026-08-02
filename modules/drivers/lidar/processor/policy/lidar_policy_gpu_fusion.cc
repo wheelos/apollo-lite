@@ -1,3 +1,18 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <cmath>
 #include <mutex>
 #include <vector>
 
@@ -90,7 +105,9 @@ bool GpuLidarFusionPolicy::FuseToBaseLink(
     size_t input_count = 0;
     for (const auto& point : frame.point_cloud->point()) {
       host_input_points_[input_count++] =
-          ToCudaPoint(point, frame.point_cloud->measurement_time());
+          ToCudaPoint(point, frame.fallback_timestamp_sec,
+                      static_cast<int64_t>(
+                          std::llround(frame.timestamp_offset_sec * 1e9)));
     }
 
     if (host_pose_buffer_.size() < poses.size()) {
@@ -118,7 +135,7 @@ bool GpuLidarFusionPolicy::FuseToBaseLink(
     const size_t fused_count = CudaFuseFrameToBaseLink(
         host_input_points_.data(), input_count, sample_times.data(),
         sample_times.size(), host_pose_buffer_.data(),
-        frame.point_cloud->measurement_time(), host_fused_points_.data(),
+        frame.fallback_timestamp_sec, host_fused_points_.data(),
         remaining_capacity, device_id);
     if (fused_count == 0U && input_count > 0U) {
       AERROR << "GpuLidarFusionPolicy CUDA fusion failed for frame "

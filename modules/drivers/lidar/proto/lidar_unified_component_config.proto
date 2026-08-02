@@ -8,8 +8,29 @@ message LidarUnifiedComponentConfig {
     COMPUTE_MODE_GPU = 1;
   }
 
+  enum TimestampAnchor {
+    SCAN_BEGIN = 0;
+    SCAN_END = 1;
+    SCAN_MIDPOINT = 2;
+  }
+
+  enum CompensationMode {
+    OFF = 0;
+    RIGID_FRAME = 1;
+    CONTINUOUS_POINT = 2;
+  }
+
+  message TimeSettings {
+    optional TimestampAnchor measurement_time_anchor = 1
+        [default = SCAN_END];
+    optional int64 static_time_offset_ns = 2 [default = 0];
+    optional double expected_scan_duration_ms = 3 [default = 100.0];
+    optional double max_scan_duration_ms = 4 [default = 200.0];
+  }
+
   message AuxiliaryLidarInput {
     optional string topic_name = 1;
+    optional TimeSettings time_settings = 2;
   }
 
   // Core channel / frame IDs
@@ -46,6 +67,8 @@ message LidarUnifiedComponentConfig {
 
   // Auxiliary sensors
   repeated AuxiliaryLidarInput auxiliary_lidar_inputs = 19;
+  // Primary lidar input channel consumed by unified processor.
+  optional string primary_lidar_topic = 49;
 
   // M4 – Timestamp sanity
   optional bool ts_sanity_enabled = 20 [default = true];
@@ -90,4 +113,12 @@ message LidarUnifiedComponentConfig {
   optional uint32 pending_fusion_queue_size = 42 [default = 2];
   // Periodic flush interval for deadline-based publication.
   optional uint32 fusion_flush_interval_ms = 43 [default = 5];
+
+  // Production temporal-fusion controls.
+  optional TimeSettings primary_time_settings = 44;
+  optional CompensationMode compensation_mode = 45
+      [default = CONTINUOUS_POINT];
+  optional bool enable_online_time_offset_update = 46 [default = true];
+  optional bool enable_overlap_quality_gate = 47 [default = true];
+  optional bool enable_voxel_filter = 48 [default = true];
 }

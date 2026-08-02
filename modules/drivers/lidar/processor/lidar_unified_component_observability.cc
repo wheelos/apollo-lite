@@ -1,3 +1,17 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <algorithm>
 
 #include "modules/drivers/lidar/processor/lidar_unified_component.h"
@@ -64,6 +78,15 @@ void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
         << ", min_overlap_quality_weight="
         << frame_metrics.min_overlap_quality_weight
         << ", fusion_wait_ms=" << frame_metrics.fusion_wait_ms
+        << ", frame_selection_ms=" << frame_metrics.frame_selection_ms
+        << ", pose_bins_ms=" << frame_metrics.pose_bins_ms
+        << ", reference_pose_ms=" << frame_metrics.reference_pose_ms
+        << ", fusion_ms=" << frame_metrics.fusion_ms
+        << ", filter_ms=" << frame_metrics.filter_ms
+        << ", output_build_ms=" << frame_metrics.output_build_ms
+        << ", writer_ms=" << frame_metrics.writer_ms
+        << ", processing_ms=" << frame_metrics.processing_ms
+        << ", end_to_end_ms=" << frame_metrics.end_to_end_ms
         << ", fusion_deadline_exceeded="
         << frame_metrics.fusion_deadline_exceeded
         << ", ts_anomalies=" << ts_anomalies

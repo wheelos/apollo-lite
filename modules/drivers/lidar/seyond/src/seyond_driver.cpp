@@ -20,7 +20,6 @@
 
 static const uint32_t KBUF_SIZE = 1024 * 1024 * 10;
 static const double us_in_second_c = 1000000.0;
-static const double ten_us_in_second_c = 100000.0;
 namespace apollo {
 namespace drivers {
 namespace lidar {
@@ -343,8 +342,8 @@ void SeyondDriver::convert_and_parse_(const InnoDataPacket *pkt) {
 
 int32_t SeyondDriver::process_data_packet_(const InnoDataPacket *pkt) {
   // calculate the point timestamp
-  current_ts_start_ = (static_cast<double>(pkt->common.ts_start_us) * 1e-6) +
-                      (static_cast<double>(ts_offset_ns_) * 1e-9);
+  current_ts_start_ns_ =
+      static_cast<uint64_t>(pkt->common.ts_start_us) * 1000U + ts_offset_ns_;
   // adapt different data structures form different lidar
   if (CHECK_EN_XYZ_POINTCLOUD_DATA(pkt->type)) {
     const InnoEnXyzPoint *pt = reinterpret_cast<const InnoEnXyzPoint *>(
@@ -382,8 +381,8 @@ void SeyondDriver::process_xyz_point_data_(bool is_en_data, bool is_use_refl,
       point->set_intensity(static_cast<uint>(point_ptr->refl));
     }
 
-    point->set_timestamp(static_cast<uint64_t>(
-        point_ptr->ts_10us / ten_us_in_second_c + current_ts_start_));
+    point->set_timestamp(current_ts_start_ns_ +
+                         static_cast<uint64_t>(point_ptr->ts_10us) * 10000U);
     coordinate_transfer(point, param_.coordinate_mode, point_ptr->x,
                         point_ptr->y, point_ptr->z);
 

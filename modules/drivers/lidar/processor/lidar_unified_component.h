@@ -1,3 +1,18 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
 #pragma once
 
 #include <atomic>
@@ -7,6 +22,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -38,7 +54,6 @@ class LidarUnifiedComponent
  public:
   using PointCloudConstPtr =
       std::shared_ptr<const ::apollo::drivers::PointCloud>;
-
   bool Init() override;
   bool Proc(const std::shared_ptr<::apollo::drivers::PointCloud>& point_cloud)
       override;
@@ -53,7 +68,16 @@ class LidarUnifiedComponent
       LidarUnifiedComponentTest_ReportsTimeDeltaExceededForNearestFrame_Test;
   friend class
       LidarUnifiedComponentTest_AppliesFixedDelayDuringFrameLookup_Test;
+  friend class
+      LidarUnifiedComponentTest_PrefersMaximumIntervalOverlap_Test;
+  friend class
+      LidarUnifiedComponentTest_BreaksOverlapTieByAnchorDistance_Test;
+  friend class LidarUnifiedComponentTest_ExcludesFramesOnlyAfterCommit_Test;
+  friend class
+      LidarUnifiedComponentTest_OffCompensationUsesStaticExtrinsicOnly_Test;
   friend class LidarUnifiedComponentTest_UpdatesSensorTimingModel_Test;
+  friend class
+      LidarUnifiedComponentTest_KeepsOnlineOffsetDisabledForMatching_Test;
   friend class
       LidarUnifiedComponentTest_UpdatesLargeFixedDelayWhenInnovationIsWithinLimit_Test;
   friend class
@@ -65,6 +89,7 @@ class LidarUnifiedComponent
   friend class
       LidarUnifiedComponentTest_CollectNearestFramesFailsStrictMissingAuxiliary_Test;
   friend class LidarUnifiedComponentTest_RejectsDuplicateAuxiliaryTopics_Test;
+  friend class LidarUnifiedComponentTest_RejectsImpossibleScanDurations_Test;
   friend class LidarUnifiedComponentTest_EstimatesOverlapQualityWeight_Test;
 
   enum class FrameLookupFailureReason {
@@ -77,6 +102,7 @@ class LidarUnifiedComponent
     explicit SensorState(size_t capacity = 1) : frames(capacity) {}
 
     boost::circular_buffer<std::shared_ptr<BufferedFrame>> frames;
+    std::set<uint64_t> consumed_frame_ids;
     std::unique_ptr<apollo::transform::TimedTransformResolver> pose_resolver;
     double fixed_delay_sec = 0.0;
     bool fixed_delay_initialized = false;
@@ -91,6 +117,7 @@ class LidarUnifiedComponent
 
   struct SensorInput {
     std::string topic_name;
+    LidarUnifiedComponentConfig::TimeSettings time_settings;
   };
 
   struct FrameMetrics {
@@ -106,6 +133,15 @@ class LidarUnifiedComponent
     double max_abs_clock_offset_ms = 0.0;
     double min_overlap_quality_weight = 1.0;
     double fusion_wait_ms = 0.0;
+    double frame_selection_ms = 0.0;
+    double pose_bins_ms = 0.0;
+    double reference_pose_ms = 0.0;
+    double fusion_ms = 0.0;
+    double filter_ms = 0.0;
+    double output_build_ms = 0.0;
+    double writer_ms = 0.0;
+    double processing_ms = 0.0;
+    double end_to_end_ms = 0.0;
     bool fusion_deadline_exceeded = false;
   };
 
@@ -113,12 +149,15 @@ class LidarUnifiedComponent
     PointCloudConstPtr main_frame;
     std::string primary_sensor_id;
     double reference_timestamp_sec = 0.0;
+    std::shared_ptr<const BufferedFrame> primary_buffered_frame;
     double enqueue_time_sec = 0.0;
     double deadline_sec = 0.0;
   };
 
   bool PrepareBufferedFrame(const std::string& sensor_id,
                             const PointCloudConstPtr& point_cloud,
+                            const LidarUnifiedComponentConfig::TimeSettings&
+                                time_settings,
                             std::shared_ptr<BufferedFrame>* buffered_frame);
   void PushToBuffer(const std::string& sensor_id,
                     const std::shared_ptr<BufferedFrame>& buffered_frame);
@@ -132,22 +171,27 @@ class LidarUnifiedComponent
   std::shared_ptr<SensorState> GetSensorState(
       const std::string& sensor_id) const;
 
-  bool CollectNearestFrames(double ref_timestamp,
-                            const std::string& primary_sensor_id,
+  bool CollectNearestFrames(const std::string& primary_sensor_id,
+                            const std::shared_ptr<const BufferedFrame>&
+                                primary_buffered_frame,
                             std::vector<FrameHandle>* frame_handles,
                             FrameMetrics* frame_metrics);
-  void EnqueuePendingFusionFrame(const PointCloudConstPtr& main_frame,
-                                 const std::string& primary_sensor_id);
+  void EnqueuePendingFusionFrame(
+      const PointCloudConstPtr& main_frame,
+      const std::string& primary_sensor_id,
+      const std::shared_ptr<const BufferedFrame>& primary_buffered_frame);
   void TryFlushPendingFusionFrames(bool flush_expired_only);
   void OnFusionFlushTimer();
   bool ProcessFusionFrame(const PendingFusionFrame& pending_frame,
                           std::vector<FrameHandle> frame_handles,
                           FrameMetrics frame_metrics);
   bool FindNearestFrame(const std::shared_ptr<SensorState>& sensor_state,
-                        const std::string& sensor_id, double ref_timestamp,
+                        const std::string& sensor_id,
+                        const TimeContract& reference_time,
                         uint32_t max_ref_time_delta_ms,
                         FrameHandle* frame_handle,
                         FrameLookupFailureReason* failure_reason) const;
+  void CommitSelectedFrames(const std::vector<FrameHandle>& frame_handles);
   void UpdateSensorTimingModel(const FrameHandle& frame_handle,
                                double ref_timestamp_sec,
                                FrameMetrics* frame_metrics);
@@ -173,7 +217,7 @@ class LidarUnifiedComponent
   std::string primary_sensor_id_;
   size_t sensor_buffer_capacity_ = 1;
 
-  apollo::transform::Buffer* tf_buffer_ = nullptr;
+  apollo::transform::BufferInterface* tf_buffer_ = nullptr;
   std::unique_ptr<apollo::transform::TimedTransformResolver>
       base_link_pose_resolver_;
   mutable std::mutex sensor_registry_mutex_;
@@ -185,6 +229,8 @@ class LidarUnifiedComponent
       std::shared_ptr<apollo::cyber::Reader<::apollo::drivers::PointCloud>>>
       auxiliary_readers_;
   std::vector<SensorInput> auxiliary_inputs_;
+  std::map<std::string, std::shared_ptr<const Eigen::Affine3d>>
+      static_extrinsics_;
 
   std::unique_ptr<LidarDeskewPolicy> deskew_policy_;
   std::unique_ptr<LidarFusionPolicy> fusion_policy_;
@@ -203,6 +249,7 @@ class LidarUnifiedComponent
 
   std::vector<::apollo::drivers::PointXYZIT> full_pointcloud_buffer_;
   std::atomic<uint32_t> sequence_num_{0};
+  std::atomic<uint64_t> buffered_frame_id_{0};
   std::atomic<uint64_t> frames_total_{0};
   std::atomic<uint64_t> total_input_points_{0};
   std::atomic<uint64_t> total_output_points_{0};

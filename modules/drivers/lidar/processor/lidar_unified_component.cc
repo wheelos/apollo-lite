@@ -1,13 +1,30 @@
+// Copyright 2026 WheelOS All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
 #include "modules/drivers/lidar/processor/lidar_unified_component.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <functional>
 #include <iomanip>
 #include <limits>
 #include <sstream>
 
 #include "modules/drivers/lidar/processor/policy/lidar_policy_common.h"
+#include "modules/transform/transform_query.h"
 
 namespace apollo {
 namespace drivers {
@@ -16,6 +33,11 @@ namespace lidar {
 namespace {
 
 constexpr int kPosePrefetchLogFrequency = 10;
+
+double ElapsedMilliseconds(uint64_t start_ns) {
+  return static_cast<double>(cyber::Time::Now().ToNanosecond() - start_ns) /
+         1e6;
+}
 
 std::string FormatTimestampForLog(double timestamp_sec) {
   std::ostringstream stream;
@@ -110,6 +132,7 @@ apollo::transform::TimedTransformResolverOptions BuildTransformResolverOptions(
 }  // namespace
 
 bool LidarUnifiedComponent::Init() {
+  static_extrinsics_.clear();
   if (!GetProtoConfig(&config_)) {
     AERROR << "Load config failed, config file: " << ConfigFilePath();
     return false;
@@ -153,13 +176,16 @@ bool LidarUnifiedComponent::Init() {
   auxiliary_sensor_ids_by_topic_.clear();
   sensor_states_.clear();
   primary_sensor_id_.clear();
-  base_link_pose_resolver_ =
-      std::make_unique<apollo::transform::TimedTransformResolver>(
-          tf_buffer_, config_.map_frame_id(), config_.base_link_frame_id(),
-          BuildTransformResolverOptions(config_));
+  if (config_.compensation_mode() != LidarUnifiedComponentConfig::OFF) {
+    base_link_pose_resolver_ =
+        std::make_unique<apollo::transform::TimedTransformResolver>(
+            tf_buffer_, config_.map_frame_id(), config_.base_link_frame_id(),
+            BuildTransformResolverOptions(config_));
+  }
 
   for (const auto& input_cfg : config_.auxiliary_lidar_inputs()) {
-    auxiliary_inputs_.push_back(SensorInput{input_cfg.topic_name()});
+    auxiliary_inputs_.push_back(
+        SensorInput{input_cfg.topic_name(), input_cfg.time_settings()});
 
     auto reader = node_->CreateReader<::apollo::drivers::PointCloud>(
         input_cfg.topic_name(),
@@ -167,6 +193,11 @@ bool LidarUnifiedComponent::Init() {
             const std::shared_ptr<::apollo::drivers::PointCloud>& msg) {
           OnAuxiliaryLidarMessage(topic_name, msg);
         });
+    if (reader == nullptr) {
+      AERROR << "Failed to create auxiliary lidar reader. topic="
+             << input_cfg.topic_name();
+      return false;
+    }
     auxiliary_readers_.emplace(input_cfg.topic_name(), reader);
   }
 
@@ -199,6 +230,9 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
     AERROR << "Input point cloud is null";
     return false;
   }
+  AINFO_EVERY(20) << "OnReceiveMainLidar measurement_time="
+                  << point_cloud->measurement_time()
+                  << ", points=" << point_cloud->point_size();
 
   const std::string sensor_id = ResolveSensorId(point_cloud, std::string());
   if (sensor_id.empty()) {
@@ -217,7 +251,9 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
   }
 
   std::shared_ptr<BufferedFrame> buffered_frame;
-  if (!PrepareBufferedFrame(primary_sensor_id_, point_cloud, &buffered_frame)) {
+  if (!PrepareBufferedFrame(primary_sensor_id_, point_cloud,
+                            config_.primary_time_settings(),
+                            &buffered_frame)) {
     AINFO_EVERY(kPosePrefetchLogFrequency)
         << "Drop primary lidar frame due to pose prefetch failure. sensor="
         << primary_sensor_id_ << ", "
@@ -228,7 +264,7 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
 
   if (config_.ts_sanity_enabled()) {
     const TsSanityResult ts_result =
-        ts_sanity_.Check(point_cloud->measurement_time());
+        ts_sanity_.Check(buffered_frame->time_contract.CanonicalAnchorSec());
     if (ts_result.status != TsSanityStatus::kOk &&
         ts_result.status != TsSanityStatus::kFirstFrame) {
       dtc_reporter_.ReportTsAnomaly(ts_result.status, ts_result.interval_ms,
@@ -240,7 +276,7 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
     }
   }
 
-  EnqueuePendingFusionFrame(point_cloud, primary_sensor_id_);
+  EnqueuePendingFusionFrame(point_cloud, primary_sensor_id_, buffered_frame);
   TryFlushPendingFusionFrames(false);
   return true;
 }
@@ -248,6 +284,7 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
 bool LidarUnifiedComponent::ProcessFusionFrame(
     const PendingFusionFrame& pending_frame,
     std::vector<FrameHandle> frame_handles, FrameMetrics frame_metrics) {
+  const uint64_t processing_start_ns = cyber::Time::Now().ToNanosecond();
   for (const auto& frame_handle : frame_handles) {
     if (!frame_handle.is_primary) {
       UpdateSensorTimingModel(frame_handle,
@@ -277,21 +314,32 @@ bool LidarUnifiedComponent::ProcessFusionFrame(
 
   dtc_reporter_.ReportDegradeTransition(degrade_policy_.OnFrameOk());
 
-  LogFrameMetrics(frame_metrics);
+  const uint64_t writer_start_ns = cyber::Time::Now().ToNanosecond();
   writer_->Write(unified_output);
+  frame_metrics.writer_ms = ElapsedMilliseconds(writer_start_ns);
+  frame_metrics.processing_ms = ElapsedMilliseconds(processing_start_ns);
+  frame_metrics.end_to_end_ms =
+      std::max(0.0, (cyber::Time::Now().ToSecond() -
+                     pending_frame.enqueue_time_sec) *
+                        1000.0);
+  LogFrameMetrics(frame_metrics);
   return true;
 }
 
 void LidarUnifiedComponent::EnqueuePendingFusionFrame(
-    const PointCloudConstPtr& main_frame, const std::string& primary_sensor_id) {
-  if (main_frame == nullptr || primary_sensor_id.empty()) {
+    const PointCloudConstPtr& main_frame, const std::string& primary_sensor_id,
+    const std::shared_ptr<const BufferedFrame>& primary_buffered_frame) {
+  if (main_frame == nullptr || primary_sensor_id.empty() ||
+      primary_buffered_frame == nullptr) {
     return;
   }
 
   PendingFusionFrame pending_frame;
   pending_frame.main_frame = main_frame;
   pending_frame.primary_sensor_id = primary_sensor_id;
-  pending_frame.reference_timestamp_sec = main_frame->measurement_time();
+  pending_frame.primary_buffered_frame = primary_buffered_frame;
+  pending_frame.reference_timestamp_sec =
+      primary_buffered_frame->time_contract.CanonicalAnchorSec();
   pending_frame.enqueue_time_sec = cyber::Time::Now().ToSecond();
   pending_frame.deadline_sec =
       pending_frame.enqueue_time_sec +
@@ -331,8 +379,10 @@ void LidarUnifiedComponent::TryFlushPendingFusionFrames(
 
     FrameMetrics frame_metrics;
     std::vector<FrameHandle> frame_handles;
+    const uint64_t frame_selection_start_ns =
+        cyber::Time::Now().ToNanosecond();
     const bool collected = CollectNearestFrames(
-        pending_frame.reference_timestamp_sec, pending_frame.primary_sensor_id,
+        pending_frame.primary_sensor_id, pending_frame.primary_buffered_frame,
         &frame_handles, &frame_metrics);
     const double now_sec = cyber::Time::Now().ToSecond();
     const bool deadline_exceeded = now_sec >= pending_frame.deadline_sec;
@@ -364,6 +414,9 @@ void LidarUnifiedComponent::TryFlushPendingFusionFrames(
              << ", deadline_exceeded=" << deadline_exceeded;
       continue;
     }
+    CommitSelectedFrames(frame_handles);
+    frame_metrics.frame_selection_ms =
+        ElapsedMilliseconds(frame_selection_start_ns);
 
     frame_metrics.fusion_deadline_exceeded = deadline_exceeded;
     frame_metrics.fusion_wait_ms =
@@ -393,16 +446,28 @@ void LidarUnifiedComponent::PushToBuffer(
     return;
   }
   std::lock_guard<std::mutex> lock(sensor_state->mutex);
+  if (sensor_state->frames.full() &&
+      sensor_state->frames.front() != nullptr) {
+    sensor_state->consumed_frame_ids.erase(
+        sensor_state->frames.front()->frame_id);
+  }
   sensor_state->frames.push_back(buffered_frame);
+  AINFO_EVERY(20) << "Buffered lidar frame. sensor=" << sensor_id
+                  << ", frame_id=" << buffered_frame->frame_id
+                  << ", buffer_size=" << sensor_state->frames.size()
+                  << ", canonical_anchor_ns="
+                  << buffered_frame->time_contract.canonical_anchor_ns;
 }
 
 bool LidarUnifiedComponent::CollectNearestFrames(
-    double ref_timestamp, const std::string& primary_sensor_id,
+    const std::string& primary_sensor_id,
+    const std::shared_ptr<const BufferedFrame>& primary_buffered_frame,
     std::vector<FrameHandle>* frame_handles, FrameMetrics* frame_metrics) {
-  if (frame_handles == nullptr || frame_metrics == nullptr) {
+  if (frame_handles == nullptr || frame_metrics == nullptr ||
+      primary_buffered_frame == nullptr ||
+      primary_buffered_frame->point_cloud == nullptr) {
     return false;
   }
-
   std::vector<std::string> auxiliary_topics;
   auxiliary_topics.reserve(auxiliary_inputs_.size());
   for (const auto& auxiliary_input : auxiliary_inputs_) {
@@ -410,8 +475,15 @@ bool LidarUnifiedComponent::CollectNearestFrames(
   }
 
   SyncGateMetrics sync_metrics;
+  FrameHandle primary_handle;
+  primary_handle.sensor_id = primary_sensor_id;
+  primary_handle.point_cloud = primary_buffered_frame->point_cloud;
+  primary_handle.buffered_frame = primary_buffered_frame;
+  primary_handle.frame_id = primary_buffered_frame->frame_id;
+  primary_handle.time_contract = primary_buffered_frame->time_contract;
+  primary_handle.is_primary = true;
   const bool ok = sync_gate_.SelectFrames(
-      ref_timestamp, primary_sensor_id, auxiliary_topics,
+      primary_handle, auxiliary_topics,
       config_.max_ref_time_delta_ms(), config_.strict_auxiliary_sync(),
       [this](const std::string& topic_name, std::string* sensor_id) {
         if (sensor_id == nullptr) {
@@ -426,7 +498,8 @@ bool LidarUnifiedComponent::CollectNearestFrames(
         return !sensor_id->empty();
       },
       [this, primary_sensor_id](
-          const std::string& sensor_id, double timestamp, uint32_t max_delta_ms,
+          const std::string& sensor_id, const TimeContract& reference_time,
+          uint32_t max_delta_ms,
           FrameHandle* frame_handle, bool* time_delta_exceeded) {
         if (time_delta_exceeded != nullptr) {
           *time_delta_exceeded = false;
@@ -434,10 +507,12 @@ bool LidarUnifiedComponent::CollectNearestFrames(
         FrameLookupFailureReason failure_reason =
             FrameLookupFailureReason::kNone;
         const bool found =
-            FindNearestFrame(GetSensorState(sensor_id), sensor_id, timestamp,
+            FindNearestFrame(GetSensorState(sensor_id), sensor_id,
+                             reference_time,
                              max_delta_ms, frame_handle, &failure_reason);
         if (found && sensor_id != primary_sensor_id &&
             frame_handle != nullptr &&
+            config_.enable_overlap_quality_gate() &&
             frame_handle->overlap_quality_weight <
                 config_.auxiliary_min_overlap_quality_weight()) {
           return false;
@@ -460,7 +535,7 @@ bool LidarUnifiedComponent::CollectNearestFrames(
 
 bool LidarUnifiedComponent::FindNearestFrame(
     const std::shared_ptr<SensorState>& sensor_state,
-    const std::string& sensor_id, double ref_timestamp,
+    const std::string& sensor_id, const TimeContract& reference_time,
     uint32_t max_ref_time_delta_ms, FrameHandle* frame_handle,
     FrameLookupFailureReason* failure_reason) const {
   if (frame_handle == nullptr || failure_reason == nullptr) {
@@ -475,60 +550,88 @@ bool LidarUnifiedComponent::FindNearestFrame(
 
   std::lock_guard<std::mutex> lock(sensor_state->mutex);
   if (sensor_state->frames.empty()) {
+    AINFO_EVERY(20) << "Lidar frame buffer is empty. sensor=" << sensor_id
+                    << ", reference_anchor_ns="
+                    << reference_time.canonical_anchor_ns;
     *failure_reason = FrameLookupFailureReason::kBufferEmpty;
     return false;
   }
 
   std::shared_ptr<const BufferedFrame> best_frame;
-  double best_delta_ms = std::numeric_limits<double>::max();
-  double best_timestamp = 0.0;
-  constexpr double kTimestampTieEpsilonMs = 1e-6;
-  const double fixed_delay_sec = sensor_state->fixed_delay_initialized
-                                     ? sensor_state->fixed_delay_sec
-                                     : 0.0;
+  bool has_unconsumed_frame = false;
+  int64_t best_overlap_ns = -1;
+  int64_t best_delta_ns = std::numeric_limits<int64_t>::max();
+  int64_t best_anchor_ns = 0;
+  const int64_t online_offset_ns =
+      config_.enable_online_time_offset_update() &&
+              sensor_state->fixed_delay_initialized
+          ? static_cast<int64_t>(
+                std::llround(sensor_state->fixed_delay_sec * 1e9))
+          : 0;
 
-  // Auxiliary lidar frames can arrive slightly out of order, so choose the
-  // nearest sample with a linear scan instead of assuming a sorted buffer.
   for (const auto& candidate : sensor_state->frames) {
     if (candidate == nullptr || candidate->point_cloud == nullptr ||
-        !candidate->pose_prefetch_ok) {
+        sensor_state->consumed_frame_ids.count(candidate->frame_id) != 0U) {
       continue;
     }
+    has_unconsumed_frame = true;
 
-    const double candidate_timestamp =
-        candidate->point_cloud->measurement_time();
-    const double delta_ms =
-        std::fabs((candidate_timestamp + fixed_delay_sec) - ref_timestamp) *
-        1000.0;
-    const bool same_delta =
-        std::fabs(delta_ms - best_delta_ms) <= kTimestampTieEpsilonMs;
-    if (delta_ms + kTimestampTieEpsilonMs < best_delta_ms ||
-        (same_delta && candidate_timestamp < best_timestamp)) {
+    TimeContract adjusted = candidate->time_contract;
+    adjusted.scan_begin_ns += online_offset_ns;
+    adjusted.scan_end_ns += online_offset_ns;
+    adjusted.canonical_anchor_ns += online_offset_ns;
+    const int64_t overlap_ns = IntervalOverlapNs(reference_time, adjusted);
+    const int64_t delta_ns = std::llabs(
+        adjusted.canonical_anchor_ns - reference_time.canonical_anchor_ns);
+    if (delta_ns >
+        static_cast<int64_t>(max_ref_time_delta_ms) * 1000000LL) {
+      continue;
+    }
+    if (overlap_ns > best_overlap_ns ||
+        (overlap_ns == best_overlap_ns && delta_ns < best_delta_ns) ||
+        (overlap_ns == best_overlap_ns && delta_ns == best_delta_ns &&
+         adjusted.canonical_anchor_ns < best_anchor_ns)) {
       best_frame = candidate;
-      best_delta_ms = delta_ms;
-      best_timestamp = candidate_timestamp;
+      best_overlap_ns = overlap_ns;
+      best_delta_ns = delta_ns;
+      best_anchor_ns = adjusted.canonical_anchor_ns;
     }
   }
 
   if (best_frame == nullptr) {
-    *failure_reason = FrameLookupFailureReason::kBufferEmpty;
-    return false;
-  }
-
-  if (best_delta_ms > static_cast<double>(max_ref_time_delta_ms)) {
-    *failure_reason = FrameLookupFailureReason::kTimeDeltaExceeded;
+    *failure_reason = has_unconsumed_frame
+                          ? FrameLookupFailureReason::kTimeDeltaExceeded
+                          : FrameLookupFailureReason::kBufferEmpty;
     return false;
   }
 
   frame_handle->sensor_id = sensor_id;
   frame_handle->point_cloud = best_frame->point_cloud;
   frame_handle->buffered_frame = best_frame;
+  frame_handle->frame_id = best_frame->frame_id;
+  frame_handle->time_contract = best_frame->time_contract;
   frame_handle->clock_offset_residual_ms =
-      (ref_timestamp -
-       (best_frame->point_cloud->measurement_time() + fixed_delay_sec)) *
-      1000.0;
+      static_cast<double>(reference_time.canonical_anchor_ns -
+                          best_frame->time_contract.canonical_anchor_ns -
+                          online_offset_ns) /
+      1e6;
   frame_handle->overlap_quality_weight = sensor_state->overlap_quality_weight;
   return true;
+}
+
+void LidarUnifiedComponent::CommitSelectedFrames(
+    const std::vector<FrameHandle>& frame_handles) {
+  for (const auto& handle : frame_handles) {
+    if (handle.is_primary || handle.frame_id == 0U) {
+      continue;
+    }
+    const auto sensor_state = GetSensorState(handle.sensor_id);
+    if (sensor_state == nullptr) {
+      continue;
+    }
+    std::lock_guard<std::mutex> lock(sensor_state->mutex);
+    sensor_state->consumed_frame_ids.insert(handle.frame_id);
+  }
 }
 
 bool LidarUnifiedComponent::ResolveMapToBase(double ref_timestamp_sec,
@@ -565,17 +668,20 @@ void LidarUnifiedComponent::UpdateSensorTimingModel(
   }
 
   const double observed_delay_sec =
-      ref_timestamp_sec - frame_handle.point_cloud->measurement_time();
+      ref_timestamp_sec - frame_handle.time_contract.CanonicalAnchorSec();
   std::lock_guard<std::mutex> lock(sensor_state->mutex);
-  if (!sensor_state->fixed_delay_initialized) {
-    sensor_state->fixed_delay_sec = observed_delay_sec;
-    sensor_state->fixed_delay_initialized = true;
-  } else if (std::fabs((observed_delay_sec - sensor_state->fixed_delay_sec) *
-                       1000.0) <= config_.fixed_delay_update_limit_ms()) {
-    const double alpha = config_.fixed_delay_ema_alpha();
-    sensor_state->fixed_delay_sec =
-        sensor_state->fixed_delay_sec * (1.0 - alpha) +
-        observed_delay_sec * alpha;
+  if (config_.enable_online_time_offset_update()) {
+    if (!sensor_state->fixed_delay_initialized) {
+      sensor_state->fixed_delay_sec = observed_delay_sec;
+      sensor_state->fixed_delay_initialized = true;
+    } else if (std::fabs(
+                   (observed_delay_sec - sensor_state->fixed_delay_sec) *
+                   1000.0) <= config_.fixed_delay_update_limit_ms()) {
+      const double alpha = config_.fixed_delay_ema_alpha();
+      sensor_state->fixed_delay_sec =
+          sensor_state->fixed_delay_sec * (1.0 - alpha) +
+          observed_delay_sec * alpha;
+    }
   }
 
   if (sensor_state->timing_observation_count == 0U) {
@@ -651,7 +757,12 @@ double LidarUnifiedComponent::EstimateOverlapQualityWeight(
     PointXYZIT transformed_point;
     if (!TransformPointToBase(
             buffered_frame.point_cloud->point(static_cast<int>(index)),
-            buffered_frame.point_cloud->measurement_time(),
+            static_cast<double>(
+                buffered_frame.time_contract.canonical_anchor_ns -
+                buffered_frame.time_contract.static_offset_ns) /
+                1e9,
+            static_cast<double>(buffered_frame.time_contract.static_offset_ns) /
+                1e9,
             buffered_frame.motion_sample_times, buffered_frame.motion_poses,
             map2base_ref, &transformed_point)) {
       continue;
@@ -689,20 +800,64 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
     return false;
   }
 
+  std::vector<FrameHandle> prepared_handles = frame_handles;
+  if (config_.compensation_mode() == LidarUnifiedComponentConfig::OFF) {
+    apollo::transform::TransformQuery transform_query(tf_buffer_);
+    for (auto& handle : prepared_handles) {
+      if (handle.buffered_frame == nullptr) {
+        if (handle.is_primary) {
+          return false;
+        }
+        handle.point_cloud.reset();
+        continue;
+      }
+      Eigen::Affine3d base_from_sensor = Eigen::Affine3d::Identity();
+      const auto cached = static_extrinsics_.find(handle.sensor_id);
+      if (cached != static_extrinsics_.end()) {
+        base_from_sensor = *cached->second;
+      } else if (!transform_query.GetLatestStaticTransformToAffine(
+                     config_.base_link_frame_id(), handle.sensor_id,
+                     &base_from_sensor)) {
+        if (handle.is_primary) {
+          AERROR << "Static extrinsic unavailable from " << handle.sensor_id
+                 << " to " << config_.base_link_frame_id();
+          return false;
+        }
+        AWARN << "Skip auxiliary with unavailable static extrinsic: "
+              << handle.sensor_id;
+        handle.point_cloud.reset();
+        continue;
+      } else {
+        static_extrinsics_.emplace(
+            handle.sensor_id,
+            std::make_shared<const Eigen::Affine3d>(base_from_sensor));
+      }
+      auto frame = std::make_shared<BufferedFrame>(*handle.buffered_frame);
+      frame->motion_sample_times = {
+          handle.time_contract.CanonicalAnchorSec()};
+      frame->motion_poses = {base_from_sensor};
+      frame->pose_prefetch_ok = true;
+      handle.buffered_frame = std::move(frame);
+    }
+  }
+
   std::vector<SensorFrameContext> contexts;
   std::vector<std::vector<double>> motion_sample_times;
   std::vector<std::vector<Eigen::Affine3d>> motion_poses;
-  contexts.reserve(frame_handles.size());
-  motion_sample_times.reserve(frame_handles.size());
-  motion_poses.reserve(frame_handles.size());
+  contexts.reserve(prepared_handles.size());
+  motion_sample_times.reserve(prepared_handles.size());
+  motion_poses.reserve(prepared_handles.size());
 
   size_t required_points = 0;
-  if (!pose_bins_builder_.Build(frame_handles, deskew_policy_.get(), &contexts,
+  const uint64_t pose_bins_start_ns = cyber::Time::Now().ToNanosecond();
+  if (!pose_bins_builder_.Build(prepared_handles, deskew_policy_.get(),
+                                &contexts,
                                 &motion_sample_times, &motion_poses,
                                 &required_points)) {
     AERROR << "No valid sensor context for fusion";
     return false;
   }
+  frame_metrics->pose_bins_ms = ElapsedMilliseconds(pose_bins_start_ns);
 
   frame_metrics->total_input_points = required_points;
   frame_metrics->matched_sensor_count = contexts.size();
@@ -713,12 +868,20 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
   }
 
   Eigen::Affine3d map2base_ref = Eigen::Affine3d::Identity();
-  if (!ResolveMapToBase(main_frame->measurement_time(), &map2base_ref)) {
+  const double reference_time_sec =
+      frame_handles.front().time_contract.CanonicalAnchorSec();
+  const uint64_t reference_pose_start_ns = cyber::Time::Now().ToNanosecond();
+  if (config_.compensation_mode() != LidarUnifiedComponentConfig::OFF &&
+      !ResolveMapToBase(reference_time_sec, &map2base_ref)) {
     AERROR << "Failed to resolve cached base pose at ref timestamp "
-           << main_frame->measurement_time();
+           << reference_time_sec;
     return false;
   }
-  UpdateOverlapQualityWeights(frame_handles, map2base_ref, frame_metrics);
+  frame_metrics->reference_pose_ms =
+      ElapsedMilliseconds(reference_pose_start_ns);
+  if (config_.enable_overlap_quality_gate()) {
+    UpdateOverlapQualityWeights(prepared_handles, map2base_ref, frame_metrics);
+  }
 
   PointCloudBuffer fused_buffer;
   fused_buffer.data_ptr = full_pointcloud_buffer_.data();
@@ -731,24 +894,29 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
           ? static_cast<int>(config_.gpu_device_id())
           : -1;
 
-  if (!fusion_policy_->FuseToBaseLink(main_frame->measurement_time(),
-                                      map2base_ref, contexts, motion_poses,
-                                      motion_sample_times, &fused_buffer)) {
+  const uint64_t fusion_start_ns = cyber::Time::Now().ToNanosecond();
+  if (!fusion_policy_->FuseToBaseLink(
+          reference_time_sec, map2base_ref, contexts, motion_poses,
+          motion_sample_times, &fused_buffer)) {
     AERROR << "Failed to fuse point clouds for ref timestamp "
-           << main_frame->measurement_time();
+           << reference_time_sec;
     return false;
   }
+  frame_metrics->fusion_ms = ElapsedMilliseconds(fusion_start_ns);
 
   const size_t compact_points = fused_buffer.valid_count;
   size_t ego_filtered_points = 0;
   size_t voxel_filtered_points = 0;
+  const uint64_t filter_start_ns = cyber::Time::Now().ToNanosecond();
   const size_t valid_size = filter_policy_->ApplyFilters(
       &fused_buffer, &ego_filtered_points, &voxel_filtered_points);
+  frame_metrics->filter_ms = ElapsedMilliseconds(filter_start_ns);
   frame_metrics->compact_points = compact_points;
   frame_metrics->ego_filtered_points = ego_filtered_points;
   frame_metrics->voxel_filtered_points = voxel_filtered_points;
   frame_metrics->output_points = valid_size;
 
+  const uint64_t output_build_start_ns = cyber::Time::Now().ToNanosecond();
   auto unified = std::make_shared<::apollo::drivers::PointCloud>();
   unified->mutable_header()->CopyFrom(main_frame->header());
   unified->mutable_header()->set_frame_id(config_.base_link_frame_id());
@@ -756,7 +924,7 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
   unified->mutable_header()->set_timestamp_sec(cyber::Time::Now().ToSecond());
   unified->mutable_header()->set_sequence_num(sequence_num_.fetch_add(1) + 1);
   unified->set_frame_id(config_.base_link_frame_id());
-  unified->set_measurement_time(main_frame->measurement_time());
+  unified->set_measurement_time(reference_time_sec);
   unified->set_is_dense(true);
   unified->mutable_point()->Reserve(static_cast<int>(valid_size));
 
@@ -772,6 +940,8 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
 
   unified->set_height(1);
   unified->set_width(unified->point_size());
+  frame_metrics->output_build_ms =
+      ElapsedMilliseconds(output_build_start_ns);
 
   *output = unified;
   return true;
