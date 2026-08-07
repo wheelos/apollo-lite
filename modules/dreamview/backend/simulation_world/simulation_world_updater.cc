@@ -16,6 +16,8 @@
 
 #include "modules/dreamview/backend/simulation_world/simulation_world_updater.h"
 
+#include <zstd.h>
+
 #include <cmath>
 #include <memory>
 
@@ -45,6 +47,29 @@ SimulationWorldUpdater::~SimulationWorldUpdater() = default;
 
 using apollo::common::monitor::MonitorMessageItem;
 using apollo::common::util::ContainsKey;
+
+namespace {
+
+constexpr char kZstdPayloadHeader[] = "DVZSTD\1";
+constexpr int kZstdCompressionLevel = 3;
+
+bool CompressZstd(const std::string &input, std::string *output) {
+  output->resize(ZSTD_compressBound(input.size()));
+  const size_t compressed_size =
+      ZSTD_compress(output->data(), output->size(), input.data(), input.size(),
+                    kZstdCompressionLevel);
+  if (ZSTD_isError(compressed_size)) {
+    AERROR << "Failed to compress Dreamview protobuf payload: "
+           << ZSTD_getErrorName(compressed_size);
+    output->clear();
+    return false;
+  }
+  output->resize(compressed_size);
+  output->insert(0, kZstdPayloadHeader, sizeof(kZstdPayloadHeader) - 1);
+  return true;
+}
+
+}  // namespace
 using apollo::common::util::JsonUtil;
 using apollo::cyber::common::GetProtoFromASCIIFile;
 using apollo::cyber::common::SetProtoToASCIIFile;
@@ -410,7 +435,46 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
           enable_pnc_monitor = json["planning"];
         }
         std::string to_send;
-        {
+        const bool use_zstd =
+            !ContainsKey(json, "compression") ||
+            !json["compression"].is_string() ||
+            json["compression"] != "none";
+        if (use_zstd) {
+          bool compressed_ready = false;
+          {
+            boost::shared_lock<boost::shared_mutex> reader_lock(mutex_);
+            compressed_ready =
+                enable_pnc_monitor
+                    ? compressed_simulation_world_with_planning_data_ready_
+                    : compressed_simulation_world_ready_;
+            if (compressed_ready) {
+              to_send = enable_pnc_monitor
+                            ? compressed_simulation_world_with_planning_data_
+                            : compressed_simulation_world_;
+            }
+          }
+          if (!compressed_ready) {
+            boost::unique_lock<boost::shared_mutex> writer_lock(mutex_);
+            const std::string &source =
+                enable_pnc_monitor ? simulation_world_with_planning_data_
+                                    : simulation_world_;
+            std::string &compressed =
+                enable_pnc_monitor
+                    ? compressed_simulation_world_with_planning_data_
+                    : compressed_simulation_world_;
+            bool &ready =
+                enable_pnc_monitor
+                    ? compressed_simulation_world_with_planning_data_ready_
+                    : compressed_simulation_world_ready_;
+            if (!ready) {
+              if (!CompressZstd(source, &compressed)) {
+                return;
+              }
+              ready = true;
+            }
+            to_send = compressed;
+          }
+        } else {
           // Pay the price to copy the data instead of sending data over the
           // wire while holding the lock.
           boost::shared_lock<boost::shared_mutex> reader_lock(mutex_);
@@ -838,6 +902,10 @@ void SimulationWorldUpdater::OnTimer() {
     last_pushed_adc_timestamp_sec_.store(0.0, std::memory_order_relaxed);
     std::string().swap(simulation_world_);
     std::string().swap(simulation_world_with_planning_data_);
+    std::string().swap(compressed_simulation_world_);
+    std::string().swap(compressed_simulation_world_with_planning_data_);
+    compressed_simulation_world_ready_ = false;
+    compressed_simulation_world_with_planning_data_ready_ = false;
     std::string().swap(relative_map_string_);
     cached_outputs_cleared_ = true;
     return;
@@ -857,6 +925,10 @@ void SimulationWorldUpdater::OnTimer() {
       sim_world_service_->GetWireFormatString(
           FLAGS_sim_map_radius, &simulation_world_,
           &simulation_world_with_planning_data_);
+      std::string().swap(compressed_simulation_world_);
+      std::string().swap(compressed_simulation_world_with_planning_data_);
+      compressed_simulation_world_ready_ = false;
+      compressed_simulation_world_with_planning_data_ready_ = false;
     } else {
       std::string().swap(simulation_world_);
       std::string().swap(simulation_world_with_planning_data_);

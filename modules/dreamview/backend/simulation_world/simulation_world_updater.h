@@ -196,6 +196,10 @@ class SimulationWorldUpdater {
   // updated by timer.
   std::string simulation_world_;
   std::string simulation_world_with_planning_data_;
+  std::string compressed_simulation_world_;
+  std::string compressed_simulation_world_with_planning_data_;
+  bool compressed_simulation_world_ready_ = false;
+  bool compressed_simulation_world_with_planning_data_ready_ = false;
 
   // Received relative map data in wire format.
   std::string relative_map_string_;

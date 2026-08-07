@@ -73,6 +73,7 @@ cc_library(
         "//modules/dreamview/backend/sim_control_manager",
         "//modules/map/hdmap:hdmap_util",
         "@boost.thread",
+        "@zstd//:zstd",
     ],
 )
 

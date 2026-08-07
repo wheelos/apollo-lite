@@ -107,9 +107,9 @@ http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "ht
 
 http_archive(
     name = "dreamview_frontend_assets",
-    sha256 = "c639414005bea2273e4e22711f0e6777a4c88b3cc09ed5dbb9bba71ecb045192",
+    sha256 = "351abac78142b228d310b2d22a776924792981385514f4f98b4f5fc4c939067f",
     urls = [
-        "https://dl.wheelos.cn/release/dreamview/dreamview-frontend-5.5.5.tar.gz",
+        "https://dl.wheelos.cn/release/dreamview/dreamview-frontend-6.0.5.tar.gz",
     ],
 )
 
@@ -137,3 +137,4 @@ bazel_dep(name = "opencv", version = "4.13.0")
 bazel_dep(name = "proj", version = "9.8.0")
 bazel_dep(name = "livox-sdk", version = "2.3.0")
 bazel_dep(name = "osqp", version = "1.0.0.bcr.2")
+bazel_dep(name = "zstd", version = "1.5.7.bcr.1")
