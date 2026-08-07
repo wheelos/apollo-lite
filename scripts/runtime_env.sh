@@ -81,7 +81,7 @@ _inject_apollo_external_core_outputs() {
     "cyber/tools/cyber_service"
   )
   if command -v bazel >/dev/null 2>&1; then
-    bazel_bin_from_info="$(cd "${APOLLO_ROOT_DIR}" && bazel info bazel-bin 2>/dev/null | head -n 1)"
+    bazel_bin_from_info="$(cd "${APOLLO_ROOT_DIR}" && bazel info bazel-bin 2>/dev/null | tail -n 1)"
     if [[ -n "${bazel_bin_from_info}" ]]; then
       output_roots+=("${bazel_bin_from_info}")
     fi
@@ -96,7 +96,7 @@ _inject_apollo_external_core_outputs() {
       core_execroot="${output_root}/external/${repo_name}"
       for tool_dir in "${tool_dirs[@]}"; do
         if [[ -d "${core_execroot}/${tool_dir}" ]]; then
-          _pathprepend "${tool_dir}" PATH
+          _pathprepend "${core_execroot}/${tool_dir}" PATH
         fi
       done
       py_internal_dir="${core_execroot}/cyber/python/internal"
