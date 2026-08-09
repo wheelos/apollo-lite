@@ -308,6 +308,9 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
             std::make_shared<apollo::mission::MissionRequest>();
 
         // Parse common fields
+        if (ContainsKey(json, "mission_id")) {
+          mission_request->set_mission_id(json["mission_id"]);
+        }
         if (ContainsKey(json, "task_name")) {
           mission_request->set_task_name(json["task_name"]);
         }

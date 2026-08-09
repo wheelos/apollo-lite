@@ -24,6 +24,7 @@
 #include "wheelos_msgs/basic_msgs/geometry.pb.h"
 #include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
 #include "wheelos_msgs/routing_msgs/routing.pb.h"
 
 #include "cyber/common/macros.h"
@@ -37,6 +38,11 @@ class MissionContext {
   void SetRoutingWriter(
       const std::shared_ptr<cyber::Writer<routing::RoutingRequest>>& writer) {
     routing_writer_ = writer;
+  }
+
+  void SetPlanningPadWriter(
+      const std::shared_ptr<cyber::Writer<planning::PadMessage>>& writer) {
+    planning_pad_writer_ = writer;
   }
 
   // Data storage (written by Component)
@@ -86,6 +92,15 @@ class MissionContext {
     routing_writer_->Write(request);
   }
 
+  bool SendPlanningPad(planning::PadMessage::DrivingAction action) {
+    if (planning_pad_writer_ == nullptr) {
+      return false;
+    }
+    planning::PadMessage message;
+    message.set_action(action);
+    return planning_pad_writer_->Write(message);
+  }
+
   void SetCurrentMissionId(const std::string& id) {
     std::lock_guard<std::mutex> lock(mutex_);
     current_mission_id_ = id;
@@ -102,6 +117,7 @@ class MissionContext {
   std::string current_mission_id_;
 
   std::shared_ptr<cyber::Writer<routing::RoutingRequest>> routing_writer_;
+  std::shared_ptr<cyber::Writer<planning::PadMessage>> planning_pad_writer_;
   std::shared_ptr<canbus::Chassis> chassis_;
   std::shared_ptr<localization::LocalizationEstimate> localization_;
   std::unordered_map<std::string, common::PointENU> waypoints_;

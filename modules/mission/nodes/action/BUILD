@@ -8,7 +8,19 @@ cc_library(
     deps = [
         ":charge_node",
         ":move_to_node",
+        ":send_pad_node",
         ":station_wait_node"
+    ],
+)
+
+cc_library(
+    name = "send_pad_node",
+    srcs = ["send_pad_node.cc"],
+    hdrs = ["send_pad_node.h"],
+    deps = [
+        "@core//cyber",
+        "//modules/mission/common:mission_context",
+        "@behaviortree_cpp//:behaviortree_cpp"
     ],
 )
 
