@@ -194,7 +194,8 @@ void ChannelMonitor::UpdateStatus(
   }
 
   // Check channel delay
-  const double delay = reader->GetDelaySec();
+  const int64_t delay_ns = reader->GetDelayNs();
+  const double delay = delay_ns < 0 ? -1.0 : delay_ns / 1e9;
   if (delay < 0 || delay > config.delay_fatal()) {
     SummaryMonitor::EscalateStatus(
         ComponentStatus::FATAL,

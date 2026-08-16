@@ -74,8 +74,9 @@ function apollo_env_setup() {
     info "${TAB}APOLLO_ENV: ${APOLLO_ENV}"
     info "${TAB}USE_GPU: USE_GPU_HOST=${USE_GPU_HOST} USE_GPU_TARGET=${USE_GPU_TARGET}"
 
-    if [[ -f "${TOP_DIR}/scripts/runtime_env.sh" ]]; then
-        source "${TOP_DIR}/scripts/runtime_env.sh" >/dev/null 2>&1 || true
+    if [[ "${APOLLO_BUILD_PHASE:-0}" != "1" &&
+          -f "${TOP_DIR}/scripts/runtime_env.sh" ]]; then
+        source "${TOP_DIR}/scripts/runtime_env.sh" || true
     fi
     : "${APOLLO_BAZEL_DIST_DIR:=${TOP_DIR}/bazel-bin}"
     if [[ ! -d "${APOLLO_BAZEL_DIST_DIR}" && ! -L "${APOLLO_BAZEL_DIST_DIR}" ]]; then
@@ -171,7 +172,7 @@ function main() {
             _config_bazel_local_override "$@"
             ;;
         build)
-            env ${APOLLO_ENV} bash "${build_sh}" "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" "$@"
             ;;
         build_opt)
             env ${APOLLO_ENV} bash "${build_sh}" --config=opt "$@"

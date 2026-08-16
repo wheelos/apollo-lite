@@ -376,6 +376,8 @@ BAZEL_CACHE_DIR=${bazel_cache_dir}
 TARGET_ARCH=${target_arch}
 TZ=${final_tz}
 DISPLAY=${final_display}
+TERM=${TERM:-xterm-256color}
+TERMINFO=${TERMINFO:-/lib/terminfo/}
 SHM_SIZE=${shm_size}
 RUNTIME_ENV_FILE=${runtime_env_name}
 

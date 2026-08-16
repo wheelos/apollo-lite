@@ -23,7 +23,9 @@ HOST_ARCH="$(uname -m)"
 
 function set_lib_path() {
   local RUNTIME_SETUP="${APOLLO_ROOT_DIR}/scripts/runtime_env.sh"
-  [ -e "${RUNTIME_SETUP}" ] && . "${RUNTIME_SETUP}"
+  if [[ "${APOLLO_BUILD_PHASE:-0}" != "1" && -e "${RUNTIME_SETUP}" ]]; then
+    . "${RUNTIME_SETUP}"
+  fi
   pathprepend ${APOLLO_ROOT_DIR}/modules/tools PYTHONPATH
   pathprepend ${APOLLO_ROOT_DIR}/modules/teleop/common PYTHONPATH
   pathprepend /apollo/modules/teleop/common/scripts

@@ -1,0 +1,13 @@
+diff --git a/MODULE.bazel b/MODULE.bazel
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -110,7 +110,7 @@ python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+     )
+     for python_version in SUPPORTED_PYTHON_VERSIONS
+ ]
+ 
+ use_repo(
+     python,
+-    system_python = "python_{}".format(SUPPORTED_PYTHON_VERSIONS[-1].replace(".", "_")),
++    system_python = "python_3_10",
+ )

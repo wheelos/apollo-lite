@@ -237,7 +237,9 @@ void DownsampleCurve(Curve *curve) {
   }
 }
 
-inline double SecToMs(const double sec) { return sec * 1000.0; }
+inline double NsToMs(const int64_t nanoseconds) {
+  return nanoseconds < 0 ? -1.0 : nanoseconds / 1e6;
+}
 
 }  // namespace
 
@@ -420,15 +422,15 @@ void SimulationWorldService::Update() {
 
 void SimulationWorldService::UpdateDelays() {
   auto *delays = world_.mutable_delay();
-  delays->set_chassis(SecToMs(chassis_reader_->GetDelaySec()));
-  delays->set_localization(SecToMs(localization_reader_->GetDelaySec()));
+  delays->set_chassis(NsToMs(chassis_reader_->GetDelayNs()));
+  delays->set_localization(NsToMs(localization_reader_->GetDelayNs()));
   delays->set_perception_obstacle(
-      SecToMs(perception_obstacle_reader_->GetDelaySec()));
-  delays->set_planning(SecToMs(planning_reader_->GetDelaySec()));
-  delays->set_prediction(SecToMs(prediction_obstacle_reader_->GetDelaySec()));
+      NsToMs(perception_obstacle_reader_->GetDelayNs()));
+  delays->set_planning(NsToMs(planning_reader_->GetDelayNs()));
+  delays->set_prediction(NsToMs(prediction_obstacle_reader_->GetDelayNs()));
   delays->set_traffic_light(
-      SecToMs(perception_traffic_light_reader_->GetDelaySec()));
-  delays->set_control(SecToMs(control_command_reader_->GetDelaySec()));
+      NsToMs(perception_traffic_light_reader_->GetDelayNs()));
+  delays->set_control(NsToMs(control_command_reader_->GetDelayNs()));
 }
 
 void SimulationWorldService::UpdateLatencies() {

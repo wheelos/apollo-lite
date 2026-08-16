@@ -97,7 +97,7 @@ cc_test(
         ":buffer_interface",
         ":timed_transform_resolver",
         ":transform_query_core",
-        "//modules/common_msgs/transform_msgs:transform_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "@com_google_googletest//:gtest_main",
         "@eigen",
     ],

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 # Unified runtime environment bootstrap for cyber tools.
-# Priority:
-# 1) External wheelos_core runtime script (preferred)
-# 2) Existing PATH/PYTHONPATH state
+# Production path: use Bazel module dependency `@core` / `wheelos_core`.
+# Local source-checkout overrides are allowed only when explicitly configured;
+# they are never implicit compatibility fallbacks.
 
 if [[ "${APOLLO_RUNTIME_ENV_SOURCED:-0}" == "1" ]]; then
   return 0
@@ -59,6 +59,39 @@ _source_core_runtime() {
   return 1
 }
 
+_detect_module_python_version() {
+  local module_file="${APOLLO_ROOT_DIR}/MODULE.bazel"
+  if [[ ! -f "${module_file}" ]]; then
+    return 0
+  fi
+  local version
+  version="$(grep -E "python\.(defaults|toolchain)\(python_version = \"[0-9]+\.[0-9]+\"\)" "${module_file}" | head -n 1 | sed -E 's/.*python_version = "([0-9]+\.[0-9]+)".*/\1/' || true)"
+  if [[ -n "${version}" ]]; then
+    echo "${version}"
+  fi
+}
+
+_check_runtime_python_abi() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    return 0
+  fi
+  local expected_version
+  expected_version="$(_detect_module_python_version)"
+  if [[ -z "${expected_version}" ]]; then
+    return 0
+  fi
+  local actual_version
+  actual_version="$(python3 -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null || true)"
+  if [[ -z "${actual_version}" ]]; then
+    return 0
+  fi
+  if [[ "${actual_version}" != "${expected_version}" ]]; then
+    echo "[WARNING] Python ABI mismatch: Bazel module is configured for Python ${expected_version}, but python3 resolves to ${actual_version}." >&2
+    echo "[WARNING] This causes native Cyber extensions such as cyber_channel / cyber_node to fail at import time." >&2
+    echo "[WARNING] Align the container Python and MODULE.bazel, then rebuild in the same environment." >&2
+  fi
+}
+
 _inject_apollo_external_core_outputs() {
   local repo_name
   local proj_repo_name
@@ -68,6 +101,9 @@ _inject_apollo_external_core_outputs() {
   local proj_data_dir
   local proj_data_found=0
   local bazel_bin_from_info
+  local lib_dir
+  local solib_dir
+  local cyber_conf
   local repo_candidates=(wheelos_core~ core~ core+ core)
   local proj_repo_candidates=(proj~ proj+ proj)
   local output_roots=("${APOLLO_ROOT_DIR}/bazel-bin")
@@ -92,6 +128,9 @@ _inject_apollo_external_core_outputs() {
     fi
   done
   for output_root in "${output_roots[@]}"; do
+    while IFS= read -r solib_dir; do
+      _pathprepend "${solib_dir}" LD_LIBRARY_PATH
+    done < <(find "${output_root}" -type d -path "*/_solib_*/*" 2>/dev/null | sort -u)
     for repo_name in "${repo_candidates[@]}"; do
       core_execroot="${output_root}/external/${repo_name}"
       for tool_dir in "${tool_dirs[@]}"; do
@@ -102,6 +141,26 @@ _inject_apollo_external_core_outputs() {
       py_internal_dir="${core_execroot}/cyber/python/internal"
       if [[ -d "${py_internal_dir}" ]]; then
         _pathprepend "${py_internal_dir}" PYTHONPATH
+        _pathprepend "${py_internal_dir}" LD_LIBRARY_PATH
+      fi
+      if [[ -z "${CYBER_PATH:-}" ]]; then
+        if [[ -f "${core_execroot}/cyber/conf/cyber.pb.conf" ]]; then
+          export CYBER_PATH="${core_execroot}/cyber"
+        else
+          cyber_conf="$(find "${core_execroot}/cyber/tools" \
+            -path "*/cyber/conf/cyber.pb.conf" -print -quit 2>/dev/null || true)"
+          if [[ -n "${cyber_conf}" ]]; then
+            export CYBER_PATH="${cyber_conf%/conf/cyber.pb.conf}"
+          fi
+        fi
+      fi
+      if [[ -d "${core_execroot}" ]]; then
+        while IFS= read -r lib_dir; do
+          _pathprepend "${lib_dir}" LD_LIBRARY_PATH
+        done < <(find "${core_execroot}" -type d \( -name lib -o -name lib64 \) 2>/dev/null | sort -u)
+        while IFS= read -r solib_dir; do
+          _pathprepend "${solib_dir}" LD_LIBRARY_PATH
+        done < <(find "${core_execroot}" -type d -path "*/_solib_*/*" 2>/dev/null | sort -u)
       fi
     done
     for proj_repo_name in "${proj_repo_candidates[@]}"; do
@@ -118,11 +177,21 @@ _inject_apollo_external_core_outputs() {
   done
 }
 
-# Preferred: external wheelos_core runtime env.
+_check_runtime_python_abi
+
+# Keep terminal capabilities available for interactive Cyber tools such as
+# cyber_monitor, including shells entered without a host-provided TERM.
+export TERM="${TERM:-xterm-256color}"
+export TERMINFO="${TERMINFO:-/lib/terminfo/}"
+
+# The Bzlmod protobuf extension may be built against a different CPython
+# minor version than the container interpreter. Use protobuf's supported pure
+# Python implementation unless the caller explicitly selects another backend.
+
+# Explicit local source-checkout overrides are supported only when intentionally set.
 for core_root in \
   "${APOLLO_CORE_ROOT:-}" \
-  "${WHEELOS_CORE_ROOT:-}" \
-  "${APOLLO_ROOT_DIR}/../core"; do
+  "${WHEELOS_CORE_ROOT:-}"; do
   if _source_core_runtime "${core_root}"; then
     _inject_apollo_external_core_outputs
     if [[ -z "${CYBER_PATH:-}" && -d "${core_root}/cyber" ]]; then
@@ -132,7 +201,7 @@ for core_root in \
   fi
 done
 
-# If tooling is already on PATH, keep current shell state.
+# Prefer Bazel module outputs (`@core` / `wheelos_core`) when available.
 _inject_apollo_external_core_outputs
 if command -v cyber_launch >/dev/null 2>&1 && command -v cyber_recorder >/dev/null 2>&1; then
   export APOLLO_RUNTIME_ENV_SOURCE="existing-path"
@@ -141,6 +210,6 @@ if command -v cyber_launch >/dev/null 2>&1 && command -v cyber_recorder >/dev/nu
 fi
 
 echo "[WARNING] cyber runtime environment is not configured." >&2
-echo "[WARNING] Set APOLLO_CORE_ROOT (or WHEELOS_CORE_ROOT) to your core checkout," >&2
-echo "[WARNING] then source ${APOLLO_ROOT_DIR}/scripts/runtime_env.sh." >&2
+echo '[WARNING] Use Bazel module dependency @core / wheelos_core or set APOLLO_CORE_ROOT' >&2
+echo '[WARNING] explicitly for a temporary local source-checkout override.' >&2
 return 0

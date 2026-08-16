@@ -110,16 +110,23 @@ yes | sudo bash docker/setup_host/setup_host.sh
 
 ---
 
-## External `wheelos_core` runtime (cyber tools)
+## `@core` runtime (cyber tools)
 
-When using external `wheelos_core` (`@core//...`), initialize runtime through the unified entrypoint:
+The production path is the Bazel module dependency `wheelos_core` (`@core//...`).
+Use the unified runtime entrypoint after building with the module dependency already resolved:
+
+```bash
+source scripts/runtime_env.sh
+```
+
+If you intentionally need to validate a local source checkout, set the override explicitly and keep it temporary:
 
 ```bash
 export APOLLO_CORE_ROOT=/path/to/core
 source scripts/runtime_env.sh
 ```
 
-Then build cyber runtime targets from this workspace:
+Then build the cyber runtime targets from this workspace:
 
 ```bash
 ./apollo.sh build cyber
