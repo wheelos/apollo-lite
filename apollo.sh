@@ -78,11 +78,6 @@ function apollo_env_setup() {
           -f "${TOP_DIR}/scripts/runtime_env.sh" ]]; then
         source "${TOP_DIR}/scripts/runtime_env.sh" || true
     fi
-    : "${APOLLO_BAZEL_DIST_DIR:=${TOP_DIR}/bazel-bin}"
-    if [[ ! -d "${APOLLO_BAZEL_DIST_DIR}" && ! -L "${APOLLO_BAZEL_DIST_DIR}" ]]; then
-        mkdir -p "${APOLLO_BAZEL_DIST_DIR}"
-    fi
-
 }
 
 #TODO(all): Update node modules
