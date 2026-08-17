@@ -1,0 +1,87 @@
+output_channel: "/apollo/sensor/lidar/unified/PointCloud2"
+primary_lidar_topic: "/apollo/sensor/rslidar/front_left/PointCloud2"
+
+primary_time_settings {
+  measurement_time_anchor: SCAN_END
+  static_time_offset_ns: 0
+  expected_scan_duration_ms: 100.0
+  max_scan_duration_ms: 200.0
+}
+
+auxiliary_lidar_inputs {
+  topic_name: "/apollo/sensor/rslidar/rear_right/PointCloud2"
+  time_settings {
+    measurement_time_anchor: SCAN_END
+    static_time_offset_ns: 0
+    expected_scan_duration_ms: 100.0
+    max_scan_duration_ms: 200.0
+  }
+}
+
+auxiliary_lidar_inputs {
+  topic_name: "/apollo/sensor/seyond/front/PointCloud2"
+  time_settings {
+    measurement_time_anchor: SCAN_BEGIN
+    static_time_offset_ns: 0
+    expected_scan_duration_ms: 100.0
+    max_scan_duration_ms: 200.0
+  }
+}
+
+auxiliary_lidar_inputs {
+  topic_name: "/apollo/sensor/seyond/rear/PointCloud2"
+  time_settings {
+    measurement_time_anchor: SCAN_BEGIN
+    static_time_offset_ns: 0
+    expected_scan_duration_ms: 100.0
+    max_scan_duration_ms: 200.0
+  }
+}
+
+sensor_buffer_size: 16
+max_full_pointcloud_points: 600000
+worker_num: 0
+
+base_link_frame_id: "base_link"
+map_frame_id: "world"
+
+enable_ego_query_filter: true
+ego_box_forward_x: 2.8
+ego_box_backward_x: -2.8
+ego_box_forward_y: 1.4
+ego_box_backward_y: -1.4
+
+voxel_size: 0.15
+enable_voxel_filter: false
+max_ref_time_delta_ms: 80
+motion_compensation_bins: 12
+compensation_mode: OFF
+enable_online_time_offset_update: false
+enable_overlap_quality_gate: false
+metrics_log_interval: 50
+strict_auxiliary_sync: false
+fusion_wait_timeout_ms: 20
+pending_fusion_queue_size: 2
+fusion_flush_interval_ms: 5
+sensor_pose_cache_duration_sec: 1.0
+sensor_pose_cache_max_extrapolation_sec: 0.15
+sensor_pose_query_timeout_sec: 0.02
+fixed_delay_ema_alpha: 0.2
+fixed_delay_update_limit_ms: 80.0
+clock_offset_ema_alpha: 0.2
+overlap_region_forward_x: 25.0
+overlap_region_backward_x: -5.0
+overlap_region_left_y: 12.0
+overlap_region_right_y: -12.0
+overlap_region_min_z: -3.0
+overlap_region_max_z: 3.0
+overlap_quality_ema_alpha: 0.2
+auxiliary_min_overlap_quality_weight: 0.1
+overlap_quality_sample_stride: 16
+
+ts_sanity_enabled: true
+ts_sanity_min_interval_ms: 40
+ts_sanity_max_interval_ms: 200
+ts_sanity_max_jump_ms: 500
+ts_sanity_max_consecutive_errors: 3
+degrade_on_ts_anomaly: true

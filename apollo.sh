@@ -74,13 +74,10 @@ function apollo_env_setup() {
     info "${TAB}APOLLO_ENV: ${APOLLO_ENV}"
     info "${TAB}USE_GPU: USE_GPU_HOST=${USE_GPU_HOST} USE_GPU_TARGET=${USE_GPU_TARGET}"
 
-    if [[ -z "${APOLLO_BAZEL_DIST_DIR}" ]]; then
-        source "${TOP_DIR}/cyber/setup.bash"
+    if [[ "${APOLLO_BUILD_PHASE:-0}" != "1" &&
+          -f "${TOP_DIR}/scripts/runtime_env.sh" ]]; then
+        source "${TOP_DIR}/scripts/runtime_env.sh" || true
     fi
-    if [[ ! -d "${APOLLO_BAZEL_DIST_DIR}" ]]; then
-        mkdir -p "${APOLLO_BAZEL_DIST_DIR}"
-    fi
-
 }
 
 #TODO(all): Update node modules
@@ -102,7 +99,7 @@ function _usage() {
     .${BOLD}/apollo.sh${NO_COLOR} [OPTION]"
     echo -e "\n${RED}Options${NO_COLOR}:
     ${BLUE}config [options]${NO_COLOR}: show guidance for local Bazel overrides (.custom.bazelrc).
-    ${BLUE}build [module]${NO_COLOR}: run build for cyber (<module> = cyber) or modules/<module>.  If <module> unspecified, build all.
+    ${BLUE}build [module]${NO_COLOR}: run build for cyber (<module> = cyber, includes @core runtime tools) or modules/<module>.  If <module> unspecified, build all.
     ${BLUE}build_dbg [module]${NO_COLOR}: run debug build.
     ${BLUE}build_opt [module]${NO_COLOR}: run optimized build.
     ${BLUE}build_cpu [module]${NO_COLOR}: build in CPU mode. Equivalent to 'bazel build --config=cpu'
@@ -170,7 +167,7 @@ function main() {
             _config_bazel_local_override "$@"
             ;;
         build)
-            env ${APOLLO_ENV} bash "${build_sh}" "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" "$@"
             ;;
         build_opt)
             env ${APOLLO_ENV} bash "${build_sh}" --config=opt "$@"

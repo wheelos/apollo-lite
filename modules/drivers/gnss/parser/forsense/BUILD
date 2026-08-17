@@ -15,7 +15,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",

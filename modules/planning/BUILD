@@ -17,7 +17,7 @@ install(
 cc_binary(
     name = "libplanning_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":planning_component_lib"],
 )
 
@@ -31,7 +31,7 @@ cc_library(
     deps = [
         ":navi_planning",
         ":on_lane_planning",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
@@ -56,7 +56,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\""
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/dreamview_msgs:chart_cc_proto",
@@ -94,7 +94,7 @@ cc_library(
     ],
     deps = [
         ":planning_base",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
         "//modules/common/math",
         "//modules/common/util:util_tool",
@@ -125,7 +125,7 @@ cc_library(
     ],
     deps = [
         ":planning_base",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "//modules/common/math",

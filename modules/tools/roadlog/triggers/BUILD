@@ -74,7 +74,7 @@ cc_library(
     srcs = ["trigger_base.cc"],
     hdrs = ["trigger_base.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/tools/roadlog/common:trigger_types",
         "//modules/tools/roadlog/proto:smart_recorder_triggers_cc_proto",
     ],

@@ -13,8 +13,8 @@ ulimit -c unlimited
 #if [ -e "/apollo/scripts/apollo_base.sh" ]; then
 #    . /apollo/scripts/apollo_base.sh
 #fi
-if [ -e "/apollo/cyber/setup.bash" ]; then
-    . /apollo/cyber/setup.bash
+if [ -e "/apollo/scripts/runtime_env.sh" ]; then
+    . /apollo/scripts/runtime_env.sh
 fi
 
 if [ -e "/apollo/scripts/apollo_auto_complete.bash" ]; then
@@ -68,4 +68,3 @@ function sl() {
     # '10,33p' print line 10 to line 33
     ${sed_cmd} -n "${start_ln},+${line_cnt}p" "${fname}"
 }
-

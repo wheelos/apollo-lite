@@ -29,7 +29,7 @@ cc_library(
     deps = [
         ":object_maintainer",
         ":region_output_cuda",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common:temporary_transition_types",
     ],
 )
@@ -43,7 +43,7 @@ cc_library(
     ],
     deps = [
         ":region_output",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/common",
@@ -71,7 +71,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
     ],
 )

@@ -16,6 +16,7 @@
 
 #include "modules/drivers/lidar/livox/component/livox_component.h"
 
+#include <iomanip>
 #include <string>
 #include <utility>
 
@@ -25,16 +26,64 @@ namespace lidar {
 
 static LivoxLidarComponent* g_livox_component = nullptr;
 
-uint64_t GetEthPacketTimestamp(uint8_t timestamp_type, uint8_t* time_stamp,
-                               uint8_t size) {
+uint64_t LivoxLidarComponent::GetEthPacketTimestamp(uint8_t handle,
+                                                     uint8_t timestamp_type,
+                                                     uint8_t* time_stamp,
+                                                     uint8_t size) {
   LdsStamp time;
   memcpy(time.stamp_bytes, time_stamp, size);
+  uint64_t packet_timestamp = time.stamp;
+  uint64_t system_time_ns = cyber::Time::Now().ToNanosecond();
 
-  if (timestamp_type == kTimestampTypeGptpOrPtp ||
-      timestamp_type == kTimestampTypeGps) {
-    return time.stamp;
+  // Default is use_lidar_clock=true, check if explicitly disabled
+  bool use_lidar_clock = config_.has_use_lidar_clock() ?
+                         config_.use_lidar_clock() : true;
+
+  // If use_lidar_clock is false, always use system time
+  // Only warn once since this is the user's explicit configuration
+  if (!use_lidar_clock) {
+    if (!warned_not_use_lidar_clock_) {
+      AWARN << "[Livox Timestamp] use_lidar_clock is DISABLED. "
+            << "Using system time (data arrival time) instead of lidar clock. "
+            << "This means measurement_time will NOT reflect laser scan time!";
+      warned_not_use_lidar_clock_ = true;
+    }
+    return system_time_ns;
   }
-  return cyber::Time::Now().ToNanosecond();
+
+  // use_lidar_clock=true: Try to use packet timestamp (laser scan time)
+  double max_diff_s = config_.has_max_timestamp_diff_s() ?
+                       config_.max_timestamp_diff_s() : 10.0;
+  uint64_t max_diff_ns = static_cast<uint64_t>(max_diff_s * 1e9);
+
+  // apply timestamp offset
+  if (config_.timestamp_offset() != 0) {
+    packet_timestamp += static_cast<int64_t>(config_.timestamp_offset() * 1e9);
+  }
+  // Calculate absolute difference
+  uint64_t diff_ns;
+  if (packet_timestamp > system_time_ns) {
+    diff_ns = packet_timestamp - system_time_ns;
+  } else {
+    diff_ns = system_time_ns - packet_timestamp;
+  }
+
+  // If diff is too large, packet time is likely not synchronized
+  if (diff_ns > max_diff_ns) {
+    double packet_time_s = packet_timestamp / 1e9;
+    double system_time_s = system_time_ns / 1e9;
+    double diff_s = static_cast<double>(diff_ns) / 1e9;
+    AWARN_EVERY(10000) << std::fixed << std::setprecision(3)
+          << "[Livox Ts] Handle=" << static_cast<int>(handle)
+          << " type=" << static_cast<int>(timestamp_type)
+          << " pkt_ts=" << packet_time_s
+          << " sys_ts=" << system_time_s
+          << " diff=" << diff_s << "s > " << max_diff_s << "s, using sys time";
+    return system_time_ns;
+  }
+
+  // Use packet timestamp (lidar clock / laser scan time)
+  return packet_timestamp;
 }
 
 void LivoxLidarComponent::BinaryDataProcess(const unsigned char* data,
@@ -98,14 +147,14 @@ void LivoxLidarComponent::PointCloudCallback(uint8_t handle,
     return;
   }
 
-  AINFO << boost::format(
-               "point cloud handle: %d, data_num: %d, data_type: %d\n") %
-               static_cast<int>(handle) % data_num %
-               static_cast<int>(data->data_type);
+  ADEBUG << boost::format(
+              "point cloud handle: %d, data_num: %d, data_type: %d") %
+              static_cast<int>(handle) % data_num %
+              static_cast<int>(data->data_type);
 
   size_t byte_size = g_livox_component->GetEthPacketByteSize(data, data_num);
-  uint64_t pkt_timestamp = GetEthPacketTimestamp(
-      data->timestamp_type, data->timestamp, sizeof(data->timestamp));
+  uint64_t pkt_timestamp = g_livox_component->GetEthPacketTimestamp(
+      handle, data->timestamp_type, data->timestamp, sizeof(data->timestamp));
 
   g_livox_component->BinaryDataProcess(data->data, data->data_type, data_num,
                                        pkt_timestamp);

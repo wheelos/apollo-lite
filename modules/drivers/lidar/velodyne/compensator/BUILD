@@ -15,7 +15,7 @@ install(
 cc_binary(
     name = "libvelodyne_compensator_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":compensator_component_lib"],
 )
 
@@ -25,7 +25,7 @@ cc_library(
     hdrs = ["compensator_component.h"],
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
         "//modules/drivers/lidar/proto:velodyne_cc_proto",

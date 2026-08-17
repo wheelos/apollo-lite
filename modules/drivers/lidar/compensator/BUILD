@@ -18,7 +18,7 @@ filegroup(
 cc_binary(
     name = "liblidar_compensator_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":lidar_compensator_component_lib",
     ],
@@ -36,7 +36,7 @@ cc_library(
     ],
     copts = LIDAR_COMPENSATOR_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",

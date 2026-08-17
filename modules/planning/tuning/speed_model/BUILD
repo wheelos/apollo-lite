@@ -11,7 +11,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/planning/tuning:autotuning_feature_builder",
     ],

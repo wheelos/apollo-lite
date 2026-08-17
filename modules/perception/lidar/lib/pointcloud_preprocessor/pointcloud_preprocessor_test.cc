@@ -16,28 +16,52 @@
 
 #include "modules/perception/lidar/lib/pointcloud_preprocessor/pointcloud_preprocessor.h"
 
-DECLARE_string(work_root);
+#include <Eigen/Geometry>
+
+#include <iostream>
+#include <limits>
+#include <set>
+#include <sstream>
+#include <string>
+
+#include "gtest/gtest.h"
+
+#include "modules/perception/base/point_cloud.h"
+#include "modules/perception/lidar/common/lidar_frame.h"
 
 namespace apollo {
 namespace perception {
 namespace lidar {
 
-class PointCloudPreprocessorTest : public testing::Test {
- protected:
-  void SetUp() {
-    char cyber_path[100] = "CYBER_PATH=";
-    putenv(cyber_path);
-    char module_path[100] = "MODULE_PATH=";
-    putenv(module_path);
-    FLAGS_work_root =
-        "/apollo/modules/perception/testdata/"
-        "lidar/lib/pointcloud_preprocessor";
-  }
-  void TearDown() {}
+namespace {
 
- protected:
-  PointCloudPreprocessor preprocessor;
-};
+template <typename T>
+void EmitMetric(const std::string& name, const T& value) {
+  std::ostringstream stream;
+  stream << value;
+  std::cout << "METRIC " << name << "=" << stream.str() << std::endl;
+  ::testing::Test::RecordProperty(name, stream.str());
+}
+
+pipeline::StageConfig MakeStageConfig() {
+  pipeline::StageConfig stage_config;
+  stage_config.set_stage_type(pipeline::StageType::POINTCLOUD_PREPROCESSOR);
+  stage_config.set_enabled(true);
+  stage_config.set_type("PointCloudPreprocessor");
+
+  auto* config = stage_config.mutable_pointcloud_preprocessor_config();
+  config->set_filter_naninf_points(true);
+  config->set_filter_nearby_box_points(true);
+  config->set_box_forward_x(2.0);
+  config->set_box_backward_x(-2.0);
+  config->set_box_forward_y(2.0);
+  config->set_box_backward_y(-2.0);
+  config->set_filter_high_z_points(true);
+  config->set_z_threshold(5.0);
+  return stage_config;
+}
+
+}  // namespace
 
 void MockPointcloud(base::PointFCloud* cloud) {
   cloud->resize(10);
@@ -60,73 +84,55 @@ void MockPointcloud(base::PointFCloud* cloud) {
   cloud->at(7).z = 10.f;
   // 5. two normal points
 }
-#ifdef PERCEPTION_LIDAR_USE_COMMON_MESSAGE
-void MockMessage(adu::common::sensor::PointCloud* message) {
-  message->set_measurement_time(0.0);
-  for (size_t i = 0; i < 10; ++i) {
-    message->add_point();
-    message->mutable_point(i)->set_x(5.f * i);
-    message->mutable_point(i)->set_y(5.f * i);
-    message->mutable_point(i)->set_z(0.f);
-  }
-  // 1. three nan points
-  message->mutable_point(0)->set_x(std::numeric_limits<float>::quiet_NaN());
-  message->mutable_point(1)->set_y(std::numeric_limits<float>::quiet_NaN());
-  message->mutable_point(2)->set_z(std::numeric_limits<float>::quiet_NaN());
-  // 2. three inf points
-  message->mutable_point(3)->set_x(10000.f);
-  message->mutable_point(4)->set_y(10000.f);
-  message->mutable_point(5)->set_z(10000.f);
-  // 3. one box points
-  message->mutable_point(6)->set_x(0.f);
-  message->mutable_point(6)->set_y(0.f);
-  // 4. one large z points
-  message->mutable_point(7)->set_z(10.f);
-  // 5. two normal points
-}
-#endif
 
-TEST_F(PointCloudPreprocessorTest, basic_test) {
+TEST(PointCloudPreprocessorStageTest, process_stage_metrics) {
+  PointCloudPreprocessor preprocessor;
+  auto stage_config = MakeStageConfig();
+  EXPECT_TRUE(preprocessor.Init(stage_config));
   EXPECT_EQ(preprocessor.Name(), "PointCloudPreprocessor");
-  EXPECT_TRUE(preprocessor.Init());
-  PointCloudPreprocessorOptions option;
-  {
-    LidarFrame frame;
-    EXPECT_FALSE(preprocessor.Preprocess(option, nullptr));
-    EXPECT_FALSE(preprocessor.Preprocess(option, &frame));
-    frame.cloud = base::PointFCloudPool::Instance().Get();
-    frame.lidar2world_pose = Eigen::Affine3d::Identity();
-    option.sensor2vehicle_extrinsics = Eigen::Affine3d::Identity();
-    MockPointcloud(frame.cloud.get());
-    EXPECT_EQ(frame.cloud->size(), 10);
-    EXPECT_TRUE(preprocessor.Preprocess(option, &frame));
-    EXPECT_EQ(frame.cloud->size(), 2);
-    EXPECT_EQ(frame.world_cloud->size(), 2);
-    for (size_t i = 0; i < frame.cloud->size(); ++i) {
-      auto& pt = frame.cloud->at(i);
-      auto& world_pt = frame.world_cloud->at(i);
-      EXPECT_EQ(pt.x, world_pt.x);
-      EXPECT_EQ(pt.y, world_pt.y);
-      EXPECT_EQ(pt.z, world_pt.z);
-      EXPECT_EQ(pt.intensity, world_pt.intensity);
-      EXPECT_EQ(frame.cloud->points_beam_id()[i],
-                frame.world_cloud->points_beam_id()[i]);
-    }
+
+  pipeline::DataFrame data_frame{};
+  LidarFrame frame;
+  data_frame.lidar_frame = &frame;
+
+  EXPECT_FALSE(preprocessor.Process(nullptr));
+  EXPECT_FALSE(preprocessor.Process(&data_frame));
+
+  frame.cloud.reset(new base::PointFCloud);
+  frame.lidar2vehicle_extrinsics = Eigen::Affine3d::Identity();
+  frame.lidar2world_pose = Eigen::Affine3d::Identity();
+  frame.lidar2world_pose.pretranslate(Eigen::Vector3d(5.0, -2.0, 1.5));
+  MockPointcloud(frame.cloud.get());
+
+  const size_t input_points = frame.cloud->size();
+  EXPECT_EQ(input_points, 10u);
+  EXPECT_TRUE(preprocessor.Process(&data_frame));
+
+  ASSERT_NE(frame.world_cloud, nullptr);
+  EXPECT_EQ(frame.cloud->size(), 2u);
+  EXPECT_EQ(frame.world_cloud->size(), 2u);
+
+  std::set<std::pair<int, int>> remaining_xy;
+  for (size_t i = 0; i < frame.cloud->size(); ++i) {
+    const auto& pt = frame.cloud->at(i);
+    const auto& world_pt = frame.world_cloud->at(i);
+    remaining_xy.emplace(static_cast<int>(pt.x), static_cast<int>(pt.y));
+    EXPECT_NEAR(world_pt.x - pt.x, 5.0, 1e-6);
+    EXPECT_NEAR(world_pt.y - pt.y, -2.0, 1e-6);
+    EXPECT_NEAR(world_pt.z - pt.z, 1.5, 1e-6);
+    EXPECT_EQ(pt.intensity, world_pt.intensity);
   }
-#ifdef PERCEPTION_LIDAR_USE_COMMON_MESSAGE
-  {
-    std::shared_ptr<adu::common::sensor::PointCloud> message(
-        new adu::common::sensor::PointCloud);
-    LidarFrame frame;
-    EXPECT_FALSE(preprocessor.Preprocess(option, message, nullptr));
-    MockMessage(message.get());
-    EXPECT_EQ(message->point_size(), 10);
-    frame.lidar2world_pose = Eigen::Affine3d::Identity();
-    EXPECT_TRUE(preprocessor.Preprocess(option, message, &frame));
-    EXPECT_EQ(frame.cloud->size(), 2);
-    EXPECT_EQ(frame.world_cloud->size(), 2);
-  }
-#endif
+
+  std::set<std::pair<int, int>> expected_xy = {{40, 40}, {45, 45}};
+  EXPECT_EQ(remaining_xy, expected_xy);
+
+  EmitMetric("input_points", input_points);
+  EmitMetric("removed_naninf_or_inf_points", 6);
+  EmitMetric("removed_nearby_box_points", 1);
+  EmitMetric("removed_high_z_points", 1);
+  EmitMetric("output_points", frame.cloud->size());
+  EmitMetric("output_ratio", static_cast<double>(frame.cloud->size()) /
+                                 static_cast<double>(input_points));
 }
 
 }  // namespace lidar

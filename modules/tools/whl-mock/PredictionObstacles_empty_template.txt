@@ -1,0 +1,2 @@
+# Empty prediction debug message template.
+# This intentionally keeps all fields as default values.

@@ -157,7 +157,7 @@ class Recorder(object):
         if needs_runtime_env:
             cmd = '''
                 source /apollo/scripts/apollo_base.sh
-                source /apollo/cyber/setup.bash
+                source /apollo/scripts/runtime_env.sh
                 nohup {} --roadlog_root_dir={} > {} 2>&1 &
             '''.format(recorder_exe, task_dir, log_file)
         else:

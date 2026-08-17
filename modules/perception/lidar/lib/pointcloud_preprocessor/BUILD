@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/util",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
@@ -25,6 +25,16 @@ cc_library(
         "@eigen",
     ],
     alwayslink = True,
+)
+
+cc_test(
+    name = "pointcloud_preprocessor_test",
+    size = "small",
+    srcs = ["pointcloud_preprocessor_test.cc"],
+    deps = [
+        ":pointcloud_preprocessor",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cpplint()

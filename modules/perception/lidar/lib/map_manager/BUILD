@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["map_manager.h"],
     copts = PERCEPTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/map/hdmap",
         "//modules/perception/base:base_type",

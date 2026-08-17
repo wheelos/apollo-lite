@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["parking_slot.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math:math_utils",
         "//modules/common/math:vec2d",
     ],
@@ -24,7 +24,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":parking_slot",
-        "//cyber",
+        "@core//cyber",
         "//modules/map/hdmap:hdmap",
         "//modules/map/pnc_map",
     ],
@@ -37,7 +37,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":parking_slot",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math:geometry",
         "//modules/common/math:math_utils",
         "//modules/common/math:vec2d",
@@ -53,7 +53,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":parking_roi_geometry",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math:geometry",
         "//modules/common/math:vec2d",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
@@ -70,7 +70,7 @@ cc_library(
     deps = [
         ":parking_roi_geometry",
         ":parking_slot",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math:math_utils",
         "//modules/common/math:vec2d",
         "//modules/planning/proto:planning_config_cc_proto",

@@ -19,7 +19,7 @@ cc_library(
     ],
     deps = [
         ":proto_organizer",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/common/math",
         "//modules/common/status",
@@ -38,7 +38,7 @@ cc_library(
     hdrs = ["proto_organizer.h"],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/common/util",
         "//modules/map/hdmap/adapter/xml_parser",

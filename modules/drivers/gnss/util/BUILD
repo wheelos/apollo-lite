@@ -12,7 +12,7 @@ cc_library(
         "data_buffer.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
 )
 

@@ -83,3 +83,33 @@ py_proto_library(
     name = "lidar_parameter_py_pb2",
     deps = [":lidar_parameter_proto"],
 )
+
+cc_proto_library(
+    name = "lidar_unified_component_config_cc_proto",
+    deps = [":lidar_unified_component_config_proto"],
+)
+
+proto_library(
+    name = "lidar_unified_component_config_proto",
+    srcs = ["lidar_unified_component_config.proto"],
+)
+
+py_proto_library(
+    name = "lidar_unified_component_config_py_pb2",
+    deps = [":lidar_unified_component_config_proto"],
+)
+
+cc_proto_library(
+    name = "pod_pointcloud_adapter_config_cc_proto",
+    deps = [":pod_pointcloud_adapter_config_proto"],
+)
+
+proto_library(
+    name = "pod_pointcloud_adapter_config_proto",
+    srcs = ["pod_pointcloud_adapter_config.proto"],
+)
+
+py_proto_library(
+    name = "pod_pointcloud_adapter_config_py_pb2",
+    deps = [":pod_pointcloud_adapter_config_proto"],
+)

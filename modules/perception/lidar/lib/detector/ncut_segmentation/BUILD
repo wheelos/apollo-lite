@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/lidar/lib/detector/ncut_segmentation/common:flood_fill",
@@ -36,7 +36,7 @@ cc_library(
     ],
     deps = [
         ":ncut",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lib/thread",

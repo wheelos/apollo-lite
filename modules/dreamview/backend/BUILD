@@ -12,7 +12,6 @@ cc_library(
     srcs = ["dreamview.cc"],
     hdrs = ["dreamview.h"],
     copts = DREAMVIEW_COPTS + copts_if_teleop(),
-    alwayslink = True,
     deps = [
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/status",

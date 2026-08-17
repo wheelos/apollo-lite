@@ -1,4 +1,5 @@
 load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
+load("//tools/platform:build_defs.bzl", "if_jetson_orin")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -31,7 +32,9 @@ install(
         "//modules/drivers/tools/image_decompress:install",
         "//modules/drivers/video:install",
         "//modules/drivers/video/tools/decode_video:install",
-    ],
+    ] + if_jetson_orin([
+        "//modules/drivers/camera_gst:install",
+    ]),
 )
 
 install_files(
@@ -64,7 +67,9 @@ install(
         "//modules/drivers/radar/ultrasonic_radar/proto:ultrasonic_radar_conf_cc_proto",
         "//modules/drivers/tools/image_decompress/proto:config_cc_proto",
         "//modules/drivers/video/proto:video_h265cfg_cc_proto",
-    ],
+    ] + if_jetson_orin([
+        "//modules/drivers/camera_gst/proto:config_cc_proto",
+    ]),
     data_dest = "drivers/include",
 )
 
@@ -87,7 +92,9 @@ install_files(
         "//modules/drivers/radar/ultrasonic_radar/proto:ultrasonic_radar_conf_py_pb2",
         "//modules/drivers/tools/image_decompress/proto:config_py_pb2",
         "//modules/drivers/video/proto:video_h265cfg_py_pb2",
-    ],
+    ] + if_jetson_orin([
+        "//modules/drivers/camera_gst/proto:config_py_pb2",
+    ]),
 )
 
 install_src_files(

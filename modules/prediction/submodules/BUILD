@@ -35,7 +35,7 @@ cc_library(
     hdrs = ["evaluator_submodule.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/adapters/proto:adapter_config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
@@ -53,7 +53,7 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":evaluator_submodule_lib",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/adapters/proto:adapter_config_cc_proto",
         "//modules/common/util:util_tool",

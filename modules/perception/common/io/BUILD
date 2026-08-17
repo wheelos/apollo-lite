@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:camera",
         "//modules/perception/base:distortion_model",
         "//modules/perception/base:omnidirectional_model",

@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["bitmap2d.h"],
     copts = PERCEPTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/lidar/common:lidar_log",
         "@boost.format",
         "@eigen",
@@ -27,7 +27,7 @@ cc_library(
         ":bitmap2d",
         ":polygon_mask",
         ":polygon_scan_cvter",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:point_cloud",
         "//modules/perception/lidar/common:lidar_point_label",
         "//modules/perception/lidar/lib/interface:base_object_filter",
@@ -41,15 +41,17 @@ cc_library(
     alwayslink = True,
 )
 
-#cc_test(
-#    name = "hdmap_roi_filter_test",
-#    size = "small",
-#    srcs = ["hdmap_roi_filter_test.cc"],
-#    deps = [
-#        ":hdmap_roi_filter",
-#        "@com_google_googletest//:gtest_main",
-#    ],
-#)
+cc_test(
+    name = "hdmap_roi_filter_stage_test",
+    size = "small",
+    srcs = ["hdmap_roi_filter_stage_test.cc"],
+    deps = [
+        ":hdmap_roi_filter",
+        "//modules/perception/base:base_type",
+        "//modules/perception/lidar/common:lidar_point_label",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_library(
     name = "polygon_mask",

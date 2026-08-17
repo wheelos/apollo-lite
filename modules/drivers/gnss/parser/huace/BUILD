@@ -11,7 +11,7 @@ cc_library(
         "huace_parser.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/gnss/util:data_buffer",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:imu_cc_proto",

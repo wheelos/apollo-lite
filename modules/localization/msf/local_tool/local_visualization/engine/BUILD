@@ -18,7 +18,7 @@ cc_library(
         "-DMODULE_NAME=\\\"localization_visualizer\\\"",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "//modules/localization/msf/common/io:common_io",

@@ -12,7 +12,7 @@ cc_library(
     hdrs = ["v4l2_device.h"],
     copts = CAMERA_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/camera/proto:config_cc_proto",
     ]
 )
@@ -23,7 +23,7 @@ cc_library(
     hdrs = ["image_processor.h"],
     copts = CAMERA_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/camera/proto:config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "@ffmpeg//:avcodec",
@@ -42,7 +42,7 @@ cc_library(
     deps = [
         ":image_processor",
         ":v4l2_device",
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/camera/proto:config_cc_proto",
     ]
 )

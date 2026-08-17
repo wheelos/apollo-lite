@@ -23,7 +23,7 @@ cuda_library(
     tags = ["exclude"],
     target_compatible_with = requires_cuda(),
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "@cuda//:cublas",
         "@cuda//:cuda_runtime",
@@ -51,7 +51,7 @@ cc_library(
     hdrs = ["path.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_lane_cc_proto",
@@ -95,7 +95,7 @@ cc_library(
     deps = [
         ":path",
         ":route_segments",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
         "//modules/common/util",

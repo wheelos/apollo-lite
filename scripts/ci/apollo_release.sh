@@ -116,9 +116,7 @@ function determine_release_targets() {
 
     for component in $@; do
         local release_targets
-        if [ "${component}" = "cyber" ]; then
-            release_targets="//cyber:install"
-        elif [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
+        if [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
             release_targets="//modules/${component}:install"
         elif [ "${component}" = "scripts" ]; then
             release_targets="//docker/scripts:install union //scripts:install"

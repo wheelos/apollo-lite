@@ -19,7 +19,7 @@ cc_binary(
     srcs = ["lossless_map_creator.cc"],
     linkstatic = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/localization/msf/common/io:common_io",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/local_pyramid_map/base_map",

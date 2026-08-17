@@ -23,8 +23,7 @@ cyber_modules {
 modules {
   key: "Recorder"
   value: {
-    start_command: "python /apollo/scripts/record_map_data.py --start"
-    stop_command: "python /apollo/scripts/record_map_data.py --stop"
+    start_command: "python3 /apollo/scripts/record_map_data.py --start --foreground"
     process_monitor_config {
       command_keywords: "cyber_recorder record"
     }

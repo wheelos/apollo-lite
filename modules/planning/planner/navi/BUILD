@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["navi_planner.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/status",
         "//modules/common/util",
@@ -38,7 +38,7 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":navi_planner",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],

@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["lattice_planner.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning/common:planning_gflags",

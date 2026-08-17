@@ -20,7 +20,7 @@ cc_library(
     hdrs = ["mission_idle_stage.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/scenarios:stage",
     ],
 )
@@ -32,7 +32,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":mission_idle_stage",
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/scenarios:scenario",
     ],
 )

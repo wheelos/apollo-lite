@@ -13,7 +13,7 @@ cc_binary(
         "-latomic",
     ],
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":camera_component_lib",
         ":compress_component_lib",
@@ -51,7 +51,7 @@ cc_library(
     hdrs = ["camera_component.h"],
     copts = CAMERA_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:rate_limiter",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
@@ -67,7 +67,7 @@ cc_library(
     hdrs = ["compress_component.h"],
     copts = CAMERA_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
@@ -85,7 +85,7 @@ cc_library(
 #     copts = CAMERA_COPTS,
 #     alwayslink = True,
 #     deps = [
-#         "//cyber",
+#         "@core//cyber",
 #         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
 #         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
 #         "//modules/drivers/camera/proto:config_cc_proto",

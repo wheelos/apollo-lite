@@ -9,7 +9,7 @@ MONITOR_COPTS = ['-DMODULE_NAME=\\"monitor\\"']
 cc_binary(
     name = "libmonitor.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":monitor_lib",
     ],
@@ -22,7 +22,7 @@ cc_library(
     copts = MONITOR_COPTS,
     visibility = ["//visibility:private"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/monitor/common:recurrent_runner",
         "//modules/monitor/hardware:collision_monitor",

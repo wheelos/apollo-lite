@@ -32,7 +32,7 @@ cc_library(
         ":quaternion",
         ":search",
         ":sin_table",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math/qp_solver",
         "//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
@@ -63,7 +63,7 @@ cc_library(
     linkopts = ["-lm"],
     visibility = ["//visibility:public"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@com_google_absl//absl/strings",
     ],
     alwayslink = True,
@@ -88,7 +88,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":math_utils",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "@com_google_absl//absl/algorithm",
         "@com_google_absl//absl/strings:str_format",
@@ -151,7 +151,7 @@ cc_library(
     srcs = ["matrix_operations.cc"],
     hdrs = ["matrix_operations.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,
@@ -173,7 +173,7 @@ cc_library(
     hdrs = ["kalman_filter.h"],
     deps = [
         ":matrix_operations",
-        "//cyber",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,
@@ -199,7 +199,7 @@ cc_library(
     srcs = ["mpc_osqp.cc"],
     hdrs = ["mpc_osqp.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@eigen",
         "@osqp",
     ],
@@ -241,7 +241,7 @@ cc_library(
     srcs = ["integral.cc"],
     hdrs = ["integral.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -251,7 +251,7 @@ cc_library(
     srcs = ["linear_quadratic_regulator.cc"],
     hdrs = ["linear_quadratic_regulator.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,
@@ -263,7 +263,7 @@ cc_library(
     hdrs = ["cartesian_frenet_conversion.h"],
     deps = [
         ":geometry",
-        "//cyber",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,
@@ -274,7 +274,7 @@ cc_library(
     name = "hermite_spline",
     hdrs = ["hermite_spline.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -285,7 +285,7 @@ cc_test(
     srcs = ["mpc_osqp_test.cc"],
     deps = [
         ":mpc_osqp",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest",
     ],
 )
@@ -307,7 +307,7 @@ cc_test(
     srcs = ["linear_interpolation_test.cc"],
     deps = [
         ":linear_interpolation",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
         "@eigen",
     ],

@@ -9,7 +9,7 @@ cc_library(
     srcs = ["online_visualizer_component.cc"],
     hdrs = ["online_visualizer_component.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
@@ -31,7 +31,7 @@ cc_library(
 cc_binary(
     name = "online_visualizer_compenont.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":online_visualizer_component_lib"],
 )
 

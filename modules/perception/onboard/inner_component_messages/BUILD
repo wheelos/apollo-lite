@@ -20,7 +20,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/lidar/common",
         "//modules/perception/onboard/inner_component_messages",
     ],

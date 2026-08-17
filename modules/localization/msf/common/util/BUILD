@@ -8,9 +8,15 @@ cc_library(
     srcs = ["compression.cc"],
     hdrs = ["compression.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@eigen",
     ],
+)
+
+cc_library(
+    name = "md5",
+    srcs = ["md5.cc"],
+    hdrs = ["md5.h"]
 )
 
 cc_library(
@@ -18,11 +24,11 @@ cc_library(
     srcs = ["file_utility.cc"],
     hdrs = ["file_utility.h"],
     deps = [
-        "//cyber",
+        ":md5",
+        "@core//cyber",
         "@boost.filesystem",
         "@com_github_google_glog//:glog",
         "@eigen",
-        "@wheelos_fastdds//:fastdds",
     ],
 )
 
@@ -31,7 +37,7 @@ cc_library(
     srcs = ["system_utility.cc"],
     hdrs = ["system_utility.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@boost.filesystem",
         "@eigen",
     ],
@@ -42,7 +48,7 @@ cc_library(
     srcs = ["frame_transform.cc"],
     hdrs = ["frame_transform.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:proj_helper",
         "@com_google_absl//absl/strings",
         "@eigen",
@@ -59,7 +65,7 @@ cc_library(
         "voxel_grid_covariance_hdmap.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@boost.mpl",
         "@eigen",
         "@local_config_pcl//:sample_consensus",
@@ -136,7 +142,7 @@ cc_test(
     srcs = ["base_map_cache_test.cc"],
     deps = [
         ":base_map_cache",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
     linkstatic = True,

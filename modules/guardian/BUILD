@@ -12,7 +12,7 @@ cc_library(
     hdrs = ["guardian_component.h"],
     copts = GUARDIAN_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
@@ -27,7 +27,7 @@ cc_library(
 cc_binary(
     name = "libguardian_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":guardian_component_lib",
     ],

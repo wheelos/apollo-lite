@@ -18,7 +18,6 @@ install(
             "//modules/planning:install",
         ],
         [
-            "//cyber:install",
             "//tools:install",
             "//modules/calibration:install",
             "//modules/canbus:install",
@@ -57,7 +56,6 @@ install_src_files(
             "//modules/planning:install_src",
         ],
         [
-            "//cyber:install_src",
             "//tools:install_src",
             "//modules/common:install_src",
             "//modules/control:install_src",

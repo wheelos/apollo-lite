@@ -36,7 +36,7 @@ cc_library(
     ],
     hdrs = ["vehicle_model.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/vehicle_model/proto:vehicle_model_config_cc_proto",
@@ -55,7 +55,7 @@ cc_test(
     ],
     deps = [
         ":vehicle_model",
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/common:gtest_exit_main",
         "//modules/common/vehicle_state:vehicle_state_provider",
     ],

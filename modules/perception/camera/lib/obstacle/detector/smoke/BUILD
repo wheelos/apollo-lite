@@ -30,7 +30,7 @@ cc_library(
     ],
     deps = [
         ":smoke_object_maintainer",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",
@@ -46,7 +46,7 @@ cc_library(
     ],
     deps = [
         ":smoke_region_output",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/common",
@@ -76,7 +76,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
     ],
 )

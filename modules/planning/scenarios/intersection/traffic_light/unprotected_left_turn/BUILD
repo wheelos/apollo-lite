@@ -19,7 +19,7 @@ cc_library(
     ],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",

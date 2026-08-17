@@ -32,7 +32,7 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"image_decompress\\"'],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
@@ -55,7 +55,7 @@ cc_test(
 cc_binary(
     name = "libimage_decompress.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":image_decompress_lib"],
 )
 

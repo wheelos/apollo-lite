@@ -22,7 +22,7 @@ cc_library(
     deps = [
         ":monitor_log_buffer",
         ":monitor_logger",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_cc_proto",
         "//modules/common/util:util_tool",
         "@com_google_googletest//:gtest",
@@ -37,7 +37,7 @@ cc_library(
     hdrs = ["monitor_logger.h"],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_cc_proto",
         "//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
@@ -51,7 +51,7 @@ cc_library(
     alwayslink = True,
     deps = [
         ":monitor_logger",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_cc_proto",
         "@com_google_googletest//:gtest",
     ],

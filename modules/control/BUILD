@@ -10,7 +10,7 @@ cc_library(
     name = "control_lib",
     copts = CONTROL_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
@@ -48,7 +48,7 @@ cc_library(
 cc_binary(
     name = "libcontrol_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":control_component_lib"],
 )
 

@@ -110,6 +110,32 @@ yes | sudo bash docker/setup_host/setup_host.sh
 
 ---
 
+## `@core` runtime (cyber tools)
+
+The production path is the Bazel module dependency `wheelos_core` (`@core//...`).
+Use the unified runtime entrypoint after building with the module dependency already resolved:
+
+```bash
+source scripts/runtime_env.sh
+```
+
+If you intentionally need to validate a local source checkout, set the override explicitly and keep it temporary:
+
+```bash
+export APOLLO_CORE_ROOT=/path/to/core
+source scripts/runtime_env.sh
+```
+
+Then build the cyber runtime targets from this workspace:
+
+```bash
+./apollo.sh build cyber
+```
+
+This builds the stable `@core//cyber` runtime surface: `cyber_core`, `mainboard`, and the `cyber_tools` binaries used by the repo.
+
+---
+
 ## Copyright and License
 
 Apollo-Lite is licensed under the [Apache License 2.0](LICENSE). Please comply

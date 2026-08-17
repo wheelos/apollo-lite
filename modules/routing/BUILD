@@ -30,7 +30,7 @@ cc_library(
     copts = ROUTING_COPTS,
     deps = [
         ":routing",
-        "//cyber",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -38,7 +38,7 @@ cc_library(
 cc_binary(
     name = "librouting_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":routing_component_lib"],
 )
 

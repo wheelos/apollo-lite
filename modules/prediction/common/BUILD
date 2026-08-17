@@ -177,7 +177,7 @@ cc_library(
     srcs = ["environment_features.cc"],
     hdrs = ["environment_features.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
     ],
 )
@@ -226,7 +226,7 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":semantic_map",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/prediction/evaluator:evaluator_manager",
         "//modules/prediction/predictor:predictor_manager",
@@ -242,7 +242,7 @@ cc_library(
     hdrs = ["prediction_thread_pool.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -263,7 +263,7 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":prediction_gflags",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/util",
         "//modules/common/util:string_util",

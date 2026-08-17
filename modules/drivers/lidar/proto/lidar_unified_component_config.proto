@@ -1,0 +1,124 @@
+syntax = "proto2";
+
+package apollo.drivers.lidar;
+
+message LidarUnifiedComponentConfig {
+  enum ComputeMode {
+    COMPUTE_MODE_CPU = 0;
+    COMPUTE_MODE_GPU = 1;
+  }
+
+  enum TimestampAnchor {
+    SCAN_BEGIN = 0;
+    SCAN_END = 1;
+    SCAN_MIDPOINT = 2;
+  }
+
+  enum CompensationMode {
+    OFF = 0;
+    RIGID_FRAME = 1;
+    CONTINUOUS_POINT = 2;
+  }
+
+  message TimeSettings {
+    optional TimestampAnchor measurement_time_anchor = 1
+        [default = SCAN_END];
+    optional int64 static_time_offset_ns = 2 [default = 0];
+    optional double expected_scan_duration_ms = 3 [default = 100.0];
+    optional double max_scan_duration_ms = 4 [default = 200.0];
+  }
+
+  message AuxiliaryLidarInput {
+    optional string topic_name = 1;
+    optional TimeSettings time_settings = 2;
+  }
+
+  // Core channel / frame IDs
+  optional string output_channel = 1;
+  optional string base_link_frame_id = 2;
+  optional string map_frame_id = 3;
+
+  // Buffer / capacity
+  optional uint32 sensor_buffer_size = 4 [default = 8];
+  optional uint32 max_full_pointcloud_points = 5 [default = 300000];
+  optional uint32 worker_num = 6 [default = 0];
+
+  // Ego-box filter
+  optional bool enable_ego_query_filter = 7 [default = false];
+  optional double ego_box_forward_x = 8 [default = 2.8];
+  optional double ego_box_backward_x = 9 [default = -2.8];
+  optional double ego_box_forward_y = 10 [default = 1.4];
+  optional double ego_box_backward_y = 11 [default = -1.4];
+
+  // Voxel downsampling
+  optional double voxel_size = 12 [default = 0.1];
+
+  // Synchronisation
+  optional uint32 max_ref_time_delta_ms = 13 [default = 100];
+  optional uint32 motion_compensation_bins = 14 [default = 12];
+  optional bool strict_auxiliary_sync = 16 [default = false];
+
+  // Observability
+  optional uint32 metrics_log_interval = 15 [default = 100];
+
+  // Compute backend
+  optional ComputeMode compute_mode = 17 [default = COMPUTE_MODE_CPU];
+  optional uint32 gpu_device_id = 18 [default = 0];
+
+  // Auxiliary sensors
+  repeated AuxiliaryLidarInput auxiliary_lidar_inputs = 19;
+  // Primary lidar input channel consumed by unified processor.
+  optional string primary_lidar_topic = 49;
+
+  // M4 – Timestamp sanity
+  optional bool ts_sanity_enabled = 20 [default = true];
+  // Minimum expected frame interval (ms). Frames arriving faster are anomalous.
+  optional uint32 ts_sanity_min_interval_ms = 21 [default = 40];
+  // Maximum expected frame interval (ms). A longer gap triggers a late-frame anomaly.
+  optional uint32 ts_sanity_max_interval_ms = 22 [default = 200];
+  // Timestamp jump threshold (ms). A forward/backward jump larger than this is flagged.
+  optional uint32 ts_sanity_max_jump_ms = 23 [default = 500];
+  // Number of consecutive errors that triggers degrade activation.
+  optional uint32 ts_sanity_max_consecutive_errors = 24 [default = 3];
+
+  // M4 - Degrade policy trigger signals
+  optional bool degrade_on_ts_anomaly = 25 [default = true];
+
+  // TF pose prefetch cache
+  optional double sensor_pose_cache_duration_sec = 26 [default = 1.0];
+  optional double sensor_pose_cache_max_extrapolation_sec = 27 [default = 0.15];
+  optional double sensor_pose_query_timeout_sec = 28 [default = 0.02];
+
+  // Multi-lidar fixed-delay and clock-offset observability
+  optional double fixed_delay_ema_alpha = 29 [default = 0.2];
+  optional double fixed_delay_update_limit_ms = 30 [default = 80.0];
+  optional double clock_offset_ema_alpha = 31 [default = 0.2];
+
+  // Overlap region quality weighting
+  optional double overlap_region_forward_x = 32 [default = 25.0];
+  optional double overlap_region_backward_x = 33 [default = -5.0];
+  optional double overlap_region_left_y = 34 [default = 12.0];
+  optional double overlap_region_right_y = 35 [default = -12.0];
+  optional double overlap_region_min_z = 36 [default = -3.0];
+  optional double overlap_region_max_z = 37 [default = 3.0];
+  optional double overlap_quality_ema_alpha = 38 [default = 0.2];
+  optional double auxiliary_min_overlap_quality_weight = 39 [default = 0.0];
+  optional uint32 overlap_quality_sample_stride = 40 [default = 16];
+
+  // Main-frame triggered fusion waits briefly in wall-clock time for
+  // auxiliary messages whose measurement_time already aligns with the primary.
+  optional uint32 fusion_wait_timeout_ms = 41 [default = 20];
+  // Maximum queued primary frames waiting for auxiliary arrivals. New primary
+  // frames are dropped when the queue is full to avoid unbounded latency.
+  optional uint32 pending_fusion_queue_size = 42 [default = 2];
+  // Periodic flush interval for deadline-based publication.
+  optional uint32 fusion_flush_interval_ms = 43 [default = 5];
+
+  // Production temporal-fusion controls.
+  optional TimeSettings primary_time_settings = 44;
+  optional CompensationMode compensation_mode = 45
+      [default = CONTINUOUS_POINT];
+  optional bool enable_online_time_offset_update = 46 [default = true];
+  optional bool enable_overlap_quality_gate = 47 [default = true];
+  optional bool enable_voxel_filter = 48 [default = true];
+}

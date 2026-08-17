@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["recurrent_runner.h"],
     copts = MONITOR_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -33,7 +33,7 @@ cc_library(
     hdrs = ["monitor_manager.h"],
     copts = MONITOR_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",

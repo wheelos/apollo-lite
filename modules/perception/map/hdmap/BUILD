@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/common/util:util_tool",
         "//modules/map/hdmap:hdmap_util",

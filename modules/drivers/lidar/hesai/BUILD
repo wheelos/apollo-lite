@@ -8,7 +8,7 @@ HESAI_COPTS = ['-DMODULE_NAME=\\"hesai\\"']
 cc_binary(
     name = "libhesai_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":hesai_component_lib"],
 )
 
@@ -31,7 +31,7 @@ cc_library(
         "-lm",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/hesai/proto:hesai_cc_proto",

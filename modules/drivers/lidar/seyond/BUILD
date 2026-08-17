@@ -18,7 +18,7 @@ filegroup(
 cc_binary(
     name = "libseyond_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":seyond_component_lib"],
 )
 
@@ -34,7 +34,7 @@ cc_library(
     ],
     copts = SEYOND_COPTS + ["-std=c++17"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/seyond/proto:seyond_cc_proto",

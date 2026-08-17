@@ -1434,7 +1434,7 @@ def main(screen):
 if __name__ == "__main__":
     if not cyber.ok():
         print("ERROR: Apollo Cyber RT environment is not initialized.")
-        print("Please run 'source /apollo/cyber/setup.bash' first.")
+        print("Please run 'source /apollo/scripts/runtime_env.sh' first.")
         exit(1)
     try:
         curses.wrapper(main)

@@ -31,7 +31,7 @@ filegroup(
 cc_binary(
     name = "liblslidar_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":lslidar_component_lib",
     ],
@@ -43,7 +43,7 @@ cc_library(
     hdrs = ["component/lslidar_component.h"],
     copts = ['-DMODULE_NAME=\\"lslidar\\"'],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/lslidar/driver",
         "//modules/drivers/lidar/lslidar/parser:convert",

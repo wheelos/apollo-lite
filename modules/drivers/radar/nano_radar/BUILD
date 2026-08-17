@@ -33,7 +33,7 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"nano_radar\\"'],
     deps = [
         ":nano_radar_message_manager",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "//modules/drivers/canbus/can_client:can_client_factory",
@@ -49,7 +49,7 @@ cc_library(
 cc_binary(
     name = "libnano_radar.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":nano_radar_lib"],
 )
 

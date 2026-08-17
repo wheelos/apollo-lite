@@ -8,7 +8,7 @@ cc_library(
     srcs = ["lane_common.cc"],
     hdrs = ["lane_common.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/lib/lane/common:common_functions",
         "@opencv//:imgcodecs",
@@ -22,7 +22,7 @@ cc_binary(
     linkstatic = False,
     deps = [
         ":lane_common",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/common",

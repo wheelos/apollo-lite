@@ -58,7 +58,7 @@ cc_library(
     deps = [
         ":common",
         ":syncedmem",
-        "//cyber",
+        "@core//cyber",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -154,7 +154,7 @@ cc_library(
     ],
     deps = [
         ":camera",
-        "//cyber",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -219,7 +219,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "@eigen",
     ],
@@ -302,7 +302,7 @@ cc_test(
         ":object_pool",
         ":object_pool_types",
         ":point_cloud",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -319,7 +319,7 @@ cc_library(
         ":object",
         ":object_pool",
         ":point_cloud",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -334,7 +334,7 @@ cc_library(
         ":camera",
         ":distortion_model",
         ":polynomial",
-        "//cyber",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -379,7 +379,7 @@ cc_library(
     ],
     deps = [
         ":point_cloud",
-        "//cyber",
+        "@core//cyber",
         "@eigen",
         "@opencv//:imgproc",
     ],
@@ -424,7 +424,7 @@ cc_library(
     ],
     deps = [
         ":common",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 

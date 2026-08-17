@@ -25,7 +25,7 @@ cc_library(
     ],
     deps = [
         ":base_init_options",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/lib/registerer",
         "//modules/perception/pipeline:plugin",
@@ -39,7 +39,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         ":base_init_options",
         "//modules/perception/camera/common",
         "//modules/perception/lib/registerer",
@@ -54,7 +54,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         ":base_init_options",
         "//modules/perception/lib/registerer",
         "//modules/perception/camera/lib/traffic_light/preprocessor:pose",

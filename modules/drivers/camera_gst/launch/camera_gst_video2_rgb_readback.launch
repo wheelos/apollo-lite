@@ -1,0 +1,7 @@
+<cyber>
+  <module>
+    <name>camera_gst_video2_rgb_readback</name>
+    <dag_conf>/apollo/modules/drivers/camera_gst/dag/camera_gst_video2_rgb_readback.dag</dag_conf>
+    <process_name>camera_gst_video2_rgb_readback</process_name>
+  </module>
+</cyber>

@@ -7,7 +7,7 @@ cc_binary(
     name = "offline_lidar_obstacle_perception",
     srcs = ["offline_lidar_obstacle_perception.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/common/io:io_util",

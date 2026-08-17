@@ -60,8 +60,8 @@ fi
 find "${USER_HOME}" -maxdepth 1 -name ".*" ! -name "." ! -name " .. " -exec chown -R "${USER_ID}:${GROUP_ID}" {} +
 chown "${USER_ID}:${GROUP_ID}" "${USER_HOME}"
 
-if [ -f "/apollo/cyber/setup.bash" ]; then
-    source /apollo/cyber/setup.bash
+if [ -f "/apollo/scripts/runtime_env.sh" ]; then
+    source /apollo/scripts/runtime_env.sh
 fi
 
 # 4. Business logic branch

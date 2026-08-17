@@ -20,6 +20,7 @@ set -e
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 source "${TOP_DIR}/scripts/apollo_base.sh"
+source "${TOP_DIR}/scripts/cyber_targets.sh"
 
 ARCH="$(uname -m)"
 
@@ -100,7 +101,7 @@ function determine_disabled_targets() {
   done
 
   echo "${DISABLED_TARGETS}"
-  # DISABLED_CYBER_MODULES="except //cyber/record:record_file_integration_test"
+  # DISABLED_CYBER_MODULES="except @core//cyber/record:record_file_integration_test"
 }
 
 # components="$(echo -e "${@// /\\n}" | sort -u)"
@@ -111,14 +112,14 @@ function determine_build_targets_and_defines() {
   local defines_all=""
 
   if [[ "$#" -eq 0 ]]; then
-    targets_all="//modules/... union //cyber/..."
+    targets_all="//modules/... union $(cyber_runtime_targets)"
   else
     for component in "$@"; do
       if [[ "$component" == "cyber" ]]; then
         if [[ "${HOST_OS}" == "Linux" ]]; then
-          targets_all+=" //cyber/... //modules/tools/visualizer/..."
+          targets_all+=" $(cyber_runtime_targets) //modules/tools/visualizer/..."
         else
-          targets_all+=" //cyber/..."
+          targets_all+=" $(cyber_runtime_targets)"
         fi
       elif [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
         targets_all+=" //modules/${component}/..."
@@ -301,7 +302,22 @@ function run_bazel_build() {
   fi
   build_args="${copts_args} ${jobs_args} ${cpus_args} ${rams_args}"
   info "${TAB}Build Command: bazel build ${CMDLINE_OPTIONS} ${build_args} -- ${formatted_targets}"
-  bazel build ${CMDLINE_OPTIONS} ${build_args} -- ${formatted_targets}
+
+  local bazel_startup_args=""
+  local bazel_cache_args=""
+  local cache_owner_uid=""
+  cache_owner_uid="$(stat -c '%u' "${APOLLO_CACHE_DIR}" 2>/dev/null || true)"
+  if [[ ! -w "${APOLLO_CACHE_DIR}" || -z "${cache_owner_uid}" || "${cache_owner_uid}" != "$(id -u)" ]]; then
+    # TODO(container-env): Fix mounted workspace cache ownership in container
+    # startup so this /tmp fallback can be removed.
+    local fallback_bazel_root="/tmp/bazel"
+    mkdir -p "${fallback_bazel_root}/repo_cache" "${fallback_bazel_root}/disk_cache"
+    bazel_startup_args="--output_user_root=${fallback_bazel_root}"
+    bazel_cache_args="--repository_cache=${fallback_bazel_root}/repo_cache --disk_cache=${fallback_bazel_root}/disk_cache"
+    warning "APOLLO_CACHE_DIR is not writable, using ${fallback_bazel_root} for Bazel caches."
+  fi
+
+  bazel ${bazel_startup_args} build ${CMDLINE_OPTIONS} ${build_args} ${bazel_cache_args} -- ${formatted_targets}
 }
 
 function main() {

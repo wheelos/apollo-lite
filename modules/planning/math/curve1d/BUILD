@@ -24,7 +24,7 @@ cc_library(
     hdrs = ["quartic_polynomial_curve1d.h"],
     deps = [
         ":polynomial_curve1d",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
     ],
@@ -39,7 +39,7 @@ cc_test(
         ":cubic_polynomial_curve1d",
         ":quartic_polynomial_curve1d",
         ":quintic_polynomial_curve1d",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -50,7 +50,7 @@ cc_library(
     hdrs = ["quintic_polynomial_curve1d.h"],
     deps = [
         ":polynomial_curve1d",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
     ],
@@ -64,7 +64,7 @@ cc_library(
     deps = [
         ":polynomial_curve1d",
         ":quartic_polynomial_curve1d",
-        "//cyber",
+        "@core//cyber",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -76,7 +76,7 @@ cc_test(
     deps = [
         ":cubic_polynomial_curve1d",
         ":quartic_polynomial_curve1d",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -91,7 +91,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":quintic_polynomial_curve1d",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "@com_google_absl//absl/strings",
     ],
@@ -104,7 +104,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":quintic_spiral_path",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "@com_google_absl//absl/strings",
     ],
@@ -118,7 +118,7 @@ cc_test(
     deps = [
         ":quartic_polynomial_curve1d",
         ":quintic_polynomial_curve1d",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -130,7 +130,7 @@ cc_test(
     copts = PLANNING_COPTS,
     deps = [
         ":piecewise_quintic_spiral_path",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
 )

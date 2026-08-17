@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["simulation_world_service.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
@@ -66,7 +66,6 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/mission_msgs:mission_request_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:poi_cc_proto",
         "//modules/dreamview/backend/common:dreamview_gflags",
-        "//modules/dreamview/backend/fuel_monitor:fuel_monitor_manager",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/backend/map:map_service",
         "//modules/dreamview/backend/perception_camera_updater",
@@ -74,8 +73,8 @@ cc_library(
         "//modules/dreamview/backend/sim_control_manager",
         "//modules/map/hdmap:hdmap_util",
         "@boost.thread",
+        "@zstd//:zstd",
     ],
-    alwayslink = True,
 )
 
 cpplint()

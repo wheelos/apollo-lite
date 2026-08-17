@@ -31,7 +31,7 @@ cc_library(
         "protocol_data.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/drivers/canbus/common:canbus_common",
     ],
@@ -42,7 +42,7 @@ cc_test(
     size = "small",
     srcs = ["can_sender_test.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_client/fake:fake_can_client",
@@ -57,7 +57,7 @@ cc_test(
     size = "small",
     srcs = ["can_receiver_test.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
@@ -90,7 +90,7 @@ cc_test(
     size = "small",
     srcs = ["message_manager_test.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "@com_google_googletest//:gtest_main",

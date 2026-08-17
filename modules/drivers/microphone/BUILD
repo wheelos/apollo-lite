@@ -9,7 +9,7 @@ MICROPHONE_COPTS = ['-DMODULE_NAME=\\"microphone\\"']
 cc_binary(
     name = "libmicrophone_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":microphone_component_lib",
     ],
@@ -52,7 +52,7 @@ cc_library(
     copts = MICROPHONE_COPTS,
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/drivers/microphone:respeaker",
         "//modules/drivers/microphone/proto:audio_cc_proto",
@@ -66,7 +66,7 @@ cc_library(
     hdrs = ["respeaker.h"],
     copts = MICROPHONE_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/microphone/proto:microphone_config_cc_proto",
         "@portaudio",
     ],

@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["lattice_trajectory1d.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/math/curve1d",
     ],
 )
@@ -123,7 +123,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":lateral_qp_optimizer",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/planning/common/trajectory1d:piecewise_jerk_trajectory1d",
         "@eigen",
@@ -137,7 +137,7 @@ cc_test(
     srcs = ["lateral_osqp_optimizer_test.cc"],
     deps = [
         ":lateral_osqp_optimizer",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest",
     ],
 )

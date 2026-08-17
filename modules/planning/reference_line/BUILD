@@ -16,7 +16,7 @@ cc_library(
     ],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/util:util_tool",
@@ -150,7 +150,7 @@ cc_library(
         ":qp_spline_reference_line_smoother",
         ":reference_line",
         ":spiral_reference_line_smoother",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/util:util_tool",
         "//modules/common/vehicle_state:vehicle_state_provider",

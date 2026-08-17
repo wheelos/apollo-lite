@@ -17,17 +17,20 @@
 #include "modules/dreamview/backend/hmi/hmi_worker.h"
 
 #include <dirent.h>
+#include <sys/wait.h>
 
+#include <chrono>
+#include <cctype>
 #include <map>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 
-#include "cyber/proto/dag_conf.pb.h"
 #include "wheelos_msgs/monitor_msgs/system_status.pb.h"
 #include "modules/dreamview/proto/scenario.pb.h"
 
@@ -39,11 +42,9 @@
 #include "modules/common/util/map_util.h"
 #include "modules/common/util/message_util.h"
 #include "modules/dreamview/backend/common/dreamview_gflags.h"
-#include "modules/dreamview/backend/fuel_monitor/data_collection_monitor.h"
-#include "modules/dreamview/backend/fuel_monitor/fuel_monitor_gflags.h"
-#include "modules/dreamview/backend/fuel_monitor/fuel_monitor_manager.h"
-#include "modules/dreamview/backend/fuel_monitor/preprocess_monitor.h"
-#include "modules/dreamview/backend/hmi/vehicle_manager.h"
+#include "modules/dreamview/backend/hmi/hmi_status_bridge.h"
+#include "modules/dreamview/backend/hmi/mode_registry.h"
+#include "modules/dreamview/backend/hmi/process_manager.h"
 
 DEFINE_string(hmi_modes_config_path, "/apollo/modules/dreamview/conf/hmi_modes",
               "HMI modes config path.");
@@ -55,7 +56,7 @@ DEFINE_double(status_publish_interval, 5, "HMI Status publish interval.");
 DEFINE_string(current_mode_db_key, "/apollo/hmi/status:current_mode",
               "Key to store hmi_status.current_mode in KV DB.");
 
-DEFINE_string(default_hmi_mode, "Mkz Standard Debug",
+DEFINE_string(default_hmi_mode, "Runtime",
               "Default HMI Mode when there is no cache.");
 
 namespace apollo {
@@ -68,11 +69,9 @@ using apollo::common::DriveEvent;
 using apollo::common::KVDB;
 using apollo::common::util::ContainsKey;
 using apollo::common::util::FindOrNull;
-using apollo::common::util::LookupOrInsert;
 using apollo::control::DrivingAction;
 using apollo::cyber::Clock;
 using apollo::cyber::Node;
-using apollo::cyber::proto::DagConfig;
 using apollo::dreamview::SimTicket;
 using apollo::dreamview::UserAdsGroup;
 using apollo::localization::LocalizationEstimate;
@@ -153,11 +152,16 @@ void System(std::string_view cmd) {
 }  // namespace
 
 HMIWorker::HMIWorker(const std::shared_ptr<Node> &node)
-    : config_(LoadConfig()), node_(node) {
+    : config_(LoadConfig()),
+      process_manager_(std::make_unique<ProcessManager>()),
+      node_(node) {
   InitStatus();
 }
 
+HMIWorker::~HMIWorker() = default;
+
 void HMIWorker::Start(DvCallback callback_api) {
+  stop_.store(false);
   callback_api_ = callback_api;
   InitReadersAndWriters();
   RegisterStatusUpdateHandler(
@@ -171,7 +175,7 @@ void HMIWorker::Start(DvCallback callback_api) {
 }
 
 void HMIWorker::Stop() {
-  stop_ = true;
+  stop_.store(true);
   if (thread_future_.valid()) {
     thread_future_.get();
   }
@@ -186,49 +190,13 @@ HMIConfig HMIWorker::LoadConfig() {
       << "No modes config loaded from " << FLAGS_hmi_modes_config_path;
 
   *config.mutable_maps() = ListDirAsDict(FLAGS_maps_data_path);
-  *config.mutable_vehicles() = ListDirAsDict(FLAGS_vehicles_config_path);
   AINFO << "Loaded HMI config: " << config.DebugString();
   return config;
 }
 
 HMIMode HMIWorker::LoadMode(const std::string &mode_config_path) {
-  HMIMode mode;
-  ACHECK(cyber::common::GetProtoFromFile(mode_config_path, &mode))
-      << "Unable to parse HMIMode from file " << mode_config_path;
-  // Translate cyber_modules to regular modules.
-  for (const auto &iter : mode.cyber_modules()) {
-    const std::string &module_name = iter.first;
-    const CyberModule &cyber_module = iter.second;
-    // Each cyber module should have at least one dag file.
-    ACHECK(!cyber_module.dag_files().empty())
-        << "None dag file is provided for " << module_name << " module in "
-        << mode_config_path;
-
-    Module &module = LookupOrInsert(mode.mutable_modules(), module_name, {});
-    module.set_required_for_safety(cyber_module.required_for_safety());
-
-    // Construct start_command:
-    //     nohup mainboard -p <process_group> -d <dag> ... &
-    module.set_start_command("nohup mainboard");
-    const auto &process_group = cyber_module.process_group();
-    if (!process_group.empty()) {
-      absl::StrAppend(module.mutable_start_command(), " -p ", process_group);
-    }
-    for (const std::string &dag : cyber_module.dag_files()) {
-      absl::StrAppend(module.mutable_start_command(), " -d ", dag);
-    }
-    absl::StrAppend(module.mutable_start_command(), " &");
-
-    // Construct stop_command: pkill -f '<dag[0]>'
-    const std::string &first_dag = cyber_module.dag_files(0);
-    module.set_stop_command(absl::StrCat("pkill -f \"", first_dag, "\""));
-    // Construct process_monitor_config.
-    module.mutable_process_monitor_config()->add_command_keywords("mainboard");
-    module.mutable_process_monitor_config()->add_command_keywords(first_dag);
-  }
-  mode.clear_cyber_modules();
-  AINFO << "Loaded HMI mode: " << mode.DebugString();
-  return mode;
+  static const ModeRegistry registry;
+  return registry.LoadMode(mode_config_path);
 }
 
 void HMIWorker::InitStatus() {
@@ -241,18 +209,6 @@ void HMIWorker::InitStatus() {
   for (const auto &iter : modes) {
     const std::string &mode = iter.first;
     status_.add_modes(mode);
-    if (mode == FLAGS_vehicle_calibration_mode) {
-      FuelMonitorManager::Instance()->RegisterFuelMonitor(
-          mode, std::make_unique<DataCollectionMonitor>());
-      FuelMonitorManager::Instance()->RegisterFuelMonitor(
-          mode, std::make_unique<PreprocessMonitor>());
-    } else if (mode == FLAGS_lidar_calibration_mode) {
-      FuelMonitorManager::Instance()->RegisterFuelMonitor(
-          mode, std::make_unique<PreprocessMonitor>("lidar_to_gnss"));
-    } else if (mode == FLAGS_camera_calibration_mode) {
-      FuelMonitorManager::Instance()->RegisterFuelMonitor(
-          mode, std::make_unique<PreprocessMonitor>("camera_to_lidar"));
-    }
   }
 
   // Populate maps and current_map.
@@ -263,11 +219,6 @@ void HMIWorker::InitStatus() {
     if (map_entry.second == FLAGS_map_dir) {
       status_.set_current_map(map_entry.first);
     }
-  }
-
-  // Populate vehicles and current_vehicle.
-  for (const auto &vehicle : config_.vehicles()) {
-    status_.add_vehicles(vehicle.first);
   }
 
   // Initial HMIMode by priority:
@@ -409,9 +360,6 @@ bool HMIWorker::Trigger(const HMIAction action, const std::string &value) {
     case HMIAction::CHANGE_MAP:
       ChangeMap(value);
       break;
-    case HMIAction::CHANGE_VEHICLE:
-      ChangeVehicle(value);
-      break;
     case HMIAction::START_MODULE:
       StartModule(value);
       break;
@@ -515,14 +463,6 @@ void HMIWorker::SensorCalibrationPreprocess(const std::string &task_type) {
   System(start_command);
 }
 
-void HMIWorker::VehicleCalibrationPreprocess() {
-  std::string start_command = absl::StrCat(
-      "nohup bash /apollo/modules/tools/vehicle_calibration/preprocess.sh "
-      "--vehicle_type=\"",
-      status_.current_vehicle(), "\" --record_num=", record_count_, " &");
-  System(start_command);
-}
-
 bool HMIWorker::ChangeDrivingMode(const Chassis::DrivingMode mode) {
   // Always reset to MANUAL mode before changing to other mode.
   const std::string mode_name = Chassis::DrivingMode_Name(mode);
@@ -588,47 +528,6 @@ bool HMIWorker::ChangeMap(const std::string &map_name) {
   return true;
 }
 
-void HMIWorker::ChangeVehicle(const std::string &vehicle_name) {
-  const std::string *vehicle_dir = FindOrNull(config_.vehicles(), vehicle_name);
-  if (vehicle_dir == nullptr) {
-    AERROR << "Unknown vehicle " << vehicle_name;
-    return;
-  }
-
-  {
-    // Update current_vehicle status.
-    WLock wlock(status_mutex_);
-    if (status_.current_vehicle() == vehicle_name) {
-      return;
-    }
-    try {
-      // try to get vehicle type from calibration data directory
-      // TODO(jinping): add vehicle config specs and move to vehicle config
-      const std::string vehicle_type_file_path = *vehicle_dir + "/vehicle_type";
-      std::string vehicle_type_str;
-      cyber::common::GetContent(vehicle_type_file_path, &vehicle_type_str);
-      int vehicle_type = std::stoi(vehicle_type_str);
-      status_.set_current_vehicle_type(vehicle_type);
-    } catch (const std::exception &e) {
-      AWARN << "get vehicle type config failed: " << e.what();
-      status_.clear_current_vehicle_type();
-    }
-    status_.set_current_vehicle(vehicle_name);
-    status_changed_ = true;
-  }
-  ResetMode();
-  ACHECK(VehicleManager::Instance()->UseVehicle(*vehicle_dir));
-  // Restart Fuel Monitor
-  auto *monitors = FuelMonitorManager::Instance()->GetCurrentMonitors();
-  if (monitors != nullptr) {
-    for (const auto &monitor : *monitors) {
-      if (monitor.second->IsEnabled()) {
-        monitor.second->Restart();
-      }
-    }
-  }
-}
-
 void HMIWorker::ChangeMode(const std::string &mode_name) {
   if (!ContainsKey(config_.modes(), mode_name)) {
     AERROR << "Cannot change to unknown mode " << mode_name;
@@ -642,64 +541,66 @@ void HMIWorker::ChangeMode(const std::string &mode_name) {
       return;
     }
   }
+  HMIMode next_mode = LoadMode(config_.modes().at(mode_name));
+  if (!process_manager_->ValidateMode(next_mode)) {
+    AERROR << "Cannot activate mode with invalid dependencies: " << mode_name;
+    return;
+  }
   ResetMode();
+  if (!process_manager_->SetMode(next_mode)) {
+    AERROR << "Cannot activate mode with invalid dependencies: " << mode_name;
+    return;
+  }
 
   {
     WLock wlock(status_mutex_);
     status_.set_current_mode(mode_name);
-    current_mode_ = LoadMode(config_.modes().at(mode_name));
-
-    status_.clear_modules();
-    for (const auto &iter : current_mode_.modules()) {
-      status_.mutable_modules()->insert({iter.first, false});
-    }
-
-    // Update monitored components of current mode.
-    status_.clear_monitored_components();
-    for (const auto &iter : current_mode_.monitored_components()) {
-      status_.mutable_monitored_components()->insert({iter.first, {}});
-    }
-
-    status_.clear_other_components();
-    for (const auto &iter : current_mode_.other_components()) {
-      status_.mutable_other_components()->insert({iter.first, {}});
-    }
+    current_mode_ = std::move(next_mode);
+    HMIStatusBridge::PopulateModeStatus(current_mode_, &status_);
     status_changed_ = true;
   }
 
-  FuelMonitorManager::Instance()->SetCurrentMode(mode_name);
   KVDB::Put(FLAGS_current_mode_db_key, mode_name);
 }
 
-void HMIWorker::StartModule(const std::string &module) const {
+void HMIWorker::StartModule(const std::string &module) {
   const Module *module_conf = FindOrNull(current_mode_.modules(), module);
-  if (module_conf != nullptr) {
-    System(module_conf->start_command());
-  } else {
+  if (module_conf == nullptr) {
     AERROR << "Cannot find module " << module;
+    return;
   }
 
-  if (module == "Recorder") {
-    auto *monitors = FuelMonitorManager::Instance()->GetCurrentMonitors();
-    if (monitors != nullptr) {
-      auto iter = monitors->find(FLAGS_data_collection_monitor_name);
-      if (iter != monitors->end()) {
-        auto *data_collection_monitor = iter->second.get();
-        if (data_collection_monitor->IsEnabled() && record_count_ == 0) {
-          data_collection_monitor->Restart();
-        }
-      }
-      ++record_count_;
+  if (!process_manager_->StartModule(module)) {
+    AERROR << "Failed to start module " << module;
+    return;
+  }
+
+  {
+    WLock wlock(status_mutex_);
+    if (HMIStatusBridge::SetModuleRunning(&status_, module, true)) {
+      status_changed_ = true;
     }
   }
+
 }
 
-void HMIWorker::StopModule(const std::string &module) const {
+void HMIWorker::StopModule(const std::string &module) {
   const Module *module_conf = FindOrNull(current_mode_.modules(), module);
-  if (module_conf != nullptr) {
-    System(module_conf->stop_command());
-  } else {
+  if (module_conf == nullptr) {
     AERROR << "Cannot find module " << module;
+    return;
+  }
+
+  if (!process_manager_->StopModule(module)) {
+    AERROR << "Failed to stop module " << module;
+    return;
+  }
+
+  {
+    WLock wlock(status_mutex_);
+    if (HMIStatusBridge::SetModuleRunning(&status_, module, false)) {
+      status_changed_ = true;
+    }
   }
 }
 
@@ -708,22 +609,50 @@ HMIStatus HMIWorker::GetStatus() const {
   return status_;
 }
 
-void HMIWorker::SetupMode() const {
-  for (const auto &iter : current_mode_.modules()) {
-    System(iter.second.start_command());
+void HMIWorker::SetupMode() {
+  for (const auto &module : process_manager_->GetStartOrder()) {
+    const Module *module_conf = FindOrNull(current_mode_.modules(), module);
+    if (module_conf == nullptr) {
+      continue;
+    }
+    if (!module_conf->auto_start()) {
+      continue;
+    }
+    if (!process_manager_->StartModule(module)) {
+      AERROR << "Failed to setup module " << module;
+      continue;
+    }
+    {
+      WLock wlock(status_mutex_);
+      if (HMIStatusBridge::SetModuleRunning(&status_, module, true)) {
+        status_changed_ = true;
+      }
+    }
   }
 }
 
-void HMIWorker::ResetMode() const {
-  for (const auto &iter : current_mode_.modules()) {
-    System(iter.second.stop_command());
+void HMIWorker::ResetMode() {
+  for (const auto &module : process_manager_->GetStopOrder()) {
+    const Module *module_conf = FindOrNull(current_mode_.modules(), module);
+    if (module_conf == nullptr) {
+      continue;
+    }
+    if (!process_manager_->StopModule(module)) {
+      AERROR << "Failed to reset module " << module;
+      continue;
+    }
+    {
+      WLock wlock(status_mutex_);
+      if (HMIStatusBridge::SetModuleRunning(&status_, module, false)) {
+        status_changed_ = true;
+      }
+    }
   }
-  record_count_ = 0;
 }
 
 void HMIWorker::StatusUpdateThreadLoop() {
   constexpr int kLoopIntervalMs = 200;
-  while (!stop_) {
+  while (!stop_.load()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(kLoopIntervalMs));
     UpdateComponentStatus();
     UpdateHMIStatus();
@@ -806,12 +735,6 @@ void HMIWorker::UpdateHMIStatus() {
     for (const auto &map_entry : config.maps()) {
       status_.add_maps(map_entry.first);
     }
-    // Update available vehicles
-    status_.clear_vehicles();
-    for (const auto &vehicle : config.vehicles()) {
-      status_.add_vehicles(vehicle.first);
-    }
-
     status_changed_ = true;
   }
 
@@ -1454,31 +1377,6 @@ void HMIWorker::DeleteRecord(const std::string &record_id) {
   }
   return;
 }
-bool HMIWorker::ReloadVehicles() {
-  AINFO << "load config";
-  HMIConfig config = LoadConfig();
-  std::string msg;
-  AINFO << "serialize new config";
-  config.SerializeToString(&msg);
-
-  WLock wlock(status_mutex_);
-  AINFO << "parse new config";
-  config_.ParseFromString(msg);
-  AINFO << "init status";
-  // status_.clear_modes();
-  // status_.clear_maps();
-  AINFO << "clear vehicles";
-  status_.clear_vehicles();
-  // InitStatus();
-  // Populate vehicles and current_vehicle.
-  AINFO << "reload vehicles";
-  for (const auto &vehicle : config_.vehicles()) {
-    status_.add_vehicles(vehicle.first);
-  }
-  status_changed_ = true;
-  return true;
-}
-
 void HMIWorker::UpdateCameraSensorChannelToStatus(
     const std::string &channel_name) {
   {

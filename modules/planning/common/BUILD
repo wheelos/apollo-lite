@@ -147,7 +147,7 @@ cc_library(
     hdrs = ["planning_context.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/common/path:path_data",
         "//modules/planning/proto:planning_status_cc_proto",
         "@eigen",
@@ -187,7 +187,7 @@ cc_library(
         ":planning_gflags",
         ":st_graph_data",
         ":obstacle_decider",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
@@ -270,7 +270,7 @@ cc_library(
         ":obstacle",
         ":open_space_info",
         ":reference_line_info",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/monitor_log",
         "//modules/common/vehicle_state:vehicle_state_provider",
@@ -309,7 +309,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":planning_gflags",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:decision_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@eigen",
@@ -356,7 +356,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":obstacle",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
@@ -391,7 +391,7 @@ cc_library(
         ":planning_gflags",
         ":speed_limit",
         ":st_graph_data",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@eigen",
     ],
@@ -403,7 +403,7 @@ cc_library(
     hdrs = ["trajectory_stitcher.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/vehicle_model",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:planning_gflags",
@@ -418,7 +418,7 @@ cc_library(
     srcs = ["open_space_info.cc"],
     hdrs = ["open_space_info.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/map/hdmap:hdmap_util",
@@ -461,7 +461,7 @@ cc_test(
     srcs = ["st_graph_data_test.cc"],
     deps = [
         ":st_graph_data",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
@@ -473,7 +473,7 @@ cc_library(
     hdrs = ["feature_output.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:learning_data_cc_proto",
@@ -488,7 +488,7 @@ cc_library(
     deps = [
         ":dependency_injector",
         ":feature_output",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:config_gflags",
         "//modules/common/util:util_tool",
@@ -513,7 +513,7 @@ cc_library(
     hdrs = ["trajectory_evaluator.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/util:util_lib",
         "//modules/planning/pipeline:evaluator_logger",
@@ -540,7 +540,7 @@ cc_library(
     hdrs = ["learning_based_data.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/proto:learning_data_cc_proto",
     ],
 )

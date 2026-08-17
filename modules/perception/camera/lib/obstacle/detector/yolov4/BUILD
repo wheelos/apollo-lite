@@ -28,7 +28,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",
@@ -44,7 +44,7 @@ cc_library(
     ],
     deps = [
         ":region_output",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",

@@ -1,7 +1,32 @@
-# Vehicle Modes
+# Functional Modes
 
-This folder contains modes configuration for Apollo vehicle. Each pb.txt should
+This folder contains functional HMI modes. Each pb.txt should
 be an instance of HMIMode. Check the proto for detailed information.
+
+## Shared Base Mode
+
+To reduce duplicated config blocks, modes inherit base modules by function:
+
+```
+base_mode: "_base/runtime_base.pb.txt"
+```
+
+`base_mode` supports relative path (resolved from the current mode file) or
+absolute path. Child module settings override only the fields they specify;
+unmodified base settings remain in effect.
+
+`auto_start: false` keeps an optional tool available for explicit HMI start
+without launching it during `SETUP_MODE`. Modules with the same
+`exclusive_group` cannot run simultaneously.
+
+## Mode Categories
+
+Current top-level modes are grouped into four functions:
+
+- `runtime.pb.txt`: running mode.
+- `sensor_calibration.pb.txt`: sensor calibration mode.
+- `map_collection.pb.txt`: map collection mode.
+- `testing.pb.txt`: testing mode (mock + recorder tools).
 
 ## Name Convention
 
@@ -10,9 +35,10 @@ display on Dreamview. So please make it simple, clean and meaningful.
 
 Some examples:
 
-* mkz_standard_debug.pb.txt -> "Mkz Standard Debug"
-* mkz_close_loop.pb.txt     -> "Mkz Close Loop"
-* mkz_map_collection.pb.txt -> "Mkz Map Collection"
+* runtime.pb.txt -> "Runtime"
+* sensor_calibration.pb.txt -> "Sensor Calibration"
+* map_collection.pb.txt -> "Map Collection"
+* testing.pb.txt -> "Testing"
 
 ## Monitor New Channels
 

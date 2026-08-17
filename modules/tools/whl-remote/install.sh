@@ -12,9 +12,6 @@ SSH_REMOTE_BASE="${SSH_REMOTE_BASE:-60000}"
 LOCAL_SSH_IP="${LOCAL_SSH_IP:-127.0.0.1}"
 LOCAL_SSH_PORT="${LOCAL_SSH_PORT:-22}"
 
-LOCAL_APP_IP="${LOCAL_APP_IP:-127.0.0.1}"
-LOCAL_APP_PORT="${LOCAL_APP_PORT:-8888}"
-
 if [ "$(uname -s)" != "Linux" ]; then
     echo "Error: this installer downloads the Linux build of frp; please run on a Linux host."
     exit 1
@@ -118,7 +115,6 @@ if [ -z "$AUTH_TOKEN" ]; then
 fi
 
 REMOTE_PORT_SSH=$((SSH_REMOTE_BASE + C_ID))
-REMOTE_PORT_APP=$((SSH_REMOTE_BASE + C_ID + 1))
 
 validate_port() {
     local port="$1"
@@ -130,15 +126,7 @@ validate_port() {
 }
 
 validate_port "$LOCAL_SSH_PORT" "local ssh"
-validate_port "$LOCAL_APP_PORT" "local app"
 validate_port "$REMOTE_PORT_SSH" "remote ssh"
-validate_port "$REMOTE_PORT_APP" "remote app"
-
-if [ "$REMOTE_PORT_SSH" -eq "$REMOTE_PORT_APP" ]; then
-    echo "Error: remote SSH port and remote APP port conflict: $REMOTE_PORT_SSH"
-    echo "Please adjust SSH_REMOTE_BASE or SSH_REMOTE_BASE."
-    exit 1
-fi
 
 cat <<EOF > frpc.toml
 serverAddr = "$S_IP"
@@ -151,13 +139,6 @@ type = "tcp"
 localIP = "$LOCAL_SSH_IP"
 localPort = $LOCAL_SSH_PORT
 remotePort = $REMOTE_PORT_SSH
-
-[[proxies]]
-name = "car_${C_ID}_app_8888"
-type = "tcp"
-localIP = "$LOCAL_APP_IP"
-localPort = $LOCAL_APP_PORT
-remotePort = $REMOTE_PORT_APP
 EOF
 
 chmod 600 frpc.toml
@@ -167,9 +148,13 @@ echo "Car installer finished."
 echo "Install directory : $INSTALL_DIR"
 echo "Config file       : $INSTALL_DIR/frpc.toml"
 echo "SSH mapping       : ${LOCAL_SSH_IP}:${LOCAL_SSH_PORT} -> ${S_IP}:${REMOTE_PORT_SSH}"
-echo "APP mapping       : ${LOCAL_APP_IP}:${LOCAL_APP_PORT} -> ${S_IP}:${REMOTE_PORT_APP}"
+echo "8888 access       : use SSH local forwarding through port ${REMOTE_PORT_SSH}"
 echo
 echo "Start command:"
 echo "  cd $INSTALL_DIR && ./frpc -c frpc.toml"
 echo "Autostart command:"
 echo "  bash $SCRIPT_DIR/manage.sh autostart on"
+echo
+echo "Secure local 8888 access (run on your local computer):"
+echo "  ssh -N -T -p ${REMOTE_PORT_SSH} -L 127.0.0.1:18888:127.0.0.1:8888 user@${S_IP}"
+echo "  Then open: http://127.0.0.1:18888"

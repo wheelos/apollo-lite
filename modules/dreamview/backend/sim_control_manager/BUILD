@@ -17,11 +17,10 @@ cc_library(
     hdrs = [
         "sim_control_manager.h",
     ],
-    alwayslink = True,
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
     deps = [
         "//modules/dreamview/backend/sim_control_manager/common:sim_control_gflags",
-        "//cyber",
+        "@core//cyber",
         "//modules/dreamview/backend/sim_control_manager/core:dynamic_model_factory",
         "//modules/dreamview/backend/sim_control_manager/core:sim_control_base",
         "@com_github_nlohmann_json//:json",
@@ -34,7 +33,7 @@ cc_binary(
     copts = ['-DMODULE_NAME=\\"sim_control\\"'],
     deps = [
         ":sim_control_manager",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -48,7 +47,7 @@ cc_binary(
 #     ],
 #     deps = [
 #         ":sim_control",
-#         "//cyber",
+#         "@core//cyber",
 #         "@com_google_googletest//:gtest_main",
 #     ],
 # )

@@ -20,7 +20,7 @@ cc_library(
     ],
     hdrs = ["latency_recorder.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder/proto:latency_record_cc_proto",
         "//modules/common/util:util_tool",

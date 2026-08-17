@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common/proto:object_template_meta_schema_cc_proto",
     ],
@@ -26,7 +26,7 @@ cc_library(
     ],
     deps = [
         ":obj_mapper",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/pipeline/proto/stage:multicue_cc_proto",

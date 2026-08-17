@@ -7,7 +7,7 @@ cc_library(
     name = "stream",
     hdrs = ["stream.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -17,7 +17,7 @@ cc_library(
     hdrs = ["can_stream.h"],
     deps = [
         ":stream",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -28,7 +28,7 @@ cc_library(
     deps = [
         ":stream",
         ":tcp_stream",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
     ],
 )
@@ -39,7 +39,7 @@ cc_library(
     hdrs = ["serial_stream.h"],
     deps = [
         ":stream",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -49,7 +49,7 @@ cc_library(
     hdrs = ["tcp_stream.h"],
     deps = [
         ":stream",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -59,7 +59,7 @@ cc_library(
     hdrs = ["udp_stream.h"],
     deps = [
         ":stream",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -74,7 +74,7 @@ cc_library(
         ":serial_stream",
         ":tcp_stream",
         ":udp_stream",
-        "//cyber",
+        "@core//cyber",
     ],
     alwayslink = 1,
 )

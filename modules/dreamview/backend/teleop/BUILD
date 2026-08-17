@@ -10,7 +10,7 @@ cc_library(
     hdrs = if_teleop(["teleop.h"]),
     copts = ['-DMODULE_NAME=\\"dreamview\\"'] + copts_if_teleop(),
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_event_cc_proto",

@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["lane_keeping_scenario.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/scenarios:scenario",
     ],

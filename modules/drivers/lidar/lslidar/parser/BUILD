@@ -29,7 +29,7 @@ cc_library(
     ],
     copts = ['-DMODULE_NAME=\\"lslidar\\"'],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/lslidar/proto:config_cc_proto",
         "//modules/drivers/lidar/lslidar/proto:lslidar_cc_proto",

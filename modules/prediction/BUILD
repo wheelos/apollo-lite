@@ -19,7 +19,7 @@ cc_library(
     hdrs = ["prediction_component.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/prediction/common:message_process",
         "//modules/prediction/evaluator:evaluator_manager",
@@ -55,7 +55,7 @@ cc_test(
 cc_binary(
     name = "libprediction_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":prediction_component_lib"],
 )
 

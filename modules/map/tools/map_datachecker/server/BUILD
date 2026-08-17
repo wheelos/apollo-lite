@@ -8,7 +8,7 @@ cc_binary(
     srcs = ["main.cc"],
     deps = [
         ":worker",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -18,7 +18,7 @@ cc_library(
     hdrs = ["channel_verify.h"],
     deps = [
         ":common",
-        "//cyber",
+        "@core//cyber",
         "//modules/map/tools/map_datachecker/proto:collection_error_code_cc_proto",
         "@boost.algorithm",
         "@boost.filesystem",
@@ -42,7 +42,7 @@ cc_library(
     srcs = ["common.cc"],
     hdrs = ["common.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@boost.filesystem",
         "@boost.property_tree",
     ],
@@ -58,7 +58,7 @@ cc_library(
     deps = [
         ":common",
         ":worker_gflags",
-        "//cyber",
+        "@core//cyber",
         "//modules/map/tools/map_datachecker/proto:collection_error_code_cc_proto",
         "@com_github_grpc_grpc//:grpc++",
     ],
@@ -92,7 +92,7 @@ cc_library(
     srcs = ["pj_transformer.cc"],
     hdrs = ["pj_transformer.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:proj_helper",
         "@proj",
     ],
@@ -115,7 +115,7 @@ cc_library(
         ":common",
         ":pj_transformer",
         ":pose_collection",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:time_conversion",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
     ],
@@ -144,7 +144,7 @@ cc_library(
         ":worker_agent",
         ":worker_cyber_node",
         ":worker_gflags",
-        "//cyber",
+        "@core//cyber",
         "@com_github_grpc_grpc//:grpc++",
     ],
 )
@@ -176,7 +176,7 @@ cc_library(
     deps = [
         ":worker_agent",
         ":worker_gflags",
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
         "//modules/map/tools/map_datachecker/proto:collection_error_code_cc_proto",
         "//modules/map/tools/map_datachecker/proto:collection_service_cc_grpc",

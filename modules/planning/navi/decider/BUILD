@@ -26,7 +26,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":navi_task",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/status",
@@ -53,7 +53,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":navi_task",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/status",
@@ -74,7 +74,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":navi_task",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",

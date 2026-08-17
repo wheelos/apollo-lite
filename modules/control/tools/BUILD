@@ -18,7 +18,7 @@ cc_binary(
     name = "control_tester",
     srcs = ["control_tester.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util",
         "//modules/control/common:control_gflags",
@@ -59,7 +59,7 @@ cc_binary(
     name = "pad_terminal",
     srcs = ["pad_terminal.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/control/common",

@@ -8,7 +8,7 @@ cc_library(
     srcs = ["registerer.cc"],
     hdrs = ["registerer.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
     copts = [
         '-DMODULE_NAME=\\"perception\\"',

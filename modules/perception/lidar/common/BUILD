@@ -50,7 +50,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -61,7 +61,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:point_cloud",
     ],
 )
@@ -142,7 +142,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:object",
         "//modules/perception/lidar/common",
         "@com_google_googletest//:gtest",

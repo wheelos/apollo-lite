@@ -19,7 +19,7 @@ cc_test(
     size = "small",
     srcs = ["socket_can_client_raw_test.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/canbus/can_client/socket:socket_can_client_raw",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest_main",

@@ -39,7 +39,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/pipeline:stage",
@@ -53,7 +53,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_error_code",
@@ -70,7 +70,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_error_code",
         "//modules/perception/lidar/common:lidar_frame",
@@ -85,7 +85,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",

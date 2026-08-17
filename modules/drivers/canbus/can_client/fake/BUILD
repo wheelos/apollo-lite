@@ -18,7 +18,7 @@ cc_test(
     size = "small",
     srcs = ["fake_can_client_test.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/canbus/can_client/fake:fake_can_client",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest_main",

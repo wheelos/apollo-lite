@@ -21,15 +21,23 @@
 
 #include "nlohmann/json.hpp"
 #include "pcl/filters/voxel_grid.h"
+#include "pcl/point_cloud.h"
+#include "pcl/point_types.h"
 #include "yaml-cpp/yaml.h"
 
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/dreamview/proto/point_cloud.pb.h"
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/cyber.h"
 #include "cyber/time/clock.h"
 #include "modules/common/adapters/adapter_gflags.h"
+#include "modules/common/util/string_util.h"
 #include "modules/dreamview/backend/common/dreamview_gflags.h"
+#include "modules/dreamview/backend/handlers/websocket_handler.h"
+#include "modules/dreamview/backend/simulation_world/simulation_world_updater.h"
 namespace apollo {
 namespace dreamview {
 

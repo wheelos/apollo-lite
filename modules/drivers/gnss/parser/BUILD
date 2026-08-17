@@ -9,7 +9,7 @@ cc_library(
         "parser.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/gnss/proto:config_cc_proto",
         "//modules/drivers/gnss/util:data_buffer",
     ],
@@ -32,7 +32,7 @@ cc_library(
     ],
     deps = [
         ":parser",
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/gnss/parser/forsense:forsense_parser",
         "//modules/drivers/gnss/parser/huace:huace_parser",
         "//modules/drivers/gnss/parser/novatel:novatel_parser",
@@ -51,7 +51,7 @@ cc_library(
     deps = [
         ":parser",
         ":parser_factory",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:proj_helper",
         "//modules/common/util:util_tool",
@@ -81,7 +81,7 @@ cc_library(
     ],
     copts = ["-Ithird_party/rtklib"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
         "//modules/drivers/gnss/parser/rtcm3:rtcm3_parser",

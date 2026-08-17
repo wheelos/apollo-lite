@@ -41,7 +41,7 @@ cc_library(
     ],
     deps = [
         ":undistortion_handler",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "@npp",
     ],
@@ -74,7 +74,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common/proto:object_template_meta_schema_cc_proto",
         "//modules/perception/common/io:io_util",
@@ -113,7 +113,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
         "@npp",

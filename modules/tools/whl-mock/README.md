@@ -21,7 +21,7 @@ Compile `cyber` and `common_msgs`:
 Source the environment variables:
 
 ```shell
-source cyber/setup.bash
+source scripts/runtime_env.sh
 ```
 
 ## Publishing Messages
@@ -41,6 +41,13 @@ python publisher.py --publish -i ADCTrajectory_template.txt -t /apollo/planning
 # General usage:
 # python publisher.py --publish -i your_message_template.txt -t /your_topic -p 0.1
 ```
+
+For HMI-managed debug publishing, this directory also provides:
+
+- `PredictionObstacles_empty_template.txt`
+- `TrafficLightDetection_mock_template.txt`
+
+These templates are referenced by HMI mode module configs directly.
 
 3. In another terminal, run:
 

@@ -59,7 +59,7 @@ cc_library(
     alwayslink = True,
     deps = [
         ":racobit_radar_message_manager",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "//modules/common/status",
@@ -75,7 +75,7 @@ cc_library(
 cc_binary(
     name = "libracobit_radar_canbus_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":racobit_radar_canbus_lib"],
 )
 

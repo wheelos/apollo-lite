@@ -20,7 +20,7 @@ cc_library(
         "sequence_self_statistics.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/tool/benchmark/lidar/base:benchmark_base",
         "//modules/perception/tool/benchmark/lidar/util:benchmark_util",
     ],

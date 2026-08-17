@@ -8,7 +8,7 @@ cc_library(
     srcs = ["flood_fill.cc"],
     hdrs = ["flood_fill.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
     ],
     copts = [
@@ -23,7 +23,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
     ],
 )

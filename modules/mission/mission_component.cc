@@ -24,6 +24,7 @@
 #include "modules/mission/common/mission_context.h"
 #include "modules/mission/nodes/action/charge_node.h"
 #include "modules/mission/nodes/action/move_to_node.h"
+#include "modules/mission/nodes/action/send_pad_node.h"
 #include "modules/mission/nodes/action/station_wait_node.h"
 #include "modules/mission/nodes/condition/check_battery.h"
 
@@ -32,6 +33,7 @@ namespace mission {
 
 using apollo::canbus::Chassis;
 using apollo::localization::LocalizationEstimate;
+using apollo::planning::PadMessage;
 using apollo::routing::RoutingRequest;
 
 bool MissionComponent::Init() {
@@ -68,6 +70,7 @@ bool MissionComponent::RegisterBehaviorNodes() {
     factory_.registerNodeType<StationWaitNode>("StationWait");
     factory_.registerNodeType<CheckBatteryNode>("CheckBattery");
     factory_.registerNodeType<ChargeNode>("Charge");
+    factory_.registerNodeType<SendPadNode>("SendPad");
   } catch (const std::exception& e) {
     AERROR << "Exception registering native nodes: " << e.what();
     return false;
@@ -128,6 +131,10 @@ bool MissionComponent::InitCyberCommunication() {
   auto routing_writer =
       node_->CreateWriter<RoutingRequest>(FLAGS_routing_request_topic);
   MissionContext::Instance()->SetRoutingWriter(routing_writer);
+
+  auto planning_pad_writer =
+      node_->CreateWriter<PadMessage>(FLAGS_planning_pad_topic);
+  MissionContext::Instance()->SetPlanningPadWriter(planning_pad_writer);
 
   return true;
 }

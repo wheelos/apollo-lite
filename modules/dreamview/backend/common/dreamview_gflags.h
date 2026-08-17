@@ -64,12 +64,6 @@ DECLARE_int32(loop_routing_end_to_start_distance_threshold);
 
 DECLARE_string(default_preprocess_config_path);
 
-DECLARE_string(vehicle_calibration_mode);
-
-DECLARE_string(lidar_calibration_mode);
-
-DECLARE_string(camera_calibration_mode);
-
 DECLARE_double(parking_routing_distance_threshold);
 
 DECLARE_string(plugin_path);

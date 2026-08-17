@@ -12,7 +12,7 @@ cc_library(
     hdrs = ["canbus_component.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/canbus/common:canbus_common",
         "//modules/canbus/vehicle:vehicle_factory",
         "//modules/common/adapters:adapter_gflags",
@@ -42,7 +42,7 @@ cc_test(
 cc_binary(
     name = "libcanbus_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":canbus_component_lib",
     ],
@@ -58,7 +58,6 @@ install(
     ],
     deps = [
         ":pb_canbus",
-        "//cyber:install",
     ],
 )
 

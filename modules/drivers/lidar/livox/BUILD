@@ -8,7 +8,7 @@ LIVOX_COPTS = ['-DMODULE_NAME=\\"livox\\"']
 cc_binary(
     name = "liblivox_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":livox_component_lib"],
 )
 

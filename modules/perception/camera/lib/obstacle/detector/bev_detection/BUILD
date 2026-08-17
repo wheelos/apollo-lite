@@ -8,7 +8,7 @@ package(default_visibility = ["//visibility:public"])
 #	srcs = ["bev_obstacle_detector.cc"],
 #	hdrs = ["bev_obstacle_detector.h"],
 #	deps = [
-#		"//cyber",
+#		"@core//cyber",
 #		"//modules/common/util:util_tool",
 #		"//modules/perception/base",
 #		"//modules/perception/camera/common",

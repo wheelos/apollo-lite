@@ -16,7 +16,7 @@ filegroup(
 cc_binary(
     name = "libyg_radar_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":yg_radar_component_lib",
     ],
@@ -33,7 +33,7 @@ cc_library(
         "yg_radar_message_manager.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:message_util",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:radar_cc_proto",

@@ -15,7 +15,7 @@ cc_library(
     hdrs = ["scenario_builder.h"],
     deps = [
         ":scenario_case",
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:frame"
     ],
@@ -26,7 +26,7 @@ cc_library(
     srcs = ["scenario_loader.cc"],
     hdrs = ["scenario_loader.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         ":scenario_case",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp"
     ],
@@ -42,7 +42,7 @@ cc_test(
     ],
     linkopts = ["-fopenmp"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/planning/common:gtest_exit_main",
         ":scenario_case",
         ":scenario_builder",

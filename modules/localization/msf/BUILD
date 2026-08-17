@@ -23,7 +23,7 @@ cc_library(
         "-DMODULE_NAME=\\\"localization\\\"",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/math",
         "//modules/common/monitor_log",
@@ -58,7 +58,7 @@ cc_library(
 cc_binary(
     name = "libmsf_localization_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":msf_localization_component_lib"],
 )
 
@@ -71,7 +71,7 @@ cc_test(
     ],
     data = ["//modules/localization:localization_testdata"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/localization/msf:msf_localization_component_lib",
         "@com_google_googletest//:gtest_main",

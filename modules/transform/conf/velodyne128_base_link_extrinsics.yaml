@@ -1,6 +1,3 @@
-# proj: +proj=utm +zone=50 +ellps=WGS84
-# scale:1.11177
-# (XXX) Manually adjusted
 header:
   stamp:
     secs: 1422601952

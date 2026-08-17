@@ -14,7 +14,7 @@ cc_library(
     ],
     linkstatic = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:config_gflags",
         "//modules/common/util",

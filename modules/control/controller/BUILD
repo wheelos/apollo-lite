@@ -22,7 +22,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/filters",
@@ -45,7 +45,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/filters",
@@ -78,7 +78,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/filters",
         "//modules/common/status",
@@ -109,7 +109,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/status",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
@@ -132,7 +132,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/filters",
         "//modules/common/math",
@@ -183,7 +183,7 @@ cc_library(
         ":lon_speed_controller",
         ":diff_drive_lat_controller",
         ":mpc_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
@@ -200,7 +200,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":lon_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
@@ -218,7 +218,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":lat_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
@@ -235,7 +235,7 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":mpc_controller",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/control/common:control_gflags",

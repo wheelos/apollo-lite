@@ -18,7 +18,7 @@ filegroup(
 cc_binary(
     name = "liblidar_fusion_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [
         ":lidar_fusion_component_lib",
     ],
@@ -34,7 +34,7 @@ cc_library(
     ],
     copts = LIDAR_FUSION_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/fusion/proto:lidar_fusion_config_cc_proto",
         "//modules/transform:transform_query",

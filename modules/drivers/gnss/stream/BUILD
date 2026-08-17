@@ -8,7 +8,7 @@ cc_library(
     srcs = ["raw_stream.cc"],
     hdrs = ["raw_stream.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/hal/stream:stream_factory",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",

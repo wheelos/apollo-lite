@@ -38,7 +38,7 @@ cc_library(
     srcs = ["h265_decoder.cc"],
     hdrs = ["h265_decoder.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@ffmpeg//:avcodec",
         "@ffmpeg//:avformat",
         "@ffmpeg//:swscale",

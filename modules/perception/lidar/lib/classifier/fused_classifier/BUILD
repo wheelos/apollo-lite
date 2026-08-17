@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base:object",
         "@eigen",
@@ -42,7 +42,7 @@ cc_library(
     deps = [
         ":type_fusion_interface",
         ":util",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base:object",
         "//modules/perception/base:point_cloud",
@@ -63,7 +63,7 @@ cc_library(
     ],
     deps = [
         ":type_fusion_interface",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/lidar/common:object_sequence",

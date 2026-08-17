@@ -19,7 +19,7 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"NDTlocalization\\\""],
     alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/math",
         "//modules/common/monitor_log",
@@ -46,7 +46,7 @@ cc_library(
 cc_binary(
     name = "libndt_localization_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":ndt_localization_component_lib"],
 )
 
@@ -57,7 +57,7 @@ cc_test(
     srcs = ["ndt_localization_test.cc"],
     deps = [
         ":ndt_localization_component_lib",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
     linkstatic = True,
@@ -70,7 +70,7 @@ cc_test(
     srcs = ["localization_pose_buffer_test.cc"],
     deps = [
         ":ndt_localization_component_lib",
-        "//cyber",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
         "@eigen",
     ],

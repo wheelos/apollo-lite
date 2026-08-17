@@ -47,7 +47,7 @@ cc_library(
     ],
     deps = [
         ":disjoint_set",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -114,7 +114,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
     ],
 )
 
@@ -163,7 +163,7 @@ cc_library(
         ":connected_component_analysis",
         ":hungarian_optimizer",
         ":secure_matrix",
-        "//cyber",
+        "@core//cyber",
     ],
 )
 

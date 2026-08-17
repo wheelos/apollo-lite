@@ -53,7 +53,7 @@ def container_command(script: str) -> list[str]:
     _ensure_in_apollo_container()
     inner = (
         "cd /apollo && "
-        "source /apollo/cyber/setup.bash >/dev/null 2>&1 && "
+        "source /apollo/scripts/runtime_env.sh >/dev/null 2>&1 && "
         f"{script}"
     )
     return ["bash", "-lc", inner]

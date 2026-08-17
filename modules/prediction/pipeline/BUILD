@@ -39,7 +39,7 @@ cc_library(
         "-DMODULE_NAME=\\\"prediction\\\"",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
         "//modules/common/util",
         "//modules/map/hdmap:hdmap_util",

@@ -7,7 +7,7 @@ cc_binary(
     name = "traffic_light_detection",
     srcs = ["traffic_light_detection.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/app:traffic_light_camera_perception",
         "//modules/perception/camera/tools/common",
         "//modules/perception/common:perception_gflags",
@@ -20,7 +20,7 @@ cc_binary(
     name = "yolo_single_stage_dector_tool",
     srcs = ["yolo_single_stage_dector_tool.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/traffic_light/detector/detection:detection",
         "//modules/perception/pipeline/proto:pipeline_config_cc_proto",

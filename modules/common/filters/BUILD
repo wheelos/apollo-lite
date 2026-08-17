@@ -33,7 +33,7 @@ cc_library(
     hdrs = ["digital_filter.h"],
     alwayslink = True,
     deps = [
-        "//cyber:cyber",
+        "@core//cyber:cyber",
     ],
 )
 
@@ -43,7 +43,7 @@ cc_library(
     hdrs = ["mean_filter.h"],
     alwayslink = True,
     deps = [
-        "//cyber:cyber",
+        "@core//cyber:cyber",
     ],
 )
 
@@ -53,7 +53,7 @@ cc_library(
     hdrs = ["digital_filter_coefficients.h"],
     alwayslink = True,
     deps = [
-        "//cyber:cyber",
+        "@core//cyber:cyber",
     ],
 )
 

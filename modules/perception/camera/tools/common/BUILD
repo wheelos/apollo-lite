@@ -17,7 +17,7 @@ cc_library(
     hdrs = ["ground_truth.h"],
     srcs = ["ground_truth.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common",
     ],
 )
@@ -27,7 +27,7 @@ cc_library(
     hdrs = ["util.h"],
     srcs = ["util.cc"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/common/io:io_util",

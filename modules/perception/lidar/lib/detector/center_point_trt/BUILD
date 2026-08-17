@@ -23,7 +23,7 @@ cc_library(
     ],
     deps = [
         ":voxel_downsample_cuda",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "@cuda//:cuda_runtime",
     ],
@@ -34,7 +34,7 @@ cuda_library(
     srcs = ["center_point_trt.cu"],
     hdrs = ["center_point_trt_cuda_api.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base:blob",
         "//modules/perception/base:point_cloud",
         "@cuda//:cuda_runtime",
@@ -51,7 +51,7 @@ cc_library(
     deps = [
         ":center_point_trt_cuda",
         ":gpu_down_sample",
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/inference/onnx_multi_batch:onnx_multi_batch_infer",
         "//modules/perception/lidar/common",

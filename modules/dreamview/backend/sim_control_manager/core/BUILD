@@ -12,7 +12,7 @@ cc_library(
         "sim_control_base.h",
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/status",
         "//modules/common/util:message_util",
@@ -47,7 +47,6 @@ cc_library(
         "//modules/dreamview/backend/sim_control_manager/core:sim_control_base",
         "//modules/dreamview/backend/sim_control_manager/dynamic_model/perfect_control:sim_perfect_control",
     ],
-    alwayslink = True,
 )
 
 cc_library(

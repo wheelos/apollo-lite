@@ -16,8 +16,8 @@
 
 #include "modules/tools/roadlog/processor/roadlog_recording_service.h"
 
-#include <algorithm>
 #include <unordered_set>
+#include <utility>
 
 #include "cyber/common/log.h"
 #include "cyber/record/header_builder.h"
@@ -27,11 +27,12 @@ namespace data {
 
 namespace {
 
-using cyber::record::ChannelRateLimitRule;
 using cyber::record::HeaderBuilder;
-using cyber::record::ParseMessageSizeFilterPolicy;
 using cyber::record::Recorder;
-using cyber::record::ValidateMessageSizeFilterConfig;
+using cyber::record::PolicyRule;
+using cyber::record::SelectorAction;
+using cyber::record::SelectorMatchType;
+using cyber::record::TopicPolicy;
 
 }  // namespace
 
@@ -53,9 +54,7 @@ bool RoadlogRecordingService::Init(
     return false;
   }
   recorder_ = std::make_shared<Recorder>(
-      options.output_path, options.all_channels, options.include_channels,
-      options.exclude_channels, options.header,
-      options.message_size_filter_config, options.channel_rate_filter_config);
+      options.output_path, options.header, options.recorder_config_bundle);
   return true;
 }
 
@@ -79,6 +78,7 @@ bool RoadlogRecordingService::BuildRecorderOptions(
     return false;
   }
 
+  *options = RecorderOptions();
   options->output_path = output_path;
   auto header = HeaderBuilder::GetHeader();
   static constexpr uint64_t kSecondsToNanoseconds = 1000000000UL;
@@ -96,9 +96,17 @@ bool RoadlogRecordingService::BuildRecorderOptions(
                                    recorder_policy.include_channels().end());
   options->exclude_channels.assign(recorder_policy.exclude_channels().begin(),
                                    recorder_policy.exclude_channels().end());
-  options->all_channels = options->include_channels.empty();
+  if (!recorder_policy.legacy_message_size_filter_policy().empty()) {
+    if (error != nullptr) {
+      *error =
+          "recorder_policy.legacy_message_size_filter_policy is unsupported. "
+          "Use recorder_policy.large_message_policy instead.";
+    }
+    return false;
+  }
 
   std::unordered_set<std::string> configured_channels;
+  std::vector<PolicyRule> policy_rules;
   for (const auto& limit : recorder_policy.channel_rate_limits()) {
     if (limit.channel_name().empty()) {
       if (error != nullptr) {
@@ -121,61 +129,48 @@ bool RoadlogRecordingService::BuildRecorderOptions(
       }
       return false;
     }
-    ChannelRateLimitRule rule;
-    rule.channel_name = limit.channel_name();
-    rule.max_rate_hz = limit.max_rate_hz();
-    options->channel_rate_filter_config.rules.push_back(rule);
+    options->rate_limited_channels.push_back(limit.channel_name());
+
+    PolicyRule rule;
+    rule.name = "rate_limit_" + limit.channel_name();
+    rule.match_type = SelectorMatchType::kChannel;
+    rule.match_expression = limit.channel_name();
+    rule.policy.name = rule.name;
+    rule.policy.max_rate_hz = limit.max_rate_hz();
+    policy_rules.push_back(rule);
   }
 
-  if (!BuildLargeMessageFilterConfig(
-          recorder_policy, &options->message_size_filter_config, error)) {
-    return false;
+  options->recorder_config_bundle.version = 1;
+  options->recorder_config_bundle.subscription.config_version = 1;
+  options->recorder_config_bundle.subscription.default_action =
+      options->include_channels.empty() ? SelectorAction::kInclude
+                                        : SelectorAction::kExclude;
+  for (const auto& channel : options->exclude_channels) {
+    options->recorder_config_bundle.subscription.selectors.push_back(
+        {"exclude_" + channel, SelectorMatchType::kChannel, channel,
+         SelectorAction::kExclude});
   }
+  for (const auto& channel : options->include_channels) {
+    options->recorder_config_bundle.subscription.selectors.push_back(
+        {"include_" + channel, SelectorMatchType::kChannel, channel,
+         SelectorAction::kInclude});
+  }
+
+  options->recorder_config_bundle.policies.config_version = 1;
+  TopicPolicy default_policy;
+  default_policy.name = "default";
+  if (recorder_policy.has_large_message_policy()) {
+    default_policy.drop_message_size_bytes =
+        recorder_policy.large_message_policy().drop_message_size_bytes();
+  }
+  options->recorder_config_bundle.policies.default_policy = default_policy;
+  options->recorder_config_bundle.policies.rules = std::move(policy_rules);
+
   if (!ValidateChannelPolicies(recorder_policy, *options, error)) {
     return false;
   }
 
   return true;
-}
-
-bool RoadlogRecordingService::BuildLargeMessageFilterConfig(
-    const RecorderPolicy& recorder_policy,
-    apollo::cyber::record::MessageSizeFilterConfig* config,
-    std::string* error) {
-  if (config == nullptr) {
-    if (error != nullptr) {
-      *error = "Message size filter config output must not be null.";
-    }
-    return false;
-  }
-
-  const bool has_legacy_policy =
-      !recorder_policy.legacy_message_size_filter_policy().empty();
-  const bool has_explicit_policy =
-      recorder_policy.has_large_message_policy() &&
-      recorder_policy.large_message_policy().drop_message_size_bytes() > 0;
-  if (has_legacy_policy && has_explicit_policy) {
-    if (error != nullptr) {
-      *error =
-          "Do not mix recorder_policy.legacy_message_size_filter_policy "
-          "with recorder_policy.large_message_policy.";
-    }
-    return false;
-  }
-
-  if (has_explicit_policy) {
-    const auto& large_message_policy = recorder_policy.large_message_policy();
-    config->drop_message_size_bytes =
-        large_message_policy.drop_message_size_bytes();
-  } else if (has_legacy_policy) {
-    if (!ParseMessageSizeFilterPolicy(
-            recorder_policy.legacy_message_size_filter_policy(), config,
-            error)) {
-      return false;
-    }
-  }
-
-  return ValidateMessageSizeFilterConfig(*config, error);
 }
 
 bool RoadlogRecordingService::ValidateChannelPolicies(
@@ -225,8 +220,8 @@ bool RoadlogRecordingService::ValidateRequiredChannels(
   const std::unordered_set<std::string> exclude_channels(
       options.exclude_channels.begin(), options.exclude_channels.end());
   std::unordered_set<std::string> limited_channels;
-  for (const auto& rule : options.channel_rate_filter_config.rules) {
-    limited_channels.insert(rule.channel_name);
+  for (const auto& channel_name : options.rate_limited_channels) {
+    limited_channels.insert(channel_name);
   }
   for (const auto& channel_name : required_channels) {
     if (!include_channels.empty() &&

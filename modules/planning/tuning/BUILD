@@ -43,7 +43,7 @@ cc_library(
     hdrs = ["autotuning_mlp_net_model.h"],
     tags = ["exclude"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/prediction/network:net_model",
     ],
 )

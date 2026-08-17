@@ -7,9 +7,8 @@ cc_library(
     name = "point_cloud_updater",
     srcs = ["point_cloud_updater.cc"],
     hdrs = ["point_cloud_updater.h"],
-    alwayslink = True,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/math",
         "//modules/dreamview/backend/common:dreamview_gflags",

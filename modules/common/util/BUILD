@@ -44,7 +44,7 @@ cc_library(
         ":perf_util",
         ":string_util",
         ":time_conversion",
-        "//cyber",
+        "@core//cyber",
         "@com_github_nlohmann_json//:json",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
@@ -66,7 +66,7 @@ cc_library(
     srcs = ["util.cc"],
     hdrs = ["util.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
@@ -124,7 +124,7 @@ cc_library(
     srcs = ["data_extraction.cc"],
     hdrs = ["data_extraction.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@boost.filesystem",
         "@boost.range",
     ]
@@ -148,7 +148,7 @@ cc_library(
     hdrs = ["message_util.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
@@ -188,7 +188,7 @@ cc_library(
     name = "map_util",
     hdrs = ["map_util.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@com_google_protobuf//:protobuf",
     ]
 )
@@ -197,7 +197,7 @@ cc_library(
     name = "factory",
     hdrs = ["factory.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
     ]
 )
 
@@ -233,7 +233,7 @@ cc_library(
         ":point_factory",
         ":points_downsampler",
         ":util_lib",
-        "//cyber",
+        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
@@ -246,7 +246,7 @@ cc_library(
     name = "points_downsampler",
     hdrs = ["points_downsampler.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/math",
     ]
 )
@@ -266,7 +266,7 @@ cc_library(
     srcs = ["json_util.cc"],
     hdrs = ["json_util.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@com_github_nlohmann_json//:json",
         "@com_google_protobuf//:protobuf",
     ]
@@ -294,7 +294,7 @@ cc_library(
     srcs = ["perf_util.cc"],
     hdrs = ["perf_util.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "@com_google_absl//absl/strings",
     ]
 )

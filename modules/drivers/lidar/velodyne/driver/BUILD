@@ -16,7 +16,7 @@ install(
 cc_binary(
     name = "libvelodyne_driver_component.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":velodyne_driver_component_lib"],
 )
 
@@ -26,7 +26,7 @@ cc_library(
     hdrs = ["velodyne_driver_component.h"],
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/drivers/lidar/velodyne/driver",
     ],
@@ -48,7 +48,7 @@ cc_library(
     ],
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/drivers/lidar/common/driver_factory:driver_base",
         "//modules/drivers/lidar/proto:config_cc_proto",

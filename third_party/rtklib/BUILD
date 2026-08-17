@@ -21,7 +21,7 @@ cc_library(
 cc_binary(
     name = "librtklib.so",
     linkshared = True,
-    linkstatic = True,
+    linkstatic = False,
     deps = [":rtklib"]
 )
 

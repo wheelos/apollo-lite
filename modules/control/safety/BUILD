@@ -18,7 +18,7 @@ cc_library(
     copts = PREPROCESS_SUB_COPTS,
     deps = [
       ":safety_defines",
-      "//cyber",
+      "@core//cyber",
       "//modules/common/util:debouncer",
       "//modules/common/util:message_util",
       "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",

@@ -9,7 +9,7 @@ cuda_library(
     srcs = ["similar.cu"],
     hdrs = ["similar.h"],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/perception/camera/common:camera_frame",
         "//modules/perception/camera/common:util",
         "//modules/perception/inference/utils:inference_gemm_lib",
@@ -54,7 +54,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/common/util:util_tool",
         "@eigen",
     ],
