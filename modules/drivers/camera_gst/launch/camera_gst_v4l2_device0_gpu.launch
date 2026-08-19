@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>camera_gst_v4l2_device0_gpu</name>
+        <dag_conf>/apollo/modules/drivers/camera_gst/dag/camera_gst_v4l2_device0_gpu.dag</dag_conf>
+        <process_name>camera_gst_v4l2_device0_gpu</process_name>
+    </module>
+</cyber>

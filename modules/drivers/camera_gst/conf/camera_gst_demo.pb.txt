@@ -43,7 +43,7 @@ platform {
 }
 
 stream {
-  enable: true
+  enable: false
   auto_start: true
   emit_eos_on_detach: true
   force_keyframe_on_attach: true

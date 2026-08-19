@@ -44,7 +44,7 @@ cc_library(
     ],
     copts = CAMERA_GST_COPTS,
     deps = [
-        "//cyber",
+        "@core//cyber",
         "//modules/drivers/camera_gst/proto:config_cc_proto",
         "@gstreamer//:gstreamer",
     ],
@@ -58,8 +58,8 @@ cc_library(
     copts = CAMERA_GST_COPTS,
     deps = [
         ":camera_gst_core",
-        "//cyber",
-        "//modules/common_msgs/sensor_msgs:sensor_image_cc_proto",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "@gstreamer//:gstreamer",
     ],
     alwayslink = True,
