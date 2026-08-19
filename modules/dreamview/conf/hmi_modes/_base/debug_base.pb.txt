@@ -1,7 +1,7 @@
 modules {
   key: "Mock Prediction"
   value: {
-    start_command: "python3 /apollo/modules/tools/whl-mock/publisher.py --publish --input /apollo/modules/tools/whl-mock/PredictionObstacles_empty_template.txt --topic /apollo/prediction --period 0.1"
+    start_command: "/apollo/bazel-bin/modules/tools/whl-mock/publisher --publish --input /apollo/modules/tools/whl-mock/PredictionObstacles_empty_template.txt --topic /apollo/prediction --period 0.1"
     process_monitor_config {
       command_keywords: "publisher.py --publish"
       command_keywords: "PredictionObstacles_empty_template.txt"
@@ -14,7 +14,7 @@ modules {
 modules {
   key: "Mock Traffic Light"
   value: {
-    start_command: "python3 /apollo/modules/tools/whl-mock/publisher.py --publish --input /apollo/modules/tools/whl-mock/TrafficLightDetection_mock_template.txt --topic /apollo/perception/traffic_light --period 0.1"
+    start_command: "/apollo/bazel-bin/modules/tools/whl-mock/publisher --publish --input /apollo/modules/tools/whl-mock/TrafficLightDetection_mock_template.txt --topic /apollo/perception/traffic_light --period 0.1"
     process_monitor_config {
       command_keywords: "publisher.py --publish"
       command_keywords: "TrafficLightDetection_mock_template.txt"

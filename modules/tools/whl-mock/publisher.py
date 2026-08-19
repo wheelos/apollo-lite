@@ -112,11 +112,6 @@ CHANNEL_MESSAGE_TYPE_MAP: Dict[str, tuple] = {
         "Chart"
     ),
 
-    # Storytelling
-    "/apollo/storytelling": (
-        "wheelos_msgs.storytelling_msgs.storytelling_pb2",
-        "Storytelling"
-    ),
 }
 
 # Default message type (used when no topic is specified or for backward compatibility)

@@ -101,6 +101,7 @@ _inject_apollo_external_core_outputs() {
   local proj_data_dir
   local proj_data_found=0
   local bazel_bin_from_info
+  local bazel_output_base_from_info
   local lib_dir
   local solib_dir
   local cyber_conf
@@ -121,6 +122,13 @@ _inject_apollo_external_core_outputs() {
     if [[ -n "${bazel_bin_from_info}" ]]; then
       output_roots+=("${bazel_bin_from_info}")
     fi
+    bazel_output_base_from_info="$(
+      cd "${APOLLO_ROOT_DIR}" &&
+        bazel info output_base 2>/dev/null | tail -n 1
+    )"
+    if [[ -n "${bazel_output_base_from_info}" ]]; then
+      output_roots+=("${bazel_output_base_from_info}")
+    fi
   fi
   for output_root in "${APOLLO_ROOT_DIR}"/bazel-out/*/bin; do
     if [[ -d "${output_root}" ]]; then
@@ -139,6 +147,7 @@ _inject_apollo_external_core_outputs() {
         fi
       done
       py_internal_dir="${core_execroot}/cyber/python/internal"
+      _pathprepend "${core_execroot}" PYTHONPATH
       if [[ -d "${py_internal_dir}" ]]; then
         _pathprepend "${py_internal_dir}" PYTHONPATH
         _pathprepend "${py_internal_dir}" LD_LIBRARY_PATH
