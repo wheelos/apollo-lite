@@ -115,6 +115,24 @@ function determine_gpu_use_target() {
   export USE_GPU_TARGET="${use_gpu}"
 }
 
+function determine_jetson_orin_build_config() {
+  if [[ "$(uname -m)" != "aarch64" ]]; then
+    return 0
+  fi
+
+  local model_file=""
+  for candidate in /proc/device-tree/model /sys/firmware/devicetree/base/model; do
+    if [[ -r "${candidate}" ]]; then
+      model_file="${candidate}"
+      break
+    fi
+  done
+
+  if [[ -n "${model_file}" ]] && tr -d '\0' < "${model_file}" | grep -Eiq 'NVIDIA Jetson .*Orin'; then
+    echo "--config=jetson_orin"
+  fi
+}
+
 function file_ext() {
   local filename="$(basename $1)"
   local actual_ext="${filename##*.}"

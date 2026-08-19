@@ -1,0 +1,12 @@
+# Single V4L2 /dev/video0 camera GPU receive baseline. No Cyber image channel or stream.
+module_config {
+  module_library: "/apollo/bazel-bin/modules/drivers/camera_gst/libcamera_gst_component.so"
+
+  components {
+    class_name: "CameraGstComponent"
+    config {
+      name: "camera_gst_v4l2_device0_gpu"
+      config_file_path: "/apollo/modules/drivers/camera_gst/conf/camera_gst_v4l2_device0_gpu.pb.txt"
+    }
+  }
+}

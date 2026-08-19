@@ -27,6 +27,7 @@ services:
     volumes:
       - ${APOLLO_ROOT}:/apollo
       - /media:/media
+      - /tmp/argus_socket:/tmp/argus_socket
       - ${HOME}/.cache:${HOME}/.cache
       - ${APOLLO_ROOT}/docker/scripts/entrypoint.sh:/entrypoint.sh
       - ${BAZEL_CACHE_DIR}:${BAZEL_CACHE_DIR}

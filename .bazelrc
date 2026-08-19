@@ -7,22 +7,21 @@
 startup --batch_cpu_scheduling
 startup --host_jvm_args="-XX:-UseParallelGC"
 startup --host_jvm_args="-Xmx2G"
-startup --output_user_root=.cache/bazel
 
 # +------------------------------------------------------------+
 # | Common Options                                             |
 # +------------------------------------------------------------+
 common --color=yes
 common --enable_bzlmod
-common --distdir=.cache/distdir
+common --distdir=/apollo/.cache/distdir
+
+# Keep shared Bazel caches independent of the current working directory.
+build --repository_cache=/apollo/.cache/bazel/repo_cache
+build --disk_cache=/apollo/.cache/bazel/disk_cache
 
 # Prefer https://bcr.bazel.build/
 common --registry=https://bcr.wheelos.cn/
 common --registry=https://bcr.bazel.build/
-
-# Set up a shared cache to avoid repeated pulls from remote libraries
-build --repository_cache=.cache/bazel/repo_cache
-build --disk_cache=.cache/build
 
 # +------------------------------------------------------------+
 # | Build Configurations                                       |
