@@ -159,6 +159,7 @@ function main() {
     local test_sh="${APOLLO_ROOT_DIR}/scripts/ci/apollo_test.sh"
     local coverage_sh="${APOLLO_ROOT_DIR}/scripts/ci/apollo_coverage.sh"
     local ci_sh="${APOLLO_ROOT_DIR}/scripts/ci/apollo_ci.sh"
+    local jetson_orin_config="$(determine_jetson_orin_build_config)"
 
     local cmd="$1"
     shift
@@ -185,13 +186,13 @@ function main() {
             env ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=cpu "$@"
             ;;
         build_gpu)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=gpu "$@"
+            env ${APOLLO_ENV} bash "${build_sh}" --config=gpu ${jetson_orin_config} "$@"
             ;;
         build_dbg_gpu)
             env ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=gpu "$@"
             ;;
         build_opt_gpu)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=gpu "$@"
+            env ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=gpu ${jetson_orin_config} "$@"
             ;;
         build_prof)
             env ${APOLLO_ENV} bash "${build_sh}" --config=prof "$@"
