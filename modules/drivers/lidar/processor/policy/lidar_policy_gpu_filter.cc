@@ -135,7 +135,7 @@ size_t GpuLidarFilterPolicy::ApplyFilters(PointCloudBuffer* io_buffer,
         metrics_output_points_.load(std::memory_order_relaxed);
     CudaWorkspaceStats ws_stats;
     const bool has_ws_stats = CudaGetWorkspaceStats(device_id, &ws_stats);
-    AINFO << "GpuLidarFilterPolicy metrics: calls=" << calls << ", avg_ms="
+    ADEBUG << "GpuLidarFilterPolicy metrics: calls=" << calls << ", avg_ms="
           << static_cast<double>(accumulated_ns) / static_cast<double>(calls) /
                  1e6
           << ", avg_in_points="

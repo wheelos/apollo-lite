@@ -17,6 +17,7 @@
 #include <cmath>
 #include <limits>
 #include <set>
+#include <string>
 
 namespace apollo {
 namespace drivers {

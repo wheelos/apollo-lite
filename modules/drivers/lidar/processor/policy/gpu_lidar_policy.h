@@ -22,7 +22,8 @@
 #include "modules/drivers/lidar/processor/policy/lidar_policy_interface.h"
 
 // Forward declaration of CUDA kernels or utility structures
-struct cudaStream_t;
+struct CUstream_st;
+typedef struct CUstream_st* cudaStream_t;
 
 namespace apollo {
 namespace drivers {

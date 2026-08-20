@@ -68,6 +68,7 @@ build:cpu --verbose_failures
 build:gpu --config=cuda
 build:gpu --define USE_GPU=true
 build:gpu --copt="-DUSE_GPU=1"
+build:gpu --@rules_cuda//cuda:copts=-std=c++17
 build:gpu --@rules_cuda//cuda:copts=-DUSE_GPU=1
 
 # Legacy aliases retained for compatibility
@@ -75,6 +76,7 @@ build:using_cuda --define=using_cuda=true
 build:using_cuda --@rules_cuda//cuda:enable=true
 build:cuda --config=using_cuda
 build:cuda --define=using_cuda_nvcc=true
+build:cuda --@rules_cuda//cuda:copts=-std=c++17
 
 # Build with teleop enabled
 build:teleop --define WITH_TELEOP=true

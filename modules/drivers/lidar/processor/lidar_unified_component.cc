@@ -21,7 +21,11 @@
 #include <functional>
 #include <iomanip>
 #include <limits>
+#include <memory>
 #include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "modules/drivers/lidar/processor/policy/lidar_policy_common.h"
 #include "modules/transform/transform_query.h"
@@ -131,8 +135,21 @@ apollo::transform::TimedTransformResolverOptions BuildTransformResolverOptions(
 
 }  // namespace
 
+LidarUnifiedComponent::~LidarUnifiedComponent() {
+  if (fusion_flush_timer_) {
+    fusion_flush_timer_->Stop();
+    fusion_flush_timer_.reset();
+  }
+  std::lock_guard<std::mutex> process_lock(fusion_process_mutex_);
+  auxiliary_readers_.clear();
+  writer_.reset();
+}
+
 bool LidarUnifiedComponent::Init() {
-  static_extrinsics_.clear();
+  {
+    std::lock_guard<std::mutex> lock(static_extrinsics_mutex_);
+    static_extrinsics_.clear();
+  }
   if (!GetProtoConfig(&config_)) {
     AERROR << "Load config failed, config file: " << ConfigFilePath();
     return false;
@@ -226,13 +243,12 @@ bool LidarUnifiedComponent::Proc(
 
 bool LidarUnifiedComponent::OnReceiveMainLidar(
     const PointCloudConstPtr& point_cloud) {
-  if (point_cloud == nullptr) {
-    AERROR << "Input point cloud is null";
+  if (apollo::cyber::IsShutdown() || point_cloud == nullptr) {
     return false;
   }
-  AINFO_EVERY(20) << "OnReceiveMainLidar measurement_time="
-                  << point_cloud->measurement_time()
-                  << ", points=" << point_cloud->point_size();
+  ADEBUG << "OnReceiveMainLidar measurement_time="
+         << point_cloud->measurement_time()
+         << ", points=" << point_cloud->point_size();
 
   const std::string sensor_id = ResolveSensorId(point_cloud, std::string());
   if (sensor_id.empty()) {
@@ -242,8 +258,8 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
 
   if (primary_sensor_id_.empty()) {
     primary_sensor_id_ = sensor_id;
-    AINFO << "Resolved primary lidar sensor id from input stream: "
-          << primary_sensor_id_;
+    ADEBUG << "Resolved primary lidar sensor id from input stream: "
+           << primary_sensor_id_;
   } else if (primary_sensor_id_ != sensor_id) {
     AERROR << "Primary lidar sensor id changed from " << primary_sensor_id_
            << " to " << sensor_id << ", drop frame to avoid TF mismatch";
@@ -254,7 +270,7 @@ bool LidarUnifiedComponent::OnReceiveMainLidar(
   if (!PrepareBufferedFrame(primary_sensor_id_, point_cloud,
                             config_.primary_time_settings(),
                             &buffered_frame)) {
-    AINFO_EVERY(kPosePrefetchLogFrequency)
+    ADEBUG
         << "Drop primary lidar frame due to pose prefetch failure. sensor="
         << primary_sensor_id_ << ", "
         << BuildPointCloudTimeSummary(*point_cloud);
@@ -360,11 +376,17 @@ void LidarUnifiedComponent::EnqueuePendingFusionFrame(
 }
 
 void LidarUnifiedComponent::OnFusionFlushTimer() {
+  if (apollo::cyber::IsShutdown()) {
+    return;
+  }
   TryFlushPendingFusionFrames(true);
 }
 
 void LidarUnifiedComponent::TryFlushPendingFusionFrames(
     bool flush_expired_only) {
+  if (apollo::cyber::IsShutdown()) {
+    return;
+  }
   std::lock_guard<std::mutex> process_lock(fusion_process_mutex_);
 
   while (true) {
@@ -378,6 +400,8 @@ void LidarUnifiedComponent::TryFlushPendingFusionFrames(
     }
 
     FrameMetrics frame_metrics;
+    frame_metrics.primary_sequence_num =
+        pending_frame.main_frame->header().sequence_num();
     std::vector<FrameHandle> frame_handles;
     const uint64_t frame_selection_start_ns =
         cyber::Time::Now().ToNanosecond();
@@ -452,11 +476,11 @@ void LidarUnifiedComponent::PushToBuffer(
         sensor_state->frames.front()->frame_id);
   }
   sensor_state->frames.push_back(buffered_frame);
-  AINFO_EVERY(20) << "Buffered lidar frame. sensor=" << sensor_id
-                  << ", frame_id=" << buffered_frame->frame_id
-                  << ", buffer_size=" << sensor_state->frames.size()
-                  << ", canonical_anchor_ns="
-                  << buffered_frame->time_contract.canonical_anchor_ns;
+  ADEBUG << "Buffered lidar frame. sensor=" << sensor_id
+         << ", frame_id=" << buffered_frame->frame_id
+         << ", buffer_size=" << sensor_state->frames.size()
+         << ", canonical_anchor_ns="
+         << buffered_frame->time_contract.canonical_anchor_ns;
 }
 
 bool LidarUnifiedComponent::CollectNearestFrames(
@@ -550,9 +574,9 @@ bool LidarUnifiedComponent::FindNearestFrame(
 
   std::lock_guard<std::mutex> lock(sensor_state->mutex);
   if (sensor_state->frames.empty()) {
-    AINFO_EVERY(20) << "Lidar frame buffer is empty. sensor=" << sensor_id
-                    << ", reference_anchor_ns="
-                    << reference_time.canonical_anchor_ns;
+    ADEBUG << "Lidar frame buffer is empty. sensor=" << sensor_id
+           << ", reference_anchor_ns="
+           << reference_time.canonical_anchor_ns;
     *failure_reason = FrameLookupFailureReason::kBufferEmpty;
     return false;
   }
@@ -812,25 +836,37 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
         continue;
       }
       Eigen::Affine3d base_from_sensor = Eigen::Affine3d::Identity();
-      const auto cached = static_extrinsics_.find(handle.sensor_id);
-      if (cached != static_extrinsics_.end()) {
-        base_from_sensor = *cached->second;
-      } else if (!transform_query.GetLatestStaticTransformToAffine(
-                     config_.base_link_frame_id(), handle.sensor_id,
-                     &base_from_sensor)) {
-        if (handle.is_primary) {
-          AERROR << "Static extrinsic unavailable from " << handle.sensor_id
-                 << " to " << config_.base_link_frame_id();
-          return false;
+      bool found_cached = false;
+      {
+        std::lock_guard<std::mutex> lock(static_extrinsics_mutex_);
+        const auto cached = static_extrinsics_.find(handle.sensor_id);
+        if (cached != static_extrinsics_.end()) {
+          base_from_sensor = *cached->second;
+          found_cached = true;
         }
-        AWARN << "Skip auxiliary with unavailable static extrinsic: "
-              << handle.sensor_id;
-        handle.point_cloud.reset();
-        continue;
-      } else {
-        static_extrinsics_.emplace(
-            handle.sensor_id,
-            std::make_shared<const Eigen::Affine3d>(base_from_sensor));
+      }
+      if (!found_cached) {
+        if (!transform_query.GetLatestStaticTransformToAffine(
+                config_.base_link_frame_id(), handle.sensor_id,
+                &base_from_sensor) &&
+            !transform_query.LookupTransformToAffine(
+                config_.base_link_frame_id(), handle.sensor_id,
+                cyber::Time(0), &base_from_sensor, 0.1f)) {
+          if (handle.is_primary) {
+            AERROR << "Static extrinsic unavailable from " << handle.sensor_id
+                   << " to " << config_.base_link_frame_id();
+            return false;
+          }
+          AWARN << "Skip auxiliary with unavailable static extrinsic: "
+                << handle.sensor_id;
+          handle.point_cloud.reset();
+          continue;
+        } else {
+          std::lock_guard<std::mutex> lock(static_extrinsics_mutex_);
+          static_extrinsics_.emplace(
+              handle.sensor_id,
+              std::make_shared<const Eigen::Affine3d>(base_from_sensor));
+        }
       }
       auto frame = std::make_shared<BufferedFrame>(*handle.buffered_frame);
       frame->motion_sample_times = {

@@ -14,6 +14,9 @@
 
 #include "modules/drivers/lidar/processor/control/sync_gate.h"
 
+#include <string>
+#include <vector>
+
 #include "cyber/cyber.h"
 
 namespace apollo {

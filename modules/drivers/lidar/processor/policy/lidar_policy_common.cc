@@ -20,6 +20,8 @@
 #include <iomanip>
 #include <limits>
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include "cyber/cyber.h"
 #include "modules/transform/transform_query.h"
@@ -53,7 +55,8 @@ bool ShouldFallbackToMeasurementTime(double measurement_time_sec,
                                      double point_min_time_sec,
                                      double point_max_time_sec) {
   if (!std::isfinite(measurement_time_sec) || measurement_time_sec <= 0.0 ||
-      !std::isfinite(point_min_time_sec) || !std::isfinite(point_max_time_sec)) {
+      !std::isfinite(point_min_time_sec) ||
+      !std::isfinite(point_max_time_sec)) {
     return false;
   }
 
@@ -138,10 +141,10 @@ bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
     if (used_measurement_time_fallback != nullptr) {
       *used_measurement_time_fallback = true;
     }
-    AINFO_EVERY(10)
-        << "Invalid per-point timestamps detected, fallback to measurement_time"
-        << " and disable intra-frame deskew. measurement="
-        << FormatTimestampSummary(cloud.measurement_time())
+    ADEBUG
+        << "Invalid per-point timestamps detected, "
+        << "fallback to measurement_time and disable intra-frame deskew. "
+        << "measurement=" << FormatTimestampSummary(cloud.measurement_time())
         << ", point_range=[" << FormatTimestampSummary(local_min) << ", "
         << FormatTimestampSummary(local_max) << "]"
         << ", min_delta="
@@ -395,17 +398,17 @@ bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
   return true;
 }
 
+#include <unordered_map>
+
 namespace {
 
-struct VoxelKey {
-  int x = 0;
-  int y = 0;
-  int z = 0;
-};
-
-struct IndexedVoxelPoint {
-  VoxelKey key;
-  size_t index = 0;
+struct HashVoxelAccumulator {
+  double sum_x = 0.0;
+  double sum_y = 0.0;
+  double sum_z = 0.0;
+  double sum_intensity = 0.0;
+  long double sum_timestamp = 0.0;
+  uint32_t count = 0;
 };
 
 }  // namespace
@@ -416,62 +419,58 @@ size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
     return count;
   }
 
-  std::vector<IndexedVoxelPoint> ordered_points;
-  ordered_points.reserve(count);
+  const float inv_voxel = 1.0f / voxel_size;
+  std::unordered_map<uint64_t, HashVoxelAccumulator> grid;
+  std::vector<uint64_t> active_keys;
+  grid.reserve(count / 2);
+  active_keys.reserve(count / 2);
+
+  constexpr int64_t kBias = 1 << 20;
   for (size_t i = 0; i < count; ++i) {
-    ordered_points.push_back(IndexedVoxelPoint{
-        VoxelKey{static_cast<int>(std::floor(points[i].x() / voxel_size)),
-                 static_cast<int>(std::floor(points[i].y() / voxel_size)),
-                 static_cast<int>(std::floor(points[i].z() / voxel_size))},
-        i});
+    const auto& pt = points[i];
+    const int64_t vx =
+        static_cast<int64_t>(std::floor(pt.x() * inv_voxel)) + kBias;
+    const int64_t vy =
+        static_cast<int64_t>(std::floor(pt.y() * inv_voxel)) + kBias;
+    const int64_t vz =
+        static_cast<int64_t>(std::floor(pt.z() * inv_voxel)) + kBias;
+    const uint64_t key =
+        (vx & 0x1FFFFF) | ((vy & 0x1FFFFF) << 21) | ((vz & 0x1FFFFF) << 42);
+
+    auto iter = grid.find(key);
+    if (iter == grid.end()) {
+      active_keys.push_back(key);
+      auto& cell = grid[key];
+      cell.sum_x = pt.x();
+      cell.sum_y = pt.y();
+      cell.sum_z = pt.z();
+      cell.sum_intensity = pt.intensity();
+      cell.sum_timestamp = static_cast<long double>(pt.timestamp());
+      cell.count = 1;
+    } else {
+      auto& cell = iter->second;
+      cell.sum_x += pt.x();
+      cell.sum_y += pt.y();
+      cell.sum_z += pt.z();
+      cell.sum_intensity += pt.intensity();
+      cell.sum_timestamp += static_cast<long double>(pt.timestamp());
+      cell.count += 1;
+    }
   }
 
-  std::stable_sort(
-      ordered_points.begin(), ordered_points.end(),
-      [](const IndexedVoxelPoint& lhs, const IndexedVoxelPoint& rhs) {
-        if (lhs.key.x != rhs.key.x) {
-          return lhs.key.x < rhs.key.x;
-        }
-        if (lhs.key.y != rhs.key.y) {
-          return lhs.key.y < rhs.key.y;
-        }
-        if (lhs.key.z != rhs.key.z) {
-          return lhs.key.z < rhs.key.z;
-        }
-        return lhs.index < rhs.index;
-      });
-
   size_t write_idx = 0;
-  for (size_t begin = 0; begin < ordered_points.size();) {
-    const VoxelKey key = ordered_points[begin].key;
-    size_t end = begin;
-    double sum_x = 0.0;
-    double sum_y = 0.0;
-    double sum_z = 0.0;
-    double sum_intensity = 0.0;
-    long double sum_timestamp = 0.0;
-    while (end < ordered_points.size() && ordered_points[end].key.x == key.x &&
-           ordered_points[end].key.y == key.y &&
-           ordered_points[end].key.z == key.z) {
-      const PointXYZIT& point = points[ordered_points[end].index];
-      sum_x += point.x();
-      sum_y += point.y();
-      sum_z += point.z();
-      sum_intensity += point.intensity();
-      sum_timestamp += static_cast<long double>(point.timestamp());
-      ++end;
-    }
-
-    const double count_inv = 1.0 / static_cast<double>(end - begin);
+  for (uint64_t key : active_keys) {
+    const auto& cell = grid[key];
+    const double count_inv = 1.0 / static_cast<double>(cell.count);
     PointXYZIT centroid_point;
-    centroid_point.set_x(static_cast<float>(sum_x * count_inv));
-    centroid_point.set_y(static_cast<float>(sum_y * count_inv));
-    centroid_point.set_z(static_cast<float>(sum_z * count_inv));
-    centroid_point.set_intensity(static_cast<float>(sum_intensity * count_inv));
+    centroid_point.set_x(static_cast<float>(cell.sum_x * count_inv));
+    centroid_point.set_y(static_cast<float>(cell.sum_y * count_inv));
+    centroid_point.set_z(static_cast<float>(cell.sum_z * count_inv));
+    centroid_point.set_intensity(
+        static_cast<float>(cell.sum_intensity * count_inv));
     centroid_point.set_timestamp(
-        static_cast<uint64_t>(std::llround(sum_timestamp * count_inv)));
+        static_cast<uint64_t>(std::llround(cell.sum_timestamp * count_inv)));
     points[write_idx++] = centroid_point;
-    begin = end;
   }
 
   return write_idx;

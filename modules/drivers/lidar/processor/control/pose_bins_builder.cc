@@ -14,6 +14,9 @@
 
 #include "modules/drivers/lidar/processor/control/pose_bins_builder.h"
 
+#include <utility>
+#include <vector>
+
 #include "cyber/cyber.h"
 
 namespace apollo {

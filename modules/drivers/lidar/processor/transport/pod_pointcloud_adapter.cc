@@ -15,7 +15,10 @@
 #include "modules/drivers/lidar/processor/transport/pod_pointcloud_adapter.h"
 
 #include <limits>
+#include <memory>
 #include <set>
+#include <string>
+#include <utility>
 
 #include "cyber/cyber.h"
 
