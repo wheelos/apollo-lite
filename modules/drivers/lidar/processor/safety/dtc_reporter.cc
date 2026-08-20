@@ -14,6 +14,8 @@
 
 #include "modules/drivers/lidar/processor/safety/dtc_reporter.h"
 
+#include <string>
+
 #include "cyber/cyber.h"
 
 namespace apollo {

@@ -1359,11 +1359,11 @@ TEST(GpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
     "map", "lidar", cyber::Time(10.0),
       Eigen::Translation3d(0.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
   tf_buffer.AddTransform(
+    "map", "lidar", cyber::Time(10.5),
+      Eigen::Translation3d(0.5, 0.0, 0.0) * Eigen::Quaterniond::Identity());
+  tf_buffer.AddTransform(
     "map", "lidar", cyber::Time(11.0),
       Eigen::Translation3d(1.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
-  tf_buffer.AddTransform(
-    "map", "lidar", cyber::Time(12.0),
-      Eigen::Translation3d(2.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
   GpuLidarDeskewPolicy policy;
   auto config = MakeConfig();
@@ -1373,9 +1373,9 @@ TEST(GpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
   SensorFrameContext frame_context;
   frame_context.sensor_id = "lidar";
   frame_context.point_cloud =
-      MakePointCloud("lidar", 12.0,
+      MakePointCloud("lidar", 11.0,
                      {{0.0f, 0.0f, 0.0f, 10 * kTestSecondToNano},
-                      {0.0f, 0.0f, 0.0f, 12 * kTestSecondToNano}});
+                      {0.0f, 0.0f, 0.0f, 11 * kTestSecondToNano}});
 
   std::vector<double> sample_times;
   std::vector<Eigen::Affine3d> poses;
@@ -1384,9 +1384,10 @@ TEST(GpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
   ASSERT_EQ(sample_times.size(), 3U);
   ASSERT_EQ(poses.size(), 3U);
   EXPECT_DOUBLE_EQ(sample_times.front(), 10.0);
-  EXPECT_DOUBLE_EQ(sample_times.back(), 12.0);
+  EXPECT_DOUBLE_EQ(sample_times.back(), 11.0);
   EXPECT_DOUBLE_EQ(poses[0].translation().x(), 0.0);
-  EXPECT_DOUBLE_EQ(poses[2].translation().x(), 2.0);
+  EXPECT_DOUBLE_EQ(poses[1].translation().x(), 0.5);
+  EXPECT_DOUBLE_EQ(poses[2].translation().x(), 1.0);
 }
 #endif
 

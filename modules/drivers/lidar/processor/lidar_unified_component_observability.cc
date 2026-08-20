@@ -64,7 +64,8 @@ void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
   const uint64_t ts_anomalies = dtc_reporter_.ts_anomaly_count();
   const uint64_t degrade_transitions = dtc_reporter_.degrade_transition_count();
 
-  AINFO << "LidarUnifiedProcessor metrics: frame=" << frame_index
+  ADEBUG << "LidarUnifiedProcessor metrics: frame=" << frame_index
+        << ", primary_sequence_num=" << frame_metrics.primary_sequence_num
         << ", matched_sensors=" << frame_metrics.matched_sensor_count << "/"
         << frame_metrics.expected_sensor_count
         << ", degrade_mode=" << DegradeModeName(degrade_policy_.CurrentMode())

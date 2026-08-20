@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cmath>
+#include <vector>
 
 #include "cyber/cyber.h"
 #include "modules/drivers/lidar/processor/policy/cpu_lidar_policy.h"

@@ -15,7 +15,7 @@ bazel_dep(name = "rules_cuda", version = "0.3.0")
 cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
 cuda.toolkit(
     name = "cuda",
-    toolkit_path = "",
+    toolkit_path = "/usr/local/cuda",
 )
 use_repo(cuda, "cuda")
 

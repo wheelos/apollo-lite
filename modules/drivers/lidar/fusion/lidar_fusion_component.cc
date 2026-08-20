@@ -23,6 +23,7 @@
 #include "Eigen/Eigen"
 
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+#include "modules/transform/buffer.h"
 
 namespace apollo {
 namespace drivers {
@@ -34,6 +35,8 @@ bool LidarFusionComponent::Init() {
     AERROR << "Load config file " << ConfigFilePath() << " failed.";
     return false;
   }
+  transform_query_ =
+      apollo::transform::TransformQuery(apollo::transform::Buffer::Instance());
 
   writer_ = node_->CreateWriter<apollo::drivers::PointCloud>(
       config_.output_channel());
@@ -50,6 +53,7 @@ bool LidarFusionComponent::Init() {
 
 bool LidarFusionComponent::Proc(
     const std::shared_ptr<apollo::drivers::PointCloud>& main_pc) {
+  const auto processing_start = cyber::Time::Now().ToNanosecond();
   auto& target_pc = target_pointcloud_;
   int reserved_size = target_pc->point_size();
   int target_size = main_pc->point_size();
@@ -87,6 +91,7 @@ bool LidarFusionComponent::Proc(
   }
   target_pc->mutable_header()->set_lidar_timestamp(
       main_pc->header().lidar_timestamp());
+  const auto primary_prepare_complete = cyber::Time::Now().ToNanosecond();
   if (config_.has_target_frame_id() &&
       config_.target_frame_id() != target_pc->header().frame_id()) {
     target_pc->mutable_header()->set_frame_id(config_.target_frame_id());
@@ -120,6 +125,7 @@ bool LidarFusionComponent::Proc(
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
+  const auto fusion_wait_complete = cyber::Time::Now().ToNanosecond();
   int fusion_size = 0;
   for (const auto& pc : source_pcs) {
     fusion_size += pc->point_size();
@@ -163,16 +169,30 @@ bool LidarFusionComponent::Proc(
   // trim pointcloud, after fusion, the size may smaller than reserved
   FitPointSize(target_pc, target_size);
 
-  auto diff =
-      cyber::Time::Now().ToNanosecond() - target_pc->header().lidar_timestamp();
-  AINFO << "Pointcloud fusion diff: " << diff / 1e6 << "ms";
+  const auto processing_diff =
+      cyber::Time::Now().ToNanosecond() - processing_start;
   target_pc->mutable_header()->set_sequence_num(
       target_pc->header().sequence_num() + 1);
   target_pc->mutable_header()->set_timestamp_sec(cyber::Time::Now().ToSecond());
   target_pc->set_height(main_pc->height());
   target_pc->set_width(target_pc->point_size() / target_pc->height());
   target_pc->set_is_dense(main_pc->is_dense());
+  const auto writer_start = cyber::Time::Now().ToNanosecond();
   writer_->Write(target_pc);
+  const auto writer_complete = cyber::Time::Now().ToNanosecond();
+  const auto end_to_end_diff =
+      writer_complete - processing_start;
+  AINFO << "Pointcloud fusion diff: primary_prepare_ms: "
+        << (primary_prepare_complete - processing_start) / 1e6
+        << ", fusion_wait_ms: "
+        << (fusion_wait_complete - primary_prepare_complete) / 1e6
+        << ", fusion_compute_ms: "
+        << (writer_start - fusion_wait_complete) / 1e6
+        << ", writer_ms: " << (writer_complete - writer_start) / 1e6
+        << ", processing_ms: " << processing_diff / 1e6
+        << ", end_to_end_ms: " << end_to_end_diff / 1e6
+        << ", output_points: " << target_pc->point_size()
+        << ", matched_lidars: " << source_pcs.size() + 1;
   return true;
 }
 
@@ -284,6 +304,11 @@ bool LidarFusionComponent::QueryPoseAffine(const uint64_t& timestamp,
                                            const std::string& target_frame_id,
                                            const std::string& source_frame_id,
                                            Eigen::Affine3d* pose) {
+  if (timestamp == 0U &&
+      transform_query_.GetLatestStaticTransformToAffine(
+          target_frame_id, source_frame_id, pose)) {
+    return true;
+  }
   cyber::Time query_time(timestamp);
   std::string err_string;
   if (!transform_query_.LookupTransformToAffine(

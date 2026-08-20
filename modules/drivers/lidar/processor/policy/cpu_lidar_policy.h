@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "modules/drivers/lidar/processor/policy/lidar_policy_interface.h"
 
 namespace apollo {

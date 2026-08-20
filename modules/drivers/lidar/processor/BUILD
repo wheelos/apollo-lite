@@ -37,6 +37,15 @@ cuda_library(
     name = "lidar_policy_cuda_kernels_lib",
     srcs = ["policy/lidar_policy_cuda_kernels.cu"],
     hdrs = ["policy/lidar_policy_cuda_kernels.h"],
+    features = [
+        "-nvcc_extended_lambda",
+        "-nvcc_relaxed_constexpr",
+    ],
+    copts = [
+        "-std=c++17",
+        "-Xcompiler",
+        "-std=c++17",
+    ],
     deps = [
         "@cuda//:cuda_runtime",
     ],

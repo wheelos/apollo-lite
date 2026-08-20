@@ -35,6 +35,11 @@
 #include "modules/drivers/lidar/proto/lidar_unified_component_config.pb.h"
 
 #include "cyber/cyber.h"
+
+#ifndef FRIEND_TEST
+#define FRIEND_TEST(test_case_name, test_name) \
+  friend class test_case_name##_##test_name##_Test
+#endif
 #include "modules/drivers/lidar/processor/control/frame_handle.h"
 #include "modules/drivers/lidar/processor/control/pose_bins_builder.h"
 #include "modules/drivers/lidar/processor/control/sync_gate.h"
@@ -54,6 +59,8 @@ class LidarUnifiedComponent
  public:
   using PointCloudConstPtr =
       std::shared_ptr<const ::apollo::drivers::PointCloud>;
+  LidarUnifiedComponent() = default;
+  ~LidarUnifiedComponent() override;
   bool Init() override;
   bool Proc(const std::shared_ptr<::apollo::drivers::PointCloud>& point_cloud)
       override;
@@ -61,36 +68,33 @@ class LidarUnifiedComponent
   bool OnReceiveMainLidar(const PointCloudConstPtr& point_cloud);
 
  private:
-  friend class LidarUnifiedComponentTest_RejectsPrimarySensorIdDrift_Test;
-  friend class
-      LidarUnifiedComponentTest_FindsNearestFrameFromOutOfOrderBuffer_Test;
-  friend class
-      LidarUnifiedComponentTest_ReportsTimeDeltaExceededForNearestFrame_Test;
-  friend class
-      LidarUnifiedComponentTest_AppliesFixedDelayDuringFrameLookup_Test;
-  friend class
-      LidarUnifiedComponentTest_PrefersMaximumIntervalOverlap_Test;
-  friend class
-      LidarUnifiedComponentTest_BreaksOverlapTieByAnchorDistance_Test;
-  friend class LidarUnifiedComponentTest_ExcludesFramesOnlyAfterCommit_Test;
-  friend class
-      LidarUnifiedComponentTest_OffCompensationUsesStaticExtrinsicOnly_Test;
-  friend class LidarUnifiedComponentTest_UpdatesSensorTimingModel_Test;
-  friend class
-      LidarUnifiedComponentTest_KeepsOnlineOffsetDisabledForMatching_Test;
-  friend class
-      LidarUnifiedComponentTest_UpdatesLargeFixedDelayWhenInnovationIsWithinLimit_Test;
-  friend class
-      LidarUnifiedComponentTest_CollectNearestFramesSkipsLowQualityAuxiliary_Test;
-  friend class
-      LidarUnifiedComponentTest_CollectNearestFramesMatchesThreeSensors_Test;
-  friend class
-      LidarUnifiedComponentTest_CollectNearestFramesAllowsMissingAuxiliary_Test;
-  friend class
-      LidarUnifiedComponentTest_CollectNearestFramesFailsStrictMissingAuxiliary_Test;
-  friend class LidarUnifiedComponentTest_RejectsDuplicateAuxiliaryTopics_Test;
-  friend class LidarUnifiedComponentTest_RejectsImpossibleScanDurations_Test;
-  friend class LidarUnifiedComponentTest_EstimatesOverlapQualityWeight_Test;
+  FRIEND_TEST(LidarUnifiedComponentTest, RejectsPrimarySensorIdDrift);
+  FRIEND_TEST(LidarUnifiedComponentTest,
+              FindsNearestFrameFromOutOfOrderBuffer);
+  FRIEND_TEST(LidarUnifiedComponentTest,
+              ReportsTimeDeltaExceededForNearestFrame);
+  FRIEND_TEST(LidarUnifiedComponentTest, AppliesFixedDelayDuringFrameLookup);
+  FRIEND_TEST(LidarUnifiedComponentTest, PrefersMaximumIntervalOverlap);
+  FRIEND_TEST(LidarUnifiedComponentTest, BreaksOverlapTieByAnchorDistance);
+  FRIEND_TEST(LidarUnifiedComponentTest, ExcludesFramesOnlyAfterCommit);
+  FRIEND_TEST(LidarUnifiedComponentTest,
+              OffCompensationUsesStaticExtrinsicOnly);
+  FRIEND_TEST(LidarUnifiedComponentTest, UpdatesSensorTimingModel);
+  FRIEND_TEST(LidarUnifiedComponentTest,
+              KeepsOnlineOffsetDisabledForMatching);
+  FRIEND_TEST(LidarUnifiedComponentTest,
+              UpdatesLargeFixedDelayWhenInnovationIsWithinLimit);
+  FRIEND_TEST(LidarUnifiedComponentTest,
+              CollectNearestFramesSkipsLowQualityAuxiliary);
+  FRIEND_TEST(LidarUnifiedComponentTest,
+              CollectNearestFramesMatchesThreeSensors);
+  FRIEND_TEST(LidarUnifiedComponentTest,
+              CollectNearestFramesAllowsMissingAuxiliary);
+  FRIEND_TEST(LidarUnifiedComponentTest,
+              CollectNearestFramesFailsStrictMissingAuxiliary);
+  FRIEND_TEST(LidarUnifiedComponentTest, RejectsDuplicateAuxiliaryTopics);
+  FRIEND_TEST(LidarUnifiedComponentTest, RejectsImpossibleScanDurations);
+  FRIEND_TEST(LidarUnifiedComponentTest, EstimatesOverlapQualityWeight);
 
   enum class FrameLookupFailureReason {
     kNone = 0,
@@ -121,6 +125,7 @@ class LidarUnifiedComponent
   };
 
   struct FrameMetrics {
+    uint32_t primary_sequence_num = 0;
     size_t expected_sensor_count = 0;
     size_t matched_sensor_count = 0;
     size_t missing_auxiliary_count = 0;
@@ -231,6 +236,7 @@ class LidarUnifiedComponent
   std::vector<SensorInput> auxiliary_inputs_;
   std::map<std::string, std::shared_ptr<const Eigen::Affine3d>>
       static_extrinsics_;
+  mutable std::mutex static_extrinsics_mutex_;
 
   std::unique_ptr<LidarDeskewPolicy> deskew_policy_;
   std::unique_ptr<LidarFusionPolicy> fusion_policy_;

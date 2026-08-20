@@ -15,15 +15,7 @@
 #include "modules/drivers/lidar/processor/policy/lidar_policy_cuda_kernels.h"
 
 #include <cuda_runtime.h>
-
-#include <algorithm>
-#include <cmath>
-#include <cstdint>
-#include <limits>
-#include <memory>
-#include <mutex>
-#include <unordered_map>
-#include <vector>
+#include <pthread.h>
 
 namespace apollo {
 namespace drivers {
@@ -31,8 +23,26 @@ namespace lidar {
 
 namespace {
 
+class FastMutex {
+ public:
+  FastMutex() { pthread_mutex_init(&mutex_, nullptr); }
+  ~FastMutex() { pthread_mutex_destroy(&mutex_); }
+  void lock() { pthread_mutex_lock(&mutex_); }
+  void unlock() { pthread_mutex_unlock(&mutex_); }
+ private:
+  pthread_mutex_t mutex_;
+};
+
+class FastLockGuard {
+ public:
+  explicit FastLockGuard(FastMutex& m) : m_(m) { m_.lock(); }
+  ~FastLockGuard() { m_.unlock(); }
+ private:
+  FastMutex& m_;
+};
+
 constexpr uint64_t kSecondToNano = 1000000000ULL;
-constexpr uint64_t kEmptyVoxel = std::numeric_limits<uint64_t>::max();
+constexpr uint64_t kEmptyVoxel = ~0ULL;
 constexpr uint64_t kPointInfThreshold = 1000ULL;
 constexpr float kSlerpLinearFallbackDot = 0.9995f;
 
@@ -429,7 +439,7 @@ struct CudaWorkspace {
     return stats;
   }
 
-  std::mutex mutex;
+  FastMutex mutex;
 
   CudaPointXYZIT* d_points_in = nullptr;
   CudaPointXYZIT* d_points_out = nullptr;
@@ -474,21 +484,35 @@ struct CudaWorkspace {
 
 class WorkspaceManager {
  public:
-  CudaWorkspace* GetOrCreate(int device_id) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = workspaces_.find(device_id);
-    if (it != workspaces_.end()) {
-      return it->second.get();
+  WorkspaceManager() {
+    for (size_t i = 0; i < 8; ++i) {
+      workspaces_[i] = nullptr;
     }
-    auto ws = std::make_unique<CudaWorkspace>();
-    CudaWorkspace* ptr = ws.get();
-    workspaces_.emplace(device_id, std::move(ws));
-    return ptr;
+  }
+
+  ~WorkspaceManager() {
+    for (size_t i = 0; i < 8; ++i) {
+      delete workspaces_[i];
+      workspaces_[i] = nullptr;
+    }
+  }
+
+  CudaWorkspace* GetOrCreate(int device_id) {
+    if (device_id < 0 || device_id >= 8) {
+      device_id = 0;
+    }
+    FastLockGuard lock(mutex_);
+    (void)lock;
+    if (workspaces_[device_id] != nullptr) {
+      return workspaces_[device_id];
+    }
+    workspaces_[device_id] = new CudaWorkspace();
+    return workspaces_[device_id];
   }
 
  private:
-  std::mutex mutex_;
-  std::unordered_map<int, std::unique_ptr<CudaWorkspace>> workspaces_;
+  FastMutex mutex_;
+  CudaWorkspace* workspaces_[8];
 };
 
 CudaWorkspace* GetWorkspace(int device_id) {
@@ -514,13 +538,13 @@ bool CudaComputeTimestampRange(const uint64_t* host_timestamps, size_t count,
   if (ws == nullptr) {
     return false;
   }
-  std::lock_guard<std::mutex> ws_lock(ws->mutex);
+  FastLockGuard ws_lock(ws->mutex);
 
   if (!ws->EnsureTimestampBuffers(count)) {
     return false;
   }
 
-  const uint64_t init_min = std::numeric_limits<uint64_t>::max();
+  const uint64_t init_min = ~0ULL;
   const uint64_t init_max = 0ULL;
 
   bool ok = CheckCuda(cudaMemcpy(ws->d_timestamps, host_timestamps,
@@ -573,7 +597,7 @@ size_t CudaFuseFrameToBaseLink(const CudaPointXYZIT* host_input_points,
   if (ws == nullptr) {
     return 0;
   }
-  std::lock_guard<std::mutex> ws_lock(ws->mutex);
+  FastLockGuard ws_lock(ws->mutex);
 
   if (!ws->EnsurePointBuffers(input_count, output_capacity) ||
       !ws->EnsureSampleTimes(sample_count) || !ws->EnsurePoses(sample_count) ||
@@ -609,7 +633,7 @@ size_t CudaFuseFrameToBaseLink(const CudaPointXYZIT* host_input_points,
   }
 
   const size_t out_count =
-      std::min(static_cast<size_t>(h_count), output_capacity);
+      static_cast<size_t>(h_count) < output_capacity ? static_cast<size_t>(h_count) : output_capacity;
   if (ok && out_count > 0U) {
     ok = CheckCuda(cudaMemcpy(host_output_points, ws->d_points_out,
                               out_count * sizeof(CudaPointXYZIT),
@@ -636,7 +660,7 @@ size_t CudaApplyEgoFilter(const CudaPointXYZIT* host_input_points,
   if (ws == nullptr) {
     return 0;
   }
-  std::lock_guard<std::mutex> ws_lock(ws->mutex);
+  FastLockGuard ws_lock(ws->mutex);
 
   if (!ws->EnsurePointBuffers(input_count, output_capacity) ||
       !ws->EnsureCounter()) {
@@ -663,7 +687,7 @@ size_t CudaApplyEgoFilter(const CudaPointXYZIT* host_input_points,
   }
 
   const size_t copy_count =
-      std::min(static_cast<size_t>(h_count), output_capacity);
+      static_cast<size_t>(h_count) < output_capacity ? static_cast<size_t>(h_count) : output_capacity;
   if (ok && copy_count > 0) {
     ok = CheckCuda(cudaMemcpy(host_output_points, ws->d_points_out,
                               copy_count * sizeof(CudaPointXYZIT),
@@ -689,10 +713,10 @@ size_t CudaApplyVoxelDownsample(const CudaPointXYZIT* host_input_points,
   if (ws == nullptr) {
     return 0;
   }
-  std::lock_guard<std::mutex> ws_lock(ws->mutex);
+  FastLockGuard ws_lock(ws->mutex);
 
   unsigned int h_count = 0U;
-  const size_t hash_size = std::max<size_t>(32, input_count * 2 + 1);
+  const size_t hash_size = (input_count * 2 + 1) > 32 ? (input_count * 2 + 1) : 32;
 
   if (!ws->EnsurePointBuffers(input_count, output_capacity) ||
       !ws->EnsureCounter() || !ws->EnsureHashTable(hash_size)) {
@@ -725,14 +749,14 @@ size_t CudaApplyVoxelDownsample(const CudaPointXYZIT* host_input_points,
                               cudaMemcpyDeviceToHost));
   }
 
-  const size_t copy_count =
-      std::min(static_cast<size_t>(h_count), output_capacity);
-  if (ok && copy_count > 0) {
+  const size_t copy_count_voxel =
+      static_cast<size_t>(h_count) < output_capacity ? static_cast<size_t>(h_count) : output_capacity;
+  if (ok && copy_count_voxel > 0) {
     ok = CheckCuda(cudaMemcpy(host_output_points, ws->d_points_out,
-                              copy_count * sizeof(CudaPointXYZIT),
+                              copy_count_voxel * sizeof(CudaPointXYZIT),
                               cudaMemcpyDeviceToHost));
   }
-  return ok ? copy_count : 0;
+  return ok ? copy_count_voxel : 0;
 }
 
 bool CudaGetWorkspaceStats(int device_id, CudaWorkspaceStats* stats) {
@@ -745,7 +769,7 @@ bool CudaGetWorkspaceStats(int device_id, CudaWorkspaceStats* stats) {
     return false;
   }
 
-  std::lock_guard<std::mutex> ws_lock(ws->mutex);
+  FastLockGuard ws_lock(ws->mutex);
   *stats = ws->SnapshotStats();
   return true;
 }

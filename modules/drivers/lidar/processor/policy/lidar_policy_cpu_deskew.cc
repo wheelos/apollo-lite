@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <vector>
 
 #include "modules/drivers/lidar/processor/policy/cpu_lidar_policy.h"
 #include "modules/drivers/lidar/processor/policy/lidar_policy_common.h"

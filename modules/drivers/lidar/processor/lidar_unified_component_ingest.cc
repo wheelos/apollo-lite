@@ -16,7 +16,9 @@
 #include <cctype>
 #include <cmath>
 #include <iomanip>
+#include <memory>
 #include <sstream>
+#include <string>
 
 #include "modules/drivers/lidar/processor/lidar_unified_component.h"
 #include "modules/drivers/lidar/processor/policy/lidar_policy_common.h"
@@ -200,7 +202,7 @@ bool LidarUnifiedComponent::PrepareBufferedFrame(
   }
 
   if (used_measurement_time_fallback) {
-    AINFO_EVERY(kPosePrefetchLogFrequency)
+    ADEBUG
         << "Fallback to measurement_time and disable intra-frame deskew. "
         << "sensor=" << sensor_id << ", target=" << config_.map_frame_id()
         << ", " << BuildPointCloudTimeSummary(*point_cloud);
@@ -216,7 +218,7 @@ bool LidarUnifiedComponent::PrepareBufferedFrame(
       apollo::transform::TransformResolveStatus::kOk;
   if (!sensor_state->pose_resolver->QueryCachedBatchStrict(
           frame->motion_sample_times, &frame->motion_poses, &cache_status)) {
-    AINFO_EVERY(kPosePrefetchLogFrequency)
+    ADEBUG
       << "Pose prefetch unavailable. sensor=" << sensor_id
       << ", target=" << config_.map_frame_id()
       << ", status=" << static_cast<int>(cache_status) << ", "
@@ -261,13 +263,13 @@ LidarUnifiedComponent::GetSensorState(const std::string& sensor_id) const {
 
 void LidarUnifiedComponent::OnAuxiliaryLidarMessage(
     const std::string& topic_name, const PointCloudConstPtr& point_cloud) {
-  if (point_cloud == nullptr) {
+  if (apollo::cyber::IsShutdown() || point_cloud == nullptr) {
     return;
   }
 
-  AINFO_EVERY(20) << "OnAuxiliaryLidarMessage topic=" << topic_name
-                  << ", measurement_time=" << point_cloud->measurement_time()
-                  << ", points=" << point_cloud->point_size();
+  ADEBUG << "OnAuxiliaryLidarMessage topic=" << topic_name
+         << ", measurement_time=" << point_cloud->measurement_time()
+         << ", points=" << point_cloud->point_size();
   const std::string sensor_id = ResolveSensorId(point_cloud, topic_name);
   if (sensor_id.empty()) {
     AWARN << "Skip auxiliary lidar message due to empty sensor id. topic="
@@ -294,7 +296,7 @@ void LidarUnifiedComponent::OnAuxiliaryLidarMessage(
   if (input == auxiliary_inputs_.end() ||
       !PrepareBufferedFrame(sensor_id, point_cloud, input->time_settings,
                             &buffered_frame)) {
-    AINFO_EVERY(kPosePrefetchLogFrequency)
+    ADEBUG
         << "Skip auxiliary lidar frame due to pose prefetch failure. sensor="
         << sensor_id << ", topic=" << topic_name;
     return;
