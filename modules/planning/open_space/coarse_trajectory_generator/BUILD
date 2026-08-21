@@ -11,9 +11,9 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "@core//cyber",
+        "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/planning/common:obstacle",
-        "//modules/planning/constraint_checker:collision_checker",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
     ],
 )
@@ -71,6 +71,8 @@ cc_library(
         "//modules/common/configs:vehicle_config_helper",
         "//modules/planning/common:obstacle",
         "//modules/planning/common:planning_gflags",
+        "//modules/planning/common/path:discretized_path",
+        "//modules/planning/common/speed:speed_data",
         "//modules/planning/math/piecewise_jerk:piecewise_jerk_speed_problem",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
     ],

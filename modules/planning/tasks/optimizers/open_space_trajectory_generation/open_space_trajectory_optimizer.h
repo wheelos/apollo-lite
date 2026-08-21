@@ -34,6 +34,7 @@
 #include "modules/planning/proto/open_space_task_config.pb.h"
 
 #include "modules/common/math/vec2d.h"
+#include "modules/common/status/status.h"
 #include "modules/planning/common/trajectory/discretized_trajectory.h"
 #include "modules/planning/open_space/coarse_trajectory_generator/hybrid_a_star.h"
 #include "modules/planning/open_space/trajectory_smoother/distance_approach_problem.h"

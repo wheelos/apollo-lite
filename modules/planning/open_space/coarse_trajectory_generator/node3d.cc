@@ -21,6 +21,7 @@
 #include "modules/planning/open_space/coarse_trajectory_generator/node3d.h"
 
 #include "absl/strings/str_cat.h"
+#include "cyber/common/log.h"
 
 namespace apollo {
 namespace planning {
