@@ -9,6 +9,10 @@ services:
     user: "root"
     working_dir: /apollo
     shm_size: ${SHM_SIZE}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     env_file:
       - ${RUNTIME_ENV_FILE}
 
