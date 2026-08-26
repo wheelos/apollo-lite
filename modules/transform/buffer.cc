@@ -16,6 +16,10 @@
 
 #include "modules/transform/buffer.h"
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "tf2/exceptions.h"
 
 #include "absl/strings/str_cat.h"
@@ -47,6 +51,11 @@ namespace apollo {
 namespace transform {
 
 Buffer::Buffer() : BufferCore() { Init(); }
+
+std::string Buffer::BuildEdgeKey(const std::string& frame_id,
+                                 const std::string& child_frame_id) {
+  return frame_id + "\n" + child_frame_id;
+}
 
 int Buffer::Init() {
   const std::string node_name =
@@ -89,12 +98,19 @@ void Buffer::SubscriptionCallbackImpl(
   if (now.ToNanosecond() < last_update_.ToNanosecond()) {
     AINFO << "Detected jump back in time. Clearing TF buffer.";
     clear();
+    time_jump_count_.fetch_add(1, std::memory_order_relaxed);
     // cache static transform stamped again.
+    std::lock_guard<std::mutex> lock(diagnostics_mutex_);
     for (auto& msg : static_msgs_) {
       setTransform(msg, authority, true);
     }
   }
   last_update_ = now;
+  if (is_static) {
+    static_message_count_.fetch_add(1, std::memory_order_relaxed);
+  } else {
+    dynamic_message_count_.fetch_add(1, std::memory_order_relaxed);
+  }
 
   for (int i = 0; i < msg_evt->transforms_size(); i++) {
     try {
@@ -123,9 +139,23 @@ void Buffer::SubscriptionCallbackImpl(
       trans_stamped.transform.rotation.w = transform.rotation().qw();
 
       if (is_static) {
+        std::lock_guard<std::mutex> lock(diagnostics_mutex_);
         static_msgs_.push_back(trans_stamped);
       }
-      setTransform(trans_stamped, authority, is_static);
+      if (setTransform(trans_stamped, authority, is_static)) {
+        if (is_static) {
+          static_transform_count_.fetch_add(1, std::memory_order_relaxed);
+        } else {
+          dynamic_transform_count_.fetch_add(1, std::memory_order_relaxed);
+        }
+        std::lock_guard<std::mutex> lock(diagnostics_mutex_);
+        auto& edge = edge_diagnostics_[BuildEdgeKey(
+            trans_stamped.header.frame_id, trans_stamped.child_frame_id)];
+        edge.is_static = is_static;
+        edge.latest_timestamp_sec =
+            static_cast<double>(trans_stamped.header.stamp) / 1e9;
+        ++edge.received_count;
+      }
     } catch (tf2::TransformException& ex) {
       std::string temp = ex.what();
       AERROR << "Failure to set received transform:" << temp.c_str();
@@ -136,15 +166,62 @@ void Buffer::SubscriptionCallbackImpl(
 bool Buffer::GetLatestStaticTransform(const std::string& frame_id,
                  const std::string& child_frame_id,
                  TransformStamped* tf) const {
-  for (auto reverse_iter = static_msgs_.rbegin();
-       reverse_iter != static_msgs_.rend(); ++reverse_iter) {
-    if ((*reverse_iter).header.frame_id == frame_id &&
-        (*reverse_iter).child_frame_id == child_frame_id) {
-      TF2MsgToCyber((*reverse_iter), (*tf));
-      return true;
+  {
+    std::lock_guard<std::mutex> lock(diagnostics_mutex_);
+    for (auto reverse_iter = static_msgs_.rbegin();
+         reverse_iter != static_msgs_.rend(); ++reverse_iter) {
+      if ((*reverse_iter).header.frame_id == frame_id &&
+          (*reverse_iter).child_frame_id == child_frame_id) {
+        TF2MsgToCyber((*reverse_iter), (*tf));
+        return true;
+      }
     }
   }
+
+  try {
+    const auto transform =
+        tf2::BufferCore::lookupTransform(frame_id, child_frame_id,
+                                         tf2::Time(0));
+    TF2MsgToCyber(transform, *tf);
+    return true;
+  } catch (const tf2::TransformException&) {
+    // The requested static edge or chain is not available.
+  }
   return false;
+}
+
+TransformBufferDiagnostics Buffer::GetDiagnosticsSnapshot() const {
+  TransformBufferDiagnostics diagnostics;
+  diagnostics.last_update_sec = last_update_.ToSecond();
+  diagnostics.dynamic_message_count =
+      dynamic_message_count_.load(std::memory_order_relaxed);
+  diagnostics.static_message_count =
+      static_message_count_.load(std::memory_order_relaxed);
+  diagnostics.dynamic_transform_count =
+      dynamic_transform_count_.load(std::memory_order_relaxed);
+  diagnostics.static_transform_count =
+      static_transform_count_.load(std::memory_order_relaxed);
+  diagnostics.time_jump_count =
+      time_jump_count_.load(std::memory_order_relaxed);
+  {
+    std::lock_guard<std::mutex> lock(diagnostics_mutex_);
+    diagnostics.edges.reserve(edge_diagnostics_.size());
+    for (const auto& entry : edge_diagnostics_) {
+      const size_t separator = entry.first.find('\n');
+      TransformEdgeDiagnostics edge;
+      edge.frame_id = entry.first.substr(0, separator);
+      if (separator != std::string::npos) {
+        edge.child_frame_id = entry.first.substr(separator + 1);
+      }
+      edge.is_static = entry.second.is_static;
+      edge.latest_timestamp_sec = entry.second.latest_timestamp_sec;
+      edge.received_count = entry.second.received_count;
+      diagnostics.edges.push_back(edge);
+    }
+  }
+  diagnostics.frames_as_string = allFramesAsString();
+  diagnostics.frames_as_yaml = allFramesAsYAML(Clock::Now().ToSecond());
+  return diagnostics;
 }
 
 void Buffer::TF2MsgToCyber(

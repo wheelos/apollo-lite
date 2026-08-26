@@ -15,6 +15,8 @@
  *****************************************************************************/
 #include "modules/transform/static_transform_component.h"
 
+#include <memory>
+
 #include "cyber/init.h"
 #include "gtest/gtest.h"
 
@@ -23,7 +25,8 @@ namespace transform {
 
 TEST(TransformComponentTest, Init) {
   cyber::Init("transform_component_test");
-  StaticTransformComponent component;
+  auto component = std::make_shared<StaticTransformComponent>();
+  EXPECT_NE(component, nullptr);
 }
 
 }  // namespace transform

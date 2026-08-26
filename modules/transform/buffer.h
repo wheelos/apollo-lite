@@ -17,7 +17,9 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "tf2/buffer_core.h"
@@ -88,11 +90,11 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
    * transform failed, if not nullptr
    * \return True if the transform is possible, false otherwise
    */
-    bool canTransform(const std::string& target_frame,
-                                        const std::string& source_frame,
-                                        const cyber::Time& target_time,
-                                        const float timeout_second = 0.01f,
-                                        std::string* errstr = nullptr) const override;
+  bool canTransform(const std::string& target_frame,
+                    const std::string& source_frame,
+                    const cyber::Time& target_time,
+                    const float timeout_second = 0.01f,
+                    std::string* errstr = nullptr) const override;
 
   /** \brief Test if a transform is possible
    * \param target_frame The frame into which to transform
@@ -106,19 +108,30 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
    * transform failed, if not nullptr
    * \return True if the transform is possible, false otherwise
    */
-    bool canTransform(const std::string& target_frame,
-                                        const cyber::Time& target_time,
-                                        const std::string& source_frame,
-                                        const cyber::Time& source_time,
-                                        const std::string& fixed_frame,
-                                        const float timeout_second = 0.01f,
-                                        std::string* errstr = nullptr) const override;
+  bool canTransform(const std::string& target_frame,
+                    const cyber::Time& target_time,
+                    const std::string& source_frame,
+                    const cyber::Time& source_time,
+                    const std::string& fixed_frame,
+                    const float timeout_second = 0.01f,
+                    std::string* errstr = nullptr) const override;
 
-    bool GetLatestStaticTransform(const std::string& frame_id,
-                                                                const std::string& child_frame_id,
-                                                                TransformStamped* tf) const override;
+  bool GetLatestStaticTransform(const std::string& frame_id,
+                                const std::string& child_frame_id,
+                                TransformStamped* tf) const override;
+
+  TransformBufferDiagnostics GetDiagnosticsSnapshot() const override;
 
  private:
+  struct EdgeDiagnosticsState {
+    bool is_static = false;
+    double latest_timestamp_sec = 0.0;
+    uint64_t received_count = 0;
+  };
+
+  static std::string BuildEdgeKey(const std::string& frame_id,
+                                  const std::string& child_frame_id);
+
   void SubscriptionCallback(
       const std::shared_ptr<const TransformStampeds>& transform);
   void StaticSubscriptionCallback(
@@ -137,6 +150,13 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
 
   cyber::Time last_update_;
   std::vector<geometry_msgs::TransformStamped> static_msgs_;
+  mutable std::mutex diagnostics_mutex_;
+  std::atomic<uint64_t> dynamic_message_count_{0};
+  std::atomic<uint64_t> static_message_count_{0};
+  std::atomic<uint64_t> dynamic_transform_count_{0};
+  std::atomic<uint64_t> static_transform_count_{0};
+  std::atomic<uint64_t> time_jump_count_{0};
+  std::unordered_map<std::string, EdgeDiagnosticsState> edge_diagnostics_;
 
   DECLARE_SINGLETON(Buffer)
 };  // class

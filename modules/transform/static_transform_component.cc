@@ -16,6 +16,9 @@
 
 #include "modules/transform/static_transform_component.h"
 
+#include <string>
+#include <vector>
+
 #include "yaml-cpp/yaml.h"
 
 #include "modules/common/adapters/adapter_gflags.h"
@@ -104,6 +107,8 @@ void StaticTransformComponent::SendTransform(
   common::util::FillHeader(node_->Name(), &transform_stampeds_);
   writer_->Write(transform_stampeds_);
 }
+
+CYBER_REGISTER_COMPONENT(StaticTransformComponent)
 
 }  // namespace transform
 }  // namespace apollo

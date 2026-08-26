@@ -171,6 +171,10 @@ TEST(TransformQueryTest, LookupTransformReturnsErrorWhenBufferThrows) {
   EXPECT_FALSE(query.LookupTransform("map", "lidar", cyber::Time(9.0),
                                      &transform, 0.1f, &err_msg));
   EXPECT_EQ(err_msg, "lookup failed");
+  const auto diagnostics = query.GetDiagnosticsSnapshot();
+  EXPECT_EQ(diagnostics.lookup_transform_calls, 1);
+  EXPECT_EQ(diagnostics.lookup_transform_success, 0);
+  EXPECT_EQ(diagnostics.last_error, "lookup failed");
 }
 
 TEST(TransformQueryTest, StaticLookupUsesStaticInterface) {
@@ -188,6 +192,41 @@ TEST(TransformQueryTest, StaticLookupUsesStaticInterface) {
   EXPECT_NEAR(transform.translation().x(), 4.0, 1e-9);
   EXPECT_NEAR(transform.translation().y(), 5.0, 1e-9);
   EXPECT_NEAR(transform.translation().z(), 6.0, 1e-9);
+}
+
+TEST(TransformQueryTest, DiagnosticsTrackCanLookupAffineAndStaticQueries) {
+  FakeBuffer buffer;
+  buffer.lookup_transform_ =
+      MakeTransformStamped(12.0, 1.0, 2.0, 3.0,
+                           Eigen::Quaterniond::Identity());
+  buffer.static_transform_ =
+      MakeTransformStamped(0.0, 4.0, 5.0, 6.0,
+                           Eigen::Quaterniond::Identity());
+
+  TransformQuery query(&buffer);
+  EXPECT_TRUE(query.CanTransform("map", "lidar", cyber::Time(12.0)));
+
+  TransformStamped stamped_transform;
+  EXPECT_TRUE(query.LookupTransform("map", "lidar", cyber::Time(12.0),
+                                    &stamped_transform));
+
+  Eigen::Affine3d affine_transform = Eigen::Affine3d::Identity();
+  EXPECT_TRUE(query.LookupTransformToAffine("map", "lidar",
+                                            cyber::Time(12.0),
+                                            &affine_transform));
+  EXPECT_TRUE(query.GetLatestStaticTransformToAffine(
+      "base_link", "velodyne128", &affine_transform));
+
+  const auto diagnostics = query.GetDiagnosticsSnapshot();
+  EXPECT_EQ(diagnostics.can_transform_calls, 1);
+  EXPECT_EQ(diagnostics.can_transform_success, 1);
+  EXPECT_EQ(diagnostics.lookup_transform_calls, 2);
+  EXPECT_EQ(diagnostics.lookup_transform_success, 2);
+  EXPECT_EQ(diagnostics.affine_lookup_calls, 2);
+  EXPECT_EQ(diagnostics.affine_lookup_success, 2);
+  EXPECT_EQ(diagnostics.static_lookup_calls, 1);
+  EXPECT_EQ(diagnostics.static_lookup_success, 1);
+  EXPECT_TRUE(diagnostics.last_error.empty());
 }
 
 }  // namespace

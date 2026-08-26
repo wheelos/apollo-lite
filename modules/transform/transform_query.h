@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <atomic>
+#include <mutex>
 #include <string>
 
 #include "Eigen/Geometry"
@@ -24,6 +26,7 @@
 #include "wheelos_msgs/transform_msgs/transform.pb.h"
 
 #include "cyber/time/time.h"
+#include "modules/transform/transform_diagnostics.h"
 
 namespace apollo {
 namespace transform {
@@ -83,10 +86,27 @@ class TransformQuery {
                                         const std::string& source_frame_id,
                                         Eigen::Affine3d* transform) const;
 
+  TransformQueryDiagnostics GetDiagnosticsSnapshot() const;
+
  private:
+  void RecordCanTransform(bool success, const std::string& error) const;
+  void RecordLookupTransform(bool success, const std::string& error) const;
+  void RecordAffineLookup(bool success, const std::string& error) const;
+  void RecordStaticLookup(bool success, const std::string& error) const;
+
   static Eigen::Affine3d ToAffine(const TransformStamped& transform);
 
   BufferInterface* buffer_ = nullptr;
+  mutable std::atomic<uint64_t> can_transform_calls_{0};
+  mutable std::atomic<uint64_t> can_transform_success_{0};
+  mutable std::atomic<uint64_t> lookup_transform_calls_{0};
+  mutable std::atomic<uint64_t> lookup_transform_success_{0};
+  mutable std::atomic<uint64_t> affine_lookup_calls_{0};
+  mutable std::atomic<uint64_t> affine_lookup_success_{0};
+  mutable std::atomic<uint64_t> static_lookup_calls_{0};
+  mutable std::atomic<uint64_t> static_lookup_success_{0};
+  mutable std::mutex error_mutex_;
+  mutable std::string last_error_;
 };
 
 }  // namespace transform

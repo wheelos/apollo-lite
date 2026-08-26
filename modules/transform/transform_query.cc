@@ -17,16 +17,65 @@
 
 #include "modules/transform/transform_query.h"
 
+#include <string>
+
 #include "tf2/exceptions.h"
 
 #include "cyber/common/log.h"
+#include "modules/transform/buffer.h"
 #include "modules/transform/buffer_interface.h"
 
 namespace apollo {
 namespace transform {
 
+TransformQuery::TransformQuery() : buffer_(Buffer::Instance()) {}
+
 TransformQuery::TransformQuery(BufferInterface* buffer)
   : buffer_(buffer) {}
+
+void TransformQuery::RecordCanTransform(bool success,
+                                        const std::string& error) const {
+  can_transform_calls_.fetch_add(1, std::memory_order_relaxed);
+  if (success) {
+    can_transform_success_.fetch_add(1, std::memory_order_relaxed);
+  } else {
+    std::lock_guard<std::mutex> lock(error_mutex_);
+    last_error_ = error;
+  }
+}
+
+void TransformQuery::RecordLookupTransform(bool success,
+                                           const std::string& error) const {
+  lookup_transform_calls_.fetch_add(1, std::memory_order_relaxed);
+  if (success) {
+    lookup_transform_success_.fetch_add(1, std::memory_order_relaxed);
+  } else {
+    std::lock_guard<std::mutex> lock(error_mutex_);
+    last_error_ = error;
+  }
+}
+
+void TransformQuery::RecordAffineLookup(bool success,
+                                        const std::string& error) const {
+  affine_lookup_calls_.fetch_add(1, std::memory_order_relaxed);
+  if (success) {
+    affine_lookup_success_.fetch_add(1, std::memory_order_relaxed);
+  } else {
+    std::lock_guard<std::mutex> lock(error_mutex_);
+    last_error_ = error;
+  }
+}
+
+void TransformQuery::RecordStaticLookup(bool success,
+                                        const std::string& error) const {
+  static_lookup_calls_.fetch_add(1, std::memory_order_relaxed);
+  if (success) {
+    static_lookup_success_.fetch_add(1, std::memory_order_relaxed);
+  } else {
+    std::lock_guard<std::mutex> lock(error_mutex_);
+    last_error_ = error;
+  }
+}
 
 bool TransformQuery::CanTransform(const std::string& target_frame_id,
                                   const std::string& source_frame_id,
@@ -34,8 +83,12 @@ bool TransformQuery::CanTransform(const std::string& target_frame_id,
                                   float timeout_sec,
                                   std::string* err_msg) const {
   CHECK_NOTNULL(buffer_);
-  return buffer_->canTransform(target_frame_id, source_frame_id, query_time,
-                               timeout_sec, err_msg);
+  std::string local_error;
+  std::string* error = err_msg != nullptr ? err_msg : &local_error;
+  const bool success = buffer_->canTransform(
+      target_frame_id, source_frame_id, query_time, timeout_sec, error);
+  RecordCanTransform(success, *error);
+  return success;
 }
 
 bool TransformQuery::CanTransform(const std::string& target_frame_id,
@@ -46,9 +99,13 @@ bool TransformQuery::CanTransform(const std::string& target_frame_id,
                                   float timeout_sec,
                                   std::string* err_msg) const {
   CHECK_NOTNULL(buffer_);
-  return buffer_->canTransform(target_frame_id, target_time, source_frame_id,
-                               source_time, fixed_frame_id, timeout_sec,
-                               err_msg);
+  std::string local_error;
+  std::string* error = err_msg != nullptr ? err_msg : &local_error;
+  const bool success = buffer_->canTransform(
+      target_frame_id, target_time, source_frame_id, source_time,
+      fixed_frame_id, timeout_sec, error);
+  RecordCanTransform(success, *error);
+  return success;
 }
 
 bool TransformQuery::LookupTransform(const std::string& target_frame_id,
@@ -67,9 +124,11 @@ bool TransformQuery::LookupTransform(const std::string& target_frame_id,
     if (err_msg != nullptr) {
       *err_msg = ex.what();
     }
+    RecordLookupTransform(false, ex.what());
     return false;
   }
 
+  RecordLookupTransform(true, "");
   return true;
 }
 
@@ -89,9 +148,11 @@ bool TransformQuery::LookupTransform(
     if (err_msg != nullptr) {
       *err_msg = ex.what();
     }
+    RecordLookupTransform(false, ex.what());
     return false;
   }
 
+  RecordLookupTransform(true, "");
   return true;
 }
 
@@ -106,10 +167,12 @@ bool TransformQuery::LookupTransformToAffine(const std::string& target_frame_id,
   TransformStamped stamped_transform;
   if (!LookupTransform(target_frame_id, source_frame_id, query_time,
                        &stamped_transform, timeout_sec, err_msg)) {
+    RecordAffineLookup(false, err_msg != nullptr ? *err_msg : "");
     return false;
   }
 
   *transform = ToAffine(stamped_transform);
+  RecordAffineLookup(true, "");
   return true;
 }
 
@@ -124,10 +187,12 @@ bool TransformQuery::LookupTransformToAffine(
   if (!LookupTransform(target_frame_id, target_time, source_frame_id,
                        source_time, fixed_frame_id, &stamped_transform,
                        timeout_sec, err_msg)) {
+    RecordAffineLookup(false, err_msg != nullptr ? *err_msg : "");
     return false;
   }
 
   *transform = ToAffine(stamped_transform);
+  RecordAffineLookup(true, "");
   return true;
 }
 
@@ -136,8 +201,10 @@ bool TransformQuery::GetLatestStaticTransform(
     TransformStamped* transform) const {
   CHECK_NOTNULL(transform);
   CHECK_NOTNULL(buffer_);
-  return buffer_->GetLatestStaticTransform(target_frame_id, source_frame_id,
-                                           transform);
+  const bool success = buffer_->GetLatestStaticTransform(
+      target_frame_id, source_frame_id, transform);
+  RecordStaticLookup(success, success ? "" : "static transform not found");
+  return success;
 }
 
 bool TransformQuery::GetLatestStaticTransformToAffine(
@@ -145,20 +212,41 @@ bool TransformQuery::GetLatestStaticTransformToAffine(
     Eigen::Affine3d* transform) const {
   CHECK_NOTNULL(transform);
 
-  // If target and source frame are identical, the transform is identity.
-  if (target_frame_id == source_frame_id) {
-    *transform = Eigen::Affine3d::Identity();
-    return true;
-  }
-
   TransformStamped stamped_transform;
   if (!GetLatestStaticTransform(target_frame_id, source_frame_id,
                                 &stamped_transform)) {
+    RecordAffineLookup(false, "static transform not found");
     return false;
   }
 
   *transform = ToAffine(stamped_transform);
+  RecordAffineLookup(true, "");
   return true;
+}
+
+TransformQueryDiagnostics TransformQuery::GetDiagnosticsSnapshot() const {
+  TransformQueryDiagnostics diag;
+  diag.can_transform_calls =
+      can_transform_calls_.load(std::memory_order_relaxed);
+  diag.can_transform_success =
+      can_transform_success_.load(std::memory_order_relaxed);
+  diag.lookup_transform_calls =
+      lookup_transform_calls_.load(std::memory_order_relaxed);
+  diag.lookup_transform_success =
+      lookup_transform_success_.load(std::memory_order_relaxed);
+  diag.affine_lookup_calls =
+      affine_lookup_calls_.load(std::memory_order_relaxed);
+  diag.affine_lookup_success =
+      affine_lookup_success_.load(std::memory_order_relaxed);
+  diag.static_lookup_calls =
+      static_lookup_calls_.load(std::memory_order_relaxed);
+  diag.static_lookup_success =
+      static_lookup_success_.load(std::memory_order_relaxed);
+  {
+    std::lock_guard<std::mutex> lock(error_mutex_);
+    diag.last_error = last_error_;
+  }
+  return diag;
 }
 
 Eigen::Affine3d TransformQuery::ToAffine(const TransformStamped& transform) {
