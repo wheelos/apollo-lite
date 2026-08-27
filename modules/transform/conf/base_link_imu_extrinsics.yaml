@@ -1,4 +1,4 @@
-child_frame_id: imu_link
+child_frame_id: base_link
 transform:
   translation:
     x: 0.0
@@ -14,4 +14,4 @@ header:
   stamp:
     secs: 0
     nsecs: 0
-  frame_id: base_link
+  frame_id: imu

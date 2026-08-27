@@ -12,6 +12,7 @@ cc_library(
     hdrs = [
         "buffer.h",
         "buffer_interface.h",
+        "transform_diagnostics.h",
     ],
     deps = [
         ":buffer_interface",
@@ -24,48 +25,40 @@ cc_library(
 )
 
 cc_library(
-    name = "transform_query_core",
+    name = "transform_query",
     srcs = ["transform_query.cc"],
     hdrs = ["transform_query.h"],
     deps = [
+        ":buffer",
+        ":buffer_interface",
         "@core//cyber/common:log",
         "@core//cyber/time:time",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
-        "//modules/transform:buffer_interface",
         "//third_party/tf2",
         "@eigen",
     ],
 )
 
 cc_library(
-    name = "transform_query",
-    srcs = ["transform_query_default.cc"],
-    deps = [
-        ":buffer",
-        ":transform_query_core",
-    ],
-)
-
-cc_library(
     name = "timed_transform_resolver",
-    srcs = [
-        "pose_cache.cc",
-        "timed_transform_resolver.cc",
-    ],
+    srcs = ["timed_transform_resolver.cc"],
     hdrs = ["timed_transform_resolver.h"],
     deps = [
+        ":transform_query",
         "@core//cyber/common:global_data",
         "@core//cyber/common:log",
         "@core//cyber/time:time",
         "//modules/common/util:string_util",
-        "//modules/transform:transform_query_core",
         "@eigen",
     ],
 )
 
 cc_library(
     name = "buffer_interface",
-    hdrs = ["buffer_interface.h"],
+    hdrs = [
+        "buffer_interface.h",
+        "transform_diagnostics.h",
+    ],
     deps = [
         "@core//cyber/time:time",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
@@ -79,7 +72,7 @@ cc_test(
     srcs = ["transform_query_test.cc"],
     deps = [
         ":buffer_interface",
-        ":transform_query_core",
+        ":transform_query",
         "//third_party/tf2",
         "@com_google_googletest//:gtest_main",
         "@eigen",
@@ -89,16 +82,16 @@ cc_test(
 cc_test(
     name = "timed_transform_resolver_test",
     size = "small",
-    srcs = [
-        "pose_cache_test.cc",
-        "timed_transform_resolver_test.cc",
+    srcs = ["timed_transform_resolver_test.cc"],
+    data = [
+        "@core//cyber:cyber_conf",
     ],
     deps = [
         ":buffer_interface",
         ":timed_transform_resolver",
-        ":transform_query_core",
-        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
+        ":transform_query",
         "@com_google_googletest//:gtest_main",
+        "@bazel_tools//tools/cpp/runfiles",
         "@eigen",
     ],
 )
@@ -136,6 +129,9 @@ cc_test(
     name = "static_transform_component_test",
     size = "small",
     srcs = ["static_transform_component_test.cc"],
+    data = [
+        "@core//cyber:cyber_conf",
+    ],
     deps = [
         ":static_transform_component_lib",
         "@com_google_googletest//:gtest_main",
@@ -171,6 +167,7 @@ filegroup(
     name = "runtime_data",
     srcs = glob([
         "conf/*.txt",
+        "conf/*.yaml",
         "dag/*.dag",
         "launch/*.launch",
     ]),

@@ -16,6 +16,9 @@
 
 #include "modules/transform/transform_broadcaster.h"
 
+#include <memory>
+#include <vector>
+
 #include "modules/common/adapters/adapter_gflags.h"
 
 namespace apollo {

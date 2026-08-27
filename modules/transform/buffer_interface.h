@@ -16,14 +16,14 @@
 
 #pragma once
 
+#include <algorithm>
 #include <string>
 
-#include "tf2/buffer_core.h"
-#include "tf2/buffer_core.h"
 #include "tf2/convert.h"
 #include "wheelos_msgs/transform_msgs/transform.pb.h"
 
 #include "cyber/time/time.h"
+#include "modules/transform/transform_diagnostics.h"
 
 namespace apollo {
 namespace transform {
@@ -109,6 +109,10 @@ class BufferInterface {
   virtual bool GetLatestStaticTransform(const std::string& target_frame,
                                         const std::string& source_frame,
                                         TransformStamped* transform) const = 0;
+
+  virtual TransformBufferDiagnostics GetDiagnosticsSnapshot() const {
+    return TransformBufferDiagnostics();
+  }
 
   // Transform, simple api, with pre-allocation
   template <typename T>

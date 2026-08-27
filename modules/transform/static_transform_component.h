@@ -45,7 +45,5 @@ class StaticTransformComponent final : public apollo::cyber::Component<> {
   TransformStampeds transform_stampeds_;
 };
 
-CYBER_REGISTER_COMPONENT(StaticTransformComponent)
-
 }  // namespace transform
 }  // namespace apollo
