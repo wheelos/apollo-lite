@@ -17,9 +17,11 @@
 #include "modules/transform/timed_transform_resolver.h"
 
 #include <cstdlib>
+#include <memory>
 #include <string>
 
 #include "gtest/gtest.h"
+#include "tools/cpp/runfiles/runfiles.h"
 
 #include "modules/transform/buffer_interface.h"
 
@@ -191,7 +193,18 @@ TEST(TimedTransformResolverTest, ResolveUsesInjectedTransformQueryOnce) {
 }
 
 TEST(TimedTransformResolverTest, DiagnosticsTrackLatestFallback) {
-  setenv("CYBER_PATH", "cyber", 1);
+  std::string runfiles_error;
+  std::unique_ptr<bazel::tools::cpp::runfiles::Runfiles> runfiles(
+      bazel::tools::cpp::runfiles::Runfiles::CreateForTest(
+          BAZEL_CURRENT_REPOSITORY, &runfiles_error));
+  ASSERT_NE(runfiles, nullptr) << runfiles_error;
+  const std::string cyber_config = runfiles->Rlocation(
+      "core/cyber/conf/cyber.pb.conf", BAZEL_CURRENT_REPOSITORY);
+  ASSERT_FALSE(cyber_config.empty());
+  const std::string cyber_path =
+      cyber_config.substr(0, cyber_config.size() - std::string(
+          "/conf/cyber.pb.conf").size());
+  setenv("CYBER_PATH", cyber_path.c_str(), 1);
 
   FakeBuffer buffer;
   TransformQuery query(&buffer);

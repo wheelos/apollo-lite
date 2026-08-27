@@ -73,9 +73,8 @@ cc_test(
     deps = [
         ":buffer_interface",
         ":transform_query",
-        "//cyber:gtest_exit_main",
         "//third_party/tf2",
-        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
         "@eigen",
     ],
 )
@@ -84,12 +83,15 @@ cc_test(
     name = "timed_transform_resolver_test",
     size = "small",
     srcs = ["timed_transform_resolver_test.cc"],
+    data = [
+        "@core//cyber:cyber_conf",
+    ],
     deps = [
         ":buffer_interface",
         ":timed_transform_resolver",
         ":transform_query",
-        "//cyber:gtest_exit_main",
-        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+        "@bazel_tools//tools/cpp/runfiles",
         "@eigen",
     ],
 )
@@ -128,12 +130,11 @@ cc_test(
     size = "small",
     srcs = ["static_transform_component_test.cc"],
     data = [
-        "//cyber:cyber_conf",
+        "@core//cyber:cyber_conf",
     ],
     deps = [
         ":static_transform_component_lib",
-        "//cyber:gtest_exit_main",
-        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
