@@ -1,0 +1,76 @@
+syntax = "proto2";
+
+package apollo.lidar_semantic_segmentation;
+
+import "wheelos_msgs/basic_msgs/header.proto";
+
+message RangeProjectionConfig {
+  optional uint32 width = 1 [default = 1024];
+  optional uint32 height = 2 [default = 64];
+  optional float fov_up_degrees = 3 [default = 3.0];
+  optional float fov_down_degrees = 4 [default = -25.0];
+  repeated float channel_mean = 5;
+  repeated float channel_std = 6;
+  optional uint32 max_points = 7 [default = 150000];
+}
+
+message TensorConfig {
+  optional string input_tensor_name = 1 [default = "input"];
+  optional string output_tensor_name = 2 [default = "output"];
+  optional uint32 num_classes = 3 [default = 20];
+  optional string output_layout = 4 [default = "NHWC"];
+}
+
+message LidarSemanticSegmentationComponentConfig {
+  optional string engine_path = 1;
+  optional int32 gpu_device_id = 2 [default = 0];
+  optional string sensor_name = 3 [default = "HDL64"];
+  optional string source_topic = 4;
+  optional string output_channel = 5
+      [default = "/perception/lidar_semantic_segmentation"];
+  optional RangeProjectionConfig projection = 6;
+  optional TensorConfig tensor = 7;
+}
+
+enum SemanticLabel {
+  SEMANTIC_LABEL_UNKNOWN = 0;
+  SEMANTIC_LABEL_CAR = 1;
+  SEMANTIC_LABEL_BICYCLE = 2;
+  SEMANTIC_LABEL_MOTORCYCLE = 3;
+  SEMANTIC_LABEL_TRUCK = 4;
+  SEMANTIC_LABEL_OTHER_VEHICLE = 5;
+  SEMANTIC_LABEL_PERSON = 6;
+  SEMANTIC_LABEL_BICYCLIST = 7;
+  SEMANTIC_LABEL_MOTORCYCLIST = 8;
+  SEMANTIC_LABEL_ROAD = 9;
+  SEMANTIC_LABEL_PARKING = 10;
+  SEMANTIC_LABEL_SIDEWALK = 11;
+  SEMANTIC_LABEL_OTHER_GROUND = 12;
+  SEMANTIC_LABEL_BUILDING = 13;
+  SEMANTIC_LABEL_FENCE = 14;
+  SEMANTIC_LABEL_VEGETATION = 15;
+  SEMANTIC_LABEL_TRUNK = 16;
+  SEMANTIC_LABEL_TERRAIN = 17;
+  SEMANTIC_LABEL_POLE = 18;
+  SEMANTIC_LABEL_TRAFFIC_SIGN = 19;
+}
+
+message PointSemanticLabel {
+  optional uint32 point_index = 1;
+  optional uint32 semantic_label = 2;
+  optional float confidence = 3;
+  optional int32 range_image_x = 4 [default = -1];
+  optional int32 range_image_y = 5 [default = -1];
+}
+
+message LidarSemanticSegmentationResult {
+  optional apollo.common.Header header = 1;
+  optional string source_topic = 2;
+  optional string source_frame_id = 3;
+  optional string sensor_name = 4;
+  optional uint32 point_count = 5;
+  optional uint32 range_image_width = 6;
+  optional uint32 range_image_height = 7;
+  optional uint32 num_classes = 8;
+  repeated PointSemanticLabel point_label = 9;
+}
