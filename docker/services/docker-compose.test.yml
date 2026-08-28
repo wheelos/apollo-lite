@@ -2,6 +2,8 @@ services:
   core:
     container_name: ${CONTAINER_NAME}
     privileged: false
+    security_opt:
+      - seccomp:unconfined
     dns:
       - 8.8.8.8
       - 1.1.1.1
