@@ -1,0 +1,15 @@
+module_config {
+  module_library : "/apollo/bazel-bin/modules/lane/liblane_component_plugin.so"
+
+  components {
+    class_name : "LaneDetectionComponent"
+    config {
+      name : "ufldv2_lane"
+      config_file_path : "/apollo/modules/lane/conf/ufldv2_lane.pb.txt"
+      readers {
+        channel : "/apollo/sensor/camera/front_6mm/image"
+        pending_queue_size : 1
+      }
+    }
+  }
+}

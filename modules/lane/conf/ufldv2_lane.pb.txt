@@ -1,0 +1,16 @@
+engine_path: "/apollo/modules/lane/data/ufldv2_culane_resnet34.engine"
+gpu_device_id: 0
+camera_name: "front_6mm"
+camera_frame_id: "front_6mm"
+vehicle_frame_id: "novatel"
+require_camera_to_vehicle_transform: true
+transform_timeout_sec: 0.01
+source_topic: "/apollo/sensor/camera/front_6mm/image"
+output_channel: "/perception/lanes"
+use_static_pitch: true
+static_pitch_radians: 0.0
+camera_height_meters: 1.5
+focal_x: 1900.0
+focal_y: 1900.0
+principal_x: 960.0
+principal_y: 540.0
