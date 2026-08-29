@@ -140,6 +140,60 @@ def optional_header_value(message, field_name):
     return getattr(header, field_name)
 
 
+class SourceManifest:
+    def __init__(self, path):
+        self.path = Path(path) if path else None
+        self.offset = 0
+        self.by_sequence = {}
+
+    def lookup(self, sequence_num):
+        if self.path is None:
+            return None
+        if self.path.exists():
+            with self.path.open(encoding="utf-8") as source:
+                source.seek(self.offset)
+                while True:
+                    line = source.readline()
+                    if not line:
+                        break
+                    record = json.loads(line)
+                    self.by_sequence[record["sequence_num"]] = record
+                self.offset = source.tell()
+        return self.by_sequence.get(sequence_num)
+
+
+def lane_record(lane):
+    return {
+        "track_id": lane.track_id,
+        "confidence": lane.confidence,
+        "position_type": lane.pos_type,
+        "image_points": [
+            [point.x, point.y] for point in lane.curve_image_point_set
+        ],
+    }
+
+
+def prediction_relative_path(relative_image_path):
+    path = Path(relative_image_path)
+    if path.is_absolute() or ".." in path.parts:
+        raise ValueError(f"unsafe relative image path: {relative_image_path}")
+    return path.with_suffix(".lines.txt")
+
+
+def write_culane_prediction(lanes, relative_image_path, output_dir):
+    output_path = Path(output_dir) / prediction_relative_path(
+        relative_image_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("x", encoding="utf-8") as output:
+        for lane in lanes.camera_laneline:
+            values = []
+            for point in lane.curve_image_point_set:
+                values.extend((f"{point.x:.3f}", f"{point.y:.3f}"))
+            if values:
+                output.write(" ".join(values) + "\n")
+    return output_path
+
+
 class LaneDebugVisualizer:
     def __init__(self, args, image_type, lane_type, cyber):
         self.args = args
@@ -153,6 +207,8 @@ class LaneDebugVisualizer:
         self.saved_count = 0
         self.output_dir = Path(args.output_dir)
         self.manifest_path = self.output_dir / "manifest.jsonl"
+        self.predictions_path = self.output_dir / "predictions.jsonl"
+        self.source_manifest = SourceManifest(args.source_manifest)
 
     def _store(self, cache, key, message):
         cache[key] = message
@@ -180,16 +236,51 @@ class LaneDebugVisualizer:
                 self.stop_event.set()
                 return
             self.saved_count += 1
-        output_path = self.output_dir / f"lane_{key}.ppm"
-        try:
-            render_overlay(image, lanes, output_path)
-        except FileExistsError:
-            print(f"refusing to overwrite existing overlay: {output_path}", file=sys.stderr)
+        output_path = None
+        if not self.args.no_overlay:
+            output_path = self.output_dir / f"lane_{key}.ppm"
+            try:
+                render_overlay(image, lanes, output_path)
+            except FileExistsError:
+                print(
+                    f"refusing to overwrite existing overlay: {output_path}",
+                    file=sys.stderr)
+                self.stop_event.set()
+                return
+            except ValueError as error:
+                print(f"skipping timestamp {key}: {error}", file=sys.stderr)
+                return
+        sequence_num = optional_header_value(lanes, "sequence_num")
+        source = self.source_manifest.lookup(sequence_num)
+        if self.args.source_manifest and source is None:
+            print(
+                f"missing source manifest entry for sequence {sequence_num}",
+                file=sys.stderr)
             self.stop_event.set()
             return
-        except ValueError as error:
-            print(f"skipping timestamp {key}: {error}", file=sys.stderr)
+        if source is not None and source["camera_timestamp_ns"] != key:
+            print(
+                f"source manifest timestamp mismatch for sequence "
+                f"{sequence_num}: {source['camera_timestamp_ns']} != {key}",
+                file=sys.stderr)
+            self.stop_event.set()
             return
+        culane_path = None
+        if self.args.culane_output_dir:
+            if source is None:
+                print(
+                    "--culane-output-dir requires --source-manifest",
+                    file=sys.stderr)
+                self.stop_event.set()
+                return
+            try:
+                culane_path = write_culane_prediction(
+                    lanes, source["relative_path"],
+                    self.args.culane_output_dir)
+            except (FileExistsError, ValueError) as error:
+                print(f"unable to write CULane result: {error}", file=sys.stderr)
+                self.stop_event.set()
+                return
         record = {
             "camera_timestamp_ns": key,
             "image_header_camera_timestamp_ns": optional_header_value(
@@ -204,11 +295,27 @@ class LaneDebugVisualizer:
             "lane_header_frame_id": optional_header_value(lanes, "frame_id"),
             "image_frame_id": image.frame_id,
             "lane_count": len(lanes.camera_laneline),
-            "path": str(output_path),
+            "path": str(output_path) if output_path is not None else None,
+            "source_path": source["source_path"] if source else None,
+            "relative_path": source["relative_path"] if source else None,
+            "culane_prediction_path": (
+                str(culane_path) if culane_path is not None else None),
         }
         with self.manifest_path.open("a", encoding="utf-8") as manifest:
             manifest.write(json.dumps(record, sort_keys=True) + "\n")
-        print(f"saved {output_path} ({record['lane_count']} lanes)", flush=True)
+        prediction = {
+            "camera_timestamp_ns": key,
+            "sequence_num": sequence_num,
+            "source_path": record["source_path"],
+            "relative_path": record["relative_path"],
+            "lanes": [lane_record(lane) for lane in lanes.camera_laneline],
+        }
+        with self.predictions_path.open("a", encoding="utf-8") as predictions:
+            predictions.write(json.dumps(prediction, sort_keys=True) + "\n")
+        print(
+            f"saved pair {key} ({record['lane_count']} lanes"
+            f"{', no overlay' if output_path is None else ''})",
+            flush=True)
 
     def on_image(self, image):
         key = timestamp_ns(image.measurement_time)
@@ -281,10 +388,21 @@ def parse_args():
     parser.add_argument("--max-frames", type=int, default=50)
     parser.add_argument("--max-pending", type=int, default=256)
     parser.add_argument("--node-name", default="whl_lane_debug_visualizer")
+    parser.add_argument(
+        "--source-manifest",
+        help="Publisher manifest used to recover source dataset paths.")
+    parser.add_argument(
+        "--culane-output-dir",
+        help="Write CULane-compatible *.lines.txt predictions under this path.")
+    parser.add_argument(
+        "--no-overlay", action="store_true",
+        help="Export paired predictions without rendering PPM overlays.")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.max_frames <= 0 or args.max_pending <= 0:
         parser.error("--max-frames and --max-pending must be positive")
+    if args.culane_output_dir and not args.source_manifest:
+        parser.error("--culane-output-dir requires --source-manifest")
     return args
 
 

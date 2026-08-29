@@ -22,6 +22,8 @@ cc_library(
     deps = [
         ":image_frame",
         ":lane_types",
+        "@opencv//:core",
+        "@opencv//:imgproc",
     ],
 )
 

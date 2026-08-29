@@ -26,6 +26,9 @@
 #include <utility>
 #include <vector>
 
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+
 namespace apollo {
 namespace lane {
 
@@ -438,40 +441,28 @@ bool Ufldv2Detector::Preprocess(const ImageView& image,
   input->assign(kUfldv2InputElementCount, 0.0F);
   constexpr std::array<float, 3> kMean = {0.485F, 0.456F, 0.406F};
   constexpr std::array<float, 3> kStd = {0.229F, 0.224F, 0.225F};
-  for (int output_y = 0; output_y < kUfldv2ModelHeight; ++output_y) {
-    const double source_y = static_cast<double>(crop_y) +
-                            static_cast<double>(output_y) *
-                                static_cast<double>(crop_height - 1U) /
-                                static_cast<double>(kUfldv2ModelHeight - 1);
-    const uint32_t y0 = static_cast<uint32_t>(source_y);
-    const uint32_t y1 = std::min(y0 + 1U, image.height - 1U);
-    const float y_fraction = static_cast<float>(source_y - y0);
-    for (int output_x = 0; output_x < kUfldv2ModelWidth; ++output_x) {
-      const double source_x = static_cast<double>(output_x) *
-                              static_cast<double>(image.width - 1U) /
-                              static_cast<double>(kUfldv2ModelWidth - 1);
-      const uint32_t x0 = static_cast<uint32_t>(source_x);
-      const uint32_t x1 = std::min(x0 + 1U, image.width - 1U);
-      const float x_fraction = static_cast<float>(source_x - x0);
-      for (size_t channel = 0; channel < 3U; ++channel) {
-        const size_t source_channel =
-            image.encoding == ImageEncoding::kRgb8 ? channel : 2U - channel;
-        const auto sample = [&image, source_channel](uint32_t y, uint32_t x) {
-          return static_cast<float>(
-              image.bytes[(static_cast<size_t>(y) * image.width + x) * 3U +
-                          source_channel]);
-        };
-        const float top =
-            sample(y0, x0) + (sample(y0, x1) - sample(y0, x0)) * x_fraction;
-        const float bottom =
-            sample(y1, x0) + (sample(y1, x1) - sample(y1, x0)) * x_fraction;
-        const float value = top + (bottom - top) * y_fraction;
-        (*input)[channel * kUfldv2ModelHeight * kUfldv2ModelWidth +
-                 static_cast<size_t>(output_y) * kUfldv2ModelWidth +
-                 static_cast<size_t>(output_x)] =
-            (value / 255.0F - kMean[channel]) / kStd[channel];
-      }
-    }
+  cv::Mat source(
+      static_cast<int>(image.height), static_cast<int>(image.width), CV_8UC3,
+      const_cast<uint8_t*>(image.bytes));
+  cv::Mat resized;
+  cv::resize(
+      source(cv::Rect(0, static_cast<int>(crop_y),
+                      static_cast<int>(image.width),
+                      static_cast<int>(crop_height))),
+      resized, cv::Size(kUfldv2ModelWidth, kUfldv2ModelHeight), 0.0, 0.0,
+      cv::INTER_LINEAR);
+  std::vector<cv::Mat> source_channels;
+  cv::split(resized, source_channels);
+  const size_t plane_size =
+      static_cast<size_t>(kUfldv2ModelHeight) * kUfldv2ModelWidth;
+  for (size_t channel = 0; channel < 3U; ++channel) {
+    const size_t source_channel =
+        image.encoding == ImageEncoding::kRgb8 ? channel : 2U - channel;
+    cv::Mat destination(kUfldv2ModelHeight, kUfldv2ModelWidth, CV_32FC1,
+                        input->data() + channel * plane_size);
+    source_channels[source_channel].convertTo(
+        destination, CV_32FC1, 1.0 / (255.0 * kStd[channel]),
+        -kMean[channel] / kStd[channel]);
   }
   return true;
 }

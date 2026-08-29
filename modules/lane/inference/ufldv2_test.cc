@@ -84,6 +84,61 @@ ImageView MakeImage(std::vector<uint8_t>* bytes) {
   return image;
 }
 
+TEST(Ufldv2PreprocessTest, NormalizesRgbChannelsIntoChwPlanes) {
+  std::vector<uint8_t> bytes(4U * 4U * 3U);
+  for (size_t index = 0; index < bytes.size(); index += 3U) {
+    bytes[index] = 255U;
+    bytes[index + 1U] = 128U;
+    bytes[index + 2U] = 0U;
+  }
+  ImageView image;
+  image.bytes = bytes.data();
+  image.byte_count = bytes.size();
+  image.width = 4U;
+  image.height = 4U;
+  image.encoding = ImageEncoding::kRgb8;
+  image.camera_name = "front";
+
+  std::vector<float> input;
+  ASSERT_TRUE(Ufldv2Detector::Preprocess(image, &input));
+  ASSERT_EQ(input.size(), kUfldv2InputElementCount);
+  const size_t plane_size =
+      static_cast<size_t>(kUfldv2ModelWidth) * kUfldv2ModelHeight;
+  EXPECT_NEAR(input[0], (1.0F - 0.485F) / 0.229F, 1.0e-5F);
+  EXPECT_NEAR(input[plane_size], (128.0F / 255.0F - 0.456F) / 0.224F,
+              1.0e-5F);
+  EXPECT_NEAR(input[2U * plane_size], (0.0F - 0.406F) / 0.225F, 1.0e-5F);
+}
+
+TEST(Ufldv2PreprocessTest, ConvertsBgrInputToRgbPlanes) {
+  std::vector<uint8_t> rgb_bytes(4U * 4U * 3U);
+  std::vector<uint8_t> bgr_bytes(4U * 4U * 3U);
+  for (size_t index = 0; index < rgb_bytes.size(); index += 3U) {
+    rgb_bytes[index] = 200U;
+    rgb_bytes[index + 1U] = 100U;
+    rgb_bytes[index + 2U] = 20U;
+    bgr_bytes[index] = 20U;
+    bgr_bytes[index + 1U] = 100U;
+    bgr_bytes[index + 2U] = 200U;
+  }
+  ImageView rgb;
+  rgb.bytes = rgb_bytes.data();
+  rgb.byte_count = rgb_bytes.size();
+  rgb.width = 4U;
+  rgb.height = 4U;
+  rgb.encoding = ImageEncoding::kRgb8;
+  rgb.camera_name = "front";
+  ImageView bgr = rgb;
+  bgr.bytes = bgr_bytes.data();
+  bgr.encoding = ImageEncoding::kBgr8;
+
+  std::vector<float> rgb_input;
+  std::vector<float> bgr_input;
+  ASSERT_TRUE(Ufldv2Detector::Preprocess(rgb, &rgb_input));
+  ASSERT_TRUE(Ufldv2Detector::Preprocess(bgr, &bgr_input));
+  EXPECT_EQ(rgb_input, bgr_input);
+}
+
 TEST(Ufldv2DecoderTest, DecodesRowAnchorsIntoSourceCoordinates) {
   std::vector<uint8_t> bytes;
   const ImageView image = MakeImage(&bytes);
