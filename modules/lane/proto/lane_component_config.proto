@@ -1,0 +1,30 @@
+syntax = "proto2";
+
+package apollo.lane;
+
+message LaneComponentConfig {
+  optional string engine_path = 1;
+  optional int32 gpu_device_id = 2 [default = 0];
+  optional string input_tensor_name = 3 [default = "input"];
+  optional string loc_row_tensor_name = 4 [default = "loc_row"];
+  optional string loc_col_tensor_name = 5 [default = "loc_col"];
+  optional string exist_row_tensor_name = 6 [default = "exist_row"];
+  optional string exist_col_tensor_name = 7 [default = "exist_col"];
+
+  optional string camera_name = 8;
+  optional string camera_frame_id = 9;
+  optional string vehicle_frame_id = 10 [default = "novatel"];
+  optional bool require_camera_to_vehicle_transform = 11 [default = true];
+  optional float transform_timeout_sec = 12 [default = 0.01];
+
+  optional string source_topic = 13;
+  optional string output_channel = 14 [default = "/perception/lanes"];
+
+  optional bool use_static_pitch = 15 [default = true];
+  optional float static_pitch_radians = 16 [default = 0.0];
+  optional float camera_height_meters = 17;
+  optional float focal_x = 18;
+  optional float focal_y = 19;
+  optional float principal_x = 20;
+  optional float principal_y = 21;
+}
