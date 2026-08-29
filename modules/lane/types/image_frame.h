@@ -36,6 +36,9 @@ struct ImageView {
   uint32_t height = 0;
   ImageEncoding encoding = ImageEncoding::kRgb8;
   double timestamp_sec = 0.0;
+  uint64_t camera_timestamp_ns = 0;
+  uint32_t sequence_num = 0;
+  std::string frame_id;
   std::string camera_name;
 
   static bool ExpectedByteCount(uint32_t width, uint32_t height,

@@ -37,6 +37,7 @@ nohup.out
 
 # Data
 /data
+modules/lane/data/*.engine
 modules/tools/ota/update.ini
 modules/tools/ota/vehicle_info.pb.txt
 docker/build/syspkgs.txt

@@ -18,6 +18,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace apollo {
@@ -65,6 +66,9 @@ struct LaneLineResult {
 
 struct LaneDetectionResult {
   double timestamp_sec = 0.0;
+  uint64_t camera_timestamp_ns = 0;
+  uint32_t sequence_num = 0;
+  std::string frame_id;
   float calibration_pitch_radians = 0.0F;
   float camera_height_meters = 0.0F;
   std::vector<LaneLineResult> lanes;

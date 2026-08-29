@@ -397,6 +397,9 @@ bool Ufldv2Decoder::Decode(const ImageView& image,
             });
 
   result->timestamp_sec = image.timestamp_sec;
+  result->camera_timestamp_ns = image.camera_timestamp_ns;
+  result->sequence_num = image.sequence_num;
+  result->frame_id = image.frame_id;
   result->lanes.clear();
   result->lanes.reserve(kept.size());
   for (const Candidate& candidate : kept) {
@@ -433,8 +436,8 @@ bool Ufldv2Detector::Preprocess(const ImageView& image,
     return false;
   }
   input->assign(kUfldv2InputElementCount, 0.0F);
-  constexpr std::array<float, 3> kMean = {0.3598F, 0.3653F, 0.3662F};
-  constexpr std::array<float, 3> kStd = {0.2573F, 0.2663F, 0.2756F};
+  constexpr std::array<float, 3> kMean = {0.485F, 0.456F, 0.406F};
+  constexpr std::array<float, 3> kStd = {0.229F, 0.224F, 0.225F};
   for (int output_y = 0; output_y < kUfldv2ModelHeight; ++output_y) {
     const double source_y = static_cast<double>(crop_y) +
                             static_cast<double>(output_y) *

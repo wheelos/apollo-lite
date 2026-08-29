@@ -127,6 +127,24 @@ bool LaneDetectionComponent::MakeImageView(
   image_view->height = message.height();
   image_view->encoding = encoding;
   image_view->timestamp_sec = message.measurement_time();
+  if (message.has_header()) {
+    const auto& header = message.header();
+    if (header.has_camera_timestamp()) {
+      image_view->camera_timestamp_ns = header.camera_timestamp();
+    }
+    if (header.has_sequence_num()) {
+      image_view->sequence_num = header.sequence_num();
+    }
+  }
+  if (image_view->camera_timestamp_ns == 0) {
+    ToCameraTimestamp(image_view->timestamp_sec,
+                      &image_view->camera_timestamp_ns);
+  }
+  image_view->frame_id = message.frame_id();
+  if (image_view->frame_id.empty() && message.has_header() &&
+      message.header().has_frame_id()) {
+    image_view->frame_id = message.header().frame_id();
+  }
   image_view->camera_name = config_.camera_name();
   std::string error;
   if (!image_view->Validate(&error)) {
@@ -143,9 +161,20 @@ bool LaneDetectionComponent::Serialize(
     return false;
   }
   message->set_source_topic(config_.source_topic());
+  auto* header = message->mutable_header();
+  header->set_timestamp_sec(result.timestamp_sec);
+  header->set_module_name("lane_detection");
+  if (result.sequence_num != 0U) {
+    header->set_sequence_num(result.sequence_num);
+  }
+  if (!result.frame_id.empty()) {
+    header->set_frame_id(result.frame_id);
+  }
   uint64_t timestamp_ns = 0;
-  if (ToCameraTimestamp(result.timestamp_sec, &timestamp_ns)) {
-    message->mutable_header()->set_camera_timestamp(timestamp_ns);
+  if (result.camera_timestamp_ns != 0U) {
+    header->set_camera_timestamp(result.camera_timestamp_ns);
+  } else if (ToCameraTimestamp(result.timestamp_sec, &timestamp_ns)) {
+    header->set_camera_timestamp(timestamp_ns);
   }
   message->mutable_camera_calibrator()->set_pitch_angle(
       result.calibration_pitch_radians);
