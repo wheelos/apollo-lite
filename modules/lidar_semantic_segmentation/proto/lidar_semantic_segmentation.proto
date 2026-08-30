@@ -12,6 +12,7 @@ message RangeProjectionConfig {
   repeated float channel_mean = 5;
   repeated float channel_std = 6;
   optional uint32 max_points = 7 [default = 150000];
+  optional float intensity_scale = 8 [default = 1.0];
 }
 
 message TensorConfig {

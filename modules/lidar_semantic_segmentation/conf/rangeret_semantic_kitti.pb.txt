@@ -1,7 +1,7 @@
-engine_path: "/apollo/modules/lidar_semantic_segmentation/data/rangeret_semantickitti.engine"
+engine_path: "/apollo/modules/lidar_semantic_segmentation/data/rangeret-kitti-657.engine"
 gpu_device_id: 0
 sensor_name: "HDL64"
-source_topic: "/apollo/sensor/lidar128/compensator/PointCloud2"
+source_topic: "/apollo/sensor/velodyne64/compensator/PointCloud2"
 output_channel: "/perception/lidar_semantic_segmentation"
 projection {
   width: 1024
@@ -19,6 +19,7 @@ projection {
   channel_std: 0.86
   channel_std: 0.16
   max_points: 150000
+  intensity_scale: 0.00392156863
 }
 tensor {
   input_tensor_name: "input"

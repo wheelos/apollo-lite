@@ -72,9 +72,34 @@ TEST(RangeImageProjectorTest, KeepsNearestPointForRangeImagePixel) {
   EXPECT_EQ(image.points[0].y, image.points[1].y);
 }
 
+TEST(RangeImageProjectorTest, ScalesApolloIntensityForRangeRet) {
+  RangeImageProjectionOptions options = TestOptions();
+  options.intensity_scale = 1.0F / 255.0F;
+  RangeImageProjector projector;
+  std::string error;
+  ASSERT_TRUE(projector.Init(options, &error)) << error;
+
+  apollo::drivers::PointCloud cloud;
+  AddPoint(1.0F, 0.0F, 0.0F, 255U, &cloud);
+  RangeImage image;
+  ASSERT_TRUE(projector.Project(cloud, &image, &error)) << error;
+
+  const std::size_t pixel = 2U * 8U + 4U;
+  EXPECT_FLOAT_EQ(image.input_chw[4U * image.PixelCount() + pixel], 1.0F);
+}
+
 TEST(RangeImageProjectorTest, RejectsInvalidConfiguration) {
   RangeImageProjectionOptions options = TestOptions();
   options.channel_std[2] = 0.0F;
+  RangeImageProjector projector;
+  std::string error;
+  EXPECT_FALSE(projector.Init(options, &error));
+  EXPECT_FALSE(error.empty());
+}
+
+TEST(RangeImageProjectorTest, RejectsInvalidIntensityScale) {
+  RangeImageProjectionOptions options = TestOptions();
+  options.intensity_scale = 0.0F;
   RangeImageProjector projector;
   std::string error;
   EXPECT_FALSE(projector.Init(options, &error));

@@ -16,6 +16,7 @@ void CopyProjectionOptions(const RangeProjectionConfig& config,
   options->fov_up_degrees = config.fov_up_degrees();
   options->fov_down_degrees = config.fov_down_degrees();
   options->max_points = config.max_points();
+  options->intensity_scale = config.intensity_scale();
   if (config.channel_mean_size() > 0) {
     options->channel_mean.assign(config.channel_mean().begin(),
                                  config.channel_mean().end());

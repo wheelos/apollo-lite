@@ -18,6 +18,7 @@ struct RangeImageProjectionOptions {
   std::vector<float> channel_mean = {12.12F, 10.88F, 0.23F, -1.04F, 0.21F};
   std::vector<float> channel_std = {12.32F, 11.47F, 6.91F, 0.86F, 0.16F};
   uint32_t max_points = 150000U;
+  float intensity_scale = 1.0F;
 };
 
 struct ProjectedPoint {

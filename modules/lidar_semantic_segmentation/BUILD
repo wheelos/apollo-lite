@@ -60,7 +60,7 @@ cc_library(
 )
 
 cc_binary(
-    name = "lidar_semantic_segmentation_component_plugin",
+    name = "liblidar_semantic_segmentation_component_plugin.so",
     linkshared = True,
     linkstatic = False,
     deps = [":lidar_semantic_segmentation_component"],
@@ -88,7 +88,8 @@ filegroup(
 install(
     name = "install",
     data_dest = "lidar_semantic_segmentation",
-    targets = [":lidar_semantic_segmentation_component_plugin"],
+    library_dest = "lidar_semantic_segmentation/lib",
+    targets = [":liblidar_semantic_segmentation_component_plugin.so"],
     data = [":runtime_config"],
 )
 

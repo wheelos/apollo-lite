@@ -49,6 +49,11 @@ bool RangeImageProjector::Init(const RangeImageProjectionOptions& options,
       return false;
     }
   }
+  if (!std::isfinite(options.intensity_scale) ||
+      options.intensity_scale <= 0.0F) {
+    SetError("intensity_scale must be finite and positive", error);
+    return false;
+  }
   options_ = options;
   initialized_ = true;
   return true;
@@ -134,7 +139,7 @@ bool RangeImageProjector::Project(const apollo::drivers::PointCloud& cloud,
     image->pixel_to_point_index[pixel] = point_index;
     const float raw[kRangeRetInputChannels] = {
         projected.range, point.x(), point.y(), point.z(),
-        static_cast<float>(point.intensity())};
+        static_cast<float>(point.intensity()) * options_.intensity_scale};
     for (std::size_t channel = 0; channel < kRangeRetInputChannels; ++channel) {
       image->input_chw[ChannelOffset(channel, pixel_count) + pixel] =
           (raw[channel] - options_.channel_mean[channel]) /
