@@ -5,6 +5,7 @@
 - `image_message_publisher.py` — publish image-directory or video frames as `rgb8` Cyber messages and write the source-ID manifest used by lane evaluation.
 - `lane_debug_visualizer.py` — strictly pair camera images and lane messages by timestamp, then save annotated PPM overlays.
 - `straight_eval.py` — run straight-line evaluation tests (drive/record analysis utilities).
+- `save_lidar_semantic_pcd.py` — pair lidar input and save labeled points as PCD.
 
 **How to get help**
 

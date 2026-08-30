@@ -1,0 +1,29 @@
+engine_path: "/apollo/modules/lidar_semantic_segmentation/data/rangeret-kitti-657.engine"
+gpu_device_id: 0
+sensor_name: "HDL64"
+source_topic: "/apollo/sensor/velodyne64/compensator/PointCloud2"
+output_channel: "/perception/lidar_semantic_segmentation"
+projection {
+  width: 1024
+  height: 64
+  fov_up_degrees: 3.0
+  fov_down_degrees: -25.0
+  channel_mean: 12.12
+  channel_mean: 10.88
+  channel_mean: 0.23
+  channel_mean: -1.04
+  channel_mean: 0.21
+  channel_std: 12.32
+  channel_std: 11.47
+  channel_std: 6.91
+  channel_std: 0.86
+  channel_std: 0.16
+  max_points: 150000
+  intensity_scale: 0.00392156863
+}
+tensor {
+  input_tensor_name: "input"
+  output_tensor_name: "output"
+  num_classes: 20
+  output_layout: "NHWC"
+}

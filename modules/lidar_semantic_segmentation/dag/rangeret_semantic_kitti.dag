@@ -1,0 +1,15 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/lidar_semantic_segmentation/liblidar_semantic_segmentation_component_plugin.so"
+
+  components {
+    class_name: "LidarSemanticSegmentationComponent"
+    config {
+      name: "rangeret_semantic_kitti"
+      config_file_path: "/apollo/modules/lidar_semantic_segmentation/conf/rangeret_semantic_kitti.pb.txt"
+      readers {
+        channel: "/apollo/sensor/lidar128/compensator/PointCloud2"
+        pending_queue_size: 1
+      }
+    }
+  }
+}
