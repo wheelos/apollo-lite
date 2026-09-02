@@ -25,7 +25,7 @@ cc_library(
         "//modules/planning/common/path:frenet_frame_path",
         "//modules/planning/common/path:path_data",
         "//modules/planning/common/speed:speed_data",
-        "//modules/planning/lattice/trajectory_generation:trajectory1d_generator",
+        "//modules/planning/common/trajectory1d:piecewise_jerk_trajectory1d",
         "//modules/planning/math:polynomial_xd",
         "//modules/planning/math/curve1d:polynomial_curve1d",
         "//modules/planning/math/curve1d:quintic_polynomial_curve1d",

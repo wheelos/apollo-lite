@@ -25,6 +25,8 @@
 #include <limits>
 #include <unordered_set>
 
+#include "modules/planning/common/path/discretized_path.h"
+#include "modules/planning/common/speed/speed_data.h"
 #include "modules/planning/math/piecewise_jerk/piecewise_jerk_speed_problem.h"
 
 namespace apollo {
