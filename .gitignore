@@ -38,6 +38,7 @@ nohup.out
 # Data
 /data
 modules/lane/data/*.engine
+modules/camera_semantic_segmentation/data/*
 modules/tools/ota/update.ini
 modules/tools/ota/vehicle_info.pb.txt
 docker/build/syspkgs.txt

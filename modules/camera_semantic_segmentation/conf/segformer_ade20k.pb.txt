@@ -1,0 +1,22 @@
+engine_path: "/apollo/modules/camera_semantic_segmentation/data/segformer_b0_ade20k_512x512.engine"
+gpu_device_id: 0
+camera_name: "front_6mm"
+source_topic: "/apollo/sensor/camera/front_6mm/image"
+output_channel: "/perception/camera_semantic_segmentation"
+preprocess {
+  width: 512
+  height: 512
+  channel_mean: 123.675
+  channel_mean: 116.28
+  channel_mean: 103.53
+  channel_std: 58.395
+  channel_std: 57.12
+  channel_std: 57.375
+  to_rgb: true
+}
+tensor {
+  input_tensor_name: "input"
+  output_tensor_name: "output"
+  num_classes: 150
+  output_layout: "NCHW"
+}

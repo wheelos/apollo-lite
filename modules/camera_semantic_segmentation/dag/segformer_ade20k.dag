@@ -1,0 +1,13 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/camera_semantic_segmentation/libcamera_semantic_segmentation_component_plugin.so"
+  components {
+    class_name: "CameraSemanticSegmentationComponent"
+    config {
+      name: "camera_semantic_segmentation"
+      config_file_path: "/apollo/modules/camera_semantic_segmentation/conf/segformer_ade20k.pb.txt"
+      readers {
+        channel: "/apollo/sensor/camera/front_6mm/image"
+      }
+    }
+  }
+}
