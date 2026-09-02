@@ -1,0 +1,15 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/camera_semantic_segmentation/libcamera_semantic_segmentation_component_plugin.so"
+
+  components {
+    class_name: "CameraSemanticSegmentationComponent"
+    config {
+      name: "segformer_cityscapes"
+      config_file_path: "/apollo/modules/camera_semantic_segmentation/conf/segformer_cityscapes.pb.txt"
+      readers {
+        channel: "/apollo/sensor/camera/front_6mm/image"
+        pending_queue_size: 1
+      }
+    }
+  }
+}

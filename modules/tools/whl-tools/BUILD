@@ -30,3 +30,14 @@ py_binary(
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_py_pb2",
     ],
 )
+
+py_binary(
+    name = "camera_semantic_segmentation_visualizer",
+    srcs = ["camera_semantic_segmentation_visualizer.py"],
+    main = "camera_semantic_segmentation_visualizer.py",
+    deps = [
+        "@core//cyber/python/cyber_py3:cyber",
+        "//modules/camera_semantic_segmentation/proto:camera_semantic_segmentation_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_py_pb2",
+    ],
+)
