@@ -1,3 +1,17 @@
+// Copyright 2026 WheelOS. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <cstddef>
@@ -17,6 +31,13 @@ using Revision = std::uint64_t;
 enum class Gear {
   kDrive = 0,
   kReverse = 1,
+};
+
+enum class RouteSearchParadigm {
+  kAuto = 0,               // Auto-select based on goal.allow_reverse
+  kCruisingForward = 1,   // Forward-only search (no reverse oscillation)
+  kParkingMultiGear = 2,  // Multi-gear Reeds-Shepp for tight maneuvers
+  kSkeletonCorridor = 3,  // 2D grid skeleton guide + convex flight corridor
 };
 
 enum class CellState : std::uint8_t {
@@ -68,6 +89,7 @@ struct GridMap {
 
 struct GoalState {
   Pose2d pose;
+  double target_speed = 0.0;
   double position_tolerance = 0.0;
   double heading_tolerance = 0.0;
   bool allow_reverse = false;
@@ -77,12 +99,24 @@ struct GoalState {
 struct PredictedObstacleState {
   double relative_time = 0.0;
   Pose2d pose;
+  double velocity = 0.0;
 };
 
 struct DynamicObstacle {
   std::string id;
   std::vector<Pose2d> footprint;
   std::vector<PredictedObstacleState> prediction;
+};
+
+struct STPoint {
+  double t = 0.0;
+  double s_lower = 0.0;
+  double s_upper = 0.0;
+};
+
+struct STBoundary {
+  std::string obstacle_id;
+  std::vector<STPoint> points;
 };
 
 struct PlanningProblem {
@@ -106,6 +140,8 @@ struct CorridorSample {
   double s = 0.0;
   double minimum_lateral_offset = 0.0;
   double maximum_lateral_offset = 0.0;
+  double center_x = 0.0;
+  double center_y = 0.0;
 };
 
 struct GearSegment {
@@ -170,4 +206,3 @@ struct PlanningResult {
 
 }  // namespace open_space_planning
 }  // namespace apollo
-

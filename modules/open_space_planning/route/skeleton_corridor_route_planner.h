@@ -14,15 +14,32 @@
 
 #pragma once
 
+#include <vector>
+
 #include "modules/open_space_planning/common/status.h"
 #include "modules/open_space_planning/common/types.h"
+#include "modules/open_space_planning/route/route_planner.h"
 
 namespace apollo {
 namespace open_space_planning {
 
-class ProblemValidator {
+struct SkeletonCorridorConfig {
+  double step_size = 0.5;
+  double default_corridor_half_width = 2.0;
+  double obstacle_inflation_margin = 0.5;
+};
+
+class SkeletonCorridorRoutePlanner : public RoutePlanner {
  public:
-  static Status Validate(const PlanningProblem& problem);
+  SkeletonCorridorRoutePlanner() = default;
+  explicit SkeletonCorridorRoutePlanner(const SkeletonCorridorConfig& config);
+  virtual ~SkeletonCorridorRoutePlanner() = default;
+
+  Status Plan(const RoutePlanningRequest& request,
+              std::vector<RouteCandidate>* candidates) override;
+
+ private:
+  SkeletonCorridorConfig config_;
 };
 
 }  // namespace open_space_planning

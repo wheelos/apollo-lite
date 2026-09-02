@@ -14,15 +14,32 @@
 
 #pragma once
 
-#include "modules/open_space_planning/common/status.h"
 #include "modules/open_space_planning/common/types.h"
+#include "modules/open_space_planning/safety/trajectory_validator.h"
 
 namespace apollo {
 namespace open_space_planning {
 
-class ProblemValidator {
+struct TrajectoryValidatorConfig {
+  double maximum_speed = 5.0;               // m/s
+  double maximum_acceleration = 3.0;        // m/s^2
+  double maximum_deceleration = 4.0;        // m/s^2
+  double maximum_curvature = 0.5;           // 1/m
+  double maximum_time_horizon = 60.0;       // s
+  double minimum_obstacle_clearance = 0.2;  // m
+};
+
+class DefaultTrajectoryValidator : public TrajectoryValidator {
  public:
-  static Status Validate(const PlanningProblem& problem);
+  DefaultTrajectoryValidator() = default;
+  explicit DefaultTrajectoryValidator(TrajectoryValidatorConfig config);
+  virtual ~DefaultTrajectoryValidator() = default;
+
+  ValidationReport Validate(
+      const TrajectoryValidationRequest& request) const override;
+
+ private:
+  TrajectoryValidatorConfig config_;
 };
 
 }  // namespace open_space_planning

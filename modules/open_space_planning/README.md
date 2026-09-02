@@ -1,63 +1,31 @@
 # Open Space Planning
 
-`modules/open_space_planning` is the grid-map planning stack. It is independent
-from the HDMap/reference-line planning stack in `modules/planning`.
+`modules/open_space_planning` provides mapless / grid-map open-space motion planning. It is independent from HDMap reference-line planning.
 
-## Pipeline
+## Pipeline Architecture
 
 ```text
 PlanningProblem
-  -> RoutePlanner             (topology and geometric corridor)
-  -> TrajectoryPlanner        (time-parameterized physical trajectory)
-  -> TrajectoryValidator      (independent hard safety gate)
+  -> RoutePlanner             (Route search & safe flight corridor: SkeletonCorridor / Hybrid A*)
+  -> TrajectoryPlanner        (Curvature-constrained SQP smoother & piecewise-jerk speed planner)
+  -> TrajectoryValidator      (Independent hard safety gate & swept-box collision checker)
   -> PlanningResult
 ```
 
-If all route candidates fail, `FallbackPlanner` may produce a braking or hold
-trajectory. The fallback must pass the same safety validator before it can be
-returned.
-
-## Package ownership
+## Package Structure & Responsibilities
 
 | Package | Responsibility |
 | --- | --- |
-| `common/` | Module-owned domain types and status |
-| `lattice/` | Reusable lattice kernels; no runtime orchestration |
-| `route/` | Layer-1 route-lattice SPI and implementations |
-| `trajectory/` | Layer-2 physical-trajectory SPI and implementations |
-| `safety/` | Final validation and fallback SPIs |
-| `runtime/` | Pipeline orchestration and candidate lifecycle |
-| `component/` | Cyber transport adapters only |
+| `common/` | Domain types (`PlanningProblem`, `RouteCandidate`, `PhysicalTrajectory`), status, and problem validators. |
+| `route/` | Route search SPI (`RoutePlanner`) and search paradigms (`SkeletonCorridorRoutePlanner`, `HybridAStarRoutePlanner`). |
+| `trajectory/` | Trajectory generation SPI (`TrajectoryPlanner`) with SQP curvature-constrained path smoothing and piecewise-jerk speed profile optimization. |
+| `safety/` | Independent trajectory validation (`TrajectoryValidator`) and emergency fallback (`FallbackPlanner`). |
+| `runtime/` | Pipeline orchestration (`OpenSpacePlanner`) managing candidate execution, fallback, and validation. |
 
-## Dependency direction
+## Documentation
 
-```text
-component -> runtime -> route
-                     -> trajectory
-                     -> safety
+Comprehensive design specifications, algorithmic formulas, and validation strategies are maintained under `wheelos-service/context/modules/planning/knowledge/`.
 
-route/trajectory implementations -> lattice -> common
-```
-
-Algorithm packages must not depend on `component/` or `runtime/`.
-
-The module must not depend on HDMap, routing, `Frame`, `ReferenceLineInfo`,
-`PlanningContext`, tasks, scenarios, or `PublicRoadPlanner`. During migration,
-truly generic math/trajectory utilities may temporarily be referenced from
-`modules/planning`, but no lattice implementation may be referenced there.
-
-## Migration plan
-
-The migration is intentionally staged so the public-road planner remains
-functional while the open-space stack becomes the owning module for the
-lattice implementation.
-
-1. Freeze the public-road planner as the compatibility baseline.
-2. Move reusable, map-independent lattice kernels into
-   `modules/open_space_planning/lattice/`.
-3. Move route-search and candidate-generation logic into
-   `modules/open_space_planning/route/` and
-   `modules/open_space_planning/planner/` only when the algorithm is no longer
    tied to `ReferenceLineInfo`, `Frame`, or HDMap routing.
 4. Keep `modules/planning` as a temporary dependency only for generic geometry,
    vehicle model utilities, and shared non-map infrastructure.

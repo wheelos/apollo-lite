@@ -16,13 +16,28 @@
 
 #include "modules/open_space_planning/common/status.h"
 #include "modules/open_space_planning/common/types.h"
+#include "modules/open_space_planning/safety/fallback_planner.h"
 
 namespace apollo {
 namespace open_space_planning {
 
-class ProblemValidator {
+struct FallbackPlannerConfig {
+  double deceleration = 1.5;       // m/s^2
+  double time_step = 0.1;          // s
+  double minimum_stop_time = 3.0;  // s
+};
+
+class DefaultFallbackPlanner : public FallbackPlanner {
  public:
-  static Status Validate(const PlanningProblem& problem);
+  DefaultFallbackPlanner() = default;
+  explicit DefaultFallbackPlanner(FallbackPlannerConfig config);
+  virtual ~DefaultFallbackPlanner() = default;
+
+  Status Plan(const FallbackPlanningRequest& request,
+              PhysicalTrajectory* trajectory) override;
+
+ private:
+  FallbackPlannerConfig config_;
 };
 
 }  // namespace open_space_planning
