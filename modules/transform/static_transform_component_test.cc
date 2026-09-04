@@ -15,6 +15,7 @@
  *****************************************************************************/
 #include "modules/transform/static_transform_component.h"
 
+#include <cstdio>
 #include <memory>
 
 #include "cyber/init.h"
@@ -31,3 +32,10 @@ TEST(TransformComponentTest, Init) {
 
 }  // namespace transform
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  const int result = RUN_ALL_TESTS();
+  std::fflush(nullptr);
+  std::_Exit(result);
+}

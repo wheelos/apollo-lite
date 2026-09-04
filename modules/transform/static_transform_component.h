@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "cyber/component/component.h"
+#include "modules/transform/calibration_registry.h"
 #include "modules/transform/proto/static_transform_conf.pb.h"
 #include "wheelos_msgs/transform_msgs/transform.pb.h"
 
@@ -36,11 +37,12 @@ class StaticTransformComponent final : public apollo::cyber::Component<> {
   bool Init() override;
 
  private:
-  void SendTransforms();
+  bool SendTransforms();
   void SendTransform(const std::vector<TransformStamped>& msgtf);
   bool ParseFromYaml(const std::string& file_path, TransformStamped* transform);
 
   apollo::static_transform::Conf conf_;
+  CalibrationRegistry registry_;
   std::shared_ptr<cyber::Writer<TransformStampeds>> writer_;
   TransformStampeds transform_stampeds_;
 };

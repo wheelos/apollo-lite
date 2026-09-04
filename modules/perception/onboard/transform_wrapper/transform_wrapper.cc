@@ -15,6 +15,10 @@
  *****************************************************************************/
 #include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
 
+#include <memory>
+#include <string>
+#include <utility>
+
 #include "cyber/common/log.h"
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
 

@@ -44,8 +44,10 @@ struct StampedTransform {
 
 struct TimedTransformResolverOptions {
   float tf2_buffer_size_sec = 0.01f;
+  float query_timeout_sec = 0.0f;
   double cache_duration_sec = 1.0;
   double max_extrapolation_latency_sec = 0.15;
+  double max_extrapolation_sec = 0.0;
   double latest_lookup_fallback_tolerance_sec = 0.015;
   bool enable_extrapolation = true;
   bool hardware_trigger = true;
@@ -78,6 +80,22 @@ class TimedTransformResolver {
   void SetTransformQuery(TransformQuery* query) { transform_query_ = query; }
   void SetOptions(const TimedTransformResolverOptions& options);
 
+  void ConfigureFrames(const std::string& frame_id,
+                       const std::string& child_frame_id) {
+    default_frame_id_ = frame_id;
+    default_child_frame_id_ = child_frame_id;
+  }
+
+  bool Resolve(double timestamp, StampedTransform* transform) {
+    return Resolve(timestamp, default_frame_id_, default_child_frame_id_,
+                   transform);
+  }
+
+  bool Resolve(double timestamp, Eigen::Affine3d* transform) {
+    return Resolve(timestamp, default_frame_id_, default_child_frame_id_,
+                   transform);
+  }
+
   bool Resolve(double timestamp, const std::string& frame_id,
                const std::string& child_frame_id, StampedTransform* transform);
 
@@ -102,6 +120,8 @@ class TimedTransformResolver {
 
   TransformQuery* transform_query_ = nullptr;
   TimedTransformResolverOptions options_;
+  std::string default_frame_id_;
+  std::string default_child_frame_id_;
   std::unordered_map<std::string, TransformCache> transform_caches_;
   mutable std::atomic<uint64_t> resolve_calls_{0};
   mutable std::atomic<uint64_t> tf2_lookup_success_{0};
