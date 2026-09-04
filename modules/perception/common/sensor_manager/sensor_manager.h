@@ -24,6 +24,7 @@
 #include "modules/perception/base/distortion_model.h"
 #include "modules/perception/base/sensor_meta.h"
 #include "modules/perception/common/perception_gflags.h"
+#include "modules/transform/calibration_registry.h"
 
 namespace apollo {
 namespace perception {
@@ -66,11 +67,9 @@ class SensorManager {
   std::string GetFrameId(const std::string& name) const;
 
  private:
-    inline std::string IntrinsicPath(const std::string& sensor_name) {
-    std::string intrinsics =
-                FLAGS_obs_sensor_intrinsic_path + "/" + sensor_name +
-                "_intrinsics.yaml";
-    return intrinsics;
+  inline std::string IntrinsicPath(const std::string& sensor_name) {
+    return transform::CalibrationRegistry::ResolveIntrinsicPath(
+        sensor_name, FLAGS_obs_sensor_intrinsic_path);
   }
 
  private:

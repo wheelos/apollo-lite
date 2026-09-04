@@ -34,6 +34,8 @@ Eigen::Quaterniond Slerp(const Eigen::Quaterniond& source, const double& t,
 
 namespace {
 
+constexpr size_t kMaxExtrapolationAnchors = 4;
+
 std::string BuildTransformCacheKey(const std::string& frame_id,
                                    const std::string& child_frame_id) {
   return frame_id + "\n" + child_frame_id;
@@ -84,7 +86,8 @@ void TransformCache::AddTransform(const StampedTransform& transform) {
 
   do {
     delt = transform.timestamp - transforms_.front().timestamp;
-    if (delt < cache_duration_) {
+    if (delt < cache_duration_ &&
+        transforms_.size() < kMaxExtrapolationAnchors) {
       break;
     }
     transforms_.pop_front();
@@ -193,6 +196,12 @@ bool TransformCache::QueryTransform(double timestamp,
 void TimedTransformResolver::SetOptions(
     const TimedTransformResolverOptions& options) {
   options_ = options;
+  if (options_.query_timeout_sec > 0.0f) {
+    options_.tf2_buffer_size_sec = options_.query_timeout_sec;
+  }
+  if (options_.max_extrapolation_sec > 0.0) {
+    options_.max_extrapolation_latency_sec = options_.max_extrapolation_sec;
+  }
   options_.tf2_buffer_size_sec = std::max(0.0f, options_.tf2_buffer_size_sec);
   options_.cache_duration_sec = std::max(0.0, options_.cache_duration_sec);
   options_.max_extrapolation_latency_sec =

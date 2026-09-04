@@ -32,29 +32,41 @@ bool StaticTransformComponent::Init() {
     AERROR << "Parse conf file failed, " << ConfigFilePath();
     return false;
   }
+  if (!registry_.Load(conf_)) {
+    AERROR << "Failed to load calibration registry from conf: "
+           << ConfigFilePath();
+    return false;
+  }
   cyber::proto::RoleAttributes attr;
   attr.set_channel_name(FLAGS_tf_static_topic);
   attr.mutable_qos_profile()->CopyFrom(
       cyber::transport::QosProfileConf::QOS_PROFILE_TF_STATIC);
   writer_ = node_->CreateWriter<TransformStampeds>(attr);
-  SendTransforms();
+  if (!SendTransforms()) {
+    AERROR << "Failed to send static transforms.";
+    return false;
+  }
   return true;
 }
 
-void StaticTransformComponent::SendTransforms() {
+bool StaticTransformComponent::SendTransforms() {
   std::vector<TransformStamped> tranform_stamped_vec;
-  for (auto& extrinsic_file : conf_.extrinsic_file()) {
-    if (extrinsic_file.enable()) {
-      AINFO << "Broadcast static transform, frame id ["
-            << extrinsic_file.frame_id() << "], child frame id ["
-            << extrinsic_file.child_frame_id() << "]";
-      TransformStamped transform;
-      if (ParseFromYaml(extrinsic_file.file_path(), &transform)) {
-        tranform_stamped_vec.emplace_back(transform);
-      }
+  for (const auto& extrinsic_entry : registry_.EnabledEntries()) {
+    AINFO << "Broadcast static transform, frame id ["
+          << extrinsic_entry.frame_id << "], child frame id ["
+          << extrinsic_entry.child_frame_id << "]";
+    TransformStamped transform;
+    if (!ParseFromYaml(extrinsic_entry.resolved_file_path, &transform)) {
+      AERROR << "Failed to parse extrinsic yaml for frame id ["
+             << extrinsic_entry.frame_id << "], child frame id ["
+             << extrinsic_entry.child_frame_id << "] at: "
+             << extrinsic_entry.resolved_file_path;
+      return false;
     }
+    tranform_stamped_vec.emplace_back(transform);
   }
   SendTransform(tranform_stamped_vec);
+  return true;
 }
 
 bool StaticTransformComponent::ParseFromYaml(

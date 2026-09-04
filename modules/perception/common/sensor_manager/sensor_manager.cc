@@ -15,6 +15,8 @@
  *****************************************************************************/
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
 
+#include <memory>
+#include <string>
 #include <utility>
 
 #include "modules/perception/proto/sensor_meta_schema.pb.h"
@@ -46,8 +48,10 @@ bool SensorManager::Init() {
   distort_model_map_.clear();
   undistort_model_map_.clear();
 
-  const std::string file_path = cyber::common::GetAbsolutePath(
+  const std::string raw_file_path = cyber::common::GetAbsolutePath(
       lib::ConfigManager::Instance()->work_root(), FLAGS_obs_sensor_meta_path);
+  const std::string file_path =
+      transform::CalibrationRegistry::ResolveFilePath(raw_file_path);
 
   MultiSensorMeta sensor_list_proto;
   if (!GetProtoFromASCIIFile(file_path, &sensor_list_proto)) {
