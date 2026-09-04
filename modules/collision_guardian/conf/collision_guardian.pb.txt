@@ -1,0 +1,35 @@
+vehicle_frame_id: "base_link"
+pointcloud_topic: "/apollo/sensor/vanjeelidar/up/PointCloud2"
+occupancy_grid_topic: "/apollo/perception/occupancy_grid"
+output_topic: "/apollo/collision_guardian/risk"
+enable_pointcloud: true
+enable_occupancy_grid: false
+use_case: USE_CASE_LOW_SPEED_OPERATION
+
+ego_forward_m: 0.7
+ego_backward_m: 0.15
+ego_half_width_m: 0.30
+roi_forward_m: 0.8
+roi_backward_m: 0.25
+roi_half_width_m: 0.40
+min_height_m: -0.1
+max_height_m: 1.0
+y_axis_is_forward: true
+
+voxel_size_x_m: 0.05
+voxel_size_y_m: 0.05
+voxel_size_z_m: 0.05
+occupied_probability_threshold: 0.5
+min_occupied_voxels: 5
+
+prior_probability: 0.1
+hit_probability: 0.7
+miss_probability: 0.3
+temporal_decay: 0.9
+suspected_probability: 0.5
+trigger_probability: 0.8
+release_probability: 0.3
+min_confirmation_frames: 3
+min_release_frames: 3
+input_stale_timeout_sec: 0.5
+transform_timeout_sec: 0.01

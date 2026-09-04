@@ -140,6 +140,4 @@ DECLARE_string(latency_reporting_topic);
 // the model will be loaded by the sensor name. Mainly for D-kit.
 DECLARE_string(lidar_model_version);
 
-DECLARE_string(collision_warning_topic);
-
 DECLARE_string(mission_request_topic);

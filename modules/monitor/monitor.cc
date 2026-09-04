@@ -17,7 +17,6 @@
 
 #include "cyber/time/clock.h"
 #include "modules/monitor/common/monitor_manager.h"
-#include "modules/monitor/hardware/collision_monitor.h"
 #include "modules/monitor/hardware/gps_monitor.h"
 #include "modules/monitor/hardware/resource_monitor.h"
 #include "modules/monitor/hardware/socket_can_monitor.h"
@@ -65,9 +64,6 @@ bool Monitor::Init() {
   // Monitor all changes made by each sub-monitor, and summarize to a final
   // overall status.
   runners_.emplace_back(new SummaryMonitor());
-
-  // Monitor immediacy collisions.
-  runners_.emplace_back(new CollisionMonitor());
 
   // Check functional safety according to the summary.
   if (FLAGS_enable_functional_safety) {

@@ -15,6 +15,9 @@ cc_proto_library(
 proto_library(
     name = "guardian_conf_proto",
     srcs = ["guardian_conf.proto"],
+    deps = [
+        "//modules/collision_guardian/proto:collision_guardian_proto",
+    ],
 )
 
 py_proto_library(

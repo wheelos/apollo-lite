@@ -14,6 +14,7 @@ cc_library(
     deps = [
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "//modules/collision_guardian/proto:collision_guardian_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",

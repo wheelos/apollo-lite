@@ -1,0 +1,63 @@
+syntax = "proto2";
+
+package apollo.collision_guardian;
+
+import "wheelos_msgs/basic_msgs/header.proto";
+
+enum RiskState {
+  RISK_STATE_UNKNOWN = 0;
+  RISK_STATE_CLEAR = 1;
+  RISK_STATE_SUSPECTED = 2;
+  RISK_STATE_CONFIRMED = 3;
+  RISK_STATE_RELEASING = 4;
+  RISK_STATE_FAULT = 5;
+}
+
+enum RiskZone {
+  RISK_ZONE_UNKNOWN = 0;
+  RISK_ZONE_FRONT = 1;
+  RISK_ZONE_REAR = 2;
+  RISK_ZONE_LEFT = 3;
+  RISK_ZONE_RIGHT = 4;
+}
+
+enum UseCase {
+  USE_CASE_UNKNOWN = 0;
+  USE_CASE_PARKING = 1;
+  USE_CASE_DOCKING = 2;
+  USE_CASE_NARROW_PASSAGE = 3;
+  USE_CASE_LOW_SPEED_OPERATION = 4;
+}
+
+message CollisionRisk {
+  optional apollo.common.Header header = 1;
+  optional RiskState state = 2 [default = RISK_STATE_UNKNOWN];
+  optional RiskZone zone = 3 [default = RISK_ZONE_UNKNOWN];
+  optional UseCase use_case = 4 [default = USE_CASE_UNKNOWN];
+  optional double risk_probability = 5;
+  optional double nearest_distance_m = 6;
+  optional uint32 occupied_voxel_count = 7;
+  optional bool input_valid = 8 [default = false];
+  optional double source_timestamp_sec = 9;
+  optional uint32 source_mask = 10;
+}
+
+message OccupancyGridCell {
+  optional uint32 x_index = 1;
+  optional uint32 y_index = 2;
+  optional float occupancy_probability = 3;
+  optional float min_height = 4;
+  optional float max_height = 5;
+}
+
+// Sparse occupied cells. Without height fields the input is treated as 2D;
+// with height fields it is treated as 2.5D.
+message OccupancyGrid {
+  optional apollo.common.Header header = 1;
+  optional double resolution = 2;
+  optional uint32 width = 3;
+  optional uint32 height = 4;
+  optional double origin_x = 5;
+  optional double origin_y = 6;
+  repeated OccupancyGridCell occupied_cell = 7;
+}

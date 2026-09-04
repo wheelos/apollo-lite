@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>collision_guardian</name>
+        <dag_conf>/apollo/modules/collision_guardian/dag/collision_guardian.dag</dag_conf>
+        <process_name>collision_guardian</process_name>
+    </module>
+</cyber>

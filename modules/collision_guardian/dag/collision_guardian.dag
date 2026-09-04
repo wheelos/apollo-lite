@@ -1,0 +1,11 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/collision_guardian/libcollision_guardian_component.so"
+  timer_components {
+    class_name: "CollisionGuardianComponent"
+    config {
+      name: "collision_guardian"
+      config_file_path: "/apollo/modules/collision_guardian/conf/collision_guardian.pb.txt"
+      interval: 50
+    }
+  }
+}
