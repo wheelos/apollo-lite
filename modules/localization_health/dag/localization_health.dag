@@ -1,0 +1,13 @@
+# Define LocalizationHealth in DAG streaming.
+module_config {
+    module_library : "/apollo/bazel-bin/modules/localization_health/liblocalization_health_component.so"
+
+    timer_components {
+      class_name : "LocalizationHealthComponent"
+      config {
+        name : "localization_health"
+        config_file_path : "/apollo/modules/localization_health/conf/localization_health.pb.txt"
+        interval : 50
+      }
+    }
+}

@@ -15,6 +15,9 @@
  *****************************************************************************/
 
 #include "modules/localization/rtk/rtk_localization_component.h"
+
+#include <memory>
+
 #include "cyber/time/clock.h"
 
 namespace apollo {
@@ -26,12 +29,12 @@ RTKLocalizationComponent::RTKLocalizationComponent()
 bool RTKLocalizationComponent::Init() {
   tf2_broadcaster_.reset(new apollo::transform::TransformBroadcaster(node_));
   if (!InitConfig()) {
-    AERROR << "Init Config falseed.";
+    AERROR << "Init Config failed.";
     return false;
   }
 
   if (!InitIO()) {
-    AERROR << "Init Interval falseed.";
+    AERROR << "Init IO failed.";
     return false;
   }
 
@@ -54,7 +57,13 @@ bool RTKLocalizationComponent::InitConfig() {
   broadcast_tf_frame_id_ = rtk_config.broadcast_tf_frame_id();
   broadcast_tf_child_frame_id_ = rtk_config.broadcast_tf_child_frame_id();
   if (rtk_config.has_broadcast_tf_use_system_clock()) {
-    broadcast_tf_use_system_clock = rtk_config.broadcast_tf_use_system_clock();
+    broadcast_tf_use_system_clock_ = rtk_config.broadcast_tf_use_system_clock();
+  }
+  if (rtk_config.has_localization_assessment_topic()) {
+    localization_assessment_topic_ =
+        rtk_config.localization_assessment_topic();
+  } else {
+    localization_assessment_topic_ = "/apollo/localization/assessment";
   }
 
   localization_->InitConfig(rtk_config);
@@ -80,11 +89,20 @@ bool RTKLocalizationComponent::InitIO() {
   localization_status_talker_ =
       node_->CreateWriter<LocalizationStatus>(localization_status_topic_);
   ACHECK(localization_status_talker_);
+
+  localization_assessment_talker_ =
+      node_->CreateWriter<LocalizationAssessment>(
+          localization_assessment_topic_);
+  ACHECK(localization_assessment_talker_);
   return true;
 }
 
 bool RTKLocalizationComponent::Proc(
     const std::shared_ptr<localization::Gps>& gps_msg) {
+  if (gps_msg == nullptr) {
+    AERROR << "gps_msg is nullptr.";
+    return false;
+  }
   localization_->GpsCallback(gps_msg);
 
   if (localization_->IsServiceStarted()) {
@@ -92,11 +110,14 @@ bool RTKLocalizationComponent::Proc(
     localization_->GetLocalization(&localization);
     LocalizationStatus localization_status;
     localization_->GetLocalizationStatus(&localization_status);
+    LocalizationAssessment assessment;
+    localization_->GetAssessment(&assessment);
 
     // publish localization messages
     PublishPoseBroadcastTopic(localization);
     PublishPoseBroadcastTF(localization);
     PublishLocalizationStatus(localization_status);
+    PublishAssessment(assessment);
     ADEBUG << "[OnTimer]: Localization message publish success!";
   }
 
@@ -105,11 +126,15 @@ bool RTKLocalizationComponent::Proc(
 
 void RTKLocalizationComponent::PublishPoseBroadcastTF(
     const LocalizationEstimate& localization) {
+  if (!localization.has_pose()) {
+    AERROR << "localization has no pose.";
+    return;
+  }
   // broadcast tf message
   apollo::transform::TransformStamped tf2_msg;
 
   auto mutable_head = tf2_msg.mutable_header();
-  if (!broadcast_tf_use_system_clock) {
+  if (!broadcast_tf_use_system_clock_) {
     mutable_head->set_timestamp_sec(localization.measurement_time());
   } else {
     mutable_head->set_timestamp_sec(cyber::Time::Now().ToSecond());
@@ -140,6 +165,11 @@ void RTKLocalizationComponent::PublishPoseBroadcastTopic(
 void RTKLocalizationComponent::PublishLocalizationStatus(
     const LocalizationStatus& localization_status) {
   localization_status_talker_->Write(localization_status);
+}
+
+void RTKLocalizationComponent::PublishAssessment(
+    const LocalizationAssessment& assessment) {
+  localization_assessment_talker_->Write(assessment);
 }
 
 }  // namespace localization

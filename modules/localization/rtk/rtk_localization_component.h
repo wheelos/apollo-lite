@@ -28,6 +28,7 @@
 #include "wheelos_msgs/localization_msgs/gps.pb.h"
 #include "wheelos_msgs/localization_msgs/imu.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "modules/localization_health/proto/localization_health.pb.h"
 #include "modules/localization/proto/rtk_config.pb.h"
 #include "modules/localization/rtk/rtk_localization.h"
 #include "modules/transform/transform_broadcaster.h"
@@ -52,6 +53,7 @@ class RTKLocalizationComponent final
   void PublishPoseBroadcastTF(const LocalizationEstimate &localization);
   void PublishPoseBroadcastTopic(const LocalizationEstimate &localization);
   void PublishLocalizationStatus(const LocalizationStatus &localization_status);
+  void PublishAssessment(const LocalizationAssessment &assessment);
 
  private:
   std::shared_ptr<cyber::Reader<localization::CorrectedImu>>
@@ -63,16 +65,19 @@ class RTKLocalizationComponent final
       nullptr;
   std::shared_ptr<cyber::Writer<LocalizationStatus>>
       localization_status_talker_ = nullptr;
+  std::shared_ptr<cyber::Writer<LocalizationAssessment>>
+      localization_assessment_talker_ = nullptr;
 
   std::string localization_topic_ = "";
   std::string localization_status_topic_ = "";
+  std::string localization_assessment_topic_ = "";
   std::string gps_topic_ = "";
   std::string gps_status_topic_ = "";
   std::string imu_topic_ = "";
 
   std::string broadcast_tf_frame_id_ = "";
   std::string broadcast_tf_child_frame_id_ = "";
-  bool broadcast_tf_use_system_clock = false;
+  bool broadcast_tf_use_system_clock_ = false;
   std::unique_ptr<apollo::transform::TransformBroadcaster> tf2_broadcaster_;
 
   std::unique_ptr<RTKLocalization> localization_;
