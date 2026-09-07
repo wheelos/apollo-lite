@@ -8,7 +8,10 @@ Apollo container has no pandas:
   1. `convert` (run where pandas is available, e.g. the host):
        pandaset/<seq>/lidar/NN.pkl.gz  ->  <out>/NN.bin + manifest.json
      Keeps only the Pandar64 spinning lidar (d == 0) and transforms world
-     coordinates into the lidar/ego frame using lidar/poses.json.
+     coordinates into the lidar/ego frame using lidar/poses.json. The pose
+     origin is a vehicle base frame (y forward, ~1.75 m below the lidar), so
+     pass --sensor-offset / --forward-axis to get a sensor-centred,
+     x-forward cloud suitable for range-image projection.
      Each .bin holds little-endian float32 quads: x y z intensity.
 
   2. `publish` (run inside the container via bazel-bin, stdlib only):
@@ -73,6 +76,12 @@ def convert(args):
             [pose["position"]["x"], pose["position"]["y"],
              pose["position"]["z"]])
         ego = (world - translation) @ rotation  # == R^T (p - t)
+        # PandaSet's pose origin is a vehicle base frame (roughly ground
+        # level, +y forward), not the lidar. Move the origin to the sensor and
+        # rotate into the x-forward / y-left convention range projection expects.
+        ego = ego - np.asarray(args.sensor_offset, dtype=np.float64)
+        if args.forward_axis == "y":
+            ego = np.column_stack([ego[:, 1], -ego[:, 0], ego[:, 2]])
         intensity = frame["i"].to_numpy(dtype=np.float64)
         data = np.column_stack([ego, intensity]).astype("<f4")
         output = args.output_dir / f"{index:02d}.bin"
@@ -202,6 +211,13 @@ def parse_args():
     conv.add_argument("--max-frames", type=int, default=0)
     conv.add_argument("--device", type=int, default=0,
                       help="0 = Pandar64 spinning lidar, 1 = PandarGT")
+    conv.add_argument("--sensor-offset", type=float, nargs=3, default=(0.0, 0.0, 0.0),
+                      metavar=("DX", "DY", "DZ"),
+                      help="lidar position in the pose frame, subtracted so the "
+                           "sensor becomes the origin (PandaSet Pandar64: 0 0.85 1.75)")
+    conv.add_argument("--forward-axis", choices=("x", "y"), default="x",
+                      help="which pose-frame axis points forward; 'y' remaps to "
+                           "x-forward/y-left (PandaSet)")
     conv.set_defaults(func=convert)
 
     pub = subparsers.add_parser(
