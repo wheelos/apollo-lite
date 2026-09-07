@@ -41,3 +41,13 @@ py_binary(
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_py_pb2",
     ],
 )
+
+py_binary(
+    name = "pandaset_pointcloud_publisher",
+    srcs = ["pandaset_pointcloud_publisher.py"],
+    main = "pandaset_pointcloud_publisher.py",
+    deps = [
+        "@core//cyber/python/cyber_py3:cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_py_pb2",
+    ],
+)
