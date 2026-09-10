@@ -7,13 +7,14 @@
 
 #include "Eigen/Geometry"
 
+#include "modules/collision_guardian/proto/collision_guardian.pb.h"
+#include "modules/collision_guardian/proto/collision_guardian_config.pb.h"
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
+#include "cyber/component/component.h"
 #include "cyber/component/timer_component.h"
 #include "modules/collision_guardian/core/occupancy_detector.h"
 #include "modules/collision_guardian/core/risk_filter.h"
-#include "modules/collision_guardian/proto/collision_guardian.pb.h"
-#include "modules/collision_guardian/proto/collision_guardian_config.pb.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {

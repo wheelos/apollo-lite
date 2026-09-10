@@ -37,7 +37,8 @@ RiskFilterResult RiskFilter::Update(bool occupied, bool input_valid) {
   log_odds_ =
       prior_log_odds_ +
       config_.temporal_decay * (log_odds_ - prior_log_odds_) +
-      Logit(observation_probability) - prior_log_odds_;
+      (1.0 - config_.temporal_decay) *
+        (Logit(observation_probability) - prior_log_odds_);
   log_odds_ = std::clamp(log_odds_, kMinLogOdds, kMaxLogOdds);
   const double probability = Probability(log_odds_);
 
