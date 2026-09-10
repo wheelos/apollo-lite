@@ -130,7 +130,7 @@ _inject_apollo_external_core_outputs() {
   for output_root in "${output_roots[@]}"; do
     while IFS= read -r solib_dir; do
       _pathprepend "${solib_dir}" LD_LIBRARY_PATH
-    done < <(find "${output_root}" -type d -path "*/_solib_*/*" 2>/dev/null | sort -u)
+    done < <(find "${output_root}" -type d -name "_solib_*" -print 2>/dev/null)
     for repo_name in "${repo_candidates[@]}"; do
       core_execroot="${output_root}/external/${repo_name}"
       for tool_dir in "${tool_dirs[@]}"; do
@@ -157,10 +157,10 @@ _inject_apollo_external_core_outputs() {
       if [[ -d "${core_execroot}" ]]; then
         while IFS= read -r lib_dir; do
           _pathprepend "${lib_dir}" LD_LIBRARY_PATH
-        done < <(find "${core_execroot}" -type d \( -name lib -o -name lib64 \) 2>/dev/null | sort -u)
+        done < <(find "${core_execroot}" -type d \( -name lib -o -name lib64 \) -print 2>/dev/null)
         while IFS= read -r solib_dir; do
           _pathprepend "${solib_dir}" LD_LIBRARY_PATH
-        done < <(find "${core_execroot}" -type d -path "*/_solib_*/*" 2>/dev/null | sort -u)
+        done < <(find "${core_execroot}" -type d -name "_solib_*" -print 2>/dev/null)
       fi
     done
     for proj_repo_name in "${proj_repo_candidates[@]}"; do

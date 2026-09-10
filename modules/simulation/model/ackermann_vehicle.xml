@@ -1,0 +1,87 @@
+<mujoco model="apollo_ackermann_vehicle">
+  <compiler angle="radian" coordinate="local"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast">
+    <flag contact="enable"/>
+  </option>
+
+  <default>
+    <geom contype="1" conaffinity="1" condim="4" friction="1.2 0.01 0.001"/>
+    <joint damping="1.0"/>
+  </default>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1="0.2 0.2 0.2" rgb2="0.3 0.3 0.3"/>
+    <material name="grid_mat" texture="grid" texrepeat="50 50" reflectance="0.1"/>
+    <material name="chassis_mat" rgba="0.2 0.4 0.8 1.0"/>
+    <material name="wheel_mat" rgba="0.1 0.1 0.1 1.0"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 10" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="ground" type="plane" size="500 500 0.1" material="grid_mat"/>
+
+    <body name="ego_vehicle" pos="0 0 0.33">
+      <freejoint name="vehicle_freejoint"/>
+      
+      <!-- Main Chassis Body (Lincoln MKZ scale: L=4.9m, W=1.86m, H=1.4m) -->
+      <geom name="chassis_geom" type="box" size="2.2 0.6 0.25" pos="0 0 0.35" mass="1500" material="chassis_mat"/>
+      <geom name="cabin_geom" type="box" size="1.2 0.55 0.3" pos="-0.2 0 0.85" mass="100" material="chassis_mat"/>
+
+      <!-- Front-Left Wheel Assembly (Steerable) -->
+      <body name="wheel_fl_knuckle" pos="1.4224 0.79 0.0">
+        <inertial pos="0 0 0" mass="5" diaginertia="0.05 0.05 0.05"/>
+        <joint name="steer_fl_joint" type="hinge" axis="0 0 1" range="-0.5 0.5" damping="20"/>
+        <body name="wheel_fl" pos="0 0 0">
+          <joint name="wheel_fl_joint" type="hinge" axis="0 1 0" damping="0.1"/>
+          <geom name="wheel_fl_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+        </body>
+      </body>
+
+      <!-- Front-Right Wheel Assembly (Steerable) -->
+      <body name="wheel_fr_knuckle" pos="1.4224 -0.79 0.0">
+        <inertial pos="0 0 0" mass="5" diaginertia="0.05 0.05 0.05"/>
+        <joint name="steer_fr_joint" type="hinge" axis="0 0 1" range="-0.5 0.5" damping="20"/>
+        <body name="wheel_fr" pos="0 0 0">
+          <joint name="wheel_fr_joint" type="hinge" axis="0 1 0" damping="0.1"/>
+          <geom name="wheel_fr_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+        </body>
+      </body>
+
+      <!-- Rear-Left Wheel Assembly -->
+      <body name="wheel_rl" pos="-1.4224 0.79 0.0">
+        <joint name="wheel_rl_joint" type="hinge" axis="0 1 0" damping="0.1"/>
+        <geom name="wheel_rl_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+      </body>
+
+      <!-- Rear-Right Wheel Assembly -->
+      <body name="wheel_rr" pos="-1.4224 -0.79 0.0">
+        <joint name="wheel_rr_joint" type="hinge" axis="0 1 0" damping="0.1"/>
+        <geom name="wheel_rr_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <contact>
+    <exclude body1="ego_vehicle" body2="wheel_fl"/>
+    <exclude body1="ego_vehicle" body2="wheel_fr"/>
+    <exclude body1="ego_vehicle" body2="wheel_rl"/>
+    <exclude body1="ego_vehicle" body2="wheel_rr"/>
+    <exclude body1="ego_vehicle" body2="wheel_fl_knuckle"/>
+    <exclude body1="ego_vehicle" body2="wheel_fr_knuckle"/>
+    <exclude body1="wheel_fl_knuckle" body2="wheel_fl"/>
+    <exclude body1="wheel_fr_knuckle" body2="wheel_fr"/>
+  </contact>
+
+  <actuator>
+    <!-- Steering Position Actuators -->
+    <position name="steer_fl" joint="steer_fl_joint" kp="15000" kv="500" ctrlrange="-0.5 0.5"/>
+    <position name="steer_fr" joint="steer_fr_joint" kp="15000" kv="500" ctrlrange="-0.5 0.5"/>
+
+    <!-- Drive / Brake Torque Actuators (all-wheel torque allocation) -->
+    <motor name="drive_fl" joint="wheel_fl_joint" ctrlrange="-3000 3000"/>
+    <motor name="drive_fr" joint="wheel_fr_joint" ctrlrange="-3000 3000"/>
+    <motor name="drive_rl" joint="wheel_rl_joint" ctrlrange="-3000 3000"/>
+    <motor name="drive_rr" joint="wheel_rr_joint" ctrlrange="-3000 3000"/>
+  </actuator>
+</mujoco>
