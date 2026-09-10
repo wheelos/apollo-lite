@@ -25,7 +25,6 @@ cc_library(
         "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/monitor/common:recurrent_runner",
-        "//modules/monitor/hardware:collision_monitor",
         "//modules/monitor/hardware:gps_monitor",
         "//modules/monitor/hardware:resource_monitor",
         "//modules/monitor/hardware:socket_can_monitor",

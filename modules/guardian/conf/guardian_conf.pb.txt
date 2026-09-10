@@ -1,1 +1,10 @@
 guardian_enable: true
+collision_guardian_enable: true
+collision_risk_topic: "/apollo/collision_guardian/risk"
+collision_risk_timeout_sec: 0.5
+collision_hard_stop_max_speed_mps: 2.0
+collision_require_complete_auto_drive: true
+collision_allowed_use_case: USE_CASE_PARKING
+collision_allowed_use_case: USE_CASE_DOCKING
+collision_allowed_use_case: USE_CASE_NARROW_PASSAGE
+collision_allowed_use_case: USE_CASE_LOW_SPEED_OPERATION

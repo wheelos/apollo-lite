@@ -26,6 +26,7 @@
 #include "wheelos_msgs/control_msgs/control_cmd.pb.h"
 #include "wheelos_msgs/guardian_msgs/guardian.pb.h"
 #include "wheelos_msgs/monitor_msgs/system_status.pb.h"
+#include "modules/collision_guardian/proto/collision_guardian.pb.h"
 #include "modules/guardian/proto/guardian_conf.pb.h"
 
 #include "cyber/common/macros.h"
@@ -46,16 +47,24 @@ class GuardianComponent : public apollo::cyber::TimerComponent {
 
  private:
   void PassThroughControlCommand();
-  void TriggerSafetyMode();
+  void TriggerSafetyMode(bool collision_emergency_stop);
+  bool ShouldTriggerCollisionStop(double current_time_sec) const;
+  bool IsAllowedCollisionUseCase(
+      apollo::collision_guardian::UseCase use_case) const;
 
   apollo::guardian::GuardianConf guardian_conf_;
   apollo::canbus::Chassis chassis_;
   apollo::monitor::SystemStatus system_status_;
   apollo::control::ControlCommand control_cmd_;
   apollo::guardian::GuardianCommand guardian_cmd_;
+  apollo::collision_guardian::CollisionRisk collision_risk_;
 
   bool has_received_system_status_ = false;
+  bool has_received_chassis_ = false;
+  bool has_received_collision_risk_ = false;
   double last_status_received_s_{};
+  double last_chassis_received_s_{};
+  double last_collision_risk_received_s_{};
 
   std::shared_ptr<apollo::cyber::Reader<apollo::canbus::Chassis>>
       chassis_reader_;
@@ -63,6 +72,9 @@ class GuardianComponent : public apollo::cyber::TimerComponent {
       control_cmd_reader_;
   std::shared_ptr<apollo::cyber::Reader<apollo::monitor::SystemStatus>>
       system_status_reader_;
+  std::shared_ptr<apollo::cyber::Reader<
+      apollo::collision_guardian::CollisionRisk>>
+      collision_risk_reader_;
   std::shared_ptr<apollo::cyber::Writer<apollo::guardian::GuardianCommand>>
       guardian_writer_;
 

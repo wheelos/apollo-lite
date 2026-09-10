@@ -261,8 +261,5 @@ DEFINE_string(lidar_model_version, "",
               "It determins which lidar model(16 ,64 or 128) to load, "
               "if not to set, the model will be loaded by the sensor name.");
 
-DEFINE_string(collision_warning_topic, "/apollo/perception/collision_warning",
-              "Collision warning topic.");
-
 DEFINE_string(mission_request_topic, "/apollo/mission_request",
               "mission request topic name");
