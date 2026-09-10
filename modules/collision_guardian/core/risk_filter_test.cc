@@ -29,5 +29,22 @@ TEST(RiskFilterTest, InvalidInputProducesFault) {
   EXPECT_EQ(filter.Update(false, true).state, FilterState::kClear);
 }
 
+TEST(RiskFilterTest, BlendsObservationsWithoutSaturating) {
+  RiskFilterConfig config;
+  config.temporal_decay = 0.9;
+  RiskFilter filter(config);
+
+  double probability = 0.0;
+  for (int i = 0; i < 20; ++i) {
+    probability = filter.Update(true, true).probability;
+  }
+  EXPECT_NEAR(probability, config.hit_probability, 1.0e-6);
+
+  for (int i = 0; i < 20; ++i) {
+    probability = filter.Update(false, true).probability;
+  }
+  EXPECT_NEAR(probability, config.miss_probability, 1.0e-6);
+}
+
 }  // namespace collision_guardian
 }  // namespace apollo
