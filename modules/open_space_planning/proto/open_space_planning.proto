@@ -1,0 +1,71 @@
+syntax = "proto2";
+
+package apollo.open_space_planning.proto;
+
+import "wheelos_msgs/basic_msgs/header.proto";
+
+message GridMap {
+  optional apollo.common.Header header = 1;
+  optional string frame_id = 2;
+  optional double timestamp_sec = 3;
+  optional double origin_x = 4;
+  optional double origin_y = 5;
+  optional double origin_heading = 6;
+  optional double resolution = 7;
+  optional uint32 width = 8;
+  optional uint32 height = 9;
+  optional uint64 revision = 10;
+  repeated uint32 cell_state = 11;
+  repeated uint32 traversal_cost = 12;
+  repeated uint32 semantic_flags = 13;
+}
+
+message VehicleModel {
+  optional double wheel_base = 1;
+  optional double front_edge_to_center = 2;
+  optional double back_edge_to_center = 3;
+  optional double left_edge_to_center = 4;
+  optional double right_edge_to_center = 5;
+  optional double maximum_steering_angle = 6;
+  optional double maximum_curvature = 7;
+}
+
+message RoutePoint {
+  optional double x = 1;
+  optional double y = 2;
+  optional double heading = 3;
+  optional double s = 4;
+  optional double curvature = 5;
+  optional double curvature_derivative = 6;
+  optional int32 gear = 7;
+}
+
+message TrajectoryPoint {
+  optional RoutePoint path_point = 1;
+  optional double velocity = 2;
+  optional double acceleration = 3;
+  optional double relative_time = 4;
+}
+
+message ValidationIssue {
+  optional string rule = 1;
+  optional string detail = 2;
+  optional uint32 trajectory_point_index = 3;
+}
+
+message OpenSpacePlanningResult {
+  optional apollo.common.Header header = 1;
+  enum Outcome {
+    TRAJECTORY = 0;
+    FALLBACK_TRAJECTORY = 1;
+  }
+  optional Outcome outcome = 2;
+  optional uint64 route_candidate_id = 3;
+  optional uint64 route_topology_id = 4;
+  repeated RoutePoint route_point = 5;
+  repeated TrajectoryPoint trajectory_point = 6;
+  optional bool validation_safe = 7;
+  repeated ValidationIssue validation_issue = 8;
+  optional int32 status_code = 9;
+  optional string status_message = 10;
+}

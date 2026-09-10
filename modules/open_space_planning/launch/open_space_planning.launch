@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>open_space_planning</name>
+        <dag_conf>/apollo/modules/open_space_planning/dag/open_space_planning.dag</dag_conf>
+        <process_name>open_space_planning</process_name>
+    </module>
+</cyber>
