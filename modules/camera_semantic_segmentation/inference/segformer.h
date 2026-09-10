@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "modules/camera_semantic_segmentation/proto/camera_semantic_segmentation.pb.h"
+
 #include "modules/camera_semantic_segmentation/types/semantic_types.h"
 
 namespace apollo {
@@ -74,8 +75,8 @@ class SegFormerDecoder {
               std::string* error) const;
 
  private:
-  std::size_t LogitOffset(uint32_t y, uint32_t x, uint32_t cls,
-                          uint32_t height, uint32_t width) const;
+  std::size_t LogitOffset(uint32_t y, uint32_t x, uint32_t cls, uint32_t height,
+                          uint32_t width) const;
 
   SegFormerModelOptions options_;
   bool output_is_nhwc_ = false;
@@ -89,8 +90,7 @@ class SegFormerSegmenter {
 
   bool Init(const SegFormerModelOptions& options, std::string* error);
 
-  bool Segment(const ImageView& image,
-               CameraSemanticSegmentationResult* result,
+  bool Segment(const ImageView& image, CameraSemanticSegmentationResult* result,
                std::string* error) const;
 
   const SegFormerModelOptions& options() const { return options_; }

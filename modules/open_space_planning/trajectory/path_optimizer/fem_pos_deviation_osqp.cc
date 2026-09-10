@@ -302,9 +302,8 @@ void FemPosDeviationOsqp::CalculateKernel(std::size_t num_points,
 
   for (std::size_t col = 0; col < num_variables; ++col) {
     auto& col_entries = cols[col];
-    std::sort(
-        col_entries.begin(), col_entries.end(),
-        [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::sort(col_entries.begin(), col_entries.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
 
     for (std::size_t k = 0; k < col_entries.size();) {
       const OSQPInt row = col_entries[k].first;
@@ -395,9 +394,8 @@ void FemPosDeviationOsqp::CalculateAffineConstraints(
 
   for (std::size_t col = 0; col < num_variables; ++col) {
     auto& col_entries = cols[col];
-    std::sort(
-        col_entries.begin(), col_entries.end(),
-        [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::sort(col_entries.begin(), col_entries.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
 
     for (const auto& entry : col_entries) {
       if (std::abs(entry.second) > 1e-12) {

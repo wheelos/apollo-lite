@@ -16,13 +16,14 @@
 
 #include <vector>
 
+#include "modules/planning/proto/planner_open_space_config.pb.h"
+
 #include "modules/common/math/vec2d.h"
 #include "modules/open_space_planning/common/status.h"
 #include "modules/open_space_planning/common/types.h"
 #include "modules/open_space_planning/trajectory/path_optimizer/fem_pos_deviation_osqp.h"
 #include "modules/open_space_planning/trajectory/speed_optimizer/piecewise_jerk_speed_osqp.h"
 #include "modules/open_space_planning/trajectory/trajectory_planner.h"
-#include "modules/planning/proto/planner_open_space_config.pb.h"
 
 namespace apollo {
 namespace open_space_planning {
@@ -38,13 +39,13 @@ class OpenSpaceTrajectoryPlanner : public TrajectoryPlanner {
               PhysicalTrajectory* trajectory) override;
 
  private:
-  bool PlanQpPathAndSpeed(
-      const PlanningProblem& problem, const RouteCandidate& route,
-      PhysicalTrajectory* trajectory);
+  bool PlanQpPathAndSpeed(const PlanningProblem& problem,
+                          const RouteCandidate& route,
+                          PhysicalTrajectory* trajectory);
 
-  bool PlanKinematicFallback(
-      const PlanningProblem& problem, const RouteCandidate& route,
-      PhysicalTrajectory* trajectory);
+  bool PlanKinematicFallback(const PlanningProblem& problem,
+                             const RouteCandidate& route,
+                             PhysicalTrajectory* trajectory);
 
   planning::PlannerOpenSpaceConfig config_;
   FemPosDeviationOsqp path_optimizer_;
@@ -53,5 +54,3 @@ class OpenSpaceTrajectoryPlanner : public TrajectoryPlanner {
 
 }  // namespace open_space_planning
 }  // namespace apollo
-
-

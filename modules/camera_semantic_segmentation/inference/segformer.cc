@@ -201,8 +201,7 @@ bool SegFormerDecoder::Decode(const SegFormerTensor& logits,
       double exp_sum = 0.0;
       for (uint32_t cls = 0U; cls < options_.num_classes; ++cls) {
         exp_sum += std::exp(static_cast<double>(
-            logits.values[LogitOffset(y, x, cls, height, width)] -
-            best_logit));
+            logits.values[LogitOffset(y, x, cls, height, width)] - best_logit));
       }
 
       mask->labels[pixel_index] = static_cast<uint8_t>(best_label);
@@ -283,8 +282,7 @@ bool SegFormerSegmenter::Segment(const ImageView& image,
   result->set_num_classes(options_.num_classes);
   result->set_mask(mask.labels.data(), mask.labels.size());
 
-  result->mutable_pixel_labels()->Reserve(
-      static_cast<int>(mask.labels.size()));
+  result->mutable_pixel_labels()->Reserve(static_cast<int>(mask.labels.size()));
   for (const uint8_t label : mask.labels) {
     result->add_pixel_labels(static_cast<uint32_t>(label));
   }

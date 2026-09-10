@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
+#include "modules/lidar_semantic_segmentation/proto/lidar_semantic_segmentation.pb.h"
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
-#include "modules/lidar_semantic_segmentation/proto/lidar_semantic_segmentation.pb.h"
 #include "modules/lidar_semantic_segmentation/types/range_projection.h"
 #include "modules/lidar_semantic_segmentation/types/semantic_types.h"
 
@@ -38,13 +38,13 @@ class RangeRetExecutor {
  public:
   virtual ~RangeRetExecutor() = default;
   virtual bool Init(const RangeRetModelOptions& options) = 0;
-  virtual bool Run(const std::vector<float>& input,
-                   RangeRetTensor* output) = 0;
+  virtual bool Run(const std::vector<float>& input, RangeRetTensor* output) = 0;
 };
 
 class RangeRetSegmenter {
  public:
-  explicit RangeRetSegmenter(RangeRetExecutor* executor) : executor_(executor) {}
+  explicit RangeRetSegmenter(RangeRetExecutor* executor)
+      : executor_(executor) {}
 
   bool Init(const RangeRetModelOptions& options, std::string* error);
 

@@ -237,7 +237,7 @@ function main() {
             env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/apollo_docs.sh" "$@"
             ;;
         format)
-            env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/apollo_format.sh" "$@"
+            env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_format.sh" "$@"
             ;;
         usage)
             _usage

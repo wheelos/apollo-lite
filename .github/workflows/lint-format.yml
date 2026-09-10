@@ -7,7 +7,6 @@ on:
   pull_request:
     branches:
       - main # Trigger on PR to 'main'
-      - 8.0-dev
 
 # Workflow permissions
 permissions:
@@ -16,6 +15,7 @@ permissions:
 
 jobs:
   lint-format:
+    # Run lint directly on the GitHub-hosted runner, not in an Apollo container.
     runs-on: ubuntu-latest
 
     steps:
@@ -45,14 +45,12 @@ jobs:
           disk-cache: ${{ github.workflow }}
           bazel-version: ${{ steps.bazel-version.outputs.version }}
 
-      - name: Install C++ (Clang-Format), Shell (Shellcheck) and Buildifier
+      - name: Install host lint tools
         run: |
           sudo apt-get update
-          # Install clang-format version from .pre-commit-config.yaml
-          sudo apt-get install -y clang-format-18 shellcheck
+          sudo apt-get install -y clang-format shellcheck
 
           # Install Buildifier using Go
-          # Todo(zero): different from ".pre-commit-config.yaml"
           go install github.com/bazelbuild/buildtools/buildifier@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 

@@ -173,4 +173,3 @@ bool CameraSemanticSegmentationComponent::MakeImageView(
 
 CYBER_REGISTER_COMPONENT(
     apollo::camera_semantic_segmentation::CameraSemanticSegmentationComponent)
-

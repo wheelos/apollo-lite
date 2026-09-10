@@ -4,12 +4,12 @@
 #include <NvInferPlugin.h>
 #include <NvInferVersion.h>
 
-#include <cuda_runtime_api.h>
-
 #include <fstream>
 #include <numeric>
 #include <string>
 #include <vector>
+
+#include <cuda_runtime_api.h>
 
 #include "cyber/common/log.h"
 
@@ -94,7 +94,9 @@ class TensorRtRangeRetExecutor::Impl {
     int binding_index = -1;
 #endif
 
-    std::size_t ByteCount() const { return ElementCount(shape) * sizeof(float); }
+    std::size_t ByteCount() const {
+      return ElementCount(shape) * sizeof(float);
+    }
   };
 
   ~Impl() {
@@ -112,7 +114,8 @@ class TensorRtRangeRetExecutor::Impl {
 
   bool Init(const RangeRetModelOptions& options) {
     if (initialized_ || options.device_id < 0 || options.engine_path.empty() ||
-        options.tensor_names.input.empty() || options.tensor_names.output.empty() ||
+        options.tensor_names.input.empty() ||
+        options.tensor_names.output.empty() ||
         options.tensor_names.input == options.tensor_names.output ||
         !CudaSucceeded(cudaSetDevice(options.device_id), "cudaSetDevice")) {
       return false;
@@ -191,7 +194,8 @@ class TensorRtRangeRetExecutor::Impl {
     }
 #if NV_TENSORRT_MAJOR >= 10
     if (!context_->setInputShape(input_.name.c_str(), ToDims(input_.shape)) ||
-        !context_->setTensorAddress(input_.name.c_str(), input_.device_memory) ||
+        !context_->setTensorAddress(input_.name.c_str(),
+                                    input_.device_memory) ||
         !context_->setTensorAddress(output_.name.c_str(),
                                     output_.device_memory) ||
         !context_->enqueueV3(stream_)) {
@@ -213,11 +217,11 @@ class TensorRtRangeRetExecutor::Impl {
 #endif
     output->shape = output_.shape;
     output->values.resize(ElementCount(output_.shape));
-    return CudaSucceeded(cudaMemcpyAsync(output->values.data(),
-                                         output_.device_memory,
-                                         output_.ByteCount(),
-                                         cudaMemcpyDeviceToHost, stream_),
-                         "cudaMemcpyAsync output") &&
+    return CudaSucceeded(
+               cudaMemcpyAsync(output->values.data(), output_.device_memory,
+                               output_.ByteCount(), cudaMemcpyDeviceToHost,
+                               stream_),
+               "cudaMemcpyAsync output") &&
            CudaSucceeded(cudaStreamSynchronize(stream_),
                          "cudaStreamSynchronize");
   }
@@ -239,10 +243,12 @@ class TensorRtRangeRetExecutor::Impl {
             nvinfer1::DataType::kFLOAT ||
         engine_->getBindingDataType(output_.binding_index) !=
             nvinfer1::DataType::kFLOAT ||
-        !HasStaticDimensions(engine_->getBindingDimensions(input_.binding_index),
-                             input_.shape) ||
-        !HasStaticDimensions(engine_->getBindingDimensions(output_.binding_index),
-                             output_.shape)) {
+        !HasStaticDimensions(
+            engine_->getBindingDimensions(input_.binding_index),
+            input_.shape) ||
+        !HasStaticDimensions(
+            engine_->getBindingDimensions(output_.binding_index),
+            output_.shape)) {
       return false;
     }
     return true;
@@ -272,8 +278,9 @@ class TensorRtRangeRetExecutor::Impl {
   bool AllocateBuffers() {
     return CudaSucceeded(cudaMalloc(&input_.device_memory, input_.ByteCount()),
                          "cudaMalloc input") &&
-           CudaSucceeded(cudaMalloc(&output_.device_memory, output_.ByteCount()),
-                         "cudaMalloc output");
+           CudaSucceeded(
+               cudaMalloc(&output_.device_memory, output_.ByteCount()),
+               "cudaMalloc output");
   }
 
   void FreeBuffers() {
