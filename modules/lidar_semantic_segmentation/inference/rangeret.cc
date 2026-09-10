@@ -49,9 +49,9 @@ bool RangeRetSegmenter::Init(const RangeRetModelOptions& options,
   return true;
 }
 
-bool RangeRetSegmenter::Segment(
-    const apollo::drivers::PointCloud& cloud,
-    LidarSemanticSegmentationResult* result, std::string* error) const {
+bool RangeRetSegmenter::Segment(const apollo::drivers::PointCloud& cloud,
+                                LidarSemanticSegmentationResult* result,
+                                std::string* error) const {
   if (!initialized_) {
     SetError("RangeRet segmenter is not initialized", error);
     return false;
@@ -127,8 +127,8 @@ bool RangeRetSegmenter::Decode(
     float best_logit = -std::numeric_limits<float>::infinity();
     double exp_sum = 0.0;
     for (uint32_t cls = 0U; cls < options_.num_classes; ++cls) {
-      const float value = logits.values[LogitOffset(projected.y, projected.x,
-                                                    cls)];
+      const float value =
+          logits.values[LogitOffset(projected.y, projected.x, cls)];
       if (!std::isfinite(value)) {
         SetError("RangeRet output contains non-finite logits", error);
         return false;

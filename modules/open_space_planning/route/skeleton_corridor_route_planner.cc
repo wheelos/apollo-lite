@@ -143,8 +143,13 @@ Status SkeletonCorridorRoutePlanner::Plan(
 
     const int dx8[8] = {1, -1, 0, 0, 1, 1, -1, -1};
     const int dy8[8] = {0, 0, 1, -1, 1, -1, 1, -1};
-    const double cost8[8] = {1.0,        1.0,        1.0,        1.0,
-                             std::sqrt(2.0), std::sqrt(2.0), std::sqrt(2.0),
+    const double cost8[8] = {1.0,
+                             1.0,
+                             1.0,
+                             1.0,
+                             std::sqrt(2.0),
+                             std::sqrt(2.0),
+                             std::sqrt(2.0),
                              std::sqrt(2.0)};
 
     bool reached = false;

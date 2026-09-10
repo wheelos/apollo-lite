@@ -56,8 +56,7 @@ OSQPCscMatrix* OwnedCscMatrix(OSQPInt m, OSQPInt n,
 
 }  // namespace
 
-PiecewiseJerkSpeedOsqp::PiecewiseJerkSpeedOsqp() {
-}
+PiecewiseJerkSpeedOsqp::PiecewiseJerkSpeedOsqp() {}
 
 PiecewiseJerkSpeedOsqp::PiecewiseJerkSpeedOsqp(
     PiecewiseJerkSpeedOsqpConfig config)
@@ -65,8 +64,8 @@ PiecewiseJerkSpeedOsqp::PiecewiseJerkSpeedOsqp(
 
 void PiecewiseJerkSpeedOsqp::ComputeSTBoundaries(
     const std::vector<GeometricPathPoint>& path,
-    const std::vector<DynamicObstacle>& obstacles,
-    double time_horizon, double delta_t, double vehicle_safety_margin,
+    const std::vector<DynamicObstacle>& obstacles, double time_horizon,
+    double delta_t, double vehicle_safety_margin,
     std::vector<STBoundary>* st_boundaries) {
   if (st_boundaries == nullptr || path.empty() || obstacles.empty()) {
     return;
@@ -99,9 +98,9 @@ void PiecewiseJerkSpeedOsqp::ComputeSTBoundaries(
                 t <= obs.prediction[k + 1].relative_time) {
               const double dt = obs.prediction[k + 1].relative_time -
                                 obs.prediction[k].relative_time;
-              const double r =
-                  (dt > 1e-6) ? (t - obs.prediction[k].relative_time) / dt
-                              : 0.0;
+              const double r = (dt > 1e-6)
+                                   ? (t - obs.prediction[k].relative_time) / dt
+                                   : 0.0;
               obs_pose.x = (1.0 - r) * obs.prediction[k].pose.x +
                            r * obs.prediction[k + 1].pose.x;
               obs_pose.y = (1.0 - r) * obs.prediction[k].pose.y +
@@ -369,8 +368,8 @@ bool PiecewiseJerkSpeedOsqp::Solve(
     A_indptr.push_back(static_cast<OSQPInt>(A_indices.size()));
   }
 
-  OSQPCscMatrix* P = OwnedCscMatrix(num_variables, num_variables, P_data,
-                                    P_indices, P_indptr);
+  OSQPCscMatrix* P =
+      OwnedCscMatrix(num_variables, num_variables, P_data, P_indices, P_indptr);
   OSQPCscMatrix* A = OwnedCscMatrix(static_cast<OSQPInt>(lower_bounds.size()),
                                     num_variables, A_data, A_indices, A_indptr);
 
@@ -388,10 +387,9 @@ bool PiecewiseJerkSpeedOsqp::Solve(
   }
 
   OSQPSolver* solver = nullptr;
-  const OSQPInt setup_status =
-      osqp_setup(&solver, P, q.data(), A, lower_bounds.data(),
-                 upper_bounds.data(), static_cast<OSQPInt>(lower_bounds.size()),
-                 num_variables, settings);
+  const OSQPInt setup_status = osqp_setup(
+      &solver, P, q.data(), A, lower_bounds.data(), upper_bounds.data(),
+      static_cast<OSQPInt>(lower_bounds.size()), num_variables, settings);
 
   bool solved = false;
   if (setup_status == 0 && solver != nullptr) {

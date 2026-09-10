@@ -28,8 +28,8 @@ class TensorRtSegFormerExecutor final : public SegFormerExecutor {
   ~TensorRtSegFormerExecutor() override;
 
   TensorRtSegFormerExecutor(const TensorRtSegFormerExecutor&) = delete;
-  TensorRtSegFormerExecutor& operator=(
-      const TensorRtSegFormerExecutor&) = delete;
+  TensorRtSegFormerExecutor& operator=(const TensorRtSegFormerExecutor&) =
+      delete;
 
   bool Init(const SegFormerModelOptions& options) override;
   bool Run(const std::vector<float>& input, SegFormerTensor* output) override;

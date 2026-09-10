@@ -14,12 +14,12 @@
 
 #pragma once
 
+#include <osqp.h>
+
 #include <cstddef>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <osqp.h>
 
 #include "modules/open_space_planning/common/types.h"
 

@@ -43,8 +43,8 @@ bool RangeImageProjector::Init(const RangeImageProjectionOptions& options,
     return false;
   }
   for (const float std_value : options.channel_std) {
-    if (!std::isfinite(std_value) || std::fabs(std_value) <=
-                                          std::numeric_limits<float>::epsilon()) {
+    if (!std::isfinite(std_value) ||
+        std::fabs(std_value) <= std::numeric_limits<float>::epsilon()) {
       SetError("channel std values must be finite and non-zero", error);
       return false;
     }
@@ -60,8 +60,7 @@ bool RangeImageProjector::Init(const RangeImageProjectionOptions& options,
 }
 
 bool RangeImageProjector::Project(const apollo::drivers::PointCloud& cloud,
-                                  RangeImage* image,
-                                  std::string* error) const {
+                                  RangeImage* image, std::string* error) const {
   if (!initialized_) {
     SetError("range image projector is not initialized", error);
     return false;
@@ -108,12 +107,12 @@ bool RangeImageProjector::Project(const apollo::drivers::PointCloud& cloud,
     float proj_y = 1.0F - (pitch + std::fabs(fov_down)) / fov;
     proj_x *= static_cast<float>(options_.width);
     proj_y *= static_cast<float>(options_.height);
-    const int pixel_x = std::max(
-        0, std::min(static_cast<int>(options_.width) - 1,
-                    static_cast<int>(std::floor(proj_x))));
-    const int pixel_y = std::max(
-        0, std::min(static_cast<int>(options_.height) - 1,
-                    static_cast<int>(std::floor(proj_y))));
+    const int pixel_x =
+        std::max(0, std::min(static_cast<int>(options_.width) - 1,
+                             static_cast<int>(std::floor(proj_x))));
+    const int pixel_y =
+        std::max(0, std::min(static_cast<int>(options_.height) - 1,
+                             static_cast<int>(std::floor(proj_y))));
     ProjectedPoint* projected = &image->points[static_cast<std::size_t>(index)];
     projected->valid = true;
     projected->x = static_cast<uint32_t>(pixel_x);

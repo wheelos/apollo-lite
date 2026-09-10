@@ -32,8 +32,7 @@ OpenSpacePlanner::OpenSpacePlanner(
       route_planner_(std::move(route_planner)),
       trajectory_planner_(std::move(trajectory_planner)),
       trajectory_validator_(std::move(trajectory_validator)),
-      fallback_planner_(std::move(fallback_planner)) {
-}
+      fallback_planner_(std::move(fallback_planner)) {}
 
 Status OpenSpacePlanner::Plan(const PlanningProblem& problem,
                               PlanningResult* result) {
@@ -56,9 +55,9 @@ Status OpenSpacePlanner::Plan(const PlanningProblem& problem,
   }
 
   std::vector<RouteCandidate> candidates;
-  const RoutePlanningRequest route_request{
-      problem, config_.maximum_route_candidates,
-      config_.default_search_paradigm};
+  const RoutePlanningRequest route_request{problem,
+                                           config_.maximum_route_candidates,
+                                           config_.default_search_paradigm};
   const Status route_status = route_planner_->Plan(route_request, &candidates);
   if (!route_status.ok() || candidates.empty()) {
     return PlanFallback(problem, result);

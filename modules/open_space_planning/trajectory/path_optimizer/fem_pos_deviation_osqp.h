@@ -14,11 +14,11 @@
 
 #pragma once
 
+#include <osqp.h>
+
 #include <cstddef>
 #include <utility>
 #include <vector>
-
-#include <osqp.h>
 
 #include "modules/open_space_planning/common/types.h"
 
@@ -71,8 +71,7 @@ class FemPosDeviationOsqp {
       std::vector<OSQPFloat>* upper_bounds);
 
   std::vector<double> CalculateLinearizedFemPosParams(
-      const std::vector<std::pair<double, double>>& points,
-      std::size_t index);
+      const std::vector<std::pair<double, double>>& points, std::size_t index);
 
   FemPosDeviationOsqpConfig config_;
 };

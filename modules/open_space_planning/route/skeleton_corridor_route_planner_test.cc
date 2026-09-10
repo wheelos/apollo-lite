@@ -57,8 +57,8 @@ TEST(SkeletonCorridorRoutePlannerTest, PlanAroundObstacleWithCorridor) {
   SkeletonCorridorRoutePlanner planner;
 
   std::vector<RouteCandidate> candidates;
-  RoutePlanningRequest request{
-      problem, 1, RouteSearchParadigm::kSkeletonCorridor};
+  RoutePlanningRequest request{problem, 1,
+                               RouteSearchParadigm::kSkeletonCorridor};
   const Status status = planner.Plan(request, &candidates);
 
   EXPECT_TRUE(status.ok());

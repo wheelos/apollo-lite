@@ -17,12 +17,12 @@
 #include <memory>
 #include <string>
 
+#include "modules/camera_semantic_segmentation/proto/camera_semantic_segmentation.pb.h"
 #include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 
 #include "cyber/component/component.h"
 #include "modules/camera_semantic_segmentation/inference/segformer.h"
 #include "modules/camera_semantic_segmentation/inference/tensorrt_executor.h"
-#include "modules/camera_semantic_segmentation/proto/camera_semantic_segmentation.pb.h"
 #include "modules/camera_semantic_segmentation/types/image_frame.h"
 
 namespace apollo {

@@ -117,4 +117,3 @@ TEST(OpenSpaceTrajectoryPlannerTest, AvoidsDynamicObstacleByYielding) {
 }  // namespace
 }  // namespace open_space_planning
 }  // namespace apollo
-
