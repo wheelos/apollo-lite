@@ -104,7 +104,7 @@ class LatController : public Controller {
   void UpdateState(SimpleLateralDebug *debug);
 
   // logic for reverse driving mode
-  void UpdateDrivingOrientation();
+  void UpdateDrivingOrientation(const common::ReferenceState& reference_state);
 
   void UpdateMatrix();
 

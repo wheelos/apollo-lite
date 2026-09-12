@@ -14,7 +14,6 @@ cc_library(
         ":print_debug_info",
         "@core//cyber",
         "//modules/common/util",
-        "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "//modules/planning/common:planning_gflags",

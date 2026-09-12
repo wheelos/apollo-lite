@@ -96,7 +96,7 @@ void NaviObstacleDecider::AddObstacleOffsetDirection(
 bool NaviObstacleDecider::IsNeedFilterObstacle(
     const Obstacle* current_obstacle, const PathPoint& vehicle_projection_point,
     const std::vector<common::PathPoint>& path_data_points,
-    const common::VehicleState& vehicle_state,
+    const common::ReferenceState& reference_state,
     PathPoint* projection_point_ptr) {
   bool is_filter = true;
   *projection_point_ptr = PathMatcher::MatchToPath(
@@ -105,7 +105,7 @@ bool NaviObstacleDecider::IsNeedFilterObstacle(
   ADEBUG << "obstacle distance : " << projection_point_ptr->s()
          << "vehicle distance : " << vehicle_projection_point.s();
   if ((projection_point_ptr->s() - vehicle_projection_point.s()) >
-      (config_.judge_dis_coeff() * vehicle_state.linear_velocity() +
+      (config_.judge_dis_coeff() * reference_state.linear_velocity() +
        config_.basis_dis_value())) {
     return is_filter;
   }
@@ -137,7 +137,7 @@ void NaviObstacleDecider::ProcessObstacle(
     const std::vector<const Obstacle*>& obstacles,
     const std::vector<common::PathPoint>& path_data_points,
     const PathDecision& path_decision, const double min_lane_width,
-    const common::VehicleState& vehicle_state) {
+    const common::ReferenceState& reference_state) {
   auto func_distance = [](const PathPoint& point, const double x,
                           const double y) {
     double dx = point.x() - x;
@@ -151,7 +151,7 @@ void NaviObstacleDecider::ProcessObstacle(
   for (const auto& current_obstacle : obstacles) {
     bool is_continue = IsNeedFilterObstacle(
         current_obstacle, vehicle_projection_point, path_data_points,
-        vehicle_state, &projection_point);
+        reference_state, &projection_point);
     if (is_continue) {
       continue;
     }
@@ -239,9 +239,10 @@ void NaviObstacleDecider::RecordLastNudgeDistance(const double nudge_dist) {
 }
 
 void NaviObstacleDecider::SmoothNudgeDistance(
-    const common::VehicleState& vehicle_state, double* nudge_dist) {
+    const common::ReferenceState& reference_state, double* nudge_dist) {
   CHECK_NOTNULL(nudge_dist);
-  if (vehicle_state.linear_velocity() < config_.max_allow_nudge_speed()) {
+  if (reference_state.linear_velocity() <
+      config_.max_allow_nudge_speed()) {
     ++limit_speed_num_;
   } else {
     limit_speed_num_ = 0;
@@ -264,7 +265,7 @@ double NaviObstacleDecider::GetNudgeDistance(
     const std::vector<const Obstacle*>& obstacles,
     const ReferenceLine& reference_line, const PathDecision& path_decision,
     const std::vector<common::PathPoint>& path_data_points,
-    const common::VehicleState& vehicle_state, int* lane_obstacles_num) {
+    const common::ReferenceState& reference_state, int* lane_obstacles_num) {
   CHECK_NOTNULL(lane_obstacles_num);
 
   // Calculating the left and right nudgeable distance on the lane
@@ -294,7 +295,7 @@ double NaviObstacleDecider::GetNudgeDistance(
   // Calculation of the number of current Lane obstacles
   obstacle_lat_dist_.clear();
   ProcessObstacle(obstacles, path_data_points, path_decision, min_lane_width,
-                  vehicle_state);
+                  reference_state);
   for (auto iter = obstacle_lat_dist_.begin(); iter != obstacle_lat_dist_.end();
        ++iter) {
     auto actual_dist = GetObstacleActualOffsetDistance(
@@ -329,7 +330,7 @@ double NaviObstacleDecider::GetNudgeDistance(
   ADEBUG << "get nudge distance : " << nudge_dist
          << "get lane_obstacles_num : " << *lane_obstacles_num;
   RecordLastNudgeDistance(nudge_dist);
-  SmoothNudgeDistance(vehicle_state, &nudge_dist);
+  SmoothNudgeDistance(reference_state, &nudge_dist);
   KeepNudgePosition(nudge_dist, lane_obstacles_num);
   ADEBUG << "last nudge distance : " << nudge_dist;
   return nudge_dist;

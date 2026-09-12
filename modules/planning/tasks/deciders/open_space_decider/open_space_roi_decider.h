@@ -32,7 +32,6 @@
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/map/pnc_map/pnc_map.h"
@@ -171,7 +170,7 @@ class OpenSpaceRoiDecider : public Decider {
 
   ThreadSafeIndexedObstacles *obstacles_by_frame_;
 
-  common::VehicleState vehicle_state_;
+  common::ReferenceState reference_state_;
 
   std::string last_parking_entry_spot_id_;
   common::math::Vec2d last_parking_entry_reference_;

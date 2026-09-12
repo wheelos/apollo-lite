@@ -20,7 +20,6 @@
 #include "gtest/gtest.h"
 
 #include "modules/common/configs/config_gflags.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/planning_gflags.h"
 
 using apollo::common::TrajectoryPoint;
@@ -54,7 +53,7 @@ TEST(RTKReplayPlannerTest, ComputeTrajectory) {
   localization.mutable_pose()->mutable_linear_acceleration()->set_y(0.0);
   localization.mutable_pose()->mutable_linear_acceleration()->set_z(0.0);
   injector->vehicle_state()->Update(localization, chassis);
-  common::VehicleState state;
+  common::ReferenceState state;
   state.set_x(point.x());
   state.set_y(point.y());
   state.set_z(point.z());
@@ -102,7 +101,7 @@ TEST(RTKReplayPlannerTest, ErrorTest) {
   injector->vehicle_state()->Update(localization, chassis);
   ReferenceLine ref;
   hdmap::RouteSegments segments;
-  common::VehicleState state;
+  common::ReferenceState state;
   state.set_x(point.x());
   state.set_y(point.y());
   state.set_z(point.z());

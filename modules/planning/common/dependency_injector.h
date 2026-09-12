@@ -17,6 +17,7 @@
 #pragma once
 
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
+#include "modules/common/vehicle_state/reference_point_resolver.h"
 #include "modules/planning/common/ego_info.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/history.h"
@@ -38,6 +39,15 @@ class DependencyInjector {
   apollo::common::VehicleStateProvider* vehicle_state() {
     return &vehicle_state_;
   }
+  apollo::common::ReferencePointResolver* reference_point_resolver() {
+    return &reference_point_resolver_;
+  }
+  const apollo::common::VehicleState& canonical_vehicle_state() const {
+    return vehicle_state_.canonical_state();
+  }
+  const apollo::common::VehicleOperatingState& operating_state() const {
+    return vehicle_state_.operating_state();
+  }
   LearningBasedData* learning_based_data() { return &learning_based_data_; }
 
  private:
@@ -46,6 +56,7 @@ class DependencyInjector {
   History history_;
   EgoInfo ego_info_;
   apollo::common::VehicleStateProvider vehicle_state_;
+  apollo::common::ReferencePointResolver reference_point_resolver_;
   LearningBasedData learning_based_data_;
 };
 

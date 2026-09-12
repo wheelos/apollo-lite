@@ -14,7 +14,6 @@ cc_library(
         "//modules/common/status",
         "//modules/common/util",
         "//modules/common/util:util_tool",
-        "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/map/hdmap",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:planning_gflags",

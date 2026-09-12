@@ -403,8 +403,6 @@ Status LatController::ComputeControlCommand(
   matrix_b_(3, 0) = lf_ * cf_ / iz_;
   matrix_bd_ = matrix_b_ * ts_;
 
-  UpdateDrivingOrientation();
-
   SimpleLateralDebug *debug = cmd->mutable_debug()->mutable_simple_lat_debug();
   debug->Clear();
 
@@ -606,20 +604,19 @@ Status LatController::Reset() {
 }
 
 void LatController::UpdateState(SimpleLateralDebug *debug) {
-  auto vehicle_state = injector_->vehicle_state();
+  common::ReferenceState control_state;
+  ACHECK(injector_->ResolveControlState(&control_state, lr_).ok());
+  UpdateDrivingOrientation(control_state);
   if (FLAGS_use_navigation_mode) {
     ComputeLateralErrors(
-        0.0, 0.0, driving_orientation_, vehicle_state->linear_velocity(),
-        vehicle_state->angular_velocity(), vehicle_state->linear_acceleration(),
+        0.0, 0.0, driving_orientation_, control_state.linear_velocity(),
+        control_state.angular_velocity(), control_state.linear_acceleration(),
         trajectory_analyzer_, debug);
   } else {
-    // Transform the coordinate of the vehicle states from the center of the
-    // rear-axis to the center of mass, if conditions matched
-    const auto &com = vehicle_state->ComputeCOMPosition(lr_);
     ComputeLateralErrors(
-        com.x(), com.y(), driving_orientation_,
-        vehicle_state->linear_velocity(), vehicle_state->angular_velocity(),
-        vehicle_state->linear_acceleration(), trajectory_analyzer_, debug);
+        control_state.x(), control_state.y(), driving_orientation_,
+        control_state.linear_velocity(), control_state.angular_velocity(),
+        control_state.linear_acceleration(), trajectory_analyzer_, debug);
   }
 
   // State matrix update;
@@ -858,13 +855,14 @@ void LatController::ComputeLateralErrors(
   debug->set_curvature(target_point.path_point().kappa());
 }
 
-void LatController::UpdateDrivingOrientation() {
-  auto vehicle_state = injector_->vehicle_state();
-  driving_orientation_ = vehicle_state->heading();
+void LatController::UpdateDrivingOrientation(
+    const common::ReferenceState& reference_state) {
+  driving_orientation_ = reference_state.heading();
   matrix_bd_ = matrix_b_ * ts_;
   // Reverse the driving direction if the vehicle is in reverse mode
   if (FLAGS_reverse_heading_control) {
-    if (vehicle_state->gear() == canbus::Chassis::GEAR_REVERSE) {
+    if (injector_->operating_state().gear() ==
+        canbus::Chassis::GEAR_REVERSE) {
       driving_orientation_ =
           common::math::NormalizeAngle(driving_orientation_ + M_PI);
       // Update Matrix_b for reverse mode

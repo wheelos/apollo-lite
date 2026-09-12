@@ -50,7 +50,8 @@ class TrafficLightUnprotectedLeftTurnStageApproach : public Stage {
   }
 
  private:
-  Stage::StageStatus FinishStage(Frame* frame);
+  Stage::StageStatus FinishStage(const double adc_speed,
+                             ReferenceLineInfo* reference_line_info);
 
  private:
   ScenarioTrafficLightUnprotectedLeftTurnConfig scenario_config_;

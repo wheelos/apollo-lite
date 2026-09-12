@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
+#include "modules/common/vehicle_state/reference_point_resolver.h"
 #include "wheelos_msgs/basic_msgs/geometry.pb.h"
 #include "wheelos_msgs/localization_msgs/pose.pb.h"
 #include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
@@ -77,15 +78,19 @@ class Frame {
   const common::TrajectoryPoint &PlanningStartPoint() const;
 
   common::Status Init(
-      const common::VehicleStateProvider *vehicle_state_provider,
+      const common::VehicleState &canonical_vehicle_state,
+      const common::ReferencePointResolver *reference_point_resolver,
       const std::list<ReferenceLine> &reference_lines,
       const std::list<hdmap::RouteSegments> &segments,
       const std::vector<routing::LaneWaypoint> &future_route_waypoints,
-      const EgoInfo *ego_info);
+      const EgoInfo *ego_info,
+      const common::VehicleOperatingState &operating_state);
 
   common::Status InitForOpenSpace(
-      const common::VehicleStateProvider *vehicle_state_provider,
-      const EgoInfo *ego_info);
+      const common::VehicleState &canonical_vehicle_state,
+      const common::ReferencePointResolver *reference_point_resolver,
+      const EgoInfo *ego_info,
+      const common::VehicleOperatingState &operating_state);
 
   uint32_t SequenceNum() const;
 
@@ -125,8 +130,15 @@ class Frame {
 
   bool Rerouting(PlanningContext *planning_context);
 
-  const common::VehicleState &vehicle_state() const;
-
+  const common::VehicleState &canonical_vehicle_state() const {
+    return canonical_vehicle_state_;
+  }
+  const common::ReferenceState &reference_state() const {
+    return reference_state_;
+  }
+  const common::VehicleOperatingState &operating_state() const {
+    return operating_state_;
+  }
   static void AlignPredictionTime(
       const double planning_start_time,
       prediction::PredictionObstacles *prediction_obstacles);
@@ -178,8 +190,10 @@ class Frame {
 
  private:
   common::Status InitFrameData(
-      const common::VehicleStateProvider *vehicle_state_provider,
-      const EgoInfo *ego_info);
+      const common::VehicleState &canonical_vehicle_state,
+      const common::ReferencePointResolver *reference_point_resolver,
+      const EgoInfo *ego_info,
+      const common::VehicleOperatingState &operating_state);
 
   bool CreateReferenceLineInfo(const std::list<ReferenceLine> &reference_lines,
                                const std::list<hdmap::RouteSegments> &segments);
@@ -212,7 +226,9 @@ class Frame {
   LocalView local_view_;
   const hdmap::HDMap *hdmap_ = nullptr;
   common::TrajectoryPoint planning_start_point_;
-  common::VehicleState vehicle_state_;
+  common::VehicleState canonical_vehicle_state_;
+  common::ReferenceState reference_state_;
+  common::VehicleOperatingState operating_state_;
   std::list<ReferenceLineInfo> reference_line_info_;
 
   bool is_near_destination_ = false;

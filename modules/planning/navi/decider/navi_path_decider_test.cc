@@ -25,7 +25,6 @@
 #include "gtest/gtest.h"
 
 #include "modules/common/util/point_factory.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/planning_gflags.h"
 
 using apollo::common::util::PointFactory;
@@ -147,11 +146,11 @@ TEST_F(NaviPathDeciderTest, KeepLane) {
   // 2.1 std::fabs(target_path_init_y) < keep_lane_offset, not need adjust
   // reference points
   const common::TrajectoryPoint plan_start_point;
-  const common::VehicleState vehicle_state;
   ReferenceLine ref_line;
   apollo::hdmap::RouteSegments route_segments;
   navi_path_decider.reference_line_info_ = new ReferenceLineInfo(
-      vehicle_state, plan_start_point, ref_line, route_segments);
+      common::ReferenceState{}, plan_start_point, ref_line, route_segments);
+  const common::VehicleState vehicle_state;
   LocalView local_view;
   navi_path_decider.frame_ =
       new Frame(1, local_view, plan_start_point, vehicle_state, nullptr);

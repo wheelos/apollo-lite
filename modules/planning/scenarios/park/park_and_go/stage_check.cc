@@ -29,7 +29,7 @@ Stage::StageStatus ParkAndGoStageCheck::Process(
   CHECK_NOTNULL(frame);
 
   scenario_config_.CopyFrom(GetContext()->scenario_config);
-  ADCInitStatus();
+  ADCInitStatus(frame->reference_state());
   frame->mutable_open_space_info()->set_is_on_open_space_trajectory(true);
   bool plan_ok = ExecuteTaskOnOpenSpace(frame);
   if (!plan_ok) {
@@ -38,7 +38,8 @@ Stage::StageStatus ParkAndGoStageCheck::Process(
   }
 
   bool ready_to_cruise = scenario::util::CheckADCReadyToCruise(
-      injector_->vehicle_state(), frame, scenario_config_);
+      frame->reference_state(), frame->operating_state(),
+      frame->reference_line_info(), frame->obstacles(), scenario_config_);
   return FinishStage(ready_to_cruise);
 }
 
@@ -55,18 +56,19 @@ Stage::StageStatus ParkAndGoStageCheck::FinishStage(const bool success) {
   return Stage::FINISHED;
 }
 
-void ParkAndGoStageCheck::ADCInitStatus() {
+void ParkAndGoStageCheck::ADCInitStatus(
+    const common::ReferenceState& reference_state) {
   auto* park_and_go_status = injector_->planning_context()
                                  ->mutable_planning_status()
                                  ->mutable_park_and_go();
   park_and_go_status->Clear();
   park_and_go_status->mutable_adc_init_position()->set_x(
-      injector_->vehicle_state()->x());
+      reference_state.x());
   park_and_go_status->mutable_adc_init_position()->set_y(
-      injector_->vehicle_state()->y());
+      reference_state.y());
   park_and_go_status->mutable_adc_init_position()->set_z(0.0);
   park_and_go_status->set_adc_init_heading(
-      injector_->vehicle_state()->heading());
+      reference_state.heading());
   park_and_go_status->set_in_check_stage(true);
 }
 

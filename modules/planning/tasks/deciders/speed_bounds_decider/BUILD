@@ -34,6 +34,7 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
         "//modules/common/configs:vehicle_config_helper",
+        "//modules/common/vehicle_state:vehicle_reference",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/status",

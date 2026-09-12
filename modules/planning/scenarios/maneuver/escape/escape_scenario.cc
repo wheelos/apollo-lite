@@ -40,7 +40,7 @@ class EscapeStage final : public Stage {
                       Frame* frame) override {
     CHECK_NOTNULL(frame);
 
-    const double speed = std::abs(frame->vehicle_state().linear_velocity());
+    const double speed = std::abs(frame->reference_state().linear_velocity());
     auto* blocking_status = injector_->history()->mutable_blocking_status();
     if (speed > kEscapeReleaseSpeedThreshold ||
         !blocking_status->has_start_stuck_time()) {

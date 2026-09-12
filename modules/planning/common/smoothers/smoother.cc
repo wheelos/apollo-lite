@@ -33,13 +33,13 @@ using apollo::common::ErrorCode;
 using apollo::common::Status;
 using apollo::common::math::Vec2d;
 
-bool Smoother::IsCloseStop(const common::VehicleState& vehicle_state,
+bool Smoother::IsCloseStop(const common::ReferenceState& reference_state,
                            const MainStop& main_stop) {
   if (!main_stop.has_stop_point()) {
     ADEBUG << "not close for main stop:" << main_stop.DebugString();
     return false;
   }
-  Vec2d current_car_pos(vehicle_state.x(), vehicle_state.y());
+  Vec2d current_car_pos(reference_state.x(), reference_state.y());
   Vec2d stop_pos(main_stop.stop_point().x(), main_stop.stop_point().y());
   auto stop_distance = stop_pos.DistanceTo(current_car_pos);
   if (stop_distance > FLAGS_smoother_stop_distance) {
@@ -77,7 +77,7 @@ apollo::common::Status Smoother::Smooth(
     return Status::OK();
   }
 
-  const auto& vehicle_state = current_frame->vehicle_state();
+  const auto& vehicle_state = current_frame->reference_state();
   const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()
                                         ->GetConfig()
                                         .vehicle_param()

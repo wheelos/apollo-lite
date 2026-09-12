@@ -519,11 +519,11 @@ void MPCController::LoadControlCalibrationTable(
 }
 
 void MPCController::UpdateState(SimpleMPCDebug *debug) {
-  const auto &com = injector_->vehicle_state()->ComputeCOMPosition(lr_);
-  ComputeLateralErrors(com.x(), com.y(), injector_->vehicle_state()->heading(),
-                       injector_->vehicle_state()->linear_velocity(),
-                       injector_->vehicle_state()->angular_velocity(),
-                       injector_->vehicle_state()->linear_acceleration(),
+  common::ReferenceState com;
+  ACHECK(injector_->ResolveControlState(&com, lr_).ok());
+  ComputeLateralErrors(com.x(), com.y(), com.heading(),
+                       com.linear_velocity(), com.angular_velocity(),
+                       com.linear_acceleration(),
                        trajectory_analyzer_, debug);
 
   // State matrix update;

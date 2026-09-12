@@ -17,7 +17,6 @@
 #include "modules/planning/scenarios/park/park_and_go/stage_cruise.h"
 
 #include "cyber/common/log.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/util/common.h"
@@ -66,8 +65,9 @@ ParkAndGoStageCruise::CheckADCParkAndGoCruiseCompleted(
   const auto& reference_line = reference_line_info.reference_line();
 
   // check l delta
-  const common::math::Vec2d adc_position = {injector_->vehicle_state()->x(),
-                                            injector_->vehicle_state()->y()};
+  const common::math::Vec2d adc_position = {
+      reference_line_info.reference_state().x(),
+      reference_line_info.reference_state().y()};
   common::SLPoint adc_position_sl;
   reference_line.XYToSL(adc_position, &adc_position_sl);
 
@@ -76,24 +76,6 @@ ParkAndGoStageCruise::CheckADCParkAndGoCruiseCompleted(
     ADEBUG << "cruise completed";
     return CRUISE_COMPLETE;
   }
-
-  /* loose heading check, so that ADC can enter LANE_FOLLOW scenario sooner
-   * which is more sophisticated
-  // heading delta
-  const double adc_heading =
-      common::VehicleStateProvider::Instance()->heading();
-  const auto reference_point =
-      reference_line.GetReferencePoint(adc_position_sl.s());
-  const auto path_point = reference_point.ToPathPoint(adc_position_sl.s());
-  ADEBUG << "adc_position_sl.l():[" << adc_position_sl.l() << "]";
-  ADEBUG << "adc_heading - path_point.theta():[" << adc_heading << "]"
-         << "[" << path_point.theta() << "]";
-  const double kHeadingBuffer = 0.1;
-  if (std::fabs(adc_heading - path_point.theta()) < kHeadingBuffer) {
-    ADEBUG << "cruise completed";
-    return CRUISE_COMPLETE;
-  }
-  */
 
   return CRUISING;
 }

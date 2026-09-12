@@ -34,6 +34,7 @@
 #include "modules/planning/proto/task_config.pb.h"
 
 #include "modules/common/status/status.h"
+#include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "modules/planning/navi/decider/navi_obstacle_decider.h"
 #include "modules/planning/navi/decider/navi_task.h"
 #include "modules/planning/reference_line/reference_line.h"
@@ -136,7 +137,7 @@ class NaviPathDecider : public NaviTask {
                       const std::vector<common::PathPoint> &path_data_points,
                       const std::vector<const Obstacle *> &obstacles,
                       const PathDecision &path_decision,
-                      const common::VehicleState &vehicle_state);
+                      const common::ReferenceState &reference_state);
   /**
    * @brief calculate latreal shift distance by vehicle state and config
    */
@@ -159,7 +160,7 @@ class NaviPathDecider : public NaviTask {
   std::string cur_reference_line_lane_id_;
   std::map<std::string, bool> last_lane_id_to_nudge_flag_;
   NaviObstacleDecider obstacle_decider_;
-  common::VehicleState vehicle_state_;
+  common::ReferenceState reference_state_;
   NaviPathDeciderConfig config_;
 
   FRIEND_TEST(NaviPathDeciderTest, MoveToDestLane);

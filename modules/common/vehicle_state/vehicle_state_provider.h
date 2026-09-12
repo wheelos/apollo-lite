@@ -20,15 +20,13 @@
  */
 #pragma once
 
-#include <memory>
 #include <string>
 
+#include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
-#include "modules/common/math/box2d.h"
-#include "modules/common/math/vec2d.h"
+
 #include "modules/common/status/status.h"
-#include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 
 /**
  * @namespace apollo::common
@@ -147,7 +145,7 @@ class VehicleStateProvider {
    * @brief Get the vehicle's gear position.
    * @return The vehicle's gear position.
    */
-  double gear() const;
+  canbus::Chassis::GearPosition gear() const;
 
   /**
    * @brief Get the vehicle's steering angle.
@@ -161,31 +159,19 @@ class VehicleStateProvider {
    */
   void set_linear_velocity(const double linear_velocity);
 
-  /**
-   * @brief Estimate future position from current position and heading,
-   *        along a period of time, by constant linear velocity,
-   *        linear acceleration, angular velocity.
-   * @param t The length of time period.
-   * @return The estimated future position in time t.
-   */
-  math::Vec2d EstimateFuturePosition(const double t) const;
+  // Returns the immutable state at the configured canonical reference point.
+  const VehicleState& canonical_state() const;
+  const VehicleOperatingState& operating_state() const;
 
-  /**
-   * @brief Compute the position of center of mass(COM) of the vehicle,
-   *        given the distance from rear wheels to the center of mass.
-   * @param rear_to_com_distance Distance from rear wheels to
-   *        the vehicle's center of mass.
-   * @return The position of the vehicle's center of mass.
-   */
-  math::Vec2d ComputeCOMPosition(const double rear_to_com_distance) const;
-
-  const VehicleState& vehicle_state() const;
+  // TODO: Migrate callers to canonical_state().
+  const VehicleState& vehicle_state() const { return canonical_state(); }
 
  private:
   bool ConstructExceptLinearVelocity(
       const localization::LocalizationEstimate& localization);
 
   common::VehicleState vehicle_state_;
+  common::VehicleOperatingState operating_state_;
   localization::LocalizationEstimate original_localization_;
 };
 

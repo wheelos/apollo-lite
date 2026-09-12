@@ -25,7 +25,6 @@
 #include <string>
 #include <vector>
 
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/util/common.h"
@@ -37,6 +36,7 @@ namespace planning {
 using apollo::common::ErrorCode;
 using apollo::common::Status;
 using apollo::common::VehicleState;
+using apollo::common::ReferenceState;
 using apollo::common::math::Vec2d;
 using apollo::hdmap::ParkingSpaceInfoConstPtr;
 
@@ -146,7 +146,7 @@ void OpenSpacePreStopDecider::SetParkingSpotStopFence(
     ReferenceLineInfo* const reference_line_info) {
   const auto& nearby_path = reference_line_info->reference_line().map_path();
   const double adc_front_edge_s = reference_line_info->AdcSlBoundary().end_s();
-  const VehicleState& vehicle_state = frame->vehicle_state();
+  const ReferenceState& vehicle_state = frame->reference_state();
   double stop_line_s = 0.0;
   double stop_distance_to_target =
       open_space_pre_stop_decider_config_.stop_distance_to_target();
@@ -196,7 +196,7 @@ void OpenSpacePreStopDecider::SetPullOverStopFence(
     ReferenceLineInfo* const reference_line_info) {
   const auto& nearby_path = reference_line_info->reference_line().map_path();
   const double adc_front_edge_s = reference_line_info->AdcSlBoundary().end_s();
-  const VehicleState& vehicle_state = frame->vehicle_state();
+  const ReferenceState& vehicle_state = frame->reference_state();
   double stop_line_s = 0.0;
   double stop_distance_to_target =
       open_space_pre_stop_decider_config_.stop_distance_to_target();

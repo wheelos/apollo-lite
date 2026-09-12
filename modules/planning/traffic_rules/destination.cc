@@ -92,11 +92,10 @@ int Destination::MakeDecisions(Frame* frame,
       common::SLPoint pull_over_sl;
       reference_line.XYToSL(pull_over_status.position(), &pull_over_sl);
 
-      const double stop_line_s = pull_over_sl.s() +
-                                 VehicleConfigHelper::GetConfig()
-                                     .vehicle_param()
-                                     .front_edge_to_center() +
-                                 config_.destination().stop_distance();
+      const double stop_line_s =
+          pull_over_sl.s() +
+          reference_line_info->vehicle_geometry_model().FrontEdgeDistance() +
+          config_.destination().stop_distance();
       util::BuildStopDecision(
           stop_wall_id, stop_line_s, config_.destination().stop_distance(),
           StopReasonCode::STOP_REASON_PULL_OVER, wait_for_obstacle_ids,

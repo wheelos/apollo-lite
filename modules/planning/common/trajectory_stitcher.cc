@@ -77,6 +77,20 @@ TrajectoryStitcher::ComputeReinitStitchingTrajectory(
   return std::vector<TrajectoryPoint>(1, reinit_point);
 }
 
+std::vector<TrajectoryPoint>
+TrajectoryStitcher::ComputeReinitStitchingTrajectory(
+    const double planning_cycle_time, const ReferenceState& reference_state) {
+  VehicleState vehicle_state;
+  vehicle_state.set_x(reference_state.x());
+  vehicle_state.set_y(reference_state.y());
+  vehicle_state.set_z(reference_state.z());
+  vehicle_state.set_heading(reference_state.heading());
+  vehicle_state.set_kappa(reference_state.kappa());
+  vehicle_state.set_linear_velocity(reference_state.linear_velocity());
+  vehicle_state.set_linear_acceleration(reference_state.linear_acceleration());
+  return ComputeReinitStitchingTrajectory(planning_cycle_time, vehicle_state);
+}
+
 // only used in navigation mode
 void TrajectoryStitcher::TransformLastPublishedTrajectory(
     const double x_diff, const double y_diff, const double theta_diff,

@@ -27,6 +27,7 @@
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
 
 namespace apollo {
@@ -190,7 +191,7 @@ Status NaviSpeedDecider::Execute(Frame* frame,
       planning_start_point.has_a() ? planning_start_point.a() : 0.0;
 
   // current status of vehicle
-  const auto& vehicle_state = frame->vehicle_state();
+  const auto& vehicle_state = frame->reference_state();
   auto current_v = vehicle_state.has_linear_velocity()
                        ? vehicle_state.linear_velocity()
                        : 0.0;
@@ -366,15 +367,14 @@ Status NaviSpeedDecider::AddObstaclesConstraints(
     const std::vector<PathPoint>& path_points,
     const std::vector<const Obstacle*>& obstacles,
     const std::function<const Obstacle*(const std::string&)>& find_obstacle) {
-  const auto& vehicle_config = VehicleConfigHelper::Instance()->GetConfig();
-  auto front_edge_to_center =
-      vehicle_config.vehicle_param().front_edge_to_center();
+  common::VehicleGeometryModel geometry_model;
+  const double front_edge_distance = geometry_model.FrontEdgeDistance();
   auto get_obstacle_distance = [&](double d) -> double {
-    return std::max(0.0, d - front_edge_to_center - obstacle_buffer_);
+    return std::max(0.0, d - front_edge_distance - obstacle_buffer_);
   };
   auto get_safe_distance = [&](double v) -> double {
     return safe_distance_ratio_ * v + safe_distance_base_ +
-           front_edge_to_center + obstacle_buffer_;
+           front_edge_distance + obstacle_buffer_;
   };
 
   // add obstacles from perception

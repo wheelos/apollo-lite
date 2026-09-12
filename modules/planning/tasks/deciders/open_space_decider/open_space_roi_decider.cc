@@ -665,7 +665,7 @@ bool GetTargetParkingSpotById(const hdmap::HDMap *hdmap,
 
 bool CheckDistanceToParkingSpot(
     const OpenSpaceRoiDeciderConfig &config, Frame *frame,
-    const common::VehicleState &vehicle_state,
+    const common::ReferenceState &reference_state,
     const ParkingSpaceInfoConstPtr &target_parking_spot) {
   if (target_parking_spot == nullptr ||
       target_parking_spot->polygon().points().empty()) {
@@ -680,7 +680,7 @@ bool CheckDistanceToParkingSpot(
         target_parking_spot);
   }
 
-  const Vec2d vehicle_vec(vehicle_state.x(), vehicle_state.y());
+  const Vec2d vehicle_vec(reference_state.x(), reference_state.y());
   return vehicle_vec.DistanceTo(parking_spot_center) <
          config.parking_start_range();
 }
@@ -688,7 +688,7 @@ bool CheckDistanceToParkingSpot(
 bool ResolveTargetParkingLane(
     const std::shared_ptr<DependencyInjector> &injector,
     const hdmap::HDMap *hdmap, Frame *frame,
-    const common::VehicleState &vehicle_state,
+    const common::ReferenceState &reference_state,
     const std::string &parking_spot_id_string, LaneInfoConstPtr *nearest_lane,
     std::string *error) {
   CHECK_NOTNULL(nearest_lane);
@@ -770,11 +770,14 @@ bool ResolveTargetParkingLane(
   }
 
   LaneInfoConstPtr nearest_lane_to_vehicle;
-  const auto point = common::util::PointFactory::ToPointENU(vehicle_state);
+  common::PointENU point;
+  point.set_x(reference_state.x());
+  point.set_y(reference_state.y());
+  point.set_z(reference_state.z());
   double vehicle_lane_s = 0.0;
   double vehicle_lane_l = 0.0;
   const int status = hdmap->GetNearestLaneWithHeading(
-      point, 10.0, vehicle_state.heading(), M_PI / 2.0,
+      point, 10.0, reference_state.heading(), M_PI / 2.0,
       &nearest_lane_to_vehicle, &vehicle_lane_s, &vehicle_lane_l);
   if (status == 0 && nearest_lane_to_vehicle != nullptr) {
     std::size_t nearest_lane_to_vehicle_index = 0U;
@@ -932,7 +935,7 @@ Status OpenSpaceRoiDecider::Process(Frame *frame) {
     return Status(ErrorCode::PLANNING_ERROR, msg);
   }
 
-  vehicle_state_ = frame->vehicle_state();
+  reference_state_ = frame->reference_state();
   obstacles_by_frame_ = frame->GetObstacleList();
 
   std::array<Vec2d, 4> spot_vertices;
@@ -1560,7 +1563,7 @@ bool OpenSpaceRoiDecider::GetPullOverBoundary(
       frame->mutable_open_space_info()->mutable_ROI_xy_boundary();
   xy_boundary->assign(ROI_xy_boundary.begin(), ROI_xy_boundary.end());
 
-  Vec2d vehicle_xy = Vec2d(vehicle_state_.x(), vehicle_state_.y());
+  Vec2d vehicle_xy = Vec2d(reference_state_.x(), reference_state_.y());
   vehicle_xy -= origin_point;
   vehicle_xy.SelfRotate(-origin_heading);
   if (vehicle_xy.x() < ROI_xy_boundary[0] ||
@@ -1587,7 +1590,7 @@ bool OpenSpaceRoiDecider::GetParkingBoundary(
   }
 
   LaneInfoConstPtr nearest_lane;
-  if (!ResolveTargetParkingLane(injector_, hdmap_, frame, vehicle_state_,
+  if (!ResolveTargetParkingLane(injector_, hdmap_, frame, reference_state_,
                                 parking_spot_id, &nearest_lane, error)) {
     return false;
   }
@@ -1612,7 +1615,7 @@ bool OpenSpaceRoiDecider::GetParkingBoundary(
     return false;
   }
   const auto &roi_config = config_.open_space_roi_decider_config();
-  if (!CheckDistanceToParkingSpot(roi_config, frame, vehicle_state_,
+  if (!CheckDistanceToParkingSpot(roi_config, frame, reference_state_,
                                   target_parking_spot)) {
     AINFO_EVERY(20) << "Target parking spot is farther than "
                     << "parking_start_range; continue direct parking ROI "
@@ -1621,7 +1624,7 @@ bool OpenSpaceRoiDecider::GetParkingBoundary(
 
   parking::ParkingSlot parking_slot;
   parking::ParkingSlotProvider provider;
-  Vec2d parking_entry_reference(vehicle_state_.x(), vehicle_state_.y());
+  Vec2d parking_entry_reference(reference_state_.x(), reference_state_.y());
   if (last_parking_entry_spot_id_ == parking_spot_id &&
       last_parking_entry_reference_.Length() > common::math::kMathEpsilon) {
     parking_entry_reference = last_parking_entry_reference_;
@@ -1662,7 +1665,8 @@ bool OpenSpaceRoiDecider::GetParkingBoundary(
   const double origin_heading = frame->open_space_info().origin_heading();
   double vehicle_s = 0.0;
   double vehicle_l = 0.0;
-  if (!nearby_path.GetProjection(Vec2d(vehicle_state_.x(), vehicle_state_.y()),
+  if (!nearby_path.GetProjection(
+          Vec2d(reference_state_.x(), reference_state_.y()),
                                  &vehicle_s, &vehicle_l)) {
     if (error != nullptr) {
       *error = "failed to project ego on nearby path for parking roi";
@@ -1712,11 +1716,11 @@ bool OpenSpaceRoiDecider::GetParkingBoundary(
 
   const parking::ParkingSlot normalized_slot =
       parking::TransformParkingSlot(parking_slot, origin_point, origin_heading);
-  Vec2d vehicle_xy(vehicle_state_.x(), vehicle_state_.y());
+  Vec2d vehicle_xy(reference_state_.x(), reference_state_.y());
   vehicle_xy -= origin_point;
   vehicle_xy.SelfRotate(-origin_heading);
   const double vehicle_heading =
-      common::math::NormalizeAngle(vehicle_state_.heading() - origin_heading);
+      common::math::NormalizeAngle(reference_state_.heading() - origin_heading);
   double start_escape_distance = roi_config.candidate_path_step_size();
   double start_pose_buffer = 0.1;
   if (roi_config.has_candidate_warm_start_config()) {
@@ -1973,7 +1977,7 @@ bool OpenSpaceRoiDecider::GetParkAndGoBoundary(
       frame->mutable_open_space_info()->mutable_ROI_xy_boundary();
   xy_boundary->assign(ROI_xy_boundary.begin(), ROI_xy_boundary.end());
 
-  Vec2d vehicle_xy = Vec2d(vehicle_state_.x(), vehicle_state_.y());
+  Vec2d vehicle_xy = Vec2d(reference_state_.x(), reference_state_.y());
   vehicle_xy -= origin_point;
   vehicle_xy.SelfRotate(-origin_heading);
   if (vehicle_xy.x() < ROI_xy_boundary[0] ||
@@ -2213,11 +2217,11 @@ bool OpenSpaceRoiDecider::ValidateROIOnVertices(Frame *const frame) {
 
   parking::ParkingRoiValidator validator(
       config_.open_space_roi_decider_config());
-  Vec2d vehicle_xy(frame->vehicle_state().x(), frame->vehicle_state().y());
+  Vec2d vehicle_xy(frame->reference_state().x(), frame->reference_state().y());
   vehicle_xy -= frame->open_space_info().origin_point();
   vehicle_xy.SelfRotate(-frame->open_space_info().origin_heading());
   const double vehicle_heading =
-      common::math::NormalizeAngle(frame->vehicle_state().heading() -
+      common::math::NormalizeAngle(frame->reference_state().heading() -
                                    frame->open_space_info().origin_heading());
   const parking::ParkingRoiValidationResult validation_result =
       validator.ValidateGeometryOnly(geometry, vehicle_xy, vehicle_heading,
@@ -2261,7 +2265,7 @@ bool OpenSpaceRoiDecider::FilterOutObstacle(const Frame &frame,
   end_pose_x_y += origin_point;
 
   // Get vehicle state
-  Vec2d vehicle_x_y(vehicle_state_.x(), vehicle_state_.y());
+  Vec2d vehicle_x_y(reference_state_.x(), reference_state_.y());
 
   // Use vehicle position and end position to filter out obstacle
   const double vehicle_center_to_obstacle =

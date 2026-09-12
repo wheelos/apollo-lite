@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "modules/common/configs/vehicle_config_helper.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/planning/common/planning_gflags.h"
 
@@ -68,6 +67,18 @@ bool IsVehicleStateValid(const VehicleState& vehicle_state) {
       std::isnan(vehicle_state.kappa()) ||
       std::isnan(vehicle_state.linear_velocity()) ||
       std::isnan(vehicle_state.linear_acceleration())) {
+    return false;
+  }
+  return true;
+}
+
+bool IsReferenceStateValid(const common::ReferenceState& reference_state) {
+  if (std::isnan(reference_state.x()) || std::isnan(reference_state.y()) ||
+      std::isnan(reference_state.z()) ||
+      std::isnan(reference_state.heading()) ||
+      std::isnan(reference_state.kappa()) ||
+      std::isnan(reference_state.linear_velocity()) ||
+      std::isnan(reference_state.linear_acceleration())) {
     return false;
   }
   return true;
@@ -127,9 +138,9 @@ bool ShouldUseDirectValetParkingMode(
 }
 
 double GetADCStopDeceleration(
-    apollo::common::VehicleStateProvider* vehicle_state,
+    const common::ReferenceState& reference_state,
     const double adc_front_edge_s, const double stop_line_s) {
-  double adc_speed = vehicle_state->linear_velocity();
+  double adc_speed = reference_state.linear_velocity();
   const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()
                                         ->GetConfig()
                                         .vehicle_param()

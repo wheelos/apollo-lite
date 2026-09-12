@@ -29,7 +29,6 @@
 #include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
 
 #include "modules/common/util/point_factory.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/planning_gflags.h"
 
 using apollo::common::util::PointFactory;
@@ -47,7 +46,7 @@ TEST(NaviObstacleDeciderTest, ComputeNudgeDist1) {
   PathDecision path_decision;
   SLBoundary obstacle_boundary;
   ReferenceLine reference_line;
-  common::VehicleState vehicle_state;
+  common::ReferenceState vehicle_state;
 
   perception_obstacle.set_width(1.0);
   perception_obstacle.set_length(1.0);
@@ -85,7 +84,7 @@ TEST(NaviObstacleDeciderTest, ComputeNudgeDist2) {
   PathDecision path_decision;
   SLBoundary obstacle_boundary;
   ReferenceLine reference_line;
-  common::VehicleState vehicle_state;
+  common::ReferenceState vehicle_state;
 
   perception_obstacle.set_width(1.0);
   perception_obstacle.set_length(1.0);
@@ -121,7 +120,7 @@ TEST(NaviObstacleDeciderTest, ComputeNudgeDist3) {
   PathDecision path_decision;
   SLBoundary obstacle_boundary;
   ReferenceLine reference_line;
-  common::VehicleState vehicle_state;
+  common::ReferenceState vehicle_state;
 
   // obstacle 1
   perception_obstacle.set_width(1.0);
@@ -178,7 +177,7 @@ TEST(NaviObstacleDeciderTest, ComputeNudgeDist4) {
   PathDecision path_decision;
   SLBoundary obstacle_boundary;
   ReferenceLine reference_line;
-  common::VehicleState vehicle_state;
+  common::ReferenceState vehicle_state;
 
   perception_obstacle.set_width(1.0);
   perception_obstacle.set_length(1.0);

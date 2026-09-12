@@ -121,12 +121,13 @@ Status DiffDriveLatController::Init(
   return Status::OK();
 }
 
-void DiffDriveLatController::UpdateDrivingOrientation() {
-  auto vehicle_state = injector_->vehicle_state();
-  driving_orientation_ = vehicle_state->heading();
+void DiffDriveLatController::UpdateDrivingOrientation(
+    const common::ReferenceState& reference_state) {
+  driving_orientation_ = reference_state.heading();
 
   // Reverse the driving direction if the vehicle is in reverse mode
-  if (vehicle_state->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (injector_->operating_state().gear() ==
+      canbus::Chassis::GEAR_REVERSE) {
     driving_orientation_ =
         common::math::NormalizeAngle(driving_orientation_ + M_PI);
   }
@@ -149,16 +150,16 @@ Status DiffDriveLatController::ComputeControlCommand(
   // rear-axis to the center of mass, if conditions matched
   trajectory_analyzer_->TrajectoryTransformToCOM(lr_);
 
-  UpdateDrivingOrientation();
-
   SimpleLateralDebug *debug = cmd->mutable_debug()->mutable_simple_lat_debug();
   debug->Clear();
 
   // 1. Calculate lateral error
-  const auto &com = vehicle_state->ComputeCOMPosition(lr_);
+  common::ReferenceState com;
+  ACHECK(injector_->ResolveControlState(&com, lr_).ok());
+  UpdateDrivingOrientation(com);
   ComputeLateralErrors(
-      com.x(), com.y(), driving_orientation_, vehicle_state->linear_velocity(),
-      vehicle_state->angular_velocity(), vehicle_state->linear_acceleration(),
+      com.x(), com.y(), driving_orientation_, com.linear_velocity(),
+      com.angular_velocity(), com.linear_acceleration(),
       *trajectory_analyzer_, debug, chassis);
 
   double kh = control_conf_->diff_drive_lat_controller_conf().kh();

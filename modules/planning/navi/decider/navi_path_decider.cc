@@ -29,6 +29,7 @@
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
 
 namespace apollo {
@@ -81,7 +82,7 @@ bool NaviPathDecider::Init(const PlanningConfig& config) {
 Status NaviPathDecider::Execute(Frame* frame,
                                 ReferenceLineInfo* const reference_line_info) {
   NaviTask::Execute(frame, reference_line_info);
-  vehicle_state_ = frame->vehicle_state();
+  reference_state_ = frame->reference_state();
   cur_reference_line_lane_id_ = reference_line_info->Lanes().Id();
   auto ret = Process(reference_line_info->reference_line(),
                      frame->PlanningStartPoint(), frame->obstacles(),
@@ -103,11 +104,11 @@ apollo::common::Status NaviPathDecider::Process(
     PathDecision* const path_decision, PathData* const path_data) {
   CHECK_NOTNULL(path_decision);
   CHECK_NOTNULL(path_data);
-  start_plan_point_.set_x(vehicle_state_.x());
-  start_plan_point_.set_y(vehicle_state_.y());
-  start_plan_point_.set_theta(vehicle_state_.heading());
-  start_plan_v_ = vehicle_state_.linear_velocity();
-  start_plan_a_ = vehicle_state_.linear_acceleration();
+  start_plan_point_.set_x(reference_state_.x());
+  start_plan_point_.set_y(reference_state_.y());
+  start_plan_point_.set_theta(reference_state_.heading());
+  start_plan_v_ = reference_state_.linear_velocity();
+  start_plan_a_ = reference_state_.linear_acceleration();
   if (start_plan_point_from_ == 1) {
     // start plan point from planning schedule
     start_plan_point_.set_x(init_point.path_point().x());
@@ -189,7 +190,7 @@ void NaviPathDecider::KeepLane(
     auto* path_decision = reference_line_info_->path_decision();
     double actual_dest_point_y =
         NudgeProcess(reference_line, *path_points, obstacles, *path_decision,
-                     vehicle_state_);
+                     reference_state_);
 
     double actual_dest_lateral_distance = std::fabs(actual_dest_point_y);
     double actual_shift_y = 0.0;
@@ -281,19 +282,8 @@ bool NaviPathDecider::GetBasicPathData(
 
 bool NaviPathDecider::IsSafeChangeLane(const ReferenceLine& reference_line,
                                        const PathDecision& path_decision) {
-  const auto& adc_param =
-      common::VehicleConfigHelper::GetConfig().vehicle_param();
-
-  Vec2d adc_position(start_plan_point_.x(), start_plan_point_.y());
-  Vec2d vec_to_center(
-      (adc_param.front_edge_to_center() - adc_param.back_edge_to_center()) /
-          2.0,
-      (adc_param.left_edge_to_center() - adc_param.right_edge_to_center()) /
-          2.0);
-  Vec2d adc_center(adc_position +
-                   vec_to_center.rotate(start_plan_point_.theta()));
-  Box2d adc_box(adc_center, start_plan_point_.theta(), adc_param.length(),
-                adc_param.width());
+  common::VehicleGeometryModel geometry_model;
+  const Box2d adc_box = geometry_model.BuildBox(start_plan_point_);
   SLBoundary adc_sl_boundary;
   if (!reference_line.GetSLBoundary(adc_box, &adc_sl_boundary)) {
     AERROR << "Failed to get ADC boundary from box: " << adc_box.DebugString();
@@ -314,10 +304,10 @@ bool NaviPathDecider::IsSafeChangeLane(const ReferenceLine& reference_line,
 
     const double kForwardSafeDistance = std::max(
         kForwardMinSafeDistance,
-        ((vehicle_state_.linear_velocity() - obstacle->speed()) * kSafeTime));
+        ((reference_state_.linear_velocity() - obstacle->speed()) * kSafeTime));
     const double kBackwardSafeDistance = std::max(
         kBackwardMinSafeDistance,
-        ((obstacle->speed() - vehicle_state_.linear_velocity()) * kSafeTime));
+        ((obstacle->speed() - reference_state_.linear_velocity()) * kSafeTime));
     if (sl_boundary.end_s() >
             adc_sl_boundary.start_s() - kBackwardSafeDistance &&
         sl_boundary.start_s() <
@@ -334,14 +324,15 @@ double NaviPathDecider::NudgeProcess(
     const std::vector<common::PathPoint>& path_data_points,
     const std::vector<const Obstacle*>& obstacles,
     const PathDecision& path_decision,
-    const common::VehicleState& vehicle_state) {
+    const common::ReferenceState& reference_state) {
   double nudge_position_y = 0.0;
 
   // get nudge latteral position
   int lane_obstacles_num = 0;
   static constexpr double KNudgeEpsilon = 1e-6;
   double nudge_distance = obstacle_decider_.GetNudgeDistance(
-      obstacles, reference_line, path_decision, path_data_points, vehicle_state,
+      obstacles, reference_line, path_decision, path_data_points,
+      reference_state,
       &lane_obstacles_num);
   // adjust plan start point
   if (std::fabs(nudge_distance) > KNudgeEpsilon) {
@@ -360,7 +351,7 @@ double NaviPathDecider::NudgeProcess(
 
     if (last_plan_has_nudge && lane_obstacles_num != 0) {
       ADEBUG << "Keepping last nudge path direction";
-      nudge_position_y = vehicle_state_.y();
+      nudge_position_y = reference_state_.y();
     } else {
       // not need nudge or not need nudge keepping
       last_lane_id_to_nudge_flag_[cur_reference_line_lane_id_] = false;

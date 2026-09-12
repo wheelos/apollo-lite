@@ -232,8 +232,11 @@ Status PreprocessorSubmodule::CheckInput(LocalView *local_view) {
       }
     }
   }
-  injector_->vehicle_state()->Update(local_view->localization(),
-                                     local_view->chassis());
+  const auto vehicle_state_status = injector_->vehicle_state()->Update(
+      local_view->localization(), local_view->chassis());
+  if (!vehicle_state_status.ok()) {
+    return vehicle_state_status;
+  }
 
   return Status::OK();
 }

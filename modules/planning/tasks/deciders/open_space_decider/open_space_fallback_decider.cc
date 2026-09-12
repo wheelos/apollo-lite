@@ -87,7 +87,7 @@ Status OpenSpaceFallbackDecider::Process(Frame* frame) {
     // Fallback starts from current location but with vehicle velocity
     auto fallback_start_point =
         fallback_trajectory_pair_candidate.first[fallback_start_index];
-    const auto& vehicle_state = injector_->vehicle_state()->vehicle_state();
+    const auto& vehicle_state = frame_->reference_state();
     fallback_start_point.set_v(vehicle_state.linear_velocity());
 
     *(frame_->mutable_open_space_info()->mutable_future_collision_point()) =
@@ -325,7 +325,7 @@ bool OpenSpaceFallbackDecider::IsCollisionFreeTrajectory(
       for (const auto& obstacle_box : predicted_bounding_rectangles[j]) {
         if (ego_box.HasOverlap(obstacle_box)) {
           ADEBUG << "HasOverlap(obstacle_box) [" << i << "]";
-          const auto& vehicle_state = frame_->vehicle_state();
+          const auto& vehicle_state = frame_->reference_state();
           Vec2d vehicle_vec({vehicle_state.x(), vehicle_state.y()});
           // remove points in previous trajectory
           if (std::abs(trajectory_point.relative_time() -

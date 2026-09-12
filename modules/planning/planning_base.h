@@ -32,7 +32,6 @@
 #include "modules/planning/proto/traffic_rule_config.pb.h"
 
 #include "modules/common/status/status.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/hdmap/hdmap.h"
 #include "modules/planning/common/dependency_injector.h"
 #include "modules/planning/common/frame.h"

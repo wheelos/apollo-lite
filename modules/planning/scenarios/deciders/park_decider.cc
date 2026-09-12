@@ -24,6 +24,7 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/common/util/point_factory.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
 
@@ -31,9 +32,8 @@ namespace {
 
 double ComputePullOverPreparationDistance(
     const apollo::planning::ScenarioPullOverConfig& config) {
-  const auto& vehicle_param =
-      apollo::common::VehicleConfigHelper::Instance()->GetConfig().vehicle_param();
-  return vehicle_param.front_edge_to_center() +
+  apollo::common::VehicleGeometryModel geometry_model;
+  return geometry_model.FrontEdgeDistance() +
          config.s_distance_to_stop_for_open_space_parking() +
          config.max_valid_stop_distance();
 }
@@ -188,7 +188,7 @@ bool ParkDecider::CheckDistanceToParkingSpot(
   double parking_space_center_s = (lb_s + rb_s) / 2.0;
 
   // 5. Get ADC s
-  const auto& vehicle_state = frame->vehicle_state();
+  const auto& vehicle_state = frame->reference_state();
   double vehicle_s = 0.0, vehicle_l = 0.0;
   common::math::Vec2d vehicle_vec(vehicle_state.x(), vehicle_state.y());
   nearby_path.GetNearestPoint(vehicle_vec, &vehicle_s, &vehicle_l);
@@ -374,7 +374,7 @@ ScenarioDecisionResult ParkDecider::CheckParkAndGo(
   }
 
   // 2. Speed Check: Must be stationary (to enter)
-  const auto vehicle_state = injector_->vehicle_state()->vehicle_state();
+  const auto& vehicle_state = frame->reference_state();
   double adc_speed = std::abs(vehicle_state.linear_velocity());
 
   if (adc_speed > max_abs_speed_when_stopped) {

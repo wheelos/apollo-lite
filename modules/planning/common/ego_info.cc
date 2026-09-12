@@ -34,31 +34,20 @@ EgoInfo::EgoInfo() {
 }
 
 bool EgoInfo::Update(const common::TrajectoryPoint& start_point,
-                     const common::VehicleState& vehicle_state) {
+                     const common::ReferenceState& reference_state) {
   set_start_point(start_point);
-  set_vehicle_state(vehicle_state);
-  CalculateEgoBox(vehicle_state);
+  set_reference_state(reference_state);
+  CalculateEgoBox(reference_state);
   return true;
 }
 
-void EgoInfo::CalculateEgoBox(const common::VehicleState& vehicle_state) {
-  const auto& param = ego_vehicle_config_.vehicle_param();
-  ADEBUG << "param: " << param.DebugString();
-
-  Vec2d vec_to_center(
-      (param.front_edge_to_center() - param.back_edge_to_center()) / 2.0,
-      (param.left_edge_to_center() - param.right_edge_to_center()) / 2.0);
-
-  Vec2d position(vehicle_state.x(), vehicle_state.y());
-  Vec2d center(position + vec_to_center.rotate(vehicle_state.heading()));
-
-  ego_box_ =
-      Box2d(center, vehicle_state.heading(), param.length(), param.width());
+void EgoInfo::CalculateEgoBox(const common::ReferenceState& reference_state) {
+  vehicle_geometry_model_.BuildBox(reference_state, &ego_box_);
 }
 
 void EgoInfo::Clear() {
   start_point_.Clear();
-  vehicle_state_.Clear();
+  reference_state_.Clear();
   front_clear_distance_ = FLAGS_default_front_clear_distance;
 }
 
@@ -68,25 +57,15 @@ void EgoInfo::Clear() {
 // 2. the road is not necessaries straight
 void EgoInfo::CalculateFrontObstacleClearDistance(
     const std::vector<const Obstacle*>& obstacles) {
-  Vec2d position(vehicle_state_.x(), vehicle_state_.y());
-
-  const auto& param = ego_vehicle_config_.vehicle_param();
-  Vec2d vec_to_center(
-      (param.front_edge_to_center() - param.back_edge_to_center()) / 2.0,
-      (param.left_edge_to_center() - param.right_edge_to_center()) / 2.0);
-
-  Vec2d center(position + vec_to_center.rotate(vehicle_state_.heading()));
-
-  Vec2d unit_vec_heading = Vec2d::CreateUnitVec2d(vehicle_state_.heading());
-
-  // Due to the error of ego heading, only short range distance is meaningful
   static constexpr double kDistanceThreshold = 50.0;
   static constexpr double buffer = 0.1;  // in meters
-  const double impact_region_length =
-      param.length() + buffer + kDistanceThreshold;
-  Box2d ego_front_region(center + unit_vec_heading * kDistanceThreshold / 2.0,
-                         vehicle_state_.heading(), impact_region_length,
-                         param.width() + buffer);
+  Box2d ego_front_region;
+  if (!vehicle_geometry_model_
+           .BuildFrontRegion(reference_state_, kDistanceThreshold, buffer,
+                             &ego_front_region)
+           .ok()) {
+    return;
+  }
 
   for (const auto& obstacle : obstacles) {
     if (obstacle->IsVirtual() ||

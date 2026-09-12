@@ -124,7 +124,7 @@ bool ValetParkingScenario::IsTransferable(const Frame& frame,
   }
 
   ParkingSpaceInfoConstPtr target_parking_spot;
-  const auto& vehicle_state = frame.vehicle_state();
+  const auto& reference_state = frame.reference_state();
 
   bool found_parking_spot_in_map = false;
   if (!target_parking_spot_id.empty()) {
@@ -139,7 +139,7 @@ bool ValetParkingScenario::IsTransferable(const Frame& frame,
     return false;
   }
 
-  if (!CheckDistanceToParkingSpot(frame, vehicle_state, parking_start_range,
+  if (!CheckDistanceToParkingSpot(frame, reference_state, parking_start_range,
                                   target_parking_spot)) {
     ADEBUG << "target parking spot found, but euclidean distance is larger "
               "than configured threshold. parking_space_id: "
@@ -162,7 +162,7 @@ bool ValetParkingScenario::GetTargetParkingSpotById(
 }
 
 bool ValetParkingScenario::CheckDistanceToParkingSpot(
-    const Frame& frame, const VehicleState& vehicle_state,
+    const Frame& frame, const ReferenceState& reference_state,
     const double parking_start_range,
     const ParkingSpaceInfoConstPtr& target_parking_spot) {
   Vec2d parking_spot_center;
@@ -182,7 +182,7 @@ bool ValetParkingScenario::CheckDistanceToParkingSpot(
         target_parking_spot);
   }
 
-  const Vec2d vehicle_vec(vehicle_state.x(), vehicle_state.y());
+  const Vec2d vehicle_vec(reference_state.x(), reference_state.y());
   const double distance_to_parking_spot =
       vehicle_vec.DistanceTo(parking_spot_center);
   ADEBUG << "distance_to_parking_spot[" << distance_to_parking_spot

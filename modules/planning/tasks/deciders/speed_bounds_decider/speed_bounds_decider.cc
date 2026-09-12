@@ -22,7 +22,6 @@
 #include <string>
 #include <vector>
 
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/path/path_data.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/planning_gflags.h"

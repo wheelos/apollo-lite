@@ -25,6 +25,7 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/common/util/point_factory.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
 
 namespace apollo {
@@ -59,10 +60,10 @@ TrajectoryCost::TrajectoryCost(const DpPolyPathConfig &config,
     }
     const auto &sl_boundary = ptr_obstacle->PerceptionSLBoundary();
 
-    const double adc_left_l =
-        init_sl_point_.l() + vehicle_param_.left_edge_to_center();
-    const double adc_right_l =
-        init_sl_point_.l() - vehicle_param_.right_edge_to_center();
+    common::VehicleGeometryModel geom_model;
+    const auto l_range = geom_model.GetOccupancyLRange(init_sl_point_.l());
+    const double adc_right_l = l_range.first;
+    const double adc_left_l = l_range.second;
 
     if (adc_left_l + FLAGS_lateral_ignore_buffer < sl_boundary.start_l() ||
         adc_right_l - FLAGS_lateral_ignore_buffer > sl_boundary.end_l()) {
@@ -242,10 +243,13 @@ ComparableCost TrajectoryCost::GetCostFromObsSL(
     return obstacle_cost;
   }
 
-  const double adc_front_s = adc_s + vehicle_param.front_edge_to_center();
-  const double adc_end_s = adc_s - vehicle_param.back_edge_to_center();
-  const double adc_left_l = adc_l + vehicle_param.left_edge_to_center();
-  const double adc_right_l = adc_l - vehicle_param.right_edge_to_center();
+  common::VehicleGeometryModel geom_model;
+  const auto s_range = geom_model.GetOccupancySRange(adc_s);
+  const double adc_end_s = s_range.first;
+  const double adc_front_s = s_range.second;
+  const auto l_range = geom_model.GetOccupancyLRange(adc_l);
+  const double adc_right_l = l_range.first;
+  const double adc_left_l = l_range.second;
 
   if (adc_left_l + FLAGS_lateral_ignore_buffer < obs_sl_boundary.start_l() ||
       adc_right_l - FLAGS_lateral_ignore_buffer > obs_sl_boundary.end_l()) {

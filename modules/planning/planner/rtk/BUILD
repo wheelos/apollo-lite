@@ -13,7 +13,6 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/util",
         "//modules/common/util:util_tool",
-        "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning/common:planning_common",
         "//modules/planning/math/curve1d:quartic_polynomial_curve1d",
         "//modules/planning/planner",

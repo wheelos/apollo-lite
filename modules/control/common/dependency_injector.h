@@ -17,6 +17,8 @@
 #pragma once
 
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
+#include "modules/common/vehicle_state/reference_point_resolver.h"
+#include "modules/common/configs/config_gflags.h"
 
 namespace apollo {
 namespace control {
@@ -30,9 +32,41 @@ class DependencyInjector {
   apollo::common::VehicleStateProvider* vehicle_state() {
     return &vehicle_state_;
   }
+  apollo::common::ReferencePointResolver* reference_point_resolver() {
+    return &reference_point_resolver_;
+  }
+  const apollo::common::VehicleState& canonical_vehicle_state() const {
+    return vehicle_state_.canonical_state();
+  }
+  const apollo::common::VehicleOperatingState& operating_state() const {
+    return vehicle_state_.operating_state();
+  }
+  apollo::common::Status ResolveCurrentState(
+      const apollo::common::ReferencePoint reference_point,
+      apollo::common::ReferenceState* reference_state,
+      const double center_of_mass_offset = 0.0) const {
+    return reference_point_resolver_.Resolve(
+        canonical_vehicle_state(), reference_point, reference_state,
+        center_of_mass_offset);
+  }
+  apollo::common::Status ResolveControlState(
+      apollo::common::ReferenceState* reference_state,
+      const double center_of_mass_offset) const {
+    const auto gear = operating_state().gear();
+    const bool use_center_of_mass =
+        (gear == apollo::canbus::Chassis::GEAR_DRIVE &&
+         FLAGS_state_transform_to_com_drive) ||
+        (gear == apollo::canbus::Chassis::GEAR_REVERSE &&
+         FLAGS_state_transform_to_com_reverse);
+    return ResolveCurrentState(
+        use_center_of_mass ? apollo::common::CENTER_OF_MASS
+                           : apollo::common::REAR_AXLE_CENTER,
+        reference_state, center_of_mass_offset);
+  }
 
  private:
   apollo::common::VehicleStateProvider vehicle_state_;
+  apollo::common::ReferencePointResolver reference_point_resolver_;
 };
 
 }  // namespace control

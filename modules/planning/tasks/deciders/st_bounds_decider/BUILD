@@ -86,6 +86,7 @@ cc_library(
     deps = [
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/status",
+        "//modules/common/vehicle_state:vehicle_reference",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",

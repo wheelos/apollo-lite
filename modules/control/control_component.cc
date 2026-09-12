@@ -135,8 +135,12 @@ Status ControlComponent::ProduceControlCommand(
     ControlCommand* control_command) {
   // 1. Update Vehicle State Estimation
   // This is a prerequisite for control computation.
-  injector_->vehicle_state()->Update(local_view_.localization(),
-                                     local_view_.chassis());
+  const auto vehicle_state_status = injector_->vehicle_state()->Update(
+      local_view_.localization(), local_view_.chassis());
+  if (!vehicle_state_status.ok()) {
+    ResetAndProduceZeroControlCommand(control_command);
+    return vehicle_state_status;
+  }
 
   // 2. Safety Pre-Check (Input Validation)
   // Checks timestamps, sensor health, and trajectory integrity.

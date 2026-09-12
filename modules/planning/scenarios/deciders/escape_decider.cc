@@ -68,7 +68,7 @@ bool EscapeDecider::IsStuck(const DeciderContext& context) {
   const auto& frame = context.frame;
 
   // A. Check Vehicle Speed
-  const auto& vehicle_state = frame->vehicle_state();
+  const auto& vehicle_state = frame->reference_state();
   double speed = std::abs(vehicle_state.linear_velocity());
 
   // B. Get Persistent Status from Injector

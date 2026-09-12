@@ -62,7 +62,7 @@ class DiffDriveLatController : public Controller {
 
   void InitializeFilters();
 
-  void UpdateDrivingOrientation();
+  void UpdateDrivingOrientation(const common::ReferenceState& reference_state);
 
   bool LoadControlConf(const ControlConf *control_conf);
 

@@ -25,7 +25,7 @@
 #include "cyber/common/file.h"
 #include "cyber/time/clock.h"
 #include "modules/common/math/quaternion.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
+#include "modules/common/vehicle_state/vehicle_motion_model.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/planning/common/ego_info.h"
 #include "modules/planning/common/history.h"
@@ -45,7 +45,6 @@ using apollo::common::ErrorCode;
 using apollo::common::Status;
 using apollo::common::TrajectoryPoint;
 using apollo::common::VehicleState;
-using apollo::common::VehicleStateProvider;
 using apollo::cyber::Clock;
 using apollo::hdmap::HDMapUtil;
 
@@ -108,8 +107,11 @@ Status NaviPlanning::InitFrame(const uint32_t sequence_num,
   }
 
   auto status = frame_->Init(
-      injector_->vehicle_state(), reference_lines, segments,
-      reference_line_provider_->FutureRouteWaypoints(), injector_->ego_info());
+      vehicle_state,
+      injector_->reference_point_resolver(),
+      reference_lines, segments,
+      reference_line_provider_->FutureRouteWaypoints(), injector_->ego_info(),
+      injector_->operating_state());
 
   if (!status.ok()) {
     AERROR << "failed to init frame:" << status.ToString();
@@ -128,7 +130,7 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
   // Prefer "std::make_unique" to direct use of "new".
   // Refer to "https://herbsutter.com/gotw/_102/" for details.
   reference_line_provider_ = std::make_unique<ReferenceLineProvider>(
-      injector_->vehicle_state(), hdmap_, local_view_.relative_map);
+      hdmap_, local_view_.relative_map);
 
   // localization
   ADEBUG << "Get localization: "
@@ -137,8 +139,20 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
   // chassis
   ADEBUG << "Get chassis: " << local_view_.chassis->DebugString();
 
-  Status status = injector_->vehicle_state()->Update(
+  const Status update_status = injector_->vehicle_state()->Update(
       *local_view_.localization_estimate, *local_view_.chassis);
+  if (!update_status.ok()) {
+    const std::string msg = "Update VehicleStateProvider failed";
+    AERROR << msg << ": " << update_status;
+    trajectory_pb->mutable_decision()
+        ->mutable_main_decision()
+        ->mutable_not_ready()
+        ->set_reason(msg);
+    update_status.Save(trajectory_pb->mutable_header()->mutable_status());
+    trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
+    FillPlanningPb(start_timestamp, trajectory_pb);
+    return;
+  }
 
   auto vehicle_config =
       ComputeVehicleConfigFromLocalization(*local_view_.localization_estimate);
@@ -160,7 +174,7 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
   }
   last_vehicle_config_ = vehicle_config;
 
-  VehicleState vehicle_state = injector_->vehicle_state()->vehicle_state();
+  VehicleState vehicle_state = injector_->canonical_vehicle_state();
 
   // estimate (x, y) at current timestamp
   // This estimate is only valid if the current time and vehicle state timestamp
@@ -169,22 +183,32 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
   DCHECK_GE(start_timestamp, vehicle_state.timestamp());
   if (start_timestamp - vehicle_state.timestamp() <
       FLAGS_message_latency_threshold) {
-    auto future_xy = injector_->vehicle_state()->EstimateFuturePosition(
-        start_timestamp - vehicle_state.timestamp());
+    auto future_xy = common::VehicleMotionModel::EstimateFuturePosition(
+        vehicle_state, start_timestamp - vehicle_state.timestamp());
     vehicle_state.set_x(future_xy.x());
     vehicle_state.set_y(future_xy.y());
     vehicle_state.set_timestamp(start_timestamp);
   }
 
+  common::ReferenceState reference_state;
+  const Status resolve_status = injector_->reference_point_resolver()->Resolve(
+      vehicle_state, common::REAR_AXLE_CENTER, &reference_state);
+  if (!resolve_status.ok()) {
+    AERROR << "Failed to resolve reference state: " << resolve_status;
+    resolve_status.Save(trajectory_pb->mutable_header()->mutable_status());
+    return;
+  }
+  reference_line_provider_->UpdateReferenceState(reference_state);
+
   auto* not_ready = trajectory_pb->mutable_decision()
                         ->mutable_main_decision()
                         ->mutable_not_ready();
 
-  if (!status.ok() || !util::IsVehicleStateValid(vehicle_state)) {
+  if (!util::IsVehicleStateValid(vehicle_state)) {
     const std::string msg = "Update VehicleStateProvider failed";
     AERROR << msg;
     not_ready->set_reason(msg);
-    status.Save(trajectory_pb->mutable_header()->mutable_status());
+    update_status.Save(trajectory_pb->mutable_header()->mutable_status());
     // TODO(all): integrate reverse gear
     trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
     FillPlanningPb(start_timestamp, trajectory_pb);
@@ -201,7 +225,7 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
       last_publishable_trajectory_.get(), &replan_reason);
 
   const uint32_t frame_num = static_cast<uint32_t>(seq_num_++);
-  status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state);
+  Status status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state);
 
   if (!frame_) {
     const std::string msg = "Failed to init frame";
@@ -214,7 +238,7 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
     return;
   }
 
-  injector_->ego_info()->Update(stitching_trajectory.back(), vehicle_state);
+  injector_->ego_info()->Update(stitching_trajectory.back(), reference_state);
 
   if (FLAGS_enable_record_debug) {
     frame_->RecordInputDebug(trajectory_pb->mutable_debug());
@@ -385,7 +409,7 @@ void NaviPlanning::ProcessPadMsg(PadMessage::DrivingAction drvie_action) {
 
 std::string NaviPlanning::GetCurrentLaneId() {
   auto& ref_line_info_group = *frame_->mutable_reference_line_info();
-  const auto& vehicle_state = frame_->vehicle_state();
+  const auto& vehicle_state = frame_->reference_state();
   common::math::Vec2d adc_position(vehicle_state.x(), vehicle_state.y());
   std::string current_lane_id;
   for (auto& ref_line_info : ref_line_info_group) {
@@ -401,7 +425,7 @@ std::string NaviPlanning::GetCurrentLaneId() {
 void NaviPlanning::GetLeftNeighborLanesInfo(
     std::vector<std::pair<std::string, double>>* const lane_info_group) {
   auto& ref_line_info_group = *frame_->mutable_reference_line_info();
-  const auto& vehicle_state = frame_->vehicle_state();
+  const auto& vehicle_state = frame_->reference_state();
   for (auto& ref_line_info : ref_line_info_group) {
     common::math::Vec2d adc_position(vehicle_state.x(), vehicle_state.y());
     auto& ref_line = ref_line_info.reference_line();
@@ -428,7 +452,7 @@ void NaviPlanning::GetLeftNeighborLanesInfo(
 void NaviPlanning::GetRightNeighborLanesInfo(
     std::vector<std::pair<std::string, double>>* const lane_info_group) {
   auto& ref_line_info_group = *frame_->mutable_reference_line_info();
-  const auto& vehicle_state = frame_->vehicle_state();
+  const auto& vehicle_state = frame_->reference_state();
   for (auto& ref_line_info : ref_line_info_group) {
     common::math::Vec2d adc_position(vehicle_state.x(), vehicle_state.y());
     auto& ref_line = ref_line_info.reference_line();

@@ -18,8 +18,8 @@
 
 #include <cmath>
 
-#include "Eigen/Core"
 #include "absl/strings/str_cat.h"
+
 #include "cyber/common/log.h"
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/math/euler_angles_zxy.h"
@@ -29,10 +29,16 @@ namespace apollo {
 namespace common {
 
 Status VehicleStateProvider::Update(
-    const localization::LocalizationEstimate &localization,
-    const canbus::Chassis &chassis) {
+    const localization::LocalizationEstimate& localization,
+    const canbus::Chassis& chassis) {
+  const VehicleState previous_vehicle_state = vehicle_state_;
+  const VehicleOperatingState previous_operating_state = operating_state_;
+  const auto previous_original_localization = original_localization_;
   original_localization_ = localization;
   if (!ConstructExceptLinearVelocity(localization)) {
+    vehicle_state_ = previous_vehicle_state;
+    operating_state_ = previous_operating_state;
+    original_localization_ = previous_original_localization;
     std::string msg = absl::StrCat(
         "Fail to update because ConstructExceptLinearVelocity error.",
         "localization:\n", localization.DebugString());
@@ -50,20 +56,32 @@ Status VehicleStateProvider::Update(
 
   if (chassis.has_gear_location()) {
     vehicle_state_.set_gear(chassis.gear_location());
+    operating_state_.set_gear(chassis.gear_location());
   } else {
     vehicle_state_.set_gear(canbus::Chassis::GEAR_NONE);
+    operating_state_.set_gear(canbus::Chassis::GEAR_NONE);
   }
+  operating_state_.set_travel_direction(
+      operating_state_.gear() == canbus::Chassis::GEAR_REVERSE
+          ? TRAVEL_DIRECTION_REVERSE
+      : (operating_state_.gear() == canbus::Chassis::GEAR_DRIVE ||
+         operating_state_.gear() == canbus::Chassis::GEAR_LOW)
+          ? TRAVEL_DIRECTION_FORWARD
+          : TRAVEL_DIRECTION_UNKNOWN);
+  vehicle_state_.set_reference_point(REAR_AXLE_CENTER);
+  operating_state_.set_timestamp(vehicle_state_.timestamp());
 
   if (chassis.has_speed_mps()) {
     vehicle_state_.set_linear_velocity(chassis.speed_mps());
     if (!FLAGS_reverse_heading_vehicle_state &&
-        vehicle_state_.gear() == canbus::Chassis::GEAR_REVERSE) {
+        operating_state_.gear() == canbus::Chassis::GEAR_REVERSE) {
       vehicle_state_.set_linear_velocity(-vehicle_state_.linear_velocity());
     }
   }
 
   if (chassis.has_steering_percentage()) {
     vehicle_state_.set_steering_percentage(chassis.steering_percentage());
+    operating_state_.set_steering_percentage(chassis.steering_percentage());
   }
 
   static constexpr double kEpsilon = 0.1;
@@ -75,12 +93,13 @@ Status VehicleStateProvider::Update(
   }
 
   vehicle_state_.set_driving_mode(chassis.driving_mode());
+  operating_state_.set_driving_mode(chassis.driving_mode());
 
   return Status::OK();
 }
 
 bool VehicleStateProvider::ConstructExceptLinearVelocity(
-    const localization::LocalizationEstimate &localization) {
+    const localization::LocalizationEstimate& localization) {
   if (!localization.has_pose()) {
     AERROR << "Invalid localization input.";
     return false;
@@ -99,7 +118,7 @@ bool VehicleStateProvider::ConstructExceptLinearVelocity(
     vehicle_state_.set_z(localization.pose().position().z());
   }
 
-  const auto &orientation = localization.pose().orientation();
+  const auto& orientation = localization.pose().orientation();
 
   if (localization.pose().has_heading()) {
     vehicle_state_.set_heading(localization.pose().heading());
@@ -156,37 +175,23 @@ bool VehicleStateProvider::ConstructExceptLinearVelocity(
   return true;
 }
 
-double VehicleStateProvider::x() const {
-  return vehicle_state_.x();
-}
+double VehicleStateProvider::x() const { return vehicle_state_.x(); }
 
-double VehicleStateProvider::y() const {
-  return vehicle_state_.y();
-}
+double VehicleStateProvider::y() const { return vehicle_state_.y(); }
 
-double VehicleStateProvider::z() const {
-  return vehicle_state_.z();
-}
+double VehicleStateProvider::z() const { return vehicle_state_.z(); }
 
-double VehicleStateProvider::roll() const {
-  return vehicle_state_.roll();
-}
+double VehicleStateProvider::roll() const { return vehicle_state_.roll(); }
 
-double VehicleStateProvider::pitch() const {
-  return vehicle_state_.pitch();
-}
+double VehicleStateProvider::pitch() const { return vehicle_state_.pitch(); }
 
-double VehicleStateProvider::yaw() const {
-  return vehicle_state_.yaw();
-}
+double VehicleStateProvider::yaw() const { return vehicle_state_.yaw(); }
 
 double VehicleStateProvider::heading() const {
   return vehicle_state_.heading();
 }
 
-double VehicleStateProvider::kappa() const {
-  return vehicle_state_.kappa();
-}
+double VehicleStateProvider::kappa() const { return vehicle_state_.kappa(); }
 
 double VehicleStateProvider::linear_velocity() const {
   return vehicle_state_.linear_velocity();
@@ -200,8 +205,8 @@ double VehicleStateProvider::linear_acceleration() const {
   return vehicle_state_.linear_acceleration();
 }
 
-double VehicleStateProvider::gear() const {
-  return vehicle_state_.gear();
+canbus::Chassis::GearPosition VehicleStateProvider::gear() const {
+  return operating_state_.gear();
 }
 
 double VehicleStateProvider::steering_percentage() const {
@@ -212,11 +217,11 @@ double VehicleStateProvider::timestamp() const {
   return vehicle_state_.timestamp();
 }
 
-const localization::Pose &VehicleStateProvider::pose() const {
+const localization::Pose& VehicleStateProvider::pose() const {
   return vehicle_state_.pose();
 }
 
-const localization::Pose &VehicleStateProvider::original_pose() const {
+const localization::Pose& VehicleStateProvider::original_pose() const {
   return original_localization_.pose();
 }
 
@@ -224,68 +229,12 @@ void VehicleStateProvider::set_linear_velocity(const double linear_velocity) {
   vehicle_state_.set_linear_velocity(linear_velocity);
 }
 
-const VehicleState &VehicleStateProvider::vehicle_state() const {
+const VehicleState& VehicleStateProvider::canonical_state() const {
   return vehicle_state_;
 }
 
-math::Vec2d VehicleStateProvider::EstimateFuturePosition(const double t) const {
-  Eigen::Vector3d vec_distance(0.0, 0.0, 0.0);
-  double v = vehicle_state_.linear_velocity();
-  // Predict distance travel vector
-  if (std::fabs(vehicle_state_.angular_velocity()) < 0.0001) {
-    vec_distance[0] = 0.0;
-    vec_distance[1] = v * t;
-  } else {
-    vec_distance[0] = -v / vehicle_state_.angular_velocity() *
-                      (1.0 - std::cos(vehicle_state_.angular_velocity() * t));
-    vec_distance[1] = std::sin(vehicle_state_.angular_velocity() * t) * v /
-                      vehicle_state_.angular_velocity();
-  }
-
-  // If we have rotation information, take it into consideration.
-  if (vehicle_state_.pose().has_orientation()) {
-    const auto &orientation = vehicle_state_.pose().orientation();
-    Eigen::Quaternion<double> quaternion(orientation.qw(), orientation.qx(),
-                                         orientation.qy(), orientation.qz());
-    Eigen::Vector3d pos_vec(vehicle_state_.x(), vehicle_state_.y(),
-                            vehicle_state_.z());
-    const Eigen::Vector3d future_pos_3d =
-        quaternion.toRotationMatrix() * vec_distance + pos_vec;
-    return math::Vec2d(future_pos_3d[0], future_pos_3d[1]);
-  }
-
-  // If no valid rotation information provided from localization,
-  // return the estimated future position without rotation.
-  return math::Vec2d(vec_distance[0] + vehicle_state_.x(),
-                     vec_distance[1] + vehicle_state_.y());
-}
-
-math::Vec2d VehicleStateProvider::ComputeCOMPosition(
-    const double rear_to_com_distance) const {
-  // set length as distance between rear wheel and center of mass.
-  Eigen::Vector3d v;
-  if ((FLAGS_state_transform_to_com_reverse &&
-       vehicle_state_.gear() == canbus::Chassis::GEAR_REVERSE) ||
-      (FLAGS_state_transform_to_com_drive &&
-       vehicle_state_.gear() == canbus::Chassis::GEAR_DRIVE)) {
-    v << 0.0, rear_to_com_distance, 0.0;
-  } else {
-    v << 0.0, 0.0, 0.0;
-  }
-  Eigen::Vector3d pos_vec(vehicle_state_.x(), vehicle_state_.y(),
-                          vehicle_state_.z());
-  // Initialize the COM position without rotation
-  Eigen::Vector3d com_pos_3d = v + pos_vec;
-
-  // If we have rotation information, take it into consideration.
-  if (vehicle_state_.pose().has_orientation()) {
-    const auto &orientation = vehicle_state_.pose().orientation();
-    Eigen::Quaternion<double> quaternion(orientation.qw(), orientation.qx(),
-                                         orientation.qy(), orientation.qz());
-    // Update the COM position with rotation
-    com_pos_3d = quaternion.toRotationMatrix() * v + pos_vec;
-  }
-  return math::Vec2d(com_pos_3d[0], com_pos_3d[1]);
+const VehicleOperatingState& VehicleStateProvider::operating_state() const {
+  return operating_state_;
 }
 
 }  // namespace common

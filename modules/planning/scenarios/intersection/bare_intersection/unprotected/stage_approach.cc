@@ -75,7 +75,7 @@ Stage::StageStatus BareIntersectionUnprotectedStageApproach::Process(
          << "]";
   if (distance_adc_to_pnc_junction < -kPassStopLineBuffer) {
     // passed stop line
-    return FinishStage(frame);
+    return FinishStage(&frame->mutable_reference_line_info()->front());
   }
 
   // set cruise_speed to slow down
@@ -180,12 +180,13 @@ bool BareIntersectionUnprotectedStageApproach::CheckClear(
 }
 
 Stage::StageStatus BareIntersectionUnprotectedStageApproach::FinishStage(
-    Frame* frame) {
+    ReferenceLineInfo* reference_line_info) {
   next_stage_ = StageType::BARE_INTERSECTION_UNPROTECTED_INTERSECTION_CRUISE;
 
   // reset cruise_speed
-  auto& reference_line_info = frame->mutable_reference_line_info()->front();
-  reference_line_info.SetCruiseSpeed(FLAGS_default_cruise_speed);
+  if (reference_line_info != nullptr) {
+    reference_line_info->SetCruiseSpeed(FLAGS_default_cruise_speed);
+  }
 
   return Stage::FINISHED;
 }

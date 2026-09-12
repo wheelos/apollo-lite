@@ -22,7 +22,6 @@
 
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
@@ -102,8 +101,10 @@ Stage::StageStatus TrafficLightUnprotectedRightTurnStageStop::Process(
     }
   }
 
+  const double adc_speed = frame->reference_state().linear_velocity();
+
   if (traffic_light_all_stop && traffic_light_all_green) {
-    return FinishStage(true);
+    return FinishStage(true, adc_speed);
   }
 
   if (!traffic_light_no_right_turn_on_red) {
@@ -115,7 +116,7 @@ Stage::StageStatus TrafficLightUnprotectedRightTurnStageStop::Process(
              << "]";
       if (distance_adc_pass_stop_line >
           scenario_config_.min_pass_s_distance()) {
-        return FinishStage(false);
+        return FinishStage(false, adc_speed);
       }
 
       if (scenario_config_.enable_right_turn_on_red()) {
@@ -130,7 +131,7 @@ Stage::StageStatus TrafficLightUnprotectedRightTurnStageStop::Process(
                  << wait_time << "]";
           if (wait_time >
               scenario_config_.red_light_right_turn_stop_duration_sec()) {
-            return FinishStage(false);
+            return FinishStage(false, adc_speed);
           }
         }
       }
@@ -159,14 +160,13 @@ bool TrafficLightUnprotectedRightTurnStageStop::
 }
 
 Stage::StageStatus TrafficLightUnprotectedRightTurnStageStop::FinishStage(
-    const bool protected_mode) {
+    const bool protected_mode, const double adc_speed) {
   if (protected_mode) {
     // intersection_cruise
     next_stage_ =
         StageType ::TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN_INTERSECTION_CRUISE;
   } else {
     // check speed at stop_stage
-    const double adc_speed = injector_->vehicle_state()->linear_velocity();
     if (adc_speed > scenario_config_.max_adc_speed_before_creep()) {
       // skip creep
       next_stage_ =

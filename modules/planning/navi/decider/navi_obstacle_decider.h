@@ -69,7 +69,7 @@ class NaviObstacleDecider : public NaviTask {
       const std::vector<const Obstacle *> &obstacles,
       const ReferenceLine &reference_line, const PathDecision &path_decision,
       const std::vector<common::PathPoint> &path_data_points,
-      const common::VehicleState &vehicle_state, int *lane_obstacles_num);
+      const common::ReferenceState& reference_state, int* lane_obstacles_num);
 
   /**
    * @brief get the unsafe obstacles between trajectory and reference line.
@@ -106,7 +106,7 @@ class NaviObstacleDecider : public NaviTask {
                        const std::vector<common::PathPoint> &path_data_points,
                        const PathDecision &path_decision,
                        const double min_lane_width,
-                       const common::VehicleState &vehicle_state);
+                       const common::ReferenceState& reference_state);
 
   /**
    * @brief According to the relation between the obstacle and the path data,
@@ -126,7 +126,7 @@ class NaviObstacleDecider : public NaviTask {
       const Obstacle *current_obstacle,
       const common::PathPoint &vehicle_projection_point,
       const std::vector<common::PathPoint> &path_data_points,
-      const common::VehicleState &vehicle_state,
+      const common::ReferenceState& reference_state,
       common::PathPoint *projection_point_ptr);
 
   /**
@@ -153,7 +153,7 @@ class NaviObstacleDecider : public NaviTask {
   /**
    * @brief Eliminate the influence of clutter signals on Nudge
    */
-  void SmoothNudgeDistance(const common::VehicleState &vehicle_state,
+  void SmoothNudgeDistance(const common::ReferenceState& reference_state,
                            double *nudge_dist);
   void KeepNudgePosition(const double nudge_dist, int *lane_obstacles_num);
 

@@ -105,7 +105,7 @@ double ParkingHeading(const std::vector<apollo::common::math::Vec2d>& points) {
 }
 
 bool IsVehicleParkedInTargetSpot(const Frame& frame,
-                                 const common::VehicleState& vehicle_state,
+                                 const common::ReferenceState& vehicle_state,
                                  ParkingSpotCompletionEvaluation* evaluation) {
   CHECK_NOTNULL(evaluation);
   *evaluation = ParkingSpotCompletionEvaluation();
@@ -150,7 +150,7 @@ bool IsVehicleParkedInTargetSpot(const Frame& frame,
 }
 
 bool IsVehicleParkedInTargetSpot(const Frame& frame,
-                                 const common::VehicleState& vehicle_state) {
+                                 const common::ReferenceState& vehicle_state) {
   ParkingSpotCompletionEvaluation evaluation;
   return IsVehicleParkedInTargetSpot(frame, vehicle_state, &evaluation);
 }
@@ -230,7 +230,7 @@ Status OpenSpaceTrajectoryProvider::Process() {
   }
   bool need_replan = false;
   // Get stitching trajectory from last frame
-  const common::VehicleState vehicle_state = frame_->vehicle_state();
+  const common::ReferenceState& vehicle_state = frame_->reference_state();
   auto* previous_frame = injector_->frame_history()->Latest();
   const bool has_reusable_open_space_plan =
       previous_frame != nullptr &&
@@ -460,7 +460,7 @@ void OpenSpaceTrajectoryProvider::GenerateTrajectoryThread() {
 }
 
 bool OpenSpaceTrajectoryProvider::IsVehicleNearDestination(
-    const common::VehicleState& vehicle_state,
+    const common::ReferenceState& vehicle_state,
     const std::vector<double>& end_pose, double rotate_angle,
     const Vec2d& translate_origin) {
   CHECK_EQ(end_pose.size(), 4U);
@@ -528,7 +528,8 @@ bool OpenSpaceTrajectoryProvider::IsVehicleNearDestination(
 }
 
 bool OpenSpaceTrajectoryProvider::IsVehicleStopDueToFallBack(
-    const bool is_on_fallback, const common::VehicleState& vehicle_state) {
+    const bool is_on_fallback,
+    const common::ReferenceState& vehicle_state) {
   if (!is_on_fallback) {
     return false;
   }
@@ -550,15 +551,15 @@ void OpenSpaceTrajectoryProvider::GenerateStopTrajectory(
   static constexpr double relative_stop_time = 0.1;
   static constexpr double vEpsilon = 0.00001;
   double standstill_acceleration =
-      frame_->vehicle_state().linear_velocity() >= -vEpsilon
+      frame_->reference_state().linear_velocity() >= -vEpsilon
           ? -FLAGS_open_space_standstill_acceleration
           : FLAGS_open_space_standstill_acceleration;
   trajectory_data->clear();
   for (size_t i = 0; i < stop_trajectory_length; i++) {
     TrajectoryPoint point;
-    point.mutable_path_point()->set_x(frame_->vehicle_state().x());
-    point.mutable_path_point()->set_y(frame_->vehicle_state().y());
-    point.mutable_path_point()->set_theta(frame_->vehicle_state().heading());
+    point.mutable_path_point()->set_x(frame_->reference_state().x());
+    point.mutable_path_point()->set_y(frame_->reference_state().y());
+    point.mutable_path_point()->set_theta(frame_->reference_state().heading());
     point.mutable_path_point()->set_s(0.0);
     point.mutable_path_point()->set_kappa(0.0);
     point.set_relative_time(relative_time);

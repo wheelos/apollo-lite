@@ -27,6 +27,7 @@
 #include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 #include "modules/common/status/status.h"
+#include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "modules/planning/common/trajectory/discretized_trajectory.h"
 #include "modules/planning/tasks/optimizers/open_space_trajectory_generation/open_space_trajectory_optimizer.h"
 #include "modules/planning/tasks/optimizers/trajectory_optimizer.h"
@@ -66,13 +67,13 @@ class OpenSpaceTrajectoryProvider : public TrajectoryOptimizer {
 
   void GenerateTrajectoryThread();
 
-  bool IsVehicleNearDestination(const common::VehicleState& vehicle_state,
+  bool IsVehicleNearDestination(const common::ReferenceState& vehicle_state,
                                 const std::vector<double>& end_pose,
                                 double rotate_angle,
                                 const common::math::Vec2d& translate_origin);
 
   bool IsVehicleStopDueToFallBack(const bool is_on_fallback,
-                                  const common::VehicleState& vehicle_state);
+                                  const common::ReferenceState& vehicle_state);
 
   void GenerateStopTrajectory(DiscretizedTrajectory* const trajectory_data);
 
