@@ -17,23 +17,112 @@
 
 #include "modules/simulation/simulation_component.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <string>
+#include <vector>
 
+#include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "modules/common/configs/config_gflags.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 
 namespace apollo {
 namespace simulation {
+namespace {
+
+constexpr char kDefaultVehicleConfigPath[] =
+    "/apollo/modules/common/data/vehicle_param.pb.txt";
+constexpr char kWorkspaceVehicleConfigPath[] =
+    "modules/common/data/vehicle_param.pb.txt";
+
+bool LoadVehicleConfig(common::VehicleConfig* config) {
+  std::vector<std::string> candidate_paths{FLAGS_vehicle_config_path};
+  if (FLAGS_vehicle_config_path == kDefaultVehicleConfigPath) {
+    candidate_paths.emplace_back(kWorkspaceVehicleConfigPath);
+    const char* test_srcdir = std::getenv("TEST_SRCDIR");
+    const char* test_workspace = std::getenv("TEST_WORKSPACE");
+    if (test_srcdir != nullptr && test_workspace != nullptr) {
+      candidate_paths.emplace_back(std::string(test_srcdir) + "/" +
+                                   test_workspace + "/" +
+                                   kWorkspaceVehicleConfigPath);
+    }
+  }
+  for (const auto& path : candidate_paths) {
+    if (cyber::common::PathExists(path) &&
+        cyber::common::GetProtoFromFile(path, config)) {
+      AINFO << "Loaded simulation vehicle configuration from " << path;
+      return true;
+    }
+  }
+  AERROR << "Unable to load simulation vehicle configuration from "
+         << FLAGS_vehicle_config_path;
+  return false;
+}
+
+}  // namespace
 
 bool SimulationComponent::Init() {
   AINFO << "Initializing SimulationComponent ...";
 
   adapter_ = std::make_unique<CyberAdapter>();
+  common::VehicleConfig vehicle_config;
+  if (!LoadVehicleConfig(&vehicle_config) ||
+      !vehicle_config.has_vehicle_param()) {
+    return false;
+  }
+  const auto& vehicle_param = vehicle_config.vehicle_param();
+  if ((!vehicle_param.has_max_front_wheel_steer() &&
+       (!std::isfinite(vehicle_param.max_steer_angle()) ||
+        !std::isfinite(vehicle_param.steer_ratio()) ||
+        vehicle_param.steer_ratio() <= 0.0)) ||
+      !vehicle_param.has_track_width()) {
+    AERROR << "Vehicle configuration is missing steering or track width.";
+    return false;
+  }
+  const double max_steer_angle_rad = vehicle_param.has_max_front_wheel_steer()
+                                         ? vehicle_param.max_front_wheel_steer()
+                                         : vehicle_param.max_steer_angle() /
+                                               vehicle_param.steer_ratio();
+  const double max_rear_steer_angle_rad =
+      vehicle_param.has_max_back_wheel_steer()
+          ? vehicle_param.max_back_wheel_steer()
+          : 0.0;
+  const double track_width_m = vehicle_param.track_width();
+  const double wheelbase_m = vehicle_param.wheel_base();
+  const double wheel_radius_m = vehicle_param.wheel_rolling_radius();
+  max_steer_angle_rad_ = max_steer_angle_rad;
+  if (!std::isfinite(max_steer_angle_rad) || max_steer_angle_rad <= 0.0) {
+    AERROR << "Invalid vehicle max_front_wheel_steer: "
+           << max_steer_angle_rad;
+    return false;
+  }
+  if (!std::isfinite(max_rear_steer_angle_rad) ||
+      max_rear_steer_angle_rad < 0.0 ||
+      max_rear_steer_angle_rad > max_steer_angle_rad) {
+    AERROR << "Invalid vehicle max_back_wheel_steer: "
+           << max_rear_steer_angle_rad;
+    return false;
+  }
+  if (!std::isfinite(track_width_m) || track_width_m <= 0.0 ||
+      !std::isfinite(wheelbase_m) || wheelbase_m <= 0.0 ||
+      !std::isfinite(wheel_radius_m) || wheel_radius_m <= 0.0) {
+    AERROR << "Invalid vehicle geometry: wheelbase=" << wheelbase_m
+           << ", track_width=" << track_width_m
+           << ", wheel_radius=" << wheel_radius_m;
+    return false;
+  }
+  adapter_->SetMaxSteerAngle(max_steer_angle_rad);
   if (!adapter_->Init(node_)) {
     AERROR << "Failed to initialize CyberAdapter!";
     return false;
   }
 
   engine_ = std::make_unique<SimulationEngine>();
+  engine_->SetMaxSteerAngle(max_steer_angle_rad);
+  engine_->SetMaxRearSteerAngle(max_rear_steer_angle_rad);
+  engine_->SetVehicleGeometry(wheelbase_m, track_width_m, wheel_radius_m);
   if (!engine_->SetPhysicsDt(FLAGS_sim_physics_dt)) {
     AERROR << "Invalid simulation physics dt: " << FLAGS_sim_physics_dt;
     return false;
@@ -77,6 +166,9 @@ bool SimulationComponent::Proc() {
   // 3. Retrieve ground truth vehicle state
   VehicleState state{};
   if (engine_->GetVehicleState(&state)) {
+    state.steering_percentage = std::clamp(
+        state.front_steering_rad / max_steer_angle_rad_ * 100.0, -100.0,
+        100.0);
     // 4. Publish Chassis and Localization feedback to Apollo
     adapter_->PublishFeedback(state);
   }

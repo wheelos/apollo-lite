@@ -42,6 +42,7 @@ class SimulationComponent final : public apollo::cyber::TimerComponent {
  private:
   std::unique_ptr<CyberAdapter> adapter_;
   std::unique_ptr<SimulationEngine> engine_;
+  double max_steer_angle_rad_{0.50};
 
   uint64_t proc_count_{0};
 };

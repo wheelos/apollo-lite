@@ -19,12 +19,30 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 
 #include "gtest/gtest.h"
 
 namespace apollo {
 namespace simulation {
+namespace {
+
+std::string AckermannModelPath() {
+  const std::string relative = "modules/simulation/model/ackermann_vehicle.xml";
+  std::ifstream source_tree(relative);
+  if (source_tree.good()) {
+    return relative;
+  }
+  const char* test_srcdir = std::getenv("TEST_SRCDIR");
+  const char* test_workspace = std::getenv("TEST_WORKSPACE");
+  if (test_srcdir != nullptr && test_workspace != nullptr) {
+    return std::string(test_srcdir) + "/" + test_workspace + "/" + relative;
+  }
+  return relative;
+}
+
+}  // namespace
 
 TEST(SimulationEngineTest, InitializationAndReset) {
   SimulationEngine engine;
@@ -108,6 +126,25 @@ TEST(SimulationEngineTest, SteeringTurn) {
   EXPECT_GT(state.yaw, 0.0);  // Positive yaw (CCW)
 }
 
+TEST(SimulationEngineTest, FourWheelSteeringPropagatesToKinematicBackend) {
+  SimulationEngine engine;
+  engine.SetMaxRearSteerAngle(0.25);
+  ASSERT_TRUE(engine.Init("kinematic", ""));
+
+  VehicleCommand cmd{};
+  cmd.throttle = 0.5;
+  cmd.front_steering_rad = 0.25;
+  cmd.gear = VehicleCommand::Gear::GEAR_DRIVE;
+  for (int i = 0; i < 50; ++i) {
+    ASSERT_TRUE(engine.Step(cmd, 0.02));
+  }
+
+  VehicleState state{};
+  ASSERT_TRUE(engine.GetVehicleState(&state));
+  EXPECT_LT(state.rear_steering_rad, 0.0);
+  EXPECT_GT(state.yaw, 0.0);
+}
+
 TEST(SimulationEngineTest, BrakingStopsVehicle) {
   SimulationEngine engine;
   EXPECT_TRUE(engine.Init("kinematic", ""));
@@ -139,25 +176,13 @@ TEST(SimulationEngineTest, BrakingStopsVehicle) {
 }
 
 TEST(SimulationEngineTest, MujocoBackendLifecycle) {
-  const std::string tmp_xml = "/tmp/test_mujoco_vehicle.xml";
-  {
-    std::ofstream ofs(tmp_xml);
-    ofs << "<mujoco model=\"test_vehicle\">\n"
-        << "  <worldbody>\n"
-        << "    <body name=\"ego_vehicle\" pos=\"0 0 0.5\">\n"
-        << "      <freejoint/>\n"
-        << "      <geom type=\"box\" size=\"2 1 0.5\" mass=\"1500\"/>\n"
-        << "    </body>\n"
-        << "  </worldbody>\n"
-        << "</mujoco>\n";
-  }
-
   SimulationEngine engine;
-  // A model without the required Ackermann actuators must be rejected during
-  // initialization rather than failing later when control is applied.
-  EXPECT_FALSE(engine.Init("mujoco", tmp_xml));
+  engine.SetMaxSteerAngle(0.6108652382);
+  EXPECT_TRUE(engine.Init("mujoco", AckermannModelPath()));
 
-  std::remove(tmp_xml.c_str());
+  SimulationEngine incompatible_engine;
+  incompatible_engine.SetVehicleGeometry(2.8, 1.58, 0.33);
+  EXPECT_FALSE(incompatible_engine.Init("mujoco", AckermannModelPath()));
 }
 
 TEST(SimulationEngineTest, RejectsInvalidPhysicsDt) {

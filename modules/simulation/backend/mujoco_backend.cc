@@ -30,6 +30,17 @@
 
 namespace apollo {
 namespace simulation {
+namespace {
+
+constexpr double kGeometryTolerance = 1e-6;
+
+bool IsCompatible(double configured, double model_value) {
+  return std::isfinite(configured) && configured > 0.0 &&
+         std::isfinite(model_value) && model_value > 0.0 &&
+         std::abs(configured - model_value) <= kGeometryTolerance;
+}
+
+}  // namespace
 
 MujocoBackend::MujocoBackend() { Reset(0.0, 0.0, 0.0); }
 
@@ -77,8 +88,12 @@ bool MujocoBackend::Init(const std::string& model_path) {
   // Look up actuator / joint IDs
   steer_fl_id_ = mj_name2id(m, mjOBJ_ACTUATOR, "steer_fl");
   steer_fr_id_ = mj_name2id(m, mjOBJ_ACTUATOR, "steer_fr");
+  steer_rl_id_ = mj_name2id(m, mjOBJ_ACTUATOR, "steer_rl");
+  steer_rr_id_ = mj_name2id(m, mjOBJ_ACTUATOR, "steer_rr");
   steer_fl_joint_id_ = mj_name2id(m, mjOBJ_JOINT, "steer_fl_joint");
   steer_fr_joint_id_ = mj_name2id(m, mjOBJ_JOINT, "steer_fr_joint");
+  steer_rl_joint_id_ = mj_name2id(m, mjOBJ_JOINT, "steer_rl_joint");
+  steer_rr_joint_id_ = mj_name2id(m, mjOBJ_JOINT, "steer_rr_joint");
   wheel_fl_joint_id_ = mj_name2id(m, mjOBJ_JOINT, "wheel_fl_joint");
   wheel_fr_joint_id_ = mj_name2id(m, mjOBJ_JOINT, "wheel_fr_joint");
   wheel_rl_joint_id_ = mj_name2id(m, mjOBJ_JOINT, "wheel_rl_joint");
@@ -129,6 +144,32 @@ bool MujocoBackend::Init(const std::string& model_path) {
     return false;
   }
 
+  mj_forward(m, static_cast<mjData*>(mj_data_));
+  const mjData* d = static_cast<const mjData*>(mj_data_);
+  const auto anchor = [d](int joint_id, int axis) {
+    return d->xanchor[3 * joint_id + axis];
+  };
+  const double front_x =
+      0.5 * (anchor(steer_fl_joint_id_, 0) + anchor(steer_fr_joint_id_, 0));
+  const double front_y =
+      0.5 * (anchor(steer_fl_joint_id_, 1) + anchor(steer_fr_joint_id_, 1));
+  const double rear_x =
+      0.5 * (anchor(wheel_rl_joint_id_, 0) + anchor(wheel_rr_joint_id_, 0));
+  const double rear_y =
+      0.5 * (anchor(wheel_rl_joint_id_, 1) + anchor(wheel_rr_joint_id_, 1));
+  model_wheelbase_m_ = std::hypot(front_x - rear_x, front_y - rear_y);
+  model_track_width_m_ =
+      std::hypot(anchor(steer_fl_joint_id_, 0) - anchor(steer_fr_joint_id_, 0),
+                 anchor(steer_fl_joint_id_, 1) -
+                     anchor(steer_fr_joint_id_, 1));
+  const int wheel_fl_geom_id =
+      mj_name2id(m, mjOBJ_GEOM, "wheel_fl_geom");
+  model_wheel_radius_m_ =
+      wheel_fl_geom_id >= 0 ? m->geom_size[3 * wheel_fl_geom_id] : 0.0;
+  model_max_steer_angle_rad_ =
+      std::min(std::abs(m->actuator_ctrlrange[2 * steer_fl_id_]),
+               std::abs(m->actuator_ctrlrange[2 * steer_fr_id_]));
+
   init_z_ = m->body_pos[3 * vehicle_body_id_ + 2];
   if (init_z_ <= 0.0) init_z_ = 0.35;
 
@@ -174,7 +215,38 @@ void MujocoBackend::Reset(double x, double y, double yaw) {
     d->qpos[qpos_adr + 6] = std::sin(yaw * 0.5);
     mj_forward(m, d);
   }
+
 #endif
+}
+
+bool MujocoBackend::SetVehicleGeometry(double wheelbase_m,
+                                       double track_width_m,
+                                       double wheel_radius_m) {
+#if defined(USE_MUJOCO)
+  if (!IsCompatible(wheelbase_m, model_wheelbase_m_) ||
+      !IsCompatible(track_width_m, model_track_width_m_) ||
+      !IsCompatible(wheel_radius_m, model_wheel_radius_m_)) {
+    AERROR << "MuJoCo model geometry does not match vehicle configuration: "
+           << "configured=(" << wheelbase_m << ", " << track_width_m << ", "
+           << wheel_radius_m << "), model=(" << model_wheelbase_m_ << ", "
+           << model_track_width_m_ << ", " << model_wheel_radius_m_ << ")";
+    return false;
+  }
+#endif
+  return true;
+}
+
+bool MujocoBackend::SetMaxSteerAngle(double max_steer_angle_rad) {
+#if defined(USE_MUJOCO)
+  if (!IsCompatible(max_steer_angle_rad, model_max_steer_angle_rad_)) {
+    AERROR << "MuJoCo steering limit does not match vehicle configuration: "
+           << "configured=" << max_steer_angle_rad
+           << ", model=" << model_max_steer_angle_rad_;
+    return false;
+  }
+#endif
+  max_steer_angle_rad_ = max_steer_angle_rad;
+  return true;
 }
 
 bool MujocoBackend::ApplyActuation(const VehicleActuation& actuation) {
@@ -187,6 +259,8 @@ bool MujocoBackend::ApplyActuation(const VehicleActuation& actuation) {
   // Apply steering positions
   if (steer_fl_id_ >= 0) d->ctrl[steer_fl_id_] = actuation.wheel_steer_rad[0];
   if (steer_fr_id_ >= 0) d->ctrl[steer_fr_id_] = actuation.wheel_steer_rad[1];
+  if (steer_rl_id_ >= 0) d->ctrl[steer_rl_id_] = actuation.wheel_steer_rad[2];
+  if (steer_rr_id_ >= 0) d->ctrl[steer_rr_id_] = actuation.wheel_steer_rad[3];
 
   // Apply drive / brake torques
   const auto braking_torque = [m, d](int joint_id, double brake_torque) {
@@ -306,14 +380,21 @@ bool MujocoBackend::GetVehicleState(VehicleState* state) const {
     int fr_adr = m->jnt_qposadr[steer_fr_joint_id_];
     state->front_steering_rad = 0.5 * (d->qpos[fl_adr] + d->qpos[fr_adr]);
     state->steering_percentage = std::max(
-        -100.0, std::min(100.0, state->front_steering_rad / 0.50 * 100.0));
+        -100.0, std::min(100.0, state->front_steering_rad /
+                                      max_steer_angle_rad_ * 100.0));
+  }
+  if (steer_rl_joint_id_ >= 0 && steer_rr_joint_id_ >= 0) {
+    const int rl_adr = m->jnt_qposadr[steer_rl_joint_id_];
+    const int rr_adr = m->jnt_qposadr[steer_rr_joint_id_];
+    state->rear_steering_rad = 0.5 * (d->qpos[rl_adr] + d->qpos[rr_adr]);
   }
   if (has_previous_state_ && sim_time_sec_ > previous_state_time_sec_) {
     const double dt = sim_time_sec_ - previous_state_time_sec_;
     state->linear_acceleration_mps2 =
         (state->linear_velocity_mps - previous_velocity_mps_) / dt;
     state->lateral_acceleration_mps2 =
-        (state->lateral_velocity_mps - previous_lateral_velocity_mps_) / dt;
+        (state->lateral_velocity_mps - previous_lateral_velocity_mps_) / dt +
+        state->linear_velocity_mps * state->angular_velocity_yaw_radps;
   }
   auto is_vehicle_body = [m, body_id](int candidate) {
     while (candidate >= 0) {

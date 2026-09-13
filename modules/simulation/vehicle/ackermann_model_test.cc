@@ -110,5 +110,25 @@ TEST(AckermannModelTest, ClampsSteeringAndAppliesParkingBrake) {
   }
 }
 
+TEST(AckermannModelTest, ComputesCounterPhaseFourWheelSteeringAngles) {
+  AckermannModel model;
+  model.SetGeometry(2.8448, 1.58, 0.33);
+  model.SetMaxSteerAngle(0.50);
+  model.SetMaxRearSteerAngle(0.25);
+
+  VehicleCommand command;
+  command.front_steering_rad = 0.25;
+
+  const VehicleActuation actuation =
+      model.ComputeActuation(command, VehicleState{}, 0.02);
+
+  EXPECT_GT(actuation.wheel_steer_rad[0], actuation.wheel_steer_rad[1]);
+  EXPECT_LT(actuation.wheel_steer_rad[2], 0.0);
+  EXPECT_LT(actuation.wheel_steer_rad[3], 0.0);
+  EXPECT_LT(actuation.wheel_steer_rad[2], actuation.wheel_steer_rad[3]);
+  EXPECT_LE(std::abs(actuation.wheel_steer_rad[2]), 0.25);
+  EXPECT_LE(std::abs(actuation.wheel_steer_rad[3]), 0.25);
+}
+
 }  // namespace simulation
 }  // namespace apollo

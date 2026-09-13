@@ -34,6 +34,9 @@ SimulationEngine::SimulationEngine() {
 
 bool SimulationEngine::Init(const std::string& backend_type,
                             const std::string& model_path) {
+  vehicle_model_.SetMaxSteerAngle(max_steer_angle_rad_);
+  vehicle_model_.SetMaxRearSteerAngle(max_rear_steer_angle_rad_);
+  vehicle_model_.SetGeometry(wheelbase_m_, track_width_m_, wheel_radius_m_);
   if (backend_type == "mujoco") {
     backend_ = std::make_unique<MujocoBackend>();
     AINFO << "SimulationEngine configured with MuJoCo backend.";
@@ -47,6 +50,13 @@ bool SimulationEngine::Init(const std::string& backend_type,
 
   if (!backend_->Init(model_path)) {
     AERROR << "Backend initialization failed: " << backend_->Name();
+    return false;
+  }
+  if (!backend_->SetVehicleGeometry(wheelbase_m_, track_width_m_,
+                                    wheel_radius_m_) ||
+      !backend_->SetMaxSteerAngle(max_steer_angle_rad_)) {
+    AERROR << "Vehicle configuration is incompatible with backend "
+           << backend_->Name();
     return false;
   }
 
@@ -65,6 +75,10 @@ void SimulationEngine::Reset(double x, double y, double yaw) {
   last_cmd_time_sec_ = 0.0;
   has_received_command_ = false;
   step_count_ = 0;
+  odometer_m_ = 0.0;
+  last_position_x_ = current_state_.x;
+  last_position_y_ = current_state_.y;
+  current_state_.odometer_m = 0.0;
 }
 
 bool SimulationEngine::Step(const VehicleCommand& cmd, double control_dt_sec,
@@ -132,9 +146,18 @@ bool SimulationEngine::Step(const VehicleCommand& cmd, double control_dt_sec,
   }
 
   current_state_.sequence_num = ++step_count_;
+  odometer_m_ += std::hypot(current_state_.x - last_position_x_,
+                            current_state_.y - last_position_y_);
+  last_position_x_ = current_state_.x;
+  last_position_y_ = current_state_.y;
+  current_state_.odometer_m = odometer_m_;
   current_state_.current_gear = active_cmd.gear;
+  current_state_.steering_percentage_cmd =
+      active_cmd.front_steering_rad / max_steer_angle_rad_ * 100.0;
   current_state_.throttle_percentage = active_cmd.throttle * 100.0;
+  current_state_.throttle_percentage_cmd = current_state_.throttle_percentage;
   current_state_.brake_percentage = active_cmd.brake * 100.0;
+  current_state_.brake_percentage_cmd = current_state_.brake_percentage;
   if (current_state_.is_collision) {
     AWARN_EVERY(100) << "Simulation collision detected at t="
                      << current_state_.timestamp_sec << ", position=("

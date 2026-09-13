@@ -38,7 +38,7 @@ struct VehicleCommand {
   double target_acceleration_mps2{0.0};  // Target acceleration (m/s^2)
   double target_speed_mps{0.0};          // Target speed (m/s)
 
-  // Lateral (front wheel equivalent steering angle, rad)
+  // Lateral (front axle equivalent steering angle, rad)
   double front_steering_rad{0.0};
   double steering_rate_radps{0.0};
 
@@ -72,6 +72,7 @@ struct VehicleActuation {
 struct VehicleState {
   double timestamp_sec{0.0};
   uint64_t sequence_num{0};
+  double odometer_m{0.0};
 
   // ENU World pose
   double x{0.0};
@@ -94,10 +95,14 @@ struct VehicleState {
 
   // Feedback to Chassis
   double front_steering_rad{0.0};
+  double rear_steering_rad{0.0};
   double steering_percentage{0.0};  // [-100.0, 100.0]
+  double steering_percentage_cmd{0.0};
   VehicleCommand::Gear current_gear{VehicleCommand::Gear::GEAR_DRIVE};
   double throttle_percentage{0.0};  // [0.0, 100.0]
+  double throttle_percentage_cmd{0.0};
   double brake_percentage{0.0};     // [0.0, 100.0]
+  double brake_percentage_cmd{0.0};
 
   bool is_collision{false};
 };

@@ -38,6 +38,10 @@ class ISimulatorBackend {
   virtual bool Step(double dt_sec) = 0;
   virtual bool GetVehicleState(VehicleState* state) const = 0;
   virtual void Reset(double x, double y, double yaw) = 0;
+  // Returns false when the backend cannot honor the configured vehicle model.
+  virtual bool SetVehicleGeometry(double wheelbase_m, double track_width_m,
+                                  double wheel_radius_m) = 0;
+  virtual bool SetMaxSteerAngle(double max_steer_angle_rad) = 0;
   virtual double SimulationTime() const = 0;
   virtual const std::string& Name() const = 0;
 };

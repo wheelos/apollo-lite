@@ -39,6 +39,9 @@ class KinematicBackend : public ISimulatorBackend {
   bool Step(double dt_sec) override;
   bool GetVehicleState(VehicleState* state) const override;
   void Reset(double x, double y, double yaw) override;
+  bool SetVehicleGeometry(double wheelbase_m, double track_width_m,
+                          double wheel_radius_m) override;
+  bool SetMaxSteerAngle(double max_steer_angle_rad) override;
   double SimulationTime() const override { return sim_time_sec_; }
   const std::string& Name() const override { return name_; }
 
@@ -49,6 +52,7 @@ class KinematicBackend : public ISimulatorBackend {
   double wheelbase_m_{2.85};
   double mass_kg_{1800.0};
   double wheel_radius_m_{0.33};
+  double max_steer_angle_rad_{0.50};
 
   // State variables
   double sim_time_sec_{0.0};
@@ -59,6 +63,7 @@ class KinematicBackend : public ISimulatorBackend {
   double speed_mps_{0.0};
   double acceleration_mps2_{0.0};
   double front_steering_rad_{0.0};
+  double rear_steering_rad_{0.0};
 
   // Current applied actuation
   VehicleActuation current_actuation_{};

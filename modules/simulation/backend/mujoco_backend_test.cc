@@ -132,6 +132,12 @@ TEST(MujocoBackendTest, RejectsMissingModelAndBindsRequiredModelParts) {
 TEST(MujocoBackendTest, ExtractsResetStateAndAdvancesSimulationTime) {
   MujocoBackend backend;
   ASSERT_TRUE(backend.Init(AckermannModelPath()));
+  EXPECT_TRUE(backend.SetVehicleGeometry(2.8448, 1.58, 0.33));
+  EXPECT_TRUE(backend.SetMaxSteerAngle(0.6108652382));
+  EXPECT_FALSE(backend.SetVehicleGeometry(2.8, 1.58, 0.33));
+  EXPECT_FALSE(backend.SetVehicleGeometry(2.8448, 1.6, 0.33));
+  EXPECT_FALSE(backend.SetVehicleGeometry(2.8448, 1.58, 0.335));
+  EXPECT_FALSE(backend.SetMaxSteerAngle(0.62));
   backend.Reset(3.0, -2.0, M_PI_2);
 
   VehicleState state;
@@ -145,6 +151,8 @@ TEST(MujocoBackendTest, ExtractsResetStateAndAdvancesSimulationTime) {
   VehicleActuation actuation;
   actuation.wheel_steer_rad[0] = 0.2;
   actuation.wheel_steer_rad[1] = 0.1;
+  actuation.wheel_steer_rad[2] = -0.1;
+  actuation.wheel_steer_rad[3] = -0.2;
   ASSERT_TRUE(backend.ApplyActuation(actuation));
   ASSERT_TRUE(backend.Step(0.01));
   EXPECT_NEAR(backend.SimulationTime(), 0.01, 1e-12);

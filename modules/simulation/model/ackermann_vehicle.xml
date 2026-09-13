@@ -31,7 +31,7 @@
       <!-- Front-Left Wheel Assembly (Steerable) -->
       <body name="wheel_fl_knuckle" pos="1.4224 0.79 0.0">
         <inertial pos="0 0 0" mass="5" diaginertia="0.05 0.05 0.05"/>
-        <joint name="steer_fl_joint" type="hinge" axis="0 0 1" range="-0.5 0.5" damping="20"/>
+        <joint name="steer_fl_joint" type="hinge" axis="0 0 1" range="-0.610865 0.610865" damping="20"/>
         <body name="wheel_fl" pos="0 0 0">
           <joint name="wheel_fl_joint" type="hinge" axis="0 1 0" damping="0.1"/>
           <geom name="wheel_fl_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
@@ -41,23 +41,31 @@
       <!-- Front-Right Wheel Assembly (Steerable) -->
       <body name="wheel_fr_knuckle" pos="1.4224 -0.79 0.0">
         <inertial pos="0 0 0" mass="5" diaginertia="0.05 0.05 0.05"/>
-        <joint name="steer_fr_joint" type="hinge" axis="0 0 1" range="-0.5 0.5" damping="20"/>
+        <joint name="steer_fr_joint" type="hinge" axis="0 0 1" range="-0.610865 0.610865" damping="20"/>
         <body name="wheel_fr" pos="0 0 0">
           <joint name="wheel_fr_joint" type="hinge" axis="0 1 0" damping="0.1"/>
           <geom name="wheel_fr_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
         </body>
       </body>
 
-      <!-- Rear-Left Wheel Assembly -->
-      <body name="wheel_rl" pos="-1.4224 0.79 0.0">
-        <joint name="wheel_rl_joint" type="hinge" axis="0 1 0" damping="0.1"/>
-        <geom name="wheel_rl_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+      <!-- Rear-Left Wheel Assembly (Steerable for 4WS) -->
+      <body name="wheel_rl_knuckle" pos="-1.4224 0.79 0.0">
+        <inertial pos="0 0 0" mass="5" diaginertia="0.05 0.05 0.05"/>
+        <joint name="steer_rl_joint" type="hinge" axis="0 0 1" range="-0.610865 0.610865" damping="20"/>
+        <body name="wheel_rl" pos="0 0 0">
+          <joint name="wheel_rl_joint" type="hinge" axis="0 1 0" damping="0.1"/>
+          <geom name="wheel_rl_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+        </body>
       </body>
 
-      <!-- Rear-Right Wheel Assembly -->
-      <body name="wheel_rr" pos="-1.4224 -0.79 0.0">
-        <joint name="wheel_rr_joint" type="hinge" axis="0 1 0" damping="0.1"/>
-        <geom name="wheel_rr_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+      <!-- Rear-Right Wheel Assembly (Steerable for 4WS) -->
+      <body name="wheel_rr_knuckle" pos="-1.4224 -0.79 0.0">
+        <inertial pos="0 0 0" mass="5" diaginertia="0.05 0.05 0.05"/>
+        <joint name="steer_rr_joint" type="hinge" axis="0 0 1" range="-0.610865 0.610865" damping="20"/>
+        <body name="wheel_rr" pos="0 0 0">
+          <joint name="wheel_rr_joint" type="hinge" axis="0 1 0" damping="0.1"/>
+          <geom name="wheel_rr_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+        </body>
       </body>
     </body>
   </worldbody>
@@ -71,12 +79,18 @@
     <exclude body1="ego_vehicle" body2="wheel_fr_knuckle"/>
     <exclude body1="wheel_fl_knuckle" body2="wheel_fl"/>
     <exclude body1="wheel_fr_knuckle" body2="wheel_fr"/>
+    <exclude body1="ego_vehicle" body2="wheel_rl_knuckle"/>
+    <exclude body1="ego_vehicle" body2="wheel_rr_knuckle"/>
+    <exclude body1="wheel_rl_knuckle" body2="wheel_rl"/>
+    <exclude body1="wheel_rr_knuckle" body2="wheel_rr"/>
   </contact>
 
   <actuator>
     <!-- Steering Position Actuators -->
-    <position name="steer_fl" joint="steer_fl_joint" kp="15000" kv="500" ctrlrange="-0.5 0.5"/>
-    <position name="steer_fr" joint="steer_fr_joint" kp="15000" kv="500" ctrlrange="-0.5 0.5"/>
+    <position name="steer_fl" joint="steer_fl_joint" kp="15000" kv="500" ctrlrange="-0.610865 0.610865"/>
+    <position name="steer_fr" joint="steer_fr_joint" kp="15000" kv="500" ctrlrange="-0.610865 0.610865"/>
+    <position name="steer_rl" joint="steer_rl_joint" kp="15000" kv="500" ctrlrange="-0.610865 0.610865"/>
+    <position name="steer_rr" joint="steer_rr_joint" kp="15000" kv="500" ctrlrange="-0.610865 0.610865"/>
 
     <!-- Drive / Brake Torque Actuators (all-wheel torque allocation) -->
     <motor name="drive_fl" joint="wheel_fl_joint" ctrlrange="-3000 3000"/>
