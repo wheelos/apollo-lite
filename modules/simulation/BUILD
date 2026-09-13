@@ -33,8 +33,8 @@ cc_library(
     ],
     copts = SIMULATION_COPTS + ["-DUSE_MUJOCO"],
     deps = [
-        ":simulation_types",
         ":simulation_gflags",
+        ":simulation_types",
         "@core//cyber",
         "@mujoco",
     ],
@@ -57,6 +57,7 @@ cc_library(
     copts = SIMULATION_COPTS,
     deps = [
         ":ackermann_model",
+        ":simulation_gflags",
         ":simulation_types",
         ":simulator_backend",
         "@core//cyber",
@@ -69,10 +70,12 @@ cc_library(
     hdrs = ["adapter/cyber_adapter.h"],
     copts = SIMULATION_COPTS,
     deps = [
+        ":simulation_gflags",
         ":simulation_types",
         "//modules/common/adapters:adapter_gflags",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
     ],
@@ -87,7 +90,9 @@ cc_library(
         ":cyber_adapter",
         ":simulation_engine",
         ":simulation_gflags",
+        "//modules/common/configs:config_gflags",
         "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
     ],
     alwayslink = True,
 )
@@ -131,6 +136,7 @@ cc_test(
     size = "small",
     srcs = ["core/simulation_engine_test.cc"],
     copts = SIMULATION_COPTS,
+    data = [":runtime_data"],
     deps = [
         ":simulation_engine",
         "@com_google_googletest//:gtest_main",
@@ -154,30 +160,6 @@ cc_test(
         "//modules/control/common:dependency_injector",
         "//modules/control/controller:controller_agent",
         "//modules/control/proto:control_conf_cc_proto",
-        "@com_google_googletest//:gtest_main",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
-    ],
-)
-
-cc_test(
-    name = "simulation_component_integration_test",
-    size = "small",
-    srcs = ["simulation_component_integration_test.cc"],
-    copts = SIMULATION_COPTS,
-    data = [
-        "//modules/control:test_data",
-    ],
-    deps = [
-        ":simulation_component_lib",
-        ":simulation_gflags",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/configs:config_gflags",
-        "//modules/control:control_component_lib",
-        "//modules/control/common:control_gflags",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",

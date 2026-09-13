@@ -54,6 +54,15 @@ class AckermannModel {
     max_brake_torque_nm_ = max_brake_torque_nm;
   }
 
+  void SetMaxSteerAngle(double max_steer_angle_rad) {
+    max_steer_angle_rad_ = max_steer_angle_rad;
+  }
+  // A positive rear limit enables counter-phase four-wheel steering. A zero
+  // limit retains the front-wheel Ackermann model.
+  void SetMaxRearSteerAngle(double max_rear_steer_angle_rad) {
+    max_rear_steer_angle_rad_ = max_rear_steer_angle_rad;
+  }
+
  private:
   double wheelbase_m_{2.8448};
   double track_width_m_{1.58};
@@ -61,6 +70,7 @@ class AckermannModel {
   double mass_kg_{1710.0};
 
   double max_steer_angle_rad_{0.50};
+  double max_rear_steer_angle_rad_{0.0};
   double max_drive_torque_nm_{2400.0};
   double max_brake_torque_nm_{4800.0};
 };

@@ -28,23 +28,37 @@ VehicleActuation AckermannModel::ComputeActuation(
     double /*dt_sec*/) {
   VehicleActuation actuation{};
 
-  // 1. Steering computation via Ackermann geometry
-  double steer =
+  // 1. Steering computation via front- or four-wheel Ackermann geometry.
+  const double front_steer =
       std::max(-max_steer_angle_rad_,
                std::min(max_steer_angle_rad_, cmd.front_steering_rad));
+  const double rear_steer =
+      max_rear_steer_angle_rad_ > 0.0
+          ? std::max(-max_rear_steer_angle_rad_,
+                     std::min(max_rear_steer_angle_rad_,
+                              -front_steer * max_rear_steer_angle_rad_ /
+                                  max_steer_angle_rad_))
+          : 0.0;
 
-  if (std::abs(steer) < 1e-5) {
-    actuation.wheel_steer_rad[0] = steer;  // FL
-    actuation.wheel_steer_rad[1] = steer;  // FR
+  if (std::abs(front_steer - rear_steer) < 1e-5) {
+    actuation.wheel_steer_rad[0] = front_steer;  // FL
+    actuation.wheel_steer_rad[1] = front_steer;  // FR
+    actuation.wheel_steer_rad[2] = rear_steer;   // RL
+    actuation.wheel_steer_rad[3] = rear_steer;   // RR
   } else {
-    double turning_radius = wheelbase_m_ / std::tan(steer);
-    // Ackermann formula:
-    // Left wheel: delta_left = atan(L / (R - W/2))
-    // Right wheel: delta_right = atan(L / (R + W/2))
+    const double turning_radius =
+        wheelbase_m_ / (std::tan(front_steer) - std::tan(rear_steer));
+    const double icr_x = -turning_radius * std::tan(rear_steer);
     actuation.wheel_steer_rad[0] =
-        std::atan(wheelbase_m_ / (turning_radius - track_width_m_ * 0.5));
+        std::atan((wheelbase_m_ - icr_x) /
+                  (turning_radius - track_width_m_ * 0.5));
     actuation.wheel_steer_rad[1] =
-        std::atan(wheelbase_m_ / (turning_radius + track_width_m_ * 0.5));
+        std::atan((wheelbase_m_ - icr_x) /
+                  (turning_radius + track_width_m_ * 0.5));
+    actuation.wheel_steer_rad[2] =
+        std::atan(-icr_x / (turning_radius - track_width_m_ * 0.5));
+    actuation.wheel_steer_rad[3] =
+        std::atan(-icr_x / (turning_radius + track_width_m_ * 0.5));
   }
   actuation.wheel_steer_rad[0] =
       std::max(-max_steer_angle_rad_,
@@ -52,8 +66,14 @@ VehicleActuation AckermannModel::ComputeActuation(
   actuation.wheel_steer_rad[1] =
       std::max(-max_steer_angle_rad_,
                std::min(max_steer_angle_rad_, actuation.wheel_steer_rad[1]));
-  actuation.wheel_steer_rad[2] = 0.0;  // RL
-  actuation.wheel_steer_rad[3] = 0.0;  // RR
+  actuation.wheel_steer_rad[2] =
+      std::max(-max_rear_steer_angle_rad_,
+               std::min(max_rear_steer_angle_rad_,
+                        actuation.wheel_steer_rad[2]));
+  actuation.wheel_steer_rad[3] =
+      std::max(-max_rear_steer_angle_rad_,
+               std::min(max_rear_steer_angle_rad_,
+                        actuation.wheel_steer_rad[3]));
 
   // 2. Drive & Brake Torques
   if (cmd.emergency_stop || cmd.gear == VehicleCommand::Gear::GEAR_PARKING) {
