@@ -94,6 +94,7 @@ TEST(AckermannModelTest, AppliesGearAndBrakeSemantics) {
 
 TEST(AckermannModelTest, ClampsSteeringAndAppliesParkingBrake) {
   AckermannModel model;
+  model.SetMaxSteerAngle(0.50);
 
   VehicleCommand command;
   command.front_steering_rad = 1.0;

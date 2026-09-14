@@ -21,7 +21,7 @@
     <light pos="0 0 10" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
     <geom name="ground" type="plane" size="500 500 0.1" material="grid_mat"/>
 
-    <body name="ego_vehicle" pos="0 0 0.33">
+    <body name="ego_vehicle" pos="0 0 0.335">
       <freejoint name="vehicle_freejoint"/>
       
       <!-- Main Chassis Body (Lincoln MKZ scale: L=4.9m, W=1.86m, H=1.4m) -->
@@ -34,7 +34,7 @@
         <joint name="steer_fl_joint" type="hinge" axis="0 0 1" range="-0.610865 0.610865" damping="20"/>
         <body name="wheel_fl" pos="0 0 0">
           <joint name="wheel_fl_joint" type="hinge" axis="0 1 0" damping="0.1"/>
-          <geom name="wheel_fl_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+          <geom name="wheel_fl_geom" type="cylinder" size="0.335 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
         </body>
       </body>
 
@@ -44,7 +44,7 @@
         <joint name="steer_fr_joint" type="hinge" axis="0 0 1" range="-0.610865 0.610865" damping="20"/>
         <body name="wheel_fr" pos="0 0 0">
           <joint name="wheel_fr_joint" type="hinge" axis="0 1 0" damping="0.1"/>
-          <geom name="wheel_fr_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+          <geom name="wheel_fr_geom" type="cylinder" size="0.335 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
         </body>
       </body>
 
@@ -54,7 +54,7 @@
         <joint name="steer_rl_joint" type="hinge" axis="0 0 1" range="-0.610865 0.610865" damping="20"/>
         <body name="wheel_rl" pos="0 0 0">
           <joint name="wheel_rl_joint" type="hinge" axis="0 1 0" damping="0.1"/>
-          <geom name="wheel_rl_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+          <geom name="wheel_rl_geom" type="cylinder" size="0.335 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
         </body>
       </body>
 
@@ -64,7 +64,7 @@
         <joint name="steer_rr_joint" type="hinge" axis="0 0 1" range="-0.610865 0.610865" damping="20"/>
         <body name="wheel_rr" pos="0 0 0">
           <joint name="wheel_rr_joint" type="hinge" axis="0 1 0" damping="0.1"/>
-          <geom name="wheel_rr_geom" type="cylinder" size="0.33 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
+          <geom name="wheel_rr_geom" type="cylinder" size="0.335 0.09" zaxis="0 1 0" mass="25" material="wheel_mat"/>
         </body>
       </body>
     </body>

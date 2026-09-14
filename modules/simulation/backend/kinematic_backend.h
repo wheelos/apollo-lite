@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <string>
 
@@ -42,6 +43,7 @@ class KinematicBackend : public ISimulatorBackend {
   bool SetVehicleGeometry(double wheelbase_m, double track_width_m,
                           double wheel_radius_m) override;
   bool SetMaxSteerAngle(double max_steer_angle_rad) override;
+  bool SetMaxRearSteerAngle(double max_rear_steer_angle_rad) override;
   double SimulationTime() const override { return sim_time_sec_; }
   const std::string& Name() const override { return name_; }
 
@@ -49,21 +51,23 @@ class KinematicBackend : public ISimulatorBackend {
   std::string name_{"Kinematic"};
 
   // Vehicle geometric and physical parameters
-  double wheelbase_m_{2.85};
+  double wheelbase_m_{2.8448};
+  double track_width_m_{1.58};
   double mass_kg_{1800.0};
-  double wheel_radius_m_{0.33};
-  double max_steer_angle_rad_{0.50};
+  double wheel_radius_m_{0.335};
+  double max_steer_angle_rad_{0.6108652382};
 
   // State variables
   double sim_time_sec_{0.0};
   double x_{0.0};
   double y_{0.0};
-  double z_{0.0};
+  double z_{0.335};
   double yaw_{0.0};
   double speed_mps_{0.0};
   double acceleration_mps2_{0.0};
   double front_steering_rad_{0.0};
   double rear_steering_rad_{0.0};
+  std::array<double, 4> wheel_steer_rad_{0.0, 0.0, 0.0, 0.0};
 
   // Current applied actuation
   VehicleActuation current_actuation_{};
