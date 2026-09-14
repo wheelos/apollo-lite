@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include <array>
 #include <string>
 
 #include "modules/simulation/backend/simulator_backend.h"
@@ -42,6 +43,7 @@ class MujocoBackend : public ISimulatorBackend {
   bool SetVehicleGeometry(double wheelbase_m, double track_width_m,
                           double wheel_radius_m) override;
   bool SetMaxSteerAngle(double max_steer_angle_rad) override;
+  bool SetMaxRearSteerAngle(double max_rear_steer_angle_rad) override;
   double SimulationTime() const override { return sim_time_sec_; }
   const std::string& Name() const override { return name_; }
 
@@ -85,9 +87,12 @@ class MujocoBackend : public ISimulatorBackend {
   mutable double previous_velocity_mps_{0.0};
   mutable double previous_lateral_velocity_mps_{0.0};
   mutable double previous_state_time_sec_{0.0};
+  mutable double previous_yaw_{0.0};
+  mutable std::array<double, 3> previous_world_velocity_mps_{0.0, 0.0, 0.0};
   mutable bool has_previous_state_{false};
   uint64_t debug_step_count_{0};
   VehicleActuation current_actuation_{};
+  std::array<double, 4> wheel_velocity_sign_{0.0, 0.0, 0.0, 0.0};
 };
 
 }  // namespace simulation

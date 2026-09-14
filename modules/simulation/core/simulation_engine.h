@@ -80,11 +80,11 @@ class SimulationEngine {
  private:
   std::unique_ptr<ISimulatorBackend> backend_;
   AckermannModel vehicle_model_;
-  double max_steer_angle_rad_{0.50};
+  double max_steer_angle_rad_{0.6108652382};
   double max_rear_steer_angle_rad_{0.0};
   double wheelbase_m_{2.8448};
   double track_width_m_{1.58};
-  double wheel_radius_m_{0.33};
+  double wheel_radius_m_{0.335};
 
   double physics_dt_sec_{0.002};      // 500 Hz physics rate
   double command_timeout_sec_{0.20};  // 200 ms timeout

@@ -74,7 +74,7 @@ struct VehicleState {
   uint64_t sequence_num{0};
   double odometer_m{0.0};
 
-  // ENU World pose
+  // ENU world pose at the rear axle center.
   double x{0.0};
   double y{0.0};
   double z{0.0};
@@ -92,6 +92,12 @@ struct VehicleState {
   double angular_velocity_yaw_radps{0.0};  // Yaw rate
   double linear_acceleration_mps2{0.0};    // Longitudinal acceleration
   double lateral_acceleration_mps2{0.0};   // Lateral acceleration
+  std::array<double, 3> linear_velocity_world_mps{0.0, 0.0, 0.0};
+  std::array<double, 3> linear_acceleration_body_mps2{0.0, 0.0, 0.0};
+  std::array<double, 3> linear_acceleration_world_mps2{0.0, 0.0, 0.0};
+  std::array<double, 3> angular_velocity_body_radps{0.0, 0.0, 0.0};
+  std::array<double, 3> angular_velocity_world_radps{0.0, 0.0, 0.0};
+  std::array<double, 4> wheel_speed_mps{0.0, 0.0, 0.0, 0.0};
 
   // Feedback to Chassis
   double front_steering_rad{0.0};

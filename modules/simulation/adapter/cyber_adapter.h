@@ -76,7 +76,7 @@ class CyberAdapter {
       double timestamp_sec = 0.0);
   static void FromControlCommand(const apollo::control::ControlCommand& msg,
                                  VehicleCommand* cmd,
-                                 double max_steer_angle_rad = 0.50);
+                                 double max_steer_angle_rad = 0.6108652382);
 
  private:
   void OnControlCommand(
@@ -99,9 +99,11 @@ class CyberAdapter {
   bool has_received_cmd_{false};
 
   // Calibration parameters
-  double max_steer_angle_rad_{0.50};  // ~28.6 degrees
+  double max_steer_angle_rad_{0.6108652382};  // 35 degrees
   uint64_t msg_seq_num_{0};
   ChassisDetailFiller chassis_detail_filler_;
+  double timestamp_offset_sec_{0.0};
+  bool timestamp_offset_initialized_{false};
 };
 
 }  // namespace simulation

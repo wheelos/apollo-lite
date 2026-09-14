@@ -42,6 +42,7 @@ class ISimulatorBackend {
   virtual bool SetVehicleGeometry(double wheelbase_m, double track_width_m,
                                   double wheel_radius_m) = 0;
   virtual bool SetMaxSteerAngle(double max_steer_angle_rad) = 0;
+  virtual bool SetMaxRearSteerAngle(double max_rear_steer_angle_rad) = 0;
   virtual double SimulationTime() const = 0;
   virtual const std::string& Name() const = 0;
 };

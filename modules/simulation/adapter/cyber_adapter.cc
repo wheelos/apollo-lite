@@ -176,25 +176,26 @@ void CyberAdapter::ToChassis(const VehicleState& state,
       state.current_gear == VehicleCommand::Gear::GEAR_PARKING);
   chassis->set_steering_timestamp(
       timestamp_sec > 0.0 ? timestamp_sec : state.timestamp_sec);
-  const auto wheel_direction =
-      state.linear_velocity_mps > 0.01
+  const auto wheel_direction = [](double speed_mps) {
+    return speed_mps > 0.01
           ? apollo::canbus::WheelSpeed::FORWARD
-      : state.linear_velocity_mps < -0.01
+      : speed_mps < -0.01
           ? apollo::canbus::WheelSpeed::BACKWARD
           : apollo::canbus::WheelSpeed::STANDSTILL;
+  };
   auto* wheel_speed = chassis->mutable_wheel_speed();
   wheel_speed->set_is_wheel_spd_fl_valid(true);
-  wheel_speed->set_wheel_spd_fl(state.linear_velocity_mps);
-  wheel_speed->set_wheel_direction_fl(wheel_direction);
+  wheel_speed->set_wheel_spd_fl(state.wheel_speed_mps[0]);
+  wheel_speed->set_wheel_direction_fl(wheel_direction(state.wheel_speed_mps[0]));
   wheel_speed->set_is_wheel_spd_fr_valid(true);
-  wheel_speed->set_wheel_spd_fr(state.linear_velocity_mps);
-  wheel_speed->set_wheel_direction_fr(wheel_direction);
+  wheel_speed->set_wheel_spd_fr(state.wheel_speed_mps[1]);
+  wheel_speed->set_wheel_direction_fr(wheel_direction(state.wheel_speed_mps[1]));
   wheel_speed->set_is_wheel_spd_rl_valid(true);
-  wheel_speed->set_wheel_spd_rl(state.linear_velocity_mps);
-  wheel_speed->set_wheel_direction_rl(wheel_direction);
+  wheel_speed->set_wheel_spd_rl(state.wheel_speed_mps[2]);
+  wheel_speed->set_wheel_direction_rl(wheel_direction(state.wheel_speed_mps[2]));
   wheel_speed->set_is_wheel_spd_rr_valid(true);
-  wheel_speed->set_wheel_spd_rr(state.linear_velocity_mps);
-  wheel_speed->set_wheel_direction_rr(wheel_direction);
+  wheel_speed->set_wheel_spd_rr(state.wheel_speed_mps[3]);
+  wheel_speed->set_wheel_direction_rr(wheel_direction(state.wheel_speed_mps[3]));
 
   switch (state.current_gear) {
     case VehicleCommand::Gear::GEAR_REVERSE:
@@ -240,54 +241,64 @@ void CyberAdapter::ToLocalization(
   pose->mutable_orientation()->set_qz(state.qz);
   pose->mutable_orientation()->set_qw(state.qw);
   pose->set_heading(state.yaw);
-  pose->mutable_euler_angles()->set_x(state.roll);
-  pose->mutable_euler_angles()->set_y(state.pitch);
+  pose->mutable_euler_angles()->set_x(state.pitch);
+  pose->mutable_euler_angles()->set_y(state.roll);
   pose->mutable_euler_angles()->set_z(state.yaw);
 
-  // Body-frame velocity/acceleration rotated into the world frame.
-  double vx = state.linear_velocity_mps * std::cos(state.yaw) -
-              state.lateral_velocity_mps * std::sin(state.yaw);
-  double vy = state.linear_velocity_mps * std::sin(state.yaw) +
-              state.lateral_velocity_mps * std::cos(state.yaw);
-  pose->mutable_linear_velocity()->set_x(vx);
-  pose->mutable_linear_velocity()->set_y(vy);
-  pose->mutable_linear_velocity()->set_z(0.0);
+  pose->mutable_linear_velocity()->set_x(
+      state.linear_velocity_world_mps[0]);
+  pose->mutable_linear_velocity()->set_y(
+      state.linear_velocity_world_mps[1]);
+  pose->mutable_linear_velocity()->set_z(
+      state.linear_velocity_world_mps[2]);
 
-  double ax = state.linear_acceleration_mps2 * std::cos(state.yaw) -
-              state.lateral_acceleration_mps2 * std::sin(state.yaw);
-  double ay = state.linear_acceleration_mps2 * std::sin(state.yaw) +
-              state.lateral_acceleration_mps2 * std::cos(state.yaw);
-  pose->mutable_linear_acceleration()->set_x(ax);
-  pose->mutable_linear_acceleration()->set_y(ay);
-  pose->mutable_linear_acceleration()->set_z(0.0);
+  pose->mutable_linear_acceleration()->set_x(
+      state.linear_acceleration_world_mps2[0]);
+  pose->mutable_linear_acceleration()->set_y(
+      state.linear_acceleration_world_mps2[1]);
+  pose->mutable_linear_acceleration()->set_z(
+      state.linear_acceleration_world_mps2[2]);
 
   // Linear acceleration in vehicle reference frame (VRF)
   // Apollo VRF uses x=right, y=forward. The simulator state uses
   // x=forward, y=left, so lateral acceleration changes sign on conversion.
   pose->mutable_linear_acceleration_vrf()->set_x(
-      -state.lateral_acceleration_mps2);
+      -state.linear_acceleration_body_mps2[1]);
   pose->mutable_linear_acceleration_vrf()->set_y(
-      state.linear_acceleration_mps2);
-  pose->mutable_linear_acceleration_vrf()->set_z(0.0);
+      state.linear_acceleration_body_mps2[0]);
+  pose->mutable_linear_acceleration_vrf()->set_z(
+      state.linear_acceleration_body_mps2[2]);
 
   // Angular velocity in world and vehicle frame
-  pose->mutable_angular_velocity()->set_x(0.0);
-  pose->mutable_angular_velocity()->set_y(0.0);
-  pose->mutable_angular_velocity()->set_z(state.angular_velocity_yaw_radps);
+  pose->mutable_angular_velocity()->set_x(
+      state.angular_velocity_world_radps[0]);
+  pose->mutable_angular_velocity()->set_y(
+      state.angular_velocity_world_radps[1]);
+  pose->mutable_angular_velocity()->set_z(
+      state.angular_velocity_world_radps[2]);
 
-  pose->mutable_angular_velocity_vrf()->set_x(0.0);
-  pose->mutable_angular_velocity_vrf()->set_y(0.0);
-  pose->mutable_angular_velocity_vrf()->set_z(state.angular_velocity_yaw_radps);
+  // Apollo VRF is right/forward/up, while the simulator body frame is
+  // forward/left/up.
+  pose->mutable_angular_velocity_vrf()->set_x(
+      -state.angular_velocity_body_radps[1]);
+  pose->mutable_angular_velocity_vrf()->set_y(
+      state.angular_velocity_body_radps[0]);
+  pose->mutable_angular_velocity_vrf()->set_z(
+      state.angular_velocity_body_radps[2]);
 }
 
 void CyberAdapter::PublishFeedback(const VehicleState& state) {
-  double now_sec = cyber::Time::Now().ToSecond();
+  if (!timestamp_offset_initialized_) {
+    timestamp_offset_sec_ = cyber::Time::Now().ToSecond() - state.timestamp_sec;
+    timestamp_offset_initialized_ = true;
+  }
+  const double timestamp_sec = timestamp_offset_sec_ + state.timestamp_sec;
   uint64_t seq = ++msg_seq_num_;
 
   // 1. Publish Chassis
   if (chassis_writer_) {
     auto chassis = std::make_shared<apollo::canbus::Chassis>();
-    ToChassis(state, chassis.get(), now_sec);
+    ToChassis(state, chassis.get(), timestamp_sec);
     chassis->mutable_header()->set_sequence_num(seq);
     chassis_writer_->Write(chassis);
   }
@@ -304,7 +315,7 @@ void CyberAdapter::PublishFeedback(const VehicleState& state) {
   // 2. Publish LocalizationEstimate
   if (localization_writer_) {
     auto loc = std::make_shared<apollo::localization::LocalizationEstimate>();
-    ToLocalization(state, loc.get(), now_sec);
+    ToLocalization(state, loc.get(), timestamp_sec);
     loc->mutable_header()->set_sequence_num(seq);
     localization_writer_->Write(loc);
   }

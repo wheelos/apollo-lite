@@ -66,10 +66,10 @@ class AckermannModel {
  private:
   double wheelbase_m_{2.8448};
   double track_width_m_{1.58};
-  double wheel_radius_m_{0.33};
+  double wheel_radius_m_{0.335};
   double mass_kg_{1710.0};
 
-  double max_steer_angle_rad_{0.50};
+  double max_steer_angle_rad_{0.6108652382};
   double max_rear_steer_angle_rad_{0.0};
   double max_drive_torque_nm_{2400.0};
   double max_brake_torque_nm_{4800.0};

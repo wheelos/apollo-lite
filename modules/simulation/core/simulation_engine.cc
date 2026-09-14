@@ -54,7 +54,8 @@ bool SimulationEngine::Init(const std::string& backend_type,
   }
   if (!backend_->SetVehicleGeometry(wheelbase_m_, track_width_m_,
                                     wheel_radius_m_) ||
-      !backend_->SetMaxSteerAngle(max_steer_angle_rad_)) {
+      !backend_->SetMaxSteerAngle(max_steer_angle_rad_) ||
+      !backend_->SetMaxRearSteerAngle(max_rear_steer_angle_rad_)) {
     AERROR << "Vehicle configuration is incompatible with backend "
            << backend_->Name();
     return false;
