@@ -41,13 +41,29 @@ cc_library(
 )
 
 cc_library(
-    name = "ackermann_model",
-    srcs = ["vehicle/ackermann_model.cc"],
-    hdrs = ["vehicle/ackermann_model.h"],
+    name = "vehicle_model",
+    srcs = ["vehicle/vehicle_model.cc"],
+    hdrs = ["vehicle/vehicle_model.h"],
     copts = SIMULATION_COPTS,
     deps = [
         ":simulation_types",
     ],
+)
+
+cc_library(
+    name = "ackermann_model",
+    srcs = ["vehicle/ackermann_model.cc"],
+    hdrs = ["vehicle/ackermann_model.h"],
+    copts = SIMULATION_COPTS,
+    deps = [":vehicle_model"],
+)
+
+cc_library(
+    name = "four_wheel_steering_model",
+    srcs = ["vehicle/four_wheel_steering_model.cc"],
+    hdrs = ["vehicle/four_wheel_steering_model.h"],
+    copts = SIMULATION_COPTS,
+    deps = [":vehicle_model"],
 )
 
 cc_library(
@@ -57,6 +73,8 @@ cc_library(
     copts = SIMULATION_COPTS,
     deps = [
         ":ackermann_model",
+        ":four_wheel_steering_model",
+        ":vehicle_model",
         ":simulation_gflags",
         ":simulation_types",
         ":simulator_backend",
@@ -90,6 +108,7 @@ cc_library(
         ":cyber_adapter",
         ":simulation_engine",
         ":simulation_gflags",
+        ":vehicle_model",
         "//modules/common/configs:config_gflags",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
@@ -114,6 +133,7 @@ cc_test(
     copts = SIMULATION_COPTS,
     deps = [
         ":ackermann_model",
+        ":four_wheel_steering_model",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -128,6 +148,19 @@ cc_test(
         ":simulator_backend",
         "@com_google_googletest//:gtest_main",
         "@mujoco",
+    ],
+)
+
+cc_test(
+    name = "cyber_adapter_test",
+    size = "small",
+    srcs = ["adapter/cyber_adapter_test.cc"],
+    copts = SIMULATION_COPTS,
+    deps = [
+        ":cyber_adapter",
+        "//modules/common/configs:config_gflags",
+        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

@@ -19,6 +19,9 @@
 
 DEFINE_string(sim_backend_type, "kinematic",
               "Simulation backend type: kinematic or mujoco");
+DEFINE_string(sim_vehicle_model, "ackermann",
+              "Vehicle control-to-actuation model: ackermann or "
+              "four_wheel_steering");
 DEFINE_string(sim_control_mode, "throttle",
               "Longitudinal control mode: throttle or speed");
 DEFINE_string(sim_model_path, "",

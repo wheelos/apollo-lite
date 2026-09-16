@@ -17,8 +17,8 @@
 
 #pragma once
 
-#include <memory>
 #include <array>
+#include <memory>
 #include <string>
 
 #include "modules/simulation/backend/simulator_backend.h"
@@ -56,6 +56,7 @@ class MujocoBackend : public ISimulatorBackend {
   double model_track_width_m_{0.0};
   double model_wheel_radius_m_{0.0};
   double model_max_steer_angle_rad_{0.0};
+  double model_max_rear_steer_angle_rad_{0.0};
 
   // MuJoCo opaque pointers (void* when headers not available)
   void* mj_model_{nullptr};

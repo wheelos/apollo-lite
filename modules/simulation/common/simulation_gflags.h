@@ -20,6 +20,7 @@
 #include "gflags/gflags.h"
 
 DECLARE_string(sim_backend_type);
+DECLARE_string(sim_vehicle_model);
 DECLARE_string(sim_control_mode);
 DECLARE_string(sim_model_path);
 DECLARE_double(sim_physics_dt);

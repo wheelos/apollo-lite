@@ -85,6 +85,7 @@ MujocoBackend::~MujocoBackend() {
 
 bool MujocoBackend::Init(const std::string& model_path) {
   model_path_ = model_path;
+  model_max_rear_steer_angle_rad_ = 0.0;
 #if defined(USE_MUJOCO)
   if (mj_data_) {
     mj_deleteData(static_cast<mjData*>(mj_data_));
@@ -195,6 +196,11 @@ bool MujocoBackend::Init(const std::string& model_path) {
   model_max_steer_angle_rad_ =
       std::min(std::abs(m->actuator_ctrlrange[2 * steer_fl_id_]),
                std::abs(m->actuator_ctrlrange[2 * steer_fr_id_]));
+  if (steer_rl_id_ >= 0 && steer_rr_id_ >= 0) {
+    model_max_rear_steer_angle_rad_ =
+        std::min(std::abs(m->actuator_ctrlrange[2 * steer_rl_id_]),
+                 std::abs(m->actuator_ctrlrange[2 * steer_rr_id_]));
+  }
 
   init_z_ = m->body_pos[3 * vehicle_body_id_ + 2];
   if (init_z_ <= 0.0) init_z_ = 0.35;
@@ -289,6 +295,13 @@ bool MujocoBackend::SetMaxRearSteerAngle(double max_rear_steer_angle_rad) {
       (steer_rl_id_ < 0 || steer_rr_id_ < 0 ||
        steer_rl_joint_id_ < 0 || steer_rr_joint_id_ < 0)) {
     AERROR << "MuJoCo model lacks rear steering actuators or joints.";
+    return false;
+  }
+  if (max_rear_steer_angle_rad > model_max_rear_steer_angle_rad_) {
+    AERROR << "MuJoCo rear steering limit does not match vehicle "
+              "configuration: configured="
+           << max_rear_steer_angle_rad
+           << ", model=" << model_max_rear_steer_angle_rad_;
     return false;
   }
 #else

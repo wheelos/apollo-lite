@@ -128,6 +128,7 @@ TEST(SimulationEngineTest, SteeringTurn) {
 
 TEST(SimulationEngineTest, FourWheelSteeringPropagatesToKinematicBackend) {
   SimulationEngine engine;
+  engine.SetVehicleModelType(VehicleModelType::kFourWheelSteering);
   engine.SetMaxRearSteerAngle(0.25);
   ASSERT_TRUE(engine.Init("kinematic", ""));
 
@@ -143,6 +144,12 @@ TEST(SimulationEngineTest, FourWheelSteeringPropagatesToKinematicBackend) {
   ASSERT_TRUE(engine.GetVehicleState(&state));
   EXPECT_LT(state.rear_steering_rad, 0.0);
   EXPECT_GT(state.yaw, 0.0);
+  EXPECT_NEAR(state.angular_velocity_yaw_radps,
+              state.linear_velocity_mps *
+                  (std::tan(state.front_steering_rad) -
+                   std::tan(state.rear_steering_rad)) /
+                  2.8448,
+              1e-12);
 }
 
 TEST(SimulationEngineTest, BrakingStopsVehicle) {
