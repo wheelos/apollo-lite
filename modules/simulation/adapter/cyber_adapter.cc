@@ -152,7 +152,11 @@ void CyberAdapter::ToChassis(const VehicleState& state,
                                                 : state.timestamp_sec);
   header->set_module_name("simulation");
 
-  chassis->set_speed_mps(static_cast<float>(state.linear_velocity_mps));
+  // Chassis speed is a magnitude. VehicleStateProvider applies the gear sign
+  // when constructing common::VehicleState, while Localization remains the
+  // signed ground-truth motion source.
+  chassis->set_speed_mps(
+      static_cast<float>(std::abs(state.linear_velocity_mps)));
   chassis->set_odometer_m(static_cast<float>(state.odometer_m));
   chassis->set_steering_percentage(
       static_cast<float>(state.steering_percentage));

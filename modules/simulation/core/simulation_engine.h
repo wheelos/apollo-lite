@@ -23,7 +23,7 @@
 
 #include "modules/simulation/backend/simulator_backend.h"
 #include "modules/simulation/core/simulation_types.h"
-#include "modules/simulation/vehicle/ackermann_model.h"
+#include "modules/simulation/vehicle/vehicle_model.h"
 
 namespace apollo {
 namespace simulation {
@@ -53,6 +53,9 @@ class SimulationEngine {
   void SetMaxRearSteerAngle(double max_rear_steer_angle_rad) {
     max_rear_steer_angle_rad_ = max_rear_steer_angle_rad;
   }
+  void SetVehicleModelType(VehicleModelType vehicle_model_type) {
+    vehicle_model_type_ = vehicle_model_type;
+  }
   void SetVehicleGeometry(double wheelbase_m, double track_width_m,
                           double wheel_radius_m) {
     wheelbase_m_ = wheelbase_m;
@@ -79,7 +82,8 @@ class SimulationEngine {
 
  private:
   std::unique_ptr<ISimulatorBackend> backend_;
-  AckermannModel vehicle_model_;
+  std::unique_ptr<VehicleModel> vehicle_model_;
+  VehicleModelType vehicle_model_type_{VehicleModelType::kAckermann};
   double max_steer_angle_rad_{0.6108652382};
   double max_rear_steer_angle_rad_{0.0};
   double wheelbase_m_{2.8448};

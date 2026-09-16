@@ -24,6 +24,8 @@
 #include "modules/simulation/backend/kinematic_backend.h"
 #include "modules/simulation/backend/mujoco_backend.h"
 #include "modules/simulation/common/simulation_gflags.h"
+#include "modules/simulation/vehicle/ackermann_model.h"
+#include "modules/simulation/vehicle/four_wheel_steering_model.h"
 
 namespace apollo {
 namespace simulation {
@@ -34,9 +36,34 @@ SimulationEngine::SimulationEngine() {
 
 bool SimulationEngine::Init(const std::string& backend_type,
                             const std::string& model_path) {
-  vehicle_model_.SetMaxSteerAngle(max_steer_angle_rad_);
-  vehicle_model_.SetMaxRearSteerAngle(max_rear_steer_angle_rad_);
-  vehicle_model_.SetGeometry(wheelbase_m_, track_width_m_, wheel_radius_m_);
+  if ((vehicle_model_type_ == VehicleModelType::kAckermann &&
+       max_rear_steer_angle_rad_ != 0.0) ||
+      (vehicle_model_type_ == VehicleModelType::kFourWheelSteering &&
+       max_rear_steer_angle_rad_ <= 0.0)) {
+    AERROR << "Rear-steering limit is incompatible with vehicle model "
+           << VehicleModelTypeName(vehicle_model_type_);
+    return false;
+  }
+  VehicleModelConfig vehicle_config;
+  vehicle_config.type = vehicle_model_type_;
+  vehicle_config.wheelbase_m = wheelbase_m_;
+  vehicle_config.track_width_m = track_width_m_;
+  vehicle_config.wheel_radius_m = wheel_radius_m_;
+  vehicle_config.max_front_steer_rad = max_steer_angle_rad_;
+  vehicle_config.max_rear_steer_rad = max_rear_steer_angle_rad_;
+  switch (vehicle_model_type_) {
+    case VehicleModelType::kAckermann:
+      vehicle_model_ = std::make_unique<AckermannModel>();
+      break;
+    case VehicleModelType::kFourWheelSteering:
+      vehicle_model_ = std::make_unique<FourWheelSteeringModel>();
+      break;
+  }
+  if (!vehicle_model_ || !vehicle_model_->Configure(vehicle_config)) {
+    AERROR << "Invalid " << VehicleModelTypeName(vehicle_model_type_)
+           << " vehicle-model configuration.";
+    return false;
+  }
   if (backend_type == "mujoco") {
     backend_ = std::make_unique<MujocoBackend>();
     AINFO << "SimulationEngine configured with MuJoCo backend.";
@@ -55,7 +82,7 @@ bool SimulationEngine::Init(const std::string& backend_type,
   if (!backend_->SetVehicleGeometry(wheelbase_m_, track_width_m_,
                                     wheel_radius_m_) ||
       !backend_->SetMaxSteerAngle(max_steer_angle_rad_) ||
-      !backend_->SetMaxRearSteerAngle(max_rear_steer_angle_rad_)) {
+      !backend_->SetMaxRearSteerAngle(vehicle_config.max_rear_steer_rad)) {
     AERROR << "Vehicle configuration is incompatible with backend "
            << backend_->Name();
     return false;
@@ -84,7 +111,8 @@ void SimulationEngine::Reset(double x, double y, double yaw) {
 
 bool SimulationEngine::Step(const VehicleCommand& cmd, double control_dt_sec,
                             bool command_received) {
-  if (!backend_ || !std::isfinite(control_dt_sec) || control_dt_sec <= 0.0) {
+  if (!backend_ || !vehicle_model_ || !std::isfinite(control_dt_sec) ||
+      control_dt_sec <= 0.0) {
     return false;
   }
 
@@ -130,8 +158,8 @@ bool SimulationEngine::Step(const VehicleCommand& cmd, double control_dt_sec,
 
   VehicleActuation last_actuation{};
   for (int step = 0; step < sub_steps; ++step) {
-    last_actuation = vehicle_model_.ComputeActuation(active_cmd, current_state_,
-                                                     physics_dt_sec_);
+    last_actuation = vehicle_model_->ComputeActuation(
+        active_cmd, current_state_, physics_dt_sec_);
     if (!backend_->ApplyActuation(last_actuation)) {
       AERROR << "Backend failed to apply actuation: " << backend_->Name();
       return false;

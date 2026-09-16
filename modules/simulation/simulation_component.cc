@@ -89,6 +89,11 @@ bool SimulationComponent::Init() {
       vehicle_param.has_max_back_wheel_steer()
           ? vehicle_param.max_back_wheel_steer()
           : 0.0;
+  VehicleModelType vehicle_model_type;
+  if (!ParseVehicleModelType(FLAGS_sim_vehicle_model, &vehicle_model_type)) {
+    AERROR << "Unknown simulation vehicle model: " << FLAGS_sim_vehicle_model;
+    return false;
+  }
   const double track_width_m = vehicle_param.track_width();
   const double wheelbase_m = vehicle_param.wheel_base();
   const double wheel_radius_m = vehicle_param.wheel_rolling_radius();
@@ -103,6 +108,16 @@ bool SimulationComponent::Init() {
       max_rear_steer_angle_rad > max_steer_angle_rad) {
     AERROR << "Invalid vehicle max_back_wheel_steer: "
            << max_rear_steer_angle_rad;
+    return false;
+  }
+  if (vehicle_model_type == VehicleModelType::kAckermann &&
+      max_rear_steer_angle_rad != 0.0) {
+    AERROR << "Ackermann simulation model requires max_back_wheel_steer = 0.";
+    return false;
+  }
+  if (vehicle_model_type == VehicleModelType::kFourWheelSteering &&
+      max_rear_steer_angle_rad <= 0.0) {
+    AERROR << "Four-wheel-steering model requires max_back_wheel_steer > 0.";
     return false;
   }
   if (!std::isfinite(track_width_m) || track_width_m <= 0.0 ||
@@ -120,6 +135,7 @@ bool SimulationComponent::Init() {
   }
 
   engine_ = std::make_unique<SimulationEngine>();
+  engine_->SetVehicleModelType(vehicle_model_type);
   engine_->SetMaxSteerAngle(max_steer_angle_rad);
   engine_->SetMaxRearSteerAngle(max_rear_steer_angle_rad);
   engine_->SetVehicleGeometry(wheelbase_m, track_width_m, wheel_radius_m);

@@ -21,6 +21,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/simulation/vehicle/four_wheel_steering_model.h"
+
 namespace apollo {
 namespace simulation {
 
@@ -94,7 +96,7 @@ TEST(AckermannModelTest, AppliesGearAndBrakeSemantics) {
 
 TEST(AckermannModelTest, ClampsSteeringAndAppliesParkingBrake) {
   AckermannModel model;
-  model.SetMaxSteerAngle(0.50);
+  model.SetMaxFrontSteerAngle(0.50);
 
   VehicleCommand command;
   command.front_steering_rad = 1.0;
@@ -111,11 +113,16 @@ TEST(AckermannModelTest, ClampsSteeringAndAppliesParkingBrake) {
   }
 }
 
-TEST(AckermannModelTest, ComputesCounterPhaseFourWheelSteeringAngles) {
-  AckermannModel model;
-  model.SetGeometry(2.8448, 1.58, 0.33);
-  model.SetMaxSteerAngle(0.50);
-  model.SetMaxRearSteerAngle(0.25);
+TEST(FourWheelSteeringModelTest, ComputesCounterPhaseWheelAngles) {
+  FourWheelSteeringModel model;
+  VehicleModelConfig config;
+  config.type = VehicleModelType::kFourWheelSteering;
+  config.wheelbase_m = 2.8448;
+  config.track_width_m = 1.58;
+  config.wheel_radius_m = 0.33;
+  config.max_front_steer_rad = 0.50;
+  config.max_rear_steer_rad = 0.25;
+  ASSERT_TRUE(model.Configure(config));
 
   VehicleCommand command;
   command.front_steering_rad = 0.25;

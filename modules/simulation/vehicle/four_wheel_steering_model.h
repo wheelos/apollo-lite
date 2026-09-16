@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//  Created Date: 2026-09-10
+//  Created Date: 2026-09-16
 //  Author: daohu527
 
 #pragma once
@@ -22,17 +22,15 @@
 namespace apollo {
 namespace simulation {
 
-/**
- * @class AckermannModel
- * @brief Front-wheel-only vehicle model.
- */
-class AckermannModel final : public VehicleModelBase {
+// Counter-phase 4WS. The external control interface remains a front-axle
+// command; this model owns the physical rear-steer policy.
+class FourWheelSteeringModel final : public VehicleModelBase {
  public:
   bool Configure(const VehicleModelConfig& config) override;
   VehicleActuation ComputeActuation(const VehicleCommand& command,
                                     const VehicleState& state,
                                     double dt_sec) const override;
-  const char* Name() const override { return "Ackermann"; }
+  const char* Name() const override { return "FourWheelSteering"; }
 };
 
 }  // namespace simulation
