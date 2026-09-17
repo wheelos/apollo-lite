@@ -144,7 +144,9 @@ function load_project_env_overrides() {
     return 0
   fi
 
-  echo ">>> Loading project overrides from ${env_file}"
+  if [[ "${WHL_QUIET:-0}" != "1" ]]; then
+    echo ">>> Loading project overrides from ${env_file}"
+  fi
   load_env_file_exports "${env_file}"
 }
 

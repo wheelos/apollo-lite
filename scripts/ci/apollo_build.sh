@@ -16,6 +16,10 @@
 # limitations under the License.
 ###############################################################################
 
+
+# Responsibility: expand Apollo build targets and execute Bazel with the
+# selected configuration and resource limits. It does not initialize runtime.
+
 set -e
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
@@ -122,7 +126,7 @@ function determine_build_targets_and_defines() {
           targets_all+=" $(cyber_runtime_targets)"
         fi
       elif [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
-        targets_all+=" //modules/${component}/..."
+        targets_all+=" //modules/${component}/... union $(cyber_runtime_targets)"
       elif [[ -d "${APOLLO_ROOT_DIR}/${component}" ]]; then
         targets_all+=" //${component}/..."
       elif [[ $component =~ ^@ ]]; then
@@ -255,6 +259,53 @@ function format_bazel_targets() {
   echo "${targets}"
 }
 
+function _read_cgroup_memory_limit() {
+  local limit_file
+  for limit_file in \
+    /sys/fs/cgroup/memory.max \
+    /sys/fs/cgroup/memory/memory.limit_in_bytes; do
+    if [[ -r "${limit_file}" ]]; then
+      local limit
+      limit="$(cat "${limit_file}")"
+      if [[ "${limit}" != "max" && "${limit}" =~ ^[0-9]+$ ]]; then
+        # cgroup v1 uses a very large integer for "unlimited".
+        if awk -v limit="${limit}" 'BEGIN { exit !(limit > 0 && limit < 1e18) }'; then
+          echo "${limit}"
+          return
+        fi
+      fi
+    fi
+  done
+  awk '/MemTotal/ {printf "%.0f", $2 * 1024}' /proc/meminfo
+}
+
+function _read_cgroup_cpu_limit() {
+  if [[ -r /sys/fs/cgroup/cpu.max ]]; then
+    local quota period
+    read -r quota period < /sys/fs/cgroup/cpu.max
+    if [[ "${quota}" != "max" && "${quota}" =~ ^[0-9]+$ &&
+          "${period}" =~ ^[0-9]+$ && "${period}" -gt 0 ]]; then
+      awk -v quota="${quota}" -v period="${period}" \
+        'BEGIN { value = int((quota + period - 1) / period); print (value > 0 ? value : 1) }'
+      return
+    fi
+  fi
+
+  if [[ -r /sys/fs/cgroup/cpu/cpu.cfs_quota_us &&
+        -r /sys/fs/cgroup/cpu/cpu.cfs_period_us ]]; then
+    local quota period
+    quota="$(cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us)"
+    period="$(cat /sys/fs/cgroup/cpu/cpu.cfs_period_us)"
+    if [[ "${quota}" -gt 0 && "${period}" -gt 0 ]]; then
+      awk -v quota="${quota}" -v period="${period}" \
+        'BEGIN { value = int((quota + period - 1) / period); print (value > 0 ? value : 1) }'
+      return
+    fi
+  fi
+
+  nproc
+}
+
 function run_bazel_build() {
   CMDLINE_OPTIONS="$(echo ${CMDLINE_OPTIONS} | xargs)"
 
@@ -275,20 +326,39 @@ function run_bazel_build() {
   info "${TAB}Build Targets: ${GREEN}${build_targets}${NO_COLOR}"
   info "${TAB}Disabled:      ${YELLOW}${disabled_targets}${NO_COLOR}"
 
-  # default set jobs number according to the total memory size, 2GB per job
-  local jobs_args="--jobs=$(awk '/MemTotal/ {printf "%.f", $2/1024/1024/2}' /proc/meminfo)"
+  local memory_bytes="$(_read_cgroup_memory_limit)"
+  local cpu_count="$(_read_cgroup_cpu_limit)"
+  if [[ ! "${memory_bytes}" =~ ^[0-9]+$ || "${memory_bytes}" -le 0 ]]; then
+    memory_bytes="$(awk '/MemTotal/ {printf "%.0f", $2 * 1024}' /proc/meminfo)"
+  fi
+  if [[ ! "${cpu_count}" =~ ^[0-9]+$ || "${cpu_count}" -le 0 ]]; then
+    cpu_count=1
+  fi
+  if [[ "${cpu_count}" -gt 8 ]]; then
+    cpu_count=8
+  fi
+
+  # Keep one compile slot per CPU and reserve roughly 2 GiB per slot.
+  local memory_jobs
+  memory_jobs="$(awk -v bytes="${memory_bytes}" \
+    'BEGIN { value = int(bytes / 2147483648); print (value > 0 ? value : 1) }')"
+  local default_jobs="${cpu_count}"
+  if [[ "${memory_jobs}" -lt "${default_jobs}" ]]; then
+    default_jobs="${memory_jobs}"
+  fi
+
+  local jobs_args="--jobs=${default_jobs}"
   if [[ -n "${CUSTOM_JOBS}" ]]; then
     jobs_args="--jobs=${CUSTOM_JOBS}"
   fi
-  # default set cpus number according to the total cpu cores
-  local nproc_cnt=$(nproc)
-  local cpu_count=$(( nproc_cnt > 8 ? 8 : nproc_cnt ))
   local cpus_args="--local_resources=cpu=${cpu_count}"
   if [[ -n "${CUSTOM_CPUS}" ]]; then
     cpus_args="--local_resources=cpu=${CUSTOM_CPUS}"
   fi
-  # default set memory size according to the total memory size, 70% of total memory
-  local rams_args="--local_resources=memory=HOST_RAM*.7"
+  # Reserve 70% of the cgroup memory limit for Bazel actions.
+  local memory_limit
+  memory_limit="$(awk -v bytes="${memory_bytes}" 'BEGIN { printf "%.0f", bytes * 0.7 }')"
+  local rams_args="--local_resources=memory=${memory_limit}"
   if [[ -n "${CUSTOM_RAMS}" ]]; then
     rams_args="--local_resources=memory=${CUSTOM_RAMS}"
   fi

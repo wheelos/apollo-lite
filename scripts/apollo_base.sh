@@ -22,7 +22,7 @@ source ${TOP_DIR}/scripts/apollo.bashrc
 HOST_ARCH="$(uname -m)"
 
 function set_lib_path() {
-  local RUNTIME_SETUP="${APOLLO_ROOT_DIR}/scripts/runtime_env.sh"
+  local RUNTIME_SETUP="${APOLLO_ROOT_DIR}/setup.bash"
   if [[ "${APOLLO_BUILD_PHASE:-0}" != "1" && -e "${RUNTIME_SETUP}" ]]; then
     . "${RUNTIME_SETUP}"
   fi

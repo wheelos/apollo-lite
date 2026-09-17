@@ -21,6 +21,7 @@ if [ -f /.dockerenv ]; then
   exit 1
 fi
 
+# Maintenance utility: remove exited containers, dangling images, and volumes.
 # Credit to https://gist.github.com/bastman/5b57ddb3c11942094f8d0a97d461b430
 exited_containers="$(docker ps -qa --no-trunc --filter "status=exited")"
 if [ -z "${exited_containers}" ]; then

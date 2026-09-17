@@ -3,7 +3,7 @@
 # ==============================================================================
 # Apollo-Lite PTP Sync Diagnostic Tool
 # Purpose: Deep analysis of PTP Master health and synchronization chain.
-# Usage: sudo ./ptp_diagnostic.sh [interface]
+# Usage: sudo scripts/diagnostics/ptp_diagnostic.sh [interface]
 # ==============================================================================
 
 IFACE=${1:-"eth0"}
