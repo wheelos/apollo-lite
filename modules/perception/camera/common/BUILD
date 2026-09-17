@@ -43,7 +43,7 @@ cc_library(
         ":undistortion_handler",
         "@core//cyber",
         "//modules/perception/base",
-        "@npp",
+        "@cuda//:npp",
     ],
 )
 
@@ -116,7 +116,7 @@ cc_library(
         "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
-        "@npp",
+        "@cuda//:npp",
     ],
 )
 
