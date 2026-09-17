@@ -28,6 +28,7 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:imu_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "//modules/localization_health/proto:localization_health_cc_proto",
         "//modules/localization/proto:rtk_config_cc_proto",
         "//modules/transform:transform_broadcaster",
         "@com_google_googletest//:gtest",

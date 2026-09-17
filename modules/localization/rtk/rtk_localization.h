@@ -16,19 +16,22 @@
 
 #pragma once
 
-#include <list>
+#include <atomic>
+#include <deque>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
 #include "gtest/gtest_prod.h"
 
 #include "modules/common/monitor_log/monitor_log_buffer.h"
-#include "wheelos_msgs/sensor_msgs/ins.pb.h"
+#include "modules/localization_health/proto/localization_health.pb.h"
+#include "modules/localization/proto/rtk_config.pb.h"
 #include "wheelos_msgs/localization_msgs/gps.pb.h"
 #include "wheelos_msgs/localization_msgs/imu.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
-#include "modules/localization/proto/rtk_config.pb.h"
+#include "wheelos_msgs/sensor_msgs/ins.pb.h"
 
 namespace apollo {
 namespace localization {
@@ -48,13 +51,19 @@ class RTKLocalization {
   bool IsServiceStarted();
   void GetLocalization(LocalizationEstimate *localization);
   void GetLocalizationStatus(LocalizationStatus *localization_status);
+  void GetAssessment(LocalizationAssessment *assessment);
 
  private:
   void RunWatchDog(double gps_timestamp);
 
   void PrepareLocalizationMsg(const localization::Gps &gps_msg,
                               LocalizationEstimate *localization,
-                              LocalizationStatus *localization_status);
+                              LocalizationStatus *localization_status,
+                              LocalizationAssessment *assessment);
+  void PrepareAssessmentMsg(const localization::Gps &gps_msg,
+                            const LocalizationEstimate &localization,
+                            const drivers::gnss::InsStat *status,
+                            LocalizationAssessment *assessment);
   void ComposeLocalizationMsg(const localization::Gps &gps,
                               const localization::CorrectedImu &imu,
                               LocalizationEstimate *localization);
@@ -67,6 +76,8 @@ class RTKLocalization {
                       const double timestamp_sec, CorrectedImu *imu_msg);
   template <class T>
   T InterpolateXYZ(const T &p1, const T &p2, const double frac1);
+  template <class T>
+  T InterpolateEulerAngle(const T &p1, const T &p2, const double frac1);
 
   bool FindNearestGpsStatus(const double gps_timestamp_sec,
                             drivers::gnss::InsStat *status);
@@ -74,11 +85,11 @@ class RTKLocalization {
  private:
   std::string module_name_ = "localization";
 
-  std::list<localization::CorrectedImu> imu_list_;
+  std::deque<localization::CorrectedImu> imu_list_;
   size_t imu_list_max_size_ = 50;
   std::mutex imu_list_mutex_;
 
-  std::list<drivers::gnss::InsStat> gps_status_list_;
+  std::deque<drivers::gnss::InsStat> gps_status_list_;
   size_t gps_status_list_max_size_ = 10;
   std::mutex gps_status_list_mutex_;
 
@@ -92,20 +103,27 @@ class RTKLocalization {
   double last_reported_timestamp_sec_ = 0.0;
 
   bool enable_watch_dog_ = true;
-  bool service_started_ = false;
-  double service_started_time = 0.0;
+  std::atomic<bool> service_started_{false};
+  double service_started_time_ = 0.0;
 
   int64_t localization_seq_num_ = 0;
+  int64_t assessment_seq_num_ = 0;
+  std::string session_id_ = "";
+  std::mutex localization_result_mutex_;
   LocalizationEstimate last_localization_result_;
   LocalizationStatus last_localization_status_result_;
+  LocalizationAssessment last_assessment_result_;
 
   int localization_publish_freq_ = 100;
   int report_threshold_err_num_ = 10;
-  int service_delay_threshold = 1;
+  int service_delay_threshold_ = 1;
   apollo::common::monitor::MonitorLogBuffer monitor_logger_;
 
   FRIEND_TEST(RTKLocalizationTest, InterpolateIMU);
   FRIEND_TEST(RTKLocalizationTest, ComposeLocalizationMsg);
+  FRIEND_TEST(RTKLocalizationTest, InterpolateEulerAngle);
+  FRIEND_TEST(RTKLocalizationTest, FindMatchingIMU);
+  FRIEND_TEST(RTKLocalizationTest, FindNearestGpsStatus);
 };
 
 }  // namespace localization

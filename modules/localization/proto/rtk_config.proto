@@ -16,4 +16,6 @@ message Config {
   optional double map_offset_x = 8;
   optional double map_offset_y = 9;
   optional double map_offset_z = 10;
+  optional string localization_assessment_topic = 14
+      [default = "/apollo/localization/assessment"];
 }
