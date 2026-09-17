@@ -11,7 +11,6 @@ deployment. We currently support `x86_64` and `aarch64` architectures.
   development.
 - **Dev**: Full Apollo project with development toolchain, for building and
   running the entire Apollo stack.
-- **Runtime**: Optimized, minimal image for production deployment.
 
 ## Quick Start
 
@@ -25,11 +24,11 @@ CyberRT framework.
 ```bash
 cd docker/build
 
-# Build x86_64 CyberRT image (default: download pre-built dependencies)
-./build_docker.sh -f cyber.x86_64.dockerfile
+# Build x86_64 CUDA CyberRT image (default: download pre-built dependencies)
+./build_docker.sh -f cyber.x86_64.cuda.dockerfile
 
 # For users in mainland China (accelerated mirrors)
-./build_docker.sh -f cyber.x86_64.dockerfile -g cn
+./build_docker.sh -f cyber.x86_64.cuda.dockerfile -g cn
 
 # Build all dependencies from source (takes longer)
 ./build_docker.sh -f dev.x86_64.cpu.dockerfile -m build
@@ -40,29 +39,11 @@ cd docker/build
 Builds the full Apollo development image, based on a CyberRT image.
 
 ```bash
-# Build x86_64 Dev image
-./build_docker.sh -f dev.x86_64.dockerfile
+# Build x86_64 CUDA Dev image
+./build_docker.sh -f dev.x86_64.cuda.dockerfile
 
 # Build aarch64 Dev image (ensure qemu-user-static is configured for cross-arch builds)
-./build_docker.sh -f dev.aarch64.dockerfile -m download
-```
-
-### 3. Build Apollo Runtime Image
-
-Used for lightweight production deployments. Requires a prior Apollo Release
-Build.
-
-```bash
-# 1. Generate required APT packages from Apollo Release Build
-./apollo.sh release -c -r
-
-# 2. Navigate to the Docker build directory and copy package list
-cd docker/build
-cp /apollo/output/syspkgs.txt .
-
-# 3. Build the Runtime image (x86_64 only currently)
-# cp runtime.x86_64.dockerfile.sample runtime.x86_64.dockerfile # if file doesn't exist
-bash build_docker.sh -f runtime.x86_64.dockerfile
+./build_docker.sh -f dev.aarch64.cuda.dockerfile -m download
 ```
 
 ---
@@ -76,7 +57,7 @@ Usage:
     build_docker.sh -f <Dockerfile> [Options]
 
 Options:
-    -f, --dockerfile   Path to the Dockerfile (e.g., 'cyber.x86_64.dockerfile').
+    -f, --dockerfile   Path to the Dockerfile (e.g., 'cyber.x86_64.cuda.dockerfile').
     -c, --clean        Disable Docker build cache (--no-cache=true).
     -m, --mode         Installation mode: 'download' (default, use pre-built), 'build' (build from source).
     -g, --geo          Enable geo-specific mirrors ('cn' or 'us', default 'us').
@@ -138,3 +119,6 @@ Build logs are located at `/opt/apollo/build.log` inside the container,
 providing detailed information on downloads and installation steps.
 
 ---
+
+Standalone and runtime release packaging have been removed. Use the staged
+`base`, `cyber`, and `dev` targets above.

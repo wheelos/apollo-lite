@@ -4,19 +4,11 @@ export PS1="\[\e[31m\][\[\e[m\]\[\e[32m\]\u\[\e[m\]\[\e[33m\]@\[\e[m\]\[\e[35m\]
 
 export PATH="$PATH:/apollo/scripts"
 
-for script in /etc/profile.d/*.sh ; do
-    . "${script}"
-done
-
 ulimit -c unlimited
 
 #if [ -e "/apollo/scripts/apollo_base.sh" ]; then
 #    . /apollo/scripts/apollo_base.sh
 #fi
-if [ -e "/apollo/scripts/runtime_env.sh" ]; then
-    . /apollo/scripts/runtime_env.sh
-fi
-
 if [ -e "/apollo/scripts/apollo_auto_complete.bash" ]; then
     . /apollo/scripts/apollo_auto_complete.bash
 fi

@@ -87,3 +87,6 @@ docker/.env.prod
 modules/tools/whl_toolbox/runtime
 
 docs/context
+
+.env.test.local
+.env.dev.local

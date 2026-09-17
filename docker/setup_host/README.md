@@ -31,3 +31,12 @@ Run setup_host with headless mode to apply system configs without GUI.
 ```bash
 sudo SETUP_HEADLESS_MODE=yes ./setup_host.sh
 ```
+
+## Maintenance and diagnostics
+
+Host maintenance and PTP diagnostics are separate from host initialization:
+
+```bash
+bash scripts/maintenance/cleanup_resources.sh
+sudo bash scripts/diagnostics/ptp_diagnostic.sh [interface]
+```

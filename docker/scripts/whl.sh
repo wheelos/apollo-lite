@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Responsibility: manage Apollo container lifecycle and user entry.
+# It starts/stops/enters containers but does not build, clean Bazel outputs,
+# or initialize the runtime environment itself.
+
 # ----- Constants -----
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
@@ -91,6 +95,7 @@ function parse_args() {
         break
         ;;
     esac
+
   done
 }
 
@@ -118,6 +123,11 @@ fi
 
 source "${DOCKER_DIR}/scripts/env_setup.sh"
 source "${DOCKER_DIR}/scripts/container_selection.sh"
+source "${DOCKER_DIR}/scripts/welcome.sh"
+
+if [[ "${ACTION}" == "enter" ]]; then
+  WHL_QUIET=1
+fi
 load_project_env_overrides "${PROJECT_ROOT}"
 
 function get_compose_cmd() {
@@ -271,36 +281,64 @@ function stop_mode() {
 
 function cmd_start() {
   local mode="${1:-dev}"
+  local quiet="${WHL_QUIET:-0}"
   validate_mode "${mode}"
-  prepare_mode_context "${mode}" "true"
+  if [[ "${quiet}" == "1" ]]; then
+    prepare_mode_context "${mode}" "true" >/dev/null
+  else
+    prepare_mode_context "${mode}" "true"
+  fi
   require_host_ready
   verify_gpu_ready
-  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
+  if [[ "${quiet}" == "1" ]]; then
+    generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}" >/dev/null
+  else
+    generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
+  fi
   ensure_env_generated "${mode}"
 
-  echo ">>> Starting Apollo [Mode: ${mode}]..."
-  if [[ "${mode}" == "test" ]]; then
-    echo ">>> Test Mode: Dreamview mapped to http://localhost:${DREAMVIEW_PORT}"
+  if [[ "${quiet}" != "1" ]]; then
+    echo ">>> Starting Apollo [Mode: ${mode}]..."
+    if [[ "${mode}" == "test" ]]; then
+      echo ">>> Test Mode: Dreamview mapped to http://localhost:${DREAMVIEW_PORT}"
+    fi
   fi
 
-  $(get_cmd "${mode}") up -d --remove-orphans
+  if [[ "${quiet}" == "1" ]]; then
+    $(get_cmd "${mode}") up -d --remove-orphans >/dev/null
+  else
+    $(get_cmd "${mode}") up -d --remove-orphans
+  fi
   sleep 1
-  if ! $(get_cmd "${mode}") ps --services --filter "status=running" | grep -q "core"; then
+  local running_services
+  if [[ "${quiet}" == "1" ]]; then
+    running_services="$($(get_cmd "${mode}") ps --services --filter "status=running" 2>/dev/null)" || {
+      echo ">>> ERROR: Unable to query container status." >&2
+      return 1
+    }
+  else
+    running_services="$($(get_cmd "${mode}") ps --services --filter "status=running")"
+  fi
+  if ! grep -q "core" <<<"${running_services}"; then
     echo ">>> ERROR: Container failed to start. Logs:"
     $(get_cmd "${mode}") logs core
     exit 1
   fi
 
-  echo ">>> Container is running."
+  if [[ "${quiet}" != "1" ]]; then
+    echo ">>> Container is running."
+  fi
 }
 
 function cmd_enter() {
   local mode="${1:-dev}"
   validate_mode "${mode}"
+  WHL_QUIET=1
   cmd_start "${mode}"
+  echo ">>> Entering Apollo [Mode: ${mode}]..."
+  show_welcome
   xhost +local:root >/dev/null 2>&1 || true
-  echo ">>> Entering container ${CONTAINER_NAME}..."
-  $(get_cmd "${mode}") exec -u "${USER}" -it core /bin/bash
+  $(get_cmd "${mode}") exec -u "${USER}" -it core /bin/bash -l
 }
 
 function cmd_status() {

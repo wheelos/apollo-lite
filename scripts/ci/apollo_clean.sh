@@ -16,6 +16,11 @@
 # limitations under the License.
 ###############################################################################
 
+
+
+# Responsibility: clean Bazel outputs, logs, and core dumps on explicit request.
+# It does not repair container ownership or participate in startup.
+
 set -e
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"

@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 
-# Unified runtime environment bootstrap for cyber tools.
+# Responsibility: implement runtime environment discovery for setup.bash and
+# preserve compatibility for legacy callers. It does not build or clean.
+
+# Internal implementation for the public setup.bash runtime entrypoint.
+# Keep this compatibility path for existing scripts that source it directly.
 # Production path: use Bazel module dependency `@core` / `wheelos_core`.
 # Local source-checkout overrides are allowed only when explicitly configured;
 # they are never implicit compatibility fallbacks.
 
-if [[ "${APOLLO_RUNTIME_ENV_SOURCED:-0}" == "1" ]]; then
+if [[ "${APOLLO_RUNTIME_ENV_LOADED:-0}" == "1" ]]; then
   return 0
 fi
 
@@ -41,7 +45,6 @@ _source_if_exists() {
     # shellcheck disable=SC1090
     source "${script_path}"
     export APOLLO_RUNTIME_ENV_SOURCE="${script_path}"
-    export APOLLO_RUNTIME_ENV_SOURCED=1
     return 0
   fi
   return 1
@@ -100,7 +103,6 @@ _inject_apollo_external_core_outputs() {
   local py_internal_dir
   local proj_data_dir
   local proj_data_found=0
-  local bazel_bin_from_info
   local lib_dir
   local solib_dir
   local cyber_conf
@@ -116,21 +118,23 @@ _inject_apollo_external_core_outputs() {
     "cyber/tools/cyber_node"
     "cyber/tools/cyber_service"
   )
-  if command -v bazel >/dev/null 2>&1; then
-    bazel_bin_from_info="$(cd "${APOLLO_ROOT_DIR}" && bazel info bazel-bin 2>/dev/null | tail -n 1)"
-    if [[ -n "${bazel_bin_from_info}" ]]; then
-      output_roots+=("${bazel_bin_from_info}")
-    fi
-  fi
   for output_root in "${APOLLO_ROOT_DIR}"/bazel-out/*/bin; do
     if [[ -d "${output_root}" ]]; then
       output_roots+=("${output_root}")
     fi
   done
+  declare -A seen_output_roots=()
   for output_root in "${output_roots[@]}"; do
+    local resolved_output_root
+    resolved_output_root="$(readlink -f "${output_root}" 2>/dev/null || true)"
+    if [[ -z "${resolved_output_root}" || -n "${seen_output_roots[${resolved_output_root}]:-}" ]]; then
+      continue
+    fi
+    seen_output_roots["${resolved_output_root}"]=1
     while IFS= read -r solib_dir; do
       _pathprepend "${solib_dir}" LD_LIBRARY_PATH
-    done < <(find "${output_root}" -type d -name "_solib_*" -print 2>/dev/null)
+    done < <(find "${resolved_output_root}" -mindepth 1 -maxdepth 2 \
+      -type d -name "_solib_*" -print 2>/dev/null)
     for repo_name in "${repo_candidates[@]}"; do
       core_execroot="${output_root}/external/${repo_name}"
       for tool_dir in "${tool_dirs[@]}"; do
@@ -147,7 +151,7 @@ _inject_apollo_external_core_outputs() {
         if [[ -f "${core_execroot}/cyber/conf/cyber.pb.conf" ]]; then
           export CYBER_PATH="${core_execroot}/cyber"
         else
-          cyber_conf="$(find "${core_execroot}/cyber/tools" \
+          cyber_conf="$(find "${core_execroot}/cyber/tools" -maxdepth 6 \
             -path "*/cyber/conf/cyber.pb.conf" -print -quit 2>/dev/null || true)"
           if [[ -n "${cyber_conf}" ]]; then
             export CYBER_PATH="${cyber_conf%/conf/cyber.pb.conf}"
@@ -155,12 +159,15 @@ _inject_apollo_external_core_outputs() {
         fi
       fi
       if [[ -d "${core_execroot}" ]]; then
-        while IFS= read -r lib_dir; do
-          _pathprepend "${lib_dir}" LD_LIBRARY_PATH
-        done < <(find "${core_execroot}" -type d \( -name lib -o -name lib64 \) -print 2>/dev/null)
-        while IFS= read -r solib_dir; do
-          _pathprepend "${solib_dir}" LD_LIBRARY_PATH
-        done < <(find "${core_execroot}" -type d -name "_solib_*" -print 2>/dev/null)
+        for lib_dir in \
+          "${core_execroot}/lib" \
+          "${core_execroot}/lib64" \
+          "${core_execroot}/cyber/lib" \
+          "${core_execroot}/cyber/lib64"; do
+          if [[ -d "${lib_dir}" ]]; then
+            _pathprepend "${lib_dir}" LD_LIBRARY_PATH
+          fi
+        done
       fi
     done
     for proj_repo_name in "${proj_repo_candidates[@]}"; do
@@ -197,6 +204,7 @@ for core_root in \
     if [[ -z "${CYBER_PATH:-}" && -d "${core_root}/cyber" ]]; then
       export CYBER_PATH="${core_root}/cyber"
     fi
+    APOLLO_RUNTIME_ENV_LOADED=1
     return 0
   fi
 done
@@ -205,11 +213,15 @@ done
 _inject_apollo_external_core_outputs
 if command -v cyber_launch >/dev/null 2>&1 && command -v cyber_recorder >/dev/null 2>&1; then
   export APOLLO_RUNTIME_ENV_SOURCE="existing-path"
-  export APOLLO_RUNTIME_ENV_SOURCED=1
+  APOLLO_RUNTIME_ENV_LOADED=1
   return 0
 fi
 
 echo "[WARNING] cyber runtime environment is not configured." >&2
 echo '[WARNING] Use Bazel module dependency @core / wheelos_core or set APOLLO_CORE_ROOT' >&2
 echo '[WARNING] explicitly for a temporary local source-checkout override.' >&2
+if [[ "${APOLLO_RUNTIME_REQUIRED:-0}" == "1" ]]; then
+  return 1
+fi
+APOLLO_RUNTIME_ENV_LOADED=1
 return 0

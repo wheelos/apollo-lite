@@ -21,10 +21,10 @@ CUDNN_VERSIONS["aarch64"]="9.3.0"
 TENSORRT_VERSIONS["aarch64"]="10.3"
 
 SUPPORTED_ARCHS=( x86_64 aarch64 )
-SUPPORTED_STAGES=( base cyber dev runtime )
+SUPPORTED_STAGES=( base cyber dev )
 # TODO(All): maybe ROCm support in the future
 SUPPORTED_COMPUTE_PLATFORM=( cpu cuda l4t u22 )
-SUPPORTED_CPU_STAGES=( cyber dev runtime )
+SUPPORTED_CPU_STAGES=( cyber dev )
 
 HOST_ARCH="$(uname -m)"
 INSTALL_MODE="download"
@@ -45,7 +45,6 @@ TENSORRT_VERSION=
 
 IMAGE_IN=
 IMAGE_OUT=
-DEV_IMAGE_IN=
 
 LOCAL_HTTP_ADDR=${LOCAL_HTTP_ADDR:-http://172.17.0.1:8080/build/${HOST_ARCH}}
 
@@ -160,11 +159,8 @@ function determine_cpu_img() {
   # Define the general image name format
   local cyber_img="${APOLLO_REPO}:cyber-${arch}-${UBUNTU_LTS}-${timestamp}"
   local dev_img="${APOLLO_REPO}:dev-${arch}-${UBUNTU_LTS}-${timestamp}"
-  local runtime_img="${APOLLO_REPO}:runtime-${arch}-${UBUNTU_LTS}-${timestamp}"
-
   # Define the previous stage image name
   local prev_cyber_img="${APOLLO_REPO}:cyber-${arch}-${UBUNTU_LTS}-${effective_timestamp}"
-  local prev_dev_img="${APOLLO_REPO}:dev-${arch}-${UBUNTU_LTS}-${effective_timestamp}"
 
   case "${stage}" in
     cyber)
@@ -174,11 +170,6 @@ function determine_cpu_img() {
     dev)
       IMAGE_IN="${prev_cyber_img}"
       IMAGE_OUT="${dev_img}"
-      ;;
-    runtime)
-      IMAGE_IN="ubuntu:${UBUNTU_LTS}"
-      DEV_IMAGE_IN="${prev_dev_img}"
-      IMAGE_OUT="${runtime_img}"
       ;;
     *)
       fail "Unknown build stage for CPU mode: '${stage}'"
@@ -204,11 +195,8 @@ function determine_gpu_img() {
   # Define the general image name format (consistent with CPU mode)
   local cyber_img="${APOLLO_REPO}:cyber-${arch}-${UBUNTU_LTS}-${timestamp}"
   local dev_img="${APOLLO_REPO}:dev-${arch}-${UBUNTU_LTS}-${timestamp}"
-  local runtime_img="${APOLLO_REPO}:runtime-${arch}-${UBUNTU_LTS}-${timestamp}"
-
   # Define the previous stage image name (consistent with CPU mode)
   local prev_cyber_img="${APOLLO_REPO}:cyber-${arch}-${UBUNTU_LTS}-${effective_timestamp}"
-  local prev_dev_img="${APOLLO_REPO}:dev-${arch}-${UBUNTU_LTS}-${effective_timestamp}"
 
   case "${stage}" in
     base)
@@ -229,19 +217,6 @@ function determine_gpu_img() {
     dev)
       IMAGE_IN="${prev_cyber_img}"
       IMAGE_OUT="${dev_img}"
-      ;;
-    runtime)
-      IMAGE_IN="nvidia/cuda:${CUDA_LITE}-cudnn${cudnn_ver}-runtime-ubuntu${UBUNTU_LTS}"
-      if [[ "${arch}" == "aarch64" ]]; then
-        # Note: nvidia/cuda may not work for all arm64v8 hardware, here
-        # we use a generic arm64v8 Ubuntu image as the base image. And
-        # install CUDA/CuDNN/TensorRT manually in the Dockerfile.
-        # See the Dockerfile(base.aarch64.dockerfile) for more details.
-        # TODO(All): specified via args, such as orin or xavier
-        IMAGE_IN="docker.io/arm64v8/ubuntu:${UBUNTU_LTS}"
-      fi
-      DEV_IMAGE_IN="${prev_dev_img}"
-      IMAGE_OUT="${runtime_img}"
       ;;
     *)
       fail "Unknown build stage for GPU mode: '${stage}'"
@@ -274,9 +249,6 @@ function docker_build_preview() {
     if [[ "${TARGET_EXTRA}" != "cpu" ]]; then
         echo "|  CUDA: ${CUDA_LITE}, CuDNN: ${CUDNN_VERSION}, TensorRT: ${TENSORRT_VERSION}"
     fi
-    if [[ -n "${DEV_IMAGE_IN}" ]]; then # Only show if DEV_IMAGE_IN is set (for runtime stage)
-        echo "|  Dev Image IN: ${DEV_IMAGE_IN}"
-    fi
     echo "=================================================="
 }
 
@@ -294,7 +266,7 @@ function docker_build_run() {
     build_args_array+=( "--build-arg" "LOCAL_HTTP_ADDR=${LOCAL_HTTP_ADDR}" )
 
     # Common args based on TARGET_EXTRA or specific stages
-    if [[ "${TARGET_EXTRA}" == "cpu" || "${TARGET_STAGE}" == "cyber" || "${TARGET_STAGE}" == "dev" || "${TARGET_STAGE}" == "runtime" ]]; then
+    if [[ "${TARGET_EXTRA}" == "cpu" || "${TARGET_STAGE}" == "cyber" || "${TARGET_STAGE}" == "dev" ]]; then
         build_args_array+=( "--build-arg" "GEOLOC=${TARGET_GEOLOC}" )
     fi
 
@@ -303,16 +275,11 @@ function docker_build_run() {
         build_args_array+=( "--build-arg" "INSTALL_MODE=${INSTALL_MODE}" )
     fi
 
-    # CUDA/CuDNN/TensorRT versions for GPU base and runtime
-    if [[ "${TARGET_EXTRA}" != "cpu" && ( "${TARGET_STAGE}" == "base" || "${TARGET_STAGE}" == "runtime" ) ]]; then
+    # CUDA/CuDNN/TensorRT versions for GPU base
+    if [[ "${TARGET_EXTRA}" != "cpu" && "${TARGET_STAGE}" == "base" ]]; then
         build_args_array+=( "--build-arg" "CUDA_LITE=${CUDA_LITE}" )
         build_args_array+=( "--build-arg" "CUDNN_VERSION=${CUDNN_VERSION}" )
         build_args_array+=( "--build-arg" "TENSORRT_VERSION=${TENSORRT_VERSION}" )
-    fi
-
-    # DEV_IMAGE_IN specifically for runtime stage
-    if [[ "${TARGET_STAGE}" == "runtime" ]]; then
-        build_args_array+=( "--build-arg" "DEV_IMAGE_IN=${DEV_IMAGE_IN}" )
     fi
 
     set -x # Enable command tracing

@@ -19,9 +19,8 @@ APOLLO_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
 INSTALL_DOCKER_SCRIPT="${APOLLO_ROOT_DIR}/docker/setup_host/install_docker.sh"
 INSTALL_NVIDIA_TOOLKIT_SCRIPT="${APOLLO_ROOT_DIR}/docker/setup_host/install_nvidia_container_toolkit.sh"
 SETUP_HOST_SCRIPT="${APOLLO_ROOT_DIR}/docker/setup_host/config_system.sh"
-ISSUES_LINK="https://github.com/wheelos/apollo-lite"
-SUPPORT_EMAIL="support@wheelos.cn"
 HOST_READY_MARKER="/etc/wheelos_setup_host.done"
+source "${APOLLO_ROOT_DIR}/docker/scripts/welcome.sh"
 
 # Defaults for config control (can be overridden by env vars)
 # If SKIP_SYSTEM_CONFIG=1, we skip system config; otherwise run it.
@@ -30,15 +29,6 @@ if [[ "${SKIP_SYSTEM_CONFIG:-0}" == "1" ]]; then
 else
     RUN_SYSTEM_CONFIG=1
 fi
-
-ASCII_WHEELOS=$(cat <<'EOF'
-           __              __
- _      __/ /_  ___  ___  / /___  _____
-| | /| / / __ \/ _ \/ _ \/ / __ \/ ___/
-| |/ |/ / / / /  __/  __/ / /_/ (__  )
-|__/|__/_/ /_/\___/\___/_/\____/____/
-EOF
-)
 
 # --- Functions ---
 
@@ -102,14 +92,6 @@ install_whl_system_command() {
     sudo ln -sf "${script_path}" "${link_path}"
     sudo chmod +x "${link_path}"
     echo "✅ Installed 'whl' -> ${link_path}"
-}
-
-show_welcome() {
-    echo "${ASCII_WHEELOS}"
-    echo ""
-    echo "GitHub: ${ISSUES_LINK}"
-    echo "Email : ${SUPPORT_EMAIL}"
-    echo ""
 }
 
 # --- Main Script Flow ---
