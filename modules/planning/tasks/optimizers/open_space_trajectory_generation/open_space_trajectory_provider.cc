@@ -230,7 +230,7 @@ Status OpenSpaceTrajectoryProvider::Process() {
   }
   bool need_replan = false;
   // Get stitching trajectory from last frame
-  const common::VehicleState vehicle_state = frame_->vehicle_state();
+  const common::VehicleState& vehicle_state = frame_->vehicle_state();
   auto* previous_frame = injector_->frame_history()->Latest();
   const bool has_reusable_open_space_plan =
       previous_frame != nullptr &&
@@ -257,7 +257,7 @@ Status OpenSpaceTrajectoryProvider::Process() {
     const double planning_cycle_time =
         1.0 / static_cast<double>(FLAGS_planning_loop_rate);
     stitching_trajectory = TrajectoryStitcher::ComputeReinitStitchingTrajectory(
-        planning_cycle_time, vehicle_state);
+        planning_cycle_time, vehicle_state, injector_->vehicle_model());
     need_replan = true;
     auto* open_space_status = injector_->planning_context()
                                   ->mutable_planning_status()
@@ -528,7 +528,8 @@ bool OpenSpaceTrajectoryProvider::IsVehicleNearDestination(
 }
 
 bool OpenSpaceTrajectoryProvider::IsVehicleStopDueToFallBack(
-    const bool is_on_fallback, const common::VehicleState& vehicle_state) {
+    const bool is_on_fallback,
+    const common::VehicleState& vehicle_state) {
   if (!is_on_fallback) {
     return false;
   }

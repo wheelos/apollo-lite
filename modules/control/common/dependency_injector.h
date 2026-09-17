@@ -27,8 +27,18 @@ class DependencyInjector {
 
   ~DependencyInjector() = default;
 
-  apollo::common::VehicleStateProvider* vehicle_state() {
-    return &vehicle_state_;
+  apollo::common::Status UpdateVehicleState(
+      const apollo::localization::LocalizationEstimate& localization,
+      const apollo::canbus::Chassis& chassis) {
+    return vehicle_state_.Update(localization, chassis);
+  }
+  // Control consumes one read-only VehicleState snapshot for the current
+  // control cycle. Controllers must not reconstruct it from raw localization
+  // or chassis messages, or change its reference point locally. The provider,
+  // VehicleOperatingState, raw localization, and chassis messages are not
+  // exposed through this interface.
+  const apollo::common::VehicleState& vehicle_state() const {
+    return vehicle_state_.state();
   }
 
  private:

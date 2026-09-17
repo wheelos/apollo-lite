@@ -313,7 +313,8 @@ bool LaneChangeDecider::IsClearToChangeLane(
           obstacle->Trajectory().trajectory_point(0).path_point().theta();
       const auto& vehicle_state = reference_line_info->vehicle_state();
       double vehicle_moving_direction = vehicle_state.heading();
-      if (vehicle_state.gear() == canbus::Chassis::GEAR_REVERSE) {
+      if (vehicle_state.travel_direction() ==
+          common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
         vehicle_moving_direction =
             common::math::NormalizeAngle(vehicle_moving_direction + M_PI);
       }

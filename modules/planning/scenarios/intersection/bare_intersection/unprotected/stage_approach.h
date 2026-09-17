@@ -51,7 +51,7 @@ class BareIntersectionUnprotectedStageApproach : public Stage {
   bool CheckClear(const ReferenceLineInfo& reference_line_info,
                   std::vector<std::string>* wait_for_obstacle_ids);
 
-  Stage::StageStatus FinishStage(Frame* frame);
+  Stage::StageStatus FinishStage(ReferenceLineInfo* reference_line_info);
 
  private:
   ScenarioBareIntersectionUnprotectedConfig scenario_config_;

@@ -33,8 +33,9 @@
 #include "modules/common/math/line_segment2d.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/common/util/string_util.h"
+#include "modules/planning/common/vehicle_frenet_geometry.h"
 #include "modules/common/util/util.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/planning_gflags.h"
@@ -129,8 +130,10 @@ bool STBoundaryMapper::MapStopDecision(
   reference_line_.XYToSL(stop_decision.stop().stop_point(), &stop_sl_point);
 
   double st_stop_s = 0.0;
+  common::VehicleGeometryModel geometry_model;
+  VehicleFrenetGeometry frenet_geometry(geometry_model);
   const double stop_ref_s =
-      stop_sl_point.s() - vehicle_param_.front_edge_to_center();
+      frenet_geometry.ComputeStopReferenceS(stop_sl_point.s());
 
   if (stop_ref_s > path_data_.frenet_frame_path().back().s()) {
     st_stop_s = path_data_.discretized_path().back().s() +
@@ -227,7 +230,8 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
       const Box2d& obs_box = obstacle.PerceptionBoundingBox();
       if (CheckOverlap(curr_point_on_path, obs_box, l_buffer)) {
         // If there is overlapping, then plot it on ST-graph.
-        const double backward_distance = -vehicle_param_.front_edge_to_center();
+        common::VehicleGeometryModel geom_model;
+        const double backward_distance = -geom_model.FrontEdgeDistance();
         const double forward_distance = obs_box.length();
         double low_s =
             std::fmax(0.0, curr_point_on_path.s() + backward_distance);
@@ -271,7 +275,8 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
         continue;
       }
 
-      const double step_length = vehicle_param_.front_edge_to_center();
+      common::VehicleGeometryModel geom_model;
+      const double step_length = geom_model.FrontEdgeDistance();
       auto path_len =
           std::min(FLAGS_max_trajectory_len, discretized_path.Length());
       // Go through every point of the ADC's path.
@@ -389,20 +394,9 @@ void STBoundaryMapper::ComputeSTBoundaryWithDecision(
 bool STBoundaryMapper::CheckOverlap(const PathPoint& path_point,
                                     const Box2d& obs_box,
                                     const double l_buffer) const {
-  // Convert reference point from center of rear axis to center of ADC.
-  Vec2d ego_center_map_frame((vehicle_param_.front_edge_to_center() -
-                              vehicle_param_.back_edge_to_center()) *
-                                 0.5,
-                             (vehicle_param_.left_edge_to_center() -
-                              vehicle_param_.right_edge_to_center()) *
-                                 0.5);
-  ego_center_map_frame.SelfRotate(path_point.theta());
-  ego_center_map_frame.set_x(ego_center_map_frame.x() + path_point.x());
-  ego_center_map_frame.set_y(ego_center_map_frame.y() + path_point.y());
-
-  // Compute the ADC bounding box.
-  Box2d adc_box(ego_center_map_frame, path_point.theta(),
-                vehicle_param_.length(), vehicle_param_.width() + l_buffer * 2);
+  common::VehicleGeometryModel geometry_model;
+  const Box2d adc_box = geometry_model.BuildBox(
+      path_point, l_buffer, 0.0, common::ReferencePoint::REAR_AXLE_CENTER);
 
   // Check whether ADC bounding box overlaps with obstacle bounding box.
   return obs_box.HasOverlap(adc_box);

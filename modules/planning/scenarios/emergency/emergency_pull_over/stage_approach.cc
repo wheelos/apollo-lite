@@ -25,7 +25,6 @@
 #include <vector>
 
 #include "cyber/common/log.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/util/common.h"
@@ -71,7 +70,7 @@ Stage::StageStatus EmergencyPullOverStageApproach::Process(
     const double stop_distance = scenario_config_.stop_distance();
     stop_line_s =
         pull_over_sl.s() + stop_distance +
-        VehicleConfigHelper::GetConfig().vehicle_param().front_edge_to_center();
+        reference_line_info.vehicle_geometry_model().FrontEdgeDistance();
     const std::string virtual_obstacle_id = "EMERGENCY_PULL_OVER";
     const std::vector<std::string> wait_for_obstacle_ids;
     planning::util::BuildStopDecision(
@@ -92,7 +91,7 @@ Stage::StageStatus EmergencyPullOverStageApproach::Process(
   if (stop_line_s > 0.0) {
     const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
     double distance = stop_line_s - adc_front_edge_s;
-    const double adc_speed = injector_->vehicle_state()->linear_velocity();
+    const double adc_speed = frame->vehicle_state().linear_velocity();
     const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()
                                           ->GetConfig()
                                           .vehicle_param()

@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
+#include "modules/planning/proto/planning_config.pb.h"
 #include "wheelos_msgs/basic_msgs/geometry.pb.h"
 #include "wheelos_msgs/localization_msgs/pose.pb.h"
 #include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
@@ -36,11 +37,11 @@
 #include "wheelos_msgs/planning_msgs/planning_internal.pb.h"
 #include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
 #include "wheelos_msgs/routing_msgs/routing.pb.h"
-#include "modules/planning/proto/planning_config.pb.h"
 
 #include "modules/common/math/vec2d.h"
 #include "modules/common/monitor_log/monitor_log_buffer.h"
 #include "modules/common/status/status.h"
+
 #include "modules/planning/common/ego_info.h"
 #include "modules/planning/common/indexed_queue.h"
 #include "modules/planning/common/local_view.h"
@@ -63,73 +64,78 @@ class Frame {
  public:
   explicit Frame(uint32_t sequence_num);
 
-  Frame(uint32_t sequence_num, const LocalView &local_view,
-        const common::TrajectoryPoint &planning_start_point,
-        const common::VehicleState &vehicle_state,
-        ReferenceLineProvider *reference_line_provider);
+  Frame(uint32_t sequence_num, const LocalView& local_view,
+        const common::TrajectoryPoint& planning_start_point,
+        const common::VehicleState& vehicle_state,
+        ReferenceLineProvider* reference_line_provider);
 
-  Frame(uint32_t sequence_num, const LocalView &local_view,
-        const common::TrajectoryPoint &planning_start_point,
-        const common::VehicleState &vehicle_state);
+  Frame(uint32_t sequence_num, const LocalView& local_view,
+        const common::TrajectoryPoint& planning_start_point,
+        const common::VehicleState& vehicle_state);
 
   virtual ~Frame() = default;
 
-  const common::TrajectoryPoint &PlanningStartPoint() const;
+  const common::TrajectoryPoint& PlanningStartPoint() const;
 
   common::Status Init(
-      const common::VehicleStateProvider *vehicle_state_provider,
-      const std::list<ReferenceLine> &reference_lines,
-      const std::list<hdmap::RouteSegments> &segments,
-      const std::vector<routing::LaneWaypoint> &future_route_waypoints,
-      const EgoInfo *ego_info);
+      const common::VehicleState& vehicle_state,
+      const std::list<ReferenceLine>& reference_lines,
+      const std::list<hdmap::RouteSegments>& segments,
+      const std::vector<routing::LaneWaypoint>& future_route_waypoints,
+      const EgoInfo* ego_info);
 
   common::Status InitForOpenSpace(
-      const common::VehicleStateProvider *vehicle_state_provider,
-      const EgoInfo *ego_info);
+      const common::VehicleState& vehicle_state,
+      const EgoInfo* ego_info);
 
   uint32_t SequenceNum() const;
 
   std::string DebugString() const;
 
-  const PublishableTrajectory &ComputedTrajectory() const;
+  const PublishableTrajectory& ComputedTrajectory() const;
 
-  void RecordInputDebug(planning_internal::Debug *debug);
+  void RecordInputDebug(planning_internal::Debug* debug);
 
-  const std::list<ReferenceLineInfo> &reference_line_info() const;
-  std::list<ReferenceLineInfo> *mutable_reference_line_info();
+  const std::list<ReferenceLineInfo>& reference_line_info() const;
+  std::list<ReferenceLineInfo>* mutable_reference_line_info();
 
-  Obstacle *Find(const std::string &id);
+  Obstacle* Find(const std::string& id);
 
-  const ReferenceLineInfo *FindDriveReferenceLineInfo();
+  const ReferenceLineInfo* FindDriveReferenceLineInfo();
 
-  const ReferenceLineInfo *FindTargetReferenceLineInfo();
+  const ReferenceLineInfo* FindTargetReferenceLineInfo();
 
-  const ReferenceLineInfo *FindFailedReferenceLineInfo();
+  const ReferenceLineInfo* FindFailedReferenceLineInfo();
 
-  const ReferenceLineInfo *DriveReferenceLineInfo() const;
+  const ReferenceLineInfo* DriveReferenceLineInfo() const;
 
-  const std::vector<const Obstacle *> obstacles() const;
+  const std::vector<const Obstacle*> obstacles() const;
 
-  const Obstacle *CreateStopObstacle(
-      ReferenceLineInfo *const reference_line_info,
-      const std::string &obstacle_id, const double obstacle_s);
+  const Obstacle* CreateStopObstacle(
+      ReferenceLineInfo* const reference_line_info,
+      const std::string& obstacle_id, const double obstacle_s);
 
-  const Obstacle *CreateStopObstacle(const std::string &obstacle_id,
-                                     const std::string &lane_id,
+  const Obstacle* CreateStopObstacle(const std::string& obstacle_id,
+                                     const std::string& lane_id,
                                      const double lane_s);
 
-  const Obstacle *CreateStaticObstacle(
-      ReferenceLineInfo *const reference_line_info,
-      const std::string &obstacle_id, const double obstacle_start_s,
+  const Obstacle* CreateStaticObstacle(
+      ReferenceLineInfo* const reference_line_info,
+      const std::string& obstacle_id, const double obstacle_start_s,
       const double obstacle_end_s);
 
-  bool Rerouting(PlanningContext *planning_context);
+  bool Rerouting(PlanningContext* planning_context);
 
-  const common::VehicleState &vehicle_state() const;
-
+  // Frame owns the immutable VehicleState snapshot for this Planning cycle.
+  // The state has already been normalized by VehicleStateProvider and, when
+  // needed, aligned once to the Planning start time. Planning tasks must use
+  // this accessor instead of reading the provider or raw input messages.
+  const common::VehicleState& vehicle_state() const {
+    return vehicle_state_;
+  }
   static void AlignPredictionTime(
       const double planning_start_time,
-      prediction::PredictionObstacles *prediction_obstacles);
+      prediction::PredictionObstacles* prediction_obstacles);
 
   void set_current_frame_planned_trajectory(
       ADCTrajectory current_frame_planned_trajectory) {
@@ -137,7 +143,7 @@ class Frame {
         std::move(current_frame_planned_trajectory);
   }
 
-  const ADCTrajectory &current_frame_planned_trajectory() const {
+  const ADCTrajectory& current_frame_planned_trajectory() const {
     return current_frame_planned_trajectory_;
   }
 
@@ -146,7 +152,7 @@ class Frame {
     current_frame_planned_path_ = std::move(current_frame_planned_path);
   }
 
-  const DiscretizedPath &current_frame_planned_path() const {
+  const DiscretizedPath& current_frame_planned_path() const {
     return current_frame_planned_path_;
   }
 
@@ -157,19 +163,19 @@ class Frame {
    * @id_to_priority lane id and reference line priority mapping relationship
    */
   void UpdateReferenceLinePriority(
-      const std::map<std::string, uint32_t> &id_to_priority);
+      const std::map<std::string, uint32_t>& id_to_priority);
 
-  const LocalView &local_view() const { return local_view_; }
+  const LocalView& local_view() const { return local_view_; }
 
-  ThreadSafeIndexedObstacles *GetObstacleList() { return &obstacles_; }
+  ThreadSafeIndexedObstacles* GetObstacleList() { return &obstacles_; }
 
-  const OpenSpaceInfo &open_space_info() const { return open_space_info_; }
+  const OpenSpaceInfo& open_space_info() const { return open_space_info_; }
 
-  OpenSpaceInfo *mutable_open_space_info() { return &open_space_info_; }
+  OpenSpaceInfo* mutable_open_space_info() { return &open_space_info_; }
 
-  perception::TrafficLight GetSignal(const std::string &traffic_light_id) const;
+  perception::TrafficLight GetSignal(const std::string& traffic_light_id) const;
 
-  const PadMessage::DrivingAction &GetPadMsgDrivingAction() const {
+  const PadMessage::DrivingAction& GetPadMsgDrivingAction() const {
     return pad_msg_driving_action_;
   }
 
@@ -178,11 +184,11 @@ class Frame {
 
  private:
   common::Status InitFrameData(
-      const common::VehicleStateProvider *vehicle_state_provider,
-      const EgoInfo *ego_info);
+      const common::VehicleState& vehicle_state,
+      const EgoInfo* ego_info);
 
-  bool CreateReferenceLineInfo(const std::list<ReferenceLine> &reference_lines,
-                               const std::list<hdmap::RouteSegments> &segments);
+  bool CreateReferenceLineInfo(const std::list<ReferenceLine>& reference_lines,
+                               const std::list<hdmap::RouteSegments>& segments);
 
   /**
    * Find an obstacle that collides with ADC (Autonomous Driving Car) if
@@ -190,15 +196,15 @@ class Frame {
    * @return pointer to the obstacle if such obstacle exists, otherwise
    * @return false if no colliding obstacle.
    */
-  const Obstacle *FindCollisionObstacle(const EgoInfo *ego_info) const;
+  const Obstacle* FindCollisionObstacle(const EgoInfo* ego_info) const;
 
   /**
    * @brief create a static virtual obstacle
    */
-  const Obstacle *CreateStaticVirtualObstacle(const std::string &id,
-                                              const common::math::Box2d &box);
+  const Obstacle* CreateStaticVirtualObstacle(const std::string& id,
+                                              const common::math::Box2d& box);
 
-  void AddObstacle(const Obstacle &obstacle);
+  void AddObstacle(const Obstacle& obstacle);
 
   void ReadTrafficLights();
 
@@ -210,7 +216,7 @@ class Frame {
   static PadMessage::DrivingAction pad_msg_driving_action_;
   uint32_t sequence_num_ = 0;
   LocalView local_view_;
-  const hdmap::HDMap *hdmap_ = nullptr;
+  const hdmap::HDMap* hdmap_ = nullptr;
   common::TrajectoryPoint planning_start_point_;
   common::VehicleState vehicle_state_;
   std::list<ReferenceLineInfo> reference_line_info_;
@@ -220,11 +226,11 @@ class Frame {
   /**
    * the reference line info that the vehicle finally choose to drive on
    **/
-  const ReferenceLineInfo *drive_reference_line_info_ = nullptr;
+  const ReferenceLineInfo* drive_reference_line_info_ = nullptr;
 
   ThreadSafeIndexedObstacles obstacles_;
 
-  std::unordered_map<std::string, const perception::TrafficLight *>
+  std::unordered_map<std::string, const perception::TrafficLight*>
       traffic_lights_;
 
   // current frame published trajectory
@@ -233,7 +239,7 @@ class Frame {
   // current frame path for future possible speed fallback
   DiscretizedPath current_frame_planned_path_;
 
-  const ReferenceLineProvider *reference_line_provider_ = nullptr;
+  const ReferenceLineProvider* reference_line_provider_ = nullptr;
 
   OpenSpaceInfo open_space_info_;
 

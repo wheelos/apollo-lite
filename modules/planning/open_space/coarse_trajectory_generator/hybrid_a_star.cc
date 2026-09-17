@@ -28,6 +28,7 @@
 #include "modules/planning/common/path/discretized_path.h"
 #include "modules/planning/common/speed/speed_data.h"
 #include "modules/planning/math/piecewise_jerk/piecewise_jerk_speed_problem.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 
 namespace apollo {
 namespace planning {
@@ -874,27 +875,14 @@ bool HybridAStar::Plan(
     }
   }
   ssm << "--vehicle start box" << std::endl;
-  Vec2d sposition(sx, sy);
-  Vec2d svec_to_center((vehicle_param_.front_edge_to_center() -
-                        vehicle_param_.back_edge_to_center()) /
-                           2.0,
-                       (vehicle_param_.left_edge_to_center() -
-                        vehicle_param_.right_edge_to_center()) /
-                           2.0);
-  Vec2d scenter(sposition + svec_to_center.rotate(sphi));
-  Box2d sbox(scenter, sphi, vehicle_param_.length(), vehicle_param_.width());
+  common::VehicleGeometryModel geometry_model;
+  Box2d sbox = geometry_model.BuildBox(
+      Vec2d(sx, sy), sphi, common::ReferencePoint::REAR_AXLE_CENTER);
   for (auto corner : sbox.GetAllCorners())
     ssm << corner.x() << "," << corner.y() << std::endl;
   ssm << "--vehicle end box" << std::endl;
-  Vec2d eposition(ex, ey);
-  Vec2d evec_to_center((vehicle_param_.front_edge_to_center() -
-                        vehicle_param_.back_edge_to_center()) /
-                           2.0,
-                       (vehicle_param_.left_edge_to_center() -
-                        vehicle_param_.right_edge_to_center()) /
-                           2.0);
-  Vec2d ecenter(eposition + evec_to_center.rotate(ephi));
-  Box2d ebox(ecenter, ephi, vehicle_param_.length(), vehicle_param_.width());
+  Box2d ebox = geometry_model.BuildBox(
+      Vec2d(ex, ey), ephi, common::ReferencePoint::REAR_AXLE_CENTER);
   for (auto corner : ebox.GetAllCorners())
     ssm << corner.x() << "," << corner.y() << std::endl;
   // load XYbounds

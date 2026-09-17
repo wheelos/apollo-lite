@@ -3,107 +3,134 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  *****************************************************************************/
 
 #include "modules/common/vehicle_model/vehicle_model.h"
 
+#include <memory>
+#include <string>
+#include <utility>
+
+#include "absl/strings/str_cat.h"
+
 #include "cyber/common/file.h"
-#include "cyber/common/log.h"
-#include "modules/common/configs/config_gflags.h"
+#include "modules/common/vehicle_model/vehicle_model_factory.h"
 
 namespace apollo {
 namespace common {
 
-void VehicleModel::RearCenteredKinematicBicycleModel(
-    const VehicleModelConfig& vehicle_model_config,
-    const double predicted_time_horizon, const VehicleState& cur_vehicle_state,
-    VehicleState* predicted_vehicle_state) {
-  // Kinematic bicycle model centered at rear axis center by Euler forward
-  // discretization
-  // Assume constant control command and constant z axis position
-  CHECK_GT(predicted_time_horizon, 0.0);
-  double dt = vehicle_model_config.rc_kinematic_bicycle_model().dt();
-  double cur_x = cur_vehicle_state.x();
-  double cur_y = cur_vehicle_state.y();
-  double cur_z = cur_vehicle_state.z();
-  double cur_phi = cur_vehicle_state.heading();
-  double cur_v = cur_vehicle_state.linear_velocity();
-  double cur_a = cur_vehicle_state.linear_acceleration();
-  double next_x = cur_x;
-  double next_y = cur_y;
-  double next_phi = cur_phi;
-  double next_v = cur_v;
-  if (dt >= predicted_time_horizon) {
-    dt = predicted_time_horizon;
-  }
-
-  double countdown_time = predicted_time_horizon;
-  bool finish_flag = false;
-  static constexpr double kepsilon = 1e-8;
-  while (countdown_time > kepsilon && !finish_flag) {
-    countdown_time -= dt;
-    if (countdown_time < kepsilon) {
-      dt = countdown_time + dt;
-      finish_flag = true;
-    }
-    double intermidiate_phi =
-        cur_phi + 0.5 * dt * cur_v * cur_vehicle_state.kappa();
-    next_phi =
-        cur_phi + dt * (cur_v + 0.5 * dt * cur_a) * cur_vehicle_state.kappa();
-    next_x =
-        cur_x + dt * (cur_v + 0.5 * dt * cur_a) * std::cos(intermidiate_phi);
-    next_y =
-        cur_y + dt * (cur_v + 0.5 * dt * cur_a) * std::sin(intermidiate_phi);
-
-    next_v = cur_v + dt * cur_a;
-    cur_x = next_x;
-    cur_y = next_y;
-    cur_phi = next_phi;
-    cur_v = next_v;
-  }
-
-  predicted_vehicle_state->set_x(next_x);
-  predicted_vehicle_state->set_y(next_y);
-  predicted_vehicle_state->set_z(cur_z);
-  predicted_vehicle_state->set_heading(next_phi);
-  predicted_vehicle_state->set_kappa(cur_vehicle_state.kappa());
-  predicted_vehicle_state->set_linear_velocity(next_v);
-  predicted_vehicle_state->set_linear_acceleration(
-      cur_vehicle_state.linear_acceleration());
+VehicleModel::VehicleModel(
+    std::unique_ptr<VehicleModelImplementation> implementation,
+    const VehicleDescription& description)
+    : implementation_(std::move(implementation)),
+      transformer_(description) {
 }
 
-VehicleState VehicleModel::Predict(const double predicted_time_horizon,
-                                   const VehicleState& cur_vehicle_state) {
-  VehicleModelConfig vehicle_model_config;
+VehicleModel::~VehicleModel() = default;
 
-  ACHECK(cyber::common::GetProtoFromFile(FLAGS_vehicle_model_config_filename,
-                                         &vehicle_model_config))
-      << "Failed to load vehicle model config file "
-      << FLAGS_vehicle_model_config_filename;
+Status VehicleModel::Create(const VehicleModelConfig& config,
+                            const VehicleDescription& description,
+                            std::unique_ptr<VehicleModel>* vehicle_model) {
+  if (vehicle_model == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "vehicle model output is null");
+  }
+  vehicle_model->reset();
 
-  // Some models not supported for now
-  ACHECK(vehicle_model_config.model_type() !=
-         VehicleModelConfig::COM_CENTERED_DYNAMIC_BICYCLE_MODEL);
-  ACHECK(vehicle_model_config.model_type() != VehicleModelConfig::MLP_MODEL);
+  std::unique_ptr<VehicleModelImplementation> implementation;
+  auto status =
+      VehicleModelFactory::Create(config, description, &implementation);
+  if (!status.ok()) {
+    return status;
+  }
+  *vehicle_model = std::unique_ptr<VehicleModel>(new VehicleModel(
+      std::move(implementation), description));
+  return Status::OK();
+}
 
-  VehicleState predicted_vehicle_state;
-  if (vehicle_model_config.model_type() ==
-      VehicleModelConfig::REAR_CENTERED_KINEMATIC_BICYCLE_MODEL) {
-    RearCenteredKinematicBicycleModel(vehicle_model_config,
-                                      predicted_time_horizon, cur_vehicle_state,
-                                      &predicted_vehicle_state);
+Status VehicleModel::CreateFromFile(
+    const std::string& config_file,
+    std::unique_ptr<VehicleModel>* vehicle_model) {
+  VehicleModelConfig config;
+  if (!cyber::common::GetProtoFromFile(config_file, &config)) {
+    return Status(
+        ErrorCode::PLANNING_ERROR,
+        absl::StrCat("Failed to load vehicle model config file ", config_file));
+  }
+  return Create(config, VehicleDescription(), vehicle_model);
+}
+
+ReferencePoint VehicleModel::canonical_reference_point() const {
+  return implementation_->canonical_reference_point();
+}
+
+Status VehicleModel::Predict(const double predicted_time_horizon,
+                             const VehicleState& current_state,
+                             const VehicleModelInput& input,
+                             const ReferencePoint target_reference_point,
+                             VehicleState* predicted_state) const {
+  return PredictCanonical(predicted_time_horizon, current_state, &input,
+                          target_reference_point, predicted_state);
+}
+
+Status VehicleModel::PredictWithHeldCurvature(
+    const double predicted_time_horizon, const VehicleState& current_state,
+    const ReferencePoint target_reference_point,
+    VehicleState* predicted_state) const {
+  return PredictCanonical(predicted_time_horizon, current_state, nullptr,
+                          target_reference_point, predicted_state);
+}
+
+Status VehicleModel::PredictCanonical(
+    const double predicted_time_horizon, const VehicleState& current_state,
+    const VehicleModelInput* input, const ReferencePoint target_reference_point,
+    VehicleState* predicted_state) const {
+  if (predicted_state == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "predicted state is null");
+  }
+  if (predicted_time_horizon < 0.0) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  "prediction horizon must be nonnegative");
   }
 
-  return predicted_vehicle_state;
+  VehicleState canonical_state;
+  auto status =
+      transformer_.TransformState(current_state, canonical_reference_point(),
+                                  &canonical_state);
+  if (!status.ok()) {
+    return status;
+  }
+
+  VehicleState predicted_canonical_state;
+  if (input == nullptr) {
+    status = implementation_->PredictWithHeldCurvature(
+        predicted_time_horizon, canonical_state, &predicted_canonical_state);
+  } else {
+    status = implementation_->Predict(predicted_time_horizon, canonical_state,
+                                      *input, &predicted_canonical_state);
+  }
+  if (!status.ok()) {
+    return status;
+  }
+
+  return transformer_.TransformState(predicted_canonical_state,
+                                     target_reference_point, predicted_state);
+}
+
+Status VehicleModel::PredictPositionWithHeldCurvature(
+    const double predicted_time_horizon, const VehicleState& current_state,
+    math::Vec2d* predicted_position) const {
+  if (predicted_position == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "predicted position is null");
+  }
+  VehicleState predicted_state;
+  const auto status = PredictWithHeldCurvature(
+      predicted_time_horizon, current_state, current_state.reference_point(),
+      &predicted_state);
+  if (!status.ok()) {
+    return status;
+  }
+  *predicted_position = math::Vec2d(predicted_state.x(), predicted_state.y());
+  return Status::OK();
 }
 
 }  // namespace common

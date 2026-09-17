@@ -61,6 +61,7 @@ cc_library(
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:traffic_rule_config_cc_proto",
         "//modules/planning/reference_line",
+        "//modules/planning/common:vehicle_frenet_geometry",
     ],
 )
 

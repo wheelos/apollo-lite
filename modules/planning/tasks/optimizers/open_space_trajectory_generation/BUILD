@@ -42,7 +42,7 @@ cc_library(
         "@core//cyber",
         "//modules/common/status",
         "//modules/common/util",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:frame",
         "//modules/planning/open_space/coarse_trajectory_generator:hybrid_a_star",

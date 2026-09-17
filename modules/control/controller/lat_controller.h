@@ -25,7 +25,9 @@
 #include <string>
 
 #include "Eigen/Core"
+
 #include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
+
 #include "modules/common/filters/digital_filter.h"
 #include "modules/common/filters/digital_filter_coefficients.h"
 #include "modules/common/filters/mean_filter.h"
@@ -67,7 +69,7 @@ class LatController : public Controller {
    * @return Status initialization status
    */
   common::Status Init(std::shared_ptr<DependencyInjector> injector,
-                      const ControlConf *control_conf) override;
+                      const ControlConf* control_conf) override;
 
   /**
    * @brief compute steering target based on current vehicle status
@@ -79,9 +81,9 @@ class LatController : public Controller {
    * @return Status computation status
    */
   common::Status ComputeControlCommand(
-      const localization::LocalizationEstimate *localization,
-      const canbus::Chassis *chassis, const planning::ADCTrajectory *trajectory,
-      ControlCommand *cmd) override;
+      const localization::LocalizationEstimate* localization,
+      const canbus::Chassis* chassis, const planning::ADCTrajectory* trajectory,
+      ControlCommand* cmd) override;
 
   /**
    * @brief reset Lateral Controller
@@ -101,10 +103,10 @@ class LatController : public Controller {
   std::string Name() const override;
 
  protected:
-  void UpdateState(SimpleLateralDebug *debug);
+  void UpdateState(SimpleLateralDebug* debug);
 
   // logic for reverse driving mode
-  void UpdateDrivingOrientation();
+  void UpdateDrivingOrientation(const common::VehicleState& vehicle_state);
 
   void UpdateMatrix();
 
@@ -115,17 +117,17 @@ class LatController : public Controller {
   void ComputeLateralErrors(const double x, const double y, const double theta,
                             const double linear_v, const double angular_v,
                             const double linear_a,
-                            const TrajectoryAnalyzer &trajectory_analyzer,
-                            SimpleLateralDebug *debug);
-  bool LoadControlConf(const ControlConf *control_conf);
-  void InitializeFilters(const ControlConf *control_conf);
-  void LoadLatGainScheduler(const LatControllerConf &lat_controller_conf);
+                            const TrajectoryAnalyzer& trajectory_analyzer,
+                            SimpleLateralDebug* debug);
+  bool LoadControlConf(const ControlConf* control_conf);
+  void InitializeFilters(const ControlConf* control_conf);
+  void LoadLatGainScheduler(const LatControllerConf& lat_controller_conf);
   void LogInitParameters();
-  void ProcessLogs(const SimpleLateralDebug *debug,
-                   const canbus::Chassis *chassis);
+  void ProcessLogs(const SimpleLateralDebug* debug,
+                   const common::VehicleState& vehicle_state);
 
   // vehicle
-  const ControlConf *control_conf_ = nullptr;
+  const ControlConf* control_conf_ = nullptr;
 
   // vehicle parameter
   common::VehicleParam vehicle_param_;

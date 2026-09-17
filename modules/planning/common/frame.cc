@@ -30,8 +30,6 @@
 #include "cyber/time/clock.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"
-#include "modules/common/util/point_factory.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/map/pnc_map/pnc_map.h"
@@ -81,10 +79,6 @@ const common::TrajectoryPoint &Frame::PlanningStartPoint() const {
   return planning_start_point_;
 }
 
-const common::VehicleState &Frame::vehicle_state() const {
-  return vehicle_state_;
-}
-
 bool Frame::Rerouting(PlanningContext *planning_context) {
   if (FLAGS_use_navigation_mode) {
     AERROR << "Rerouting not supported in navigation mode";
@@ -101,7 +95,10 @@ bool Frame::Rerouting(PlanningContext *planning_context) {
   auto request = local_view_.routing->routing_request();
   request.clear_header();
 
-  auto point = common::util::PointFactory::ToPointENU(vehicle_state_);
+  common::PointENU point;
+  point.set_x(vehicle_state_.x());
+  point.set_y(vehicle_state_.y());
+  point.set_z(vehicle_state_.z());
   double s = 0.0;
   double l = 0.0;
   hdmap::LaneInfoConstPtr lane;
@@ -321,13 +318,13 @@ const Obstacle *Frame::CreateStaticVirtualObstacle(const std::string &id,
 }
 
 Status Frame::Init(
-    const common::VehicleStateProvider *vehicle_state_provider,
+    const common::VehicleState &vehicle_state,
     const std::list<ReferenceLine> &reference_lines,
     const std::list<hdmap::RouteSegments> &segments,
     const std::vector<routing::LaneWaypoint> &future_route_waypoints,
     const EgoInfo *ego_info) {
   // TODO(QiL): refactor this to avoid redundant nullptr checks in scenarios.
-  auto status = InitFrameData(vehicle_state_provider, ego_info);
+  auto status = InitFrameData(vehicle_state, ego_info);
   if (!status.ok()) {
     AERROR << "failed to init frame:" << status.ToString();
     return status;
@@ -342,17 +339,17 @@ Status Frame::Init(
 }
 
 Status Frame::InitForOpenSpace(
-    const common::VehicleStateProvider *vehicle_state_provider,
+    const common::VehicleState &vehicle_state,
     const EgoInfo *ego_info) {
-  return InitFrameData(vehicle_state_provider, ego_info);
+  return InitFrameData(vehicle_state, ego_info);
 }
 
 Status Frame::InitFrameData(
-    const common::VehicleStateProvider *vehicle_state_provider,
+    const common::VehicleState &vehicle_state,
     const EgoInfo *ego_info) {
   hdmap_ = hdmap::HDMapUtil::BaseMapPtr();
   CHECK_NOTNULL(hdmap_);
-  vehicle_state_ = vehicle_state_provider->vehicle_state();
+  vehicle_state_ = vehicle_state;
   if (!util::IsVehicleStateValid(vehicle_state_)) {
     AERROR << "Adc init point is not set";
     return Status(ErrorCode::PLANNING_ERROR, "Adc init point is not set");

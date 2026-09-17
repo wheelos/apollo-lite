@@ -18,7 +18,6 @@
 
 #include <string>
 
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/reference_line_info.h"
 
@@ -40,7 +39,7 @@ hdmap::PathOverlap* GetOverlapOnReferenceLine(
     const ReferenceLineInfo::OverlapType& overlap_type);
 
 PullOverStatus CheckADCPullOver(
-    const common::VehicleStateProvider* vehicle_state_provider,
+    const common::VehicleState& vehicle_state,
     const ReferenceLineInfo& reference_line_info,
     const ScenarioPullOverConfig& scenario_config,
     const PlanningContext* planning_context);
@@ -59,11 +58,14 @@ bool CheckPullOverPositionBySL(const ReferenceLineInfo& reference_line_info,
                                const double target_theta, const bool check_s);
 
 bool CheckADCReadyToCruise(
-    const common::VehicleStateProvider* vehicle_state_provider, Frame* frame,
+    const common::VehicleState& vehicle_state,
+    const std::list<ReferenceLineInfo>& reference_line_list,
+    const std::vector<const Obstacle*>& obstacles,
     const ScenarioParkAndGoConfig& scenario_config);
 
 bool CheckADCSurroundObstacles(const common::math::Vec2d adc_position,
-                               const double adc_heading, Frame* frame,
+                               const double adc_heading,
+                               const std::vector<const Obstacle*>& obstacles,
                                const double front_obstacle_buffer);
 
 bool CheckADCHeading(const common::math::Vec2d adc_position,

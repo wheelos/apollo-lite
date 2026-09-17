@@ -26,7 +26,6 @@
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "wheelos_msgs/routing_msgs/routing.pb.h"
 
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/reference_line_info.h"
 #include "modules/planning/common/util/print_debug_info.h"
 #include "modules/planning/proto/planning_config.pb.h"
@@ -36,6 +35,11 @@ namespace planning {
 namespace util {
 
 bool IsVehicleStateValid(const apollo::common::VehicleState& vehicle_state);
+
+// Checks whether a state timestamp is finite, not from the future, and within
+// the allowed age for the current Planning cycle.
+bool IsVehicleStateFresh(const apollo::common::VehicleState& vehicle_state,
+                         double current_timestamp, double max_age);
 
 bool IsDifferentRouting(const apollo::routing::RoutingResponse& first,
                         const apollo::routing::RoutingResponse& second);
@@ -56,7 +60,7 @@ bool ShouldUseDirectValetParkingMode(
     const std::shared_ptr<apollo::routing::RoutingResponse>& routing_response);
 
 double GetADCStopDeceleration(
-    apollo::common::VehicleStateProvider* vehicle_state,
+    const apollo::common::VehicleState& vehicle_state,
     const double adc_front_edge_s, const double stop_line_s);
 
 bool CheckStopSignOnReferenceLine(const ReferenceLineInfo& reference_line_info,

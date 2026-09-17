@@ -50,31 +50,21 @@ using apollo::common::util::PointFactory;
 std::unordered_map<std::string, bool>
     ReferenceLineInfo::junction_right_of_way_map_;
 
-ReferenceLineInfo::ReferenceLineInfo(const common::VehicleState& vehicle_state,
-                                     const TrajectoryPoint& adc_planning_point,
-                                     const ReferenceLine& reference_line,
-                                     const hdmap::RouteSegments& segments)
+ReferenceLineInfo::ReferenceLineInfo(
+    const common::VehicleState& vehicle_state,
+    const TrajectoryPoint& adc_planning_point,
+    const ReferenceLine& reference_line,
+    const hdmap::RouteSegments& segments)
     : vehicle_state_(vehicle_state),
       adc_planning_point_(adc_planning_point),
       reference_line_(reference_line),
       lanes_(segments) {}
 
 bool ReferenceLineInfo::Init(const std::vector<const Obstacle*>& obstacles) {
-  const auto& param = VehicleConfigHelper::GetConfig().vehicle_param();
-  // stitching point
-  const auto& path_point = adc_planning_point_.path_point();
-  Vec2d position(path_point.x(), path_point.y());
-  Vec2d vec_to_center(
-      (param.front_edge_to_center() - param.back_edge_to_center()) / 2.0,
-      (param.left_edge_to_center() - param.right_edge_to_center()) / 2.0);
-  Vec2d center(position + vec_to_center.rotate(path_point.theta()));
-  Box2d box(center, path_point.theta(), param.length(), param.width());
-  // realtime vehicle position
-  Vec2d vehicle_position(vehicle_state_.x(), vehicle_state_.y());
-  Vec2d vehicle_center(vehicle_position +
-                       vec_to_center.rotate(vehicle_state_.heading()));
-  Box2d vehicle_box(vehicle_center, vehicle_state_.heading(), param.length(),
-                    param.width());
+  // stitching point box
+  const Box2d box = vehicle_geometry_model_.BuildBox(
+      adc_planning_point_.path_point(),
+      common::ReferencePoint::REAR_AXLE_CENTER);
 
   if (!reference_line_.GetSLBoundary(box, &adc_sl_boundary_)) {
     AERROR << "Failed to get ADC boundary from box: " << box.DebugString();
@@ -879,7 +869,8 @@ void ReferenceLineInfo::ExportEngageAdvice(
     // check heading
     auto ref_point =
         reference_line_.GetReferencePoint(adc_sl_boundary_.end_s());
-    if (common::math::AngleDiff(vehicle_state_.heading(), ref_point.heading()) <
+    if (common::math::AngleDiff(vehicle_state_.heading(),
+                                ref_point.heading()) <
         kMaxAngleDiff) {
       engage = true;
     } else {

@@ -29,7 +29,6 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        ":navi_planning",
         ":on_lane_planning",
         "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
@@ -67,7 +66,6 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "//modules/common/status",
-        "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/map/hdmap:hdmap_util",
         "//modules/map/hdmap",
         "//modules/planning/common:dependency_injector",
@@ -85,37 +83,6 @@ cc_library(
 )
 
 cc_library(
-    name = "navi_planning",
-    srcs = ["navi_planning.cc"],
-    hdrs = ["navi_planning.h"],
-    copts = [
-        "-fopenmp",
-        "-DMODULE_NAME=\\\"planning\\\""
-    ],
-    deps = [
-        ":planning_base",
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
-        "//modules/common/math",
-        "//modules/common/util:util_tool",
-        "//modules/common/vehicle_state:vehicle_state_provider",
-        "//modules/map/hdmap:hdmap_util",
-        "//modules/planning/common:ego_info",
-        "//modules/planning/common:history",
-        "//modules/planning/common:planning_context",
-        "//modules/planning/common:planning_gflags",
-        "//modules/planning/common:trajectory_stitcher",
-        "//modules/planning/common/util:util_lib",
-        "//modules/planning/planner:planner_dispatcher",
-        "//modules/planning/planner/navi:navi_planner",
-        "//modules/planning/planner/rtk:rtk_planner",
-        "//modules/planning/reference_line:reference_line_provider",
-        "//modules/planning/traffic_rules:traffic_decider",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "on_lane_planning",
     srcs = ["on_lane_planning.cc"],
     hdrs = ["on_lane_planning.h"],
@@ -126,9 +93,12 @@ cc_library(
     deps = [
         ":planning_base",
         "@core//cyber",
+        "//modules/common/configs:config_gflags",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "//modules/common/math",
+        "//modules/common/vehicle_model",
+        "//modules/common/vehicle_state:vehicle_reference",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/map/hdmap:hdmap_util",
         "//modules/planning/common:ego_info",
@@ -140,7 +110,6 @@ cc_library(
         "//modules/planning/common/util:util_lib",
         "//modules/planning/learning_based/img_feature_renderer:birdview_img_feature_renderer",
         "//modules/planning/planner:planner_dispatcher",
-        "//modules/planning/planner/rtk:rtk_planner",
         "//modules/planning/proto:planning_semantic_map_config_cc_proto",
         "//modules/planning/reference_line:reference_line_provider",
         "//modules/planning/scenarios/park/valet_parking",

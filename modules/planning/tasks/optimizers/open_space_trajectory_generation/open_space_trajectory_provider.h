@@ -27,6 +27,7 @@
 #include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 #include "modules/common/status/status.h"
+#include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "modules/planning/common/trajectory/discretized_trajectory.h"
 #include "modules/planning/tasks/optimizers/open_space_trajectory_generation/open_space_trajectory_optimizer.h"
 #include "modules/planning/tasks/optimizers/trajectory_optimizer.h"

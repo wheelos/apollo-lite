@@ -69,6 +69,7 @@ cc_library(
         ":open_space_utils",
         "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
+        "//modules/common/vehicle_state:vehicle_reference",
         "//modules/planning/common:obstacle",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/path:discretized_path",

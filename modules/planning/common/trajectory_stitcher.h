@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "modules/common/vehicle_model/vehicle_model.h"
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 
@@ -45,11 +46,12 @@ class TrajectoryStitcher {
       const common::VehicleState& vehicle_state, const double current_timestamp,
       const double planning_cycle_time, const size_t preserved_points_num,
       const bool replan_by_offset, const PublishableTrajectory* prev_trajectory,
-      std::string* replan_reason);
+      const common::VehicleModel& vehicle_model, std::string* replan_reason);
 
   static std::vector<common::TrajectoryPoint> ComputeReinitStitchingTrajectory(
       const double planning_cycle_time,
-      const common::VehicleState& vehicle_state);
+      const common::VehicleState& vehicle_state,
+      const common::VehicleModel& vehicle_model);
 
  private:
   static std::pair<double, double> ComputePositionProjection(

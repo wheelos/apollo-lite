@@ -23,7 +23,6 @@
 #include "cyber/time/clock.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/latency_recorder/latency_recorder.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/control/common/control_gflags.h"
 
 namespace apollo {
@@ -32,7 +31,6 @@ namespace control {
 using apollo::canbus::Chassis;
 using apollo::common::ErrorCode;
 using apollo::common::Status;
-using apollo::common::VehicleStateProvider;
 using apollo::cyber::Clock;
 using apollo::localization::LocalizationEstimate;
 using apollo::planning::ADCTrajectory;
@@ -135,8 +133,12 @@ Status ControlComponent::ProduceControlCommand(
     ControlCommand* control_command) {
   // 1. Update Vehicle State Estimation
   // This is a prerequisite for control computation.
-  injector_->vehicle_state()->Update(local_view_.localization(),
-                                     local_view_.chassis());
+  const auto vehicle_state_status = injector_->UpdateVehicleState(
+      local_view_.localization(), local_view_.chassis());
+  if (!vehicle_state_status.ok()) {
+    ResetAndProduceZeroControlCommand(control_command);
+    return vehicle_state_status;
+  }
 
   // 2. Safety Pre-Check (Input Validation)
   // Checks timestamps, sensor health, and trajectory integrity.

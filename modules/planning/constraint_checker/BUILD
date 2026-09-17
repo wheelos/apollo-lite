@@ -12,7 +12,6 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "@core//cyber",
-        "//modules/common/vehicle_state:vehicle_state_provider",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:discretized_trajectory",

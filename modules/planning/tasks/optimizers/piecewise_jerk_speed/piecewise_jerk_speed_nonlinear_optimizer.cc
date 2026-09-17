@@ -30,7 +30,6 @@
 #include "modules/planning/proto/ipopt_return_status.pb.h"
 
 #include "modules/common/util/util.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/common/speed_profile_generator.h"
 #include "modules/planning/common/st_graph_data.h"

@@ -28,7 +28,6 @@
 
 #include "modules/common/math/box2d.h"
 #include "modules/common/math/vec2d.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 
 /**
  * @namespace apollo::control
@@ -54,7 +53,7 @@ class TrajectoryAnalyzer {
    * planning module
    */
   TrajectoryAnalyzer(
-      const planning::ADCTrajectory *planning_published_trajectory);
+      const planning::ADCTrajectory* planning_published_trajectory);
 
   /**
    * @brief destructor
@@ -117,39 +116,19 @@ class TrajectoryAnalyzer {
    * @param ptr_d_dot lateral speed
    */
   void ToTrajectoryFrame(const double x, const double y, const double theta,
-                         const double v, const common::PathPoint &matched_point,
-                         double *ptr_s, double *ptr_s_dot, double *ptr_d,
-                         double *ptr_d_dot) const;
-
-  /**
-   * @brief Transform the current trajectory points to the center of mass(COM)
-   * of the vehicle, given the distance from rear wheels to the center of mass.
-   * @param rear_to_com_distance Distance from rear wheels to
-   *        the vehicle's center of mass.
-   */
-  void TrajectoryTransformToCOM(const double rear_to_com_distance);
-
-  /**
-   * @brief Compute the position of center of mass(COM) of the vehicle,
-   *        given the distance from rear wheels to the center of mass.
-   * @param rear_to_com_distance Distance from rear wheels to
-   *        the vehicle's center of mass.
-   * @param path_point PathPoint along the published planning trajectory.
-   * @return The position of the vehicle's center of mass.
-   */
-  common::math::Vec2d ComputeCOMPosition(
-      const double rear_to_com_distance,
-      const common::PathPoint &path_point) const;
+                         const double v, const common::PathPoint& matched_point,
+                         double* ptr_s, double* ptr_s_dot, double* ptr_d,
+                         double* ptr_d_dot) const;
 
   /**
    * @brief get all points of the trajectory
    * @return a vector of trajectory points
    */
-  const std::vector<common::TrajectoryPoint> &trajectory_points() const;
+  const std::vector<common::TrajectoryPoint>& trajectory_points() const;
 
  private:
-  common::PathPoint FindMinDistancePoint(const common::TrajectoryPoint &p0,
-                                         const common::TrajectoryPoint &p1,
+  common::PathPoint FindMinDistancePoint(const common::TrajectoryPoint& p0,
+                                         const common::TrajectoryPoint& p1,
                                          const double x, const double y) const;
 
   std::vector<common::TrajectoryPoint> trajectory_points_;

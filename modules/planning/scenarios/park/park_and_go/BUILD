@@ -23,7 +23,7 @@ cc_library(
     deps = [
         "@core//cyber",
         "//modules/common/util:util_tool",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/planning/common:planning_common",
         "//modules/planning/common/util:common_lib",
         "//modules/planning/common/util:util_lib",

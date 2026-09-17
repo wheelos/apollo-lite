@@ -153,12 +153,7 @@ bool PlanningTestBase::FeedTestData() {
 void PlanningTestBase::SetUp() {
   injector_ = std::make_shared<DependencyInjector>();
 
-  if (FLAGS_use_navigation_mode) {
-    // TODO(all)
-    // planning_ = std::unique_ptr<PlanningBase>(new NaviPlanning());
-  } else {
-    planning_ = std::unique_ptr<PlanningBase>(new OnLanePlanning(injector_));
-  }
+  planning_ = std::unique_ptr<PlanningBase>(new OnLanePlanning(injector_));
 
   ACHECK(FeedTestData()) << "Failed to feed test data";
 

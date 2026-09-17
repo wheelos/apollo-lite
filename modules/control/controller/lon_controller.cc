@@ -34,7 +34,6 @@ namespace control {
 using apollo::common::ErrorCode;
 using apollo::common::Status;
 using apollo::common::TrajectoryPoint;
-using apollo::common::VehicleStateProvider;
 using apollo::cyber::Time;
 
 constexpr double GRA_ACC = 9.8;
@@ -115,6 +114,8 @@ Status LonController::ComputeControlCommand(
     const canbus::Chassis *chassis,
     const planning::ADCTrajectory *planning_published_trajectory,
     control::ControlCommand *cmd) {
+  CaptureVehicleState(injector_);
+  const auto& vehicle_state = captured_vehicle_state();
   localization_ = localization;
   chassis_ = chassis;
 
@@ -173,7 +174,7 @@ Status LonController::ComputeControlCommand(
       speed_leadlag_controller_.SetLeadlag(
           lon_controller_conf.reverse_speed_leadlag_conf());
     }
-  } else if (injector_->vehicle_state()->linear_velocity() <=
+  } else if (vehicle_state.linear_velocity() <=
              lon_controller_conf.switch_speed()) {
     station_pid_controller_.SetPID(lon_controller_conf.station_pid_conf());
     speed_pid_controller_.SetPID(lon_controller_conf.low_speed_pid_conf());
@@ -214,13 +215,13 @@ Status LonController::ComputeControlCommand(
         speed_leadlag_controller_.InnerstateSaturationStatus());
   }
 
-  if (chassis->gear_location() == canbus::Chassis::GEAR_NEUTRAL) {
+  if (vehicle_state.gear() == canbus::Chassis::GEAR_NEUTRAL) {
     speed_pid_controller_.Reset_integral();
     station_pid_controller_.Reset_integral();
   }
 
   double slope_offset_compensation = digital_filter_pitch_angle_.Filter(
-      GRA_ACC * std::sin(injector_->vehicle_state()->pitch()));
+      GRA_ACC * std::sin(vehicle_state.pitch()));
 
   if (std::isnan(slope_offset_compensation)) {
     slope_offset_compensation = 0;
@@ -237,7 +238,8 @@ Status LonController::ComputeControlCommand(
   // the current steer target
   if ((trajectory_message_->trajectory_type() ==
        apollo::planning::ADCTrajectory::UNKNOWN) &&
-      std::abs(cmd->steering_target() - chassis->steering_percentage()) >
+      std::abs(cmd->steering_target() -
+               vehicle_state.steering_percentage()) >
           FLAGS_steer_cmd_interval) {
     acceleration_cmd = 0;
     ADEBUG << "Steer cmd interval is larger than " << FLAGS_steer_cmd_interval;
@@ -274,7 +276,8 @@ Status LonController::ComputeControlCommand(
 
   if (debug->is_full_stop()) {
     acceleration_cmd =
-        (chassis->gear_location() == canbus::Chassis::GEAR_REVERSE)
+        (vehicle_state.travel_direction() ==
+         common::TravelDirection::TRAVEL_DIRECTION_REVERSE)
             ? std::max(acceleration_cmd,
                        -lon_controller_conf.standstill_acceleration())
             : std::min(acceleration_cmd,
@@ -291,7 +294,8 @@ Status LonController::ComputeControlCommand(
                lon_controller_conf.brake_minimum_action());
   double calibration_value = 0.0;
   double acceleration_lookup =
-      (chassis->gear_location() == canbus::Chassis::GEAR_REVERSE)
+      (vehicle_state.travel_direction() ==
+       common::TravelDirection::TRAVEL_DIRECTION_REVERSE)
           ? -acceleration_cmd
           : acceleration_cmd;
 
@@ -364,10 +368,10 @@ Status LonController::ComputeControlCommand(
     cmd->set_acceleration(acceleration_cmd);
   }
 
-  if (std::fabs(injector_->vehicle_state()->linear_velocity()) <=
+  if (std::fabs(vehicle_state.linear_velocity()) <=
           vehicle_param_.max_abs_speed_when_stopped() ||
       chassis->gear_location() == trajectory_message_->gear() ||
-      chassis->gear_location() == canbus::Chassis::GEAR_NEUTRAL) {
+      vehicle_state.gear() == canbus::Chassis::GEAR_NEUTRAL) {
     cmd->set_gear_location(trajectory_message_->gear());
   } else {
     cmd->set_gear_location(chassis->gear_location());
@@ -397,13 +401,13 @@ void LonController::ComputeLongitudinalErrors(
   double d_matched = 0.0;
   double d_dot_matched = 0.0;
 
-  auto vehicle_state = injector_->vehicle_state();
+  const auto& vehicle_state = captured_vehicle_state();
   auto matched_point = trajectory_analyzer->QueryMatchedPathPoint(
-      vehicle_state->x(), vehicle_state->y());
+      vehicle_state.x(), vehicle_state.y());
 
   trajectory_analyzer->ToTrajectoryFrame(
-      vehicle_state->x(), vehicle_state->y(), vehicle_state->heading(),
-      vehicle_state->linear_velocity(), matched_point, &s_matched,
+      vehicle_state.x(), vehicle_state.y(), vehicle_state.heading(),
+      vehicle_state.linear_velocity(), matched_point, &s_matched,
       &s_dot_matched, &d_matched, &d_dot_matched);
 
   // double current_control_time = Time::Now().ToSecond();
@@ -434,13 +438,13 @@ void LonController::ComputeLongitudinalErrors(
   ADEBUG << "reference point:" << reference_point.DebugString();
   ADEBUG << "preview point:" << preview_point.DebugString();
 
-  double heading_error = common::math::NormalizeAngle(vehicle_state->heading() -
+  double heading_error = common::math::NormalizeAngle(vehicle_state.heading() -
                                                       matched_point.theta());
-  double lon_speed = vehicle_state->linear_velocity() * std::cos(heading_error);
+  double lon_speed = vehicle_state.linear_velocity() * std::cos(heading_error);
   double lon_acceleration =
-      vehicle_state->linear_acceleration() * std::cos(heading_error);
+      vehicle_state.linear_acceleration() * std::cos(heading_error);
   double one_minus_kappa_lat_error = 1 - reference_point.path_point().kappa() *
-                                             vehicle_state->linear_velocity() *
+                                             vehicle_state.linear_velocity() *
                                              std::sin(heading_error);
 
   debug->set_station_reference(reference_point.path_point().s());

@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 
 #include "cyber/common/macros.h"
@@ -46,7 +47,9 @@ class EgoInfo {
 
   common::TrajectoryPoint start_point() const { return start_point_; }
 
-  common::VehicleState vehicle_state() const { return vehicle_state_; }
+  const common::VehicleState& vehicle_state() const {
+    return vehicle_state_;
+  }
 
   double front_clear_distance() const { return front_clear_distance_; }
 
@@ -82,6 +85,8 @@ class EgoInfo {
   double front_clear_distance_ = FLAGS_default_front_clear_distance;
 
   common::VehicleConfig ego_vehicle_config_;
+
+  common::VehicleGeometryModel vehicle_geometry_model_;
 
   common::math::Box2d ego_box_;
 };

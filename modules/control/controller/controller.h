@@ -72,6 +72,12 @@ class Controller {
    * @param cmd control command
    * @return Status computation status
    */
+  // The injector's VehicleState is the single current-state snapshot for the
+  // control cycle. Raw messages remain parameters for target/output and
+  // compatibility boundaries; controllers must not rebuild or re-reference
+  // the current vehicle state from them. The trajectory is consumed at the
+  // same reference point as VehicleState; controllers must not shift its
+  // coordinates locally to a center-of-mass or axle point.
   virtual common::Status ComputeControlCommand(
       const localization::LocalizationEstimate *localization,
       const canbus::Chassis *chassis, const planning::ADCTrajectory *trajectory,
@@ -93,6 +99,18 @@ class Controller {
    * @brief stop controller
    */
   virtual void Stop() = 0;
+
+ protected:
+  void CaptureVehicleState(const std::shared_ptr<DependencyInjector>& injector) {
+    vehicle_state_snapshot_ = injector->vehicle_state();
+  }
+
+  const common::VehicleState& captured_vehicle_state() const {
+    return vehicle_state_snapshot_;
+  }
+
+ private:
+  common::VehicleState vehicle_state_snapshot_;
 };
 
 }  // namespace control

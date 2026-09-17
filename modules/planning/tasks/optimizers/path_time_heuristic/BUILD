@@ -63,7 +63,6 @@ cc_library(
         ":dp_st_cost",
         ":gridded_path_time_graph",
         "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/vehicle_state:vehicle_state_provider",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_cc_proto",
         "//modules/planning/common:st_graph_data",
         "//modules/planning/tasks/deciders/speed_bounds_decider:st_boundary_mapper",

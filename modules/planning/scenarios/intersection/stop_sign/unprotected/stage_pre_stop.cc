@@ -29,7 +29,6 @@
 #include "cyber/time/clock.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/util/point_factory.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
@@ -83,7 +82,8 @@ Stage::StageStatus StopSignUnprotectedStagePreStop::Process(
       adc_front_edge_s - current_stop_sign_overlap->start_s;
   if (distance_adc_pass_stop_sign <= kPassStopLineBuffer) {
     // not passed stop line, check valid stop
-    if (CheckADCStop(adc_front_edge_s, current_stop_sign_overlap->start_s)) {
+    if (CheckADCStop(frame->vehicle_state(), adc_front_edge_s,
+                     current_stop_sign_overlap->start_s)) {
       return FinishStage();
     }
   } else {
@@ -228,8 +228,9 @@ int StopSignUnprotectedStagePreStop::AddWatchVehicle(
  * @brief: check valid stop_sign stop
  */
 bool StopSignUnprotectedStagePreStop::CheckADCStop(
+    const common::VehicleState& vehicle_state,
     const double adc_front_edge_s, const double stop_line_s) {
-  const double adc_speed = injector_->vehicle_state()->linear_velocity();
+  const double adc_speed = vehicle_state.linear_velocity();
   const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()
                                         ->GetConfig()
                                         .vehicle_param()

@@ -24,7 +24,6 @@
 #include "modules/map/pnc_map/pnc_map.h"
 #include "modules/planning/common/history.h"
 #include "modules/planning/common/planning_context.h"
-#include "modules/planning/navi_planning.h"
 #include "modules/planning/on_lane_planning.h"
 
 namespace apollo {
@@ -39,13 +38,15 @@ using apollo::routing::RoutingResponse;
 using apollo::storytelling::Stories;
 
 bool PlanningComponent::Init() {
+  if (FLAGS_use_navigation_mode) {
+    AERROR << "Navigation planning has been removed; disable "
+              "FLAGS_use_navigation_mode.";
+    return false;
+  }
+
   injector_ = std::make_shared<DependencyInjector>();
 
-  if (FLAGS_use_navigation_mode) {
-    planning_base_ = std::make_unique<NaviPlanning>(injector_);
-  } else {
-    planning_base_ = std::make_unique<OnLanePlanning>(injector_);
-  }
+  planning_base_ = std::make_unique<OnLanePlanning>(injector_);
 
   ACHECK(ComponentBase::GetProtoConfig(&config_))
       << "failed to load planning config file "
@@ -94,15 +95,6 @@ bool PlanningComponent::Init() {
         stories_.CopyFrom(*stories);
       });
 
-  if (FLAGS_use_navigation_mode) {
-    relative_map_reader_ = node_->CreateReader<MapMsg>(
-        config_.topic_config().relative_map_topic(),
-        [this](const std::shared_ptr<MapMsg>& map_message) {
-          ADEBUG << "Received relative map data: run relative map callback.";
-          std::lock_guard<std::mutex> lock(mutex_);
-          relative_map_.CopyFrom(*map_message);
-        });
-  }
   planning_writer_ = node_->CreateWriter<ADCTrajectory>(
       config_.topic_config().planning_trajectory_topic());
 
@@ -231,14 +223,8 @@ bool PlanningComponent::CheckInput() {
     // nothing
   }
 
-  if (FLAGS_use_navigation_mode) {
-    if (!local_view_.relative_map->has_header()) {
-      not_ready->set_reason("relative map not ready");
-    }
-  } else {
-    if (!local_view_.routing->has_header()) {
-      not_ready->set_reason("routing not ready");
-    }
+  if (!local_view_.routing->has_header()) {
+    not_ready->set_reason("routing not ready");
   }
 
   if (not_ready->has_reason()) {

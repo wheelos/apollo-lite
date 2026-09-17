@@ -57,7 +57,7 @@ Stage::StageStatus PullOverStageApproach::Process(
 
   const auto& reference_line_info = frame->reference_line_info().front();
   scenario::util::PullOverStatus status = scenario::util::CheckADCPullOver(
-      injector_->vehicle_state(), reference_line_info, scenario_config_,
+      frame->vehicle_state(), reference_line_info, scenario_config_,
       injector_->planning_context());
 
   if (status == scenario::util::PASS_DESTINATION ||
