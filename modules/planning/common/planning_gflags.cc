@@ -147,16 +147,6 @@ DEFINE_string(smoother_config_filename,
               "/apollo/modules/planning/conf/qp_spline_smoother_config.pb.txt",
               "The configuration file for qp_spline smoother");
 
-DEFINE_string(rtk_trajectory_filename, "modules/planning/data/garage.csv",
-              "Loop rate for planning node");
-
-DEFINE_uint64(rtk_trajectory_forward, 800,
-              "The number of points to be included in RTK trajectory "
-              "after the matched point");
-
-DEFINE_double(rtk_trajectory_resolution, 0.01,
-              "The time resolution of output trajectory for rtk planner.");
-
 DEFINE_bool(publish_estop, false, "publish estop decision in planning");
 DEFINE_bool(enable_trajectory_stitcher, true, "enable stitching trajectory");
 

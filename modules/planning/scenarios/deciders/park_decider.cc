@@ -188,7 +188,7 @@ bool ParkDecider::CheckDistanceToParkingSpot(
   double parking_space_center_s = (lb_s + rb_s) / 2.0;
 
   // 5. Get ADC s
-  const auto& vehicle_state = frame->reference_state();
+  const auto& vehicle_state = frame->vehicle_state();
   double vehicle_s = 0.0, vehicle_l = 0.0;
   common::math::Vec2d vehicle_vec(vehicle_state.x(), vehicle_state.y());
   nearby_path.GetNearestPoint(vehicle_vec, &vehicle_s, &vehicle_l);
@@ -374,7 +374,7 @@ ScenarioDecisionResult ParkDecider::CheckParkAndGo(
   }
 
   // 2. Speed Check: Must be stationary (to enter)
-  const auto& vehicle_state = frame->reference_state();
+  const auto& vehicle_state = frame->vehicle_state();
   double adc_speed = std::abs(vehicle_state.linear_velocity());
 
   if (adc_speed > max_abs_speed_when_stopped) {

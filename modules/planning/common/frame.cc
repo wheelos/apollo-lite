@@ -28,7 +28,6 @@
 
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
-#include "modules/common/vehicle_state/reference_point_resolver.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/map/hdmap/hdmap_util.h"
@@ -52,22 +51,6 @@ using apollo::prediction::PredictionObstacles;
 
 PadMessage::DrivingAction Frame::pad_msg_driving_action_ = PadMessage::NONE;
 
-common::ReferenceState ToReferenceState(
-    const common::VehicleState& vehicle_state) {
-  common::ReferenceState reference_state;
-  reference_state.set_reference_point(vehicle_state.reference_point());
-  reference_state.set_x(vehicle_state.x());
-  reference_state.set_y(vehicle_state.y());
-  reference_state.set_z(vehicle_state.z());
-  reference_state.set_heading(vehicle_state.heading());
-  reference_state.set_linear_velocity(vehicle_state.linear_velocity());
-  reference_state.set_angular_velocity(vehicle_state.angular_velocity());
-  reference_state.set_linear_acceleration(vehicle_state.linear_acceleration());
-  reference_state.set_kappa(vehicle_state.kappa());
-  reference_state.set_timestamp(vehicle_state.timestamp());
-  return reference_state;
-}
-
 FrameHistory::FrameHistory()
     : IndexedQueue<uint32_t, Frame>(FLAGS_max_frame_history_num) {}
 
@@ -82,13 +65,9 @@ Frame::Frame(uint32_t sequence_num, const LocalView &local_view,
     : sequence_num_(sequence_num),
       local_view_(local_view),
       planning_start_point_(planning_start_point),
-      canonical_vehicle_state_(vehicle_state),
-      reference_state_(ToReferenceState(vehicle_state)),
+      vehicle_state_(vehicle_state),
       reference_line_provider_(reference_line_provider),
-      monitor_logger_buffer_(common::monitor::MonitorMessageItem::PLANNING) {
-  operating_state_.set_gear(vehicle_state.gear());
-  operating_state_.set_driving_mode(vehicle_state.driving_mode());
-}
+      monitor_logger_buffer_(common::monitor::MonitorMessageItem::PLANNING) {}
 
 Frame::Frame(uint32_t sequence_num, const LocalView &local_view,
              const common::TrajectoryPoint &planning_start_point,
@@ -117,16 +96,16 @@ bool Frame::Rerouting(PlanningContext *planning_context) {
   request.clear_header();
 
   common::PointENU point;
-  point.set_x(reference_state_.x());
-  point.set_y(reference_state_.y());
-  point.set_z(reference_state_.z());
+  point.set_x(vehicle_state_.x());
+  point.set_y(vehicle_state_.y());
+  point.set_z(vehicle_state_.z());
   double s = 0.0;
   double l = 0.0;
   hdmap::LaneInfoConstPtr lane;
-  if (hdmap_->GetNearestLaneWithHeading(point, 5.0, reference_state_.heading(),
+  if (hdmap_->GetNearestLaneWithHeading(point, 5.0, vehicle_state_.heading(),
                                         M_PI / 3.0, &lane, &s, &l) != 0) {
     AERROR << "Failed to find nearest lane from map at position: "
-           << point.DebugString() << ", heading:" << reference_state_.heading();
+           << point.DebugString() << ", heading:" << vehicle_state_.heading();
     return false;
   }
   request.clear_waypoint();
@@ -186,15 +165,14 @@ bool Frame::CreateReferenceLineInfo(
     if (segments_iter->StopForDestination()) {
       is_near_destination_ = true;
     }
-    reference_line_info_.emplace_back(reference_state_, planning_start_point_,
-                                      *ref_line_iter, *segments_iter,
-                                      operating_state_);
+    reference_line_info_.emplace_back(vehicle_state_, planning_start_point_,
+                                      *ref_line_iter, *segments_iter);
     ++ref_line_iter;
     ++segments_iter;
   }
 
   if (reference_line_info_.size() == 2) {
-    common::math::Vec2d xy_point(reference_state_.x(), reference_state_.y());
+    common::math::Vec2d xy_point(vehicle_state_.x(), vehicle_state_.y());
     common::SLPoint first_sl;
     if (!reference_line_info_.front().reference_line().XYToSL(xy_point,
                                                               &first_sl)) {
@@ -340,16 +318,13 @@ const Obstacle *Frame::CreateStaticVirtualObstacle(const std::string &id,
 }
 
 Status Frame::Init(
-    const common::VehicleState &canonical_vehicle_state,
-    const common::ReferencePointResolver *reference_point_resolver,
+    const common::VehicleState &vehicle_state,
     const std::list<ReferenceLine> &reference_lines,
     const std::list<hdmap::RouteSegments> &segments,
     const std::vector<routing::LaneWaypoint> &future_route_waypoints,
-    const EgoInfo *ego_info,
-    const common::VehicleOperatingState &operating_state) {
+    const EgoInfo *ego_info) {
   // TODO(QiL): refactor this to avoid redundant nullptr checks in scenarios.
-  auto status = InitFrameData(canonical_vehicle_state, reference_point_resolver,
-                              ego_info, operating_state);
+  auto status = InitFrameData(vehicle_state, ego_info);
   if (!status.ok()) {
     AERROR << "failed to init frame:" << status.ToString();
     return status;
@@ -364,37 +339,18 @@ Status Frame::Init(
 }
 
 Status Frame::InitForOpenSpace(
-    const common::VehicleState &canonical_vehicle_state,
-    const common::ReferencePointResolver *reference_point_resolver,
-    const EgoInfo *ego_info,
-    const common::VehicleOperatingState &operating_state) {
-  return InitFrameData(canonical_vehicle_state, reference_point_resolver,
-                       ego_info, operating_state);
+    const common::VehicleState &vehicle_state,
+    const EgoInfo *ego_info) {
+  return InitFrameData(vehicle_state, ego_info);
 }
 
 Status Frame::InitFrameData(
-    const common::VehicleState &canonical_vehicle_state,
-    const common::ReferencePointResolver *reference_point_resolver,
-    const EgoInfo *ego_info,
-    const common::VehicleOperatingState &operating_state) {
+    const common::VehicleState &vehicle_state,
+    const EgoInfo *ego_info) {
   hdmap_ = hdmap::HDMapUtil::BaseMapPtr();
   CHECK_NOTNULL(hdmap_);
-  canonical_vehicle_state_ = canonical_vehicle_state;
-  operating_state_ = operating_state;
-  if (reference_point_resolver == nullptr) {
-    return Status(ErrorCode::PLANNING_ERROR,
-                  "Reference point resolver is not set");
-  }
-  reference_state_.Clear();
-  const auto resolve_status = reference_point_resolver->Resolve(
-      canonical_vehicle_state_, common::REAR_AXLE_CENTER,
-      &reference_state_);
-  if (!resolve_status.ok()) {
-    AERROR << "Failed to resolve planning vehicle state reference: "
-           << resolve_status;
-    return resolve_status;
-  }
-  if (!util::IsReferenceStateValid(reference_state_)) {
+  vehicle_state_ = vehicle_state;
+  if (!util::IsVehicleStateValid(vehicle_state_)) {
     AERROR << "Adc init point is not set";
     return Status(ErrorCode::PLANNING_ERROR, "Adc init point is not set");
   }
@@ -403,7 +359,7 @@ Status Frame::InitFrameData(
 
   if (FLAGS_align_prediction_time) {
     auto prediction = *(local_view_.prediction_obstacles);
-    AlignPredictionTime(reference_state_.timestamp(), &prediction);
+    AlignPredictionTime(vehicle_state_.timestamp(), &prediction);
     local_view_.prediction_obstacles->CopyFrom(prediction);
   }
   for (auto &ptr :

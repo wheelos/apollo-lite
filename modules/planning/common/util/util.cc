@@ -16,6 +16,7 @@
 
 #include "modules/planning/common/util/util.h"
 
+#include <cmath>
 #include <limits>
 #include <vector>
 
@@ -61,27 +62,27 @@ apollo::routing::RoutingRequest NormalizeRoutingRequest(
 
 }  // namespace
 
-bool IsVehicleStateValid(const VehicleState& vehicle_state) {
-  if (std::isnan(vehicle_state.x()) || std::isnan(vehicle_state.y()) ||
-      std::isnan(vehicle_state.z()) || std::isnan(vehicle_state.heading()) ||
-      std::isnan(vehicle_state.kappa()) ||
-      std::isnan(vehicle_state.linear_velocity()) ||
-      std::isnan(vehicle_state.linear_acceleration())) {
-    return false;
-  }
-  return true;
+bool IsVehicleStateValid(const common::VehicleState& vehicle_state) {
+  return std::isfinite(vehicle_state.x()) &&
+         std::isfinite(vehicle_state.y()) &&
+         std::isfinite(vehicle_state.z()) &&
+         std::isfinite(vehicle_state.heading()) &&
+         std::isfinite(vehicle_state.kappa()) &&
+         std::isfinite(vehicle_state.linear_velocity()) &&
+         std::isfinite(vehicle_state.linear_acceleration());
 }
 
-bool IsReferenceStateValid(const common::ReferenceState& reference_state) {
-  if (std::isnan(reference_state.x()) || std::isnan(reference_state.y()) ||
-      std::isnan(reference_state.z()) ||
-      std::isnan(reference_state.heading()) ||
-      std::isnan(reference_state.kappa()) ||
-      std::isnan(reference_state.linear_velocity()) ||
-      std::isnan(reference_state.linear_acceleration())) {
+bool IsVehicleStateFresh(const common::VehicleState& vehicle_state,
+                         const double current_timestamp,
+                         const double max_age) {
+  if (!std::isfinite(current_timestamp) || !std::isfinite(max_age) ||
+      current_timestamp < 0.0 || max_age < 0.0 ||
+      !std::isfinite(vehicle_state.timestamp()) ||
+      vehicle_state.timestamp() <= 0.0 ||
+      vehicle_state.timestamp() > current_timestamp) {
     return false;
   }
-  return true;
+  return current_timestamp - vehicle_state.timestamp() <= max_age;
 }
 
 bool IsDifferentRouting(const RoutingResponse& first,
@@ -138,9 +139,9 @@ bool ShouldUseDirectValetParkingMode(
 }
 
 double GetADCStopDeceleration(
-    const common::ReferenceState& reference_state,
+    const common::VehicleState& vehicle_state,
     const double adc_front_edge_s, const double stop_line_s) {
-  double adc_speed = reference_state.linear_velocity();
+  double adc_speed = vehicle_state.linear_velocity();
   const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()
                                         ->GetConfig()
                                         .vehicle_param()

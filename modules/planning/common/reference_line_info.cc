@@ -51,13 +51,11 @@ std::unordered_map<std::string, bool>
     ReferenceLineInfo::junction_right_of_way_map_;
 
 ReferenceLineInfo::ReferenceLineInfo(
-    const common::ReferenceState& reference_state,
+    const common::VehicleState& vehicle_state,
     const TrajectoryPoint& adc_planning_point,
     const ReferenceLine& reference_line,
-    const hdmap::RouteSegments& segments,
-    const common::VehicleOperatingState& operating_state)
-    : reference_state_(reference_state),
-      operating_state_(operating_state),
+    const hdmap::RouteSegments& segments)
+    : vehicle_state_(vehicle_state),
       adc_planning_point_(adc_planning_point),
       reference_line_(reference_line),
       lanes_(segments) {}
@@ -871,7 +869,7 @@ void ReferenceLineInfo::ExportEngageAdvice(
     // check heading
     auto ref_point =
         reference_line_.GetReferencePoint(adc_sl_boundary_.end_s());
-    if (common::math::AngleDiff(reference_state_.heading(),
+    if (common::math::AngleDiff(vehicle_state_.heading(),
                                 ref_point.heading()) <
         kMaxAngleDiff) {
       engage = true;
@@ -881,7 +879,7 @@ void ReferenceLineInfo::ExportEngageAdvice(
   }
 
   if (engage) {
-    if (operating_state_.driving_mode() !=
+    if (vehicle_state_.driving_mode() !=
         Chassis::DrivingMode::Chassis_DrivingMode_COMPLETE_AUTO_DRIVE) {
       // READY_TO_ENGAGE when in non-AUTO mode
       prev_advice.set_advice(EngageAdvice::READY_TO_ENGAGE);

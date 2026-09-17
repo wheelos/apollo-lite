@@ -57,7 +57,7 @@ void DiffDriveLatController::InitializeFilters() {
           .mean_filter_window_size()));
 }
 
-bool DiffDriveLatController::LoadControlConf(const ControlConf *control_conf) {
+bool DiffDriveLatController::LoadControlConf(const ControlConf* control_conf) {
   if (!control_conf) {
     AERROR << "[LatController] control_conf == nullptr";
     return false;
@@ -103,7 +103,7 @@ bool DiffDriveLatController::LoadControlConf(const ControlConf *control_conf) {
 
 Status DiffDriveLatController::Init(
     std::shared_ptr<DependencyInjector> injector,
-    const ControlConf *control_conf) {
+    const ControlConf* control_conf) {
   control_conf_ = control_conf;
   injector_ = injector;
 
@@ -122,23 +122,23 @@ Status DiffDriveLatController::Init(
 }
 
 void DiffDriveLatController::UpdateDrivingOrientation(
-    const common::ReferenceState& reference_state) {
-  driving_orientation_ = reference_state.heading();
+    const common::VehicleState& vehicle_state) {
+  driving_orientation_ = vehicle_state.heading();
 
   // Reverse the driving direction if the vehicle is in reverse mode
-  if (injector_->operating_state().gear() ==
-      canbus::Chassis::GEAR_REVERSE) {
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     driving_orientation_ =
         common::math::NormalizeAngle(driving_orientation_ + M_PI);
   }
 }
 
 Status DiffDriveLatController::ComputeControlCommand(
-    const localization::LocalizationEstimate *localization,
-    const canbus::Chassis *chassis, const planning::ADCTrajectory *trajectory,
-    control::ControlCommand *cmd) {
+    const localization::LocalizationEstimate* localization,
+    const canbus::Chassis* chassis, const planning::ADCTrajectory* trajectory,
+    control::ControlCommand* cmd) {
+  CaptureVehicleState(injector_);
   trajectory_message_ = trajectory;
-  auto vehicle_state = injector_->vehicle_state();
 
   if (trajectory_analyzer_ == nullptr ||
       trajectory_analyzer_->seq_num() !=
@@ -146,21 +146,17 @@ Status DiffDriveLatController::ComputeControlCommand(
     trajectory_analyzer_.reset(new TrajectoryAnalyzer(trajectory_message_));
   }
 
-  // Transform the coordinate of the planning trajectory from the center of the
-  // rear-axis to the center of mass, if conditions matched
-  trajectory_analyzer_->TrajectoryTransformToCOM(lr_);
-
-  SimpleLateralDebug *debug = cmd->mutable_debug()->mutable_simple_lat_debug();
+  SimpleLateralDebug* debug = cmd->mutable_debug()->mutable_simple_lat_debug();
   debug->Clear();
 
   // 1. Calculate lateral error
-  common::ReferenceState com;
-  ACHECK(injector_->ResolveControlState(&com, lr_).ok());
-  UpdateDrivingOrientation(com);
-  ComputeLateralErrors(
-      com.x(), com.y(), driving_orientation_, com.linear_velocity(),
-      com.angular_velocity(), com.linear_acceleration(),
-      *trajectory_analyzer_, debug, chassis);
+  const auto& control_state = captured_vehicle_state();
+  UpdateDrivingOrientation(control_state);
+  ComputeLateralErrors(control_state.x(), control_state.y(),
+                       driving_orientation_, control_state.linear_velocity(),
+                       control_state.angular_velocity(),
+                       control_state.linear_acceleration(),
+                       *trajectory_analyzer_, debug, chassis);
 
   double kh = control_conf_->diff_drive_lat_controller_conf().kh();
   double total_error = debug->lateral_error() + kh * debug->heading_error();
@@ -181,26 +177,27 @@ Status DiffDriveLatController::ComputeControlCommand(
 
   pre_ang_vel_ = cmd->steering_rate();
 
-  ProcessLogs(debug, chassis);
+  ProcessLogs(debug, captured_vehicle_state());
 
   return Status::OK();
 }
 
-void DiffDriveLatController::ProcessLogs(const SimpleLateralDebug *debug,
-                                         const canbus::Chassis *chassis) {
+void DiffDriveLatController::ProcessLogs(
+    const SimpleLateralDebug* debug,
+    const common::VehicleState& vehicle_state) {
   const std::string log_str = absl::StrCat(
       debug->lateral_error(), ",", debug->ref_heading(), ",", debug->heading(),
       ",", debug->heading_error(), ",", debug->heading_error_rate(), ",",
       debug->lateral_error_rate(), ",", debug->curvature(), ",",
-      injector_->vehicle_state()->linear_velocity());
+      vehicle_state.linear_velocity());
   ADEBUG << "Steer_Control_Detail: " << log_str;
 }
 
 void DiffDriveLatController::ComputeLateralErrors(
     const double x, const double y, const double theta, const double linear_v,
     const double angular_v, const double linear_a,
-    const TrajectoryAnalyzer &trajectory_analyzer, SimpleLateralDebug *debug,
-    const canbus::Chassis *chassis) {
+    const TrajectoryAnalyzer& trajectory_analyzer, SimpleLateralDebug* debug,
+    const canbus::Chassis* chassis) {
   TrajectoryPoint target_point;
 
   if (FLAGS_query_time_nearest_point_only) {
@@ -254,7 +251,8 @@ void DiffDriveLatController::ComputeLateralErrors(
   // Estimate the heading error with look-ahead/look-back windows as feedback
   // signal for special driving scenarios
   double heading_error_feedback;
-  if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     heading_error_feedback = heading_error;
   } else {
     auto lookahead_point = trajectory_analyzer.QueryNearestPointByRelativeTime(
@@ -270,7 +268,8 @@ void DiffDriveLatController::ComputeLateralErrors(
   // Estimate the lateral error with look-ahead/look-back windows as feedback
   // signal for special driving scenarios
   double lateral_error_feedback;
-  if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     lateral_error_feedback =
         lateral_error - lookback_station * std::sin(heading_error);
   } else {
@@ -282,7 +281,8 @@ void DiffDriveLatController::ComputeLateralErrors(
   auto lateral_error_dot = linear_v * std::sin(heading_error);
   auto lateral_error_dot_dot = linear_a * std::sin(heading_error);
   if (FLAGS_reverse_heading_control) {
-    if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+    if (captured_vehicle_state().travel_direction() ==
+        common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
       lateral_error_dot = -lateral_error_dot;
       lateral_error_dot_dot = -lateral_error_dot_dot;
     }
@@ -294,7 +294,8 @@ void DiffDriveLatController::ComputeLateralErrors(
       (debug->lateral_acceleration() - previous_lateral_acceleration_) / ts_);
   previous_lateral_acceleration_ = debug->lateral_acceleration();
 
-  if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     debug->set_heading_rate(-angular_v);
   } else {
     debug->set_heading_rate(angular_v);

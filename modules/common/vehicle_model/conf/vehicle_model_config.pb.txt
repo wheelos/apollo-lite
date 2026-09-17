@@ -1,5 +1,5 @@
-model_type: REAR_CENTERED_KINEMATIC_BICYCLE_MODEL
+model_type: VEHICLE_MODEL_TYPE_ACKERMANN_KINEMATIC
 
-rc_kinematic_bicycle_model: {
+ackermann_kinematic_model: {
     dt: 0.06
 }

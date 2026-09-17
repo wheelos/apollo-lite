@@ -23,7 +23,6 @@
 #include "gtest/gtest.h"
 
 #include "cyber/time/time.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/control/common/control_gflags.h"
 #include "modules/control/proto/control_conf.pb.h"
 #include "modules/common/configs/config_gflags.h"
@@ -36,7 +35,6 @@ using apollo::cyber::Time;
 using LocalizationPb = localization::LocalizationEstimate;
 using ChassisPb = canbus::Chassis;
 using TrajectoryPb = planning::ADCTrajectory;
-using apollo::common::VehicleStateProvider;
 
 const char data_path[] =
     "/apollo/modules/control/testdata/longitudinal_controller_test/";
@@ -113,8 +111,7 @@ TEST_F(LonControllerTest, ComputeLongitudinalErrors) {
   double time_now = Time::Now().ToSecond();
   trajectory_pb.mutable_header()->set_timestamp_sec(time_now);
 
-  auto vehicle_state = injector_->vehicle_state();
-  vehicle_state->Update(localization_pb, chassis_pb);
+  ASSERT_TRUE(injector_->UpdateVehicleState(localization_pb, chassis_pb).ok());
   TrajectoryAnalyzer trajectory_analyzer(&trajectory_pb);
 
   double ts = longitudinal_conf_.ts();

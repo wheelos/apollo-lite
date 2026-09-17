@@ -56,7 +56,7 @@ Stage::StageStatus EmergencyStopStageApproach::Process(
   // add a stop fence
   const auto& reference_line_info = frame->reference_line_info().front();
   const auto& reference_line = reference_line_info.reference_line();
-  const double adc_speed = frame->reference_state().linear_velocity();
+  const double adc_speed = frame->vehicle_state().linear_velocity();
   const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
   const double stop_distance = scenario_config_.stop_distance();
 

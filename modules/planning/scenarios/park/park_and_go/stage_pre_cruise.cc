@@ -45,13 +45,13 @@ Stage::StageStatus ParkAndGoStagePreCruise::Process(
   }
   // const bool ready_to_cruise =
   //     scenario::util::CheckADCReadyToCruise(frame, scenario_config_);
-  const auto& operating_state = frame->operating_state();
-  ADEBUG << operating_state.steering_percentage();
+  const auto& vehicle_state = frame->vehicle_state();
+  ADEBUG << vehicle_state.steering_percentage();
 
-  if ((std::fabs(operating_state.steering_percentage()) <
+  if ((std::fabs(vehicle_state.steering_percentage()) <
        scenario_config_.max_steering_percentage_when_cruise()) &&
       scenario::util::CheckADCReadyToCruise(
-          frame->reference_state(), operating_state,
+          vehicle_state,
           frame->reference_line_info(), frame->obstacles(), scenario_config_)) {
     return FinishStage();
   }

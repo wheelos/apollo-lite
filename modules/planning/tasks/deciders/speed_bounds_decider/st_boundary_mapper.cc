@@ -33,6 +33,7 @@
 #include "modules/common/math/line_segment2d.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/common/util/string_util.h"
+#include "modules/planning/common/vehicle_frenet_geometry.h"
 #include "modules/common/util/util.h"
 #include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/frame.h"
@@ -130,8 +131,9 @@ bool STBoundaryMapper::MapStopDecision(
 
   double st_stop_s = 0.0;
   common::VehicleGeometryModel geometry_model;
+  VehicleFrenetGeometry frenet_geometry(geometry_model);
   const double stop_ref_s =
-      geometry_model.ComputeStopReferenceS(stop_sl_point.s());
+      frenet_geometry.ComputeStopReferenceS(stop_sl_point.s());
 
   if (stop_ref_s > path_data_.frenet_frame_path().back().s()) {
     st_stop_s = path_data_.discretized_path().back().s() +

@@ -14,23 +14,31 @@
 
 #pragma once
 
-#include "modules/common/math/vec2d.h"
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
+
+#include "modules/common/math/vec2d.h"
 
 namespace apollo {
 namespace common {
 
+// Immutable vehicle geometry used by reference-point conversion and spatial
+// occupancy calculations. It does not contain motion, steering, or prediction
+// logic.
 class VehicleDescription {
  public:
   VehicleDescription();
   explicit VehicleDescription(const VehicleConfig& vehicle_config);
+  VehicleDescription(const VehicleConfig& vehicle_config,
+                     double center_of_mass_offset);
 
-  double LongitudinalOffset(ReferencePoint reference_point,
-                            double center_of_mass_offset = 0.0) const;
+  // Returns the signed longitudinal coordinate measured from
+  // REAR_AXLE_CENTER. CENTER_OF_MASS uses the configured vehicle offset.
+  double LongitudinalOffset(ReferencePoint reference_point) const;
 
-  math::Vec2d CenterOffset(ReferencePoint reference_point,
-                           double center_of_mass_offset = 0.0) const;
+  // Returns the geometric center relative to reference_point in vehicle-frame
+  // coordinates as (longitudinal, lateral).
+  math::Vec2d CenterOffset(ReferencePoint reference_point) const;
 
   double wheel_base() const { return wheel_base_; }
   double length() const { return length_; }
@@ -40,6 +48,10 @@ class VehicleDescription {
   double back_edge_to_center() const { return back_edge_to_center_; }
   double left_edge_to_center() const { return left_edge_to_center_; }
   double right_edge_to_center() const { return right_edge_to_center_; }
+  double max_road_wheel_angle() const { return max_road_wheel_angle_; }
+  double max_acceleration() const { return max_acceleration_; }
+  double max_deceleration() const { return max_deceleration_; }
+  double center_of_mass_offset() const { return center_of_mass_offset_; }
 
  private:
   double wheel_base_ = 0.0;
@@ -50,6 +62,10 @@ class VehicleDescription {
   double back_edge_to_center_ = 0.0;
   double left_edge_to_center_ = 0.0;
   double right_edge_to_center_ = 0.0;
+  double max_road_wheel_angle_ = 0.0;
+  double max_acceleration_ = 0.0;
+  double max_deceleration_ = 0.0;
+  double center_of_mass_offset_ = 0.0;
 };
 
 }  // namespace common

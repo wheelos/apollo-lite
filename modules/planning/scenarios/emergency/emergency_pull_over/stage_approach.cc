@@ -91,7 +91,7 @@ Stage::StageStatus EmergencyPullOverStageApproach::Process(
   if (stop_line_s > 0.0) {
     const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
     double distance = stop_line_s - adc_front_edge_s;
-    const double adc_speed = frame->reference_state().linear_velocity();
+    const double adc_speed = frame->vehicle_state().linear_velocity();
     const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()
                                           ->GetConfig()
                                           .vehicle_param()

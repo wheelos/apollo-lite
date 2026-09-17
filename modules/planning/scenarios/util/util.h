@@ -39,7 +39,7 @@ hdmap::PathOverlap* GetOverlapOnReferenceLine(
     const ReferenceLineInfo::OverlapType& overlap_type);
 
 PullOverStatus CheckADCPullOver(
-    const common::ReferenceState& reference_state,
+    const common::VehicleState& vehicle_state,
     const ReferenceLineInfo& reference_line_info,
     const ScenarioPullOverConfig& scenario_config,
     const PlanningContext* planning_context);
@@ -58,8 +58,7 @@ bool CheckPullOverPositionBySL(const ReferenceLineInfo& reference_line_info,
                                const double target_theta, const bool check_s);
 
 bool CheckADCReadyToCruise(
-    const common::ReferenceState& reference_state,
-    const common::VehicleOperatingState& operating_state,
+    const common::VehicleState& vehicle_state,
     const std::list<ReferenceLineInfo>& reference_line_list,
     const std::vector<const Obstacle*>& obstacles,
     const ScenarioParkAndGoConfig& scenario_config);

@@ -21,12 +21,10 @@ cc_library(
 cc_library(
     name = "planner_dispatcher",
     srcs = [
-        "navi_planner_dispatcher.cc",
         "on_lane_planner_dispatcher.cc",
         "planner_dispatcher.cc",
     ],
     hdrs = [
-        "navi_planner_dispatcher.h",
         "on_lane_planner_dispatcher.h",
         "planner_dispatcher.h",
     ],
@@ -38,9 +36,7 @@ cc_library(
         ":planner",
         "//modules/common/status",
         "//modules/common/util",
-        "//modules/planning/planner/navi:navi_planner",
         "//modules/planning/planner/public_road:public_road_planner",
-        "//modules/planning/planner/rtk:rtk_planner",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
@@ -49,18 +45,6 @@ cc_test(
     name = "on_lane_planner_dispatcher_test",
     size = "small",
     srcs = ["on_lane_planner_dispatcher_test.cc"],
-    linkopts = ["-lgomp"],
-    deps = [
-        ":planner_dispatcher",
-        "@com_google_googletest//:gtest_main",
-    ],
-    linkstatic = True,
-)
-
-cc_test(
-    name = "navi_planner_dispatcher_test",
-    size = "small",
-    srcs = ["navi_planner_dispatcher_test.cc"],
     linkopts = ["-lgomp"],
     deps = [
         ":planner_dispatcher",

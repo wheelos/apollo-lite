@@ -70,7 +70,9 @@ class ReferenceLineProvider {
 
   bool UpdateRoutingResponse(const routing::RoutingResponse& routing);
 
-  void UpdateReferenceState(const common::ReferenceState& reference_state);
+  // Planning supplies the already-normalized VehicleState. The provider uses
+  // it for map queries and must not choose or convert a reference point.
+  void UpdateVehicleState(const common::VehicleState& vehicle_state);
 
   bool Start();
 
@@ -107,7 +109,7 @@ class ReferenceLineProvider {
   void IsValidReferenceLine();
   void PrioritzeChangeLane(std::list<hdmap::RouteSegments>* route_segments);
 
-  bool CreateRouteSegments(const common::ReferenceState& reference_state,
+  bool CreateRouteSegments(const common::VehicleState& vehicle_state,
                            std::list<hdmap::RouteSegments>* segments);
 
   bool IsReferenceLineSmoothValid(const ReferenceLine& raw,
@@ -130,7 +132,7 @@ class ReferenceLineProvider {
    * @brief This function creates a smoothed forward reference line
    * based on the given segments.
    */
-  bool ExtendReferenceLine(const common::ReferenceState& state,
+  bool ExtendReferenceLine(const common::VehicleState& state,
                            hdmap::RouteSegments* segments,
                            ReferenceLine* reference_line);
 
@@ -146,7 +148,7 @@ class ReferenceLineProvider {
    * by vehicle state.
    */
   bool GetNearestWayPointFromNavigationPath(
-      const common::ReferenceState& state,
+      const common::VehicleState& state,
       const std::unordered_set<std::string>& navigation_lane_ids,
       hdmap::LaneWaypoint* waypoint);
 
@@ -166,8 +168,8 @@ class ReferenceLineProvider {
   // Used in Navigation mode
   std::shared_ptr<relative_map::MapMsg> relative_map_;
 
-  std::mutex reference_state_mutex_;
-  common::ReferenceState reference_state_;
+  std::mutex vehicle_state_mutex_;
+  common::VehicleState vehicle_state_;
 
   std::mutex routing_mutex_;
   routing::RoutingResponse routing_;

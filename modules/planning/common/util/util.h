@@ -35,7 +35,11 @@ namespace planning {
 namespace util {
 
 bool IsVehicleStateValid(const apollo::common::VehicleState& vehicle_state);
-bool IsReferenceStateValid(const apollo::common::ReferenceState& reference_state);
+
+// Checks whether a state timestamp is finite, not from the future, and within
+// the allowed age for the current Planning cycle.
+bool IsVehicleStateFresh(const apollo::common::VehicleState& vehicle_state,
+                         double current_timestamp, double max_age);
 
 bool IsDifferentRouting(const apollo::routing::RoutingResponse& first,
                         const apollo::routing::RoutingResponse& second);
@@ -56,7 +60,7 @@ bool ShouldUseDirectValetParkingMode(
     const std::shared_ptr<apollo::routing::RoutingResponse>& routing_response);
 
 double GetADCStopDeceleration(
-    const apollo::common::ReferenceState& reference_state,
+    const apollo::common::VehicleState& vehicle_state,
     const double adc_front_edge_s, const double stop_line_s);
 
 bool CheckStopSignOnReferenceLine(const ReferenceLineInfo& reference_line_info,

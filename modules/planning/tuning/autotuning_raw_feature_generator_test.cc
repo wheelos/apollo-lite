@@ -34,7 +34,7 @@ class AutotuningRawFeatureGeneratorTest : public ::testing::Test {
     ReferenceLine reference_line;
     hdmap::RouteSegments segments;
     ref_line_info_.reset(
-        new ReferenceLineInfo(common::ReferenceState{}, ego_pos, reference_line,
+        new ReferenceLineInfo(common::VehicleState{}, ego_pos, reference_line,
                               segments));
     common::VehicleState ego_state;
     // pseudo empty frame info

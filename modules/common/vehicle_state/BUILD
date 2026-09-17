@@ -20,19 +20,18 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "vehicle_reference",
     srcs = [
-        "reference_point_resolver.cc",
+        "reference_point_transformer.cc",
         "vehicle_description.cc",
         "vehicle_geometry_model.cc",
-        "vehicle_motion_model.cc",
     ],
     hdrs = [
-        "reference_point_resolver.h",
+        "reference_point_transformer.h",
         "vehicle_description.h",
         "vehicle_geometry_model.h",
-        "vehicle_motion_model.h",
     ],
     deps = [
         "//modules/common/configs:vehicle_config_helper",
+        "//modules/common/configs:config_gflags",
         "//modules/common/math",
         "//modules/common/status",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
@@ -46,10 +45,11 @@ cc_library(
     srcs = ["vehicle_state_provider.cc"],
     hdrs = ["vehicle_state_provider.h"],
     deps = [
+        "//modules/common/configs:config_gflags",
+        ":vehicle_reference",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
-        "//modules/common/configs:config_gflags",
         "//modules/common/math",
         "//modules/common/status",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
@@ -61,25 +61,19 @@ cc_test(
     name = "vehicle_state_provider_test",
     size = "small",
     srcs = ["vehicle_state_provider_test.cc"],
-    data = [
-        ":testdata",
-    ],
     deps = [
         ":vehicle_state_provider",
-        ":vehicle_reference",
-        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/common/configs:config_gflags",
         "//modules/planning/common:gtest_exit_main",
-        "@eigen",
     ],
 )
 
 cc_test(
-    name = "reference_point_resolver_test",
+    name = "reference_point_transformer_test",
     size = "small",
-    srcs = ["reference_point_resolver_test.cc"],
+    srcs = ["reference_point_transformer_test.cc"],
     deps = [
         ":vehicle_reference",
         "@com_google_googletest//:gtest_main",

@@ -70,7 +70,7 @@ Stage::StageStatus PullOverStageRetryParking::Process(
   pull_over_debug->set_width_right(pull_over_status.width_right());
   frame->mutable_open_space_info()->sync_debug_instance();
 
-  if (CheckADCPullOverOpenSpace(frame->reference_state())) {
+  if (CheckADCPullOverOpenSpace(frame->vehicle_state())) {
     return FinishStage();
   }
 
@@ -82,7 +82,7 @@ Stage::StageStatus PullOverStageRetryParking::FinishStage() {
 }
 
 bool PullOverStageRetryParking::CheckADCPullOverOpenSpace(
-    const common::ReferenceState& reference_state) {
+    const common::VehicleState& vehicle_state) {
   const auto& pull_over_status =
       injector_->planning_context()->planning_status().pull_over();
   if (!pull_over_status.has_position() ||
@@ -93,14 +93,14 @@ bool PullOverStageRetryParking::CheckADCPullOverOpenSpace(
     return false;
   }
 
-  const common::math::Vec2d adc_position = {reference_state.x(),
-                                            reference_state.y()};
+  const common::math::Vec2d adc_position = {vehicle_state.x(),
+                                            vehicle_state.y()};
   const common::math::Vec2d target_position = {pull_over_status.position().x(),
                                                pull_over_status.position().y()};
 
   const double distance_diff = adc_position.DistanceTo(target_position);
   const double theta_diff = std::fabs(common::math::NormalizeAngle(
-      pull_over_status.theta() - reference_state.heading()));
+      pull_over_status.theta() - vehicle_state.heading()));
   ADEBUG << "distance_diff[" << distance_diff << "] theta_diff[" << theta_diff
          << "]";
   // check distance/theta diff

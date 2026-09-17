@@ -48,6 +48,13 @@ DEFINE_string(
     "/apollo/modules/common/vehicle_model/conf/vehicle_model_config.pb.txt",
     "the file path of vehicle model config file");
 
+DEFINE_int32(vehicle_state_reference_point, 0,
+             "Canonical VehicleState reference point: 0 rear axle, 1 front "
+             "axle, 2 center of mass.");
+DEFINE_double(vehicle_state_center_of_mass_offset, 1.4224,
+              "Vehicle-wide longitudinal distance in meters from rear axle "
+              "center to center of mass.");
+
 DEFINE_bool(use_cyber_time, false,
             "Whether Clock::Now() gets time from system_clock::now() or from "
             "Cyber.");
@@ -74,12 +81,6 @@ DEFINE_bool(use_sim_time, false, "Use bag time in mock time mode.");
 DEFINE_bool(reverse_heading_vehicle_state, false,
             "test flag for reverse driving.");
 
-DEFINE_bool(state_transform_to_com_reverse, false,
-            "Enable vehicle states coordinate transformation from center of "
-            "rear-axis to center of mass, during reverse driving");
-DEFINE_bool(state_transform_to_com_drive, true,
-            "Enable vehicle states coordinate transformation from center of "
-            "rear-axis to center of mass, during forward driving");
 DEFINE_bool(multithread_run, false,
             "multi-thread run flag mainly used by simulation");
 

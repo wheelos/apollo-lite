@@ -30,6 +30,7 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/vehicle_frenet_geometry.h"
 
 namespace apollo {
 namespace planning {
@@ -99,7 +100,9 @@ Status SpeedLimitDecider::GetSpeedLimits(
       // TODO(all): potential problem here;
       // frenet and cartesian coordinates are mixed.
       common::VehicleGeometryModel geometry_model;
-      const auto s_range = geometry_model.GetOccupancySRange(reference_line_s);
+      VehicleFrenetGeometry frenet_geometry(geometry_model);
+      const auto s_range =
+          frenet_geometry.GetOccupancySRange(reference_line_s);
       const double vehicle_back_s = s_range.first;
       const double vehicle_front_s = s_range.second;
       const double obstacle_front_s =
@@ -116,7 +119,7 @@ Status SpeedLimitDecider::GetSpeedLimits(
 
       // Please notice the differences between adc_l and frenet_point_l
       const double frenet_point_l = frenet_path.at(i).l();
-      const auto l_range = geometry_model.GetOccupancyLRange(frenet_point_l);
+      const auto l_range = frenet_geometry.GetOccupancyLRange(frenet_point_l);
 
       // obstacle is on the right of ego vehicle (at path point i)
       bool is_close_on_left =

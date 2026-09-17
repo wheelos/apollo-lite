@@ -69,7 +69,7 @@ class ValetParkingScenario : public Scenario {
       const std::string& target_parking_id,
       hdmap::ParkingSpaceInfoConstPtr* target_parking_spot);
   static bool CheckDistanceToParkingSpot(
-      const Frame& frame, const common::ReferenceState& reference_state,
+      const Frame& frame, const common::VehicleState& vehicle_state,
       const double parking_start_range,
       const hdmap::ParkingSpaceInfoConstPtr& target_parking_spot);
 

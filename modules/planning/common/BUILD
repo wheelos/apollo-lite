@@ -6,6 +6,27 @@ package(default_visibility = ["//visibility:public"])
 PLANNING_COPTS = ["-DMODULE_NAME=\\\"planning\\\""]
 
 cc_library(
+    name = "vehicle_frenet_geometry",
+    srcs = ["vehicle_frenet_geometry.cc"],
+    hdrs = ["vehicle_frenet_geometry.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        "//modules/common/vehicle_state:vehicle_reference",
+    ],
+)
+
+cc_test(
+    name = "vehicle_frenet_geometry_test",
+    size = "small",
+    srcs = ["vehicle_frenet_geometry_test.cc"],
+    deps = [
+        ":vehicle_frenet_geometry",
+        "@com_google_googletest//:gtest_main",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
+    ],
+)
+
+cc_library(
     name = "indexed_list",
     hdrs = ["indexed_list.h"],
     copts = PLANNING_COPTS,
@@ -194,6 +215,7 @@ cc_library(
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_reference",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        ":vehicle_frenet_geometry",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/map/pnc_map",
@@ -535,6 +557,7 @@ cc_library(
         ":history",
         ":learning_based_data",
         ":planning_context",
+        "//modules/common/vehicle_model",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/common/vehicle_state:vehicle_reference",
     ],

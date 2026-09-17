@@ -39,7 +39,6 @@ namespace control {
 using apollo::common::ErrorCode;
 using apollo::common::Status;
 using apollo::common::TrajectoryPoint;
-using apollo::common::VehicleStateProvider;
 using Matrix = Eigen::MatrixXd;
 using apollo::cyber::Clock;
 
@@ -49,7 +48,7 @@ LatController::LatController() : name_("LQR-based Lateral Controller") {
 
 LatController::~LatController() {}
 
-bool LatController::LoadControlConf(const ControlConf *control_conf) {
+bool LatController::LoadControlConf(const ControlConf* control_conf) {
   if (!control_conf) {
     AERROR << "[LatController] control_conf == nullptr";
     return false;
@@ -106,8 +105,8 @@ bool LatController::LoadControlConf(const ControlConf *control_conf) {
   return true;
 }
 
-void LatController::ProcessLogs(const SimpleLateralDebug *debug,
-                                const canbus::Chassis *chassis) {
+void LatController::ProcessLogs(const SimpleLateralDebug* debug,
+                                const common::VehicleState& vehicle_state) {
   const std::string log_str = absl::StrFormat(
       "%.6f,%.6f,%.6f,"            // Lateral related
       "%.6f,%.6f,%.6f,%.6f,%.6f,"  // Heading related
@@ -120,12 +119,13 @@ void LatController::ProcessLogs(const SimpleLateralDebug *debug,
       debug->heading_error(), debug->heading_error_rate(),
       debug->heading_error_feedback(), debug->curvature(), debug->steer_angle(),
       debug->steer_angle_feedforward(), debug->steer_angle_feedback(),
-      debug->steer_angle_feedback_augment(), chassis->steering_percentage(),
+      debug->steer_angle_feedback_augment(),
+      vehicle_state.steering_percentage(),
       debug->steer_angle_lateral_contribution(),
       debug->steer_angle_lateral_rate_contribution(),
       debug->steer_angle_heading_contribution(),
       debug->steer_angle_heading_rate_contribution(),
-      injector_->vehicle_state()->linear_velocity());
+      captured_vehicle_state().linear_velocity());
   ADEBUG << "Steer_Control_Detail: " << log_str;
 }
 
@@ -138,7 +138,7 @@ void LatController::LogInitParameters() {
         << " lr_: " << lr_;
 }
 
-void LatController::InitializeFilters(const ControlConf *control_conf) {
+void LatController::InitializeFilters(const ControlConf* control_conf) {
   // Low pass filter
   std::vector<double> den(3, 0.0);
   std::vector<double> num(3, 0.0);
@@ -152,7 +152,7 @@ void LatController::InitializeFilters(const ControlConf *control_conf) {
 }
 
 Status LatController::Init(std::shared_ptr<DependencyInjector> injector,
-                           const ControlConf *control_conf) {
+                           const ControlConf* control_conf) {
   control_conf_ = control_conf;
   injector_ = injector;
   if (!LoadControlConf(control_conf_)) {
@@ -219,7 +219,7 @@ Status LatController::Init(std::shared_ptr<DependencyInjector> injector,
 
   matrix_q_updated_ = matrix_q_;
   InitializeFilters(control_conf_);
-  auto &lat_controller_conf = control_conf_->lat_controller_conf();
+  auto& lat_controller_conf = control_conf_->lat_controller_conf();
   LoadLatGainScheduler(lat_controller_conf);
   LogInitParameters();
 
@@ -243,17 +243,17 @@ Status LatController::Init(std::shared_ptr<DependencyInjector> injector,
 }
 
 void LatController::LoadLatGainScheduler(
-    const LatControllerConf &lat_controller_conf) {
-  const auto &lat_err_gain_scheduler =
+    const LatControllerConf& lat_controller_conf) {
+  const auto& lat_err_gain_scheduler =
       lat_controller_conf.lat_err_gain_scheduler();
-  const auto &heading_err_gain_scheduler =
+  const auto& heading_err_gain_scheduler =
       lat_controller_conf.heading_err_gain_scheduler();
   AINFO << "Lateral control gain scheduler loaded";
   Interpolation1D::DataType xy1, xy2;
-  for (const auto &scheduler : lat_err_gain_scheduler.scheduler()) {
+  for (const auto& scheduler : lat_err_gain_scheduler.scheduler()) {
     xy1.push_back(std::make_pair(scheduler.speed(), scheduler.ratio()));
   }
-  for (const auto &scheduler : heading_err_gain_scheduler.scheduler()) {
+  for (const auto& scheduler : heading_err_gain_scheduler.scheduler()) {
     xy2.push_back(std::make_pair(scheduler.speed(), scheduler.ratio()));
   }
 
@@ -271,11 +271,12 @@ void LatController::Stop() {}
 std::string LatController::Name() const { return name_; }
 
 Status LatController::ComputeControlCommand(
-    const localization::LocalizationEstimate *localization,
-    const canbus::Chassis *chassis,
-    const planning::ADCTrajectory *planning_published_trajectory,
-    ControlCommand *cmd) {
-  auto vehicle_state = injector_->vehicle_state();
+    const localization::LocalizationEstimate* localization,
+    const canbus::Chassis* chassis,
+    const planning::ADCTrajectory* planning_published_trajectory,
+    ControlCommand* cmd) {
+  CaptureVehicleState(injector_);
+  auto vehicle_state = captured_vehicle_state();
 
   auto target_tracking_trajectory = *planning_published_trajectory;
 
@@ -289,7 +290,7 @@ Status LatController::ComputeControlCommand(
     auto curr_vehicle_y = localization->pose().position().y();
 
     double curr_vehicle_heading = 0.0;
-    const auto &orientation = localization->pose().orientation();
+    const auto& orientation = localization->pose().orientation();
     if (localization->pose().has_heading()) {
       curr_vehicle_heading = localization->pose().heading();
     } else {
@@ -328,7 +329,7 @@ Status LatController::ComputeControlCommand(
       std::for_each(
           ptr_trajectory_points->begin(), ptr_trajectory_points->end(),
           [&cos_theta_diff, &sin_theta_diff, &tx, &ty,
-           &theta_diff](common::TrajectoryPoint &p) {
+           &theta_diff](common::TrajectoryPoint& p) {
             auto x = p.path_point().x();
             auto y = p.path_point().y();
             auto theta = p.path_point().theta();
@@ -347,20 +348,11 @@ Status LatController::ComputeControlCommand(
   trajectory_analyzer_ =
       std::move(TrajectoryAnalyzer(&target_tracking_trajectory));
 
-  // Transform the coordinate of the planning trajectory from the center of the
-  // rear-axis to the center of mass, if conditions matched
-  if (((FLAGS_trajectory_transform_to_com_reverse &&
-        vehicle_state->gear() == canbus::Chassis::GEAR_REVERSE) ||
-       (FLAGS_trajectory_transform_to_com_drive &&
-        vehicle_state->gear() == canbus::Chassis::GEAR_DRIVE)) &&
-      enable_look_ahead_back_control_) {
-    trajectory_analyzer_.TrajectoryTransformToCOM(lr_);
-  }
-
   // Re-build the vehicle dynamic models at reverse driving (in particular,
   // replace the lateral translational motion dynamics with the corresponding
   // kinematic models)
-  if (vehicle_state->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (vehicle_state.travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     /*
     A matrix (Gear Reverse)
     [0.0, 0.0, 1.0 * v 0.0;
@@ -403,7 +395,7 @@ Status LatController::ComputeControlCommand(
   matrix_b_(3, 0) = lf_ * cf_ / iz_;
   matrix_bd_ = matrix_b_ * ts_;
 
-  SimpleLateralDebug *debug = cmd->mutable_debug()->mutable_simple_lat_debug();
+  SimpleLateralDebug* debug = cmd->mutable_debug()->mutable_simple_lat_debug();
   debug->Clear();
 
   // Update state = [Lateral Error, Lateral Error Rate, Heading Error, Heading
@@ -419,7 +411,8 @@ Status LatController::ComputeControlCommand(
   int q_param_size = control_conf_->lat_controller_conf().matrix_q_size();
   int reverse_q_param_size =
       control_conf_->lat_controller_conf().reverse_matrix_q_size();
-  if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     for (int i = 0; i < reverse_q_param_size; ++i) {
       matrix_q_(i, i) =
           control_conf_->lat_controller_conf().reverse_matrix_q(i);
@@ -434,10 +427,10 @@ Status LatController::ComputeControlCommand(
   if (FLAGS_enable_gain_scheduler) {
     matrix_q_updated_(0, 0) =
         matrix_q_(0, 0) * lat_err_interpolation_->Interpolate(
-                              std::fabs(vehicle_state->linear_velocity()));
+                              std::fabs(vehicle_state.linear_velocity()));
     matrix_q_updated_(2, 2) =
         matrix_q_(2, 2) * heading_err_interpolation_->Interpolate(
-                              std::fabs(vehicle_state->linear_velocity()));
+                              std::fabs(vehicle_state.linear_velocity()));
     common::math::SolveLQRProblem(matrix_adc_, matrix_bdc_, matrix_q_updated_,
                                   matrix_r_, lqr_eps_, lqr_max_iteration_,
                                   &matrix_k_);
@@ -460,17 +453,17 @@ Status LatController::ComputeControlCommand(
   // Augment the feedback control on lateral error at the desired speed domain
   if (enable_leadlag_) {
     if (FLAGS_enable_feedback_augment_on_high_speed ||
-        std::fabs(vehicle_state->linear_velocity()) < low_speed_bound_) {
+        std::fabs(vehicle_state.linear_velocity()) < low_speed_bound_) {
       steer_angle_feedback_augment =
           leadlag_controller_.Control(-matrix_state_(0, 0), ts_) * 180 / M_PI *
           steer_ratio_ / steer_single_direction_max_degree_ * 100;
-      if (std::fabs(vehicle_state->linear_velocity()) >
+      if (std::fabs(vehicle_state.linear_velocity()) >
           low_speed_bound_ - low_speed_window_) {
         // Within the low-high speed transition window, linerly interplolate the
         // augment control gain for "soft" control switch
         steer_angle_feedback_augment = common::math::lerp(
             steer_angle_feedback_augment, low_speed_bound_ - low_speed_window_,
-            0.0, low_speed_bound_, std::fabs(vehicle_state->linear_velocity()));
+            0.0, low_speed_bound_, std::fabs(vehicle_state.linear_velocity()));
       }
     }
   }
@@ -481,8 +474,8 @@ Status LatController::ComputeControlCommand(
   // acceleration
   const double steer_limit =
       FLAGS_set_steer_limit ? std::atan(max_lat_acc_ * wheelbase_ /
-                                        (vehicle_state->linear_velocity() *
-                                         vehicle_state->linear_velocity())) *
+                                        (vehicle_state.linear_velocity() *
+                                         vehicle_state.linear_velocity())) *
                                   steer_ratio_ * 180 / M_PI /
                                   steer_single_direction_max_degree_ * 100
                             : 100.0;
@@ -493,7 +486,8 @@ Status LatController::ComputeControlCommand(
                 steer_single_direction_max_degree_ * 100
           : 100.0;
 
-  const double steering_position = chassis->steering_percentage();
+  const double steering_position =
+      captured_vehicle_state().steering_percentage();
 
   // Re-compute the steering command if the MRAC control is enabled, with steer
   // angle limitation and steer rate limitation
@@ -502,11 +496,11 @@ Status LatController::ComputeControlCommand(
                                      .steer_mrac_conf()
                                      .mrac_model_order();
     Matrix steer_state = Matrix::Zero(mrac_model_order, 1);
-    steer_state(0, 0) = chassis->steering_percentage();
+    steer_state(0, 0) = captured_vehicle_state().steering_percentage();
     if (mrac_model_order > 1) {
       steer_state(1, 0) = (steering_position - pre_steering_position_) / ts_;
     }
-    if (std::fabs(vehicle_state->linear_velocity()) >
+    if (std::fabs(vehicle_state.linear_velocity()) >
         control_conf_->minimum_speed_resolution()) {
       mrac_controller_.SetStateAdaptionRate(1.0);
       mrac_controller_.SetInputAdaptionRate(1.0);
@@ -517,7 +511,7 @@ Status LatController::ComputeControlCommand(
     steer_angle = mrac_controller_.Control(
         steer_angle, steer_state, steer_limit, steer_diff_with_max_rate / ts_);
     // Set the steer mrac debug message
-    MracDebug *mracdebug = debug->mutable_steer_mrac_debug();
+    MracDebug* mracdebug = debug->mutable_steer_mrac_debug();
     Matrix steer_reference = mrac_controller_.CurrentReferenceState();
     mracdebug->set_mrac_model_order(mrac_model_order);
     for (int i = 0; i < mrac_model_order; ++i) {
@@ -549,10 +543,12 @@ Status LatController::ComputeControlCommand(
 
   // Check if the steer is locked and hence the previous steer angle should be
   // executed
-  if (std::abs(vehicle_state->linear_velocity()) < FLAGS_lock_steer_speed &&
-      (vehicle_state->gear() == canbus::Chassis::GEAR_DRIVE ||
-       vehicle_state->gear() == canbus::Chassis::GEAR_REVERSE) &&
-      chassis->driving_mode() == canbus::Chassis::COMPLETE_AUTO_DRIVE) {
+  if (std::abs(vehicle_state.linear_velocity()) < FLAGS_lock_steer_speed &&
+      (vehicle_state.travel_direction() ==
+           common::TravelDirection::TRAVEL_DIRECTION_FORWARD ||
+       vehicle_state.travel_direction() ==
+           common::TravelDirection::TRAVEL_DIRECTION_REVERSE) &&
+      vehicle_state.driving_mode() == canbus::Chassis::COMPLETE_AUTO_DRIVE) {
     steer_angle = pre_steer_angle_;
   }
 
@@ -589,9 +585,9 @@ Status LatController::ComputeControlCommand(
   debug->set_steer_angle_feedback(steer_angle_feedback);
   debug->set_steer_angle_feedback_augment(steer_angle_feedback_augment);
   debug->set_steering_position(steering_position);
-  debug->set_ref_speed(vehicle_state->linear_velocity());
+  debug->set_ref_speed(vehicle_state.linear_velocity());
 
-  ProcessLogs(debug, chassis);
+  ProcessLogs(debug, captured_vehicle_state());
   return Status::OK();
 }
 
@@ -603,9 +599,8 @@ Status LatController::Reset() {
   return Status::OK();
 }
 
-void LatController::UpdateState(SimpleLateralDebug *debug) {
-  common::ReferenceState control_state;
-  ACHECK(injector_->ResolveControlState(&control_state, lr_).ok());
+void LatController::UpdateState(SimpleLateralDebug* debug) {
+  const auto& control_state = captured_vehicle_state();
   UpdateDrivingOrientation(control_state);
   if (FLAGS_use_navigation_mode) {
     ComputeLateralErrors(
@@ -660,12 +655,13 @@ void LatController::UpdateMatrix() {
   double v;
   // At reverse driving, replace the lateral translational motion dynamics with
   // the corresponding kinematic models
-  if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
-    v = std::min(injector_->vehicle_state()->linear_velocity(),
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
+    v = std::min(captured_vehicle_state().linear_velocity(),
                  -minimum_speed_protection_);
     matrix_a_(0, 2) = matrix_a_coeff_(0, 2) * v;
   } else {
-    v = std::max(injector_->vehicle_state()->linear_velocity(),
+    v = std::max(captured_vehicle_state().linear_velocity(),
                  minimum_speed_protection_);
     matrix_a_(0, 2) = 0.0;
   }
@@ -697,9 +693,10 @@ double LatController::ComputeFeedForward(double ref_curvature) const {
 
   // Calculate the feedforward term of the lateral controller; then change it
   // from rad to %
-  const double v = injector_->vehicle_state()->linear_velocity();
+  const double v = captured_vehicle_state().linear_velocity();
   double steer_angle_feedforwardterm;
-  if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     steer_angle_feedforwardterm = wheelbase_ * ref_curvature * 180 / M_PI *
                                   steer_ratio_ /
                                   steer_single_direction_max_degree_ * 100;
@@ -718,7 +715,7 @@ double LatController::ComputeFeedForward(double ref_curvature) const {
 void LatController::ComputeLateralErrors(
     const double x, const double y, const double theta, const double linear_v,
     const double angular_v, const double linear_a,
-    const TrajectoryAnalyzer &trajectory_analyzer, SimpleLateralDebug *debug) {
+    const TrajectoryAnalyzer& trajectory_analyzer, SimpleLateralDebug* debug) {
   TrajectoryPoint target_point;
 
   if (FLAGS_query_time_nearest_point_only) {
@@ -784,7 +781,8 @@ void LatController::ComputeLateralErrors(
   // Estimate the heading error with look-ahead/look-back windows as feedback
   // signal for special driving scenarios
   double heading_error_feedback;
-  if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     heading_error_feedback = heading_error;
   } else {
     auto lookahead_point = trajectory_analyzer.QueryNearestPointByRelativeTime(
@@ -800,7 +798,8 @@ void LatController::ComputeLateralErrors(
   // Estimate the lateral error with look-ahead/look-back windows as feedback
   // signal for special driving scenarios
   double lateral_error_feedback;
-  if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     lateral_error_feedback =
         lateral_error - lookback_station * std::sin(heading_error);
   } else {
@@ -812,7 +811,8 @@ void LatController::ComputeLateralErrors(
   auto lateral_error_dot = linear_v * std::sin(heading_error);
   auto lateral_error_dot_dot = linear_a * std::sin(heading_error);
   if (FLAGS_reverse_heading_control) {
-    if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+    if (captured_vehicle_state().travel_direction() ==
+        common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
       lateral_error_dot = -lateral_error_dot;
       lateral_error_dot_dot = -lateral_error_dot_dot;
     }
@@ -823,7 +823,8 @@ void LatController::ComputeLateralErrors(
       (debug->lateral_acceleration() - previous_lateral_acceleration_) / ts_);
   previous_lateral_acceleration_ = debug->lateral_acceleration();
 
-  if (injector_->vehicle_state()->gear() == canbus::Chassis::GEAR_REVERSE) {
+  if (captured_vehicle_state().travel_direction() ==
+      common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     debug->set_heading_rate(-angular_v);
   } else {
     debug->set_heading_rate(angular_v);
@@ -856,13 +857,13 @@ void LatController::ComputeLateralErrors(
 }
 
 void LatController::UpdateDrivingOrientation(
-    const common::ReferenceState& reference_state) {
-  driving_orientation_ = reference_state.heading();
+    const common::VehicleState& vehicle_state) {
+  driving_orientation_ = vehicle_state.heading();
   matrix_bd_ = matrix_b_ * ts_;
   // Reverse the driving direction if the vehicle is in reverse mode
   if (FLAGS_reverse_heading_control) {
-    if (injector_->operating_state().gear() ==
-        canbus::Chassis::GEAR_REVERSE) {
+    if (vehicle_state.travel_direction() ==
+        common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
       driving_orientation_ =
           common::math::NormalizeAngle(driving_orientation_ + M_PI);
       // Update Matrix_b for reverse mode

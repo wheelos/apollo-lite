@@ -58,7 +58,7 @@ Status RssDecider::Process(Frame *frame,
     return Status(ErrorCode::PLANNING_ERROR, msg);
   }
 
-  double adc_velocity = frame->reference_state().linear_velocity();
+  double adc_velocity = frame->vehicle_state().linear_velocity();
   const PathDecision *path_decision = reference_line_info->path_decision();
   const double ego_v_s_start = reference_line_info->AdcSlBoundary().start_s();
   const double ego_v_s_end = reference_line_info->AdcSlBoundary().end_s();

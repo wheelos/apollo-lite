@@ -78,6 +78,24 @@ TEST(HasSameRoutingRequestTest, DetectsWaypointChanges) {
   EXPECT_FALSE(HasSameRoutingRequest(first, second));
 }
 
+TEST(VehicleStateFreshnessTest, AcceptsStateWithinAgeLimit) {
+  common::VehicleState state;
+  state.set_timestamp(9.99);
+
+  EXPECT_TRUE(IsVehicleStateFresh(state, 10.0, 0.02));
+}
+
+TEST(VehicleStateFreshnessTest, RejectsMissingFutureAndStaleTimestamps) {
+  common::VehicleState state;
+  EXPECT_FALSE(IsVehicleStateFresh(state, 10.0, 0.02));
+
+  state.set_timestamp(10.01);
+  EXPECT_FALSE(IsVehicleStateFresh(state, 10.0, 0.02));
+
+  state.set_timestamp(9.0);
+  EXPECT_FALSE(IsVehicleStateFresh(state, 10.0, 0.02));
+}
+
 TEST(DirectValetParkingCommandTest, RequiresParkingSpaceIdForDirectMode) {
   ScenarioConfig config;
   config.add_stage_type(StageType::VALET_PARKING_PARKING);

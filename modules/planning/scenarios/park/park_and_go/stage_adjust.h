@@ -44,11 +44,10 @@ class ParkAndGoStageAdjust : public Stage {
   }
 
   Stage::StageStatus FinishStage(
-      const common::ReferenceState& reference_state,
-      const common::VehicleOperatingState& operating_state);
+      const common::VehicleState& vehicle_state);
 
  private:
-  void ResetInitPostion(const common::ReferenceState& reference_state);
+  void ResetInitPostion(const common::VehicleState& vehicle_state);
   ScenarioParkAndGoConfig scenario_config_;
 };
 

@@ -44,7 +44,7 @@ Stage::StageStatus ParkAndGoStageAdjust::Process(
     return StageStatus::ERROR;
   }
   const bool is_ready_to_cruise = scenario::util::CheckADCReadyToCruise(
-      frame->reference_state(), frame->operating_state(),
+      frame->vehicle_state(),
       frame->reference_line_info(), frame->obstacles(), scenario_config_);
 
   bool is_end_of_trajectory = false;
@@ -61,35 +61,34 @@ Stage::StageStatus ParkAndGoStageAdjust::Process(
   if (!is_ready_to_cruise && !is_end_of_trajectory) {
     return StageStatus::RUNNING;
   }
-  return FinishStage(frame->reference_state(), frame->operating_state());
+  return FinishStage(frame->vehicle_state());
 }
 
 Stage::StageStatus ParkAndGoStageAdjust::FinishStage(
-    const common::ReferenceState& reference_state,
-    const common::VehicleOperatingState& operating_state) {
-  ADEBUG << operating_state.steering_percentage();
-  if (std::fabs(operating_state.steering_percentage()) <
+    const common::VehicleState& vehicle_state) {
+  ADEBUG << vehicle_state.steering_percentage();
+  if (std::fabs(vehicle_state.steering_percentage()) <
       scenario_config_.max_steering_percentage_when_cruise()) {
     next_stage_ = StageType::PARK_AND_GO_CRUISE;
   } else {
-    ResetInitPostion(reference_state);
+    ResetInitPostion(vehicle_state);
     next_stage_ = StageType::PARK_AND_GO_PRE_CRUISE;
   }
   return Stage::FINISHED;
 }
 
 void ParkAndGoStageAdjust::ResetInitPostion(
-    const common::ReferenceState& reference_state) {
+    const common::VehicleState& vehicle_state) {
   auto* park_and_go_status = injector_->planning_context()
                                  ->mutable_planning_status()
                                  ->mutable_park_and_go();
   park_and_go_status->mutable_adc_init_position()->set_x(
-      reference_state.x());
+      vehicle_state.x());
   park_and_go_status->mutable_adc_init_position()->set_y(
-      reference_state.y());
+      vehicle_state.y());
   park_and_go_status->mutable_adc_init_position()->set_z(0.0);
   park_and_go_status->set_adc_init_heading(
-      reference_state.heading());
+      vehicle_state.heading());
 }
 
 }  // namespace park_and_go

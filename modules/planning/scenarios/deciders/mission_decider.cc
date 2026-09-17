@@ -69,7 +69,7 @@ ScenarioDecisionResult MissionDecider::CheckMissionIdle(
 
   // Additionally, check if we have reached the destination point exactly
   // A. Check Vehicle Speed
-  const auto& vehicle_state = frame->reference_state();
+  const auto& vehicle_state = frame->vehicle_state();
   double speed = std::abs(vehicle_state.linear_velocity());
 
   bool is_stopped = (speed < kStuckSpeedThreshold);

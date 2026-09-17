@@ -14,16 +14,41 @@
 
 #pragma once
 
+#include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
+
 #include "modules/common/math/box2d.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/common/status/status.h"
-#include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "modules/common/vehicle_state/vehicle_description.h"
-#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 
 namespace apollo {
 namespace common {
 
+// Signed distances from a longitudinal vehicle reference point to the
+// footprint edges. All values are measured in the vehicle heading frame;
+// they do not change when the vehicle travels in reverse.
+struct VehicleBounds {
+  double front = 0.0;
+  double rear = 0.0;
+  double left = 0.0;
+  double right = 0.0;
+};
+
+// Provides geometry-only operations for vehicle footprint, collision, and
+// clearance calculations.
+//
+// VehicleGeometryModel consumes the reference point declared by VehicleState
+// and vehicle dimensions. For every operation that receives a VehicleState,
+// the input position is interpreted at that point and converted to the
+// geometric center using
+// VehicleDescription::CenterOffset(). Therefore rear axle, front axle, and
+// center-of-mass inputs describe the same physical footprint.
+//
+// It does not transform motion state, apply steering constraints, or predict
+// future motion; those responsibilities belong to ReferencePointTransformer
+// and VehicleModel respectively. Planning owns scene-specific geometry
+// decisions; this class only computes reusable vehicle geometry.
 class VehicleGeometryModel {
  public:
   VehicleGeometryModel();
@@ -31,119 +56,84 @@ class VehicleGeometryModel {
 
   const VehicleDescription& description() const { return description_; }
 
-  Status BuildBox(const ReferenceState& reference_state,
-                  math::Box2d* vehicle_box,
-                  double center_of_mass_offset = 0.0) const;
+  // Returns the footprint distances relative to a center-line reference
+  // point. ReferencePoint currently has longitudinal anchors only, so left
+  // and right are independent of the selected reference point.
+  VehicleBounds Bounds(
+      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
+
+  Status BuildBox(const VehicleState& vehicle_state,
+                  math::Box2d* vehicle_box) const;
 
   Status BuildBox(const math::Vec2d& position, double heading,
                   ReferencePoint reference_point,
-                  math::Box2d* vehicle_box,
-                  double center_of_mass_offset = 0.0) const;
+                  math::Box2d* vehicle_box) const;
 
-  Status BuildBox(const PathPoint& path_point,
-                  ReferencePoint reference_point,
-                  math::Box2d* vehicle_box,
-                  double center_of_mass_offset = 0.0) const;
+  Status BuildBox(const PathPoint& path_point, ReferencePoint reference_point,
+                  math::Box2d* vehicle_box) const;
 
   Status BuildBox(const TrajectoryPoint& trajectory_point,
                   ReferencePoint reference_point,
-                  math::Box2d* vehicle_box,
-                  double center_of_mass_offset = 0.0) const;
+                  math::Box2d* vehicle_box) const;
 
-  math::Box2d BuildBox(const ReferenceState& reference_state,
-                       double center_of_mass_offset = 0.0) const;
+  math::Box2d BuildBox(const VehicleState& vehicle_state) const;
 
-  math::Box2d BuildBox(const math::Vec2d& position, double heading,
-                       ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-                       double center_of_mass_offset = 0.0) const;
+  math::Box2d BuildBox(
+      const math::Vec2d& position, double heading,
+      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
 
-  math::Box2d BuildBox(const PathPoint& path_point,
-                       ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-                       double center_of_mass_offset = 0.0) const;
+  math::Box2d BuildBox(
+      const PathPoint& path_point,
+      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
 
-  math::Box2d BuildBox(const TrajectoryPoint& trajectory_point,
-                       ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-                       double center_of_mass_offset = 0.0) const;
+  math::Box2d BuildBox(
+      const TrajectoryPoint& trajectory_point,
+      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
 
-  math::Box2d BuildBox(const PathPoint& path_point,
-                       double lateral_buffer,
-                       double longitudinal_buffer = 0.0,
-                       ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-                       double center_of_mass_offset = 0.0) const;
+  math::Box2d BuildBox(
+      const PathPoint& path_point, double lateral_buffer,
+      double longitudinal_buffer = 0.0,
+      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
 
-  Status GetCenter(const ReferenceState& reference_state,
-                   math::Vec2d* center,
-                   double center_of_mass_offset = 0.0) const;
-
-  Status GetCenter(const math::Vec2d& position, double heading,
-                   ReferencePoint reference_point,
-                   math::Vec2d* center,
-                   double center_of_mass_offset = 0.0) const;
-
-  Status BuildFrontRegion(const ReferenceState& reference_state,
+  Status BuildFrontRegion(const VehicleState& vehicle_state,
                           double distance_threshold, double buffer,
-                          math::Box2d* front_region,
-                          double center_of_mass_offset = 0.0) const;
+                          math::Box2d* front_region) const;
 
   // --- Edge and clearance distances ---
   double FrontEdgeDistance(
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-      double center_of_mass_offset = 0.0) const;
+      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
 
   double BackEdgeDistance(
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-      double center_of_mass_offset = 0.0) const;
+      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
 
   double LeftEdgeDistance() const;
   double RightEdgeDistance() const;
 
-  // --- Stop Alignment Semantics ---
-  // Computes the reference point s so that the vehicle stops before target_s with stop_margin.
-  double ComputeStopReferenceS(
-      double target_s,
-      double stop_margin = 0.0,
-      TravelDirection travel_direction = TravelDirection::TRAVEL_DIRECTION_FORWARD,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-      double center_of_mass_offset = 0.0) const;
-
-  // --- Spatial Occupancy Semantics ---
-  // Returns [s_min, s_max] on the reference line when the vehicle reference point is at ref_s.
-  std::pair<double, double> GetOccupancySRange(
-      double ref_s,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-      double center_of_mass_offset = 0.0) const;
-
-  // Returns [l_min, l_max] on the reference line when the vehicle reference point is at ref_l.
-  std::pair<double, double> GetOccupancyLRange(double ref_l) const;
-
   // --- Collision & Clearance Semantics ---
   bool CheckCollision(
-      const PathPoint& path_point,
-      const math::Box2d& obstacle_box,
-      double lateral_buffer = 0.0,
-      double longitudinal_buffer = 0.0,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-      double center_of_mass_offset = 0.0) const;
+      const PathPoint& path_point, const math::Box2d& obstacle_box,
+      double lateral_buffer = 0.0, double longitudinal_buffer = 0.0,
+      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
 
-  bool CheckCollision(
-      const ReferenceState& reference_state,
-      const math::Box2d& obstacle_box,
-      double lateral_buffer = 0.0,
-      double longitudinal_buffer = 0.0,
-      double center_of_mass_offset = 0.0) const;
+  bool CheckCollision(const VehicleState& vehicle_state,
+                      const math::Box2d& obstacle_box,
+                      double lateral_buffer = 0.0,
+                      double longitudinal_buffer = 0.0) const;
 
   double ComputeClearance(
-      const PathPoint& path_point,
-      const math::Box2d& obstacle_box,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER,
-      double center_of_mass_offset = 0.0) const;
+      const PathPoint& path_point, const math::Box2d& obstacle_box,
+      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
 
-  double ComputeClearance(
-      const ReferenceState& reference_state,
-      const math::Box2d& obstacle_box,
-      double center_of_mass_offset = 0.0) const;
+  double ComputeClearance(const VehicleState& vehicle_state,
+                          const math::Box2d& obstacle_box) const;
 
  private:
+  Status GetCenter(const VehicleState& vehicle_state,
+                   math::Vec2d* center) const;
+
+  Status GetCenter(const math::Vec2d& position, double heading,
+                   ReferencePoint reference_point, math::Vec2d* center) const;
+
   VehicleDescription description_;
 };
 

@@ -34,20 +34,20 @@ EgoInfo::EgoInfo() {
 }
 
 bool EgoInfo::Update(const common::TrajectoryPoint& start_point,
-                     const common::ReferenceState& reference_state) {
+                     const common::VehicleState& vehicle_state) {
   set_start_point(start_point);
-  set_reference_state(reference_state);
-  CalculateEgoBox(reference_state);
+  set_vehicle_state(vehicle_state);
+  CalculateEgoBox(vehicle_state);
   return true;
 }
 
-void EgoInfo::CalculateEgoBox(const common::ReferenceState& reference_state) {
-  vehicle_geometry_model_.BuildBox(reference_state, &ego_box_);
+void EgoInfo::CalculateEgoBox(const common::VehicleState& vehicle_state) {
+  vehicle_geometry_model_.BuildBox(vehicle_state, &ego_box_);
 }
 
 void EgoInfo::Clear() {
   start_point_.Clear();
-  reference_state_.Clear();
+  vehicle_state_.Clear();
   front_clear_distance_ = FLAGS_default_front_clear_distance;
 }
 
@@ -61,7 +61,7 @@ void EgoInfo::CalculateFrontObstacleClearDistance(
   static constexpr double buffer = 0.1;  // in meters
   Box2d ego_front_region;
   if (!vehicle_geometry_model_
-           .BuildFrontRegion(reference_state_, kDistanceThreshold, buffer,
+           .BuildFrontRegion(vehicle_state_, kDistanceThreshold, buffer,
                              &ego_front_region)
            .ok()) {
     return;

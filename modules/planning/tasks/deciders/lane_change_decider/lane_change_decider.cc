@@ -272,7 +272,7 @@ bool LaneChangeDecider::IsClearToChangeLane(
   double ego_start_s = reference_line_info->AdcSlBoundary().start_s();
   double ego_end_s = reference_line_info->AdcSlBoundary().end_s();
   double ego_v =
-      std::abs(reference_line_info->reference_state().linear_velocity());
+      std::abs(reference_line_info->vehicle_state().linear_velocity());
 
   for (const auto* obstacle :
        reference_line_info->path_decision()->obstacles().Items()) {
@@ -311,10 +311,10 @@ bool LaneChangeDecider::IsClearToChangeLane(
     if (obstacle->HasTrajectory()) {
       double obstacle_moving_direction =
           obstacle->Trajectory().trajectory_point(0).path_point().theta();
-      const auto& vehicle_state = reference_line_info->reference_state();
+      const auto& vehicle_state = reference_line_info->vehicle_state();
       double vehicle_moving_direction = vehicle_state.heading();
-      if (injector_->operating_state().gear() ==
-          canbus::Chassis::GEAR_REVERSE) {
+      if (vehicle_state.travel_direction() ==
+          common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
         vehicle_moving_direction =
             common::math::NormalizeAngle(vehicle_moving_direction + M_PI);
       }
@@ -370,7 +370,7 @@ bool LaneChangeDecider::IsPerceptionBlocked(
     const ReferenceLineInfo& reference_line_info,
     const double search_beam_length, const double search_beam_radius_intensity,
     const double search_range, const double is_block_angle_threshold) {
-  const auto& vehicle_state = reference_line_info.reference_state();
+  const auto& vehicle_state = reference_line_info.vehicle_state();
   const common::math::Vec2d adv_pos(vehicle_state.x(), vehicle_state.y());
   const double adv_heading = vehicle_state.heading();
 

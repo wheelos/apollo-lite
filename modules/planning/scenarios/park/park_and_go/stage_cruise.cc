@@ -66,8 +66,8 @@ ParkAndGoStageCruise::CheckADCParkAndGoCruiseCompleted(
 
   // check l delta
   const common::math::Vec2d adc_position = {
-      reference_line_info.reference_state().x(),
-      reference_line_info.reference_state().y()};
+      reference_line_info.vehicle_state().x(),
+      reference_line_info.vehicle_state().y()};
   common::SLPoint adc_position_sl;
   reference_line.XYToSL(adc_position, &adc_position_sl);
 

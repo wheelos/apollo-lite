@@ -67,13 +67,13 @@ class OpenSpaceTrajectoryProvider : public TrajectoryOptimizer {
 
   void GenerateTrajectoryThread();
 
-  bool IsVehicleNearDestination(const common::ReferenceState& vehicle_state,
+  bool IsVehicleNearDestination(const common::VehicleState& vehicle_state,
                                 const std::vector<double>& end_pose,
                                 double rotate_angle,
                                 const common::math::Vec2d& translate_origin);
 
   bool IsVehicleStopDueToFallBack(const bool is_on_fallback,
-                                  const common::ReferenceState& vehicle_state);
+                                  const common::VehicleState& vehicle_state);
 
   void GenerateStopTrajectory(DiscretizedTrajectory* const trajectory_data);
 

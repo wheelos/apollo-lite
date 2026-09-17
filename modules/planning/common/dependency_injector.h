@@ -16,8 +16,11 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+
+#include "modules/common/vehicle_model/vehicle_model.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
-#include "modules/common/vehicle_state/reference_point_resolver.h"
 #include "modules/planning/common/ego_info.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/history.h"
@@ -36,17 +39,18 @@ class DependencyInjector {
   FrameHistory* frame_history() { return &frame_history_; }
   History* history() { return &history_; }
   EgoInfo* ego_info() { return &ego_info_; }
-  apollo::common::VehicleStateProvider* vehicle_state() {
+  apollo::common::VehicleStateProvider* vehicle_state_provider() {
     return &vehicle_state_;
   }
-  apollo::common::ReferencePointResolver* reference_point_resolver() {
-    return &reference_point_resolver_;
+  const apollo::common::VehicleState& vehicle_state() const {
+    return vehicle_state_.state();
   }
-  const apollo::common::VehicleState& canonical_vehicle_state() const {
-    return vehicle_state_.canonical_state();
+  apollo::common::Status InitVehicleModel(const std::string& config_file) {
+    return apollo::common::VehicleModel::CreateFromFile(config_file,
+                                                         &vehicle_model_);
   }
-  const apollo::common::VehicleOperatingState& operating_state() const {
-    return vehicle_state_.operating_state();
+  const apollo::common::VehicleModel& vehicle_model() const {
+    return *vehicle_model_;
   }
   LearningBasedData* learning_based_data() { return &learning_based_data_; }
 
@@ -56,7 +60,7 @@ class DependencyInjector {
   History history_;
   EgoInfo ego_info_;
   apollo::common::VehicleStateProvider vehicle_state_;
-  apollo::common::ReferencePointResolver reference_point_resolver_;
+  std::unique_ptr<apollo::common::VehicleModel> vehicle_model_;
   LearningBasedData learning_based_data_;
 };
 

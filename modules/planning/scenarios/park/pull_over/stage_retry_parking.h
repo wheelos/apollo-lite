@@ -51,7 +51,7 @@ class PullOverStageRetryParking : public Stage {
 
  private:
   bool CheckADCPullOverOpenSpace(
-      const common::ReferenceState& reference_state);
+      const common::VehicleState& vehicle_state);
 
  private:
   ScenarioPullOverConfig scenario_config_;

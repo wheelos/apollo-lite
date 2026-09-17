@@ -80,7 +80,7 @@ bool Rerouting::ChangeLaneFailRerouting() {
   // 5. If the end of current passage region is further than kPrepareRoutingTime
   // * speed, no rerouting
   double adc_s = reference_line_info_->AdcSlBoundary().end_s();
-  double speed = frame_->reference_state().linear_velocity();
+  double speed = frame_->vehicle_state().linear_velocity();
   const double prepare_rerouting_time =
       config_.rerouting().prepare_rerouting_time();
   const double prepare_distance = speed * prepare_rerouting_time;

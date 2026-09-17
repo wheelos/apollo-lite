@@ -101,7 +101,7 @@ Stage::StageStatus TrafficLightUnprotectedRightTurnStageStop::Process(
     }
   }
 
-  const double adc_speed = frame->reference_state().linear_velocity();
+  const double adc_speed = frame->vehicle_state().linear_velocity();
 
   if (traffic_light_all_stop && traffic_light_all_green) {
     return FinishStage(true, adc_speed);

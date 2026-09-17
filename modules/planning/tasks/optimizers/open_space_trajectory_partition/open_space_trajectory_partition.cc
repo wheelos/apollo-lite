@@ -328,7 +328,7 @@ void OpenSpaceTrajectoryPartition::InterpolateTrajectory(
 }
 
 void OpenSpaceTrajectoryPartition::UpdateVehicleInfo() {
-  const common::ReferenceState& vehicle_state = frame_->reference_state();
+  const common::VehicleState& vehicle_state = frame_->vehicle_state();
   ego_theta_ = vehicle_state.heading();
   ego_x_ = vehicle_state.x();
   ego_y_ = vehicle_state.y();
@@ -339,7 +339,8 @@ void OpenSpaceTrajectoryPartition::UpdateVehicleInfo() {
                       shift_distance_ * std::sin(ego_theta_)};
   ego_box_.Shift(ego_shift_vec);
   vehicle_moving_direction_ =
-      injector_->operating_state().gear() == canbus::Chassis::GEAR_REVERSE
+      frame_->vehicle_state().travel_direction() ==
+              common::TravelDirection::TRAVEL_DIRECTION_REVERSE
           ? NormalizeAngle(ego_theta_ + M_PI)
           : ego_theta_;
 }
@@ -728,11 +729,11 @@ void OpenSpaceTrajectoryPartition::GenerateGearShiftTrajectory(
   // TrajectoryPoint point;
   for (double t = 0.0; t < gear_shift_max_t; t += gear_shift_unit_t) {
     TrajectoryPoint point;
-    point.mutable_path_point()->set_x(frame_->reference_state().x());
-    point.mutable_path_point()->set_y(frame_->reference_state().y());
-    point.mutable_path_point()->set_theta(frame_->reference_state().heading());
+    point.mutable_path_point()->set_x(frame_->vehicle_state().x());
+    point.mutable_path_point()->set_y(frame_->vehicle_state().y());
+    point.mutable_path_point()->set_theta(frame_->vehicle_state().heading());
     point.mutable_path_point()->set_s(0.0);
-    point.mutable_path_point()->set_kappa(frame_->reference_state().kappa());
+    point.mutable_path_point()->set_kappa(frame_->vehicle_state().kappa());
     point.set_relative_time(t);
     point.set_v(0.0);
     point.set_a(0.0);

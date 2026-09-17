@@ -30,6 +30,7 @@
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "modules/common/vehicle_state/vehicle_geometry_model.h"
+#include "modules/planning/common/vehicle_frenet_geometry.h"
 #include "wheelos_msgs/basic_msgs/drive_state.pb.h"
 #include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 #include "wheelos_msgs/planning_msgs/planning.pb.h"
@@ -59,19 +60,20 @@ class ReferenceLineInfo {
   enum class LaneType { LeftForward, LeftReverse, RightForward, RightReverse };
   ReferenceLineInfo() = default;
 
-  ReferenceLineInfo(const common::ReferenceState& reference_state,
+  ReferenceLineInfo(const common::VehicleState& vehicle_state,
                     const common::TrajectoryPoint& adc_planning_point,
                     const ReferenceLine& reference_line,
-                    const hdmap::RouteSegments& segments,
-                    const common::VehicleOperatingState& operating_state = {});
+                    const hdmap::RouteSegments& segments);
 
   bool Init(const std::vector<const Obstacle*>& obstacles);
 
   bool AddObstacles(const std::vector<const Obstacle*>& obstacles);
   Obstacle* AddObstacle(const Obstacle* obstacle);
 
-  const common::ReferenceState& reference_state() const {
-    return reference_state_;
+  // This is the read-only Planning-cycle state supplied by Frame. It must not
+  // be refreshed from VehicleStateProvider or transformed at this boundary.
+  const common::VehicleState& vehicle_state() const {
+    return vehicle_state_;
   }
 
   PathDecision* path_decision();
@@ -144,13 +146,16 @@ class ReferenceLineInfo {
   const common::VehicleGeometryModel& vehicle_geometry_model() const {
     return vehicle_geometry_model_;
   }
+  VehicleFrenetGeometry vehicle_frenet_geometry() const {
+    return VehicleFrenetGeometry(vehicle_geometry_model_);
+  }
   common::math::Box2d GetAdcBox() const {
     return vehicle_geometry_model_.BuildBox(
         adc_planning_point_.path_point(),
         common::ReferencePoint::REAR_AXLE_CENTER);
   }
   common::math::Box2d GetVehicleBox() const {
-    return vehicle_geometry_model_.BuildBox(reference_state_);
+    return vehicle_geometry_model_.BuildBox(vehicle_state_);
   }
   std::string PathSpeedDebugString() const;
 
@@ -292,8 +297,7 @@ class ReferenceLineInfo {
 
  private:
   static std::unordered_map<std::string, bool> junction_right_of_way_map_;
-  const common::ReferenceState reference_state_;
-  const common::VehicleOperatingState operating_state_;
+  const common::VehicleState vehicle_state_;
   const common::TrajectoryPoint adc_planning_point_;
   ReferenceLine reference_line_;
   common::VehicleGeometryModel vehicle_geometry_model_;

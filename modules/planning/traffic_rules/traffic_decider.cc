@@ -143,7 +143,7 @@ void TrafficDecider::BuildPlanningTarget(
   }
   if (min_s != std::numeric_limits<double>::infinity()) {
     const double stop_s =
-        reference_line_info->vehicle_geometry_model().ComputeStopReferenceS(
+        reference_line_info->vehicle_frenet_geometry().ComputeStopReferenceS(
             min_s + FLAGS_virtual_stop_wall_length / 2.0);
     stop_point.set_s(stop_s);
     reference_line_info->SetLatticeStopPoint(stop_point);

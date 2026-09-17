@@ -22,7 +22,6 @@
 #include "gtest/gtest.h"
 
 #include "cyber/time/clock.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/control/common/control_gflags.h"
 #include "modules/control/proto/control_conf.pb.h"
 #include "modules/common/configs/config_gflags.h"
@@ -35,7 +34,6 @@ using apollo::cyber::Clock;
 using PlanningTrajectoryPb = planning::ADCTrajectory;
 using LocalizationPb = localization::LocalizationEstimate;
 using ChassisPb = canbus::Chassis;
-using apollo::common::VehicleStateProvider;
 
 class LatControllerTest : public ::testing::Test, LatController {
  public:
@@ -98,8 +96,8 @@ TEST_F(LatControllerTest, ComputeLateralErrors) {
       "/apollo/modules/control/testdata/lateral_controller_test/"
       "1_chassis.pb.txt");
   FLAGS_enable_map_reference_unify = false;
-  auto vehicle_state = injector_->vehicle_state();
-  vehicle_state->Update(localization_pb, chassis_pb);
+  ASSERT_TRUE(injector_->UpdateVehicleState(localization_pb, chassis_pb).ok());
+  const auto& vehicle_state = injector_->vehicle_state();
 
   auto planning_trajectory_pb = LoadPlanningTrajectoryPb(
       "/apollo/modules/control/testdata/lateral_controller_test/"
@@ -110,9 +108,9 @@ TEST_F(LatControllerTest, ComputeLateralErrors) {
   SimpleLateralDebug *debug = cmd.mutable_debug()->mutable_simple_lat_debug();
 
   ComputeLateralErrors(
-      vehicle_state->x(), vehicle_state->y(), vehicle_state->heading(),
-      vehicle_state->linear_velocity(), vehicle_state->angular_velocity(),
-      vehicle_state->linear_acceleration(), trajectory_analyzer, debug);
+      vehicle_state.x(), vehicle_state.y(), vehicle_state.heading(),
+      vehicle_state.linear_velocity(), vehicle_state.angular_velocity(),
+      vehicle_state.linear_acceleration(), trajectory_analyzer, debug);
 
   double theta_error_expected = -0.03549;
   double theta_error_dot_expected = 0.0044552856731;

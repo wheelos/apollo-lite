@@ -36,12 +36,12 @@ class DiffDriveLatController : public Controller {
   virtual ~DiffDriveLatController();
 
   common::Status Init(std::shared_ptr<DependencyInjector> injector,
-                      const ControlConf *control_conf) override;
+                      const ControlConf* control_conf) override;
 
   common::Status ComputeControlCommand(
-      const localization::LocalizationEstimate *localization,
-      const canbus::Chassis *chassis, const planning::ADCTrajectory *trajectory,
-      control::ControlCommand *cmd) override;
+      const localization::LocalizationEstimate* localization,
+      const canbus::Chassis* chassis, const planning::ADCTrajectory* trajectory,
+      control::ControlCommand* cmd) override;
 
   common::Status Reset() override;
 
@@ -53,21 +53,21 @@ class DiffDriveLatController : public Controller {
   void ComputeLateralErrors(const double x, const double y, const double theta,
                             const double linear_v, const double angular_v,
                             const double linear_a,
-                            const TrajectoryAnalyzer &trajectory_analyzer,
-                            SimpleLateralDebug *debug,
-                            const canbus::Chassis *chassis);
+                            const TrajectoryAnalyzer& trajectory_analyzer,
+                            SimpleLateralDebug* debug,
+                            const canbus::Chassis* chassis);
 
-  void ProcessLogs(const SimpleLateralDebug *debug,
-                   const canbus::Chassis *chassis);
+  void ProcessLogs(const SimpleLateralDebug* debug,
+                   const common::VehicleState& vehicle_state);
 
   void InitializeFilters();
 
-  void UpdateDrivingOrientation(const common::ReferenceState& reference_state);
+  void UpdateDrivingOrientation(const common::VehicleState& vehicle_state);
 
-  bool LoadControlConf(const ControlConf *control_conf);
+  bool LoadControlConf(const ControlConf* control_conf);
 
  private:
-  const planning::ADCTrajectory *trajectory_message_ = nullptr;
+  const planning::ADCTrajectory* trajectory_message_ = nullptr;
 
   std::unique_ptr<TrajectoryAnalyzer> trajectory_analyzer_;
 
@@ -75,7 +75,7 @@ class DiffDriveLatController : public Controller {
 
   // vehicle parameter
   common::VehicleParam vehicle_param_;
-  const ControlConf *control_conf_ = nullptr;
+  const ControlConf* control_conf_ = nullptr;
 
   // MeanFilter heading_rate_filter_;
   common::MeanFilter lateral_error_filter_;

@@ -170,7 +170,7 @@ class OpenSpaceRoiDecider : public Decider {
 
   ThreadSafeIndexedObstacles *obstacles_by_frame_;
 
-  common::ReferenceState reference_state_;
+  common::VehicleState vehicle_state_;
 
   std::string last_parking_entry_spot_id_;
   common::math::Vec2d last_parking_entry_reference_;

@@ -39,7 +39,7 @@ class Smoother {
                                 ADCTrajectory* const current_trajectory_pb);
 
  private:
-  bool IsCloseStop(const common::ReferenceState& reference_state,
+  bool IsCloseStop(const common::VehicleState& vehicle_state,
                    const MainStop& main_stop);
 };
 

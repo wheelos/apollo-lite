@@ -82,7 +82,7 @@ Stage::StageStatus StopSignUnprotectedStagePreStop::Process(
       adc_front_edge_s - current_stop_sign_overlap->start_s;
   if (distance_adc_pass_stop_sign <= kPassStopLineBuffer) {
     // not passed stop line, check valid stop
-    if (CheckADCStop(frame->reference_state(), adc_front_edge_s,
+    if (CheckADCStop(frame->vehicle_state(), adc_front_edge_s,
                      current_stop_sign_overlap->start_s)) {
       return FinishStage();
     }
@@ -228,9 +228,9 @@ int StopSignUnprotectedStagePreStop::AddWatchVehicle(
  * @brief: check valid stop_sign stop
  */
 bool StopSignUnprotectedStagePreStop::CheckADCStop(
-    const common::ReferenceState& reference_state,
+    const common::VehicleState& vehicle_state,
     const double adc_front_edge_s, const double stop_line_s) {
-  const double adc_speed = reference_state.linear_velocity();
+  const double adc_speed = vehicle_state.linear_velocity();
   const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()
                                         ->GetConfig()
                                         .vehicle_param()

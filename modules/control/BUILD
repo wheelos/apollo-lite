@@ -22,10 +22,6 @@ cc_library(
         "//modules/control/proto:control_conf_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "//modules/control/proto:preprocessor_cc_proto",
-        "//modules/control/submodules:lat_lon_controller_submodule_lib",
-        "//modules/control/submodules:mpc_controller_submodule_lib",
-        "//modules/control/submodules:postprocessor_submodule_lib",
-        "//modules/control/submodules:preprocessor_submodule_lib",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/control/safety:safety_manager",
@@ -73,7 +69,6 @@ install(
     deps = [
         ":pb_hdrs",
         ":testdata",
-        "//modules/control/submodules:install",
         "//modules/control/tools:install",
         "//modules/control/common:install"
     ],

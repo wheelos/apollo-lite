@@ -56,7 +56,7 @@ class PathReuseDecider : public Decider {
           history_stop_positions);
 
   void GetADCSLPoint(const ReferenceLine& reference_line,
-                     const common::ReferenceState& reference_state,
+                     const common::VehicleState& vehicle_state,
                      common::SLPoint* adc_position_sl);
 
   bool GetBlockingObstacleS(ReferenceLineInfo* const reference_line_info,

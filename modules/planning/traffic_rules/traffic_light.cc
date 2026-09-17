@@ -72,7 +72,7 @@ void TrafficLight::MakeDecisions(Frame* const frame,
           ->mutable_signal_light();
   signal_light_debug->set_adc_front_s(adc_front_edge_s);
   signal_light_debug->set_adc_speed(
-      frame->reference_state().linear_velocity());
+      frame->vehicle_state().linear_velocity());
 
   const std::vector<PathOverlap>& traffic_light_overlaps =
       reference_line_info->reference_line().map_path().signal_overlaps();
@@ -102,8 +102,8 @@ void TrafficLight::MakeDecisions(Frame* const frame,
     traffic_light_sl.set_l(0);
     common::math::Vec2d traffic_light_point;
     reference_line.SLToXY(traffic_light_sl, &traffic_light_point);
-    common::math::Vec2d adc_position = {frame->reference_state().x(),
-                                        frame->reference_state().y()};
+    common::math::Vec2d adc_position = {frame->vehicle_state().x(),
+                                        frame->vehicle_state().y()};
     const double distance =
         common::util::DistanceXY(traffic_light_point, adc_position);
     const double s_distance = traffic_light_overlap.start_s - adc_front_edge_s;
@@ -120,7 +120,7 @@ void TrafficLight::MakeDecisions(Frame* const frame,
     auto signal_color =
         frame->GetSignal(traffic_light_overlap.object_id).color();
     const double stop_deceleration = util::GetADCStopDeceleration(
-        frame->reference_state(), adc_front_edge_s,
+        frame->vehicle_state(), adc_front_edge_s,
         traffic_light_overlap.start_s);
     ADEBUG << "traffic_light_id[" << traffic_light_overlap.object_id
            << "] start_s[" << traffic_light_overlap.start_s << "] color["

@@ -27,6 +27,7 @@
 #include "modules/common/util/point_factory.h"
 #include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/vehicle_frenet_geometry.h"
 
 namespace apollo {
 namespace planning {
@@ -61,7 +62,9 @@ TrajectoryCost::TrajectoryCost(const DpPolyPathConfig &config,
     const auto &sl_boundary = ptr_obstacle->PerceptionSLBoundary();
 
     common::VehicleGeometryModel geom_model;
-    const auto l_range = geom_model.GetOccupancyLRange(init_sl_point_.l());
+    VehicleFrenetGeometry frenet_geometry(geom_model);
+    const auto l_range =
+        frenet_geometry.GetOccupancyLRange(init_sl_point_.l());
     const double adc_right_l = l_range.first;
     const double adc_left_l = l_range.second;
 
@@ -244,10 +247,11 @@ ComparableCost TrajectoryCost::GetCostFromObsSL(
   }
 
   common::VehicleGeometryModel geom_model;
-  const auto s_range = geom_model.GetOccupancySRange(adc_s);
+  VehicleFrenetGeometry frenet_geometry(geom_model);
+  const auto s_range = frenet_geometry.GetOccupancySRange(adc_s);
   const double adc_end_s = s_range.first;
   const double adc_front_s = s_range.second;
-  const auto l_range = geom_model.GetOccupancyLRange(adc_l);
+  const auto l_range = frenet_geometry.GetOccupancyLRange(adc_l);
   const double adc_right_l = l_range.first;
   const double adc_left_l = l_range.second;
 

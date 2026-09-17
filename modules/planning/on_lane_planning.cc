@@ -32,8 +32,9 @@
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
+#include "modules/common/configs/config_gflags.h"
 #include "modules/common/math/quaternion.h"
-#include "modules/common/vehicle_state/vehicle_motion_model.h"
+#include "modules/common/vehicle_model/vehicle_model.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/planning/common/ego_info.h"
 #include "modules/planning/common/history.h"
@@ -42,7 +43,6 @@
 #include "modules/planning/common/trajectory_stitcher.h"
 #include "modules/planning/common/util/util.h"
 #include "modules/planning/learning_based/img_feature_renderer/birdview_img_feature_renderer.h"
-#include "modules/planning/planner/rtk/rtk_replay_planner.h"
 #include "modules/planning/reference_line/reference_line_provider.h"
 #include "modules/planning/scenarios/park/valet_parking/valet_parking_scenario.h"
 #include "modules/planning/tasks/task_factory.h"
@@ -115,6 +115,12 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
   }
 
   PlanningBase::Init(config_);
+
+  const auto vehicle_model_status =
+      injector_->InitVehicleModel(FLAGS_vehicle_model_config_filename);
+  if (!vehicle_model_status.ok()) {
+    return vehicle_model_status;
+  }
 
   planner_dispatcher_->Init();
 
@@ -194,8 +200,7 @@ Status OnLanePlanning::InitFrame(const uint32_t sequence_num,
   if (direct_valet_parking_mode) {
     auto status = frame_->InitForOpenSpace(
         vehicle_state,
-        injector_->reference_point_resolver(),
-        injector_->ego_info(), injector_->operating_state());
+        injector_->ego_info());
     if (!status.ok()) {
       AERROR << "failed to init frame for open space:" << status.ToString();
     }
@@ -234,10 +239,9 @@ Status OnLanePlanning::InitFrame(const uint32_t sequence_num,
 
   auto status = frame_->Init(
       vehicle_state,
-      injector_->reference_point_resolver(),
       reference_lines, segments,
-      reference_line_provider_->FutureRouteWaypoints(), injector_->ego_info(),
-      injector_->operating_state());
+      reference_line_provider_->FutureRouteWaypoints(),
+      injector_->ego_info());
   if (!status.ok()) {
     AERROR << "failed to init frame:" << status.ToString();
     return status;
@@ -251,10 +255,10 @@ bool OnLanePlanning::ShouldUseDirectValetParkingMode() const {
 }
 
 // TODO(all): fix this! this will cause unexpected behavior from controller
-void OnLanePlanning::GenerateStopTrajectory(ADCTrajectory* ptr_trajectory_pb) {
+void OnLanePlanning::GenerateStopTrajectory(
+    const VehicleState& vehicle_state, ADCTrajectory* ptr_trajectory_pb) {
   ptr_trajectory_pb->clear_trajectory_point();
 
-  const auto& vehicle_state = injector_->canonical_vehicle_state();
   const double max_t = FLAGS_fallback_total_time;
   const double unit_t = FLAGS_fallback_time_unit;
 
@@ -292,16 +296,15 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
   // chassis
   ADEBUG << "Get chassis:" << local_view_.chassis->DebugString();
 
-  Status status = injector_->vehicle_state()->Update(
+  Status status = injector_->vehicle_state_provider()->Update(
       *local_view_.localization_estimate, *local_view_.chassis);
 
-  VehicleState vehicle_state = injector_->canonical_vehicle_state();
+  VehicleState vehicle_state = injector_->vehicle_state();
   const double vehicle_state_timestamp = vehicle_state.timestamp();
-  DCHECK_GE(start_timestamp, vehicle_state_timestamp)
-      << "start_timestamp is behind vehicle_state_timestamp by "
-      << start_timestamp - vehicle_state_timestamp << " secs";
 
-  if (!status.ok() || !util::IsVehicleStateValid(vehicle_state)) {
+  if (!status.ok() || !util::IsVehicleStateValid(vehicle_state) ||
+      !util::IsVehicleStateFresh(vehicle_state, start_timestamp,
+                                  FLAGS_message_latency_threshold)) {
     const std::string msg =
         "Update VehicleStateProvider failed "
         "or the vehicle state is out dated.";
@@ -314,7 +317,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
     // TODO(all): integrate reverse gear
     ptr_trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
     FillPlanningPb(start_timestamp, ptr_trajectory_pb);
-    GenerateStopTrajectory(ptr_trajectory_pb);
+    GenerateStopTrajectory(vehicle_state, ptr_trajectory_pb);
     return;
   }
 
@@ -325,15 +328,9 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
 
   const bool direct_valet_parking_mode = ShouldUseDirectValetParkingMode();
 
-  // Update reference line provider and reset pull over if necessary
-  common::ReferenceState reference_state;
-  status = injector_->reference_point_resolver()->Resolve(
-      vehicle_state, common::REAR_AXLE_CENTER, &reference_state);
-  if (!status.ok()) {
-    AERROR << "Failed to resolve reference state: " << status;
-    return;
-  }
-  reference_line_provider_->UpdateReferenceState(reference_state);
+  // VehicleStateProvider already supplies the canonical planning reference
+  // point. Planning must not convert it again at the module boundary.
+  reference_line_provider_->UpdateVehicleState(vehicle_state);
   const bool routing_changed =
       direct_valet_parking_mode
           ? !util::HasSameRoutingRequest(last_routing_, *local_view_.routing)
@@ -365,7 +362,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
     status.Save(ptr_trajectory_pb->mutable_header()->mutable_status());
     ptr_trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
     FillPlanningPb(start_timestamp, ptr_trajectory_pb);
-    GenerateStopTrajectory(ptr_trajectory_pb);
+    GenerateStopTrajectory(vehicle_state, ptr_trajectory_pb);
     return;
   }
 
@@ -379,9 +376,10 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
       TrajectoryStitcher::ComputeStitchingTrajectory(
           vehicle_state, start_timestamp, planning_cycle_time,
           FLAGS_trajectory_stitching_preserved_length, true,
-          last_publishable_trajectory_.get(), &replan_reason);
+          last_publishable_trajectory_.get(), injector_->vehicle_model(),
+          &replan_reason);
 
-  injector_->ego_info()->Update(stitching_trajectory.back(), reference_state);
+  injector_->ego_info()->Update(stitching_trajectory.back(), vehicle_state);
   const uint32_t frame_num = static_cast<uint32_t>(seq_num_++);
   status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state,
                      direct_valet_parking_mode);
@@ -416,7 +414,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
           ->mutable_not_ready()
           ->set_reason(status.ToString());
       status.Save(ptr_trajectory_pb->mutable_header()->mutable_status());
-      GenerateStopTrajectory(ptr_trajectory_pb);
+      GenerateStopTrajectory(vehicle_state, ptr_trajectory_pb);
     }
     // TODO(all): integrate reverse gear
     ptr_trajectory_pb->set_gear(canbus::Chassis::GEAR_DRIVE);
@@ -606,7 +604,7 @@ Status OnLanePlanning::Plan(
     auto* engage_advice = ptr_trajectory_pb->mutable_engage_advice();
 
     // enable start auto from open_space planner.
-    if (injector_->operating_state().driving_mode() !=
+    if (frame_->vehicle_state().driving_mode() !=
         Chassis::DrivingMode::Chassis_DrivingMode_COMPLETE_AUTO_DRIVE) {
       engage_advice->set_advice(EngageAdvice::READY_TO_ENGAGE);
       engage_advice->set_reason(
@@ -746,6 +744,12 @@ Status OnLanePlanning::Plan(
 
 bool OnLanePlanning::CheckPlanningConfig(const PlanningConfig& config) {
   if (!config.has_standard_planning_config()) {
+    return false;
+  }
+  const auto& standard_config = config.standard_planning_config();
+  if (standard_config.planner_type_size() == 0 ||
+      standard_config.planner_type(0) != PlannerType::PUBLIC_ROAD) {
+    AERROR << "Only the PUBLIC_ROAD planner is supported.";
     return false;
   }
   if (!config.standard_planning_config().has_planner_public_road_config()) {
@@ -1007,7 +1011,7 @@ void OnLanePlanning::AddPartitionedTrajectory(
     return;
   }
 
-  const auto& vehicle_state = frame_->reference_state();
+  const auto& vehicle_state = frame_->vehicle_state();
   auto chart = debug_chart->mutable_planning_data()->add_chart();
   auto chart_kappa = debug_chart->mutable_planning_data()->add_chart();
   auto chart_theta = debug_chart->mutable_planning_data()->add_chart();
@@ -1251,10 +1255,11 @@ void OnLanePlanning::AddPublishedSpeed(const ADCTrajectory& trajectory_pb,
 
 VehicleState OnLanePlanning::AlignTimeStamp(const VehicleState& vehicle_state,
                                             const double curr_timestamp) const {
-  // TODO(Jinyun): use the same method in trajectory stitching
-  //               for forward prediction
-  auto future_xy = common::VehicleMotionModel::EstimateFuturePosition(
-      vehicle_state, curr_timestamp - vehicle_state.timestamp());
+  Vec2d future_xy;
+  const auto predict_status =
+      injector_->vehicle_model().PredictPositionWithHeldCurvature(
+      curr_timestamp - vehicle_state.timestamp(), vehicle_state, &future_xy);
+  ACHECK(predict_status.ok()) << predict_status.error_message();
 
   VehicleState aligned_vehicle_state = vehicle_state;
   aligned_vehicle_state.set_x(future_xy.x());

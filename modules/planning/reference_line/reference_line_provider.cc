@@ -102,10 +102,10 @@ ReferenceLineProvider::FutureRouteWaypoints() {
   return std::vector<routing::LaneWaypoint>();
 }
 
-void ReferenceLineProvider::UpdateReferenceState(
-    const common::ReferenceState &reference_state) {
-  std::lock_guard<std::mutex> lock(reference_state_mutex_);
-  reference_state_ = reference_state;
+void ReferenceLineProvider::UpdateVehicleState(
+    const common::VehicleState &vehicle_state) {
+  std::lock_guard<std::mutex> lock(vehicle_state_mutex_);
+  vehicle_state_ = vehicle_state;
 }
 
 bool ReferenceLineProvider::Start() {
@@ -305,15 +305,15 @@ bool ReferenceLineProvider::GetReferenceLinesFromRelativeMap(
     AERROR << "navigation path ids is empty";
     return false;
   }
-  // get current adc lane info by reference state
-  common::ReferenceState reference_state;
+  // Get current ADC lane info from the canonical planning VehicleState.
+  common::VehicleState vehicle_state;
   {
-    std::lock_guard<std::mutex> lock(reference_state_mutex_);
-    reference_state = reference_state_;
+    std::lock_guard<std::mutex> lock(vehicle_state_mutex_);
+    vehicle_state = vehicle_state_;
   }
   hdmap::LaneWaypoint adc_lane_way_point;
   if (!GetNearestWayPointFromNavigationPath(
-          reference_state, navigation_lane_ids, &adc_lane_way_point)) {
+          vehicle_state, navigation_lane_ids, &adc_lane_way_point)) {
     return false;
   }
   const std::string adc_lane_id = adc_lane_way_point.lane->id().id();
@@ -452,7 +452,7 @@ bool ReferenceLineProvider::GetReferenceLinesFromRelativeMap(
 }
 
 bool ReferenceLineProvider::GetNearestWayPointFromNavigationPath(
-    const common::ReferenceState &state,
+    const common::VehicleState &state,
     const std::unordered_set<std::string> &navigation_lane_ids,
     hdmap::LaneWaypoint *waypoint) {
   const double kMaxDistance = 10.0;
@@ -533,15 +533,8 @@ bool ReferenceLineProvider::GetNearestWayPointFromNavigationPath(
 }
 
 bool ReferenceLineProvider::CreateRouteSegments(
-    const common::ReferenceState &reference_state,
+    const common::VehicleState &vehicle_state,
     std::list<hdmap::RouteSegments> *segments) {
-  common::VehicleState vehicle_state;
-  vehicle_state.set_x(reference_state.x());
-  vehicle_state.set_y(reference_state.y());
-  vehicle_state.set_z(reference_state.z());
-  vehicle_state.set_heading(reference_state.heading());
-  vehicle_state.set_linear_velocity(reference_state.linear_velocity());
-  vehicle_state.set_reference_point(reference_state.reference_point());
   {
     std::lock_guard<std::mutex> lock(pnc_map_mutex_);
     if (!pnc_map_->GetRouteSegments(vehicle_state, segments)) {
@@ -562,10 +555,10 @@ bool ReferenceLineProvider::CreateReferenceLine(
   CHECK_NOTNULL(reference_lines);
   CHECK_NOTNULL(segments);
 
-  common::ReferenceState reference_state;
+  common::VehicleState vehicle_state;
   {
-    std::lock_guard<std::mutex> lock(reference_state_mutex_);
-    reference_state = reference_state_;
+    std::lock_guard<std::mutex> lock(vehicle_state_mutex_);
+    vehicle_state = vehicle_state_;
   }
 
   routing::RoutingResponse routing;
@@ -586,7 +579,7 @@ bool ReferenceLineProvider::CreateReferenceLine(
     }
   }
 
-  if (!CreateRouteSegments(reference_state, segments)) {
+  if (!CreateRouteSegments(vehicle_state, segments)) {
     AERROR << "Failed to create reference line from routing";
     return false;
   }
@@ -599,10 +592,10 @@ bool ReferenceLineProvider::CreateReferenceLine(
         iter = segments->erase(iter);
       } else {
         common::SLPoint sl;
-        common::math::Vec2d vehicle_xy(reference_state.x(), reference_state.y());
+        common::math::Vec2d vehicle_xy(vehicle_state.x(), vehicle_state.y());
         if (!reference_lines->back().XYToSL(vehicle_xy, &sl)) {
-          AWARN << "Failed to project point: {" << reference_state.x() << ","
-                << reference_state.y() << "} to stitched reference line";
+          AWARN << "Failed to project point: {" << vehicle_state.x() << ","
+                << vehicle_state.y() << "} to stitched reference line";
         }
         Shrink(sl, &reference_lines->back(), &(*iter));
         ++iter;
@@ -612,7 +605,7 @@ bool ReferenceLineProvider::CreateReferenceLine(
   } else {  // stitching reference line
     for (auto iter = segments->begin(); iter != segments->end();) {
       reference_lines->emplace_back();
-      if (!ExtendReferenceLine(reference_state, &(*iter),
+      if (!ExtendReferenceLine(vehicle_state, &(*iter),
                                &reference_lines->back())) {
         AERROR << "Failed to extend reference line";
         reference_lines->pop_back();
@@ -633,7 +626,7 @@ bool ReferenceLineProvider::CreateReferenceLine(
 }
 
 bool ReferenceLineProvider::ExtendReferenceLine(
-    const common::ReferenceState &state,
+    const common::VehicleState &state,
                                                 RouteSegments *segments,
                                                 ReferenceLine *reference_line) {
   RouteSegments segment_properties;

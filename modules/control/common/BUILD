@@ -120,7 +120,6 @@ cc_library(
         "@core//cyber",
         "//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
-        "//modules/common/vehicle_state:vehicle_state_provider",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@eigen",
     ],
@@ -262,9 +261,7 @@ cc_library(
     name = "dependency_injector",
     hdrs = ["dependency_injector.h"],
     deps = [
-        "//modules/common/configs:config_gflags",
         "//modules/common/vehicle_state:vehicle_state_provider",
-        "//modules/common/vehicle_state:vehicle_reference",
     ],
 )
 

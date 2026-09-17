@@ -111,11 +111,22 @@ Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::Process(
   }
 
   if (traffic_light_all_done) {
-    return FinishStage(frame->reference_state().linear_velocity(),
+    return FinishStage(frame->vehicle_state().linear_velocity(),
                        &frame->mutable_reference_line_info()->front());
   }
 
   return Stage::RUNNING;
+}
+
+Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::FinishStage(
+    Frame* frame) {
+  ReferenceLineInfo* reference_line_info =
+      (frame != nullptr && !frame->mutable_reference_line_info()->empty())
+          ? &frame->mutable_reference_line_info()->front()
+          : nullptr;
+  const double adc_speed =
+      frame != nullptr ? frame->vehicle_state().linear_velocity() : 0.0;
+  return FinishStage(adc_speed, reference_line_info);
 }
 
 Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::FinishStage(
