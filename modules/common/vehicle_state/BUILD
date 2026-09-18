@@ -2,19 +2,18 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install")
 
+package(default_visibility = ["//visibility:public"])
+
 install(
     name = "install",
-    library_dest = "common/lib",
     data_dest = "common",
+    library_dest = "common/lib",
     runtime_dest = "common/bin",
     targets = [
         ":vehicle_state_provider",
     ],
     visibility = ["//visibility:public"],
 )
-
-package(default_visibility = ["//visibility:public"])
-
 
 cc_library(
     name = "vehicle_state_provider",
@@ -23,15 +22,15 @@ cc_library(
     ],
     hdrs = ["vehicle_state_provider.h"],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
         "//modules/common/status",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
-        "@eigen",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@eigen",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
     ],
 )
 
@@ -44,12 +43,12 @@ cc_test(
     ],
     deps = [
         ":vehicle_state_provider",
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/common/configs:config_gflags",
         "//modules/planning/common:gtest_exit_main",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
     ],
 )
 

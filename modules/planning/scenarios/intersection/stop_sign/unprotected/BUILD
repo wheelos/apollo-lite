@@ -21,18 +21,18 @@ cc_library(
     ],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/common/math",
-        "//modules/common/util:util_tool",
         "//modules/common/util",
+        "//modules/common/util:util_tool",
         "//modules/planning/common/util:util_lib",
         "//modules/planning/scenarios:scenario",
         "//modules/planning/scenarios/common:stage_intersection_cruise_impl",
         "//modules/planning/scenarios/util:scenario_util_lib",
         "//modules/planning/tasks/deciders/creep_decider",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -42,11 +42,11 @@ cc_test(
     srcs = ["stop_sign_unprotected_scenario_test.cc"],
     data = ["//modules/planning:planning_conf"],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":stop_sign_unprotected_scenario",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -57,11 +57,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":stop_sign_unprotected_scenario",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -72,11 +72,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":stop_sign_unprotected_scenario",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -87,11 +87,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":stop_sign_unprotected_scenario",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

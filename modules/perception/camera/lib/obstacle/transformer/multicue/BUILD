@@ -1,5 +1,5 @@
-load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,9 +11,9 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common/proto:object_template_meta_schema_cc_proto",
+        "@core//cyber",
     ],
 )
 
@@ -26,11 +26,11 @@ cc_library(
     ],
     deps = [
         ":obj_mapper",
-        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
-        "//modules/perception/pipeline/proto/stage:multicue_cc_proto",
         "//modules/perception/pipeline:stage",
+        "//modules/perception/pipeline/proto/stage:multicue_cc_proto",
+        "@core//cyber",
     ],
     alwayslink = True,
 )

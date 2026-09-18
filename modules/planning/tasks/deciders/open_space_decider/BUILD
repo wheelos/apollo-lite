@@ -2,6 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
+
 PLANNING_COPTS = ["-DMODULE_NAME=\\\"planning\\\""]
 
 cc_library(
@@ -15,12 +16,12 @@ cc_library(
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
+        "//modules/planning/common/util:common_lib",
         "//modules/planning/open_space/parking:parking_pose_selector",
         "//modules/planning/open_space/parking:parking_roi_geometry",
         "//modules/planning/open_space/parking:parking_roi_validator",
         "//modules/planning/open_space/parking:parking_slot_provider",
         "//modules/planning/tasks/deciders:decider_base",
-        "//modules/planning/common/util:common_lib",
     ],
 )
 
@@ -31,8 +32,8 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "//modules/planning/common:reference_line_info",
-        "//modules/planning/tasks/deciders:decider_base",
         "//modules/planning/common/util:common_lib",
+        "//modules/planning/tasks/deciders:decider_base",
     ],
 )
 
@@ -45,8 +46,8 @@ cc_library(
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
-        "//modules/planning/tasks/deciders:decider_base",
         "//modules/planning/common/util:common_lib",
+        "//modules/planning/tasks/deciders:decider_base",
     ],
 )
 
@@ -54,11 +55,11 @@ cc_test(
     name = "open_space_roi_decider_test",
     size = "small",
     srcs = ["open_space_roi_decider_test.cc"],
+    tags = ["exclude"],
     deps = [
         ":open_space_roi_decider",
         "//modules/planning/testing:gtest_exit_main",
     ],
-    tags = ["exclude"]
 )
 
 cc_test(

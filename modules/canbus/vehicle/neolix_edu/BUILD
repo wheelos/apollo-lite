@@ -7,7 +7,6 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "neolix_edu_vehicle_factory",
-    alwayslink = True,
     srcs = [
         "neolix_edu_vehicle_factory.cc",
     ],
@@ -21,6 +20,7 @@ cc_library(
         "//modules/canbus/vehicle:abstract_vehicle_factory",
         "//modules/canbus/vehicle:vehicle_factory_core",
     ],
+    alwayslink = True,
 )
 
 cc_library(
@@ -33,10 +33,10 @@ cc_library(
     ],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle/neolix_edu/protocol:canbus_neolix_edu_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -51,12 +51,12 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         ":neolix_edu_message_manager",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/neolix_edu/protocol:canbus_neolix_edu_protocol",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 

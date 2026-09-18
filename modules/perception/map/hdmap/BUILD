@@ -11,11 +11,10 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/math",
         "//modules/common/util:util_tool",
-        "//modules/map/hdmap:hdmap_util",
         "//modules/map/hdmap",
+        "//modules/map/hdmap:hdmap_util",
         "//modules/perception/base:base_type",
         "//modules/perception/base:blob",
         "//modules/perception/base:common",
@@ -29,6 +28,7 @@ cc_library(
         "//modules/perception/base:syncedmem",
         "//modules/perception/common/geometry:common",
         "//modules/perception/lib/config_manager",
+        "@core//cyber",
     ],
 )
 

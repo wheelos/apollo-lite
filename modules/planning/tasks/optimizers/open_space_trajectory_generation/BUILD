@@ -1,10 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
-load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
-
-PLANNING_COPTS = ["-DMODULE_NAME=\\\"planning\\\""]
 
 FOPENMP_COPTS = ["-fopenmp"]
 
@@ -20,13 +17,13 @@ cc_library(
         ":open_space_trajectory_optimizer",
         "//modules/common/math",
         "//modules/common/status",
+        "//modules/map/hdmap:hdmap_util",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:trajectory_stitcher",
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/tasks:task",
         "//modules/planning/tasks/optimizers:trajectory_optimizer",
-        "//modules/map/hdmap:hdmap_util",
     ],
 )
 
@@ -39,11 +36,9 @@ cc_library(
         "-fopenmp",
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/status",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:frame",
         "//modules/planning/open_space/coarse_trajectory_generator:hybrid_a_star",
         "//modules/planning/open_space/trajectory_smoother:distance_approach_problem",
@@ -51,7 +46,9 @@ cc_library(
         "//modules/planning/open_space/trajectory_smoother:iterative_anchoring_smoother",
         "//modules/planning/proto:planning_config_cc_proto",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 

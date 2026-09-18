@@ -2,6 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
+
 DREAMVIEW_COPTS = ['-DMODULE_NAME=\\"dreamview\\"']
 
 cc_library(
@@ -10,11 +11,11 @@ cc_library(
     hdrs = ["websocket_handler.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
-        "@civetweb//:civetweb",
+        "@civetweb",
         "@civetweb//:civetserver",
         "@com_github_nlohmann_json//:json",
+        "@core//cyber",
     ],
 )
 
@@ -24,7 +25,7 @@ cc_library(
     hdrs = ["map_data_handler.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "@civetweb//:civetweb",
+        "@civetweb",
         "@civetweb//:civetserver",
     ],
 )
@@ -35,13 +36,13 @@ cc_library(
     hdrs = ["image_handler.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:config_gflags",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "@civetweb//:civetserver",
+        "@core//cyber",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
     ],
 )
 
@@ -51,9 +52,9 @@ cc_test(
     srcs = ["websocket_handler_test.cc"],
     deps = [
         ":websocket_handler",
-        "@core//cyber",
         "@civetweb//:civetserver",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

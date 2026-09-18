@@ -1,5 +1,5 @@
-load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -23,8 +23,8 @@ cc_library(
     ],
     deps = [
         ":voxel_downsample_cuda",
-        "@core//cyber",
         "//modules/perception/base",
+        "@core//cyber",
         "@cuda//:cuda_runtime",
     ],
 )
@@ -34,9 +34,9 @@ cuda_library(
     srcs = ["center_point_trt.cu"],
     hdrs = ["center_point_trt_cuda_api.h"],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:blob",
         "//modules/perception/base:point_cloud",
+        "@core//cyber",
         "@cuda//:cuda_runtime",
     ],
 )
@@ -51,14 +51,14 @@ cc_library(
     deps = [
         ":center_point_trt_cuda",
         ":gpu_down_sample",
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/inference/onnx_multi_batch:onnx_multi_batch_infer",
+        "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/common",
         "//modules/perception/lidar/lib/interface:base_lidar_detector",
-        "//modules/perception/lib/config_manager:config_manager",
-        "//modules/perception/pipeline/proto/stage:center_point_trt_detection_config_cc_proto",
         "//modules/perception/pipeline:stage",
+        "//modules/perception/pipeline/proto/stage:center_point_trt_detection_config_cc_proto",
+        "@core//cyber",
         "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],

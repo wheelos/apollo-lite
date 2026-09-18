@@ -11,7 +11,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:point_cloud",
         "//modules/perception/common/geometry:common",
         "//modules/perception/lib/config_manager",
@@ -19,6 +18,7 @@ cc_library(
         "//modules/perception/pipeline:plugin",
         "//modules/perception/pipeline/proto/plugin:roi_boundary_filter_config_cc_proto",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,

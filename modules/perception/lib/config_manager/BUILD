@@ -11,11 +11,11 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/common/io:io_util",
         "//modules/perception/lib/thread",
         "//modules/perception/proto:perception_config_schema_cc_proto",
+        "@core//cyber",
         "@eigen",
     ],
 )

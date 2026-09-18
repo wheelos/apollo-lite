@@ -22,8 +22,8 @@ cc_library(
         ":dual_variable_warm_start_ipopt_qp_interface",
         ":dual_variable_warm_start_osqp_interface",
         ":dual_variable_warm_start_slack_osqp_interface",
-        "@core//cyber",
         "//modules/common/util:util_tool",
+        "@core//cyber",
     ],
 )
 
@@ -36,12 +36,12 @@ cc_library(
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@adolc",
         "@eigen",
         "@ipopt",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -54,12 +54,12 @@ cc_library(
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@adolc",
         "@eigen",
         "@ipopt",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -72,11 +72,11 @@ cc_library(
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@eigen",
         "@osqp",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -89,11 +89,11 @@ cc_library(
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@eigen",
         "@osqp",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -109,10 +109,10 @@ cc_library(
         ":distance_approach_ipopt_interface",
         ":distance_approach_ipopt_relax_end_interface",
         ":distance_approach_ipopt_relax_end_slack_interface",
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
+        "@core//cyber",
     ],
 )
 
@@ -125,16 +125,16 @@ cc_library(
     ],
     copts = PLANNING_FOPENMP,
     deps = [
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@adolc",
+        "@core//cyber",
         "@eigen",
         "@ipopt",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -147,16 +147,16 @@ cc_library(
     ],
     copts = PLANNING_FOPENMP,
     deps = [
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@adolc",
+        "@core//cyber",
         "@eigen",
         "@ipopt",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -169,16 +169,16 @@ cc_library(
     ],
     copts = PLANNING_FOPENMP,
     deps = [
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@adolc",
+        "@core//cyber",
         "@eigen",
         "@ipopt",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -191,16 +191,16 @@ cc_library(
     ],
     copts = PLANNING_FOPENMP,
     deps = [
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@adolc",
+        "@core//cyber",
         "@eigen",
         "@ipopt",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -213,16 +213,16 @@ cc_library(
     ],
     copts = PLANNING_FOPENMP,
     deps = [
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@adolc",
+        "@core//cyber",
         "@eigen",
         "@ipopt",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -235,16 +235,16 @@ cc_library(
     ],
     copts = PLANNING_FOPENMP,
     deps = [
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@adolc",
+        "@core//cyber",
         "@eigen",
         "@ipopt",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ] + if_gpu([":planning_block"]),
 )
 
@@ -284,8 +284,8 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":distance_approach_ipopt_interface",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -298,8 +298,8 @@ cc_test(
     linkstatic = True,
     deps = [
         ":distance_approach_ipopt_cuda_interface",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -312,8 +312,8 @@ cc_test(
     linkstatic = True,
     deps = [
         ":distance_approach_problem",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -336,9 +336,9 @@ cc_test(
     deps = [
         ":dual_variable_warm_start_ipopt_qp_interface",
         ":dual_variable_warm_start_osqp_interface",
-        "@core//cyber",
         "@adolc",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
         "@ipopt",
     ],
 )
@@ -350,8 +350,8 @@ cc_test(
     data = ["//modules/planning:planning_testdata"],
     deps = [
         ":dual_variable_warm_start_slack_osqp_interface",
-        "@core//cyber",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
     ],
 )
 

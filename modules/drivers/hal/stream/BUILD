@@ -28,8 +28,8 @@ cc_library(
     deps = [
         ":stream",
         ":tcp_stream",
-        "@core//cyber",
         "//modules/common/util",
+        "@core//cyber",
     ],
 )
 
@@ -68,10 +68,10 @@ cc_library(
     srcs = ["stream_factory.cc"],
     hdrs = ["stream_factory.h"],
     deps = [
-        ":stream",
         ":can_stream",
         ":ntrip_stream",
         ":serial_stream",
+        ":stream",
         ":tcp_stream",
         ":udp_stream",
         "@core//cyber",

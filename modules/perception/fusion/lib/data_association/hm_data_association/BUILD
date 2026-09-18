@@ -5,12 +5,12 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "chi_squared_cdf",
-    copts = [
-        '-DMODULE_NAME=\\"perception\\"',
-    ],
     hdrs = [
         "chi_squared_cdf_1_0.0500_0.999900.h",
         "chi_squared_cdf_2_0.0500_0.999900.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
 )
 

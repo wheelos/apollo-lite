@@ -5,7 +5,7 @@ cc_library(
     name = "scenario_case",
     hdrs = ["scenario_case.h"],
     deps = [
-        "//modules/planning/proto:planning_config_cc_proto"
+        "//modules/planning/proto:planning_config_cc_proto",
     ],
 )
 
@@ -15,9 +15,9 @@ cc_library(
     hdrs = ["scenario_builder.h"],
     deps = [
         ":scenario_case",
-        "@core//cyber",
         "//modules/planning/common:dependency_injector",
-        "//modules/planning/common:frame"
+        "//modules/planning/common:frame",
+        "@core//cyber",
     ],
 )
 
@@ -26,9 +26,9 @@ cc_library(
     srcs = ["scenario_loader.cc"],
     hdrs = ["scenario_loader.h"],
     deps = [
-        "@core//cyber",
         ":scenario_case",
-        "@com_github_jbeder_yaml_cpp//:yaml-cpp"
+        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
     ],
 )
 
@@ -42,12 +42,12 @@ cc_test(
     ],
     linkopts = ["-fopenmp"],
     deps = [
-        "@core//cyber",
-        "//modules/planning/common:gtest_exit_main",
-        ":scenario_case",
         ":scenario_builder",
+        ":scenario_case",
         ":scenario_loader",
+        "//modules/planning/common:gtest_exit_main",
         "//modules/planning/scenarios:scenario_manager",
+        "@core//cyber",
     ],
 )
 

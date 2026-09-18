@@ -4,8 +4,8 @@ load("//tools/install:install.bzl", "install")
 
 install(
     name = "install",
-    library_dest = "common/lib",
     data_dest = "common",
+    library_dest = "common/lib",
     targets = [
         ":filters",
     ],
@@ -15,68 +15,68 @@ install(
 cc_library(
     name = "filters",
     hdrs = [
-        "digital_filter_coefficients.h",
         "digital_filter.h",
+        "digital_filter_coefficients.h",
         "mean_filter.h",
     ],
+    visibility = ["//visibility:public"],
     deps = [
-        ":digital_filter_coefficients",
         ":digital_filter",
+        ":digital_filter_coefficients",
         ":mean_filter",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "digital_filter",
     srcs = ["digital_filter.cc"],
     hdrs = ["digital_filter.h"],
-    alwayslink = True,
     deps = [
-        "@core//cyber:cyber",
+        "@core//cyber",
     ],
+    alwayslink = True,
 )
 
 cc_library(
     name = "mean_filter",
     srcs = ["mean_filter.cc"],
     hdrs = ["mean_filter.h"],
-    alwayslink = True,
     deps = [
-        "@core//cyber:cyber",
+        "@core//cyber",
     ],
+    alwayslink = True,
 )
 
 cc_library(
     name = "digital_filter_coefficients",
     srcs = ["digital_filter_coefficients.cc"],
     hdrs = ["digital_filter_coefficients.h"],
-    alwayslink = True,
     deps = [
-        "@core//cyber:cyber",
+        "@core//cyber",
     ],
+    alwayslink = True,
 )
 
 cc_test(
     name = "digital_filter_test",
     size = "small",
     srcs = ["digital_filter_test.cc"],
+    linkstatic = True,
     deps = [
         ":digital_filter",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
     name = "mean_filter_test",
     size = "small",
     srcs = ["mean_filter_test.cc"],
+    linkstatic = True,
     deps = [
         ":mean_filter",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(

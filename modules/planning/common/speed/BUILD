@@ -22,11 +22,11 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":st_point",
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/util:print_debug_info",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -37,8 +37,8 @@ cc_test(
     copts = PLANNING_COPTS,
     deps = [
         ":st_boundary",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -51,11 +51,11 @@ cc_library(
         "//modules/common/math",
         "//modules/common/util",
         "//modules/common/util:util_tool",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
         "@com_github_gflags_gflags//:gflags",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

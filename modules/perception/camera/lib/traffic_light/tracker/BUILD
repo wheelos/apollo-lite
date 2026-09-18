@@ -1,5 +1,5 @@
-load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,11 +11,11 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:semantic_cc_proto",
         "@boost.bind",
+        "@core//cyber",
     ],
     alwayslink = True,
 )

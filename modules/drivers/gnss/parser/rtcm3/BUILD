@@ -12,12 +12,12 @@ cc_library(
         "rtcm3_parser.h",
     ],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
-        "//modules/drivers/gnss/util",
         "//modules/drivers/gnss/parser",
         "//modules/drivers/gnss/parser:rtcm_decode",
-        "//third_party/rtklib"
+        "//modules/drivers/gnss/util",
+        "//third_party/rtklib",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
     ],
 )
 

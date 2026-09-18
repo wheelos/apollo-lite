@@ -59,4 +59,3 @@ cc_test(
 )
 
 cpplint()
-

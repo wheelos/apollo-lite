@@ -9,8 +9,8 @@ install(
     library_dest = "map/lib",
     targets = [
         ":hdmap",
-        ":hdmap_util"
-        ],
+        ":hdmap_util",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -28,19 +28,19 @@ cc_library(
         "hdmap_util.h",
     ],
     copts = MAP_COPTS,
+    visibility = ["//visibility:public"],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
         "//modules/common/util:util_tool",
         "//modules/map/hdmap/adapter:opendrive_adapter",
-        "@com_google_absl//absl/strings",
         "@com_github_google_glog//:glog",
+        "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -50,15 +50,15 @@ cc_library(
     ],
     hdrs = ["hdmap_util.h"],
     copts = MAP_COPTS,
+    visibility = ["//visibility:public"],
     deps = [
         ":hdmap",
+        "//modules/common/configs:config_gflags",
+        "@com_google_absl//absl/strings",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_id_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
-        "//modules/common/configs:config_gflags",
-        "@com_google_absl//absl/strings",
     ],
-    visibility = ["//visibility:public"],
 )
 
 filegroup(
@@ -76,16 +76,16 @@ cc_test(
         "hdmap_common_test.cc",
         "hdmap_impl_test.cc",
     ],
-    tags = ["exclude"],
     data = [
         ":testdata",
         #"//modules/common/util",
     ],
+    tags = ["exclude"],
     deps = [
         ":hdmap",
-        "@core//cyber",
         "@com_github_google_glog//:glog",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -97,13 +97,13 @@ cc_test(
     data = [
         ":testdata",
     ],
+    linkstatic = True,
     deps = [
         ":hdmap_util",
-        "@com_google_absl//absl/strings",
         "@com_github_google_glog//:glog",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

@@ -4,11 +4,11 @@ package(default_visibility = ["//visibility:public"])
 
 install(
     name = "install",
-    data_dest = "drivers/addition_data/lidar/velodyne",
-    library_dest = "drivers/lib/lidar/velodyne",
     data = [
         ":runtime_data",
     ],
+    data_dest = "drivers/addition_data/lidar/velodyne",
+    library_dest = "drivers/lib/lidar/velodyne",
     targets = [
         "//modules/drivers/lidar/velodyne/compensator:libvelodyne_compensator_component.so",
         "//modules/drivers/lidar/velodyne/driver:libvelodyne_driver_component.so",

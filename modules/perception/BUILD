@@ -1,5 +1,5 @@
-load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -12,31 +12,30 @@ filegroup(
 
 install(
     name = "perception_testdata_install",
-    data_dest = "perception/addition_data",
     data = [":perception_testdata"],
+    data_dest = "perception/addition_data",
 )
 
 install(
     name = "install",
     data_dest = "perception",
     deps = [
-        ":pb_perception",
         ":pb_hdrs",
-        "//modules/perception/data:install",
-        "//modules/perception/onboard/component:install",
-        "//modules/perception/onboard/transform_wrapper:install",
-        "//modules/perception/onboard/common_flags:install",
-        "//modules/perception/production:install",
-        "//modules/perception/pipeline:install",
+        ":pb_perception",
+        ":perception_testdata_install",
         "//modules/perception/camera/lib/motion_service:install",
         "//modules/perception/camera/tools/offline:install",
-        ":perception_testdata_install"
+        "//modules/perception/data:install",
+        "//modules/perception/onboard/common_flags:install",
+        "//modules/perception/onboard/component:install",
+        "//modules/perception/onboard/transform_wrapper:install",
+        "//modules/perception/pipeline:install",
+        "//modules/perception/production:install",
     ],
 )
 
 install(
     name = "pb_hdrs",
-    data_dest = "perception/include",
     data = [
         "//modules/perception/camera/app/proto:perception_cc_proto",
         "//modules/perception/camera/common/proto:object_template_meta_schema_cc_proto",
@@ -92,24 +91,25 @@ install(
         "//modules/perception/proto:sensor_meta_schema_cc_proto",
         "//modules/perception/proto:tracker_config_cc_proto",
     ],
+    data_dest = "perception/include",
 )
 
 install_files(
     name = "pb_perception",
     dest = "perception",
     files = [
-        "//modules/perception/pipeline/proto/stage:fused_classifier_config_py_pb2",
-        "//modules/perception/pipeline/proto/stage:map_manager_config_py_pb2",
         "//modules/perception/pipeline/proto/plugin:dst_existence_fusion_config_py_pb2",
         "//modules/perception/pipeline/proto/plugin:dst_type_fusion_config_py_pb2",
-        "//modules/perception/proto:motion_service_py_pb2",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_camera_py_pb2",
-        "//modules/perception/proto:perception_config_schema_py_pb2",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_py_pb2",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_py_pb2",
         "//modules/perception/pipeline/proto/plugin:roi_boundary_filter_config_py_pb2",
+        "//modules/perception/pipeline/proto/stage:fused_classifier_config_py_pb2",
+        "//modules/perception/pipeline/proto/stage:map_manager_config_py_pb2",
+        "//modules/perception/proto:motion_service_py_pb2",
+        "//modules/perception/proto:perception_config_schema_py_pb2",
         "//modules/perception/proto:perception_ultrasonic_py_pb2",
         "//modules/perception/proto:tracker_config_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_camera_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_py_pb2",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_py_pb2",
     ],
 )
@@ -117,22 +117,23 @@ install_files(
 install_src_files(
     name = "install_src",
     deps = [
+        ":install_perception_hdrs",
         ":install_perception_src",
-        ":install_perception_hdrs"
     ],
 )
 
 install_src_files(
     name = "install_perception_src",
-    src_dir = ["."],
     dest = "perception/src",
     filter = "*",
+    src_dir = ["."],
 )
 
 install_src_files(
     name = "install_perception_hdrs",
-    src_dir = ["."],
     dest = "perception/include",
     filter = "*.h",
+    src_dir = ["."],
 )
+
 cpplint()

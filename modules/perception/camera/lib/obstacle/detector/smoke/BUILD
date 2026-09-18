@@ -30,10 +30,10 @@ cc_library(
     ],
     deps = [
         ":smoke_object_maintainer",
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",
+        "@core//cyber",
     ],
 )
 
@@ -46,7 +46,6 @@ cc_library(
     ],
     deps = [
         ":smoke_region_output",
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/common",
@@ -64,6 +63,7 @@ cc_library(
         "//modules/perception/inference/utils:inference_util_lib",
         "//modules/perception/pipeline:stage",
         "@boost.algorithm",
+        "@core//cyber",
         "@opencv//:imgproc",
     ],
 )
@@ -76,8 +76,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
+        "@core//cyber",
     ],
 )
 

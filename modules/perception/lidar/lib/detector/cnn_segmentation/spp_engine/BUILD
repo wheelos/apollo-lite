@@ -16,8 +16,8 @@ cc_library(
         ":spp_label_image",
         ":spp_seg_cc_2d",
         ":spp_struct",
-        "@core//cyber",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -97,12 +97,12 @@ cc_library(
     ],
     deps = [
         ":spp_label_image",
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common/i_lib",
         "//modules/perception/lib/thread",
         "//modules/perception/lidar/common",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
     ],
 )
 

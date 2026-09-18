@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,24 +15,24 @@ cc_library(
         "rtk_localization_component.h",
     ],
     copts = ["-DMODULE_NAME=\\\"localization\\\""],
-    alwayslink = True,
     deps = [
-        "@core//cyber",
         "//modules/common/math",
         "//modules/common/monitor_log",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "//modules/common/util:util_tool",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:ins_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:imu_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/localization/proto:rtk_config_cc_proto",
         "//modules/transform:transform_broadcaster",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:imu_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:ins_cc_proto",
     ],
+    alwayslink = True,
 )
 
 cc_binary(
@@ -48,10 +48,10 @@ cc_test(
     srcs = ["rtk_localization_test.cc"],
     data = ["//modules/localization:localization_testdata"],
     deps = [
-        "@core//cyber",
         "//modules/common/util",
         "//modules/localization/rtk:rtk_localization_component_lib",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

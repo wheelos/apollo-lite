@@ -19,10 +19,10 @@ cc_library(
         ":base_teller",
         "//modules/common/adapters:adapter_gflags",
         "//modules/map/hdmap:hdmap_util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/storytelling:frame_manager",
         "//modules/storytelling/common:storytelling_gflags",
         "//modules/storytelling/proto:storytelling_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

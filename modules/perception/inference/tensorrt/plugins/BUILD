@@ -44,8 +44,8 @@ cuda_library(
     hdrs = ["dfmb_psroi_align_plugin.h"],
     deps = [
         ":kernels_cuda",
-        "@core//cyber",
         "//modules/perception/inference/tensorrt:rt_common_without_protobuf",
+        "@core//cyber",
         "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],

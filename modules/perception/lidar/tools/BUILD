@@ -7,7 +7,6 @@ cc_binary(
     name = "offline_lidar_obstacle_perception",
     srcs = ["offline_lidar_obstacle_perception.cc"],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/common/io:io_util",
@@ -17,7 +16,9 @@ cc_binary(
         "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
         "@com_github_gflags_gflags//:gflags",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@eigen",
     ],
 )
+
 cpplint()

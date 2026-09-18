@@ -12,10 +12,10 @@ cc_library(
     ],
     deps = [
         "//modules/common/math",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
     ],
 )
 
@@ -23,11 +23,11 @@ cc_test(
     name = "pose_container_test",
     size = "small",
     srcs = ["pose_container_test.cc"],
+    linkstatic = True,
     deps = [
         "//modules/prediction/container/pose:pose_container",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

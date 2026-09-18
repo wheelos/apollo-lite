@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -6,11 +6,11 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "onnx_obstacle_detector",
     srcs = ["onnx_obstacle_detector.cc"],
-    copts = [
-        '-DMODULE_NAME=\\"perception\\"',
-    ],
     hdrs = [
         "onnx_obstacle_detector.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/perception/common:perception_gflags",
@@ -30,9 +30,9 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/inference:inference_lib",
+        "@core//cyber",
         "@libtorch_gpu",
     ],
 )

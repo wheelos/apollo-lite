@@ -24,4 +24,3 @@ cc_library(
 )
 
 cpplint()
-

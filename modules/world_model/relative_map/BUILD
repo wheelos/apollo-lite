@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -8,17 +8,17 @@ MAP_COPTS = ["-DMODULE_NAME=\\\"map\\\""]
 
 install(
     name = "install",
-    data_dest = "map/addition_data/relative_map",
-    library_dest = "map/lib",
     data = [
         ":relative_map_conf",
         ":testdata",
     ],
+    data_dest = "map/addition_data/relative_map",
+    library_dest = "map/lib",
     targets = [
         ":librelative_map_component.so",
     ],
     deps = [
-    ]
+    ],
 )
 
 filegroup(
@@ -45,9 +45,9 @@ cc_library(
         "//modules/common/status",
         "//modules/common/util",
         "//modules/world_model/relative_map/common:relative_map_gflags",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "//modules/world_model/relative_map/proto:relative_map_config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
     ],
 )
 
@@ -57,11 +57,6 @@ cc_library(
     hdrs = ["navigation_lane.h"],
     copts = MAP_COPTS,
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_lane_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "//modules/common/math",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
@@ -69,6 +64,11 @@ cc_library(
         "//modules/world_model/relative_map/common:relative_map_gflags",
         "//modules/world_model/relative_map/proto:relative_map_config_cc_proto",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_lane_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
     ],
 )
 
@@ -79,9 +79,9 @@ cc_library(
     copts = MAP_COPTS,
     deps = [
         ":relative_map_lib",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
     ],
 )
 

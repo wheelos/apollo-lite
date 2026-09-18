@@ -1,6 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -43,10 +42,10 @@ cc_library(
     hdrs = ["component/lslidar_component.h"],
     copts = ['-DMODULE_NAME=\\"lslidar\\"'],
     deps = [
-        "@core//cyber",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/lslidar/driver",
         "//modules/drivers/lidar/lslidar/parser:convert",
+        "@core//cyber",
     ],
     alwayslink = True,
 )

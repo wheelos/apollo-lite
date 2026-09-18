@@ -15,8 +15,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "@boost.circular_buffer",
+        "@core//cyber",
     ],
 )
 

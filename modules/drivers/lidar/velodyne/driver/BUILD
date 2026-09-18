@@ -4,7 +4,6 @@ load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
-
 install(
     name = "install",
     library_dest = "drivers/lib/lidar/velodyne/driver",
@@ -26,11 +25,11 @@ cc_library(
     hdrs = ["velodyne_driver_component.h"],
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/drivers/lidar/velodyne/driver",
+        "@core//cyber",
     ],
-    alwayslink = True
+    alwayslink = True,
 )
 
 cc_library(
@@ -48,11 +47,11 @@ cc_library(
     ],
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/drivers/lidar/common/driver_factory:driver_base",
         "//modules/drivers/lidar/proto:config_cc_proto",
         "//modules/drivers/lidar/proto:velodyne_config_cc_proto",
+        "@core//cyber",
     ],
 )
 

@@ -1,4 +1,3 @@
-
 filegroup(
     name = "runtime_data",
     data = [

@@ -48,8 +48,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "@boost.format",
+        "@core//cyber",
     ],
 )
 
@@ -105,12 +105,12 @@ cc_test(
     size = "small",
     srcs = ["kalman_filter_test.cc"],
     copts = ["-fno-access-control"],
+    linkstatic = True,
     deps = [
         ":kalman_filter",
         "//modules/perception/fusion/base",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

@@ -23,7 +23,6 @@ cc_library(
     name = "collision_guardian_component_lib",
     srcs = ["collision_guardian_component.cc"],
     hdrs = ["collision_guardian_component.h"],
-    alwayslink = True,
     copts = COLLISION_GUARDIAN_COPTS,
     deps = [
         ":occupancy_detector",
@@ -36,6 +35,7 @@ cc_library(
         "@eigen",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
+    alwayslink = True,
 )
 
 cc_binary(
@@ -76,9 +76,9 @@ filegroup(
 
 install(
     name = "install",
+    data = [":runtime_data"],
     data_dest = "collision_guardian",
     library_dest = "collision_guardian/lib",
-    data = [":runtime_data"],
     targets = [":libcollision_guardian_component.so"],
 )
 

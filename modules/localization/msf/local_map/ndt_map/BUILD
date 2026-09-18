@@ -37,10 +37,10 @@ cc_test(
     data = [":test_data"],
     deps = [
         ":ndt_map",
-        "@core//cyber",
         "//modules/localization/msf/common/io:common_io",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -51,8 +51,8 @@ cc_test(
     srcs = ["ndt_map_config_test.cc"],
     deps = [
         ":ndt_map",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

@@ -25,11 +25,11 @@ cc_library(
     hdrs = ["pri_sec_fusion_component.h"],
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
-        "@core//cyber",
         "//modules/drivers/lidar/proto:velodyne_config_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/transform:transform_query",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
     alwayslink = True,
 )

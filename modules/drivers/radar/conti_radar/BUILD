@@ -1,16 +1,16 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
 install(
     name = "install",
-    data_dest = "drivers/addition_data/conti_radar",
-    library_dest = "drivers/lib/conti_radar",
     data = [
         ":runtime_data",
     ],
+    data_dest = "drivers/addition_data/conti_radar",
+    library_dest = "drivers/lib/conti_radar",
     targets = [
         ":libconti_radar.so",
     ],
@@ -44,10 +44,8 @@ cc_library(
     srcs = ["conti_radar_canbus_component.cc"],
     hdrs = ["conti_radar_canbus_component.h"],
     copts = ['-DMODULE_NAME=\\"conti_radar\\"'],
-    alwayslink = True,
     deps = [
         ":conti_radar_message_manager",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "//modules/drivers/canbus/can_client:can_client_factory",
@@ -55,10 +53,12 @@ cc_library(
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/proto:sensor_canbus_conf_cc_proto",
         "//modules/drivers/radar/conti_radar/protocol:drivers_conti_radar_protocol",
+        "@core//cyber",
+        "@eigen",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:pose_cc_proto",
-        "@eigen",
     ],
+    alwayslink = True,
 )
 
 cc_binary(

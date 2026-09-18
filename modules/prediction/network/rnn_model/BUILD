@@ -8,8 +8,8 @@ cc_library(
     srcs = ["rnn_model.cc"],
     hdrs = ["rnn_model.h"],
     deps = [
-        "@core//cyber",
         "//modules/prediction/network:net_model",
+        "@core//cyber",
     ],
 )
 
@@ -21,9 +21,9 @@ cc_test(
         "//modules/prediction:prediction_data",
     ],
     deps = [
-        "@core//cyber",
         "//modules/prediction/network/rnn_model",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

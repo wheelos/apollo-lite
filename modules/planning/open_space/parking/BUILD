@@ -11,9 +11,9 @@ cc_library(
     hdrs = ["parking_slot.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/math:math_utils",
         "//modules/common/math:vec2d",
+        "@core//cyber",
     ],
 )
 
@@ -24,9 +24,9 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":parking_slot",
-        "@core//cyber",
-        "//modules/map/hdmap:hdmap",
+        "//modules/map/hdmap",
         "//modules/map/pnc_map",
+        "@core//cyber",
     ],
 )
 
@@ -37,12 +37,12 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":parking_slot",
-        "@core//cyber",
         "//modules/common/math:geometry",
         "//modules/common/math:math_utils",
         "//modules/common/math:vec2d",
-        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "@boost.geometry",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
     ],
 )
 
@@ -53,12 +53,12 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":parking_roi_geometry",
-        "@core//cyber",
         "//modules/common/math:geometry",
         "//modules/common/math:vec2d",
-        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/planning/open_space/coarse_trajectory_generator:node3d",
         "//modules/planning/proto:planning_config_cc_proto",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
     ],
 )
 
@@ -70,10 +70,10 @@ cc_library(
     deps = [
         ":parking_roi_geometry",
         ":parking_slot",
-        "@core//cyber",
         "//modules/common/math:math_utils",
         "//modules/common/math:vec2d",
         "//modules/planning/proto:planning_config_cc_proto",
+        "@core//cyber",
     ],
 )
 
@@ -84,9 +84,9 @@ cc_test(
     deps = [
         ":parking_slot",
         ":parking_slot_provider",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_parking_space_cc_proto",
-        "//modules/planning/testing:gtest_exit_main",
         "//modules/map/pnc_map:path",
+        "//modules/planning/testing:gtest_exit_main",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_parking_space_cc_proto",
     ],
 )
 

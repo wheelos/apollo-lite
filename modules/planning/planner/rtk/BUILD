@@ -9,19 +9,19 @@ cc_library(
     hdrs = ["rtk_replay_planner.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning/common:planning_common",
         "//modules/planning/math/curve1d:quartic_polynomial_curve1d",
         "//modules/planning/planner",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/proto:planning_config_cc_proto",
         "@com_github_gflags_gflags//:gflags",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -31,13 +31,13 @@ cc_test(
     srcs = ["rtk_replay_planner_test.cc"],
     data = ["//modules/planning:planning_testdata"],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":rtk_planner",
-        "@core//cyber",
         "//modules/common/util",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
-    linkstatic = True,
 )
 
 cpplint()

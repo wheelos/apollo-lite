@@ -10,18 +10,20 @@ install(
     targets = [
         ":control_tester",
         ":pad_terminal",
-        ],
+    ],
     visibility = ["//visibility:public"],
 )
 
 cc_binary(
     name = "control_tester",
     srcs = ["control_tester.cc"],
+    linkstatic = True,
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util",
         "//modules/control/common:control_gflags",
+        "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "@wheelos_msgs//wheelos_msgs/dreamview_msgs:chart_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
@@ -42,31 +44,29 @@ cc_binary(
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_speed_bump_cc_proto",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_stop_sign_cc_proto",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_yield_sign_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:decision_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:sl_boundary_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
-        "@com_github_gflags_gflags//:gflags",
     ],
-    linkstatic = True,
 )
 
 cc_binary(
     name = "pad_terminal",
     srcs = ["pad_terminal.cc"],
+    linkstatic = True,
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/control/common",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
     ],
-    linkstatic = True,
 )
 
 cpplint()

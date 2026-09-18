@@ -2,6 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
+
 PREDICTION_COPTS = ["-DMODULE_NAME=\\\"prediction\\\""]
 
 cc_library(
@@ -10,8 +11,8 @@ cc_library(
     hdrs = ["net_util.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/prediction/proto:network_layers_cc_proto",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -42,11 +43,11 @@ cc_test(
     name = "net_util_test",
     size = "small",
     srcs = ["net_util_test.cc"],
+    linkstatic = True,
     deps = [
         "//modules/prediction/network:net_util",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(

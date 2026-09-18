@@ -4,8 +4,8 @@ load("//tools/install:install.bzl", "install")
 
 install(
     name = "install",
-    library_dest = "common/lib",
     data_dest = "common",
+    library_dest = "common/lib",
     runtime_dest = "common/bin",
     targets = [
         ":kv_db",
@@ -20,15 +20,15 @@ cc_library(
         "kv_db.cc",
     ],
     hdrs = ["kv_db.h"],
+    visibility = ["//visibility:public"],
     deps = [
-        "@core//cyber",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "@com_github_gflags_gflags//:gflags",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@sqlite3",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_test(
@@ -46,8 +46,8 @@ cc_binary(
     srcs = ["kv_db_tool.cc"],
     deps = [
         ":kv_db",
-        "@core//cyber",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
     ],
 )
 

@@ -13,20 +13,20 @@ filegroup(
 
 install(
     name = "map_testdata",
-    data_dest = "map/addition_data",
     data = [":testdata"],
+    data_dest = "map/addition_data",
 )
 
 install(
     name = "install",
     data_dest = "map",
     deps = [
+        ":map_testdata",
         ":pb_map",
-        "//modules/map/tools:install",
-        "//modules/map/hdmap/adapter:install",
         "//modules/map/hdmap:install",
+        "//modules/map/hdmap/adapter:install",
         "//modules/map/pnc_map:install",
-        ":map_testdata"
+        "//modules/map/tools:install",
     ],
 )
 
@@ -58,21 +58,21 @@ install_files(
 install_src_files(
     name = "install_src",
     deps = [
+        ":install_map_hdrs",
         ":install_map_src",
-        ":install_map_hdrs"
     ],
 )
 
 install_src_files(
     name = "install_map_src",
-    src_dir = ["."],
     dest = "map/src",
     filter = "*",
+    src_dir = ["."],
 )
 
 install_src_files(
     name = "install_map_hdrs",
-    src_dir = ["."],
     dest = "map/include",
     filter = "*.h",
+    src_dir = ["."],
 )

@@ -84,6 +84,3 @@ cc_test(
 )
 
 cpplint()
-
-
-

@@ -26,17 +26,17 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":navi_task",
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/navi/decider:navi_obstacle_decider",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/tasks:task",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -53,17 +53,17 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":navi_task",
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/navi/decider:navi_obstacle_decider",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/tasks:task",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -74,14 +74,14 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":navi_task",
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:frame",
         "//modules/planning/common:obstacle",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/tasks:task",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 

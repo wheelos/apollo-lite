@@ -1,5 +1,5 @@
-load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,10 +11,10 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
+        "@core//cyber",
     ],
 )
 
@@ -27,7 +27,6 @@ cc_library(
     ],
     deps = [
         ":debug_info",
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app/proto:perception_cc_proto",
@@ -51,6 +50,7 @@ cc_library(
         "//modules/perception/inference/utils:inference_util_lib",
         "//modules/perception/pipeline",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
     ],
 )
 
@@ -101,14 +101,14 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/camera/app/proto:perception_cc_proto",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/camera/lib/traffic_light/detector/detection",
         "//modules/perception/camera/lib/traffic_light/detector/recognition",
-        "//modules/perception/pipeline:pipeline",
+        "//modules/perception/pipeline",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -122,7 +122,6 @@ cc_library(
     ],
     deps = [
         ":debug_info",
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app/proto:perception_cc_proto",
@@ -139,6 +138,7 @@ cc_library(
         "//modules/perception/inference/utils:inference_util_lib",
         "//modules/perception/pipeline",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
     ],
 )
 
@@ -150,13 +150,13 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/perception/base",
         "//modules/perception/camera/common:lane_object",
         "//modules/perception/camera/lib/interface",
         "@boost.circular_buffer",
+        "@core//cyber",
     ],
     alwayslink = True,
 )

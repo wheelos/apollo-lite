@@ -32,10 +32,10 @@ cc_library(
         "//modules/prediction/proto:prediction_conf_cc_proto",
         "//modules/prediction/pipeline:vector_net",
         #"//third_party/libtorch",
-    ]  + if_gpu(
+    ] + if_gpu(
         ["@libtorch_gpu"],
         ["@libtorch_cpu"],
-    )
+    ),
 )
 
 cc_test(
@@ -49,19 +49,19 @@ cc_test(
     linkopts = [
         "-lgomp",
     ],
+    linkstatic = True,
     deps = [
         "//modules/prediction/common:kml_map_based_test",
         "//modules/prediction/evaluator:evaluator_manager",
     ],
-    linkstatic = True,
 )
 
 cc_library(
     name = "evaluator",
     hdrs = ["evaluator.h"],
     deps = [
-        "//modules/prediction/container/obstacles:obstacle",
         "//modules/prediction/container/adc_trajectory:adc_trajectory_container",
+        "//modules/prediction/container/obstacles:obstacle",
     ],
 )
 

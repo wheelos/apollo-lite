@@ -1,5 +1,5 @@
-load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -12,11 +12,11 @@ cc_library(
     ],
     deps = [
         ":pose",
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/common/io:io_util",
         "//modules/perception/common/sensor_manager",
+        "@core//cyber",
     ],
 )
 
@@ -28,9 +28,9 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
+        "@core//cyber",
     ],
 )
 
@@ -44,16 +44,16 @@ cc_library(
     deps = [
         ":multi_camera_projection",
         ":pose",
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/camera/lib/interface:base_init_options",
         "//modules/perception/camera/lib/interface:base_tl_preprocessor",
-        "//modules/perception/lib/registerer",
         "//modules/perception/lib/config_manager",
+        "//modules/perception/lib/registerer",
         "@boost.circular_buffer",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,

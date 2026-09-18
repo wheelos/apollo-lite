@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -9,7 +9,7 @@ cc_library(
         ":charge_node",
         ":move_to_node",
         ":send_pad_node",
-        ":station_wait_node"
+        ":station_wait_node",
     ],
 )
 
@@ -18,9 +18,9 @@ cc_library(
     srcs = ["send_pad_node.cc"],
     hdrs = ["send_pad_node.h"],
     deps = [
-        "@core//cyber",
         "//modules/mission/common:mission_context",
-        "@behaviortree_cpp//:behaviortree_cpp"
+        "@behaviortree_cpp",
+        "@core//cyber",
     ],
 )
 
@@ -29,9 +29,9 @@ cc_library(
     srcs = ["charge_node.cc"],
     hdrs = ["charge_node.h"],
     deps = [
-        "@core//cyber",
         "//modules/mission/common:mission_context",
-        "@behaviortree_cpp//:behaviortree_cpp"
+        "@behaviortree_cpp",
+        "@core//cyber",
     ],
 )
 
@@ -40,10 +40,10 @@ cc_library(
     srcs = ["move_to_node.cc"],
     hdrs = ["move_to_node.h"],
     deps = [
-        "@core//cyber",
-        "//modules/mission/common:mission_context",
         "//modules/mission/common:bt_type_converters",
-        "@behaviortree_cpp//:behaviortree_cpp"
+        "//modules/mission/common:mission_context",
+        "@behaviortree_cpp",
+        "@core//cyber",
     ],
 )
 
@@ -52,9 +52,9 @@ cc_library(
     srcs = ["station_wait_node.cc"],
     hdrs = ["station_wait_node.h"],
     deps = [
-        "@core//cyber",
         "//modules/mission/common:mission_context",
-        "@behaviortree_cpp//:behaviortree_cpp"
+        "@behaviortree_cpp",
+        "@core//cyber",
     ],
 )
 

@@ -15,10 +15,10 @@ cc_library(
         "sequence_maintainer.h",
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/tool/benchmark/lidar/util:benchmark_util",
         "//modules/perception/tool/benchmark/lidar/util:object_util",
+        "@core//cyber",
     ],
 )
 

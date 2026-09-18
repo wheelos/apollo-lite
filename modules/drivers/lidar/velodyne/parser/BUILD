@@ -25,10 +25,10 @@ cc_library(
     hdrs = ["velodyne_convert_component.h"],
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
-        "@core//cyber",
         "//modules/drivers/lidar/velodyne/parser:convert",
+        "@core//cyber",
     ],
-    alwayslink = True
+    alwayslink = True,
 )
 
 cc_library(
@@ -54,12 +54,12 @@ cc_library(
     ],
     copts = ['-DMODULE_NAME=\\"velodyne\\"'],
     deps = [
-        "@core//cyber",
         "//modules/drivers/lidar/proto:velodyne_config_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "@boost.array",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
 )
 

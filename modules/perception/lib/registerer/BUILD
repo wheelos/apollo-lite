@@ -7,11 +7,11 @@ cc_library(
     name = "registerer",
     srcs = ["registerer.cc"],
     hdrs = ["registerer.h"],
-    deps = [
-        "@core//cyber",
-    ],
     copts = [
         '-DMODULE_NAME=\\"perception\\"',
+    ],
+    deps = [
+        "@core//cyber",
     ],
 )
 
@@ -19,11 +19,11 @@ cc_test(
     name = "registerer_test",
     size = "small",
     srcs = ["registerer_test.cc"],
+    linkstatic = True,
     deps = [
         ":registerer",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

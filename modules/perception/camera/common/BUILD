@@ -41,8 +41,8 @@ cc_library(
     ],
     deps = [
         ":undistortion_handler",
-        "@core//cyber",
         "//modules/perception/base",
+        "@core//cyber",
         "@cuda//:npp",
     ],
 )
@@ -74,13 +74,13 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common/proto:object_template_meta_schema_cc_proto",
         "//modules/perception/common/io:io_util",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lib/thread",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
     ],
 )
 
@@ -113,9 +113,9 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
+        "@core//cyber",
         "@cuda//:npp",
     ],
 )
@@ -146,7 +146,7 @@ cc_library(
 cc_library(
     name = "temporary_transition_types",
     hdrs = [
-        "temporary_transition_types.h"
+        "temporary_transition_types.h",
     ],
     copts = [
         '-DMODULE_NAME=\\"perception\\"',
@@ -155,6 +155,9 @@ cc_library(
 
 cc_library(
     name = "common",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":camera_frame",
         ":camera_ground_plane",
@@ -168,9 +171,6 @@ cc_library(
         ":undistortion_handler",
         ":util",
         ":temporary_transition_types",
-    ],
-    copts = [
-        '-DMODULE_NAME=\\"perception\\"',
     ],
 )
 

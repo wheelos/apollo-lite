@@ -7,7 +7,6 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "lincoln_vehicle_factory",
-    alwayslink = True,
     srcs = ["lincoln_vehicle_factory.cc"],
     hdrs = ["lincoln_vehicle_factory.h"],
     copts = CANBUS_COPTS,
@@ -17,6 +16,7 @@ cc_library(
         "//modules/canbus/vehicle:abstract_vehicle_factory",
         "//modules/canbus/vehicle:vehicle_factory_core",
     ],
+    alwayslink = True,
 )
 
 cc_library(
@@ -25,10 +25,10 @@ cc_library(
     hdrs = ["lincoln_message_manager.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle/lincoln/protocol:canbus_lincoln_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -39,7 +39,6 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         ":lincoln_message_manager",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/lincoln/protocol:canbus_lincoln_protocol",
         "//modules/common/kv_db",
@@ -47,6 +46,7 @@ cc_library(
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 

@@ -9,11 +9,11 @@ cc_library(
     hdrs = ["control_test_base.h"],
     copts = ["-fno-access-control"],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "//modules/control:control_component_lib",
         "//modules/control/common:control_gflags",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
     ],
 )
 

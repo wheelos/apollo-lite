@@ -18,8 +18,8 @@ cc_library(
     ],
     hdrs = ["sim_control_gflags.h"],
     deps = [
-        "@com_github_gflags_gflags//:gflags",
         "//modules/dreamview/backend/sim_control_manager/proto:sim_control_internal_cc_proto",
+        "@com_github_gflags_gflags//:gflags",
     ],
 )
 

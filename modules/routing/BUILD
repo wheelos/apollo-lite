@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -54,32 +54,31 @@ filegroup(
 
 install(
     name = "install",
+    data = [
+        ":routing.BUILD",
+        ":runtime_data",
+    ],
     data_dest = "routing",
     library_dest = "routing/lib",
-    data = [
-        ":runtime_data",
-        ":routing.BUILD",
-    ],
     targets = [
         ":librouting_component.so",
     ],
     deps = [
-        ":pb_routing",
         ":pb_hdrs",
-        "//modules/routing/topo_creator:install",
-        "//modules/routing/tools/routing_tester:install",
+        ":pb_routing",
         "//modules/routing/tools:install",
+        "//modules/routing/tools/routing_tester:install",
+        "//modules/routing/topo_creator:install",
     ],
 )
 
 install(
     name = "pb_hdrs",
-    data_dest = "routing/include",
     data = [
         "//modules/routing/proto:routing_config_cc_proto",
         "//modules/routing/proto:topo_graph_cc_proto",
-
     ],
+    data_dest = "routing/include",
 )
 
 install_files(
@@ -93,22 +92,23 @@ install_files(
 install_src_files(
     name = "install_src",
     deps = [
+        ":install_routing_hdrs",
         ":install_routing_src",
-        ":install_routing_hdrs"
     ],
 )
 
 install_src_files(
     name = "install_routing_src",
-    src_dir = ["."],
     dest = "routing/src",
     filter = "*",
+    src_dir = ["."],
 )
 
 install_src_files(
     name = "install_routing_hdrs",
-    src_dir = ["."],
     dest = "routing/include",
     filter = "*.h",
+    src_dir = ["."],
 )
+
 cpplint()

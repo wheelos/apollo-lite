@@ -11,7 +11,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:camera",
         "//modules/perception/base:distortion_model",
         "//modules/perception/base:omnidirectional_model",
@@ -19,6 +18,7 @@ cc_library(
         "@boost.filesystem",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@eigen",
     ],
 )

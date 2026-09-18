@@ -16,9 +16,9 @@ cc_library(
         "//modules/planning/common:path_decision",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:reference_line_info",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/tasks:task",
         "//modules/planning/tasks/utils:st_gap_estimator",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

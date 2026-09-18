@@ -8,9 +8,9 @@ cc_library(
     srcs = ["socket_can_client_raw.cc"],
     hdrs = ["socket_can_client_raw.h"],
     deps = [
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/drivers/canbus/can_client",
         "@com_google_absl//absl/strings",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
     ],
 )
 
@@ -19,10 +19,10 @@ cc_test(
     size = "small",
     srcs = ["socket_can_client_raw_test.cc"],
     deps = [
-        "@core//cyber",
         "//modules/drivers/canbus/can_client/socket:socket_can_client_raw",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
