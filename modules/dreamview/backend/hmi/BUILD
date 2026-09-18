@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install")
 
@@ -23,17 +23,17 @@ cc_library(
     copts = DREAMVIEW_COPTS,
     deps = [
         ":hmi_worker",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/monitor_log",
-        "//modules/common/util:util_tool",
         "//modules/common/util:string_util",
+        "//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/backend/map:map_service",
         "//modules/dreamview/backend/point_cloud:point_cloud_updater",
         "//modules/dreamview/proto:preprocess_table_cc_proto",
+        "@core//cyber",
     ],
 )
 
@@ -58,13 +58,6 @@ cc_library(
     ],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/audio_msgs:audio_event_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_event_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/monitor_msgs:system_status_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:config_gflags",
         "//modules/common/configs:vehicle_config_helper",
@@ -72,12 +65,19 @@ cc_library(
         "//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/proto:hmi_config_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/dreamview_msgs:hmi_status_cc_proto",
-        "//modules/dreamview/proto:scenario_cc_proto",
-        "//modules/dreamview/proto:record_cc_proto",
         "//modules/dreamview/proto:hmi_mode_cc_proto",
+        "//modules/dreamview/proto:record_cc_proto",
+        "//modules/dreamview/proto:scenario_cc_proto",
         "@boost.thread",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/audio_msgs:audio_event_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_event_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/dreamview_msgs:hmi_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:system_status_cc_proto",
     ],
 )
 

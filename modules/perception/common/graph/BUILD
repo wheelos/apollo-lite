@@ -22,10 +22,10 @@ cc_library(
 cc_library(
     name = "disjoint_set",
     srcs = ["disjoint_set.cc"],
+    hdrs = ["disjoint_set.h"],
     copts = [
         '-DMODULE_NAME=\\"perception\\"',
     ],
-    hdrs = ["disjoint_set.h"],
 )
 
 cc_test(
@@ -55,11 +55,11 @@ cc_test(
     name = "graph_segmentor_test",
     size = "small",
     srcs = ["graph_segmentor_test.cc"],
+    linkstatic = True,
     deps = [
         ":graph_segmentor",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(

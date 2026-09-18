@@ -33,15 +33,15 @@ cc_library(
 
 cc_library(
     name = "base_type",
-    copts = [
-        '-DMODULE_NAME=\\"perception\\"',
-    ],
     hdrs = [
         "hdmap_struct.h",
         "landmark_struct.h",
         "lane_struct.h",
         "sensor_meta.h",
         "vehicle_struct.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
         "//modules/common/util:util_tool",
@@ -58,8 +58,8 @@ cc_library(
     deps = [
         ":common",
         ":syncedmem",
-        "@core//cyber",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
     ],
 )
 
@@ -219,8 +219,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -238,19 +238,21 @@ cc_test(
 cc_library(
     name = "object",
     srcs = ["object.cc"],
-    copts = [
-        '-DMODULE_NAME=\\"perception\\"',
-    ],
     hdrs = [
         "object.h",
         "object_supplement.h",
         "object_types.h",
         "vehicle_struct.h",
     ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":box",
         ":point_cloud",
         "//modules/common/util",
+        "@boost.circular_buffer",
+        "@eigen",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
@@ -262,8 +264,6 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:lane_graph_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_point_cc_proto",
-        "@boost.circular_buffer",
-        "@eigen",
     ],
 )
 
@@ -302,8 +302,8 @@ cc_test(
         ":object_pool",
         ":object_pool_types",
         ":point_cloud",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

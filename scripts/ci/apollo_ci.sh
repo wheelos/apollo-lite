@@ -20,44 +20,29 @@ set -e
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 source "${TOP_DIR}/scripts/apollo.bashrc"
-source "${TOP_DIR}/scripts/apollo_base.sh"
-ARCH="$(uname -m)"
 
-APOLLO_BUILD_SH="${APOLLO_ROOT_DIR}/scripts/apollo_build.sh"
-APOLLO_TEST_SH="${APOLLO_ROOT_DIR}/scripts/apollo_test.sh"
-APOLLO_LINT_SH="${APOLLO_ROOT_DIR}/scripts/apollo_lint.sh"
-
-function run_ci_build() {
-  bash "${APOLLO_BUILD_SH}"
-}
-
-function run_ci_test() {
-  bash "${APOLLO_TEST_SH}" --config=unit_test
-}
+APOLLO_LINT_SH="${APOLLO_ROOT_DIR}/scripts/ci/apollo_lint.sh"
 
 function run_ci_lint() {
-  bash "${APOLLO_LINT_SH}" --cpp
+  if [[ "$#" -eq 0 ]]; then
+    bash "${APOLLO_LINT_SH}" --lint --diff
+  else
+    bash "${APOLLO_LINT_SH}" --lint "$@"
+  fi
 }
 
 function main() {
-  local cmd="$1"
-  if [ -z "${cmd}" ]; then
-    cmd="ALL"
-    info "Running ALL ..."
-    run_ci_lint
-    run_ci_build
-    run_ci_test
-  elif [ "${cmd}" == "test" ]; then
-    info "Running CI Test ..."
-    run_ci_test
-  elif [ "${cmd}" == "build" ]; then
-    info "Running CI Build ..."
-    run_ci_build
-  elif [ "${cmd}" == "lint" ]; then
-    info "Running CI Lint ..."
-    run_ci_lint
+  local cmd="${1:-lint}"
+  if [[ "${cmd}" == "lint" || "${cmd}" == "build" || "${cmd}" == "test" ]]; then
+    shift
+    info "Running CI lint only ..."
+    run_ci_lint "$@"
+    success "ci lint finished."
+    return 0
   fi
-  success "ci ${cmd} finished."
+
+  error "Unsupported CI command: ${cmd}. CI runs lint only."
+  return 1
 }
 
 main "$@"

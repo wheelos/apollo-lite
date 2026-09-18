@@ -39,11 +39,11 @@ cc_test(
     name = "learning_model_inference_task_test",
     size = "small",
     srcs = ["learning_model_inference_task_test.cc"],
+    linkstatic = True,
     deps = [
         "learning_model_inference_task",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(

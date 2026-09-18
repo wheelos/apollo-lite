@@ -11,7 +11,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:base_type",
         "//modules/perception/base:blob",
         "//modules/perception/base:box",
@@ -30,6 +29,7 @@ cc_library(
         "//modules/perception/lidar/lib/scene_manager",
         "//modules/perception/lidar/lib/scene_manager/roi_service",
         "//modules/perception/pipeline:stage",
+        "@core//cyber",
         "@eigen",
     ],
 )

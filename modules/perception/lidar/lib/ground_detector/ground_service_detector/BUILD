@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -11,7 +11,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util",
         "//modules/perception/base:base_type",
         "//modules/perception/lib/config_manager",
@@ -23,9 +22,10 @@ cc_library(
         "//modules/perception/lidar/lib/scene_manager:scene_service",
         "//modules/perception/lidar/lib/scene_manager/ground_service",
         "//modules/perception/lidar/lib/scene_manager/ground_service:ground_struct",
+        "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:ground_service_detector_config_cc_proto",
         "//modules/perception/proto:perception_config_schema_cc_proto",
-        "//modules/perception/pipeline:stage",
+        "@core//cyber",
         "@eigen",
     ],
 )

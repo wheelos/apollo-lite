@@ -1,16 +1,16 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
 install(
     name = "install",
-    data_dest = "drivers/addition_data/ultrasonic_radar",
-    library_dest = "drivers/lib/racobit_radar",
     data = [
         ":runtime_data",
     ],
+    data_dest = "drivers/addition_data/ultrasonic_radar",
+    library_dest = "drivers/lib/racobit_radar",
     targets = [
         ":libultrasonic_radar_canbus_component.so",
     ],
@@ -31,12 +31,12 @@ cc_library(
     srcs = ["ultrasonic_radar_message_manager.cc"],
     hdrs = ["ultrasonic_radar_message_manager.h"],
     deps = [
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "//modules/common/util:util_tool",
         "//modules/drivers/canbus:sensor_gflags",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:ultrasonic_radar_cc_proto",
     ],
 )
@@ -84,12 +84,12 @@ cc_library(
     srcs = ["ultrasonic_radar_canbus_component.cc"],
     hdrs = ["ultrasonic_radar_canbus_component.h"],
     copts = ['-DMODULE_NAME=\\"ultrasonic_radar_canbus\\"'],
-    alwayslink = True,
     deps = [
         ":ultrasonic_radar_canbus_lib",
         "//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:ultrasonic_radar_cc_proto",
     ],
+    alwayslink = True,
 )
 
 cc_binary(

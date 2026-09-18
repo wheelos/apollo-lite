@@ -20,13 +20,10 @@ cc_library(
     hdrs = ["lane_follow_stage.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/status",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "//modules/common/vehicle_state:vehicle_state_provider",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/map/hdmap",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:speed_profile_generator",
@@ -41,9 +38,12 @@ cc_library(
         "//modules/planning/tasks/optimizers:path_optimizer",
         "//modules/planning/tasks/optimizers:speed_optimizer",
         "//modules/planning/tasks/optimizers/path_time_heuristic:path_time_heuristic_optimizer",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -54,13 +54,10 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":lane_follow_stage",
-        "@core//cyber",
         "//modules/common/status",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "//modules/common/vehicle_state:vehicle_state_provider",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/map/hdmap",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:speed_profile_generator",
@@ -75,7 +72,10 @@ cc_library(
         "//modules/planning/tasks/optimizers:speed_optimizer",
         "//modules/planning/tasks/optimizers/path_time_heuristic:path_time_heuristic_optimizer",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

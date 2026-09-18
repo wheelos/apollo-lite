@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -34,32 +34,19 @@ cc_library(
         "fusion_camera_detection_component.cc",
         "lane_detection_component.cc",
         "trafficlights_perception_component.cc",
-        "camera_bev_detection_component.cc"
+        "camera_bev_detection_component.cc",
     ],
     hdrs = [
+        "camera_bev_detection_component.h",
         "camera_obstacle_detection_component.h",
         "camera_perception_viz_message.h",
         "fusion_camera_detection_component.h",
         "lane_detection_component.h",
         "trafficlights_perception_component.h",
-        "camera_bev_detection_component.h"
     ],
-    linkopts = ["-lleveldb"],
     copts = PERCEPTION_COPTS,
+    linkopts = ["-lleveldb"],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_geometry_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_camera_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/v2x_msgs:v2x_traffic_light_cc_proto",
         "//modules/common/math",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
@@ -86,13 +73,26 @@ cc_library(
         "//modules/perception/onboard/transform_wrapper",
         "//modules/perception/pipeline/proto:traffic_light_config_cc_proto",
         "//modules/transform:transform_query",
+        "@boost.algorithm",
+        "@boost.circular_buffer",
+        "@boost.format",
+        "@core//cyber",
         "@eigen",
         "@opencv//:highgui",
-        "@opencv//:imgproc",
         "@opencv//:imgcodecs",
-        "@boost.circular_buffer",
-        "@boost.algorithm",
-        "@boost.format",
+        "@opencv//:imgproc",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_camera_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/v2x_msgs:v2x_traffic_light_cc_proto",
     ],
     alwayslink = True,
 )
@@ -112,10 +112,10 @@ cc_library(
     linkopts = ["-lleveldb"],
     deps = [
         ":lidar_detection_component",
+        ":lidar_output_component",
+        ":lidar_tracking_component",
         ":multi_sensor_fusion_component",
         ":radar_detection_component",
-        ":lidar_tracking_component",
-        ":lidar_output_component",
     ],
     alwayslink = True,
 )
@@ -128,15 +128,14 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/app:lidar_obstacle_detection",
         "//modules/perception/lidar/common",
-        "//modules/perception/lidar/lib/detector/cnn_segmentation:cnn_segmentation",
-        "//modules/perception/lidar/lib/detector/ncut_segmentation:ncut_segmentation",
-        "//modules/perception/lidar/lib/detector/point_pillars_detection:point_pillars_detection",
+        "//modules/perception/lidar/lib/detector/cnn_segmentation",
+        "//modules/perception/lidar/lib/detector/ncut_segmentation",
+        "//modules/perception/lidar/lib/detector/point_pillars_detection",
         "//modules/perception/lidar/lib/ground_detector/spatio_temporal_ground_detector",
         "//modules/perception/lidar/lib/interface",
         "//modules/perception/lidar/lib/object_builder",
@@ -148,6 +147,7 @@ cc_library(
         "//modules/perception/onboard/inner_component_messages:lidar_inner_component_messages",
         "//modules/perception/onboard/proto:lidar_component_config_cc_proto",
         "//modules/perception/onboard/transform_wrapper",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,
@@ -195,7 +195,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
@@ -224,6 +223,7 @@ cc_library(
         "//modules/perception/radar/lib/tracker/conti_ars_tracker",
         "//modules/perception/radar/lib/tracker/filter:adaptive_kalman_filter",
         "//modules/perception/radar/lib/tracker/matcher:hm_matcher",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -240,7 +240,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
@@ -253,6 +252,7 @@ cc_library(
         "//modules/perception/lidar/lib/tracker/multi_lidar_fusion:mlf_tracker",
         "//modules/perception/onboard/inner_component_messages:lidar_inner_component_messages",
         "//modules/perception/onboard/proto:lidar_component_config_cc_proto",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -269,9 +269,9 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/onboard/inner_component_messages:lidar_inner_component_messages",
         "//modules/perception/onboard/msg_serializer",
+        "@core//cyber",
     ],
     alwayslink = True,
 )

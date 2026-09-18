@@ -23,11 +23,11 @@ APOLLO_ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TOP_DIR="${APOLLO_ROOT_DIR}"
 export TOP_DIR
 source "${APOLLO_ROOT_DIR}/scripts/apollo.bashrc"
-source "${APOLLO_ROOT_DIR}/scripts/cyber_targets.sh"
 
 STAGE="${STAGE:-dev}"
 DIFF_MODE=0
 BASE_COMMIT=""
+PYTHON_LINT_ONLY=0
 
 readonly EXCLUDED_PATHS=(
   ".cache"
@@ -143,11 +143,13 @@ function run_cpp_format() {
 }
 
 function run_py_checks() {
-  info "::group::Running Python Format (Black, isort) and Lint (Flake8) Checks"
-  if ! command -v black &>/dev/null || \
-     ! command -v isort &>/dev/null || \
-     ! command -v flake8 &>/dev/null; then
-      error "One or more required Python commands (black, isort, flake8) not found. Please install them via 'pip install black isort flake8'."
+  if [[ "${PYTHON_LINT_ONLY}" -eq 1 ]]; then
+    info "::group::Running Python Lint Check (Flake8)"
+  else
+    info "::group::Running Python Format (Black, isort) and Lint (Flake8) Checks"
+  fi
+  if ! command -v flake8 &>/dev/null; then
+      error "Command 'flake8' not found. Please install it."
       return 1
   fi
 
@@ -172,18 +174,24 @@ function run_py_checks() {
     fi
   fi
 
-  info "Running Black (format check)..."
-  black --check "${files_to_check[@]}" || {
-      error "Python formatting issues found by Black. Please run 'black <file>...' to fix."
+  if [[ "${PYTHON_LINT_ONLY}" -eq 0 ]]; then
+    if ! command -v black &>/dev/null || ! command -v isort &>/dev/null; then
+      error "Black and isort are required for Python format checks. Please install them."
       return 1
-  }
+    fi
 
-  # isort
-  info "Running isort (import sorting check)..."
-  isort --check-only --profile black "${files_to_check[@]}" || {
-      error "Python import sorting issues found by isort. Please run 'isort <file>...' to fix."
-      return 1
-  }
+    info "Running Black (format check)..."
+    black --check "${files_to_check[@]}" || {
+        error "Python formatting issues found by Black. Please run 'black <file>...' to fix."
+        return 1
+    }
+
+    info "Running isort (import sorting check)..."
+    isort --check-only --profile black "${files_to_check[@]}" || {
+        error "Python import sorting issues found by isort. Please run 'isort <file>...' to fix."
+        return 1
+    }
+  fi
 
   # Flake8
   info "Running Flake8 (lint check)..."
@@ -192,7 +200,7 @@ function run_py_checks() {
       return 1
   }
 
-  info "Python checks passed."
+  info "Python lint passed."
   info "::endgroup::"
 }
 
@@ -277,27 +285,59 @@ function run_cpp_lint() {
     return 1
   fi
 
-  pushd "${APOLLO_ROOT_DIR}" >/dev/null
-  local cpp_dirs=("cyber")
-  if [[ "${STAGE}" == "dev" ]]; then
-    cpp_dirs+=("modules")
+  if [[ "${DIFF_MODE}" -eq 1 ]]; then
+    local changed_cpp_files=()
+    mapfile -t changed_cpp_files < <(
+      get_changed_files_by_pattern '.*\.(c|cc|cpp|h|hpp)'
+    )
+    if [[ "${#changed_cpp_files[@]}" -eq 0 ]]; then
+      info "No C++ changes detected for Bazel cpplint."
+      info "::endgroup::"
+      return 0
+    fi
   fi
 
-  find "${cpp_dirs[@]}" -name BUILD -print0 | while IFS= read -r -d '' prey; do
-    if grep -q -E 'cc_library|cc_test|cc_binary|cuda_library' "${prey}" && \
-       ! grep -q 'cpplint()' "${prey}"; then
-      warning "BUILD file missing cpplint(): ${prey}"
-    fi
-  done
+  pushd "${APOLLO_ROOT_DIR}" >/dev/null
+  local cpp_dirs=("modules")
+  if [[ ! -d "${cpp_dirs[0]}" ]]; then
+    warning "Repository C++ directory is missing: ${cpp_dirs[0]}"
+    popd >/dev/null
+    info "::endgroup::"
+    return 0
+  fi
+
+  if [[ "${#cpp_dirs[@]}" -gt 0 ]]; then
+    find "${cpp_dirs[@]}" -name BUILD -print0 | while IFS= read -r -d '' prey; do
+      if grep -q -E 'cc_library|cc_test|cc_binary|cuda_library' "${prey}" && \
+         ! grep -q 'cpplint()' "${prey}"; then
+        warning "BUILD file missing cpplint(): ${prey}"
+      fi
+    done
+  fi
   popd >/dev/null
 
-  local bazel_targets=("$(cyber_core_target)")
-  if [[ "${STAGE}" == "dev" ]]; then
-    bazel_targets+=("//modules/...")
+  local bazel_targets=("//modules/...")
+
+  local cache_root="${APOLLO_CACHE_DIR:-${APOLLO_ROOT_DIR}/.cache}"
+  if ! mkdir -p \
+    "${cache_root}/distdir" \
+    "${cache_root}/bazel/repo_cache" \
+    "${cache_root}/bazel/disk_cache"; then
+    cache_root="${TMPDIR:-/tmp}/apollo-cache"
+    mkdir -p \
+      "${cache_root}/distdir" \
+      "${cache_root}/bazel/repo_cache" \
+      "${cache_root}/bazel/disk_cache"
+    warning "APOLLO_CACHE_DIR is not writable; using ${cache_root} for Bazel caches."
   fi
 
   info "Running Bazel cpplint test on targets: ${bazel_targets[*]}"
-  bazel test --config=cpplint "${bazel_targets[@]}" || {
+  bazel test \
+    --config=cpplint \
+    --distdir="${cache_root}/distdir" \
+    --repository_cache="${cache_root}/bazel/repo_cache" \
+    --disk_cache="${cache_root}/bazel/disk_cache" \
+    "${bazel_targets[@]}" || {
     error "C++ lint issues found by Bazel cpplint. Please review the errors above."
     return 1
   }
@@ -321,6 +361,7 @@ Options:
   --sh                 Run Shell script lint (Shellcheck) check.
   --cpp-format         Run C++ format (Clang-Format) check.
   --cpp-lint           Run C++ lint (Bazel cpplint) check.
+  --lint               Run all lint and format checks in check-only mode.
   --bazel              Run Bazel file format (Buildifier) check.
   -a, --all            Run all available checks.
   --stage <dev|prod>   Specify stage for linting (default: dev). Affects C++ lint targets.
@@ -353,6 +394,13 @@ function main() {
       --cpp-format) CPP_FORMAT_FLAG=1 ;;
       --sh)         SHELL_LINT_FLAG=1 ;;
       --bazel)      BUILDIFIER_CHECK_FLAG=1 ;;
+      --lint)
+        PYTHON_CHECKS_FLAG=1
+        CPP_FORMAT_FLAG=1
+        CPP_LINT_FLAG=1
+        SHELL_LINT_FLAG=1
+        BUILDIFIER_CHECK_FLAG=1
+        ;;
       --diff)
         DIFF_MODE=1
         if [[ -n "${1-}" && ! "$1" =~ ^- ]]; then

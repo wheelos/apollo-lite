@@ -1,5 +1,5 @@
-load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,13 +11,13 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:object_template_manager",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/common/i_lib/core",
-        "//modules/perception/pipeline/proto/stage:singlestage_cc_proto",
         "//modules/perception/pipeline:stage",
+        "//modules/perception/pipeline/proto/stage:singlestage_cc_proto",
+        "@core//cyber",
     ],
 )
 

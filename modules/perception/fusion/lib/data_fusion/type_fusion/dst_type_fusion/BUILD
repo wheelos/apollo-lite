@@ -11,7 +11,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/fusion/base:base_init_options",
         "//modules/perception/fusion/base:scene",
@@ -24,6 +23,7 @@ cc_library(
         "//modules/perception/pipeline/proto/plugin:dst_type_fusion_config_cc_proto",
         "@boost.format",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
     ],
 )
 

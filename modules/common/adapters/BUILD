@@ -1,6 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
 
 cc_binary(
     name = "libadapter_gflags.so",

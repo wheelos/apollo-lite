@@ -49,6 +49,7 @@ function collect_files() {
   local file_pattern="$1"
   shift
   local paths=("$@")
+
   if [[ "${#paths[@]}" -eq 0 ]]; then
     paths=(".")
   fi

@@ -23,7 +23,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common/graph",
         "//modules/perception/lib/config_manager",
@@ -34,6 +33,7 @@ cc_library(
         "//modules/perception/radar/lib/interface:base_matcher",
         "//modules/perception/radar/lib/tracker/common:radar_track",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@eigen",
     ],
 )

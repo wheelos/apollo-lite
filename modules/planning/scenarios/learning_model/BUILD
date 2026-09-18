@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools/platform:build_defs.bzl", "if_gpu")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,10 +26,10 @@ cc_library(
     ],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
-        "//modules/planning/scenarios:scenario",
         "//modules/planning/common:frame",
+        "//modules/planning/scenarios:scenario",
+        "@core//cyber",
     ] + if_gpu(
         ["@libtorch_gpu"],
         ["@libtorch_cpu"],

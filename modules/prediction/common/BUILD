@@ -3,6 +3,7 @@ load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
+
 PREDICTION_COPTS = ["-DMODULE_NAME=\\\"prediction\\\""]
 
 cc_library(
@@ -28,7 +29,7 @@ install(
     library_dest = "prediction/lib",
     targets = [
         ":prediction_gflags",
-        ":prediction_system_gflags"
+        ":prediction_system_gflags",
     ],
     visibility = ["//visibility:public"],
 )
@@ -186,11 +187,11 @@ cc_test(
     name = "environment_features_test",
     size = "small",
     srcs = ["environment_features_test.cc"],
+    linkstatic = True,
     deps = [
         ":environment_features",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -226,13 +227,13 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":semantic_map",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
+        "//modules/common/util:util_tool",
         "//modules/prediction/evaluator:evaluator_manager",
         "//modules/prediction/predictor:predictor_manager",
         "//modules/prediction/proto:offline_features_cc_proto",
         "//modules/prediction/scenario:scenario_manager",
-        "//modules/common/util:util_tool",
+        "@core//cyber",
     ],
 )
 
@@ -263,16 +264,16 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":prediction_gflags",
-        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/util",
         "//modules/common/util:string_util",
         "//modules/prediction/container:container_manager",
         "//modules/prediction/container/pose:pose_container",
-        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
+        "@core//cyber",
         "@opencv//:highgui",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
     ],
 )
 

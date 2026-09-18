@@ -18,12 +18,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/math",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_status_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:pose_cc_proto",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface:base_init_options",
         "//modules/perception/camera/lib/motion",
@@ -32,6 +27,11 @@ cc_library(
         "//modules/perception/proto:motion_service_cc_proto",
         "@boost.algorithm",
         "@boost.format",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:pose_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
     ],
 )
 

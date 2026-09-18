@@ -1,6 +1,5 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -29,11 +28,11 @@ cc_library(
     ],
     copts = ['-DMODULE_NAME=\\"lslidar\\"'],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/lslidar/proto:config_cc_proto",
         "//modules/drivers/lidar/lslidar/proto:lslidar_cc_proto",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
 )
 

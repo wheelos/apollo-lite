@@ -33,10 +33,8 @@ cc_library(
         "yg_radar_message_manager.h",
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:message_util",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:radar_cc_proto",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",
@@ -44,6 +42,8 @@ cc_library(
         "//modules/drivers/radar/yg_radar/proto:yg_radar_cc_proto",
         "//modules/drivers/radar/yg_radar/proto:yg_radar_config_cc_proto",
         "//modules/drivers/radar/yg_radar/protocol:canbus_yg_radar_protocol",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:radar_cc_proto",
     ],
     alwayslink = True,
 )

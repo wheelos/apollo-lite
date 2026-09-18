@@ -16,7 +16,7 @@ cc_library(
         "//modules/prediction/container/obstacles:obstacles_container",
         "//modules/prediction/evaluator",
         #"//third_party/libtorch",
-    ]  + if_gpu(
+    ] + if_gpu(
         ["@libtorch_gpu"],
         ["@libtorch_cpu"],
     ),
@@ -30,13 +30,13 @@ cc_test(
         "//modules/prediction:prediction_data",
         "//modules/prediction:prediction_testdata",
     ],
+    linkstatic = True,
     deps = [
         ":pedestrian_interaction_evaluator",
         "//modules/prediction/common:kml_map_based_test",
         "//modules/prediction/container/obstacles:obstacles_container",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

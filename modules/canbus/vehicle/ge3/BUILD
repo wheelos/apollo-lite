@@ -5,7 +5,6 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "ge3_vehicle_factory",
-    alwayslink = True,
     srcs = ["ge3_vehicle_factory.cc"],
     hdrs = ["ge3_vehicle_factory.h"],
     deps = [
@@ -15,6 +14,7 @@ cc_library(
         "//modules/canbus/vehicle:abstract_vehicle_factory",
         "//modules/canbus/vehicle:vehicle_factory_core",
     ],
+    alwayslink = True,
 )
 
 cc_test(
@@ -32,10 +32,10 @@ cc_library(
     srcs = ["ge3_message_manager.cc"],
     hdrs = ["ge3_message_manager.h"],
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle/ge3/protocol:canbus_ge3_protocol_pc_bcm_201",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -55,12 +55,12 @@ cc_library(
     hdrs = ["ge3_controller.h"],
     deps = [
         ":ge3_message_manager",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/ge3/protocol:canbus_ge3_protocol_pc_bcm_201",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 

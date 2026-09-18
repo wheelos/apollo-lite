@@ -89,7 +89,7 @@ function build_dreamview_frontend() {
 function build_test_and_lint() {
     env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}"
     env ${APOLLO_ENV} bash "${test_sh}" --config=unit_test
-    env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/apollo_lint.sh" --cpp
+    env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_lint.sh" --cpp
     success "Build and Test and Lint finished."
 }
 
@@ -233,7 +233,7 @@ function main() {
             env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_release.sh" "$@"
             ;;
         doc)
-            env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/apollo_docs.sh" "$@"
+            env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_docs.sh" "$@"
             ;;
         format)
             env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_format.sh" "$@"

@@ -38,7 +38,6 @@ cc_test(
     deps = [
         ":scene_manager",
         "//modules/map/hdmap",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/perception/base",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/common/io:io_util",
@@ -50,6 +49,7 @@ cc_test(
         "//modules/perception/map/hdmap:hdmap_input",
         "@com_google_googletest//:gtest_main",
         "@local_config_pcl//:common",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
     ],
 )
 

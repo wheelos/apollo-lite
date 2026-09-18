@@ -67,7 +67,7 @@ function _clean_log() {
 }
 
 function _clean_docs() {
-  local docs_sh="${TOP_DIR}/scripts/apollo_docs.sh"
+  local docs_sh="${TOP_DIR}/scripts/ci/apollo_docs.sh"
   if [ -f "${docs_sh}" ]; then
     bash "${docs_sh}" clean
   fi

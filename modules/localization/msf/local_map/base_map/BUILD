@@ -31,8 +31,8 @@ cc_test(
     srcs = ["map_node_index_test.cc"],
     deps = [
         ":base_map",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

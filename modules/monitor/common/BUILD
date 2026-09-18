@@ -20,11 +20,11 @@ cc_test(
     size = "small",
     srcs = ["recurrent_runner_test.cc"],
     copts = MONITOR_COPTS,
+    linkstatic = True,
     deps = [
         ":recurrent_runner",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -33,21 +33,21 @@ cc_library(
     hdrs = ["monitor_manager.h"],
     copts = MONITOR_COPTS,
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_event_cc_proto",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/hmi:hmi_worker",
         "//modules/dreamview/proto:hmi_config_cc_proto",
         "//modules/dreamview/proto:hmi_mode_cc_proto",
+        "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_event_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/dreamview_msgs:hmi_status_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:pose_cc_proto",
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:system_status_cc_proto",
-        "@com_github_gflags_gflags//:gflags",
     ],
 )
 

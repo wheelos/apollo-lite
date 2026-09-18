@@ -4,8 +4,8 @@ load("//tools/install:install.bzl", "install")
 
 install(
     name = "install",
-    library_dest = "common/lib",
     data_dest = "common",
+    library_dest = "common/lib",
     targets = [
         ":config_gflags",
         ":vehicle_config_helper",
@@ -22,10 +22,10 @@ cc_library(
     data = [
         "//modules/common/data:global_flagfile",
     ],
+    visibility = ["//visibility:public"],
     deps = [
         "@com_github_gflags_gflags//:gflags",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -37,14 +37,14 @@ cc_library(
     data = [
         "//modules/common/data:vehicle_config_data",
     ],
+    visibility = ["//visibility:public"],
     deps = [
         ":config_gflags",
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/common/math",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_test(

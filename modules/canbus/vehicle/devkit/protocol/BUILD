@@ -39,11 +39,11 @@ cc_library(
     hdrs = ["bms_report_512.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -63,11 +63,11 @@ cc_library(
     hdrs = ["brake_command_101.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -87,11 +87,11 @@ cc_library(
     hdrs = ["brake_report_501.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -111,11 +111,11 @@ cc_library(
     hdrs = ["gear_command_103.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -135,11 +135,11 @@ cc_library(
     hdrs = ["gear_report_503.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -159,11 +159,11 @@ cc_library(
     hdrs = ["park_command_104.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -183,11 +183,11 @@ cc_library(
     hdrs = ["park_report_504.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -207,11 +207,11 @@ cc_library(
     hdrs = ["steering_command_102.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -231,11 +231,11 @@ cc_library(
     hdrs = ["steering_report_502.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -255,11 +255,11 @@ cc_library(
     hdrs = ["throttle_command_100.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -279,11 +279,11 @@ cc_library(
     hdrs = ["throttle_report_500.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -303,11 +303,11 @@ cc_library(
     hdrs = ["ultr_sensor_1_507.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -327,11 +327,11 @@ cc_library(
     hdrs = ["ultr_sensor_2_508.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -351,11 +351,11 @@ cc_library(
     hdrs = ["ultr_sensor_3_509.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -375,11 +375,11 @@ cc_library(
     hdrs = ["ultr_sensor_4_510.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -399,11 +399,11 @@ cc_library(
     hdrs = ["ultr_sensor_5_511.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -423,11 +423,11 @@ cc_library(
     hdrs = ["vcu_report_505.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -447,11 +447,11 @@ cc_library(
     hdrs = ["vehicle_mode_command_105.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -461,11 +461,11 @@ cc_library(
     hdrs = ["vin_resp1_514.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -475,11 +475,11 @@ cc_library(
     hdrs = ["vin_resp2_515.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -489,11 +489,11 @@ cc_library(
     hdrs = ["vin_resp3_516.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -503,11 +503,11 @@ cc_library(
     hdrs = ["wheelspeed_report_506.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/devkit/proto:devkit_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 

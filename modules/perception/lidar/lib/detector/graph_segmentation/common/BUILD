@@ -21,7 +21,7 @@ cc_library(
         "//modules/perception/common/geometry:common",
         "//modules/perception/common/geometry:convex_hull_2d",
         "//modules/perception/lidar/common",
-        "//modules/perception/lidar/lib/object_builder:object_builder",
+        "//modules/perception/lidar/lib/object_builder",
         "@eigen",
     ],
 )

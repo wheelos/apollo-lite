@@ -16,11 +16,11 @@ cc_test(
     name = "layer_test",
     size = "small",
     srcs = ["layer_test.cc"],
+    linkstatic = True,
     deps = [
         ":layer_lib",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -36,11 +36,11 @@ cc_test(
     name = "inference_test",
     size = "small",
     srcs = ["inference_test.cc"],
+    linkstatic = True,
     deps = [
         ":inference_lib",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -60,11 +60,11 @@ cc_test(
     name = "inference_factory_test",
     size = "small",
     srcs = ["inference_factory_test.cc"],
+    linkstatic = True,
     deps = [
         ":inference_factory",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 filegroup(

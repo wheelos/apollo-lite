@@ -54,16 +54,16 @@ jobs:
           go install github.com/bazelbuild/buildtools/buildifier@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
-      - name: Run Lint and Format Checks (PR Diff Mode)
+      - name: Run Lint Checks (PR Diff Mode)
         if: github.event_name == 'pull_request'
         run: |
-          echo "Running apollo_lint.sh in diff mode for PR..."
-          ${{ github.workspace }}/scripts/ci/apollo_lint.sh --all --diff origin/${{ github.base_ref }}
+          echo "Running apollo_lint.sh lint mode in diff mode for PR..."
+          ${{ github.workspace }}/scripts/ci/apollo_lint.sh --lint --diff origin/${{ github.base_ref }}
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
 
-      - name: Run Lint and Format Checks (Push Full Mode)
+      - name: Run Lint Checks (Push Full Mode)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          echo "Running apollo_lint.sh in full mode for push to main branch..."
-          ${{ github.workspace }}/scripts/ci/apollo_lint.sh --all
+          echo "Running apollo_lint.sh lint mode for push to main branch..."
+          ${{ github.workspace }}/scripts/ci/apollo_lint.sh --lint

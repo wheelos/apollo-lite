@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -43,12 +43,12 @@ cc_library(
         "streamer.h",
     ],
     copts = CAMERA_GST_COPTS,
-    deps = [
-        "@core//cyber",
-        "//modules/drivers/camera_gst/proto:config_cc_proto",
-        "@gstreamer//:gstreamer",
-    ],
     target_compatible_with = ["//tools/platform:jetson_orin"],
+    deps = [
+        "//modules/drivers/camera_gst/proto:config_cc_proto",
+        "@core//cyber",
+        "@gstreamer",
+    ],
 )
 
 cc_library(
@@ -56,22 +56,22 @@ cc_library(
     srcs = ["camera_gst_component.cc"],
     hdrs = ["camera_gst_component.h"],
     copts = CAMERA_GST_COPTS,
+    target_compatible_with = ["//tools/platform:jetson_orin"],
     deps = [
         ":camera_gst_core",
         "@core//cyber",
+        "@gstreamer",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
-        "@gstreamer//:gstreamer",
     ],
     alwayslink = True,
-    target_compatible_with = ["//tools/platform:jetson_orin"],
 )
 
 cc_binary(
     name = "libcamera_gst_component.so",
     linkshared = True,
     linkstatic = False,
-    deps = [":camera_gst_component_lib"],
     target_compatible_with = ["//tools/platform:jetson_orin"],
+    deps = [":camera_gst_component_lib"],
 )
 
 cc_test(
@@ -79,11 +79,11 @@ cc_test(
     size = "small",
     srcs = ["streamer_test.cc"],
     copts = CAMERA_GST_COPTS,
+    target_compatible_with = ["//tools/platform:jetson_orin"],
     deps = [
         ":camera_gst_core",
         "@com_google_googletest//:gtest",
     ],
-    target_compatible_with = ["//tools/platform:jetson_orin"],
 )
 
 cpplint()

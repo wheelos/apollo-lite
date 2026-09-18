@@ -26,14 +26,14 @@ cc_library(
     copts = MONITOR_COPTS,
     deps = [
         ":summary_monitor",
-        "@core//cyber",
         "//modules/dreamview/proto:hmi_mode_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+        "@core//cyber",
     ],
 )
 
@@ -44,12 +44,12 @@ cc_library(
     copts = MONITOR_COPTS,
     deps = [
         ":summary_monitor",
-        "@core//cyber",
         "//modules/dreamview/proto:hmi_mode_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
     ],
 )
 
@@ -62,19 +62,19 @@ cc_library(
         ":latency_monitor",
         ":summary_monitor",
         "//modules/common/latency_recorder/proto:latency_record_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "//modules/dreamview/proto:hmi_mode_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:conti_radar_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:pose_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
+        "@com_google_absl//absl/strings",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:pose_cc_proto",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
-        "@com_google_absl//absl/strings",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:conti_radar_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
 )
 
@@ -86,9 +86,9 @@ cc_library(
     deps = [
         ":summary_monitor",
         "//modules/common/adapters:adapter_gflags",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
     ],
 )
 
@@ -124,9 +124,9 @@ cc_library(
     deps = [
         ":summary_monitor",
         "//modules/common/adapters:adapter_gflags",
-        "@wheelos_msgs//wheelos_msgs/monitor_msgs:smart_recorder_status_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
+        "@wheelos_msgs//wheelos_msgs/monitor_msgs:smart_recorder_status_cc_proto",
     ],
 )
 

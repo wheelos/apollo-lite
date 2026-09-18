@@ -5,12 +5,12 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "app",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":lidar_obstacle_detection",
         ":lidar_obstacle_tracking",
-    ],
-    copts = [
-        '-DMODULE_NAME=\\"perception\\"',
     ],
 )
 
@@ -33,11 +33,11 @@ cc_library(
         "//modules/perception/lidar/lib/interface:base_lidar_detector",
         "//modules/perception/lidar/lib/interface:base_pointcloud_preprocessor",
         "//modules/perception/lidar/lib/interface:base_lidar_obstacle_detection",
-        "//modules/perception/lidar/lib/pointcloud_preprocessor:pointcloud_preprocessor",
-        "//modules/perception/lidar/lib/detector/point_pillars_detection:point_pillars_detection",
+        "//modules/perception/lidar/lib/pointcloud_preprocessor",
+        "//modules/perception/lidar/lib/detector/point_pillars_detection",
         # "//modules/perception/lidar/lib/detector/center_point_detection:center_point_detection",
-        "//modules/perception/lidar/lib/detector/cnn_segmentation:cnn_segmentation",
-        "//modules/perception/lidar/lib/detector/ncut_segmentation:ncut_segmentation",
+        "//modules/perception/lidar/lib/detector/cnn_segmentation",
+        "//modules/perception/lidar/lib/detector/ncut_segmentation",
         "//modules/perception/lidar/lib/scene_manager",
         "@eigen",
     ],
@@ -52,18 +52,18 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/app/proto:lidar_obstacle_tracking_config_cc_proto",
         "//modules/perception/lidar/common",
-        "//modules/perception/lidar/lib/interface:base_lidar_obstacle_tracking",
+        "//modules/perception/lidar/lib/classifier/fused_classifier",
         "//modules/perception/lidar/lib/interface:base_classifier",
+        "//modules/perception/lidar/lib/interface:base_lidar_obstacle_tracking",
         "//modules/perception/lidar/lib/interface:base_multi_target_tracker",
-        "//modules/perception/lidar/lib/classifier/fused_classifier:fused_classifier",
         "//modules/perception/lidar/lib/tracker/multi_lidar_fusion:mlf_engine",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,

@@ -33,7 +33,6 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"nano_radar\\"'],
     deps = [
         ":nano_radar_message_manager",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "//modules/drivers/canbus/can_client:can_client_factory",
@@ -41,6 +40,7 @@ cc_library(
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/proto:sensor_canbus_conf_cc_proto",
         "//modules/drivers/radar/nano_radar/protocol:drivers_nano_radar_protocol",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,

@@ -49,7 +49,6 @@ cc_library(
     name = "lidar_semantic_segmentation_component",
     srcs = ["component/lidar_semantic_segmentation_component.cc"],
     hdrs = ["component/lidar_semantic_segmentation_component.h"],
-    alwayslink = True,
     deps = [
         ":rangeret",
         ":tensorrt_executor",
@@ -57,6 +56,7 @@ cc_library(
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
+    alwayslink = True,
 )
 
 cc_binary(
@@ -87,10 +87,10 @@ filegroup(
 
 install(
     name = "install",
+    data = [":runtime_config"],
     data_dest = "lidar_semantic_segmentation",
     library_dest = "lidar_semantic_segmentation/lib",
     targets = [":liblidar_semantic_segmentation_component_plugin.so"],
-    data = [":runtime_config"],
 )
 
 cpplint()

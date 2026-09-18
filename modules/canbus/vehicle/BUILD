@@ -24,13 +24,13 @@ cc_library(
         "//modules/canbus/proto:canbus_conf_cc_proto",
         "//modules/canbus/proto:vehicle_parameter_cc_proto",
         "//modules/common/configs:vehicle_config_helper",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
     ],
 )
 
@@ -41,10 +41,10 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/vehicle:vehicle_controller_base",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
+        "//modules/common/util:registry",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
-        "//modules/common/util:registry",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -63,46 +63,57 @@ config_setting(
     name = "with_ch",
     define_values = {"vehicle": "ch"},
 )
+
 config_setting(
     name = "with_devkit",
     define_values = {"vehicle": "devkit"},
 )
+
 config_setting(
     name = "with_ge3",
     define_values = {"vehicle": "ge3"},
 )
+
 config_setting(
     name = "with_gem",
     define_values = {"vehicle": "gem"},
 )
+
 config_setting(
     name = "with_lexus",
     define_values = {"vehicle": "lexus"},
 )
+
 config_setting(
     name = "with_lincoln",
     define_values = {"vehicle": "lincoln"},
 )
+
 config_setting(
     name = "with_mk_mini",
     define_values = {"vehicle": "mk_mini"},
 )
+
 config_setting(
     name = "with_neolix_edu",
     define_values = {"vehicle": "neolix_edu"},
 )
+
 config_setting(
     name = "with_transit",
     define_values = {"vehicle": "transit"},
 )
+
 config_setting(
     name = "with_wey",
     define_values = {"vehicle": "wey"},
 )
+
 config_setting(
     name = "with_yunle",
     define_values = {"vehicle": "yunle"},
 )
+
 config_setting(
     name = "with_zhongyun",
     define_values = {"vehicle": "zhongyun"},

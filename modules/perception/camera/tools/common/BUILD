@@ -14,23 +14,23 @@ cc_library(
 
 cc_library(
     name = "ground_truth",
-    hdrs = ["ground_truth.h"],
     srcs = ["ground_truth.cc"],
+    hdrs = ["ground_truth.h"],
     deps = [
-        "@core//cyber",
         "//modules/perception/camera/common",
+        "@core//cyber",
     ],
 )
 
 cc_library(
     name = "util",
-    hdrs = ["util.h"],
     srcs = ["util.cc"],
+    hdrs = ["util.h"],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/common/io:io_util",
+        "@core//cyber",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",
     ],
@@ -38,8 +38,8 @@ cc_library(
 
 cc_library(
     name = "visualizer",
-    hdrs = ["visualizer.h"],
     srcs = ["visualizer.cc"],
+    hdrs = ["visualizer.h"],
     deps = [
         ":util",
         "//modules/perception/camera/common",

@@ -9,8 +9,6 @@ cc_library(
     hdrs = ["navi_planner.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/status",
         "//modules/common/util",
         "//modules/common/util:util_tool",
@@ -23,10 +21,12 @@ cc_library(
         "//modules/planning/navi/decider:navi_path_decider",
         "//modules/planning/navi/decider:navi_speed_decider",
         "//modules/planning/planner",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/reference_line",
         "//modules/planning/reference_line:qp_spline_reference_line_smoother",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -36,13 +36,13 @@ cc_test(
     srcs = ["navi_planner_test.cc"],
     data = ["//modules/planning:planning_testdata"],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":navi_planner",
-        "@core//cyber",
         "//modules/common/util",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
-    linkstatic = True,
 )
 
 cpplint()

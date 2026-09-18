@@ -11,16 +11,16 @@ cc_library(
     hdrs = ["map_manager.h"],
     copts = PERCEPTION_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/math",
         "//modules/map/hdmap",
         "//modules/perception/base:base_type",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/map/hdmap:hdmap_input",
-        "//modules/perception/pipeline/proto/stage:map_manager_config_cc_proto",
         "//modules/perception/pipeline:stage",
+        "//modules/perception/pipeline/proto/stage:map_manager_config_cc_proto",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
     ],
 )
 

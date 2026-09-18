@@ -8,13 +8,13 @@ cc_binary(
     name = "pad_terminal",
     srcs = ["pad_terminal.cc"],
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/planning/common:planning_gflags",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
         "//modules/planning/proto:planning_config_cc_proto",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
     ],
 )
 

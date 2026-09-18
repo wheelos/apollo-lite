@@ -1,6 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 

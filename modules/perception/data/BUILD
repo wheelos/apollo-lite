@@ -4,10 +4,10 @@ package(default_visibility = ["//visibility:public"])
 
 install(
     name = "install",
-    data_dest = "perception/data",
     data = [
         ":runtime_data",
     ],
+    data_dest = "perception/data",
 )
 
 filegroup(

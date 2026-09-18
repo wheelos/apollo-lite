@@ -2,6 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
+
 ROUTING_COPTS = ['-DMODULE_NAME=\\"routing\\"']
 
 cc_library(
@@ -57,10 +58,10 @@ cc_library(
     deps = [
         ":routing_range_utils",
         ":routing_topo_range",
-        "@core//cyber",
         "//modules/common/util:util_tool",
-        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "//modules/routing/proto:topo_graph_cc_proto",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
     ],
 )
 

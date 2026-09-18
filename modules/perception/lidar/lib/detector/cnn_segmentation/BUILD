@@ -1,3 +1,4 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
@@ -15,7 +16,6 @@ cc_library(
         ":disjoint_set",
         ":feature_generator",
         ":util",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/perception/base",
         "//modules/perception/inference:inference_factory",
@@ -35,6 +35,7 @@ cc_library(
         "//modules/perception/pipeline/proto/stage:cnnseg_config_cc_proto",
         "//modules/perception/proto:perception_config_schema_cc_proto",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
     ],
     alwayslink = True,
 )

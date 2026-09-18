@@ -2,6 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
+
 PLANNING_COPTS = ["-DMODULE_NAME=\\\"reference_line\\\""]
 
 cc_library(
@@ -16,15 +17,15 @@ cc_library(
     ],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/math",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/util:util_tool",
         "//modules/map/pnc_map",
         "//modules/planning/common:planning_gflags",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@boost.math",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -49,9 +50,9 @@ cc_library(
         "//modules/planning/math:curve_math",
         "//modules/planning/math:polynomial_xd",
         "//modules/planning/math/smoothing_spline:osqp_spline_2d_solver",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/proto:reference_line_smoother_config_cc_proto",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -73,9 +74,9 @@ cc_library(
         "//modules/planning/common:planning_gflags",
         "//modules/planning/math/curve1d:quintic_spiral_path",
         "//modules/planning/math/smoothing_spline:spline_2d_solver",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@eigen",
         "@ipopt",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -105,8 +106,8 @@ cc_library(
         "//modules/planning/math:discrete_points_math",
         "//modules/planning/math/discretized_points_smoothing:cos_theta_smoother",
         "//modules/planning/math/discretized_points_smoothing:fem_pos_deviation_smoother",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/proto:reference_line_smoother_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -150,7 +151,7 @@ cc_library(
         ":qp_spline_reference_line_smoother",
         ":reference_line",
         ":spiral_reference_line_smoother",
-        "@core//cyber",
+        "//modules/common/configs:config_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/util:util_tool",
         "//modules/common/vehicle_state:vehicle_state_provider",
@@ -159,7 +160,7 @@ cc_library(
         "//modules/planning/common:planning_context",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/proto:planning_status_cc_proto",
-        "//modules/common/configs:config_gflags",
+        "@core//cyber",
         "@eigen",
     ],
 )

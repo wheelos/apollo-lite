@@ -15,7 +15,7 @@ install(
         ":mpc_controller_submodule.so",
         ":lat_lon_controller_submodule.so",
         ":postprocessor_submodule.so",
-        ],
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -43,8 +43,6 @@ cc_library(
     hdrs = ["preprocessor_submodule.h"],
     copts = PREPROCESS_SUB_COPTS,
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
         "//modules/common/monitor_log",
@@ -53,14 +51,16 @@ cc_library(
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/control/common:control_gflags",
         "//modules/control/common:dependency_injector",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "//modules/control/proto:control_common_conf_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "//modules/control/proto:preprocessor_cc_proto",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
-    alwayslink = True
+    alwayslink = True,
 )
 
 cc_binary(
@@ -76,8 +76,6 @@ cc_library(
     hdrs = ["mpc_controller_submodule.h"],
     copts = PREPROCESS_SUB_COPTS,
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
         "//modules/common/monitor_log",
@@ -87,13 +85,15 @@ cc_library(
         "//modules/control/common:control_gflags",
         "//modules/control/controller",
         "//modules/control/proto:calibration_table_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "//modules/control/proto:control_conf_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "//modules/control/proto:preprocessor_cc_proto",
+        "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
-        "@com_github_gflags_gflags//:gflags",
     ],
     alwayslink = True,
 )
@@ -111,7 +111,6 @@ cc_library(
     hdrs = ["lat_lon_controller_submodule.h"],
     copts = PREPROCESS_SUB_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
         "//modules/common/monitor_log",
@@ -123,6 +122,7 @@ cc_library(
         "//modules/control/proto:local_view_cc_proto",
         "//modules/control/proto:preprocessor_cc_proto",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -140,7 +140,6 @@ cc_library(
     hdrs = ["postprocessor_submodule.h"],
     copts = PREPROCESS_SUB_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
         "//modules/common/monitor_log",
@@ -150,13 +149,14 @@ cc_library(
         "//modules/control/common:control_gflags",
         "//modules/control/controller",
         "//modules/control/proto:calibration_table_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "//modules/control/proto:control_common_conf_cc_proto",
         "//modules/control/proto:control_conf_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "//modules/control/proto:preprocessor_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
     ],
     alwayslink = True,
 )

@@ -36,13 +36,13 @@ cc_library(
     ],
     copts = LIDAR_COMPENSATOR_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/compensator/proto:lidar_compensator_config_cc_proto",
         "//modules/transform:transform_query",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
     alwayslink = True,
 )

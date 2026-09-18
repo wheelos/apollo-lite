@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -74,10 +74,10 @@ cc_library(
     deps = [
         ":ackermann_model",
         ":four_wheel_steering_model",
-        ":vehicle_model",
         ":simulation_gflags",
         ":simulation_types",
         ":simulator_backend",
+        ":vehicle_model",
         "@core//cyber",
     ],
 )

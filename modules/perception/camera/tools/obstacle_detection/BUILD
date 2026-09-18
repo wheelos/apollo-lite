@@ -7,12 +7,12 @@ cc_binary(
     name = "obstacle_detection",
     srcs = ["obstacle_detection.cc"],
     deps = [
-        "@core//cyber",
         "//modules/perception/camera/app:obstacle_detection_camera",
         "//modules/perception/camera/tools/common",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
     ],
 )
 

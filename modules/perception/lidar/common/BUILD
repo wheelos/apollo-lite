@@ -36,11 +36,11 @@ cc_test(
     name = "cloud_mask_test",
     size = "small",
     srcs = ["cloud_mask_test.cc"],
+    linkstatic = True,
     deps = [
         ":cloud_mask",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_library(
@@ -61,8 +61,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:point_cloud",
+        "@core//cyber",
     ],
 )
 
@@ -129,8 +129,8 @@ cc_library(
         ":lidar_log",
         "//modules/perception/base",
         "@local_config_pcl//:common",
-        "@local_config_pcl//:io",
         "@local_config_pcl//:filters",
+        "@local_config_pcl//:io",
     ],
 )
 
@@ -142,10 +142,10 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:object",
         "//modules/perception/lidar/common",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
     ],
 )
 

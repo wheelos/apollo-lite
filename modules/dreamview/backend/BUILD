@@ -1,7 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools/platform:build_defs.bzl", "copts_if_teleop", "if_teleop")
-load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
+load("//tools/platform:build_defs.bzl", "copts_if_teleop", "if_teleop")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -42,10 +42,10 @@ cc_library(
 
 install(
     name = "install",
-    library_dest = "dreamview/lib",
+    data = ["//modules/dreamview/backend/testdata"],
     data_dest = "dreamview/addition_data/backend",
-    data = ["//modules/dreamview/backend/testdata:testdata"],
-    targets = [":backend"]
+    library_dest = "dreamview/lib",
+    targets = [":backend"],
 )
 
 cpplint()

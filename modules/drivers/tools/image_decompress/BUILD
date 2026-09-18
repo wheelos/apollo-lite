@@ -1,16 +1,16 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
 install(
     name = "install",
-    library_dest = "drivers/lib/tools/image_decompress",
-    data_dest = "drivers/addition_data/tools/image_decompress",
     data = [
         ":runtime_data",
     ],
+    data_dest = "drivers/addition_data/tools/image_decompress",
+    library_dest = "drivers/lib/tools/image_decompress",
     targets = [
         ":libimage_decompress.so",
     ],
@@ -30,16 +30,16 @@ cc_library(
     srcs = ["image_decompress.cc"],
     hdrs = ["image_decompress.h"],
     copts = ['-DMODULE_NAME=\\"image_decompress\\"'],
-    alwayslink = True,
     deps = [
+        "//modules/drivers/tools/image_decompress/proto:config_cc_proto",
         "@core//cyber",
+        "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
-        "//modules/drivers/tools/image_decompress/proto:config_cc_proto",
-        "@opencv//:imgcodecs",
-        "@opencv//:imgproc",
     ],
+    alwayslink = True,
 )
 
 cc_test(

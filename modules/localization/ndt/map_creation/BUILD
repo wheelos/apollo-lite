@@ -8,7 +8,6 @@ cc_binary(
     name = "ndt_map_creator",
     srcs = ["ndt_map_creator.cc"],
     deps = [
-        "@core//cyber",
         "//modules/localization/msf/common/io:common_io",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/common/util:system_utility",
@@ -19,6 +18,7 @@ cc_binary(
         "@boost.program_options",
         "@boost.random",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@eigen",
     ],
 )

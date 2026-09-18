@@ -83,8 +83,8 @@ cc_test(
     deps = [
         ":gtest_exit_main",
         ":obstacle_decider",
-        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
         "//modules/map/hdmap",
+        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
     ],
 )
 
@@ -97,14 +97,14 @@ cc_library(
         ":indexed_list",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/util:util_tool",
+        "//modules/planning/common/speed:st_boundary",
+        "//modules/planning/reference_line",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:lane_graph_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:scenario_cc_proto",
-        "//modules/planning/common/speed:st_boundary",
-        "//modules/planning/reference_line",
     ],
 )
 
@@ -118,8 +118,8 @@ cc_test(
     deps = [
         ":obstacle",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_cc_proto",
         "@com_google_googletest//:gtest_main",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_cc_proto",
     ],
 )
 
@@ -147,9 +147,9 @@ cc_library(
     hdrs = ["planning_context.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/planning/common/path:path_data",
         "//modules/planning/proto:planning_status_cc_proto",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -182,17 +182,14 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":ego_info",
+        ":obstacle_decider",
         ":path_boundary",
         ":path_decision",
         ":planning_gflags",
         ":st_graph_data",
-        ":obstacle_decider",
-        "@core//cyber",
         "//modules/common/math",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/map/pnc_map",
         "//modules/planning/common/path:path_data",
         "//modules/planning/common/speed:speed_data",
@@ -200,7 +197,10 @@ cc_library(
         "//modules/planning/common/trajectory:publishable_trajectory",
         "//modules/planning/proto:lattice_structure_cc_proto",
         "//modules/planning/reference_line",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
     ],
 )
 
@@ -222,7 +222,6 @@ cc_library(
     deps = [
         ":frame",
         ":reference_line_info",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common/speed:speed_data",
         "//modules/planning/math/curve1d",
         "//modules/planning/math/curve1d:polynomial_curve1d",
@@ -230,6 +229,7 @@ cc_library(
         "//modules/planning/math/curve1d:quintic_polynomial_curve1d",
         "//modules/planning/math/piecewise_jerk:piecewise_jerk_speed_problem",
         "//modules/planning/proto:planning_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 
@@ -270,11 +270,9 @@ cc_library(
         ":obstacle",
         ":open_space_info",
         ":reference_line_info",
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/monitor_log",
         "//modules/common/vehicle_state:vehicle_state_provider",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/map/hdmap:hdmap_util",
         "//modules/map/pnc_map",
         "//modules/planning/common/trajectory:discretized_trajectory",
@@ -282,7 +280,9 @@ cc_library(
         "//modules/planning/common/util:util_lib",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/reference_line:reference_line_provider",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -310,9 +310,9 @@ cc_library(
     deps = [
         ":planning_gflags",
         "@core//cyber",
+        "@eigen",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:decision_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
-        "@eigen",
     ],
 )
 
@@ -324,8 +324,8 @@ cc_test(
         "//modules/planning:planning_testdata",
     ],
     deps = [
-        ":history",
         ":gtest_exit_main",
+        ":history",
     ],
 )
 
@@ -356,18 +356,18 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":obstacle",
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "//modules/planning/reference_line",
+        "@core//cyber",
+        "@eigen",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:lane_graph_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:scenario_cc_proto",
-        "//modules/planning/reference_line",
-        "@eigen",
     ],
 )
 
@@ -392,8 +392,8 @@ cc_library(
         ":speed_limit",
         ":st_graph_data",
         "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
     ],
 )
 
@@ -403,13 +403,13 @@ cc_library(
     hdrs = ["trajectory_stitcher.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/vehicle_model",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:publishable_trajectory",
         "//modules/planning/reference_line",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 
@@ -418,7 +418,6 @@ cc_library(
     srcs = ["open_space_info.cc"],
     hdrs = ["open_space_info.h"],
     deps = [
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/map/hdmap:hdmap_util",
@@ -428,6 +427,7 @@ cc_library(
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/common/trajectory:publishable_trajectory",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -461,9 +461,9 @@ cc_test(
     srcs = ["st_graph_data_test.cc"],
     deps = [
         ":st_graph_data",
-        "@core//cyber",
         "//modules/common/util",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -473,10 +473,10 @@ cc_library(
     hdrs = ["feature_output.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/util",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:learning_data_cc_proto",
+        "@core//cyber",
     ],
 )
 
@@ -488,10 +488,14 @@ cc_library(
     deps = [
         ":dependency_injector",
         ":feature_output",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:config_gflags",
         "//modules/common/util:util_tool",
+        "//modules/planning/common/util:math_util_lib",
+        "//modules/planning/common/util:util_lib",
+        "//modules/planning/proto:learning_data_cc_proto",
+        "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/dreamview_msgs:hmi_status_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
@@ -500,10 +504,6 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "@wheelos_msgs//wheelos_msgs/storytelling_msgs:story_cc_proto",
-        "//modules/planning/common/util:math_util_lib",
-        "//modules/planning/common/util:util_lib",
-        "//modules/planning/proto:learning_data_cc_proto",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -513,11 +513,11 @@ cc_library(
     hdrs = ["trajectory_evaluator.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/util:util_lib",
         "//modules/planning/pipeline:evaluator_logger",
         "//modules/planning/proto:learning_data_cc_proto",
+        "@core//cyber",
     ],
 )
 
@@ -540,8 +540,8 @@ cc_library(
     hdrs = ["learning_based_data.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/planning/proto:learning_data_cc_proto",
+        "@core//cyber",
     ],
 )
 

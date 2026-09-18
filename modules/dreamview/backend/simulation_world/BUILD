@@ -11,13 +11,19 @@ cc_library(
     hdrs = ["simulation_world_service.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/math",
         "//modules/common/monitor_log",
         "//modules/common/util",
         "//modules/common/util:util_tool",
+        "//modules/dreamview/backend/common:dreamview_gflags",
+        "//modules/dreamview/backend/map:map_service",
+        "//modules/dreamview/proto:simulation_world_cc_proto",
+        "//modules/map/hdmap:hdmap_util",
+        "@com_github_nlohmann_json//:json",
+        "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/audio_msgs:audio_cc_proto",
         "@wheelos_msgs//wheelos_msgs/audio_msgs:audio_event_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_event_cc_proto",
@@ -31,12 +37,6 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "@wheelos_msgs//wheelos_msgs/storytelling_msgs:story_cc_proto",
-        "//modules/dreamview/backend/common:dreamview_gflags",
-        "//modules/dreamview/backend/map:map_service",
-        "//modules/dreamview/proto:simulation_world_cc_proto",
-        "//modules/map/hdmap:hdmap_util",
-        "@com_github_nlohmann_json//:json",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -63,8 +63,6 @@ cc_library(
     deps = [
         ":simulation_world_service",
         "//modules/common/util:util_tool",
-        "@wheelos_msgs//wheelos_msgs/mission_msgs:mission_request_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/routing_msgs:poi_cc_proto",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/backend/map:map_service",
@@ -73,7 +71,9 @@ cc_library(
         "//modules/dreamview/backend/sim_control_manager",
         "//modules/map/hdmap:hdmap_util",
         "@boost.thread",
-        "@zstd//:zstd",
+        "@wheelos_msgs//wheelos_msgs/mission_msgs:mission_request_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/routing_msgs:poi_cc_proto",
+        "@zstd",
     ],
 )
 

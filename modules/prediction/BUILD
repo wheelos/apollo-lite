@@ -1,16 +1,15 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install", "install_src_files")
 
 package(default_visibility = ["//visibility:public"])
 
 PREDICTION_COPTS = ["-DMODULE_NAME=\\\"prediction\\\""]
 
-
 install(
     name = "prediction_testdata_install",
-    data_dest = "prediction/addition_data",
     data = [":prediction_testdata"],
+    data_dest = "prediction/addition_data",
 )
 
 cc_library(
@@ -19,8 +18,8 @@ cc_library(
     hdrs = ["prediction_component.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
+        "//modules/common/util:util_tool",
         "//modules/prediction/common:message_process",
         "//modules/prediction/evaluator:evaluator_manager",
         "//modules/prediction/predictor:predictor_manager",
@@ -29,7 +28,7 @@ cc_library(
         "//modules/prediction/submodules:evaluator_submodule_lib",
         "//modules/prediction/submodules:predictor_submodule_lib",
         "//modules/prediction/submodules:submodule_output",
-        "//modules/common/util:util_tool",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -46,10 +45,10 @@ cc_test(
     linkopts = [
         "-lgomp",
     ],
+    linkstatic = True,
     deps = [
         ":prediction_component_lib",
     ],
-    linkstatic = True,
 )
 
 cc_binary(
@@ -61,27 +60,26 @@ cc_binary(
 
 install(
     name = "install",
-    library_dest = "prediction/lib",
-    data_dest = "prediction",
     data = [
-        ":runtime_data",
         ":prediction.BUILD",
+        ":runtime_data",
     ],
+    data_dest = "prediction",
+    library_dest = "prediction/lib",
     targets = [
         ":libprediction_component.so",
     ],
     deps = [
         ":pb_hdrs",
-        "//modules/prediction/pipeline:install",
+        ":prediction_testdata_install",
         "//modules/prediction/common:install",
+        "//modules/prediction/pipeline:install",
         "//modules/prediction/submodules:install",
-        ":prediction_testdata_install"
     ],
 )
 
 install(
     name = "pb_hdrs",
-    data_dest = "prediction/include",
     data = [
         "//modules/prediction/proto:fnn_model_base_cc_proto",
         "//modules/prediction/proto:fnn_vehicle_model_cc_proto",
@@ -91,34 +89,36 @@ install(
         "//modules/prediction/proto:prediction_conf_cc_proto",
         "//modules/prediction/proto:vector_net_cc_proto",
     ],
+    data_dest = "prediction/include",
 )
+
 install_src_files(
     name = "install_src",
     deps = [
+        ":install_prediction_hdrs",
         ":install_prediction_src",
-        ":install_prediction_hdrs"
     ],
 )
 
 install_src_files(
     name = "install_prediction_src",
-    src_dir = ["."],
     dest = "prediction/src",
     filter = "*",
+    src_dir = ["."],
 )
 
 install_src_files(
     name = "install_prediction_hdrs",
-    src_dir = ["."],
     dest = "prediction/include",
     filter = "*.h",
+    src_dir = ["."],
 )
 
 filegroup(
     name = "runtime_data",
     srcs = [
-        ":prediction_data",
         ":prediction_conf",
+        ":prediction_data",
     ] + glob([
         "dag/*.dag",
         "launch/*.launch",

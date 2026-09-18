@@ -11,12 +11,11 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/inference:inference_lib",
+        "@core//cyber",
         "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
 
 cpplint()
-

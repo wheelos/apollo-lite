@@ -31,12 +31,12 @@ cc_library(
         "-lm",
     ],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/hesai/proto:hesai_cc_proto",
         "//modules/drivers/lidar/hesai/proto:hesai_config_cc_proto",
+        "@core//cyber",
         "@hesai-lidar-sdk//:hesai_sdk_lib",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
     alwayslink = True,
 )

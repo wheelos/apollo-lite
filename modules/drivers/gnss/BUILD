@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -18,27 +18,27 @@ cc_library(
     srcs = ["gnss_component.cc"],
     hdrs = ["gnss_component.h"],
     copts = GNSS_COPTS,
-    alwayslink = True,
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/common/monitor_log",
+        "//modules/drivers/gnss/proto:gnss_status_cc_proto",
+        "//modules/drivers/gnss/stream:raw_stream",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_state_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:vehicle_signal_cc_proto",
-        "//modules/drivers/gnss/proto:gnss_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:ins_cc_proto",
-        "//modules/drivers/gnss/stream:raw_stream",
     ],
+    alwayslink = True,
 )
 
 install(
     name = "install",
-    data_dest = "drivers/addition_data/gnss",
-    library_dest = "drivers/lib/gnss",
     data = [
         ":runtime_data",
     ],
+    data_dest = "drivers/addition_data/gnss",
+    library_dest = "drivers/lib/gnss",
     targets = [
         ":libgnss_component.so",
     ],

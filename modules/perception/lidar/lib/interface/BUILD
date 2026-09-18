@@ -5,17 +5,17 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "interface",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_bipartite_graph_matcher",
         ":base_classifier",
         ":base_ground_detector",
-        ":base_multi_target_tracker",
-        ":base_roi_filter",
         ":base_lidar_detector",
+        ":base_multi_target_tracker",
         ":base_pointcloud_preprocessor",
-    ],
-    copts = [
-        '-DMODULE_NAME=\\"perception\\"',
+        ":base_roi_filter",
     ],
 )
 
@@ -39,10 +39,10 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/pipeline:stage",
+        "@core//cyber",
     ],
 )
 
@@ -53,13 +53,13 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_error_code",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/pipeline",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
 )
 
@@ -70,11 +70,11 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_error_code",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/pipeline",
+        "@core//cyber",
     ],
 )
 
@@ -85,11 +85,11 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/pipeline:stage",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
 )
 

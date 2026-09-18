@@ -23,8 +23,8 @@ cc_library(
         "//modules/map/hdmap:hdmap_util",
         "//modules/map/pnc_map",
         "@boost.thread",
-        "@com_github_nlohmann_json//:json",
         "@com_github_google_glog//:glog",
+        "@com_github_nlohmann_json//:json",
     ],
 )
 

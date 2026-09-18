@@ -11,10 +11,10 @@ cc_library(
         "base_map_fwd.h",
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util",
         "//modules/localization/msf/common/util",
         "@com_github_google_glog//:glog",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -27,8 +27,8 @@ cc_library(
         "base_map_matrix.h",
     ],
     deps = [
-        "@core//cyber",
         "@com_github_google_glog//:glog",
+        "@core//cyber",
         "@eigen",
         "@opencv//:imgcodecs",
         "@zlib",
@@ -45,8 +45,8 @@ cc_library(
     ],
     deps = [
         ":base_map_config",
-        "@core//cyber",
         "@com_github_google_glog//:glog",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -57,8 +57,8 @@ cc_library(
     hdrs = ["base_map_node_config.h"],
     deps = [
         ":base_map_node_index",
-        "@core//cyber",
         "@com_github_google_glog//:glog",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -76,11 +76,11 @@ cc_library(
         ":base_map_matrix",
         ":base_map_node_config",
         ":base_map_node_index",
-        "@core//cyber",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/common/util:compression",
         "//modules/localization/msf/common/util:file_utility",
         "@com_github_google_glog//:glog",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -96,9 +96,9 @@ cc_library(
         ":base_map_config",
         ":base_map_node",
         ":base_map_node_index",
-        "@core//cyber",
         "//modules/localization/msf/common/util",
         "@com_github_google_glog//:glog",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -115,11 +115,11 @@ cc_library(
         ":base_map_node",
         ":base_map_node_index",
         ":base_map_pool",
-        "@core//cyber",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/common/util:base_map_cache",
         "//modules/localization/msf/common/util:file_utility",
         "@com_github_google_glog//:glog",
+        "@core//cyber",
         "@eigen",
     ],
 )

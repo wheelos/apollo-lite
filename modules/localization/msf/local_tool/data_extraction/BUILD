@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,16 +26,16 @@ cc_library(
         "pcd_exporter.h",
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/math",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/localization/msf/common/io:common_io",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/localization/proto:measure_cc_proto",
+        "@core//cyber",
         "@eigen",
         "@local_config_pcl//:common",
         "@local_config_pcl//:io",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
 )
 
@@ -45,9 +45,9 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":data_extraction",
-        "@core//cyber",
         "@boost.filesystem",
         "@boost.program_options",
+        "@core//cyber",
         "@eigen",
         "@local_config_pcl//:io",
     ],
@@ -59,9 +59,9 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":data_extraction",
-        "@core//cyber",
         "@boost.filesystem",
         "@boost.program_options",
+        "@core//cyber",
         "@eigen",
     ],
 )

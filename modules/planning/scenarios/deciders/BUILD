@@ -18,7 +18,6 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "scenario_decider",
     hdrs = ["scenario_decider.h"],
@@ -31,7 +30,6 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "cruise_decider",
     srcs = ["cruise_decider.cc"],
@@ -39,11 +37,10 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":scenario_decider",
-        "//modules/planning/common:frame",
         "//modules/planning/common:dependency_injector",
+        "//modules/planning/common:frame",
     ],
 )
-
 
 cc_library(
     name = "emergency_decider",
@@ -56,7 +53,6 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "escape_decider",
     srcs = ["escape_decider.cc"],
@@ -64,11 +60,10 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":scenario_decider",
-        "@core//cyber/time:clock",
         "//modules/planning/common:dependency_injector",
+        "@core//cyber/time:clock",
     ],
 )
-
 
 cc_library(
     name = "intersection_decider",
@@ -82,7 +77,6 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "mission_decider",
     srcs = ["mission_decider.cc"],
@@ -94,7 +88,6 @@ cc_library(
         "//modules/planning/common:dependency_injector",
     ],
 )
-
 
 cc_library(
     name = "park_decider",

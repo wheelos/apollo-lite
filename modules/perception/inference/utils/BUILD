@@ -9,8 +9,8 @@ cuda_library(
     srcs = ["cuda_util.cu"],
     hdrs = ["cuda_util.h"],
     deps = [
-        "@core//cyber",
         "@boost.thread",
+        "@core//cyber",
         "@cuda//:cuda_runtime",
     ],
 )
@@ -31,8 +31,8 @@ cuda_library(
     srcs = ["util.cu"],
     hdrs = ["util.h"],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
+        "@core//cyber",
         "@cuda//:cuda_runtime",
         "@eigen",
     ],
@@ -63,9 +63,9 @@ cuda_library(
     deps = [
         ":inference_cuda_util_lib",
         ":inference_util_lib",
-        "@core//cyber",
         "//modules/perception/base:blob",
         "//modules/perception/base:image",
+        "@core//cyber",
         "@cuda//:cublas",
         "@cuda//:cuda_runtime",
     ],
@@ -89,9 +89,9 @@ cuda_library(
     deps = [
         ":inference_cuda_util_lib",
         ":inference_util_lib",
-        "@core//cyber",
         "//modules/perception/base:blob",
         "//modules/perception/base:image",
+        "@core//cyber",
         "@cuda//:cuda_runtime",
     ],
 )

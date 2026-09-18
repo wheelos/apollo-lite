@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -20,8 +20,8 @@ cc_library(
     hdrs = ["mission_idle_stage.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/planning/scenarios:stage",
+        "@core//cyber",
     ],
 )
 
@@ -32,8 +32,8 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":mission_idle_stage",
-        "@core//cyber",
         "//modules/planning/scenarios:scenario",
+        "@core//cyber",
     ],
 )
 

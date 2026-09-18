@@ -52,11 +52,11 @@ cc_library(
         "vcu_vehicle_status_report_101.h",
     ],
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/neolix_edu/proto:neolix_edu_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 

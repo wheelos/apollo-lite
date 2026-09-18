@@ -49,19 +49,19 @@ cc_library(
 )
 
 cc_library(
-  name = "fusion_frame",
-  hdrs = [
-    "fusion_frame.h",
-  ],
-  copts = [
+    name = "fusion_frame",
+    hdrs = [
+        "fusion_frame.h",
+    ],
+    copts = [
         '-DMODULE_NAME=\\"perception\\"',
     ],
-  deps = [
-    ":scene",
-    ":sensor",
-    "//modules/perception/base:frame",
-    "//modules/perception/base:object",
-  ],
+    deps = [
+        ":scene",
+        ":sensor",
+        "//modules/perception/base:frame",
+        "//modules/perception/base:object",
+    ],
 )
 
 cc_library(
@@ -93,10 +93,10 @@ cc_library(
     ],
     deps = [
         ":base_forward_declaration",
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -171,8 +171,8 @@ cc_library(
     ],
     deps = [
         ":sensor",
-        "@core//cyber",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
     ],
 )
 

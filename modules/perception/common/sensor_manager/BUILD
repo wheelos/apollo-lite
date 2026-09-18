@@ -11,7 +11,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:base_type",
         "//modules/perception/base:camera",
         "//modules/perception/base:omnidirectional_model",
@@ -22,6 +21,7 @@ cc_library(
         "//modules/perception/proto:perception_config_schema_cc_proto",
         "//modules/perception/proto:sensor_meta_schema_cc_proto",
         "//modules/transform:calibration_registry",
+        "@core//cyber",
     ],
 )
 

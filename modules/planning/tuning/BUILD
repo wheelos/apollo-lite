@@ -9,11 +9,11 @@ cc_library(
     hdrs = ["autotuning_raw_feature_generator.h"],
     deps = [
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:frame",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/common:speed_limit",
         "//modules/planning/proto:auto_tuning_raw_feature_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 
@@ -43,8 +43,8 @@ cc_library(
     hdrs = ["autotuning_mlp_net_model.h"],
     tags = ["exclude"],
     deps = [
-        "@core//cyber",
         "//modules/prediction/network:net_model",
+        "@core//cyber",
     ],
 )
 

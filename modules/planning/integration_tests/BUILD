@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -14,13 +14,13 @@ cc_library(
     ],
     linkstatic = True,
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/configs:config_gflags",
         "//modules/common/util",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning:planning_component_lib",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
     ],
 )
 

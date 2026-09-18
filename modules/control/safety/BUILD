@@ -5,10 +5,9 @@ package(default_visibility = ["//visibility:public"])
 
 PREPROCESS_SUB_COPTS = ["-DMODULE_NAME=\\\"control\\\""]
 
-
 cc_library(
     name = "safety_defines",
-    hdrs = ["safety_defines.h"]
+    hdrs = ["safety_defines.h"],
 )
 
 cc_library(
@@ -17,17 +16,17 @@ cc_library(
     hdrs = ["safety_manager.h"],
     copts = PREPROCESS_SUB_COPTS,
     deps = [
-      ":safety_defines",
-      "@core//cyber",
-      "//modules/common/util:debouncer",
-      "//modules/common/util:message_util",
-      "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
-      "//modules/control/proto:control_conf_cc_proto",
-      "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
-      "//modules/control/proto:local_view_cc_proto",
-      "//modules/control/proto:safety_status_cc_proto",
-      "@boost.container",
-    ]
+        ":safety_defines",
+        "//modules/common/util:debouncer",
+        "//modules/common/util:message_util",
+        "//modules/control/proto:control_conf_cc_proto",
+        "//modules/control/proto:local_view_cc_proto",
+        "//modules/control/proto:safety_status_cc_proto",
+        "@boost.container",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
+    ],
 )
 
 cc_test(

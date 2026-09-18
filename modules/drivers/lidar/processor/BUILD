@@ -2,7 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
-package(default_visibility=["//visibility:public"])
+package(default_visibility = ["//visibility:public"])
 
 config_setting(
     name = "lidar_gpu_backend_enabled",
@@ -20,10 +20,10 @@ config_setting(
 )
 
 cc_binary(
-    name="liblidar_unified_component.so",
-    linkshared=True,
-    linkstatic=False,
-    deps=[":lidar_unified_component_lib"],
+    name = "liblidar_unified_component.so",
+    linkshared = True,
+    linkstatic = False,
+    deps = [":lidar_unified_component_lib"],
 )
 
 cc_binary(
@@ -37,14 +37,14 @@ cuda_library(
     name = "lidar_policy_cuda_kernels_lib",
     srcs = ["policy/lidar_policy_cuda_kernels.cu"],
     hdrs = ["policy/lidar_policy_cuda_kernels.h"],
-    features = [
-        "-nvcc_extended_lambda",
-        "-nvcc_relaxed_constexpr",
-    ],
     copts = [
         "-std=c++17",
         "-Xcompiler",
         "-std=c++17",
+    ],
+    features = [
+        "-nvcc_extended_lambda",
+        "-nvcc_relaxed_constexpr",
     ],
     deps = [
         "@cuda//:cuda_runtime",
@@ -52,8 +52,8 @@ cuda_library(
 )
 
 cc_library(
-    name="lidar_policy_lib",
-    srcs=[
+    name = "lidar_policy_lib",
+    srcs = [
         "policy/lidar_policy_common.cc",
         "policy/lidar_policy_cpu_deskew.cc",
         "policy/lidar_policy_cpu_filter.cc",
@@ -63,12 +63,12 @@ cc_library(
         "policy/lidar_policy_gpu_filter.cc",
         "policy/lidar_policy_gpu_fusion.cc",
     ],
-    hdrs=[
+    hdrs = [
         "policy/cpu_lidar_policy.h",
         "policy/gpu_lidar_policy.h",
         "policy/lidar_policy_common.h",
-        "policy/lidar_policy_interface.h",
         "policy/lidar_policy_cuda_kernels.h",
+        "policy/lidar_policy_interface.h",
     ],
     copts = select({
         ":lidar_gpu_backend_enabled": ["-DAPOLLO_LIDAR_POLICY_GPU_ENABLED"],
@@ -78,13 +78,13 @@ cc_library(
         ":lidar_mode_force_gpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_GPU"],
         "//conditions:default": [],
     }),
-    deps=[
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
+    deps = [
         "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
         "//modules/transform:buffer",
         "//modules/transform:transform_query_core",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ] + select({
         ":lidar_gpu_backend_enabled": [":lidar_policy_cuda_kernels_lib"],
         "//conditions:default": [],
@@ -92,18 +92,18 @@ cc_library(
 )
 
 cc_library(
-    name="safety_policy_lib",
-    srcs=[
+    name = "safety_policy_lib",
+    srcs = [
         "safety/degrade_policy.cc",
         "safety/dtc_reporter.cc",
         "safety/ts_sanity.cc",
     ],
-    hdrs=[
+    hdrs = [
         "safety/degrade_policy.h",
         "safety/dtc_reporter.h",
         "safety/ts_sanity.h",
     ],
-    deps=[
+    deps = [
         "@core//cyber",
     ],
 )
@@ -112,18 +112,18 @@ cc_library(
     name = "pod_pointcloud_adapter_lib",
     srcs = ["transport/pod_pointcloud_adapter.cc"],
     hdrs = ["transport/pod_pointcloud_adapter.h"],
-    alwayslink = True,
     deps = [
+        "//modules/drivers/lidar/proto:pod_pointcloud_adapter_config_cc_proto",
         "@core//cyber",
         "@core//cyber/transport/message:pod_message",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
-        "//modules/drivers/lidar/proto:pod_pointcloud_adapter_config_cc_proto",
     ],
+    alwayslink = True,
 )
 
 cc_library(
-    name="lidar_unified_component_lib",
-    srcs=[
+    name = "lidar_unified_component_lib",
+    srcs = [
         "control/pose_bins_builder.cc",
         "control/sync_gate.cc",
         "control/time_contract.cc",
@@ -132,7 +132,7 @@ cc_library(
         "lidar_unified_component_ingest.cc",
         "lidar_unified_component_observability.cc",
     ],
-    hdrs=[
+    hdrs = [
         "control/frame_handle.h",
         "control/pose_bins_builder.h",
         "control/sync_gate.h",
@@ -142,29 +142,29 @@ cc_library(
         "policy/gpu_lidar_policy.h",
         "policy/lidar_policy_interface.h",
     ],
-    copts=['-DMODULE_NAME=\\"lidar_unified_component\\"'] + select({
+    copts = ['-DMODULE_NAME=\\"lidar_unified_component\\"'] + select({
         ":lidar_mode_force_cpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_CPU"],
         ":lidar_mode_force_gpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_GPU"],
         "//conditions:default": [],
     }),
-    deps=[
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
-        "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
+    deps = [
         ":lidar_policy_lib",
         ":safety_policy_lib",
+        "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
         "//modules/transform:buffer",
         "//modules/transform:timed_transform_resolver",
         "@boost.circular_buffer",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
-    alwayslink=True,
+    alwayslink = True,
 )
 
 cc_test(
-    name="lidar_policy_test",
-    size="small",
-    srcs=[
+    name = "lidar_policy_test",
+    size = "small",
+    srcs = [
         "lidar_policy_test.cc",
         "lidar_policy_test_main.cc",
     ],
@@ -176,11 +176,11 @@ cc_test(
         ":lidar_mode_force_gpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_GPU"],
         "//conditions:default": [],
     }),
-    deps=[
-        ":lidar_unified_component_lib",
+    deps = [
         ":lidar_policy_lib",
-        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
+        ":lidar_unified_component_lib",
         "@com_google_googletest//:gtest",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
 )
 

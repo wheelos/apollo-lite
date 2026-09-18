@@ -15,11 +15,11 @@ cc_library(
     ],
     deps = [
         ":rt_common_without_protobuf",
-        "@core//cyber",
         "//modules/perception/base:common",
         "//modules/perception/proto:rt_cc_proto",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
+        "@core//cyber",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -35,8 +35,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:common",
+        "@core//cyber",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -60,8 +60,8 @@ cc_library(
     ],
     deps = [
         ":rt_common",
-        "@core//cyber",
         "//modules/perception/proto:rt_cc_proto",
+        "@core//cyber",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -92,11 +92,11 @@ cc_library(
         ":entropy_calibrator",
         ":rt_common",
         ":rt_utils",
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/inference:inference_lib",
         "//modules/perception/inference/tensorrt/plugins:perception_inference_tensorrt_plugins",
         "@com_google_protobuf//:protobuf",
+        "@core//cyber",
         "@local_config_tensorrt//:tensorrt",
         "@opencv//:imgcodecs",
     ],
@@ -159,10 +159,10 @@ cc_library(
     ],
     deps = [
         ":rt_common",
-        "@core//cyber",
         "//modules/perception/proto:rt_cc_proto",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
+        "@core//cyber",
         "@opencv//:imgcodecs",
     ],
 )

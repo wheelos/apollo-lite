@@ -1,5 +1,5 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_binary")
-load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools/install:install.bzl", "install", "install_src_files")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -25,48 +25,48 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "@boost.thread",
-        "@boost.function",
+        ":tf2_headers",
         "@boost.container",
         "@boost.foreach",
+        "@boost.function",
         "@boost.lexical_cast",
         "@boost.signals2",
+        "@boost.thread",
         "@boost.tuple",
-        ":tf2_headers",
     ],
 )
 
 install(
     name = "install",
+    data = [
+        ":3rd-tf2.BUILD",
+        ":cyberfile.xml",
+    ],
     data_dest = "3rd-tf2",
     library_dest = "3rd-tf2/lib",
     targets = [
-        ":libtf2.so"
-    ],
-    data = [
-        ":cyberfile.xml",
-        ":3rd-tf2.BUILD",
+        ":libtf2.so",
     ],
 )
 
 install_src_files(
     name = "install_src",
     deps = [
-        ":install_tf2_src",
         ":install_tf2_hdrs",
+        ":install_tf2_src",
     ],
 )
 
 install_src_files(
     name = "install_tf2_src",
-    src_dir = ["."],
     dest = "3rd-tf2/src",
     filter = "*",
+    src_dir = ["."],
 )
 
 install_src_files(
     name = "install_tf2_hdrs",
-    src_dir = ["include"],
     dest = "3rd-tf2/include",
     filter = "*",
+    src_dir = ["include"],
 )

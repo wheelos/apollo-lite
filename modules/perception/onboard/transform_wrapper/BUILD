@@ -4,7 +4,6 @@ load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
-
 cc_library(
     name = "transform_wrapper",
     srcs = [

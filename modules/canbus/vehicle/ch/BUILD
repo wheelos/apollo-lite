@@ -7,7 +7,6 @@ CANBUS_COPTS = ["-DMODULE_NAME=\\\"canbus\\\""]
 
 cc_library(
     name = "ch_vehicle_factory",
-    alwayslink = True,
     srcs = ["ch_vehicle_factory.cc"],
     hdrs = ["ch_vehicle_factory.h"],
     copts = CANBUS_COPTS,
@@ -17,6 +16,7 @@ cc_library(
         "//modules/canbus/vehicle:abstract_vehicle_factory",
         "//modules/canbus/vehicle:vehicle_factory_core",
     ],
+    alwayslink = True,
 )
 
 cc_library(
@@ -25,10 +25,10 @@ cc_library(
     hdrs = ["ch_message_manager.h"],
     copts = CANBUS_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle/ch/protocol:canbus_ch_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -40,13 +40,13 @@ cc_library(
     deps = [
         ":ch_message_manager",
         "//modules/canbus/proto:canbus_conf_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/canbus/proto:vehicle_parameter_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",
+        "//modules/canbus/vehicle/ch/proto:ch_cc_proto",
         "//modules/canbus/vehicle/ch/protocol:canbus_ch_protocol",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
-        "//modules/canbus/vehicle/ch/proto:ch_cc_proto",
     ],
 )
 

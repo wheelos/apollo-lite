@@ -32,10 +32,6 @@ cc_library(
     deps = [
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/map/pnc_map",
         "//modules/planning/common:frame",
         "//modules/planning/common:obstacle",
@@ -50,6 +46,10 @@ cc_library(
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/reference_line",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -61,7 +61,6 @@ cc_library(
     deps = [
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "//modules/map/pnc_map",
         "//modules/planning/common:frame",
         "//modules/planning/common:obstacle",
@@ -75,6 +74,7 @@ cc_library(
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/reference_line",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
     ],
 )
 
@@ -86,9 +86,6 @@ cc_library(
     deps = [
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/map/pnc_map",
         "//modules/planning/common:frame",
         "//modules/planning/common:history",
@@ -103,6 +100,9 @@ cc_library(
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/reference_line",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

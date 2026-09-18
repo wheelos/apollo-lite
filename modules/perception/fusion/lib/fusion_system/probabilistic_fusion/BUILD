@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -11,9 +11,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
-        "//modules/common/util:util_tool",
         "//modules/common/util",
+        "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/common/graph",
@@ -27,11 +26,12 @@ cc_library(
         "//modules/perception/fusion/lib/data_fusion/tracker/pbf_tracker",
         "//modules/perception/fusion/lib/data_fusion/type_fusion/dst_type_fusion",
         "//modules/perception/fusion/lib/gatekeeper/pbf_gatekeeper",
-        "//modules/perception/fusion/lib/interface:base_fusion_system",
         "//modules/perception/fusion/lib/interface",
+        "//modules/perception/fusion/lib/interface:base_fusion_system",
         "//modules/perception/lib/thread",
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:probabilistic_fusion_config_cc_proto",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,

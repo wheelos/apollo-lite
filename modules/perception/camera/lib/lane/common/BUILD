@@ -1,5 +1,5 @@
-load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,9 +11,9 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
+        "@core//cyber",
         "@eigen",
     ],
 )

@@ -32,14 +32,14 @@ cc_library(
         ":quaternion",
         ":search",
         ":sin_table",
-        "@core//cyber",
         "//modules/common/math/qp_solver",
         "//modules/common/util:util_tool",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@eigen",
         "@osqp",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 
@@ -63,8 +63,8 @@ cc_library(
     linkopts = ["-lm"],
     visibility = ["//visibility:public"],
     deps = [
-        "@core//cyber",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -88,11 +88,11 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":math_utils",
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "@com_google_absl//absl/algorithm",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
+        "@core//cyber",
         "@osqp",
     ],
     alwayslink = True,
@@ -130,8 +130,8 @@ cc_library(
     deps = [
         ":euler_angles_zxy",
         ":geometry",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
     ],
     alwayslink = True,
 )
@@ -261,13 +261,13 @@ cc_library(
     name = "cartesian_frenet_conversion",
     srcs = ["cartesian_frenet_conversion.cc"],
     hdrs = ["cartesian_frenet_conversion.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":geometry",
         "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -285,8 +285,8 @@ cc_test(
     srcs = ["mpc_osqp_test.cc"],
     deps = [
         ":mpc_osqp",
-        "@core//cyber",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
     ],
 )
 
@@ -307,8 +307,8 @@ cc_test(
     srcs = ["linear_interpolation_test.cc"],
     deps = [
         ":linear_interpolation",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
         "@eigen",
     ],
 )

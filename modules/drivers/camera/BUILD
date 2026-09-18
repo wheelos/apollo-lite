@@ -1,7 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install")
-load("//tools/platform:build_defs.bzl", "if_x86_64")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -51,12 +50,12 @@ cc_library(
     hdrs = ["camera_component.h"],
     copts = CAMERA_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/common/util:rate_limiter",
+        "//modules/drivers/camera/backend:camera_device",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
-        "//modules/drivers/camera/backend:camera_device",
     ],
     alwayslink = True,
 )
@@ -67,13 +66,13 @@ cc_library(
     hdrs = ["compress_component.h"],
     copts = CAMERA_COPTS,
     deps = [
+        "//modules/drivers/camera/proto:config_cc_proto",
         "@core//cyber",
+        "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
-        "//modules/drivers/camera/proto:config_cc_proto",
-        "@opencv//:imgcodecs",
-        "@opencv//:imgproc",
     ],
     alwayslink = True,
 )

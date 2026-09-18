@@ -37,12 +37,12 @@ cc_test(
         "-fno-access-control",
     ],
     deps = [
-        "@core//cyber",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/local_map/base_map",
         "//modules/localization/msf/local_map/lossless_map",
         "//modules/localization/msf/local_map/lossy_map",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -52,12 +52,12 @@ cc_test(
     srcs = ["lossless_map_config_test.cc"],
     data = [":local_map_test_data"],
     deps = [
-        "@core//cyber",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/local_map/base_map",
         "//modules/localization/msf/local_map/lossless_map",
         "//modules/localization/msf/local_map/lossy_map",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

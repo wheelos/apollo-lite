@@ -103,12 +103,12 @@ cc_test(
     name = "convex_hull_2d_test",
     size = "small",
     srcs = ["convex_hull_2d_test.cc"],
+    linkstatic = True,
     deps = [
         ":convex_hull_2d",
         "//modules/perception/base:point_cloud",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

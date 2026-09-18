@@ -1,6 +1,5 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -19,9 +18,9 @@ cc_library(
         "-lpcap",
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/drivers/lidar/lslidar/proto:config_cc_proto",
+        "@core//cyber",
     ],
 )
 

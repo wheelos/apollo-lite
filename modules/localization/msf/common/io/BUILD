@@ -8,9 +8,9 @@ cc_library(
     srcs = ["velodyne_utility.cc"],
     hdrs = glob(["*.h"]),
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
         "@local_config_pcl//:io",
     ],
 )

@@ -8,8 +8,8 @@ cc_library(
     srcs = ["fake_can_client.cc"],
     hdrs = ["fake_can_client.h"],
     deps = [
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "//modules/drivers/canbus/can_client",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
     ],
 )
 
@@ -18,10 +18,10 @@ cc_test(
     size = "small",
     srcs = ["fake_can_client_test.cc"],
     deps = [
-        "@core//cyber",
         "//modules/drivers/canbus/can_client/fake:fake_can_client",
         "//modules/drivers/canbus/common:canbus_common",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
