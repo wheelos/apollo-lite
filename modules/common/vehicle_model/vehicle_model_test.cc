@@ -8,6 +8,7 @@
 #include "modules/common/vehicle_model/vehicle_model.h"
 
 #include <cmath>
+#include <limits>
 #include <memory>
 
 #include "gtest/gtest.h"
@@ -89,6 +90,20 @@ TEST(VehicleModelTest, AckermannUsesExplicitFrontSteering) {
   EXPECT_NEAR(predicted.linear_velocity(), 11.0, 1e-9);
 }
 
+TEST(VehicleModelTest, ZeroHorizonReturnsEquivalentStateAtTargetPoint) {
+  auto model = CreateModel(AckermannConfig());
+  VehicleState predicted;
+  VehicleModelInput input;
+  ASSERT_TRUE(
+      model->Predict(0.0, RearAxleState(), input, FRONT_AXLE_CENTER,
+                     &predicted)
+          .ok());
+  EXPECT_EQ(predicted.reference_point(), FRONT_AXLE_CENTER);
+  EXPECT_NEAR(predicted.x(), 2.8, 1e-9);
+  EXPECT_DOUBLE_EQ(predicted.y(), 0.0);
+  EXPECT_DOUBLE_EQ(predicted.timestamp(), 100.0);
+}
+
 TEST(VehicleModelTest, FourWheelSteeringModesHaveExpectedYawOrdering) {
   auto model = CreateModel(FourWheelSteeringConfig());
   const VehicleState state = RearAxleState();
@@ -132,6 +147,26 @@ TEST(VehicleModelTest, FourWheelSteeringSupportsCrabMotion) {
           .ok());
   EXPECT_NEAR(predicted.heading(), 0.0, 1e-9);
   EXPECT_GT(predicted.y(), 0.0);
+}
+
+TEST(VehicleModelTest, FourWheelSteeringRoundTripsExternalReferencePoint) {
+  auto model = CreateModel(FourWheelSteeringConfig());
+  VehicleState state = RearAxleState();
+  state.set_x(4.0);
+  state.set_y(-2.0);
+  state.set_heading(0.3);
+
+  VehicleState predicted;
+  ASSERT_TRUE(
+      model->Predict(0.0, state, VehicleModelInput(), FRONT_AXLE_CENTER,
+                     &predicted)
+          .ok());
+  EXPECT_EQ(predicted.reference_point(), FRONT_AXLE_CENTER);
+  EXPECT_NEAR(predicted.x(), state.x() + 2.8 * std::cos(state.heading()),
+              1e-9);
+  EXPECT_NEAR(predicted.y(), state.y() + 2.8 * std::sin(state.heading()),
+              1e-9);
+  EXPECT_DOUBLE_EQ(predicted.heading(), state.heading());
 }
 
 TEST(VehicleModelTest, FourWheelSteeringFrontOnlyMatchesAckermann) {
@@ -179,6 +214,28 @@ TEST(VehicleModelTest, PreservesRequestedReferencePointAndMetadata) {
   EXPECT_DOUBLE_EQ(position.y(), state.y());
 }
 
+TEST(VehicleModelTest, PredictPreservesPoseRollAndPitch) {
+  auto model = CreateModel(AckermannConfig());
+  VehicleState state = RearAxleState();
+  state.mutable_pose()->mutable_position()->set_x(state.x());
+  state.mutable_pose()->mutable_position()->set_y(state.y());
+  state.mutable_pose()->set_heading(state.heading());
+  state.mutable_pose()->mutable_orientation()->set_qw(0.9);
+  state.mutable_pose()->mutable_orientation()->set_qx(0.1);
+  state.mutable_pose()->mutable_orientation()->set_qy(0.2);
+  state.mutable_pose()->mutable_orientation()->set_qz(0.3);
+
+  VehicleModelInput input;
+  VehicleState predicted;
+  ASSERT_TRUE(
+      model->Predict(0.1, state, input, REAR_AXLE_CENTER, &predicted).ok());
+  EXPECT_DOUBLE_EQ(predicted.pose().orientation().qw(), 0.9);
+  EXPECT_DOUBLE_EQ(predicted.pose().orientation().qx(), 0.1);
+  EXPECT_DOUBLE_EQ(predicted.pose().orientation().qy(), 0.2);
+  EXPECT_DOUBLE_EQ(predicted.pose().orientation().qz(), 0.3);
+  EXPECT_DOUBLE_EQ(predicted.pose().heading(), predicted.heading());
+}
+
 TEST(VehicleModelTest, SupportsReverseHeldCurvaturePrediction) {
   auto model = CreateModel(AckermannConfig());
   VehicleState state = RearAxleState(-4.0);
@@ -209,6 +266,19 @@ TEST(VehicleModelTest, HeldCurvaturePreservesLateralVelocity) {
   EXPECT_NEAR(predicted.lateral_velocity(), 1.0, 1e-9);
 }
 
+TEST(VehicleModelTest, HeldCurvatureDropsLateralRatioAtZeroSpeed) {
+  auto model = CreateModel(FourWheelSteeringConfig());
+  VehicleState state = RearAxleState(0.0);
+  state.set_lateral_velocity(1.0);
+
+  VehicleState predicted;
+  ASSERT_TRUE(model
+                  ->PredictWithHeldCurvature(1.0, state, CENTER_OF_MASS,
+                                             &predicted)
+                  .ok());
+  EXPECT_DOUBLE_EQ(predicted.lateral_velocity(), 0.0);
+}
+
 TEST(VehicleModelTest, RejectsInvalidConfigurationAndInput) {
   std::unique_ptr<VehicleModel> model;
   EXPECT_FALSE(
@@ -218,6 +288,9 @@ TEST(VehicleModelTest, RejectsInvalidConfigurationAndInput) {
   auto invalid_cg = FourWheelSteeringConfig();
   EXPECT_FALSE(
       VehicleModel::Create(invalid_cg, TestDescription(3.0), &model).ok());
+  EXPECT_TRUE(
+      VehicleModel::Create(AckermannConfig(), TestDescription(3.0), &model)
+          .ok());
 
   model = CreateModel(AckermannConfig());
   VehicleModelInput rear_steering;
@@ -227,9 +300,34 @@ TEST(VehicleModelTest, RejectsInvalidConfigurationAndInput) {
                    ->Predict(1.0, RearAxleState(), rear_steering,
                              REAR_AXLE_CENTER, &predicted)
                    .ok());
+  rear_steering.rear_steering_angle = std::numeric_limits<double>::quiet_NaN();
+  EXPECT_FALSE(model
+                   ->Predict(1.0, RearAxleState(), rear_steering,
+                             REAR_AXLE_CENTER, &predicted)
+                   .ok());
+  auto four_wheel_model = CreateModel(FourWheelSteeringConfig());
+  rear_steering.rear_steering_angle =
+      std::numeric_limits<double>::infinity();
+  EXPECT_FALSE(four_wheel_model
+                   ->Predict(1.0, RearAxleState(), rear_steering,
+                             REAR_AXLE_CENTER, &predicted)
+                   .ok());
   EXPECT_FALSE(model
                    ->PredictWithHeldCurvature(-1.0, RearAxleState(),
                                               REAR_AXLE_CENTER, &predicted)
+                   .ok());
+  EXPECT_FALSE(model
+                   ->Predict(std::numeric_limits<double>::infinity(),
+                             RearAxleState(), VehicleModelInput(),
+                             REAR_AXLE_CENTER, &predicted)
+                   .ok());
+  EXPECT_FALSE(model
+                   ->Predict(61.0, RearAxleState(), VehicleModelInput(),
+                             REAR_AXLE_CENTER, &predicted)
+                   .ok());
+  EXPECT_FALSE(model
+                   ->Predict(1.0, RearAxleState(), VehicleModelInput(),
+                             static_cast<ReferencePoint>(99), &predicted)
                    .ok());
   EXPECT_FALSE(model
                    ->PredictWithHeldCurvature(1.0, RearAxleState(),

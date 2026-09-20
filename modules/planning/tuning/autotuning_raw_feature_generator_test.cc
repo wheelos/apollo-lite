@@ -33,9 +33,10 @@ class AutotuningRawFeatureGeneratorTest : public ::testing::Test {
     common::TrajectoryPoint ego_pos;
     ReferenceLine reference_line;
     hdmap::RouteSegments segments;
-    ref_line_info_.reset(
-        new ReferenceLineInfo(common::VehicleState{}, ego_pos, reference_line,
-                              segments));
+    const common::VehicleGeometryModel vehicle_geometry_model;
+    ref_line_info_.reset(new ReferenceLineInfo(
+        common::VehicleState{}, ego_pos, reference_line, segments,
+        vehicle_geometry_model));
     common::VehicleState ego_state;
     // pseudo empty frame info
     LocalView dummy_local_view;

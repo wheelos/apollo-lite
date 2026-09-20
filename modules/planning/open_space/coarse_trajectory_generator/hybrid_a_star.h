@@ -39,6 +39,7 @@
 #include "modules/common/math/math_utils.h"
 #include "modules/planning/common/obstacle.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/open_space/coarse_trajectory_generator/grid_search.h"
 #include "modules/planning/open_space/coarse_trajectory_generator/node3d.h"
 #include "modules/planning/open_space/coarse_trajectory_generator/reeds_shepp_path.h"
@@ -60,8 +61,7 @@ class HybridAStar {
  public:
   explicit HybridAStar(
       const PlannerOpenSpaceConfig& open_space_conf,
-      const common::VehicleGeometryModel& vehicle_geometry_model =
-          common::VehicleGeometryModel());
+      const PlanningGeometryAdapter& geometry_adapter);
   virtual ~HybridAStar() = default;
   bool Plan(double sx, double sy, double sphi, double ex, double ey,
             double ephi, const std::vector<double>& XYbounds,
@@ -99,7 +99,7 @@ class HybridAStar {
   PlannerOpenSpaceConfig planner_open_space_config_;
   common::VehicleParam vehicle_param_ =
       common::VehicleConfigHelper::GetConfig().vehicle_param();
-  common::VehicleGeometryModel vehicle_geometry_model_;
+  PlanningGeometryAdapter geometry_adapter_;
   size_t next_node_num_ = 0;
   double max_steer_angle_ = 0.0;
   double step_size_ = 0.0;

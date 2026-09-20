@@ -171,7 +171,7 @@ bool PathDecider::MakeStaticObstacleDecision(
               object_decision.stop(), obstacle->Id(),
               reference_line_info_->reference_line(),
               reference_line_info_->AdcSlBoundary(),
-              reference_line_info_->vehicle_geometry_model())) {
+              reference_line_info_->planning_geometry_adapter())) {
         path_decision->AddLongitudinalDecision("PathDecider/nearest-stop",
                                                obstacle->Id(), object_decision);
       } else {
@@ -213,7 +213,7 @@ ObjectStop PathDecider::GenerateObjectStopDecision(
 
   double stop_distance = obstacle.MinRadiusStopDistance(
       VehicleConfigHelper::GetConfig().vehicle_param(),
-      reference_line_info_->vehicle_geometry_model());
+      reference_line_info_->planning_geometry_adapter());
   object_stop.set_reason_code(StopReasonCode::STOP_REASON_OBSTACLE);
   object_stop.set_distance_s(-stop_distance);
 

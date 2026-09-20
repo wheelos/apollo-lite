@@ -20,6 +20,12 @@
 namespace apollo {
 namespace common {
 
+bool IsSupportedReferencePoint(const ReferencePoint reference_point) {
+  return reference_point == REAR_AXLE_CENTER ||
+         reference_point == FRONT_AXLE_CENTER ||
+         reference_point == CENTER_OF_MASS;
+}
+
 VehicleDescription::VehicleDescription()
     : VehicleDescription(VehicleConfigHelper::GetConfig()) {}
 
@@ -50,28 +56,44 @@ VehicleDescription::VehicleDescription(const VehicleConfig& vehicle_config,
       max_deceleration_(vehicle_config.vehicle_param().max_deceleration()),
       center_of_mass_offset_(center_of_mass_offset) {}
 
-double VehicleDescription::LongitudinalOffset(
-    const ReferencePoint reference_point) const {
+Status VehicleDescription::LongitudinalOffset(
+    const ReferencePoint reference_point, double* offset) const {
+  if (offset == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "offset is null");
+  }
   switch (reference_point) {
     case REAR_AXLE_CENTER:
-      return 0.0;
+      *offset = 0.0;
+      return Status::OK();
     case FRONT_AXLE_CENTER:
-      return wheel_base_;
+      *offset = wheel_base_;
+      return Status::OK();
     case CENTER_OF_MASS:
-      return center_of_mass_offset_;
+      *offset = center_of_mass_offset_;
+      return Status::OK();
     default:
-      return 0.0;
+      return Status(ErrorCode::PLANNING_ERROR,
+                    "unsupported vehicle reference point");
   }
 }
 
-math::Vec2d VehicleDescription::CenterOffset(
-    const ReferencePoint reference_point) const {
+Status VehicleDescription::FootprintCenterOffset(
+    const ReferencePoint reference_point, math::Vec2d* offset) const {
+  if (offset == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "offset is null");
+  }
+  double longitudinal_offset = 0.0;
+  const auto status = LongitudinalOffset(reference_point, &longitudinal_offset);
+  if (!status.ok()) {
+    return status;
+  }
   const double longitudinal_to_center =
       (front_edge_to_center_ - back_edge_to_center_) / 2.0 -
-      LongitudinalOffset(reference_point);
+      longitudinal_offset;
   const double lateral_to_center =
       (left_edge_to_center_ - right_edge_to_center_) / 2.0;
-  return math::Vec2d(longitudinal_to_center, lateral_to_center);
+  *offset = math::Vec2d(longitudinal_to_center, lateral_to_center);
+  return Status::OK();
 }
 
 }  // namespace common

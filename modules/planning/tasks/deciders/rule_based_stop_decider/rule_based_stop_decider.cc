@@ -197,7 +197,7 @@ bool RuleBasedStopDecider::CheckSidePassStop(
         return false;
       }
       const double ego_front_to_center =
-          reference_line_info.vehicle_geometry_model().FrontEdgeDistance();
+          reference_line_info.planning_geometry_adapter().FrontEdgeDistance();
       const double ego_theta = stop_pathpoint.theta();
       Vec2d shift_vec{ego_front_to_center * std::cos(ego_theta),
                       ego_front_to_center * std::sin(ego_theta)};

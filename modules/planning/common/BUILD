@@ -11,6 +11,7 @@ cc_library(
     hdrs = ["vehicle_frenet_geometry.h"],
     copts = PLANNING_COPTS,
     deps = [
+        ":planning_geometry_adapter",
         "//modules/common/vehicle_state:vehicle_reference",
     ],
 )
@@ -20,9 +21,21 @@ cc_test(
     size = "small",
     srcs = ["vehicle_frenet_geometry_test.cc"],
     deps = [
+        ":planning_geometry_adapter",
         ":vehicle_frenet_geometry",
         "@com_google_googletest//:gtest_main",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "planning_geometry_adapter",
+    hdrs = ["planning_geometry_adapter.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        "//modules/common/math",
+        "//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 
@@ -116,6 +129,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":indexed_list",
+        ":planning_geometry_adapter",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/util:util_tool",
         "//modules/common/vehicle_state:vehicle_reference",
@@ -183,6 +197,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":obstacle",
+        ":planning_geometry_adapter",
         "//modules/common/vehicle_state:vehicle_reference",
         "//modules/planning/reference_line",
     ],
@@ -216,6 +231,7 @@ cc_library(
         "//modules/common/vehicle_state:vehicle_reference",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         ":vehicle_frenet_geometry",
+        ":planning_geometry_adapter",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/map/pnc_map",

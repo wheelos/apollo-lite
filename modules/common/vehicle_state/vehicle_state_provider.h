@@ -30,12 +30,18 @@ class VehicleStateProvider {
   Status Update(const localization::LocalizationEstimate& localization,
                 const canbus::Chassis& chassis);
 
-  // Returns the immutable, fully merged state at the configured reference
-  // point. All fields belong to the same successful update cycle. The
-  // returned protobuf must be treated as read-only by consumers.
+  // Returns the latest successfully committed state snapshot.
+  // The returned object is read-only through this API. Its contents may be
+  // replaced by a later successful Update() call. Callers that retain a state
+  // across update cycles must make a copy.
   const VehicleState& state() const;
 
-  virtual ~VehicleStateProvider() = default;
+  // Returns true after at least one complete state snapshot has been
+  // successfully committed. A failed later Update() does not invalidate the
+  // previously committed snapshot.
+  bool HasValidState() const;
+
+  ~VehicleStateProvider() = default;
 
  private:
   bool ConstructMotionState(
@@ -54,7 +60,7 @@ class VehicleStateProvider {
   VehicleMotionState motion_state_snapshot_;
   VehicleOperatingState operating_state_snapshot_;
   VehicleState state_snapshot_;
-  VehicleDescription vehicle_description_;
+  bool has_valid_state_ = false;
 };
 
 }  // namespace common

@@ -94,7 +94,7 @@ int Destination::MakeDecisions(Frame* frame,
 
       const double stop_line_s =
           pull_over_sl.s() +
-          reference_line_info->vehicle_geometry_model().FrontEdgeDistance() +
+          reference_line_info->planning_geometry_adapter().FrontEdgeDistance() +
           config_.destination().stop_distance();
       util::BuildStopDecision(
           stop_wall_id, stop_line_s, config_.destination().stop_distance(),

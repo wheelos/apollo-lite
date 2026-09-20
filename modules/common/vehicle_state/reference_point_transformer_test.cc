@@ -64,6 +64,8 @@ TEST(ReferencePointTransformerTest, PoseOrientationMatchesHeading) {
   state_pose.set_y(0.0);
   state_pose.set_heading(heading);
   state_pose.set_reference_point(REAR_AXLE_CENTER);
+  state_pose.mutable_pose()->mutable_position()->set_x(0.0);
+  state_pose.mutable_pose()->mutable_position()->set_y(0.0);
   state_pose.mutable_pose()->mutable_orientation()->set_qw(
       std::cos(heading / 2.0));
   state_pose.mutable_pose()->mutable_orientation()->set_qx(0.0);
@@ -82,7 +84,7 @@ TEST(ReferencePointTransformerTest, PoseOrientationMatchesHeading) {
   EXPECT_NEAR(front_pose.y(), 2.8 * std::sin(heading), 1e-6);
 }
 
-TEST(ReferencePointTransformerTest, IncompletePoseOrientationUsesHeading) {
+TEST(ReferencePointTransformerTest, RejectsIncompletePosePosition) {
   VehicleConfig config;
   config.mutable_vehicle_param()->set_wheel_base(2.8);
   ReferencePointTransformer transformer{VehicleDescription(config)};
@@ -93,13 +95,11 @@ TEST(ReferencePointTransformerTest, IncompletePoseOrientationUsesHeading) {
   state.mutable_pose()->mutable_orientation()->set_qw(1.0);
 
   VehicleState front;
-  ASSERT_TRUE(
+  EXPECT_FALSE(
       transformer.TransformState(state, FRONT_AXLE_CENTER, &front).ok());
-  EXPECT_NEAR(front.x(), 2.8 * std::cos(M_PI / 4.0), 1e-6);
-  EXPECT_NEAR(front.y(), 2.8 * std::sin(M_PI / 4.0), 1e-6);
 }
 
-TEST(ReferencePointTransformerTest, ZeroNormOrientationUsesHeading) {
+TEST(ReferencePointTransformerTest, UsesHeadingForStrict2dTransform) {
   VehicleConfig config;
   config.mutable_vehicle_param()->set_wheel_base(2.8);
   ReferencePointTransformer transformer{VehicleDescription(config)};
@@ -107,6 +107,8 @@ TEST(ReferencePointTransformerTest, ZeroNormOrientationUsesHeading) {
   VehicleState state;
   state.set_heading(M_PI / 4.0);
   state.set_reference_point(REAR_AXLE_CENTER);
+  state.mutable_pose()->mutable_position()->set_x(0.0);
+  state.mutable_pose()->mutable_position()->set_y(0.0);
   auto* orientation = state.mutable_pose()->mutable_orientation();
   orientation->set_qw(0.0);
   orientation->set_qx(0.0);
@@ -189,6 +191,56 @@ TEST(ReferencePointTransformerTest, RejectsNullOutput) {
                    .TransformState(state, REAR_AXLE_CENTER,
                                    static_cast<VehicleState*>(nullptr))
                    .ok());
+}
+
+TEST(ReferencePointTransformerTest, SupportsInPlaceTransform) {
+  VehicleConfig config;
+  config.mutable_vehicle_param()->set_wheel_base(2.8);
+  ReferencePointTransformer transformer{VehicleDescription(config)};
+
+  VehicleState state;
+  state.set_x(1.0);
+  state.set_y(2.0);
+  state.set_heading(0.0);
+  state.set_linear_velocity(5.0);
+  state.set_reference_point(REAR_AXLE_CENTER);
+
+  ASSERT_TRUE(
+      transformer.TransformState(state, FRONT_AXLE_CENTER, &state).ok());
+  EXPECT_DOUBLE_EQ(state.x(), 3.8);
+  EXPECT_DOUBLE_EQ(state.y(), 2.0);
+  EXPECT_EQ(state.reference_point(), FRONT_AXLE_CENTER);
+}
+
+TEST(ReferencePointTransformerTest, PreservesPoseOrientationMetadata) {
+  VehicleConfig config;
+  config.mutable_vehicle_param()->set_wheel_base(2.8);
+  ReferencePointTransformer transformer{VehicleDescription(config)};
+
+  VehicleState state;
+  state.set_x(1.0);
+  state.set_y(2.0);
+  state.set_heading(0.4);
+  state.set_reference_point(REAR_AXLE_CENTER);
+  auto* pose = state.mutable_pose();
+  pose->mutable_position()->set_x(1.0);
+  pose->mutable_position()->set_y(2.0);
+  pose->mutable_orientation()->set_qx(0.1);
+  pose->mutable_orientation()->set_qy(0.2);
+  pose->mutable_orientation()->set_qz(0.3);
+  pose->mutable_orientation()->set_qw(0.9);
+
+  VehicleState transformed;
+  ASSERT_TRUE(
+      transformer.TransformState(state, FRONT_AXLE_CENTER, &transformed).ok());
+  EXPECT_NEAR(transformed.pose().position().x(),
+              1.0 + 2.8 * std::cos(state.heading()), 1e-6);
+  EXPECT_NEAR(transformed.pose().position().y(),
+              2.0 + 2.8 * std::sin(state.heading()), 1e-6);
+  EXPECT_DOUBLE_EQ(transformed.pose().orientation().qx(), 0.1);
+  EXPECT_DOUBLE_EQ(transformed.pose().orientation().qy(), 0.2);
+  EXPECT_DOUBLE_EQ(transformed.pose().orientation().qz(), 0.3);
+  EXPECT_DOUBLE_EQ(transformed.pose().orientation().qw(), 0.9);
 }
 
 }  // namespace common

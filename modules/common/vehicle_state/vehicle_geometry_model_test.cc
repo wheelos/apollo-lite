@@ -83,25 +83,16 @@ TEST_F(VehicleGeometryModelTest, ConsistentBoxAcrossReferencePoints) {
   EXPECT_NEAR(rear_box.heading(), front_box.heading(), 1e-6);
 }
 
-TEST_F(VehicleGeometryModelTest, BuildBoxFromPathPoint) {
-  PathPoint point;
-  point.set_x(5.0);
-  point.set_y(5.0);
-  point.set_theta(0.0);
+TEST_F(VehicleGeometryModelTest, BuildBoxFromPose) {
+  VehiclePose2d pose(math::Vec2d(5.0, 5.0), 0.0, REAR_AXLE_CENTER);
 
   math::Box2d box;
-  ASSERT_TRUE(geometry_model_.BuildBox(point, &box).ok());
+  ASSERT_TRUE(geometry_model_.BuildBox(pose, &box).ok());
   EXPECT_NEAR(box.center_x(), 6.4, 1e-6);
   EXPECT_NEAR(box.center_y(), 5.0, 1e-6);
 
-  // Test direct return and buffer overload
-  math::Box2d direct_box = geometry_model_.BuildBox(point);
-  EXPECT_NEAR(direct_box.center_x(), 6.4, 1e-6);
-  EXPECT_NEAR(direct_box.center_y(), 5.0, 1e-6);
-  EXPECT_NEAR(direct_box.length(), 4.8, 1e-6);
-  EXPECT_NEAR(direct_box.width(), 2.0, 1e-6);
-
-  math::Box2d buffered_box = geometry_model_.BuildBox(point, 0.2, 0.5);
+  math::Box2d buffered_box;
+  ASSERT_TRUE(geometry_model_.BuildBox(pose, 0.2, 0.5, &buffered_box).ok());
   EXPECT_NEAR(buffered_box.center_x(), 6.4, 1e-6);
   EXPECT_NEAR(buffered_box.center_y(), 5.0, 1e-6);
   EXPECT_NEAR(buffered_box.length(), 4.8 + 1.0, 1e-6);
@@ -122,28 +113,46 @@ TEST_F(VehicleGeometryModelTest, BuildFrontRegion) {
   // center is at 1.4 + 50.0 / 2 = 26.4
   EXPECT_NEAR(front_region.center_x(), 26.4, 1e-6);
   EXPECT_NEAR(front_region.center_y(), 0.0, 1e-6);
-  EXPECT_NEAR(front_region.length(), 4.8 + 0.1 + 50.0, 1e-6);
-  EXPECT_NEAR(front_region.width(), 2.0 + 0.1, 1e-6);
+  // The state overload's buffer is a lateral buffer. It expands both sides,
+  // while the distance threshold extends the region only forward.
+  EXPECT_NEAR(front_region.length(), 4.8 + 50.0, 1e-6);
+  EXPECT_NEAR(front_region.width(), 2.0 + 2.0 * 0.1, 1e-6);
 }
 
 TEST_F(VehicleGeometryModelTest, CollisionAndClearanceSemantics) {
-  PathPoint ego_pt;
-  ego_pt.set_x(0.0);
-  ego_pt.set_y(0.0);
-  ego_pt.set_theta(0.0);
+  VehiclePose2d ego_pose(math::Vec2d(0.0, 0.0), 0.0, REAR_AXLE_CENTER);
 
   // Vehicle footprint: x in [-1.0, 3.8], y in [-1.0, 1.0]
   // Obstacle box at x=5.0, y=0.0, length=2.0, width=2.0 (x in [4.0, 6.0])
   math::Box2d obs_box(math::Vec2d(5.0, 0.0), 0.0, 2.0, 2.0);
 
   // No collision without buffer
-  EXPECT_FALSE(geometry_model_.CheckCollision(ego_pt, obs_box));
+  bool collision = true;
+  ASSERT_TRUE(
+      geometry_model_.CheckCollision(ego_pose, obs_box, &collision).ok());
+  EXPECT_FALSE(collision);
 
   // Clearance is from x=3.8 to x=4.0 -> 0.2
-  EXPECT_NEAR(geometry_model_.ComputeClearance(ego_pt, obs_box), 0.2, 1e-6);
+  double clearance = 0.0;
+  ASSERT_TRUE(
+      geometry_model_.ComputeClearance(ego_pose, obs_box, &clearance).ok());
+  EXPECT_NEAR(clearance, 0.2, 1e-6);
 
   // Collision with longitudinal_buffer >= 0.2
-  EXPECT_TRUE(geometry_model_.CheckCollision(ego_pt, obs_box, 0.0, 0.25));
+  ASSERT_TRUE(
+      geometry_model_.CheckCollision(ego_pose, obs_box, &collision, 0.0, 0.25)
+          .ok());
+  EXPECT_TRUE(collision);
+}
+
+TEST_F(VehicleGeometryModelTest, RejectsUnknownReferencePointAndInvalidBuffer) {
+  VehiclePose2d invalid_pose(math::Vec2d(0.0, 0.0), 0.0,
+                             static_cast<ReferencePoint>(99));
+  math::Box2d box;
+  EXPECT_FALSE(geometry_model_.BuildBox(invalid_pose, &box).ok());
+
+  VehiclePose2d valid_pose(math::Vec2d(0.0, 0.0), 0.0, REAR_AXLE_CENTER);
+  EXPECT_FALSE(geometry_model_.BuildBox(valid_pose, -0.1, 0.0, &box).ok());
 }
 
 }  // namespace common

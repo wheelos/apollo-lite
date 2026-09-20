@@ -50,7 +50,10 @@ STBoundsDecider::STBoundsDecider(
 Status STBoundsDecider::Process(Frame* const frame,
                                 ReferenceLineInfo* const reference_line_info) {
   // Initialize the related helper classes.
-  InitSTBoundsDecider(*frame, reference_line_info);
+  const Status init_status = InitSTBoundsDecider(*frame, reference_line_info);
+  if (!init_status.ok()) {
+    return init_status;
+  }
 
   // Sweep the t-axis, and determine the s-boundaries step by step.
   STBound regular_st_bound;
@@ -86,18 +89,29 @@ Status STBoundsDecider::Process(Frame* const frame,
   return Status::OK();
 }
 
-void STBoundsDecider::InitSTBoundsDecider(
+Status STBoundsDecider::InitSTBoundsDecider(
     const Frame& frame, ReferenceLineInfo* const reference_line_info) {
+  if (reference_line_info == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  "reference_line_info is null");
+  }
   const PathData& path_data = reference_line_info->path_data();
   PathDecision* path_decision = reference_line_info->path_decision();
+  if (path_decision == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "path_decision is null");
+  }
 
   // Map all related obstacles onto ST-Graph.
   auto time1 = std::chrono::system_clock::now();
-  st_obstacles_processor_.Init(path_data.discretized_path().Length(),
-                               st_bounds_config_.total_time(), path_data,
-                               path_decision, injector_->history(),
-                               injector_->vehicle_model().geometry_model());
-  st_obstacles_processor_.MapObstaclesToSTBoundaries(path_decision);
+  st_obstacles_processor_.Init(
+      path_data.discretized_path().Length(), st_bounds_config_.total_time(),
+      path_data, path_decision, injector_->history(),
+      reference_line_info->planning_geometry_adapter());
+  const Status map_status =
+      st_obstacles_processor_.MapObstaclesToSTBoundaries(path_decision);
+  if (!map_status.ok()) {
+    return map_status;
+  }
   auto time2 = std::chrono::system_clock::now();
   std::chrono::duration<double> diff = time2 - time1;
   ADEBUG << "Time for ST Obstacles Processing = " << diff.count() * 1000
@@ -120,6 +134,7 @@ void STBoundsDecider::InitSTBoundsDecider(
   static constexpr double max_v = desired_speed * 1.5;
   st_driving_limits_.Init(max_acc, max_dec, max_v,
                           frame.PlanningStartPoint().v());
+  return Status::OK();
 }
 
 Status STBoundsDecider::GenerateFallbackSTBound(STBound* const st_bound,

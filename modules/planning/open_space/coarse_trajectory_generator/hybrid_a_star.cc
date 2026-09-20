@@ -154,8 +154,8 @@ int GearSwitchCount(const std::shared_ptr<Node3d>& node) {
 
 HybridAStar::HybridAStar(
     const PlannerOpenSpaceConfig& open_space_conf,
-    const common::VehicleGeometryModel& vehicle_geometry_model)
-    : vehicle_geometry_model_(vehicle_geometry_model) {
+    const PlanningGeometryAdapter& geometry_adapter)
+    : geometry_adapter_(geometry_adapter) {
   planner_open_space_config_.CopyFrom(open_space_conf);
   reed_shepp_generator_ =
       std::make_unique<ReedShepp>(vehicle_param_, planner_open_space_config_);
@@ -878,11 +878,11 @@ bool HybridAStar::Plan(
     }
   }
   ssm << "--vehicle start box" << std::endl;
-  Box2d sbox = vehicle_geometry_model_.BuildBox(Vec2d(sx, sy), sphi);
+  Box2d sbox = geometry_adapter_.BuildBox(Vec2d(sx, sy), sphi);
   for (auto corner : sbox.GetAllCorners())
     ssm << corner.x() << "," << corner.y() << std::endl;
   ssm << "--vehicle end box" << std::endl;
-  Box2d ebox = vehicle_geometry_model_.BuildBox(Vec2d(ex, ey), ephi);
+  Box2d ebox = geometry_adapter_.BuildBox(Vec2d(ex, ey), ephi);
   for (auto corner : ebox.GetAllCorners())
     ssm << corner.x() << "," << corner.y() << std::endl;
   // load XYbounds

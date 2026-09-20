@@ -15,6 +15,7 @@
 #pragma once
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
+#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 
 #include "modules/common/status/status.h"
 #include "modules/common/vehicle_state/vehicle_description.h"
@@ -26,17 +27,20 @@ namespace common {
 // as REAR_AXLE_CENTER, FRONT_AXLE_CENTER, and CENTER_OF_MASS.
 //
 // Responsibilities:
-//   * transform position and orientation according to vehicle geometry;
+//   * transform planar position according to vehicle geometry;
 //   * convert planar reference-point velocity, acceleration, and curvature;
 //   * preserve operating metadata when the VehicleState overload is used.
 //
 // This class does not predict motion, select a vehicle model, or apply
-// steering constraints. The position/orientation part is a rigid-body
-// reference-point transform. VehicleState.linear_velocity is a body-frame
-// longitudinal component and is invariant for longitudinal reference-point
-// offsets. This is not a full six-degree-of-freedom rigid-body transform.
+// steering constraints. This is intentionally a strict 2D transform: heading
+// is authoritative and z/orientation quaternion fields are preserved as
+// metadata rather than transformed. VehicleState.linear_velocity is a
+// body-frame longitudinal component and is invariant for longitudinal
+// reference-point offsets. This is not a full six-degree-of-freedom rigid-body
+// transform.
 class ReferencePointTransformer {
  public:
+  [[deprecated("Use an explicit VehicleConfig or VehicleDescription")]]
   ReferencePointTransformer();
   explicit ReferencePointTransformer(const VehicleConfig& vehicle_config);
   explicit ReferencePointTransformer(const VehicleDescription& description);

@@ -11,14 +11,13 @@
 #include <string>
 
 #include "modules/common/vehicle_model/proto/vehicle_model_config.pb.h"
-#include "modules/common/vehicle_model/vehicle_model_input.h"
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 
 #include "modules/common/math/vec2d.h"
 #include "modules/common/status/status.h"
+#include "modules/common/vehicle_model/vehicle_model_input.h"
 #include "modules/common/vehicle_state/reference_point_transformer.h"
 #include "modules/common/vehicle_state/vehicle_description.h"
-#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 
 namespace apollo {
 namespace common {
@@ -55,19 +54,10 @@ class VehicleModel {
 
   ReferencePoint canonical_reference_point() const;
 
-  // Returns the geometry model whose trajectory-point anchor
-  // (trajectory_reference_point()) matches this model's
-  // canonical_reference_point(). Consumers that build vehicle footprints
-  // from PathPoint/TrajectoryPoint produced by this VehicleModel must use
-  // this instance instead of constructing their own, so that switching the
-  // configured vehicle model (e.g. Ackermann -> four-wheel-steering) never
-  // requires changes outside modules/common/vehicle_model /
-  // modules/common/vehicle_state.
-  const VehicleGeometryModel& geometry_model() const { return geometry_model_; }
-
   // Predicts with explicit actuator/model input. The input state may use any
-  // supported reference point. The output is expressed at
-  // target_reference_point.
+  // supported reference point. A zero horizon returns the canonicalized state
+  // transformed back to target_reference_point without propagation.
+  // The output is expressed at target_reference_point.
   Status Predict(double predicted_time_horizon,
                  const VehicleState& current_state,
                  const VehicleModelInput& input,
@@ -90,15 +80,14 @@ class VehicleModel {
   VehicleModel(std::unique_ptr<VehicleModelImplementation> implementation,
                const VehicleDescription& description);
 
-  Status PredictCanonical(double predicted_time_horizon,
-                          const VehicleState& current_state,
-                          const VehicleModelInput* input,
-                          ReferencePoint target_reference_point,
-                          VehicleState* predicted_state) const;
+  Status PredictInternal(double predicted_time_horizon,
+                         const VehicleState& current_state,
+                         const VehicleModelInput* input,
+                         ReferencePoint target_reference_point,
+                         VehicleState* predicted_state) const;
 
   std::unique_ptr<VehicleModelImplementation> implementation_;
   ReferencePointTransformer transformer_;
-  VehicleGeometryModel geometry_model_;
 };
 
 }  // namespace common

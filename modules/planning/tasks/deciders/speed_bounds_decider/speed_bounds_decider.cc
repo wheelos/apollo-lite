@@ -25,6 +25,7 @@
 #include "modules/planning/common/path/path_data.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/common/st_graph_data.h"
 #include "modules/planning/common/util/common.h"
 #include "modules/planning/tasks/deciders/speed_bounds_decider/speed_limit_decider.h"
@@ -57,10 +58,12 @@ Status SpeedBoundsDecider::Process(
 
   // 1. Map obstacles into st graph
   auto time1 = std::chrono::system_clock::now();
+  const PlanningGeometryAdapter geometry_adapter =
+      reference_line_info->planning_geometry_adapter();
   STBoundaryMapper boundary_mapper(
       speed_bounds_config_, reference_line, path_data,
       path_data.discretized_path().Length(), speed_bounds_config_.total_time(),
-      injector_);
+      injector_, geometry_adapter);
 
   if (!FLAGS_use_st_drivable_boundary) {
     path_decision->EraseStBoundaries();
@@ -95,8 +98,7 @@ Status SpeedBoundsDecider::Process(
 
   // 2. Create speed limit along path
   SpeedLimitDecider speed_limit_decider(
-      speed_bounds_config_, reference_line, path_data,
-      injector_->vehicle_model().geometry_model());
+      speed_bounds_config_, reference_line, path_data, geometry_adapter);
 
   SpeedLimit speed_limit;
   if (!speed_limit_decider

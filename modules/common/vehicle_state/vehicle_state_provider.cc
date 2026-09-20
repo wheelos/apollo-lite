@@ -31,22 +31,21 @@ namespace apollo {
 namespace common {
 namespace {
 
-Status GetConfiguredReferencePoint(ReferencePoint* reference_point) {
+Status GetReferencePointFromFlag(const int flag_value, const char* flag_name,
+                                 ReferencePoint* reference_point) {
   if (reference_point == nullptr) {
     return Status(ErrorCode::LOCALIZATION_ERROR,
                   "reference point output is null");
   }
-  switch (FLAGS_vehicle_state_reference_point) {
+  switch (flag_value) {
     case REAR_AXLE_CENTER:
     case FRONT_AXLE_CENTER:
     case CENTER_OF_MASS:
-      *reference_point =
-          static_cast<ReferencePoint>(FLAGS_vehicle_state_reference_point);
+      *reference_point = static_cast<ReferencePoint>(flag_value);
       return Status::OK();
     default:
       return Status(ErrorCode::LOCALIZATION_ERROR,
-                    absl::StrCat("Unsupported vehicle state reference point: ",
-                                 FLAGS_vehicle_state_reference_point));
+                    absl::StrCat("Unsupported ", flag_name, ": ", flag_value));
   }
 }
 
@@ -55,7 +54,7 @@ Status GetConfiguredReferencePoint(ReferencePoint* reference_point) {
 Status VehicleStateProvider::Update(
     const localization::LocalizationEstimate& localization,
     const canbus::Chassis& chassis) {
-  VehicleMotionState motion_state = motion_state_snapshot_;
+  VehicleMotionState motion_state;
   VehicleOperatingState operating_state;
   VehicleState next_state;
   if (!ConstructMotionState(localization, &motion_state)) {
@@ -94,12 +93,22 @@ Status VehicleStateProvider::Update(
                            motion_state.linear_velocity());
   }
   ReferencePoint configured_reference_point;
-  const auto reference_point_status =
-      GetConfiguredReferencePoint(&configured_reference_point);
+  const auto reference_point_status = GetReferencePointFromFlag(
+      FLAGS_vehicle_state_reference_point, "vehicle_state_reference_point",
+      &configured_reference_point);
   if (!reference_point_status.ok()) {
     return reference_point_status;
   }
-  if (configured_reference_point != REAR_AXLE_CENTER) {
+  ReferencePoint localization_reference_point;
+  const auto localization_reference_point_status = GetReferencePointFromFlag(
+      FLAGS_vehicle_state_localization_reference_point,
+      "vehicle_state_localization_reference_point",
+      &localization_reference_point);
+  if (!localization_reference_point_status.ok()) {
+    return localization_reference_point_status;
+  }
+  motion_state.set_reference_point(localization_reference_point);
+  if (configured_reference_point != localization_reference_point) {
     VehicleState source_state;
     source_state.set_x(motion_state.x());
     source_state.set_y(motion_state.y());
@@ -111,7 +120,7 @@ Status VehicleStateProvider::Update(
     source_state.set_linear_acceleration(motion_state.linear_acceleration());
     source_state.set_kappa(motion_state.kappa());
     source_state.set_timestamp(motion_state.timestamp());
-    source_state.set_reference_point(REAR_AXLE_CENTER);
+    source_state.set_reference_point(localization_reference_point);
     if (motion_state.has_pose()) {
       source_state.mutable_pose()->CopyFrom(motion_state.pose());
     }
@@ -144,6 +153,7 @@ Status VehicleStateProvider::Update(
   motion_state_snapshot_ = motion_state;
   operating_state_snapshot_ = operating_state;
   state_snapshot_ = next_state;
+  has_valid_state_ = true;
   return Status::OK();
 }
 
@@ -285,6 +295,8 @@ bool VehicleStateProvider::MergeStates(
 const VehicleState& VehicleStateProvider::state() const {
   return state_snapshot_;
 }
+
+bool VehicleStateProvider::HasValidState() const { return has_valid_state_; }
 
 }  // namespace common
 }  // namespace apollo

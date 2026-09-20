@@ -66,6 +66,8 @@ Frame::Frame(uint32_t sequence_num, const LocalView &local_view,
       local_view_(local_view),
       planning_start_point_(planning_start_point),
       vehicle_state_(vehicle_state),
+      planning_reference_point_(vehicle_state.reference_point()),
+      has_planning_reference_point_(true),
       reference_line_provider_(reference_line_provider),
       monitor_logger_buffer_(common::monitor::MonitorMessageItem::PLANNING) {}
 
@@ -353,6 +355,7 @@ Status Frame::InitFrameData(
   hdmap_ = hdmap::HDMapUtil::BaseMapPtr();
   CHECK_NOTNULL(hdmap_);
   vehicle_state_ = vehicle_state;
+  planning_reference_point_ = vehicle_state.reference_point();
   if (!util::IsVehicleStateValid(vehicle_state_)) {
     AERROR << "Adc init point is not set";
     return Status(ErrorCode::PLANNING_ERROR, "Adc init point is not set");

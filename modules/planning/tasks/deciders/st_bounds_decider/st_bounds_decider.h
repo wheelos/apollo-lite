@@ -51,8 +51,8 @@ class STBoundsDecider : public Decider {
   common::Status Process(Frame* const frame,
                          ReferenceLineInfo* const reference_line_info) override;
 
-  void InitSTBoundsDecider(const Frame& frame,
-                           ReferenceLineInfo* const reference_line_info);
+  common::Status InitSTBoundsDecider(
+      const Frame& frame, ReferenceLineInfo* const reference_line_info);
 
   common::Status GenerateFallbackSTBound(
       std::vector<std::tuple<double, double, double>>* const st_bound,

@@ -27,13 +27,17 @@ namespace open_space_planning {
 using apollo::common::math::Vec2d;
 
 HybridAStarRoutePlanner::HybridAStarRoutePlanner() {
-  hybrid_a_star_.reset(new planning::HybridAStar(config_));
+  const apollo::common::VehicleGeometryModel vehicle_geometry_model;
+  hybrid_a_star_.reset(
+      new planning::HybridAStar(config_, vehicle_geometry_model));
 }
 
 HybridAStarRoutePlanner::HybridAStarRoutePlanner(
     const planning::PlannerOpenSpaceConfig& config)
     : config_(config) {
-  hybrid_a_star_.reset(new planning::HybridAStar(config_));
+  const apollo::common::VehicleGeometryModel vehicle_geometry_model;
+  hybrid_a_star_.reset(
+      new planning::HybridAStar(config_, vehicle_geometry_model));
 }
 
 void HybridAStarRoutePlanner::ExtractXYBounds(const PlanningProblem& problem,

@@ -64,8 +64,7 @@ class PathDecision {
   bool MergeWithMainStop(const ObjectStop &obj_stop, const std::string &obj_id,
                          const ReferenceLine &ref_line,
                          const SLBoundary &adc_sl_boundary,
-                         const common::VehicleGeometryModel
-                             &vehicle_geometry_model);
+                         const PlanningGeometryAdapter &geometry_adapter);
 
  private:
   IndexedList<std::string, Obstacle> obstacles_;

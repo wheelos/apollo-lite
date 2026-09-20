@@ -133,6 +133,11 @@ class Frame {
   const common::VehicleState& vehicle_state() const {
     return vehicle_state_;
   }
+
+  common::ReferencePoint planning_reference_point() const {
+    CHECK(has_planning_reference_point_);
+    return planning_reference_point_;
+  }
   static void AlignPredictionTime(
       const double planning_start_time,
       prediction::PredictionObstacles* prediction_obstacles);
@@ -221,6 +226,9 @@ class Frame {
   const hdmap::HDMap* hdmap_ = nullptr;
   common::TrajectoryPoint planning_start_point_;
   common::VehicleState vehicle_state_;
+  common::ReferencePoint planning_reference_point_ =
+      common::ReferencePoint::REAR_AXLE_CENTER;
+  bool has_planning_reference_point_ = false;
   std::list<ReferenceLineInfo> reference_line_info_;
 
   bool is_near_destination_ = false;

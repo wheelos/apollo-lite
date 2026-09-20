@@ -108,6 +108,7 @@ cc_library(
         "//modules/common/vehicle_state:vehicle_reference",
         "//modules/map/hdmap:hdmap_util",
         "//modules/planning/common:dependency_injector",
+        "//modules/planning/common:planning_geometry_adapter",
     ],
 )
 

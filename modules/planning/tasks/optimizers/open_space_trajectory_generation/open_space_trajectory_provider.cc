@@ -33,6 +33,7 @@
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/common/trajectory/publishable_trajectory.h"
 #include "modules/planning/common/trajectory_stitcher.h"
 
@@ -161,10 +162,6 @@ OpenSpaceTrajectoryProvider::OpenSpaceTrajectoryProvider(
     const TaskConfig& config,
     const std::shared_ptr<DependencyInjector>& injector)
     : TrajectoryOptimizer(config, injector) {
-  open_space_trajectory_optimizer_.reset(new OpenSpaceTrajectoryOptimizer(
-      config.open_space_trajectory_provider_config()
-          .open_space_trajectory_optimizer_config(),
-      injector_->vehicle_model().geometry_model()));
   AINFO << config_.DebugString();
 }
 
@@ -223,7 +220,9 @@ Status OpenSpaceTrajectoryProvider::Process() {
     GenerateStopTrajectory(trajectory_data);
     return Status::OK();
   }
+  const common::VehicleState& vehicle_state = frame_->vehicle_state();
   // Start thread when getting in Process() for the first time
+  BindPlanningGeometry(vehicle_state);
   if (use_planner_thread && !thread_init_flag_) {
     task_future_ = cyber::Async(
         &OpenSpaceTrajectoryProvider::GenerateTrajectoryThread, this);
@@ -231,7 +230,6 @@ Status OpenSpaceTrajectoryProvider::Process() {
   }
   bool need_replan = false;
   // Get stitching trajectory from last frame
-  const common::VehicleState& vehicle_state = frame_->vehicle_state();
   auto* previous_frame = injector_->frame_history()->Latest();
   const bool has_reusable_open_space_plan =
       previous_frame != nullptr &&
@@ -424,6 +422,25 @@ Status OpenSpaceTrajectoryProvider::Process() {
     }
   }
   return Status(ErrorCode::PLANNING_ERROR);
+}
+
+void OpenSpaceTrajectoryProvider::BindPlanningGeometry(
+    const common::VehicleState& vehicle_state) {
+  CHECK(common::IsSupportedReferencePoint(vehicle_state.reference_point()));
+  if (planning_geometry_bound_) {
+    CHECK_EQ(planning_reference_point_, vehicle_state.reference_point());
+    return;
+  }
+
+  const common::VehicleGeometryModel vehicle_geometry_model;
+  const PlanningGeometryAdapter geometry_adapter(
+      vehicle_geometry_model, vehicle_state.reference_point());
+  open_space_trajectory_optimizer_.reset(new OpenSpaceTrajectoryOptimizer(
+      Config().open_space_trajectory_provider_config()
+          .open_space_trajectory_optimizer_config(),
+      geometry_adapter));
+  planning_reference_point_ = vehicle_state.reference_point();
+  planning_geometry_bound_ = true;
 }
 
 void OpenSpaceTrajectoryProvider::GenerateTrajectoryThread() {

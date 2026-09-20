@@ -18,15 +18,20 @@
 #include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 
 #include "modules/common/math/vec2d.h"
+#include "modules/common/status/status.h"
 
 namespace apollo {
 namespace common {
+
+bool IsSupportedReferencePoint(ReferencePoint reference_point);
 
 // Immutable vehicle geometry used by reference-point conversion and spatial
 // occupancy calculations. It does not contain motion, steering, or prediction
 // logic.
 class VehicleDescription {
  public:
+  // Prefer explicit VehicleConfig injection in new code.
+  [[deprecated("Use an explicit VehicleConfig or VehicleDescription")]]
   VehicleDescription();
   explicit VehicleDescription(const VehicleConfig& vehicle_config);
   VehicleDescription(const VehicleConfig& vehicle_config,
@@ -34,11 +39,13 @@ class VehicleDescription {
 
   // Returns the signed longitudinal coordinate measured from
   // REAR_AXLE_CENTER. CENTER_OF_MASS uses the configured vehicle offset.
-  double LongitudinalOffset(ReferencePoint reference_point) const;
+  Status LongitudinalOffset(ReferencePoint reference_point,
+                            double* offset) const;
 
   // Returns the geometric center relative to reference_point in vehicle-frame
   // coordinates as (longitudinal, lateral).
-  math::Vec2d CenterOffset(ReferencePoint reference_point) const;
+  Status FootprintCenterOffset(ReferencePoint reference_point,
+                               math::Vec2d* offset) const;
 
   double wheel_base() const { return wheel_base_; }
   double length() const { return length_; }

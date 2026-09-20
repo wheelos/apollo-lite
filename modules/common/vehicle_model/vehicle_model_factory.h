@@ -38,10 +38,6 @@ class VehicleModelImplementation {
 // point, matching the no-slip bicycle equations.
 class AckermannKinematicModel final : public VehicleModelImplementation {
  public:
-  AckermannKinematicModel(double dt, double wheel_base,
-                          double max_road_wheel_angle, double max_acceleration,
-                          double max_deceleration);
-
   ReferencePoint canonical_reference_point() const override {
     return REAR_AXLE_CENTER;
   }
@@ -56,6 +52,11 @@ class AckermannKinematicModel final : public VehicleModelImplementation {
       VehicleState* predicted_canonical_state) const override;
 
  private:
+  friend class VehicleModelFactory;
+  AckermannKinematicModel(double dt, double wheel_base,
+                          double max_road_wheel_angle, double max_acceleration,
+                          double max_deceleration);
+
   double dt_;
   double wheel_base_;
   double max_road_wheel_angle_;
@@ -69,12 +70,6 @@ class AckermannKinematicModel final : public VehicleModelImplementation {
 class FourWheelSteeringKinematicModel final
     : public VehicleModelImplementation {
  public:
-  FourWheelSteeringKinematicModel(double dt, double wheel_base,
-                                  double center_of_mass_offset,
-                                  double max_road_wheel_angle,
-                                  double max_acceleration,
-                                  double max_deceleration);
-
   ReferencePoint canonical_reference_point() const override {
     return CENTER_OF_MASS;
   }
@@ -89,6 +84,13 @@ class FourWheelSteeringKinematicModel final
       VehicleState* predicted_canonical_state) const override;
 
  private:
+  friend class VehicleModelFactory;
+  FourWheelSteeringKinematicModel(double dt, double wheel_base,
+                                  double center_of_mass_offset,
+                                  double max_road_wheel_angle,
+                                  double max_acceleration,
+                                  double max_deceleration);
+
   double dt_;
   double wheel_base_;
   double distance_cg_to_rear_axle_;

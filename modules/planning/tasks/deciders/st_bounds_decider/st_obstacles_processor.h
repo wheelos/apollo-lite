@@ -35,6 +35,7 @@
 #include "modules/planning/common/obstacle.h"
 #include "modules/planning/common/path/path_data.h"
 #include "modules/planning/common/path_decision.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/common/speed/st_boundary.h"
 #include "modules/planning/common/speed_limit.h"
 #include "modules/planning/reference_line/reference_line.h"
@@ -54,7 +55,7 @@ class STObstaclesProcessor {
   void Init(const double planning_distance, const double planning_time,
             const PathData& path_data, PathDecision* const path_decision,
             History* const history,
-            const common::VehicleGeometryModel& vehicle_geometry_model);
+            const PlanningGeometryAdapter& geometry_adapter);
 
   virtual ~STObstaclesProcessor() = default;
 
@@ -200,7 +201,7 @@ class STObstaclesProcessor {
   double planning_distance_;
   PathData path_data_;
   common::VehicleParam vehicle_param_;
-  common::VehicleGeometryModel vehicle_geometry_model_;
+  PlanningGeometryAdapter geometry_adapter_;
   double adc_path_init_s_;
   PathDecision* path_decision_;
 

@@ -13,13 +13,16 @@
 #include "absl/strings/str_cat.h"
 
 #include "modules/common/math/math_utils.h"
-#include "modules/common/math/quaternion.h"
 
 namespace apollo {
 namespace common {
 namespace {
 
-constexpr double kZeroTolerance = 1.0e-9;
+constexpr double kTimeTolerance = 1.0e-9;
+constexpr double kLowSpeedVelocityTolerance = 1.0e-9;
+constexpr double kRearSteeringTolerance = 1.0e-9;
+constexpr double kMaxPredictionHorizon = 60.0;
+constexpr double kHalfPi = 1.5707963267948966;
 
 struct KinematicMotion {
   double curvature = 0.0;
@@ -35,9 +38,11 @@ Status ValidatePrediction(const double horizon, const double dt,
     return Status(ErrorCode::PLANNING_ERROR,
                   "predicted canonical state is null");
   }
-  if (!std::isfinite(horizon) || horizon < 0.0) {
+  if (!std::isfinite(horizon) || horizon < 0.0 ||
+      horizon > kMaxPredictionHorizon) {
     return Status(ErrorCode::PLANNING_ERROR,
-                  "prediction horizon must be finite and nonnegative");
+                  "prediction horizon must be finite, nonnegative, and at "
+                  "most 60 seconds");
   }
   if (!std::isfinite(dt) || dt <= 0.0) {
     return Status(ErrorCode::PLANNING_ERROR,
@@ -83,7 +88,7 @@ Status Propagate(const double horizon, const double dt,
   double heading = state.heading();
   double velocity = state.linear_velocity();
 
-  while (remaining_time > kZeroTolerance) {
+  while (remaining_time > kTimeTolerance) {
     const double step = std::min(dt, remaining_time);
     const double next_velocity =
         velocity + motion.longitudinal_acceleration * step;
@@ -119,12 +124,6 @@ Status Propagate(const double horizon, const double dt,
     pose->mutable_position()->set_x(x);
     pose->mutable_position()->set_y(y);
     pose->set_heading(heading);
-    const auto quaternion = math::HeadingToQuaternion<double>(heading);
-    auto* orientation = pose->mutable_orientation();
-    orientation->set_qw(quaternion.w());
-    orientation->set_qx(quaternion.x());
-    orientation->set_qy(quaternion.y());
-    orientation->set_qz(quaternion.z());
   }
   return Status::OK();
 }
@@ -154,7 +153,9 @@ Status ValidateAcceleration(const double acceleration,
 KinematicMotion HeldCurvatureMotion(const VehicleState& state) {
   KinematicMotion motion;
   motion.curvature = state.kappa();
-  if (std::abs(state.linear_velocity()) > kZeroTolerance) {
+  // At near-zero longitudinal speed, the lateral velocity ratio is
+  // undefined; the held-curvature fallback intentionally discards it.
+  if (std::abs(state.linear_velocity()) > kLowSpeedVelocityTolerance) {
     motion.lateral_velocity_ratio =
         state.lateral_velocity() / state.linear_velocity();
   }
@@ -184,7 +185,11 @@ Status AckermannKinematicModel::Predict(
   if (!status.ok()) {
     return status;
   }
-  if (std::abs(input.rear_steering_angle) > kZeroTolerance) {
+  if (!std::isfinite(input.rear_steering_angle)) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  "Ackermann rear steering angle must be finite");
+  }
+  if (std::abs(input.rear_steering_angle) > kRearSteeringTolerance) {
     return Status(ErrorCode::PLANNING_ERROR,
                   "Ackermann model does not accept rear steering");
   }
@@ -279,18 +284,11 @@ Status VehicleModelFactory::Create(
     return Status(ErrorCode::PLANNING_ERROR,
                   "vehicle model type must be configured");
   }
-  const double center_of_mass_offset = description.center_of_mass_offset();
-  if (!std::isfinite(center_of_mass_offset) || center_of_mass_offset <= 0.0 ||
-      center_of_mass_offset >= wheel_base) {
-    return Status(
-        ErrorCode::PLANNING_ERROR,
-        "center_of_mass_offset must lie between the rear and front axles");
-  }
   const double max_road_wheel_angle = description.max_road_wheel_angle();
   const double max_acceleration = description.max_acceleration();
   const double max_deceleration = description.max_deceleration();
   if (!std::isfinite(max_road_wheel_angle) || max_road_wheel_angle <= 0.0 ||
-      max_road_wheel_angle >= M_PI_2 || !std::isfinite(max_acceleration) ||
+      max_road_wheel_angle >= kHalfPi || !std::isfinite(max_acceleration) ||
       max_acceleration < 0.0 || !std::isfinite(max_deceleration) ||
       max_deceleration > 0.0) {
     return Status(ErrorCode::PLANNING_ERROR,
@@ -308,12 +306,19 @@ Status VehicleModelFactory::Create(
         return Status(ErrorCode::PLANNING_ERROR,
                       "Ackermann model dt must be finite and positive");
       }
-      *model = std::make_unique<AckermannKinematicModel>(
-          dt, wheel_base, max_road_wheel_angle, max_acceleration,
-          max_deceleration);
+      *model = std::unique_ptr<VehicleModelImplementation>(
+          new AckermannKinematicModel(dt, wheel_base, max_road_wheel_angle,
+                                      max_acceleration, max_deceleration));
       return Status::OK();
     }
     case VEHICLE_MODEL_TYPE_FOUR_WHEEL_STEERING_KINEMATIC: {
+      const double center_of_mass_offset = description.center_of_mass_offset();
+      if (!std::isfinite(center_of_mass_offset) ||
+          center_of_mass_offset <= 0.0 || center_of_mass_offset >= wheel_base) {
+        return Status(
+            ErrorCode::PLANNING_ERROR,
+            "center_of_mass_offset must lie between the rear and front axles");
+      }
       if (!config.has_fws_kinematic_model()) {
         return Status(ErrorCode::PLANNING_ERROR,
                       "4WS model configuration is missing");
@@ -323,9 +328,10 @@ Status VehicleModelFactory::Create(
         return Status(ErrorCode::PLANNING_ERROR,
                       "4WS model dt must be finite and positive");
       }
-      *model = std::make_unique<FourWheelSteeringKinematicModel>(
-          dt, wheel_base, center_of_mass_offset, max_road_wheel_angle,
-          max_acceleration, max_deceleration);
+      *model = std::unique_ptr<VehicleModelImplementation>(
+          new FourWheelSteeringKinematicModel(
+              dt, wheel_base, center_of_mass_offset, max_road_wheel_angle,
+              max_acceleration, max_deceleration));
       return Status::OK();
     }
     default:

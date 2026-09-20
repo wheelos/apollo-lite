@@ -1,62 +1,91 @@
 // Copyright 2026 WheelOS. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include "modules/common/vehicle_state/vehicle_geometry_model.h"
 
-#include <utility>
+#include <cmath>
+#include <string>
+
+#include "cyber/common/log.h"
 
 namespace apollo {
 namespace common {
+namespace {
 
-VehicleGeometryModel::VehicleGeometryModel()
-    : description_(VehicleDescription()) {}
+Status ValidateFinite(const double value, const char* name) {
+  if (!std::isfinite(value)) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  std::string(name) + " is not finite");
+  }
+  return Status::OK();
+}
+
+Status ValidateBuffer(const double value, const char* name) {
+  if (!std::isfinite(value) || value < 0.0) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  std::string(name) + " must be finite and non-negative");
+  }
+  return Status::OK();
+}
+
+}  // namespace
+
+VehicleGeometryModel::VehicleGeometryModel() : description_() {}
 
 VehicleGeometryModel::VehicleGeometryModel(
     const VehicleDescription& description)
     : description_(description) {}
 
-VehicleGeometryModel::VehicleGeometryModel(
-    const VehicleDescription& description,
-    const ReferencePoint trajectory_reference_point)
-    : description_(description),
-      trajectory_reference_point_(trajectory_reference_point) {}
-
-VehicleBounds VehicleGeometryModel::Bounds() const {
-  VehicleBounds bounds;
-  bounds.front = FrontEdgeDistance();
-  bounds.rear = BackEdgeDistance();
-  bounds.left = LeftEdgeDistance();
-  bounds.right = RightEdgeDistance();
-  return bounds;
+Status VehicleGeometryModel::GetBounds(const ReferencePoint reference_point,
+                                       VehicleBounds* bounds) const {
+  if (bounds == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "bounds is null");
+  }
+  if (!IsSupportedReferencePoint(reference_point)) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  "unsupported vehicle reference point");
+  }
+  if (!FrontEdgeDistance(reference_point, &bounds->front).ok() ||
+      !RearEdgeDistance(reference_point, &bounds->rear).ok()) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  "failed to compute vehicle bounds");
+  }
+  bounds->left = description_.left_edge_to_center();
+  bounds->right = description_.right_edge_to_center();
+  return Status::OK();
 }
 
-Status VehicleGeometryModel::GetCenter(const VehicleState& vehicle_state,
-                                       math::Vec2d* center) const {
-  const math::Vec2d position(vehicle_state.x(), vehicle_state.y());
-  return GetCenter(position, vehicle_state.heading(),
-                   vehicle_state.reference_point(), center);
-}
-
-Status VehicleGeometryModel::GetCenter(const math::Vec2d& position,
-                                       const double heading,
-                                       const ReferencePoint reference_point,
-                                       math::Vec2d* center) const {
+Status VehicleGeometryModel::ComputeFootprintCenter(
+    const VehicleState& vehicle_state, math::Vec2d* center) const {
   if (center == nullptr) {
     return Status(ErrorCode::PLANNING_ERROR, "center is null");
   }
-  const math::Vec2d center_offset = description_.CenterOffset(reference_point);
-  *center = position + center_offset.rotate(heading);
+  return ComputeFootprintCenter(
+      VehiclePose2d(math::Vec2d(vehicle_state.x(), vehicle_state.y()),
+                    vehicle_state.heading(), vehicle_state.reference_point()),
+      center);
+}
+
+Status VehicleGeometryModel::ComputeFootprintCenter(const VehiclePose2d& pose,
+                                                    math::Vec2d* center) const {
+  if (center == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "center is null");
+  }
+  if (!IsSupportedReferencePoint(pose.reference_point)) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  "unsupported vehicle reference point");
+  }
+  if (!ValidateFinite(pose.position.x(), "pose.x").ok() ||
+      !ValidateFinite(pose.position.y(), "pose.y").ok() ||
+      !ValidateFinite(pose.body_heading, "pose.heading").ok()) {
+    return Status(ErrorCode::PLANNING_ERROR, "pose contains non-finite data");
+  }
+  math::Vec2d offset;
+  const auto status =
+      description_.FootprintCenterOffset(pose.reference_point, &offset);
+  if (!status.ok()) {
+    return status;
+  }
+  *center = pose.position + offset.rotate(pose.body_heading);
   return Status::OK();
 }
 
@@ -66,7 +95,7 @@ Status VehicleGeometryModel::BuildBox(const VehicleState& vehicle_state,
     return Status(ErrorCode::PLANNING_ERROR, "vehicle_box is null");
   }
   math::Vec2d center;
-  const auto status = GetCenter(vehicle_state, &center);
+  const auto status = ComputeFootprintCenter(vehicle_state, &center);
   if (!status.ok()) {
     return status;
   }
@@ -75,104 +104,144 @@ Status VehicleGeometryModel::BuildBox(const VehicleState& vehicle_state,
   return Status::OK();
 }
 
-Status VehicleGeometryModel::BuildBox(const math::Vec2d& position,
-                                      const double heading,
+Status VehicleGeometryModel::BuildBox(const VehiclePose2d& pose,
                                       math::Box2d* vehicle_box) const {
   if (vehicle_box == nullptr) {
     return Status(ErrorCode::PLANNING_ERROR, "vehicle_box is null");
   }
   math::Vec2d center;
-  const auto status =
-      GetCenter(position, heading, trajectory_reference_point_, &center);
+  const auto status = ComputeFootprintCenter(pose, &center);
   if (!status.ok()) {
     return status;
   }
-  *vehicle_box =
-      math::Box2d(center, heading, description_.length(), description_.width());
+  *vehicle_box = math::Box2d(center, pose.body_heading, description_.length(),
+                             description_.width());
   return Status::OK();
-}
-
-Status VehicleGeometryModel::BuildBox(const PathPoint& path_point,
-                                      math::Box2d* vehicle_box) const {
-  const math::Vec2d position(path_point.x(), path_point.y());
-  return BuildBox(position, path_point.theta(), vehicle_box);
-}
-
-Status VehicleGeometryModel::BuildBox(const TrajectoryPoint& trajectory_point,
-                                      math::Box2d* vehicle_box) const {
-  return BuildBox(trajectory_point.path_point(), vehicle_box);
 }
 
 math::Box2d VehicleGeometryModel::BuildBox(
     const VehicleState& vehicle_state) const {
   math::Box2d box;
-  BuildBox(vehicle_state, &box);
+  const auto status = BuildBox(vehicle_state, &box);
+  CHECK(status.ok()) << status;
   return box;
 }
 
-math::Box2d VehicleGeometryModel::BuildBox(const math::Vec2d& position,
-                                           const double heading) const {
+math::Box2d VehicleGeometryModel::BuildBox(const VehiclePose2d& pose) const {
   math::Box2d box;
-  BuildBox(position, heading, &box);
+  const auto status = BuildBox(pose, &box);
+  CHECK(status.ok()) << status;
   return box;
 }
 
-math::Box2d VehicleGeometryModel::BuildBox(const PathPoint& path_point) const {
-  math::Box2d box;
-  BuildBox(path_point, &box);
-  return box;
+Status VehicleGeometryModel::BuildBox(const VehiclePose2d& pose,
+                                      const double lateral_buffer,
+                                      const double longitudinal_buffer,
+                                      math::Box2d* vehicle_box) const {
+  if (vehicle_box == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "vehicle_box is null");
+  }
+  auto status = ValidateBuffer(lateral_buffer, "lateral buffer");
+  if (!status.ok()) {
+    return status;
+  }
+  status = ValidateBuffer(longitudinal_buffer, "longitudinal buffer");
+  if (!status.ok()) {
+    return status;
+  }
+  status = BuildBox(pose, vehicle_box);
+  if (!status.ok()) {
+    return status;
+  }
+  *vehicle_box = math::Box2d(vehicle_box->center(), vehicle_box->heading(),
+                             description_.length() + 2.0 * longitudinal_buffer,
+                             description_.width() + 2.0 * lateral_buffer);
+  return Status::OK();
 }
 
 math::Box2d VehicleGeometryModel::BuildBox(
-    const TrajectoryPoint& trajectory_point) const {
-  math::Box2d box;
-  BuildBox(trajectory_point, &box);
-  return box;
-}
-
-math::Box2d VehicleGeometryModel::BuildBox(
-    const PathPoint& path_point, const double lateral_buffer,
+    const VehiclePose2d& pose, const double lateral_buffer,
     const double longitudinal_buffer) const {
-  const math::Vec2d position(path_point.x(), path_point.y());
-  math::Vec2d center;
-  GetCenter(position, path_point.theta(), trajectory_reference_point_,
-           &center);
-  return math::Box2d(center, path_point.theta(),
-                     description_.length() + 2.0 * longitudinal_buffer,
-                     description_.width() + 2.0 * lateral_buffer);
+  math::Box2d box;
+  const auto status = BuildBox(pose, lateral_buffer, longitudinal_buffer, &box);
+  CHECK(status.ok()) << status;
+  return box;
 }
 
 Status VehicleGeometryModel::BuildFrontRegion(const VehicleState& vehicle_state,
                                               const double distance_threshold,
-                                              const double buffer,
+                                              const double lateral_buffer,
+                                              math::Box2d* front_region) const {
+  return BuildFrontRegion(
+      VehiclePose2d(math::Vec2d(vehicle_state.x(), vehicle_state.y()),
+                    vehicle_state.heading(), vehicle_state.reference_point()),
+      distance_threshold, lateral_buffer, 0.0, front_region);
+}
+
+Status VehicleGeometryModel::BuildFrontRegion(const VehiclePose2d& pose,
+                                              const double distance_threshold,
+                                              const double lateral_buffer,
+                                              const double longitudinal_buffer,
                                               math::Box2d* front_region) const {
   if (front_region == nullptr) {
     return Status(ErrorCode::PLANNING_ERROR, "front_region is null");
   }
-  math::Vec2d center;
-  const auto status = GetCenter(vehicle_state, &center);
+  auto status = ValidateBuffer(distance_threshold, "distance threshold");
   if (!status.ok()) {
     return status;
   }
-  const math::Vec2d unit_vec_heading =
-      math::Vec2d::CreateUnitVec2d(vehicle_state.heading());
-  const double impact_region_length =
-      description_.length() + buffer + distance_threshold;
+  status = ValidateBuffer(lateral_buffer, "lateral buffer");
+  if (!status.ok()) {
+    return status;
+  }
+  status = ValidateBuffer(longitudinal_buffer, "longitudinal buffer");
+  if (!status.ok()) {
+    return status;
+  }
+  math::Vec2d center;
+  status = ComputeFootprintCenter(pose, &center);
+  if (!status.ok()) {
+    return status;
+  }
+  const math::Vec2d unit_heading =
+      math::Vec2d::CreateUnitVec2d(pose.body_heading);
+  const double length =
+      description_.length() + distance_threshold + 2.0 * longitudinal_buffer;
+  const double width = description_.width() + 2.0 * lateral_buffer;
   *front_region =
-      math::Box2d(center + unit_vec_heading * (distance_threshold / 2.0),
-                  vehicle_state.heading(), impact_region_length,
-                  description_.width() + buffer);
+      math::Box2d(center + unit_heading * (distance_threshold / 2.0),
+                  pose.body_heading, length, width);
   return Status::OK();
 }
 
-double VehicleGeometryModel::FrontEdgeDistance() const {
-  return description_.front_edge_to_center() -
-         description_.LongitudinalOffset(trajectory_reference_point_);
+Status VehicleGeometryModel::FrontEdgeDistance(const ReferencePoint point,
+                                               double* distance) const {
+  if (distance == nullptr || !IsSupportedReferencePoint(point)) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  "invalid reference point or distance output");
+  }
+  double offset = 0.0;
+  const auto status = description_.LongitudinalOffset(point, &offset);
+  if (!status.ok()) {
+    return status;
+  }
+  *distance = description_.front_edge_to_center() - offset;
+  return Status::OK();
 }
 
-double VehicleGeometryModel::BackEdgeDistance() const {
-  return description_.back_edge_to_center() +
-         description_.LongitudinalOffset(trajectory_reference_point_);
+Status VehicleGeometryModel::RearEdgeDistance(const ReferencePoint point,
+                                              double* distance) const {
+  if (distance == nullptr || !IsSupportedReferencePoint(point)) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  "invalid reference point or distance output");
+  }
+  double offset = 0.0;
+  const auto status = description_.LongitudinalOffset(point, &offset);
+  if (!status.ok()) {
+    return status;
+  }
+  *distance = description_.back_edge_to_center() + offset;
+  return Status::OK();
 }
 
 double VehicleGeometryModel::LeftEdgeDistance() const {
@@ -183,41 +252,55 @@ double VehicleGeometryModel::RightEdgeDistance() const {
   return description_.right_edge_to_center();
 }
 
-bool VehicleGeometryModel::CheckCollision(const PathPoint& path_point,
-                                          const math::Box2d& obstacle_box,
-                                          const double lateral_buffer,
-                                          const double longitudinal_buffer) const {
-  const math::Box2d vehicle_box =
-      BuildBox(path_point, lateral_buffer, longitudinal_buffer);
-  return obstacle_box.HasOverlap(vehicle_box);
-}
-
-bool VehicleGeometryModel::CheckCollision(
-    const VehicleState& vehicle_state, const math::Box2d& obstacle_box,
+Status VehicleGeometryModel::CheckCollision(
+    const VehiclePose2d& pose, const math::Box2d& obstacle_box, bool* collision,
     const double lateral_buffer, const double longitudinal_buffer) const {
+  if (collision == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "collision output is null");
+  }
   math::Box2d vehicle_box;
-  BuildBox(vehicle_state, &vehicle_box);
-  // Grow the state-anchored box symmetrically to match the PathPoint
-  // overload's buffer semantics.
-  const math::Box2d buffered_box(
-      vehicle_box.center(), vehicle_box.heading(),
-      vehicle_box.length() + 2.0 * longitudinal_buffer,
-      vehicle_box.width() + 2.0 * lateral_buffer);
-  return obstacle_box.HasOverlap(buffered_box);
+  const auto status =
+      BuildBox(pose, lateral_buffer, longitudinal_buffer, &vehicle_box);
+  if (!status.ok()) {
+    return status;
+  }
+  *collision = obstacle_box.HasOverlap(vehicle_box);
+  return Status::OK();
 }
 
-double VehicleGeometryModel::ComputeClearance(
-    const PathPoint& path_point, const math::Box2d& obstacle_box) const {
-  const math::Box2d vehicle_box = BuildBox(path_point, 0.0, 0.0);
-  return vehicle_box.DistanceTo(obstacle_box);
+Status VehicleGeometryModel::CheckCollision(
+    const VehicleState& vehicle_state, const math::Box2d& obstacle_box,
+    bool* collision, const double lateral_buffer,
+    const double longitudinal_buffer) const {
+  return CheckCollision(
+      VehiclePose2d(math::Vec2d(vehicle_state.x(), vehicle_state.y()),
+                    vehicle_state.heading(), vehicle_state.reference_point()),
+      obstacle_box, collision, lateral_buffer, longitudinal_buffer);
 }
 
-double VehicleGeometryModel::ComputeClearance(
-    const VehicleState& vehicle_state,
-    const math::Box2d& obstacle_box) const {
+Status VehicleGeometryModel::ComputeClearance(const VehiclePose2d& pose,
+                                              const math::Box2d& obstacle_box,
+                                              double* clearance) const {
+  if (clearance == nullptr) {
+    return Status(ErrorCode::PLANNING_ERROR, "clearance output is null");
+  }
   math::Box2d vehicle_box;
-  BuildBox(vehicle_state, &vehicle_box);
-  return vehicle_box.DistanceTo(obstacle_box);
+  const auto status = BuildBox(pose, &vehicle_box);
+  if (!status.ok()) {
+    return status;
+  }
+  // Box2d::DistanceTo returns zero for overlapping boxes.
+  *clearance = vehicle_box.DistanceTo(obstacle_box);
+  return Status::OK();
+}
+
+Status VehicleGeometryModel::ComputeClearance(const VehicleState& vehicle_state,
+                                              const math::Box2d& obstacle_box,
+                                              double* clearance) const {
+  return ComputeClearance(
+      VehiclePose2d(math::Vec2d(vehicle_state.x(), vehicle_state.y()),
+                    vehicle_state.heading(), vehicle_state.reference_point()),
+      obstacle_box, clearance);
 }
 
 }  // namespace common

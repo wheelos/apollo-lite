@@ -27,6 +27,7 @@
 #include "modules/common/util/point_factory.h"
 #include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/common/vehicle_frenet_geometry.h"
 
 namespace apollo {
@@ -37,8 +38,7 @@ TrajectoryCost::TrajectoryCost(const DpPolyPathConfig &config,
                                const bool is_change_lane_path,
                                const std::vector<const Obstacle *> &obstacles,
                                const common::VehicleParam &vehicle_param,
-                               const common::VehicleGeometryModel
-                                   &vehicle_geometry_model,
+                               const PlanningGeometryAdapter &geometry_adapter,
                                const SpeedData &heuristic_speed_data,
                                const common::SLPoint &init_sl_point,
                                const SLBoundary &adc_sl_boundary)
@@ -46,7 +46,7 @@ TrajectoryCost::TrajectoryCost(const DpPolyPathConfig &config,
       reference_line_(&reference_line),
       is_change_lane_path_(is_change_lane_path),
       vehicle_param_(vehicle_param),
-      vehicle_geometry_model_(vehicle_geometry_model),
+      geometry_adapter_(geometry_adapter),
       heuristic_speed_data_(heuristic_speed_data),
       init_sl_point_(init_sl_point),
       adc_sl_boundary_(adc_sl_boundary) {
@@ -64,7 +64,7 @@ TrajectoryCost::TrajectoryCost(const DpPolyPathConfig &config,
     }
     const auto &sl_boundary = ptr_obstacle->PerceptionSLBoundary();
 
-    VehicleFrenetGeometry frenet_geometry(vehicle_geometry_model_);
+    VehicleFrenetGeometry frenet_geometry(geometry_adapter_);
     const auto l_range =
         frenet_geometry.GetOccupancyLRange(init_sl_point_.l());
     const double adc_right_l = l_range.first;
@@ -248,7 +248,7 @@ ComparableCost TrajectoryCost::GetCostFromObsSL(
     return obstacle_cost;
   }
 
-  VehicleFrenetGeometry frenet_geometry(vehicle_geometry_model_);
+  VehicleFrenetGeometry frenet_geometry(geometry_adapter_);
   const auto s_range = frenet_geometry.GetOccupancySRange(adc_s);
   const double adc_end_s = s_range.first;
   const double adc_front_s = s_range.second;

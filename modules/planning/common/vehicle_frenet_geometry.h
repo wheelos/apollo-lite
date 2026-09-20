@@ -16,23 +16,23 @@
 
 #include <utility>
 
-#include "modules/common/vehicle_state/vehicle_geometry_model.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 
 namespace apollo {
 namespace planning {
 
 // Planning-only conversion from vehicle footprint bounds to reference-line
-// s/l semantics. VehicleGeometryModel remains responsible for vehicle shape,
-// including which reference point anchors its PathPoint/TrajectoryPoint
-// interpretation (bound at construction from the configured VehicleModel);
-// this class is the only owner of stop alignment and s/l occupancy meaning
-// and never selects or overrides that reference point itself.
-// Do not add reference-line distance semantics back to VehicleGeometryModel.
+// s/l semantics. VehicleGeometryModel remains responsible for vehicle shape;
+// this class is the only owner of stop alignment and s/l occupancy meaning.
+// It never selects the physical reference point itself -- that binding
+// comes from the PlanningGeometryAdapter supplied by the caller (typically
+// sourced from the planning state snapshot that generated the trajectory
+// being interpreted).
 class VehicleFrenetGeometry {
  public:
   explicit VehicleFrenetGeometry(
-      const common::VehicleGeometryModel& geometry_model)
-      : geometry_model_(geometry_model) {}
+      const PlanningGeometryAdapter& geometry_adapter)
+      : geometry_adapter_(geometry_adapter) {}
 
   double ComputeStopReferenceS(
       double target_s, double stop_margin = 0.0,
@@ -44,7 +44,7 @@ class VehicleFrenetGeometry {
   std::pair<double, double> GetOccupancyLRange(double reference_l) const;
 
  private:
-  const common::VehicleGeometryModel& geometry_model_;
+  PlanningGeometryAdapter geometry_adapter_;
 };
 
 }  // namespace planning

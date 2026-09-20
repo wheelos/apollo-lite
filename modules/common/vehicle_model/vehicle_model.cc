@@ -7,6 +7,7 @@
 
 #include "modules/common/vehicle_model/vehicle_model.h"
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,13 +19,16 @@
 
 namespace apollo {
 namespace common {
+namespace {
+
+constexpr double kMaxPredictionHorizon = 60.0;
+
+}  // namespace
 
 VehicleModel::VehicleModel(
     std::unique_ptr<VehicleModelImplementation> implementation,
     const VehicleDescription& description)
-    : implementation_(std::move(implementation)),
-      transformer_(description),
-      geometry_model_(description, implementation_->canonical_reference_point()) {
+    : implementation_(std::move(implementation)), transformer_(description) {
 }
 
 VehicleModel::~VehicleModel() = default;
@@ -69,28 +73,35 @@ Status VehicleModel::Predict(const double predicted_time_horizon,
                              const VehicleModelInput& input,
                              const ReferencePoint target_reference_point,
                              VehicleState* predicted_state) const {
-  return PredictCanonical(predicted_time_horizon, current_state, &input,
-                          target_reference_point, predicted_state);
+  return PredictInternal(predicted_time_horizon, current_state, &input,
+                         target_reference_point, predicted_state);
 }
 
 Status VehicleModel::PredictWithHeldCurvature(
     const double predicted_time_horizon, const VehicleState& current_state,
     const ReferencePoint target_reference_point,
     VehicleState* predicted_state) const {
-  return PredictCanonical(predicted_time_horizon, current_state, nullptr,
-                          target_reference_point, predicted_state);
+  return PredictInternal(predicted_time_horizon, current_state, nullptr,
+                         target_reference_point, predicted_state);
 }
 
-Status VehicleModel::PredictCanonical(
+Status VehicleModel::PredictInternal(
     const double predicted_time_horizon, const VehicleState& current_state,
     const VehicleModelInput* input, const ReferencePoint target_reference_point,
     VehicleState* predicted_state) const {
   if (predicted_state == nullptr) {
     return Status(ErrorCode::PLANNING_ERROR, "predicted state is null");
   }
-  if (predicted_time_horizon < 0.0) {
+  if (!std::isfinite(predicted_time_horizon) ||
+      predicted_time_horizon < 0.0 ||
+      predicted_time_horizon > kMaxPredictionHorizon) {
     return Status(ErrorCode::PLANNING_ERROR,
-                  "prediction horizon must be nonnegative");
+                  "prediction horizon must be finite, nonnegative, and at "
+                  "most 60 seconds");
+  }
+  if (!IsSupportedReferencePoint(target_reference_point)) {
+    return Status(ErrorCode::PLANNING_ERROR,
+                  "unsupported target reference point");
   }
 
   VehicleState canonical_state;

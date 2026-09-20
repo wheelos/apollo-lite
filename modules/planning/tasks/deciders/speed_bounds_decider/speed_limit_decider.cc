@@ -28,7 +28,6 @@
 
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
-#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/common/vehicle_frenet_geometry.h"
 
@@ -40,13 +39,13 @@ using apollo::common::Status;
 SpeedLimitDecider::SpeedLimitDecider(const SpeedBoundsDeciderConfig& config,
                                      const ReferenceLine& reference_line,
                                      const PathData& path_data,
-                                     const common::VehicleGeometryModel&
-                                         vehicle_geometry_model)
+                                     const PlanningGeometryAdapter&
+                                         geometry_adapter)
     : speed_bounds_config_(config),
       reference_line_(reference_line),
       path_data_(path_data),
       vehicle_param_(common::VehicleConfigHelper::GetConfig().vehicle_param()),
-      vehicle_geometry_model_(vehicle_geometry_model) {
+      geometry_adapter_(geometry_adapter) {
 }
 
 Status SpeedLimitDecider::GetSpeedLimits(
@@ -102,7 +101,7 @@ Status SpeedLimitDecider::GetSpeedLimits(
 
       // TODO(all): potential problem here;
       // frenet and cartesian coordinates are mixed.
-      VehicleFrenetGeometry frenet_geometry(vehicle_geometry_model_);
+      VehicleFrenetGeometry frenet_geometry(geometry_adapter_);
       const auto s_range =
           frenet_geometry.GetOccupancySRange(reference_line_s);
       const double vehicle_back_s = s_range.first;

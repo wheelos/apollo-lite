@@ -27,23 +27,24 @@
 #include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 
 namespace {
 
 double ComputePullOverPreparationDistance(
     const apollo::planning::ScenarioPullOverConfig& config,
-    const apollo::common::VehicleGeometryModel& vehicle_geometry_model) {
-  return vehicle_geometry_model.FrontEdgeDistance() +
+    const apollo::planning::PlanningGeometryAdapter& geometry_adapter) {
+  return geometry_adapter.FrontEdgeDistance() +
          config.s_distance_to_stop_for_open_space_parking() +
          config.max_valid_stop_distance();
 }
 
 double ComputeEffectivePullOverMinDistance(
     const apollo::planning::ScenarioPullOverConfig& config,
-    const apollo::common::VehicleGeometryModel& vehicle_geometry_model) {
+    const apollo::planning::PlanningGeometryAdapter& geometry_adapter) {
   return std::max(
       {config.pull_over_min_distance_buffer(), config.max_distance_stop_search(),
-       ComputePullOverPreparationDistance(config, vehicle_geometry_model)});
+       ComputePullOverPreparationDistance(config, geometry_adapter)});
 }
 
 }  // namespace
@@ -210,20 +211,23 @@ ScenarioDecisionResult ParkDecider::CheckPullOver(
   const auto& frame = context.frame;
   const auto& overlaps = context.first_encountered_overlaps;
 
+  // Must be in a single lane (not changing lanes) and have valid routing.
+  if (frame->reference_line_info().size() != 1) {
+    return ScenarioDecisionResult();
+  }
+
   // 3. Load Configuration
   const auto& config = config_.pull_over_config();
-  const double min_dist = ComputeEffectivePullOverMinDistance(
-      config, injector_->vehicle_model().geometry_model());
+  const PlanningGeometryAdapter geometry_adapter =
+      frame->reference_line_info().front().planning_geometry_adapter();
+  const double min_dist =
+      ComputeEffectivePullOverMinDistance(config, geometry_adapter);
   const double max_dist = config.start_pull_over_scenario_distance();
   const double stop_search_dist = config.max_distance_stop_search();
   const double junction_buffer = config.avoid_junction_distance();
   const uint32_t scenario_entry_score = config.scenario_entry_score();
 
   // 2. Pre-conditions Check
-  // Must be in a single lane (not changing lanes) and have valid routing.
-  if (frame->reference_line_info().size() != 1) {
-    return ScenarioDecisionResult();
-  }
 
   const auto& routing = frame->local_view().routing;
   if (!routing || routing->routing_request().waypoint().empty()) {

@@ -27,14 +27,16 @@ class VehicleFrenetGeometryTest : public ::testing::Test {
     config_.mutable_vehicle_param()->set_back_edge_to_center(1.0);
     config_.mutable_vehicle_param()->set_left_edge_to_center(1.0);
     config_.mutable_vehicle_param()->set_right_edge_to_center(1.0);
-    geometry_ = common::VehicleGeometryModel(
-        common::VehicleDescription(config_));
+    geometry_ = common::VehicleGeometryModel(common::VehicleDescription(config_));
+    geometry_adapter_ =
+        PlanningGeometryAdapter(geometry_, common::REAR_AXLE_CENTER);
     frenet_geometry_ =
-        std::make_unique<VehicleFrenetGeometry>(geometry_);
+        std::make_unique<VehicleFrenetGeometry>(geometry_adapter_);
   }
 
   common::VehicleConfig config_;
   common::VehicleGeometryModel geometry_;
+  PlanningGeometryAdapter geometry_adapter_;
   std::unique_ptr<VehicleFrenetGeometry> frenet_geometry_;
 };
 

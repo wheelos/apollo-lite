@@ -32,6 +32,7 @@
 #include "modules/planning/common/obstacle.h"
 #include "modules/planning/common/path/path_data.h"
 #include "modules/planning/common/path_decision.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/common/speed/st_boundary.h"
 #include "modules/planning/common/speed_limit.h"
 #include "modules/planning/reference_line/reference_line.h"
@@ -45,7 +46,8 @@ class STBoundaryMapper {
                    const ReferenceLine& reference_line,
                    const PathData& path_data, const double planning_distance,
                    const double planning_time,
-                   const std::shared_ptr<DependencyInjector>& injector);
+                   const std::shared_ptr<DependencyInjector>& injector,
+                   const PlanningGeometryAdapter& geometry_adapter);
 
   virtual ~STBoundaryMapper() = default;
 
@@ -71,7 +73,8 @@ class STBoundaryMapper {
 
   /** @brief Given a path-point and an obstacle bounding box, check if the
    *        ADC, when at that path-point, will collide with the obstacle.
-   * @param The path-point of the center of rear-axis for ADC.
+   * @param The path-point, interpreted at geometry_adapter_'s bound
+   *        reference point.
    * @param The bounding box of the obstacle.
    * @param The extra lateral buffer for our ADC.
    */
@@ -101,6 +104,7 @@ class STBoundaryMapper {
   const double planning_max_distance_;
   const double planning_max_time_;
   std::shared_ptr<DependencyInjector> injector_;
+  const PlanningGeometryAdapter geometry_adapter_;
 };
 
 }  // namespace planning

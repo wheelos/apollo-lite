@@ -35,7 +35,6 @@
 #include "modules/common/util/string_util.h"
 #include "modules/planning/common/vehicle_frenet_geometry.h"
 #include "modules/common/util/util.h"
-#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/planning_gflags.h"
@@ -53,14 +52,16 @@ STBoundaryMapper::STBoundaryMapper(
     const SpeedBoundsDeciderConfig& config, const ReferenceLine& reference_line,
     const PathData& path_data, const double planning_distance,
     const double planning_time,
-    const std::shared_ptr<DependencyInjector>& injector)
+    const std::shared_ptr<DependencyInjector>& injector,
+    const PlanningGeometryAdapter& geometry_adapter)
     : speed_bounds_config_(config),
       reference_line_(reference_line),
       path_data_(path_data),
       vehicle_param_(common::VehicleConfigHelper::GetConfig().vehicle_param()),
       planning_max_distance_(planning_distance),
       planning_max_time_(planning_time),
-      injector_(injector) {}
+      injector_(injector),
+      geometry_adapter_(geometry_adapter) {}
 
 Status STBoundaryMapper::ComputeSTBoundary(PathDecision* path_decision) const {
   // Sanity checks.
@@ -130,7 +131,7 @@ bool STBoundaryMapper::MapStopDecision(
   reference_line_.XYToSL(stop_decision.stop().stop_point(), &stop_sl_point);
 
   double st_stop_s = 0.0;
-  VehicleFrenetGeometry frenet_geometry(injector_->vehicle_model().geometry_model());
+  VehicleFrenetGeometry frenet_geometry(geometry_adapter_);
   const double stop_ref_s =
       frenet_geometry.ComputeStopReferenceS(stop_sl_point.s());
 
@@ -229,8 +230,7 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
       const Box2d& obs_box = obstacle.PerceptionBoundingBox();
       if (CheckOverlap(curr_point_on_path, obs_box, l_buffer)) {
         // If there is overlapping, then plot it on ST-graph.
-        const double backward_distance =
-            -injector_->vehicle_model().geometry_model().FrontEdgeDistance();
+        const double backward_distance = -geometry_adapter_.FrontEdgeDistance();
         const double forward_distance = obs_box.length();
         double low_s =
             std::fmax(0.0, curr_point_on_path.s() + backward_distance);
@@ -274,8 +274,7 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
         continue;
       }
 
-      const double step_length =
-          injector_->vehicle_model().geometry_model().FrontEdgeDistance();
+      const double step_length = geometry_adapter_.FrontEdgeDistance();
       auto path_len =
           std::min(FLAGS_max_trajectory_len, discretized_path.Length());
       // Go through every point of the ADC's path.
@@ -393,8 +392,7 @@ void STBoundaryMapper::ComputeSTBoundaryWithDecision(
 bool STBoundaryMapper::CheckOverlap(const PathPoint& path_point,
                                     const Box2d& obs_box,
                                     const double l_buffer) const {
-  const Box2d adc_box = injector_->vehicle_model().geometry_model().BuildBox(
-      path_point, l_buffer);
+  const Box2d adc_box = geometry_adapter_.BuildBox(path_point, l_buffer);
 
   // Check whether ADC bounding box overlaps with obstacle bounding box.
   return obs_box.HasOverlap(adc_box);

@@ -70,7 +70,7 @@ Stage::StageStatus EmergencyPullOverStageApproach::Process(
     const double stop_distance = scenario_config_.stop_distance();
     stop_line_s =
         pull_over_sl.s() + stop_distance +
-        reference_line_info.vehicle_geometry_model().FrontEdgeDistance();
+        reference_line_info.planning_geometry_adapter().FrontEdgeDistance();
     const std::string virtual_obstacle_id = "EMERGENCY_PULL_OVER";
     const std::vector<std::string> wait_for_obstacle_ids;
     planning::util::BuildStopDecision(

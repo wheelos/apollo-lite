@@ -36,8 +36,10 @@ DECLARE_double(look_forward_time_sec);
 
 DECLARE_string(vehicle_config_path);
 DECLARE_string(vehicle_model_config_filename);
-// Canonical VehicleState reference point: 0 rear axle, 1 front axle, 2 COM.
+// VehicleState output reference point: 0 rear axle, 1 front axle, 2 COM.
 DECLARE_int32(vehicle_state_reference_point);
+// Localization pose reference point: 0 rear axle, 1 front axle, 2 COM.
+DECLARE_int32(vehicle_state_localization_reference_point);
 DECLARE_double(vehicle_state_center_of_mass_offset);
 
 DECLARE_bool(use_cyber_time);

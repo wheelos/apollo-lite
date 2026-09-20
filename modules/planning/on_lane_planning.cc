@@ -380,7 +380,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
           &replan_reason);
 
   injector_->ego_info()->Update(stitching_trajectory.back(), vehicle_state,
-                                injector_->vehicle_model().geometry_model());
+                                common::VehicleGeometryModel());
   const uint32_t frame_num = static_cast<uint32_t>(seq_num_++);
   status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state,
                      direct_valet_parking_mode);
