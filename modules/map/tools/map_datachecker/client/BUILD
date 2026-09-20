@@ -25,11 +25,11 @@ cc_library(
         ":client_common",
         ":client_gflags",
         ":client_loops_check",
-        "@core//cyber",
         "@boost.algorithm",
         "@boost.filesystem",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
     ],
 )
 
@@ -41,11 +41,11 @@ cc_library(
         ":client_common",
         ":client_gflags",
         ":exception_handler",
-        "@core//cyber",
         "//modules/map/tools/map_datachecker/proto:collection_service_cc_grpc",
         "@boost.filesystem",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
     ],
 )
 
@@ -54,9 +54,9 @@ cc_library(
     srcs = ["client_common.cc"],
     hdrs = ["client_common.h"],
     deps = [
-        "@core//cyber",
         "@boost.algorithm",
         "@com_github_grpc_grpc//:grpc++",
+        "@core//cyber",
     ],
 )
 
@@ -77,11 +77,11 @@ cc_library(
         ":client_common",
         ":client_gflags",
         ":exception_handler",
-        "@core//cyber",
         "//modules/map/tools/map_datachecker/proto:collection_service_cc_grpc",
         "@boost.algorithm",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
     ],
 )
 
@@ -91,8 +91,8 @@ cc_library(
     hdrs = ["exception_handler.h"],
     deps = [
         ":client_common",
-        "@core//cyber",
         "//modules/map/tools/map_datachecker/proto:collection_error_code_cc_proto",
+        "@core//cyber",
     ],
 )
 

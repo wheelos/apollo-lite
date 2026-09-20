@@ -17,6 +17,7 @@
 
 #include "modules/simulation/adapter/cyber_adapter.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -35,6 +36,9 @@ bool CyberAdapter::Init(const std::shared_ptr<cyber::Node>& node) {
   // Initialize Writer for Chassis and Localization
   chassis_writer_ =
       node_->CreateWriter<apollo::canbus::Chassis>(FLAGS_chassis_topic);
+  chassis_detail_writer_ =
+      node_->CreateWriter<apollo::canbus::ChassisDetail>(
+          FLAGS_chassis_detail_topic);
   localization_writer_ =
       node_->CreateWriter<apollo::localization::LocalizationEstimate>(
           FLAGS_localization_topic);
@@ -49,7 +53,8 @@ bool CyberAdapter::Init(const std::shared_ptr<cyber::Node>& node) {
   AINFO << "CyberAdapter initialized. Subscribing to: "
         << FLAGS_control_command_topic
         << ", publishing to: " << FLAGS_chassis_topic << " and "
-        << FLAGS_localization_topic;
+        << FLAGS_localization_topic << " and "
+        << FLAGS_chassis_detail_topic;
   return true;
 }
 
@@ -72,15 +77,11 @@ void CyberAdapter::FromControlCommand(
                                         : cyber::Time::Now().ToSecond();
   cmd->sequence_num = msg.has_header() ? msg.header().sequence_num() : 0;
 
-  // Longitudinal throttle and brake [0, 1]
+  // Apollo ControlCommand uses percentage units [0, 100].
   double throttle = msg.throttle();
   double brake = msg.brake();
-  const bool throttle_percent = throttle > 1.0;
-  const bool brake_percent = brake > 1.0;
   if (!std::isfinite(throttle) || !std::isfinite(brake) ||
-      (throttle_percent && throttle > 100.0) ||
-      (!throttle_percent && throttle < 0.0) ||
-      (brake_percent && brake > 100.0) || (!brake_percent && brake < 0.0) ||
+      throttle < 0.0 || throttle > 100.0 || brake < 0.0 || brake > 100.0 ||
       !std::isfinite(msg.steering_target()) || msg.steering_target() < -100.0 ||
       msg.steering_target() > 100.0 || !std::isfinite(msg.steering_rate()) ||
       msg.steering_rate() < -100.0 || msg.steering_rate() > 100.0 ||
@@ -94,9 +95,8 @@ void CyberAdapter::FromControlCommand(
     cmd->brake = 1.0;
     return;
   }
-  cmd->throttle = throttle > 1.0 ? throttle / 100.0 : throttle;
-
-  cmd->brake = brake > 1.0 ? brake / 100.0 : brake;
+  cmd->throttle = throttle / 100.0;
+  cmd->brake = brake / 100.0;
 
   // Lateral steering: percentage [-100, 100] -> radians
   cmd->front_steering_rad =
@@ -152,15 +152,54 @@ void CyberAdapter::ToChassis(const VehicleState& state,
                                                 : state.timestamp_sec);
   header->set_module_name("simulation");
 
-  chassis->set_speed_mps(static_cast<float>(state.linear_velocity_mps));
+  // Chassis speed is a magnitude. VehicleStateProvider applies the gear sign
+  // when constructing common::VehicleState, while Localization remains the
+  // signed ground-truth motion source.
+  chassis->set_speed_mps(
+      static_cast<float>(std::abs(state.linear_velocity_mps)));
+  chassis->set_odometer_m(static_cast<float>(state.odometer_m));
   chassis->set_steering_percentage(
       static_cast<float>(state.steering_percentage));
+  chassis->set_steering_percentage_cmd(
+      static_cast<float>(state.steering_percentage_cmd));
   chassis->set_throttle_percentage(
       static_cast<float>(state.throttle_percentage));
+  chassis->set_throttle_percentage_cmd(
+      static_cast<float>(state.throttle_percentage_cmd));
   chassis->set_brake_percentage(static_cast<float>(state.brake_percentage));
+  chassis->set_brake_percentage_cmd(
+      static_cast<float>(state.brake_percentage_cmd));
   chassis->set_driving_mode(apollo::canbus::Chassis::COMPLETE_AUTO_DRIVE);
-  chassis->set_error_code(apollo::canbus::Chassis::NO_ERROR);
-  chassis->set_engine_started(true);
+  chassis->set_error_code(
+      state.is_collision ? apollo::canbus::Chassis::CHASSIS_ERROR
+                         : apollo::canbus::Chassis::NO_ERROR);
+  chassis->set_chassis_error_mask(state.is_collision ? 1 : 0);
+  chassis->set_engine_started(state.current_gear !=
+                              VehicleCommand::Gear::GEAR_PARKING);
+  chassis->set_parking_brake(
+      state.current_gear == VehicleCommand::Gear::GEAR_PARKING);
+  chassis->set_steering_timestamp(
+      timestamp_sec > 0.0 ? timestamp_sec : state.timestamp_sec);
+  const auto wheel_direction = [](double speed_mps) {
+    return speed_mps > 0.01
+          ? apollo::canbus::WheelSpeed::FORWARD
+      : speed_mps < -0.01
+          ? apollo::canbus::WheelSpeed::BACKWARD
+          : apollo::canbus::WheelSpeed::STANDSTILL;
+  };
+  auto* wheel_speed = chassis->mutable_wheel_speed();
+  wheel_speed->set_is_wheel_spd_fl_valid(true);
+  wheel_speed->set_wheel_spd_fl(state.wheel_speed_mps[0]);
+  wheel_speed->set_wheel_direction_fl(wheel_direction(state.wheel_speed_mps[0]));
+  wheel_speed->set_is_wheel_spd_fr_valid(true);
+  wheel_speed->set_wheel_spd_fr(state.wheel_speed_mps[1]);
+  wheel_speed->set_wheel_direction_fr(wheel_direction(state.wheel_speed_mps[1]));
+  wheel_speed->set_is_wheel_spd_rl_valid(true);
+  wheel_speed->set_wheel_spd_rl(state.wheel_speed_mps[2]);
+  wheel_speed->set_wheel_direction_rl(wheel_direction(state.wheel_speed_mps[2]));
+  wheel_speed->set_is_wheel_spd_rr_valid(true);
+  wheel_speed->set_wheel_spd_rr(state.wheel_speed_mps[3]);
+  wheel_speed->set_wheel_direction_rr(wheel_direction(state.wheel_speed_mps[3]));
 
   switch (state.current_gear) {
     case VehicleCommand::Gear::GEAR_REVERSE:
@@ -206,57 +245,81 @@ void CyberAdapter::ToLocalization(
   pose->mutable_orientation()->set_qz(state.qz);
   pose->mutable_orientation()->set_qw(state.qw);
   pose->set_heading(state.yaw);
+  pose->mutable_euler_angles()->set_x(state.pitch);
+  pose->mutable_euler_angles()->set_y(state.roll);
+  pose->mutable_euler_angles()->set_z(state.yaw);
 
-  // Body-frame velocity/acceleration rotated into the world frame.
-  double vx = state.linear_velocity_mps * std::cos(state.yaw) -
-              state.lateral_velocity_mps * std::sin(state.yaw);
-  double vy = state.linear_velocity_mps * std::sin(state.yaw) +
-              state.lateral_velocity_mps * std::cos(state.yaw);
-  pose->mutable_linear_velocity()->set_x(vx);
-  pose->mutable_linear_velocity()->set_y(vy);
-  pose->mutable_linear_velocity()->set_z(0.0);
+  pose->mutable_linear_velocity()->set_x(
+      state.linear_velocity_world_mps[0]);
+  pose->mutable_linear_velocity()->set_y(
+      state.linear_velocity_world_mps[1]);
+  pose->mutable_linear_velocity()->set_z(
+      state.linear_velocity_world_mps[2]);
 
-  double ax = state.linear_acceleration_mps2 * std::cos(state.yaw) -
-              state.lateral_acceleration_mps2 * std::sin(state.yaw);
-  double ay = state.linear_acceleration_mps2 * std::sin(state.yaw) +
-              state.lateral_acceleration_mps2 * std::cos(state.yaw);
-  pose->mutable_linear_acceleration()->set_x(ax);
-  pose->mutable_linear_acceleration()->set_y(ay);
-  pose->mutable_linear_acceleration()->set_z(0.0);
+  pose->mutable_linear_acceleration()->set_x(
+      state.linear_acceleration_world_mps2[0]);
+  pose->mutable_linear_acceleration()->set_y(
+      state.linear_acceleration_world_mps2[1]);
+  pose->mutable_linear_acceleration()->set_z(
+      state.linear_acceleration_world_mps2[2]);
 
   // Linear acceleration in vehicle reference frame (VRF)
+  // Apollo VRF uses x=right, y=forward. The simulator state uses
+  // x=forward, y=left, so lateral acceleration changes sign on conversion.
   pose->mutable_linear_acceleration_vrf()->set_x(
-      state.linear_acceleration_mps2);
+      -state.linear_acceleration_body_mps2[1]);
   pose->mutable_linear_acceleration_vrf()->set_y(
-      state.lateral_acceleration_mps2);
-  pose->mutable_linear_acceleration_vrf()->set_z(0.0);
+      state.linear_acceleration_body_mps2[0]);
+  pose->mutable_linear_acceleration_vrf()->set_z(
+      state.linear_acceleration_body_mps2[2]);
 
   // Angular velocity in world and vehicle frame
-  pose->mutable_angular_velocity()->set_x(0.0);
-  pose->mutable_angular_velocity()->set_y(0.0);
-  pose->mutable_angular_velocity()->set_z(state.angular_velocity_yaw_radps);
+  pose->mutable_angular_velocity()->set_x(
+      state.angular_velocity_world_radps[0]);
+  pose->mutable_angular_velocity()->set_y(
+      state.angular_velocity_world_radps[1]);
+  pose->mutable_angular_velocity()->set_z(
+      state.angular_velocity_world_radps[2]);
 
-  pose->mutable_angular_velocity_vrf()->set_x(0.0);
-  pose->mutable_angular_velocity_vrf()->set_y(0.0);
-  pose->mutable_angular_velocity_vrf()->set_z(state.angular_velocity_yaw_radps);
+  // Apollo VRF is right/forward/up, while the simulator body frame is
+  // forward/left/up.
+  pose->mutable_angular_velocity_vrf()->set_x(
+      -state.angular_velocity_body_radps[1]);
+  pose->mutable_angular_velocity_vrf()->set_y(
+      state.angular_velocity_body_radps[0]);
+  pose->mutable_angular_velocity_vrf()->set_z(
+      state.angular_velocity_body_radps[2]);
 }
 
 void CyberAdapter::PublishFeedback(const VehicleState& state) {
-  double now_sec = cyber::Time::Now().ToSecond();
+  if (!timestamp_offset_initialized_) {
+    timestamp_offset_sec_ = cyber::Time::Now().ToSecond() - state.timestamp_sec;
+    timestamp_offset_initialized_ = true;
+  }
+  const double timestamp_sec = timestamp_offset_sec_ + state.timestamp_sec;
   uint64_t seq = ++msg_seq_num_;
 
   // 1. Publish Chassis
   if (chassis_writer_) {
     auto chassis = std::make_shared<apollo::canbus::Chassis>();
-    ToChassis(state, chassis.get(), now_sec);
+    ToChassis(state, chassis.get(), timestamp_sec);
     chassis->mutable_header()->set_sequence_num(seq);
     chassis_writer_->Write(chassis);
+  }
+
+  // ChassisDetail.Any is reserved for a vehicle-specific protocol extension.
+  if (chassis_detail_writer_) {
+    auto chassis_detail = std::make_shared<apollo::canbus::ChassisDetail>();
+    if (chassis_detail_filler_) {
+      chassis_detail_filler_(state, chassis_detail.get());
+    }
+    chassis_detail_writer_->Write(chassis_detail);
   }
 
   // 2. Publish LocalizationEstimate
   if (localization_writer_) {
     auto loc = std::make_shared<apollo::localization::LocalizationEstimate>();
-    ToLocalization(state, loc.get(), now_sec);
+    ToLocalization(state, loc.get(), timestamp_sec);
     loc->mutable_header()->set_sequence_num(seq);
     localization_writer_->Write(loc);
   }

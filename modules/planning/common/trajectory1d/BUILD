@@ -8,8 +8,8 @@ cc_library(
     srcs = ["standing_still_trajectory1d.cc"],
     hdrs = ["standing_still_trajectory1d.h"],
     deps = [
-        "@core//cyber",
         "//modules/planning/math/curve1d",
+        "@core//cyber",
     ],
 )
 
@@ -29,9 +29,9 @@ cc_library(
     srcs = ["constant_deceleration_trajectory1d.cc"],
     hdrs = ["constant_deceleration_trajectory1d.h"],
     deps = [
-        "@core//cyber",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/math/curve1d",
+        "@core//cyber",
     ],
 )
 
@@ -50,9 +50,9 @@ cc_library(
     srcs = ["constant_jerk_trajectory1d.cc"],
     hdrs = ["constant_jerk_trajectory1d.h"],
     deps = [
-        "@core//cyber",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/math/curve1d",
+        "@core//cyber",
     ],
 )
 

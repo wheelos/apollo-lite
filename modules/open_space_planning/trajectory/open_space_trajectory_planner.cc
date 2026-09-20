@@ -44,9 +44,8 @@ bool OpenSpaceTrajectoryPlanner::PlanKinematicFallback(
   double accumulated_s = 0.0;
   double current_time = 0.0;
   constexpr double dt = 0.1;
-  const double nominal_v = (problem.goal.target_speed > 0.0)
-                               ? problem.goal.target_speed
-                               : 1.0;
+  const double nominal_v =
+      (problem.goal.target_speed > 0.0) ? problem.goal.target_speed : 1.0;
 
   for (std::size_t i = 0; i < route.skeleton.size(); ++i) {
     const auto& sp = route.skeleton[i];
@@ -176,11 +175,11 @@ bool OpenSpaceTrajectoryPlanner::PlanQpPathAndSpeed(
         (seg_idx == 0) ? std::abs(problem.start.longitudinal_velocity) : 0.0;
     const double a_init =
         (seg_idx == 0) ? problem.start.longitudinal_acceleration : 0.0;
-    const double v_target = (seg_idx + 1 == segments.size())
-                                ? ((problem.goal.target_speed > 0.0)
-                                       ? problem.goal.target_speed
-                                       : 2.0)
-                                : 0.0;
+    const double v_target =
+        (seg_idx + 1 == segments.size())
+            ? ((problem.goal.target_speed > 0.0) ? problem.goal.target_speed
+                                                 : 2.0)
+            : 0.0;
 
     std::vector<SpeedProfilePoint> speed_profile;
     if (!speed_optimizer_.Solve(0.0, v_init, a_init, v_target, seg_max_s,

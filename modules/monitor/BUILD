@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install", "install_src_files")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install", "install_src_files")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -22,10 +22,8 @@ cc_library(
     copts = MONITOR_COPTS,
     visibility = ["//visibility:private"],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/monitor/common:recurrent_runner",
-        "//modules/monitor/hardware:collision_monitor",
         "//modules/monitor/hardware:gps_monitor",
         "//modules/monitor/hardware:resource_monitor",
         "//modules/monitor/hardware:socket_can_monitor",
@@ -38,6 +36,7 @@ cc_library(
         "//modules/monitor/software:process_monitor",
         "//modules/monitor/software:recorder_monitor",
         "//modules/monitor/software:summary_monitor",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -45,44 +44,44 @@ cc_library(
 filegroup(
     name = "runtime_data",
     srcs = glob([
-       "dag/*.dag",
-       "launch/*.launch",
+        "dag/*.dag",
+        "launch/*.launch",
     ]),
 )
 
 install(
     name = "install",
-    library_dest = "monitor/lib",
+    data = [
+        ":monitor.BUILD",
+        ":runtime_data",
+    ],
     data_dest = "monitor",
+    library_dest = "monitor/lib",
     targets = [
         ":libmonitor.so",
-    ],
-    data = [
-       ":runtime_data",
-        ":monitor.BUILD",
     ],
 )
 
 install_src_files(
     name = "install_src",
     deps = [
+        ":install_monitor_hdrs",
         ":install_monitor_src",
-        ":install_monitor_hdrs"
     ],
 )
 
 install_src_files(
     name = "install_monitor_src",
-    src_dir = ["."],
     dest = "monitor/src",
     filter = "*",
+    src_dir = ["."],
 )
 
 install_src_files(
     name = "install_monitor_hdrs",
-    src_dir = ["."],
     dest = "monitor/include",
     filter = "*.h",
+    src_dir = ["."],
 )
 
 cpplint()

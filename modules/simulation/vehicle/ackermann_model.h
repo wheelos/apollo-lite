@@ -17,52 +17,22 @@
 
 #pragma once
 
-#include <cmath>
-
-#include "modules/simulation/core/simulation_types.h"
+#include "modules/simulation/vehicle/vehicle_model.h"
 
 namespace apollo {
 namespace simulation {
 
 /**
  * @class AckermannModel
- * @brief Converts VehicleCommand to four-wheel steering angles and drive/brake
- * torques.
+ * @brief Front-wheel-only vehicle model.
  */
-class AckermannModel {
+class AckermannModel final : public VehicleModelBase {
  public:
-  AckermannModel() = default;
-  ~AckermannModel() = default;
-
-  /**
-   * @brief Compute physical wheel actuation targets from vehicle command.
-   */
-  VehicleActuation ComputeActuation(const VehicleCommand& cmd,
-                                    const VehicleState& current_state,
-                                    double dt_sec);
-
-  // Parameter configuration
-  void SetGeometry(double wheelbase_m, double track_width_m,
-                   double wheel_radius_m) {
-    wheelbase_m_ = wheelbase_m;
-    track_width_m_ = track_width_m;
-    wheel_radius_m_ = wheel_radius_m;
-  }
-
-  void SetTorqueLimits(double max_drive_torque_nm, double max_brake_torque_nm) {
-    max_drive_torque_nm_ = max_drive_torque_nm;
-    max_brake_torque_nm_ = max_brake_torque_nm;
-  }
-
- private:
-  double wheelbase_m_{2.8448};
-  double track_width_m_{1.58};
-  double wheel_radius_m_{0.33};
-  double mass_kg_{1710.0};
-
-  double max_steer_angle_rad_{0.50};
-  double max_drive_torque_nm_{2400.0};
-  double max_brake_torque_nm_{4800.0};
+  bool Configure(const VehicleModelConfig& config) override;
+  VehicleActuation ComputeActuation(const VehicleCommand& command,
+                                    const VehicleState& state,
+                                    double dt_sec) const override;
+  const char* Name() const override { return "Ackermann"; }
 };
 
 }  // namespace simulation

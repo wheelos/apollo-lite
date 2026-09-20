@@ -41,7 +41,7 @@ HybridAStarRoutePlanner::HybridAStarRoutePlanner(
 }
 
 void HybridAStarRoutePlanner::ExtractXYBounds(const PlanningProblem& problem,
-                                             std::vector<double>* xy_bounds) {
+                                              std::vector<double>* xy_bounds) {
   if (xy_bounds == nullptr) {
     return;
   }
@@ -256,9 +256,9 @@ Status HybridAStarRoutePlanner::Plan(const RoutePlanningRequest& request,
   planning::HybridAStar solver(current_config);
 
   planning::HybridAStartResult search_result;
-  const bool search_success = solver.Plan(
-      sx, sy, sphi, ex, ey, ephi, xy_bounds, obstacles_vertices_vec,
-      &search_result);
+  const bool search_success =
+      solver.Plan(sx, sy, sphi, ex, ey, ephi, xy_bounds, obstacles_vertices_vec,
+                  &search_result);
 
   if (!search_success || search_result.x.empty()) {
     return {StatusCode::kRouteSearchFailed,

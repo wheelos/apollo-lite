@@ -54,3 +54,26 @@ New algorithms implement an existing SPI. Do not add algorithm-specific fields
 to `OpenSpacePlanner`; extend the request/result domain contracts only when the
 data is meaningful to every implementation of that stage.
 
+## Cyber component boundary
+
+`OpenSpacePlanningComponent` is a thin adapter around `OpenSpacePlanner`. The
+current transport messages are temporary module-local protobufs under
+`proto/`; they are intended to move to the external `wheelos_msgs` package
+without changing the planner-owned types.
+
+| Direction | Topic | Message |
+| --- | --- | --- |
+| input | `/apollo/prediction` | `apollo.prediction.PredictionObstacles` |
+| input | `/apollo/canbus/chassis` | `apollo.canbus.Chassis` |
+| input | `/apollo/localization/pose` | `apollo.localization.LocalizationEstimate` |
+| input | `/apollo/open_space/grid_map` | `apollo.open_space_planning.proto.GridMap` |
+| input | `/apollo/open_space/vehicle_model` | `apollo.open_space_planning.proto.VehicleModel` |
+| input | `/apollo/routing_request` | `apollo.routing.RoutingRequest` |
+| output | `/apollo/open_space/planning_result` | `apollo.open_space_planning.proto.OpenSpacePlanningResult` |
+| output | `FLAGS_planning_trajectory_topic` (default `/apollo/planning`) | `apollo.planning.ADCTrajectory` |
+
+The component converts localization and chassis messages through
+`VehicleStateProvider`, takes the final `RoutingRequest` waypoint as the
+open-space goal, converts `PredictionObstacles` into dynamic obstacles, and
+publishes both the complete open-space result and an `ADCTrajectory`-compatible
+trajectory.

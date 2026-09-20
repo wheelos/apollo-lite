@@ -45,7 +45,6 @@ cc_library(
     name = "camera_semantic_segmentation_component",
     srcs = ["component/camera_semantic_segmentation_component.cc"],
     hdrs = ["component/camera_semantic_segmentation_component.h"],
-    alwayslink = True,
     deps = [
         ":image_frame",
         ":segformer",
@@ -54,6 +53,7 @@ cc_library(
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
     ],
+    alwayslink = True,
 )
 
 cc_binary(
@@ -94,10 +94,10 @@ filegroup(
 
 install(
     name = "install",
+    data = [":runtime_config"],
     data_dest = "camera_semantic_segmentation",
     library_dest = "camera_semantic_segmentation/lib",
     targets = [":libcamera_semantic_segmentation_component_plugin.so"],
-    data = [":runtime_config"],
 )
 
 cpplint()

@@ -22,19 +22,19 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/filters",
         "//modules/common/math",
         "//modules/common/status",
-        "//modules/control/common:pid_controller",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "//modules/control/common:control_gflags",
+        "//modules/control/common:pid_controller",
         "//modules/control/common:trajectory_analyzer",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:diff_drive_lat_controller_conf_cc_proto",
-        "@com_google_absl//absl/strings"
+        "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
     ],
 )
 
@@ -45,15 +45,11 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/filters",
         "//modules/common/math",
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "//modules/control/common:control_gflags",
         "//modules/control/common:interpolation_1d",
         "//modules/control/common:leadlag_controller",
@@ -67,7 +63,11 @@ cc_library(
         "//modules/control/proto:mpc_controller_conf_cc_proto",
         "//modules/control/proto:mrac_conf_cc_proto",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
     ],
 )
 
@@ -78,13 +78,9 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/filters",
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "//modules/control/common:control_gflags",
         "//modules/control/common:interpolation_2d",
         "//modules/control/common:leadlag_controller",
@@ -99,6 +95,10 @@ cc_library(
         "//modules/control/proto:mrac_conf_cc_proto",
         "//modules/localization/common:localization_gflags",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
     ],
 )
 
@@ -109,11 +109,8 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_cc_proto",
         "//modules/control/common:control_gflags",
         "//modules/control/common:leadlag_controller",
         "//modules/control/common:pid_controller",
@@ -122,6 +119,9 @@ cc_library(
         "//modules/control/proto:lon_controller_conf_cc_proto",
         "//modules/localization/common:localization_gflags",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_cc_proto",
     ],
 )
 
@@ -132,15 +132,10 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "@core//cyber",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/filters",
         "//modules/common/math",
         "//modules/common/status",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
         "//modules/control/common:control_gflags",
         "//modules/control/common:interpolation_1d",
         "//modules/control/common:interpolation_2d",
@@ -152,7 +147,12 @@ cc_library(
         "//modules/control/proto:lon_controller_conf_cc_proto",
         "//modules/control/proto:mpc_controller_conf_cc_proto",
         "//modules/control/proto:mrac_conf_cc_proto",
+        "@core//cyber",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
     ],
 )
 
@@ -162,10 +162,10 @@ cc_library(
     deps = [
         ":controller_agent",
         ":controller_interface",
+        ":diff_drive_lat_controller",
         ":lat_controller",
         ":lon_controller",
         ":lon_speed_controller",
-        ":diff_drive_lat_controller",
         ":mpc_controller",
         "@eigen",
     ],
@@ -178,17 +178,17 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
+        ":diff_drive_lat_controller",
         ":lat_controller",
         ":lon_controller",
         ":lon_speed_controller",
-        ":diff_drive_lat_controller",
         ":mpc_controller",
-        "@core//cyber",
         "//modules/common/util:util_tool",
+        "//modules/control/common:dependency_injector",
+        "@core//cyber",
+        "@osqp",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
-        "//modules/control/common:dependency_injector",
-        "@osqp",
     ],
 )
 
@@ -200,12 +200,13 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":lon_controller",
-        "@core//cyber",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+        "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/control/common:control_gflags",
         "//modules/control/proto:control_conf_cc_proto",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -217,11 +218,12 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":lat_controller",
-        "@core//cyber",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+        "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/control/common:control_gflags",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -233,10 +235,11 @@ cc_test(
     data = ["//modules/control:test_data"],
     deps = [
         ":mpc_controller",
-        "@core//cyber",
         "//modules/common/util",
+        "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/control/common:control_gflags",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

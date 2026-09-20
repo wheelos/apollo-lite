@@ -112,6 +112,7 @@ TEST_F(SimulationControlTest, MujocoAckermannVehicleDynamics) {
 
   VehicleState state{};
   ASSERT_TRUE(engine.GetVehicleState(&state));
+  const double initial_x = state.x;
   AINFO << "Initial state: x=" << state.x << ", y=" << state.y
         << ", z=" << state.z << ", yaw=" << state.yaw;
 
@@ -134,7 +135,7 @@ TEST_F(SimulationControlTest, MujocoAckermannVehicleDynamics) {
 
   ASSERT_TRUE(engine.GetVehicleState(&state));
   EXPECT_GT(state.linear_velocity_mps, 0.5);
-  EXPECT_GT(state.x, 0.5);
+  EXPECT_GT(state.x - initial_x, 0.5);
   EXPECT_NEAR(state.y, 0.0, 0.2);
 
   // 2. Steer left
@@ -167,6 +168,9 @@ TEST_F(SimulationControlTest, MujocoTargetSpeedControlProducesMotion) {
   engine.SetControlMode("speed");
   engine.SetSpeedKp(1.5);
   engine.Reset(0.0, 0.0, 0.0);
+  VehicleState state{};
+  ASSERT_TRUE(engine.GetVehicleState(&state));
+  const double initial_x = state.x;
 
   VehicleCommand cmd{};
   cmd.gear = VehicleCommand::Gear::GEAR_DRIVE;
@@ -175,9 +179,8 @@ TEST_F(SimulationControlTest, MujocoTargetSpeedControlProducesMotion) {
     ASSERT_TRUE(engine.Step(cmd, 0.02));
   }
 
-  VehicleState state{};
   ASSERT_TRUE(engine.GetVehicleState(&state));
-  EXPECT_GT(state.x, 0.1);
+  EXPECT_GT(state.x - initial_x, 0.1);
   EXPECT_GT(state.linear_velocity_mps, 0.0);
 }
 
@@ -207,6 +210,8 @@ TEST_F(SimulationControlTest, ClosedLoopControlSimulation) {
   double dt = 0.02;
   double sim_time = 0.0;
   VehicleState state{};
+  ASSERT_TRUE(engine.GetVehicleState(&state));
+  const double initial_x = state.x;
   apollo::canbus::Chassis chassis;
   apollo::localization::LocalizationEstimate localization;
   ControlCommand control_cmd;
@@ -257,7 +262,7 @@ TEST_F(SimulationControlTest, ClosedLoopControlSimulation) {
         << "), speed: " << state.linear_velocity_mps
         << " m/s, yaw: " << state.yaw;
 
-  EXPECT_GT(state.x, 0.5);
+  EXPECT_GT(state.x - initial_x, 0.5);
   EXPECT_GT(state.linear_velocity_mps, 0.3);
   EXPECT_NEAR(state.y, 0.0, 0.3);
 }

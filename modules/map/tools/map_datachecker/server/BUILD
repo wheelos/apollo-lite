@@ -18,10 +18,10 @@ cc_library(
     hdrs = ["channel_verify.h"],
     deps = [
         ":common",
-        "@core//cyber",
         "//modules/map/tools/map_datachecker/proto:collection_error_code_cc_proto",
         "@boost.algorithm",
         "@boost.filesystem",
+        "@core//cyber",
     ],
 )
 
@@ -42,9 +42,9 @@ cc_library(
     srcs = ["common.cc"],
     hdrs = ["common.h"],
     deps = [
-        "@core//cyber",
         "@boost.filesystem",
         "@boost.property_tree",
+        "@core//cyber",
     ],
 )
 
@@ -58,9 +58,9 @@ cc_library(
     deps = [
         ":common",
         ":worker_gflags",
-        "@core//cyber",
         "//modules/map/tools/map_datachecker/proto:collection_error_code_cc_proto",
         "@com_github_grpc_grpc//:grpc++",
+        "@core//cyber",
     ],
 )
 
@@ -92,8 +92,8 @@ cc_library(
     srcs = ["pj_transformer.cc"],
     hdrs = ["pj_transformer.h"],
     deps = [
-        "@core//cyber",
         "//modules/common/util:proj_helper",
+        "@core//cyber",
         "@proj",
     ],
 )
@@ -115,8 +115,8 @@ cc_library(
         ":common",
         ":pj_transformer",
         ":pose_collection",
-        "@core//cyber",
         "//modules/common/util:time_conversion",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
     ],
 )
@@ -144,8 +144,8 @@ cc_library(
         ":worker_agent",
         ":worker_cyber_node",
         ":worker_gflags",
-        "@core//cyber",
         "@com_github_grpc_grpc//:grpc++",
+        "@core//cyber",
     ],
 )
 
@@ -176,10 +176,10 @@ cc_library(
     deps = [
         ":worker_agent",
         ":worker_gflags",
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
         "//modules/map/tools/map_datachecker/proto:collection_error_code_cc_proto",
         "//modules/map/tools/map_datachecker/proto:collection_service_cc_grpc",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
     ],
 )
 

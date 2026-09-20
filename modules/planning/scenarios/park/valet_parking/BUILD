@@ -1,6 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
-load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -16,11 +15,11 @@ cc_library(
     ],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
-        "//modules/planning/scenarios:scenario",
         "//modules/planning/common/util:common_lib",
         "//modules/planning/common/util:util_lib",
+        "//modules/planning/scenarios:scenario",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 

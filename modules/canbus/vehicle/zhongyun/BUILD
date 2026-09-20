@@ -5,7 +5,6 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "zhongyun_vehicle_factory",
-    alwayslink = True,
     srcs = ["zhongyun_vehicle_factory.cc"],
     hdrs = ["zhongyun_vehicle_factory.h"],
     deps = [
@@ -14,6 +13,7 @@ cc_library(
         "//modules/canbus/vehicle:abstract_vehicle_factory",
         "//modules/canbus/vehicle:vehicle_factory_core",
     ],
+    alwayslink = True,
 )
 
 cc_library(
@@ -21,11 +21,11 @@ cc_library(
     srcs = ["zhongyun_message_manager.cc"],
     hdrs = ["zhongyun_message_manager.h"],
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle/zhongyun/protocol:canbus_zhongyun_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -35,13 +35,13 @@ cc_library(
     hdrs = ["zhongyun_controller.h"],
     deps = [
         ":zhongyun_message_manager",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle:chassis_extension_tools",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/zhongyun/protocol:canbus_zhongyun_protocol",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 

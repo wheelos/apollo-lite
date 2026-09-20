@@ -11,12 +11,12 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:object",
         "//modules/perception/base:object_pool_types",
         "//modules/perception/base:point_cloud",
         "//modules/perception/common/point_cloud_processing",
         "//modules/perception/lidar/common:feature_descriptor",
+        "@core//cyber",
     ],
 )
 
@@ -29,8 +29,8 @@ cc_library(
     ],
     deps = [
         ":tracked_object",
-        "@core//cyber",
         "//modules/perception/base:object_pool",
+        "@core//cyber",
     ],
 )
 
@@ -49,8 +49,8 @@ cc_library(
     ],
     deps = [
         ":track_data",
-        "@core//cyber",
         "//modules/perception/base:object_pool",
+        "@core//cyber",
         "@eigen",
     ],
 )

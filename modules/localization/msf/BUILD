@@ -1,12 +1,12 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "testdata",
-    srcs = glob(["local_map/test_data/**"])
+    srcs = glob(["local_map/test_data/**"]),
 )
 
 cc_library(
@@ -23,17 +23,11 @@ cc_library(
         "-DMODULE_NAME=\\\"localization\\\"",
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/math",
         "//modules/common/monitor_log",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "//modules/common/status",
         "//modules/common/util",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:heading_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:imu_cc_proto",
         "//modules/localization/common:localization_gflags",
         "//modules/localization/common:rigid_transform_helper",
         "//modules/localization/msf/common/util",
@@ -41,16 +35,22 @@ cc_library(
         "//modules/localization/msf/local_pyramid_map/base_map",
         "//modules/localization/msf/local_pyramid_map/pyramid_map",
         "//modules/localization/proto:gnss_pnt_result_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "//modules/localization/proto:localization_config_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_status_cc_proto",
         "//modules/localization/proto:measure_cc_proto",
         "//modules/localization/proto:sins_pva_cc_proto",
         "//modules/transform:transform_broadcaster",
         "@com_github_google_glog//:glog",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@com_google_googletest//:gtest",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:heading_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:imu_cc_proto",
     ],
     alwayslink = True,
 )
@@ -71,18 +71,18 @@ cc_test(
     ],
     data = ["//modules/localization:localization_testdata"],
     deps = [
-        "@core//cyber",
         "//modules/common/util",
         "//modules/localization/msf:msf_localization_component_lib",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
 install(
     name = "install",
-    library_dest = "localization/lib/msf",
     data = [":testdata"],
     data_dest = "localization/addition_data/msf",
+    library_dest = "localization/lib/msf",
     targets = [
         ":libmsf_localization_component.so",
     ],

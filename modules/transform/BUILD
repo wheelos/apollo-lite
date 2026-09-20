@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install", "install_src_files")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install", "install_src_files")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -16,11 +16,11 @@ cc_library(
     ],
     deps = [
         ":buffer_interface",
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//third_party/tf2",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
 )
 
@@ -31,11 +31,11 @@ cc_library(
     deps = [
         ":buffer",
         ":buffer_interface",
-        "@core//cyber/common:log",
-        "@core//cyber/time:time",
-        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "//third_party/tf2",
+        "@core//cyber/common:log",
+        "@core//cyber/time",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
 )
 
@@ -45,10 +45,10 @@ cc_library(
     hdrs = ["timed_transform_resolver.h"],
     deps = [
         ":transform_query",
+        "//modules/common/util:string_util",
         "@core//cyber/common:global_data",
         "@core//cyber/common:log",
-        "@core//cyber/time:time",
-        "//modules/common/util:string_util",
+        "@core//cyber/time",
         "@eigen",
     ],
 )
@@ -60,9 +60,9 @@ cc_library(
         "transform_diagnostics.h",
     ],
     deps = [
-        "@core//cyber/time:time",
-        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "//third_party/tf2",
+        "@core//cyber/time",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
 )
 
@@ -90,8 +90,8 @@ cc_test(
         ":buffer_interface",
         ":timed_transform_resolver",
         ":transform_query",
-        "@com_google_googletest//:gtest_main",
         "@bazel_tools//tools/cpp/runfiles",
+        "@com_google_googletest//:gtest_main",
         "@eigen",
     ],
 )
@@ -103,8 +103,8 @@ cc_library(
     ],
     hdrs = ["transform_broadcaster.h"],
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
 )
@@ -114,9 +114,9 @@ cc_library(
     srcs = ["calibration_registry.cc"],
     hdrs = ["calibration_registry.h"],
     deps = [
+        "//modules/transform/proto:static_transform_conf_cc_proto",
         "@core//cyber/common:file",
         "@core//cyber/common:log",
-        "//modules/transform/proto:static_transform_conf_cc_proto",
     ],
 )
 
@@ -136,16 +136,16 @@ cc_library(
     srcs = ["static_transform_component.cc"],
     hdrs = ["static_transform_component.h"],
     copts = ['-DMODULE_NAME=\\"static_transform\\"'],
-    alwayslink = True,
     deps = [
         ":calibration_registry",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
         "//modules/transform/proto:static_transform_conf_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
+    alwayslink = True,
 )
 
 cc_test(
@@ -170,11 +170,11 @@ cc_binary(
 
 install(
     name = "install",
-    data_dest = "transform",
-    library_dest = "transform/lib",
     data = [
         ":runtime_data",
     ],
+    data_dest = "transform",
+    library_dest = "transform/lib",
     targets = [
         ":libstatic_transform_component.so",
         ":buffer",
@@ -184,7 +184,7 @@ install(
         ":transform_broadcaster",
     ],
     deps = [
-    ]
+    ],
 )
 
 filegroup(
@@ -200,23 +200,23 @@ filegroup(
 install_src_files(
     name = "install_src",
     deps = [
+        ":install_transform_hdrs",
         ":install_transform_src",
-        ":install_transform_hdrs"
     ],
 )
 
 install_src_files(
     name = "install_transform_src",
-    src_dir = ["."],
     dest = "transform/src",
     filter = "*",
+    src_dir = ["."],
 )
 
 install_src_files(
     name = "install_transform_hdrs",
-    src_dir = ["."],
     dest = "transform/include",
     filter = "*.h",
+    src_dir = ["."],
 )
 
 cpplint()

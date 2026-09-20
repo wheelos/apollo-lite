@@ -18,11 +18,11 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/fusion/base:base_forward_declaration",
         "//modules/perception/fusion/base:sensor",
         "//modules/perception/lib/registerer",
         "//modules/perception/pipeline:plugin",
+        "@core//cyber",
     ],
 )
 
@@ -33,10 +33,10 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/fusion/base",
         "//modules/perception/lib/registerer",
         "//modules/perception/pipeline",
+        "@core//cyber",
     ],
 )
 
@@ -47,12 +47,11 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:frame",
         "//modules/perception/fusion/base",
         "//modules/perception/lib/registerer",
+        "@core//cyber",
     ],
 )
-
 
 cpplint()

@@ -4,8 +4,8 @@ load("//tools/install:install.bzl", "install")
 
 install(
     name = "install",
-    library_dest = "common/lib",
     data_dest = "common",
+    library_dest = "common/lib",
     runtime_dest = "common/bin",
     targets = [
         ":latency_recorder",
@@ -19,13 +19,13 @@ cc_library(
         "latency_recorder.cc",
     ],
     hdrs = ["latency_recorder.h"],
+    visibility = ["//visibility:public"],
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/latency_recorder/proto:latency_record_cc_proto",
         "//modules/common/util:util_tool",
+        "@core//cyber",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cpplint()

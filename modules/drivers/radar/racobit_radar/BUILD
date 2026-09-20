@@ -1,16 +1,16 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
 install(
     name = "install",
-    data_dest = "drivers/addition_data/racobit_radar",
-    library_dest = "drivers/lib/racobit_radar",
     data = [
         ":runtime_data",
     ],
+    data_dest = "drivers/addition_data/racobit_radar",
+    library_dest = "drivers/lib/racobit_radar",
     targets = [
         ":libracobit_radar_canbus_component.so",
     ],
@@ -36,8 +36,8 @@ cc_library(
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:racobit_radar_cc_proto",
         "//modules/drivers/radar/racobit_radar/protocol:drivers_racobit_radar_protocol",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:racobit_radar_cc_proto",
     ],
 )
 
@@ -56,10 +56,8 @@ cc_library(
     srcs = ["racobit_radar_canbus_component.cc"],
     hdrs = ["racobit_radar_canbus_component.h"],
     copts = ['-DMODULE_NAME=\\"racobit_radar_canbus\\"'],
-    alwayslink = True,
     deps = [
         ":racobit_radar_message_manager",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/monitor_log",
         "//modules/common/status",
@@ -69,7 +67,9 @@ cc_library(
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/proto:sensor_canbus_conf_cc_proto",
         "//modules/drivers/radar/racobit_radar/protocol:drivers_racobit_radar_protocol",
+        "@core//cyber",
     ],
+    alwayslink = True,
 )
 
 cc_binary(

@@ -13,9 +13,9 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base:point_cloud",
         "//modules/perception/common/geometry:basic",
+        "@core//cyber",
     ],
 )
 

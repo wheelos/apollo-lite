@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,15 +17,15 @@ cc_binary(
 
 install(
     name = "install",
-    data_dest = "drivers/addition_data/microphone",
-    library_dest = "drivers/lib/microphone",
     data = [
         ":runtime_data",
     ],
+    data_dest = "drivers/addition_data/microphone",
+    library_dest = "drivers/lib/microphone",
     targets = [
         ":libmicrophone_component.so",
     ],
-    deps = [":install_lib_top_level"]
+    deps = [":install_lib_top_level"],
 )
 
 install(
@@ -50,14 +50,14 @@ cc_library(
     srcs = ["microphone_component.cc"],
     hdrs = ["microphone_component.h"],
     copts = MICROPHONE_COPTS,
-    alwayslink = True,
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/drivers/microphone:respeaker",
         "//modules/drivers/microphone/proto:audio_cc_proto",
         "//modules/drivers/microphone/proto:microphone_config_cc_proto",
+        "@core//cyber",
     ],
+    alwayslink = True,
 )
 
 cc_library(
@@ -66,8 +66,8 @@ cc_library(
     hdrs = ["respeaker.h"],
     copts = MICROPHONE_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/drivers/microphone/proto:microphone_config_cc_proto",
+        "@core//cyber",
         "@portaudio",
     ],
 )

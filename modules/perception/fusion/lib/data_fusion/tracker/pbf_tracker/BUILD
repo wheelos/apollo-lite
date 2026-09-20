@@ -11,8 +11,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util:util_tool",
         "//modules/common/util:string_util",
+        "//modules/common/util:util_tool",
         "//modules/perception/fusion/lib/data_fusion/existence_fusion/dst_existence_fusion",
         "//modules/perception/fusion/lib/data_fusion/motion_fusion/kalman_motion_fusion",
         "//modules/perception/fusion/lib/data_fusion/shape_fusion/pbf_shape_fusion",

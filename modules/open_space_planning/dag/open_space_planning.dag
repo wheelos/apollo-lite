@@ -1,0 +1,28 @@
+module_config {
+  module_library : "/apollo/bazel-bin/modules/open_space_planning/libopen_space_planning_component.so"
+  components {
+    class_name : "OpenSpacePlanningComponent"
+    config {
+      name: "open_space_planning"
+      readers: [
+        {
+          channel: "/apollo/prediction"
+        },
+        {
+          channel: "/apollo/canbus/chassis"
+          qos_profile: {
+            depth: 15
+          }
+          pending_queue_size: 50
+        },
+        {
+          channel: "/apollo/localization/pose"
+          qos_profile: {
+            depth: 15
+          }
+          pending_queue_size: 50
+        }
+      ]
+    }
+  }
+}

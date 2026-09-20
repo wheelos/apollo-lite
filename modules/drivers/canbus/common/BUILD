@@ -8,7 +8,7 @@ install(
     name = "install",
     library_dest = "drivers/lib",
     targets = [
-      ":canbus_common",
+        ":canbus_common",
     ],
 )
 

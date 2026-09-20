@@ -1,4 +1,5 @@
 load("//tools/install:install.bzl", "install")
+
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
@@ -13,8 +14,8 @@ filegroup(
 
 install(
     name = "install",
-    data_dest = "perception/addition_data/production",
     data = [
         ":runtime_data",
     ],
+    data_dest = "perception/addition_data/production",
 )

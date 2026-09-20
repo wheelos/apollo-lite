@@ -45,4 +45,7 @@ vehicle_param {
       peak_time: 0.0
       settling_time: 0.0
   }
+  track_width: 1.58
+  max_front_wheel_steer: 0.6108652382
+  max_back_wheel_steer: 0.0
 }

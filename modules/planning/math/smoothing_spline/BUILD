@@ -179,8 +179,8 @@ cc_library(
     srcs = ["osqp_spline_2d_solver.cc"],
     hdrs = ["osqp_spline_2d_solver.h"],
     deps = [
-        ":spline_2d_solver",
         ":spline_2d",
+        ":spline_2d_solver",
         "//modules/common/math",
         "//modules/planning/common:planning_gflags",
         "@com_google_googletest//:gtest",
@@ -216,8 +216,8 @@ cc_test(
     srcs = ["spline_1d_constraint_test.cc"],
     deps = [
         ":spline_1d_constraint",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

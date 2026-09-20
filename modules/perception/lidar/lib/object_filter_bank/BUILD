@@ -11,7 +11,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util",
         "//modules/perception/base",
         "//modules/perception/lib/config_manager",
@@ -20,6 +19,7 @@ cc_library(
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:object_filter_bank_config_cc_proto",
         "//modules/perception/proto:perception_config_schema_cc_proto",
+        "@core//cyber",
         "@eigen",
     ],
 )

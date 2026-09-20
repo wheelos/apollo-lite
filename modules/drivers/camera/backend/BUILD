@@ -5,16 +5,15 @@ package(default_visibility = ["//visibility:public"])
 
 CAMERA_COPTS = ['-DMODULE_NAME=\\"camera\\"']
 
-
 cc_library(
     name = "v4l2_device",
     srcs = ["v4l2_device.cc"],
     hdrs = ["v4l2_device.h"],
     copts = CAMERA_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/drivers/camera/proto:config_cc_proto",
-    ]
+        "@core//cyber",
+    ],
 )
 
 cc_library(
@@ -23,15 +22,15 @@ cc_library(
     hdrs = ["image_processor.h"],
     copts = CAMERA_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/drivers/camera/proto:config_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
+        "@core//cyber",
         "@ffmpeg//:avcodec",
         "@ffmpeg//:avformat",
         "@ffmpeg//:avutil",
         "@ffmpeg//:swscale",
         "@opencv//:imgcodecs",
-    ]
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
+    ],
 )
 
 cc_library(
@@ -42,9 +41,9 @@ cc_library(
     deps = [
         ":image_processor",
         ":v4l2_device",
-        "@core//cyber",
         "//modules/drivers/camera/proto:config_cc_proto",
-    ]
+        "@core//cyber",
+    ],
 )
 
 cpplint()

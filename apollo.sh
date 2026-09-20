@@ -1,6 +1,9 @@
 #! /usr/bin/env bash
 set -e
 
+# Responsibility: dispatch build, test, lint, format, and clean commands.
+# Container lifecycle and runtime environment initialization belong elsewhere.
+
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source "${TOP_DIR}/scripts/apollo.bashrc"
 
@@ -74,10 +77,6 @@ function apollo_env_setup() {
     info "${TAB}APOLLO_ENV: ${APOLLO_ENV}"
     info "${TAB}USE_GPU: USE_GPU_HOST=${USE_GPU_HOST} USE_GPU_TARGET=${USE_GPU_TARGET}"
 
-    if [[ "${APOLLO_BUILD_PHASE:-0}" != "1" &&
-          -f "${TOP_DIR}/scripts/runtime_env.sh" ]]; then
-        source "${TOP_DIR}/scripts/runtime_env.sh" || true
-    fi
 }
 
 #TODO(all): Update node modules
@@ -88,9 +87,9 @@ function build_dreamview_frontend() {
 }
 
 function build_test_and_lint() {
-    env ${APOLLO_ENV} bash "${build_sh}"
+    env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}"
     env ${APOLLO_ENV} bash "${test_sh}" --config=unit_test
-    env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/apollo_lint.sh" --cpp
+    env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_lint.sh" --cpp
     success "Build and Test and Lint finished."
 }
 
@@ -153,6 +152,8 @@ function main() {
         exit 0
     fi
 
+    local cmd="$1"
+    shift
     apollo_env_setup
 
     local build_sh="${APOLLO_ROOT_DIR}/scripts/ci/apollo_build.sh"
@@ -161,8 +162,6 @@ function main() {
     local ci_sh="${APOLLO_ROOT_DIR}/scripts/ci/apollo_ci.sh"
     local jetson_orin_config="$(determine_jetson_orin_build_config)"
 
-    local cmd="$1"
-    shift
     case "${cmd}" in
         config)
             _config_bazel_local_override "$@"
@@ -171,34 +170,34 @@ function main() {
             env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" "$@"
             ;;
         build_opt)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=opt "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt "$@"
             ;;
         build_dbg)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=dbg "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg "$@"
             ;;
         build_cpu)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=cpu "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=cpu "$@"
             ;;
         build_dbg_cpu)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=cpu "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=cpu "$@"
             ;;
         build_opt_cpu)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=cpu "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=cpu "$@"
             ;;
         build_gpu)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=gpu ${jetson_orin_config} "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=gpu ${jetson_orin_config} "$@"
             ;;
         build_dbg_gpu)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=gpu "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=gpu "$@"
             ;;
         build_opt_gpu)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=gpu ${jetson_orin_config} "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=gpu ${jetson_orin_config} "$@"
             ;;
         build_prof)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=prof "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=prof "$@"
             ;;
         build_teleop)
-            env ${APOLLO_ENV} bash "${build_sh}" --config=teleop "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=teleop "$@"
             ;;
         build_fe)
             build_dreamview_frontend
@@ -234,10 +233,10 @@ function main() {
             env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_release.sh" "$@"
             ;;
         doc)
-            env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/apollo_docs.sh" "$@"
+            env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_docs.sh" "$@"
             ;;
         format)
-            env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/apollo_format.sh" "$@"
+            env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_format.sh" "$@"
             ;;
         usage)
             _usage

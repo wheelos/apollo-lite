@@ -28,10 +28,10 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",
+        "@core//cyber",
     ],
 )
 
@@ -65,11 +65,11 @@ cc_library(
 cc_library(
     name = "object_maintainer",
     hdrs = ["object_maintainer.h"],
-    deps = [
-        "//modules/perception/base",
-    ],
     copts = [
         '-DMODULE_NAME=\\"perception\\"',
+    ],
+    deps = [
+        "//modules/perception/base",
     ],
 )
 

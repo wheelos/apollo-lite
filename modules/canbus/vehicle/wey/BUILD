@@ -5,7 +5,6 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "wey_vehicle_factory",
-    alwayslink = True,
     srcs = ["wey_vehicle_factory.cc"],
     hdrs = ["wey_vehicle_factory.h"],
     deps = [
@@ -14,6 +13,7 @@ cc_library(
         "//modules/canbus/vehicle:abstract_vehicle_factory",
         "//modules/canbus/vehicle:vehicle_factory_core",
     ],
+    alwayslink = True,
 )
 
 cc_test(
@@ -31,10 +31,10 @@ cc_library(
     srcs = ["wey_message_manager.cc"],
     hdrs = ["wey_message_manager.h"],
     deps = [
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
         "//modules/canbus/vehicle/wey/protocol:canbus_wey_protocol",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
     ],
 )
 
@@ -55,11 +55,11 @@ cc_library(
     deps = [
         ":wey_message_manager",
         "//modules/canbus/proto:canbus_conf_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "//modules/canbus/proto:vehicle_parameter_cc_proto",
         "//modules/canbus/vehicle:vehicle_controller_base",
         "//modules/canbus/vehicle/wey/protocol:canbus_wey_protocol",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
     ],
 )

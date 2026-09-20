@@ -8,7 +8,7 @@ install(
     name = "install",
     runtime_dest = "drivers/bin",
     targets = [
-      ":video2jpg",
+        ":video2jpg",
     ],
 )
 

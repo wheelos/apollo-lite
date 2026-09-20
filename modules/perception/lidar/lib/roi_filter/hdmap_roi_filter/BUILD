@@ -11,9 +11,9 @@ cc_library(
     hdrs = ["bitmap2d.h"],
     copts = PERCEPTION_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/perception/lidar/common:lidar_log",
         "@boost.format",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -27,15 +27,15 @@ cc_library(
         ":bitmap2d",
         ":polygon_mask",
         ":polygon_scan_cvter",
-        "@core//cyber",
         "//modules/perception/base:point_cloud",
         "//modules/perception/lidar/common:lidar_point_label",
         "//modules/perception/lidar/lib/interface:base_object_filter",
         "//modules/perception/lidar/lib/interface:base_roi_filter",
         "//modules/perception/lidar/lib/scene_manager",
         "//modules/perception/lidar/lib/scene_manager/roi_service",
-        "//modules/perception/pipeline/proto/stage:hdmap_roi_filter_config_cc_proto",
         "//modules/perception/pipeline:stage",
+        "//modules/perception/pipeline/proto/stage:hdmap_roi_filter_config_cc_proto",
+        "@core//cyber",
         "@eigen",
     ],
     alwayslink = True,
@@ -76,8 +76,8 @@ cc_library(
     deps = [
         "//modules/common/util:util_tool",
         "//modules/perception/lidar/common:lidar_log",
-        "@eigen",
         "@boost.format",
+        "@eigen",
     ],
 )
 

@@ -11,8 +11,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/common/i_lib/core",
+        "@core//cyber",
         "@eigen",
     ],
 )

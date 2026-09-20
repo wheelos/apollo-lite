@@ -15,6 +15,8 @@
  *****************************************************************************/
 #include "modules/guardian/guardian_component.h"
 
+#include <cmath>
+
 #include "cyber/common/log.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/util/message_util.h"
@@ -25,6 +27,8 @@ namespace apollo {
 namespace guardian {
 
 using apollo::canbus::Chassis;
+using apollo::collision_guardian::CollisionRisk;
+using apollo::collision_guardian::RISK_STATE_CONFIRMED;
 using apollo::control::ControlCommand;
 using apollo::monitor::SystemStatus;
 
@@ -38,6 +42,8 @@ bool GuardianComponent::Init() {
       FLAGS_chassis_topic, [this](const std::shared_ptr<Chassis>& chassis) {
         ADEBUG << "Received chassis data: run chassis callback.";
         std::lock_guard<std::mutex> lock(mutex_);
+        last_chassis_received_s_ = Time::Now().ToSecond();
+        has_received_chassis_ = true;
         chassis_.CopyFrom(*chassis);
       });
 
@@ -64,6 +70,17 @@ bool GuardianComponent::Init() {
         }
       });
 
+  if (guardian_conf_.collision_guardian_enable()) {
+    collision_risk_reader_ = node_->CreateReader<CollisionRisk>(
+        guardian_conf_.collision_risk_topic(),
+        [this](const std::shared_ptr<CollisionRisk>& risk) {
+          std::lock_guard<std::mutex> lock(mutex_);
+          last_collision_risk_received_s_ = Time::Now().ToSecond();
+          has_received_collision_risk_ = true;
+          collision_risk_.CopyFrom(*risk);
+        });
+  }
+
   guardian_writer_ = node_->CreateWriter<GuardianCommand>(FLAGS_guardian_topic);
 
   return true;
@@ -72,22 +89,28 @@ bool GuardianComponent::Init() {
 bool GuardianComponent::Proc() {
   constexpr double kSecondsTillTimeout(2.5);
 
+  const double current_time_sec = Time::Now().ToSecond();
   bool safety_mode_triggered = false;
+  bool collision_emergency_stop = false;
   if (guardian_conf_.guardian_enable()) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (has_received_system_status_) {
-      if (Time::Now().ToSecond() - last_status_received_s_ >
-          kSecondsTillTimeout) {
+      if (current_time_sec - last_status_received_s_ > kSecondsTillTimeout) {
         safety_mode_triggered = true;
       }
     }
     safety_mode_triggered =
         safety_mode_triggered || system_status_.has_safety_mode_trigger_time();
   }
+  if (guardian_conf_.collision_guardian_enable()) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    collision_emergency_stop =
+        ShouldTriggerCollisionStop(current_time_sec);
+  }
 
-  if (safety_mode_triggered) {
+  if (safety_mode_triggered || collision_emergency_stop) {
     ADEBUG << "Safety mode triggered, enable safety mode";
-    TriggerSafetyMode();
+    TriggerSafetyMode(collision_emergency_stop);
   } else {
     ADEBUG << "Safety mode not triggered, bypass control command";
     PassThroughControlCommand();
@@ -103,9 +126,7 @@ void GuardianComponent::PassThroughControlCommand() {
   guardian_cmd_.mutable_control_command()->CopyFrom(control_cmd_);
 }
 
-void GuardianComponent::TriggerSafetyMode() {
-  AINFO << "Safety state triggered, with system safety mode trigger time : "
-        << system_status_.safety_mode_trigger_time();
+void GuardianComponent::TriggerSafetyMode(bool collision_emergency_stop) {
   std::lock_guard<std::mutex> lock(mutex_);
   bool sensor_malfunction = false, obstacle_detected = false;
   // TODO(daohu527): Currently, ultrasonic waves are required to work, and
@@ -139,10 +160,11 @@ void GuardianComponent::TriggerSafetyMode() {
   AINFO << "Temporarily ignore the ultrasonic sensor output during hardware "
            "re-alignment!";
 
-  if (system_status_.require_emergency_stop() || sensor_malfunction ||
-      obstacle_detected) {
+  if (collision_emergency_stop || system_status_.require_emergency_stop() ||
+      sensor_malfunction || obstacle_detected) {
     AINFO << "Emergency stop triggered! with system status from monitor as : "
-          << system_status_.require_emergency_stop();
+          << system_status_.require_emergency_stop()
+          << ", collision guardian: " << collision_emergency_stop;
     guardian_cmd_.mutable_control_command()->set_brake(
         guardian_conf_.guardian_cmd_emergency_stop_percentage());
   } else {
@@ -151,6 +173,41 @@ void GuardianComponent::TriggerSafetyMode() {
     guardian_cmd_.mutable_control_command()->set_brake(
         guardian_conf_.guardian_cmd_soft_stop_percentage());
   }
+}
+
+bool GuardianComponent::ShouldTriggerCollisionStop(
+    double current_time_sec) const {
+  if (!has_received_collision_risk_ || !has_received_chassis_ ||
+      current_time_sec - last_collision_risk_received_s_ >
+          guardian_conf_.collision_risk_timeout_sec() ||
+      current_time_sec - last_chassis_received_s_ >
+          guardian_conf_.collision_risk_timeout_sec()) {
+    return false;
+  }
+  if (!collision_risk_.input_valid() ||
+      collision_risk_.state() != RISK_STATE_CONFIRMED ||
+      !IsAllowedCollisionUseCase(collision_risk_.use_case())) {
+    return false;
+  }
+  if (!chassis_.has_speed_mps() || !std::isfinite(chassis_.speed_mps()) ||
+      std::abs(chassis_.speed_mps()) >
+          guardian_conf_.collision_hard_stop_max_speed_mps()) {
+    return false;
+  }
+  return !guardian_conf_.collision_require_complete_auto_drive() ||
+         (chassis_.has_driving_mode() &&
+          chassis_.driving_mode() == Chassis::COMPLETE_AUTO_DRIVE);
+}
+
+bool GuardianComponent::IsAllowedCollisionUseCase(
+    apollo::collision_guardian::UseCase use_case) const {
+  for (const auto configured_use_case :
+       guardian_conf_.collision_allowed_use_case()) {
+    if (configured_use_case == use_case) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace guardian

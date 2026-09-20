@@ -11,15 +11,15 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
         "//modules/perception/camera/lib/lane/common:common_functions",
         "//modules/perception/lib/registerer",
+        "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:denseline_cc_proto",
         "//modules/perception/pipeline/proto/stage:denseline_postprocessor_cc_proto",
-        "//modules/perception/pipeline:stage",
+        "@core//cyber",
     ],
 )
 

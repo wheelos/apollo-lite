@@ -20,13 +20,17 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <functional>
+#include <utility>
 
 #include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis_detail.pb.h"
 #include "wheelos_msgs/control_msgs/control_cmd.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
 
 #include "cyber/cyber.h"
 #include "modules/common/adapters/adapter_gflags.h"
+#include "modules/simulation/common/simulation_gflags.h"
 #include "modules/simulation/core/simulation_types.h"
 
 namespace apollo {
@@ -39,10 +43,21 @@ namespace simulation {
  */
 class CyberAdapter {
  public:
+  using ChassisDetailFiller =
+      std::function<void(const VehicleState&, apollo::canbus::ChassisDetail*)>;
+
   CyberAdapter() = default;
   ~CyberAdapter() = default;
 
   bool Init(const std::shared_ptr<cyber::Node>& node);
+  void SetMaxSteerAngle(double max_steer_angle_rad) {
+    max_steer_angle_rad_ = max_steer_angle_rad;
+  }
+  // Vehicle-specific protocols may populate ChassisDetail.Any without
+  // coupling the generic Chassis message to a concrete vehicle model.
+  void SetChassisDetailFiller(ChassisDetailFiller filler) {
+    chassis_detail_filler_ = std::move(filler);
+  }
 
   // Polls the latest command thread-safely. The return value is true only
   // when a new command arrived since the previous poll.
@@ -61,7 +76,7 @@ class CyberAdapter {
       double timestamp_sec = 0.0);
   static void FromControlCommand(const apollo::control::ControlCommand& msg,
                                  VehicleCommand* cmd,
-                                 double max_steer_angle_rad = 0.50);
+                                 double max_steer_angle_rad = 0.6108652382);
 
  private:
   void OnControlCommand(
@@ -74,6 +89,8 @@ class CyberAdapter {
   std::shared_ptr<cyber::Reader<apollo::control::ControlCommand>>
       control_reader_;
   std::shared_ptr<cyber::Writer<apollo::canbus::Chassis>> chassis_writer_;
+  std::shared_ptr<cyber::Writer<apollo::canbus::ChassisDetail>>
+      chassis_detail_writer_;
   std::shared_ptr<cyber::Writer<apollo::localization::LocalizationEstimate>>
       localization_writer_;
 
@@ -82,8 +99,11 @@ class CyberAdapter {
   bool has_received_cmd_{false};
 
   // Calibration parameters
-  double max_steer_angle_rad_{0.50};  // ~28.6 degrees
+  double max_steer_angle_rad_{0.6108652382};  // 35 degrees
   uint64_t msg_seq_num_{0};
+  ChassisDetailFiller chassis_detail_filler_;
+  double timestamp_offset_sec_{0.0};
+  bool timestamp_offset_initialized_{false};
 };
 
 }  // namespace simulation

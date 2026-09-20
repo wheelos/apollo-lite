@@ -23,12 +23,12 @@ cc_library(
         "//modules/common/util:util_tool",
         "//modules/perception/camera/app:cipv_camera",
         "//modules/perception/camera/common",
-        "//modules/perception/common/io:io_util",
         "//modules/perception/common:perception_gflags",
+        "//modules/perception/common/io:io_util",
         "//modules/perception/proto:motion_service_cc_proto",
+        "@opencv//:highgui",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",
-        "@opencv//:highgui",
     ],
 )
 
@@ -37,12 +37,12 @@ cc_library(
     srcs = ["transform_server.cc"],
     hdrs = ["transform_server.h"],
     deps = [
-        "@core//cyber",
+        "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/common",
-        "//modules/common/util:util_tool",
         "//modules/perception/common/io:io_util",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -50,8 +50,8 @@ cc_library(
 cc_binary(
     name = "offline_obstacle_pipeline",
     srcs = ["offline_obstacle_pipeline.cc"],
-    linkstatic = True,
     linkopts = ["-lleveldb"],
+    linkstatic = True,
     deps = [
         ":transform_server",
         ":visualizer",
@@ -67,9 +67,9 @@ cc_binary(
         "//modules/perception/common/sensor_manager",
         "//modules/perception/pipeline/proto/stage:tracking_feature_cc_proto",
         "@com_google_absl//absl/strings",
+        "@opencv//:highgui",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",
-        "@opencv//:highgui",
     ],
 )
 

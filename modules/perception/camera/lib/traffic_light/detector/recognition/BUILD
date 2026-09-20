@@ -1,5 +1,5 @@
-load("//tools:cpplint.bzl", "cpplint")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -38,13 +38,13 @@ cc_library(
     ],
     deps = [
         ":classify",
-        "@core//cyber",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
-        "//modules/perception/inference/onnx_multi_batch:onnx_multi_batch_infer",
         "//modules/perception/inference:inference_lib",
+        "//modules/perception/inference/onnx_multi_batch:onnx_multi_batch_infer",
         "//modules/perception/inference/utils:inference_resize_lib",
+        "@core//cyber",
     ],
     alwayslink = True,
 )

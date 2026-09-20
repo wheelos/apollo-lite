@@ -37,11 +37,11 @@ cc_test(
     name = "concurrent_queue_test",
     size = "small",
     srcs = ["concurrent_queue_test.cc"],
+    linkstatic = True,
     deps = [
         ":thread",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -59,22 +59,22 @@ cc_test(
     name = "thread_test",
     size = "small",
     srcs = ["thread_test.cc"],
+    linkstatic = True,
     deps = [
         ":thread",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
     name = "thread_worker_test",
     size = "small",
     srcs = ["thread_worker_test.cc"],
+    linkstatic = True,
     deps = [
         ":thread",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

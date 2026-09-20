@@ -11,10 +11,11 @@ cc_library(
     hdrs = ["constraint_checker.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:discretized_trajectory",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 
@@ -24,11 +25,11 @@ cc_library(
     hdrs = ["constraint_checker1d.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@core//cyber",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/math/curve1d",
+        "@core//cyber",
     ],
 )
 

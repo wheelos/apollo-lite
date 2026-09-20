@@ -4,8 +4,8 @@ py_binary(
     name = "save_lidar_semantic_pcd",
     srcs = ["save_lidar_semantic_pcd.py"],
     deps = [
-        "@core//cyber/python/cyber_py3:record",
         "//modules/lidar_semantic_segmentation/proto:lidar_semantic_segmentation_py_pb2",
+        "@core//cyber/python/cyber_py3:record",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_py_pb2",
     ],
 )
@@ -36,8 +36,8 @@ py_binary(
     srcs = ["camera_semantic_segmentation_visualizer.py"],
     main = "camera_semantic_segmentation_visualizer.py",
     deps = [
-        "@core//cyber/python/cyber_py3:cyber",
         "//modules/camera_semantic_segmentation/proto:camera_semantic_segmentation_py_pb2",
+        "@core//cyber/python/cyber_py3:cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_py_pb2",
     ],
 )

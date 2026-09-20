@@ -50,8 +50,8 @@ TEST(HybridAStarRoutePlannerTest, PlanStraightLineRoute) {
   HybridAStarRoutePlanner planner;
 
   std::vector<RouteCandidate> candidates;
-  RoutePlanningRequest request{
-      problem, 1, RouteSearchParadigm::kCruisingForward};
+  RoutePlanningRequest request{problem, 1,
+                               RouteSearchParadigm::kCruisingForward};
   const Status status = planner.Plan(request, &candidates);
 
   EXPECT_TRUE(status.ok());
@@ -72,8 +72,8 @@ TEST(HybridAStarRoutePlannerTest, PlanWithSkeletonCorridorParadigm) {
   HybridAStarRoutePlanner planner;
 
   std::vector<RouteCandidate> candidates;
-  RoutePlanningRequest request{
-      problem, 1, RouteSearchParadigm::kSkeletonCorridor};
+  RoutePlanningRequest request{problem, 1,
+                               RouteSearchParadigm::kSkeletonCorridor};
   const Status status = planner.Plan(request, &candidates);
 
   EXPECT_TRUE(status.ok());
@@ -95,4 +95,3 @@ TEST(HybridAStarRoutePlannerTest, ExtractBoundsAndObstacles) {
 }  // namespace
 }  // namespace open_space_planning
 }  // namespace apollo
-

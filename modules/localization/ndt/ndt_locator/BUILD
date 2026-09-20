@@ -14,7 +14,6 @@ cc_library(
         "ndt_voxel_grid_covariance.hpp",
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/math",
         "//modules/common/monitor_log",
         "//modules/common/util:util_tool",
@@ -22,12 +21,13 @@ cc_library(
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/local_pyramid_map/ndt_map",
         "//modules/localization/msf/local_pyramid_map/ndt_map:ndt_map_pool",
-        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@com_github_google_glog//:glog",
+        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
+        "@core//cyber",
         "@eigen",
-        "@local_config_pcl//:registration",
         "@local_config_pcl//:filters",
         "@local_config_pcl//:io",
+        "@local_config_pcl//:registration",
     ],
 )
 
@@ -46,9 +46,9 @@ cc_test(
     data = [":test_data"],
     deps = [
         ":ndt_lidar_locator",
-        "@core//cyber",
         "//modules/localization/msf/common/io:common_io",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -60,9 +60,9 @@ cc_test(
     data = [":test_data"],
     deps = [
         ":ndt_lidar_locator",
-        "@core//cyber",
         "//modules/localization/msf/common/io:common_io",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

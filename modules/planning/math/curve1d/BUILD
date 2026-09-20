@@ -24,9 +24,9 @@ cc_library(
     hdrs = ["quartic_polynomial_curve1d.h"],
     deps = [
         ":polynomial_curve1d",
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
     ],
 )
 
@@ -39,8 +39,8 @@ cc_test(
         ":cubic_polynomial_curve1d",
         ":quartic_polynomial_curve1d",
         ":quintic_polynomial_curve1d",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -50,9 +50,9 @@ cc_library(
     hdrs = ["quintic_polynomial_curve1d.h"],
     deps = [
         ":polynomial_curve1d",
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
     ],
 )
 
@@ -64,8 +64,8 @@ cc_library(
     deps = [
         ":polynomial_curve1d",
         ":quartic_polynomial_curve1d",
-        "@core//cyber",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
     ],
 )
 
@@ -76,8 +76,8 @@ cc_test(
     deps = [
         ":cubic_polynomial_curve1d",
         ":quartic_polynomial_curve1d",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -91,9 +91,9 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":quintic_polynomial_curve1d",
-        "@core//cyber",
         "//modules/common/math",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
     ],
 )
 
@@ -104,9 +104,9 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":quintic_spiral_path",
-        "@core//cyber",
         "//modules/common/math",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
     ],
 )
 
@@ -118,8 +118,8 @@ cc_test(
     deps = [
         ":quartic_polynomial_curve1d",
         ":quintic_polynomial_curve1d",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 
@@ -130,8 +130,8 @@ cc_test(
     copts = PLANNING_COPTS,
     deps = [
         ":piecewise_quintic_spiral_path",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

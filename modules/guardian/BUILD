@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/install:install.bzl", "install", "install_src_files")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -12,13 +12,14 @@ cc_library(
     hdrs = ["guardian_component.h"],
     copts = GUARDIAN_COPTS,
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "//modules/collision_guardian/proto:collision_guardian_cc_proto",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
+        "//modules/guardian/proto:guardian_conf_cc_proto",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "@wheelos_msgs//wheelos_msgs/guardian_msgs:guardian_cc_proto",
-        "//modules/guardian/proto:guardian_conf_cc_proto",
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:system_status_cc_proto",
     ],
     alwayslink = True,
@@ -35,48 +36,48 @@ cc_binary(
 
 install(
     name = "install",
-    library_dest = "guardian/lib",
-    data_dest = "guardian",
     data = [
-        ":runtime_data",
         ":guardian.BUILD",
+        ":runtime_data",
     ],
+    data_dest = "guardian",
+    library_dest = "guardian/lib",
     targets = [
         ":libguardian_component.so",
     ],
     deps = [
-        ":pb_hdrs"
+        ":pb_hdrs",
     ],
 )
 
 install(
     name = "pb_hdrs",
-    data_dest = "guardian/include",
     data = [
         "//modules/guardian/proto:guardian_conf_cc_proto",
     ],
+    data_dest = "guardian/include",
 )
 
 install_src_files(
     name = "install_src",
     deps = [
+        ":install_guardian_hdrs",
         ":install_guardian_src",
-        ":install_guardian_hdrs"
     ],
 )
 
 install_src_files(
     name = "install_guardian_src",
-    src_dir = ["."],
     dest = "guardian/src",
     filter = "*",
+    src_dir = ["."],
 )
 
 install_src_files(
     name = "install_guardian_hdrs",
-    src_dir = ["."],
     dest = "guardian/include",
     filter = "*.h",
+    src_dir = ["."],
 )
 
 filegroup(

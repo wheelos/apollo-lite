@@ -30,8 +30,7 @@ class MockSegFormerExecutor : public SegFormerExecutor {
     return true;
   }
 
-  bool Run(const std::vector<float>& input,
-           SegFormerTensor* output) override {
+  bool Run(const std::vector<float>& input, SegFormerTensor* output) override {
     if (output == nullptr) {
       return false;
     }

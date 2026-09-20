@@ -9,9 +9,9 @@ cc_library(
         "parser.h",
     ],
     deps = [
-        "@core//cyber",
         "//modules/drivers/gnss/proto:config_cc_proto",
         "//modules/drivers/gnss/util:data_buffer",
+        "@core//cyber",
     ],
 )
 
@@ -32,11 +32,11 @@ cc_library(
     ],
     deps = [
         ":parser",
-        "@core//cyber",
         "//modules/drivers/gnss/parser/forsense:forsense_parser",
         "//modules/drivers/gnss/parser/huace:huace_parser",
         "//modules/drivers/gnss/parser/novatel:novatel_parser",
         "//modules/drivers/gnss/proto:config_cc_proto",
+        "@core//cyber",
     ],
 )
 
@@ -51,10 +51,14 @@ cc_library(
     deps = [
         ":parser",
         ":parser_factory",
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:proj_helper",
         "//modules/common/util:util_tool",
+        "//modules/drivers/gnss/proto:gnss_status_cc_proto",
+        "//modules/drivers/gnss/util",
+        "@core//cyber",
+        "@eigen",
+        "@proj",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:imu_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
@@ -62,10 +66,6 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:heading_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:imu_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:ins_cc_proto",
-        "//modules/drivers/gnss/proto:gnss_status_cc_proto",
-        "//modules/drivers/gnss/util",
-        "@eigen",
-        "@proj",
     ],
 )
 
@@ -81,13 +81,13 @@ cc_library(
     ],
     copts = ["-Ithird_party/rtklib"],
     deps = [
-        "@core//cyber",
         "//modules/common/adapters:adapter_gflags",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
         "//modules/drivers/gnss/parser/rtcm3:rtcm3_parser",
         "//modules/drivers/gnss/proto:config_cc_proto",
         "//modules/drivers/gnss/util",
         "//third_party/rtklib",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
     ],
 )
 

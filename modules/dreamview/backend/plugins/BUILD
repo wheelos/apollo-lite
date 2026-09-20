@@ -9,12 +9,12 @@ cc_library(
     hdrs = ["plugin_manager.h"],
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
     deps = [
-        "@core//cyber",
-        "//modules/dreamview/proto:dv_plugin_msg_cc_proto",
-        "//modules/dreamview/proto:plugin_config_cc_proto",
-        "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
+        "//modules/dreamview/backend/handlers:websocket_handler",
+        "//modules/dreamview/proto:dv_plugin_msg_cc_proto",
+        "//modules/dreamview/proto:plugin_config_cc_proto",
+        "@core//cyber",
     ],
 )
 

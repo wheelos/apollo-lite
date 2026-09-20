@@ -14,14 +14,15 @@
 
 #include "modules/camera_semantic_segmentation/inference/tensorrt_executor.h"
 
+#include <NvInfer.h>
+#include <NvInferPlugin.h>
+#include <NvInferVersion.h>
+
 #include <fstream>
 #include <numeric>
 #include <string>
 #include <vector>
 
-#include <NvInfer.h>
-#include <NvInferPlugin.h>
-#include <NvInferVersion.h>
 #include <cuda_runtime_api.h>
 
 #include "cyber/common/log.h"
@@ -230,11 +231,11 @@ class TensorRtSegFormerExecutor::Impl {
 #endif
     output->shape = output_.shape;
     output->values.resize(ElementCount(output_.shape));
-    return CudaSucceeded(cudaMemcpyAsync(output->values.data(),
-                                         output_.device_memory,
-                                         output_.ByteCount(),
-                                         cudaMemcpyDeviceToHost, stream_),
-                         "cudaMemcpyAsync output") &&
+    return CudaSucceeded(
+               cudaMemcpyAsync(output->values.data(), output_.device_memory,
+                               output_.ByteCount(), cudaMemcpyDeviceToHost,
+                               stream_),
+               "cudaMemcpyAsync output") &&
            CudaSucceeded(cudaStreamSynchronize(stream_),
                          "cudaStreamSynchronize");
   }
@@ -289,9 +290,8 @@ class TensorRtSegFormerExecutor::Impl {
 #endif
 
   bool AllocateBuffers() {
-    return CudaSucceeded(
-               cudaMalloc(&input_.device_memory, input_.ByteCount()),
-               "cudaMalloc input") &&
+    return CudaSucceeded(cudaMalloc(&input_.device_memory, input_.ByteCount()),
+                         "cudaMalloc input") &&
            CudaSucceeded(
                cudaMalloc(&output_.device_memory, output_.ByteCount()),
                "cudaMalloc output");

@@ -52,7 +52,7 @@ cc_library(
     hdrs = ["component/lane_transform_adapter.h"],
     deps = [
         "//modules/transform:transform_query",
-        "@core//cyber/time:time",
+        "@core//cyber/time",
         "@eigen",
     ],
 )
@@ -61,7 +61,6 @@ cc_library(
     name = "lane_component",
     srcs = ["component/lane_detection_component.cc"],
     hdrs = ["component/lane_detection_component.h"],
-    alwayslink = True,
     deps = [
         ":image_frame",
         ":lane_transform_adapter",
@@ -74,6 +73,7 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
     ],
+    alwayslink = True,
 )
 
 cc_binary(
@@ -115,9 +115,9 @@ filegroup(
 
 install(
     name = "install",
+    data = [":runtime_config"],
     data_dest = "lane",
     targets = [":lane_component_plugin"],
-    data = [":runtime_config"],
 )
 
 cpplint()

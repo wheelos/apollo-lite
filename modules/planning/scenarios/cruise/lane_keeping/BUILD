@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -11,9 +11,9 @@ cc_library(
     hdrs = ["lane_keeping_scenario.h"],
     copts = PLANNING_COPTS,
     deps = [
+        "//modules/planning/scenarios:scenario",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
-        "//modules/planning/scenarios:scenario",
     ],
 )
 

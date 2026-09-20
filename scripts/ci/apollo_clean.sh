@@ -16,6 +16,11 @@
 # limitations under the License.
 ###############################################################################
 
+
+
+# Responsibility: clean Bazel outputs, logs, and core dumps on explicit request.
+# It does not repair container ownership or participate in startup.
+
 set -e
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
@@ -62,7 +67,7 @@ function _clean_log() {
 }
 
 function _clean_docs() {
-  local docs_sh="${TOP_DIR}/scripts/apollo_docs.sh"
+  local docs_sh="${TOP_DIR}/scripts/ci/apollo_docs.sh"
   if [ -f "${docs_sh}" ]; then
     bash "${docs_sh}" clean
   fi

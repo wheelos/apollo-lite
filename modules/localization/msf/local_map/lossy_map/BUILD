@@ -36,12 +36,12 @@ cc_test(
         ":test_data",
     ],
     deps = [
-        "@core//cyber",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/local_map/base_map",
         "//modules/localization/msf/local_map/lossless_map",
         "//modules/localization/msf/local_map/lossy_map",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

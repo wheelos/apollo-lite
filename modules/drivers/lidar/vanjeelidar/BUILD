@@ -47,11 +47,11 @@ cc_library(
     ],
     copts = VANJEE_COPTS,
     deps = [
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/vanjeelidar/proto:vanjeelidar_cc_proto",
         "//modules/drivers/lidar/vanjeelidar/proto:vanjeelidar_config_cc_proto",
         "@vanjee-lidar-sdk//:vanjee_driver",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
     alwayslink = True,
 )

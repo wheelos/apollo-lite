@@ -9,7 +9,7 @@ install(
     library_dest = "drivers/lib",
     targets = [
         ":sensor_gflags",
-        ":sensor_canbus_lib"
+        ":sensor_canbus_lib",
     ],
     visibility = ["//visibility:public"],
 )
@@ -18,16 +18,15 @@ cc_library(
     name = "sensor_gflags",
     srcs = ["sensor_gflags.cc"],
     hdrs = ["sensor_gflags.h"],
-    alwayslink = True,
     deps = [
         "@com_github_gflags_gflags//:gflags",
     ],
+    alwayslink = True,
 )
 
 cc_library(
     name = "sensor_canbus_lib",
     hdrs = ["sensor_canbus.h"],
-    alwayslink = True,
     deps = [
         ":sensor_gflags",
         "//modules/common/monitor_log",
@@ -36,6 +35,7 @@ cc_library(
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
     ],
+    alwayslink = True,
 )
 
 cpplint()

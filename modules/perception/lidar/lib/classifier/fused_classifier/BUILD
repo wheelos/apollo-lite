@@ -11,9 +11,9 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base:object",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -42,7 +42,6 @@ cc_library(
     deps = [
         ":type_fusion_interface",
         ":util",
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base:object",
         "//modules/perception/base:point_cloud",
@@ -50,6 +49,7 @@ cc_library(
         "//modules/perception/lidar/common:object_sequence",
         "//modules/perception/pipeline:plugin",
         "//modules/perception/pipeline/proto/plugin:ccrf_type_fusion_config_cc_proto",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -63,7 +63,6 @@ cc_library(
     ],
     deps = [
         ":type_fusion_interface",
-        "@core//cyber",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/common:lidar_frame",
         "//modules/perception/lidar/common:object_sequence",
@@ -72,6 +71,7 @@ cc_library(
         "//modules/perception/pipeline:plugin_factory",
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:fused_classifier_config_cc_proto",
+        "@core//cyber",
     ],
     alwayslink = True,
 )

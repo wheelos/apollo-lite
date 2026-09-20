@@ -9,10 +9,10 @@ cc_library(
     hdrs = ["discretized_trajectory.h"],
     deps = [
         "//modules/common/math",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/planning/common:planning_context",
         "@eigen",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 

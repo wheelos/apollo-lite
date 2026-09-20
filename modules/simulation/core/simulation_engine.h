@@ -23,7 +23,7 @@
 
 #include "modules/simulation/backend/simulator_backend.h"
 #include "modules/simulation/core/simulation_types.h"
-#include "modules/simulation/vehicle/ackermann_model.h"
+#include "modules/simulation/vehicle/vehicle_model.h"
 
 namespace apollo {
 namespace simulation {
@@ -47,6 +47,21 @@ class SimulationEngine {
     control_mode_ = control_mode;
   }
   void SetSpeedKp(double speed_kp) { speed_kp_ = speed_kp; }
+  void SetMaxSteerAngle(double max_steer_angle_rad) {
+    max_steer_angle_rad_ = max_steer_angle_rad;
+  }
+  void SetMaxRearSteerAngle(double max_rear_steer_angle_rad) {
+    max_rear_steer_angle_rad_ = max_rear_steer_angle_rad;
+  }
+  void SetVehicleModelType(VehicleModelType vehicle_model_type) {
+    vehicle_model_type_ = vehicle_model_type;
+  }
+  void SetVehicleGeometry(double wheelbase_m, double track_width_m,
+                          double wheel_radius_m) {
+    wheelbase_m_ = wheelbase_m;
+    track_width_m_ = track_width_m;
+    wheel_radius_m_ = wheel_radius_m;
+  }
 
   bool SetPhysicsDt(double dt_sec) {
     if (!std::isfinite(dt_sec) || dt_sec <= 0.0) {
@@ -67,11 +82,20 @@ class SimulationEngine {
 
  private:
   std::unique_ptr<ISimulatorBackend> backend_;
-  AckermannModel vehicle_model_;
+  std::unique_ptr<VehicleModel> vehicle_model_;
+  VehicleModelType vehicle_model_type_{VehicleModelType::kAckermann};
+  double max_steer_angle_rad_{0.6108652382};
+  double max_rear_steer_angle_rad_{0.0};
+  double wheelbase_m_{2.8448};
+  double track_width_m_{1.58};
+  double wheel_radius_m_{0.335};
 
   double physics_dt_sec_{0.002};      // 500 Hz physics rate
   double command_timeout_sec_{0.20};  // 200 ms timeout
   double speed_kp_{1.5};
+  double odometer_m_{0.0};
+  double last_position_x_{0.0};
+  double last_position_y_{0.0};
   double last_cmd_time_sec_{0.0};
   bool has_received_command_{false};
   uint64_t step_count_{0};

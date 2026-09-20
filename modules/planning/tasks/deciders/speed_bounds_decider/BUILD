@@ -34,9 +34,6 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
         "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/vehicle_state:vehicle_reference",
-        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/common/status",
         "//modules/map/pnc_map",
         "//modules/planning/common:dependency_injector",
@@ -50,10 +47,11 @@ cc_library(
         "//modules/planning/common/path:path_data",
         "//modules/planning/common/speed:st_boundary",
         "//modules/planning/common/trajectory:discretized_trajectory",
-        "//modules/planning/common:vehicle_frenet_geometry",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/reference_line",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -66,9 +64,9 @@ cc_test(
     ],
     deps = [
         ":st_boundary_mapper",
-        "@core//cyber",
         "//modules/common/util",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
 )
 

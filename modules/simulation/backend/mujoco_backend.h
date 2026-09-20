@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <array>
 #include <memory>
 #include <string>
 
@@ -39,6 +40,10 @@ class MujocoBackend : public ISimulatorBackend {
   bool Step(double dt_sec) override;
   bool GetVehicleState(VehicleState* state) const override;
   void Reset(double x, double y, double yaw) override;
+  bool SetVehicleGeometry(double wheelbase_m, double track_width_m,
+                          double wheel_radius_m) override;
+  bool SetMaxSteerAngle(double max_steer_angle_rad) override;
+  bool SetMaxRearSteerAngle(double max_rear_steer_angle_rad) override;
   double SimulationTime() const override { return sim_time_sec_; }
   const std::string& Name() const override { return name_; }
 
@@ -46,6 +51,12 @@ class MujocoBackend : public ISimulatorBackend {
   std::string name_{"MuJoCo"};
   std::string model_path_;
   double sim_time_sec_{0.0};
+  double max_steer_angle_rad_{0.50};
+  double model_wheelbase_m_{0.0};
+  double model_track_width_m_{0.0};
+  double model_wheel_radius_m_{0.0};
+  double model_max_steer_angle_rad_{0.0};
+  double model_max_rear_steer_angle_rad_{0.0};
 
   // MuJoCo opaque pointers (void* when headers not available)
   void* mj_model_{nullptr};
@@ -54,8 +65,12 @@ class MujocoBackend : public ISimulatorBackend {
   // Joint and actuator indices (cached from model)
   int steer_fl_id_{-1};
   int steer_fr_id_{-1};
+  int steer_rl_id_{-1};
+  int steer_rr_id_{-1};
   int steer_fl_joint_id_{-1};
   int steer_fr_joint_id_{-1};
+  int steer_rl_joint_id_{-1};
+  int steer_rr_joint_id_{-1};
   int drive_fl_id_{-1};
   int drive_fr_id_{-1};
   int drive_rl_id_{-1};
@@ -73,9 +88,12 @@ class MujocoBackend : public ISimulatorBackend {
   mutable double previous_velocity_mps_{0.0};
   mutable double previous_lateral_velocity_mps_{0.0};
   mutable double previous_state_time_sec_{0.0};
+  mutable double previous_yaw_{0.0};
+  mutable std::array<double, 3> previous_world_velocity_mps_{0.0, 0.0, 0.0};
   mutable bool has_previous_state_{false};
   uint64_t debug_step_count_{0};
   VehicleActuation current_actuation_{};
+  std::array<double, 4> wheel_velocity_sign_{0.0, 0.0, 0.0, 0.0};
 };
 
 }  // namespace simulation

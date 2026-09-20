@@ -27,6 +27,7 @@ cc_test(
     linkopts = [
         "-lgomp",
     ],
+    linkstatic = True,
     deps = [
         "//modules/prediction/common:kml_map_based_test",
         "//modules/prediction/container/obstacles:obstacles_container",
@@ -34,7 +35,6 @@ cc_test(
         "//modules/prediction/predictor/junction:junction_predictor",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

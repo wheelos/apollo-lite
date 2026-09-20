@@ -34,12 +34,12 @@ cc_library(
     ],
     copts = SEYOND_COPTS + ["-std=c++17"],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/seyond/proto:seyond_cc_proto",
         "//modules/drivers/lidar/seyond/proto:seyond_config_cc_proto",
+        "@core//cyber",
         "@inno-lidar-sdk",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
     alwayslink = True,
 )

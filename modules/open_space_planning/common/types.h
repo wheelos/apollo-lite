@@ -34,7 +34,7 @@ enum class Gear {
 };
 
 enum class RouteSearchParadigm {
-  kAuto = 0,               // Auto-select based on goal.allow_reverse
+  kAuto = 0,              // Auto-select based on goal.allow_reverse
   kCruisingForward = 1,   // Forward-only search (no reverse oscillation)
   kParkingMultiGear = 2,  // Multi-gear Reeds-Shepp for tight maneuvers
   kSkeletonCorridor = 3,  // 2D grid skeleton guide + convex flight corridor

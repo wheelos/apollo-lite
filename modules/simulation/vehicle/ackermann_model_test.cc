@@ -21,6 +21,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/simulation/vehicle/four_wheel_steering_model.h"
+
 namespace apollo {
 namespace simulation {
 
@@ -94,6 +96,7 @@ TEST(AckermannModelTest, AppliesGearAndBrakeSemantics) {
 
 TEST(AckermannModelTest, ClampsSteeringAndAppliesParkingBrake) {
   AckermannModel model;
+  model.SetMaxFrontSteerAngle(0.50);
 
   VehicleCommand command;
   command.front_steering_rad = 1.0;
@@ -108,6 +111,31 @@ TEST(AckermannModelTest, ClampsSteeringAndAppliesParkingBrake) {
     EXPECT_DOUBLE_EQ(actuation.drive_torque_nm[i], 0.0);
     EXPECT_DOUBLE_EQ(actuation.brake_torque_nm[i], 1200.0);
   }
+}
+
+TEST(FourWheelSteeringModelTest, ComputesCounterPhaseWheelAngles) {
+  FourWheelSteeringModel model;
+  VehicleModelConfig config;
+  config.type = VehicleModelType::kFourWheelSteering;
+  config.wheelbase_m = 2.8448;
+  config.track_width_m = 1.58;
+  config.wheel_radius_m = 0.33;
+  config.max_front_steer_rad = 0.50;
+  config.max_rear_steer_rad = 0.25;
+  ASSERT_TRUE(model.Configure(config));
+
+  VehicleCommand command;
+  command.front_steering_rad = 0.25;
+
+  const VehicleActuation actuation =
+      model.ComputeActuation(command, VehicleState{}, 0.02);
+
+  EXPECT_GT(actuation.wheel_steer_rad[0], actuation.wheel_steer_rad[1]);
+  EXPECT_LT(actuation.wheel_steer_rad[2], 0.0);
+  EXPECT_LT(actuation.wheel_steer_rad[3], 0.0);
+  EXPECT_LT(actuation.wheel_steer_rad[2], actuation.wheel_steer_rad[3]);
+  EXPECT_LE(std::abs(actuation.wheel_steer_rad[2]), 0.25);
+  EXPECT_LE(std::abs(actuation.wheel_steer_rad[3]), 0.25);
 }
 
 }  // namespace simulation

@@ -44,10 +44,10 @@ cc_library(
         ":perf_util",
         ":string_util",
         ":time_conversion",
-        "@core//cyber",
         "@com_github_nlohmann_json//:json",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -66,19 +66,19 @@ cc_library(
     srcs = ["util.cc"],
     hdrs = ["util.h"],
     deps = [
-        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@com_github_gflags_gflags//:gflags",
-    ]
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
+    ],
 )
 
 cc_library(
     name = "debouncer",
-    hdrs = ["debouncer.h"]
+    hdrs = ["debouncer.h"],
 )
 
 cc_library(
@@ -86,7 +86,7 @@ cc_library(
     hdrs = ["future.h"],
     deps = [
         "@com_google_absl//absl/strings",
-    ]
+    ],
 )
 
 cc_library(
@@ -95,7 +95,7 @@ cc_library(
     deps = [
         "//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
-    ]
+    ],
 )
 
 cc_test(
@@ -111,12 +111,12 @@ cc_test(
 
 cc_library(
     name = "lru_cache",
-    hdrs = ["lru_cache.h"]
+    hdrs = ["lru_cache.h"],
 )
 
 cc_library(
     name = "color",
-    hdrs = ["color.h"]
+    hdrs = ["color.h"],
 )
 
 cc_library(
@@ -124,10 +124,10 @@ cc_library(
     srcs = ["data_extraction.cc"],
     hdrs = ["data_extraction.h"],
     deps = [
-        "@core//cyber",
         "@boost.filesystem",
         "@boost.range",
-    ]
+        "@core//cyber",
+    ],
 )
 
 cc_library(
@@ -140,7 +140,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
-    ]
+    ],
 )
 
 cc_library(
@@ -148,11 +148,11 @@ cc_library(
     hdrs = ["message_util.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "@core//cyber",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
-    ]
+    ],
 )
 
 cc_test(
@@ -181,16 +181,16 @@ cc_test(
 
 cc_library(
     name = "time_conversion",
-    hdrs = ["time_conversion.h"]
+    hdrs = ["time_conversion.h"],
 )
 
 cc_library(
     name = "map_util",
     hdrs = ["map_util.h"],
     deps = [
-        "@core//cyber",
         "@com_google_protobuf//:protobuf",
-    ]
+        "@core//cyber",
+    ],
 )
 
 cc_library(
@@ -198,7 +198,7 @@ cc_library(
     hdrs = ["factory.h"],
     deps = [
         "@core//cyber",
-    ]
+    ],
 )
 
 cc_test(
@@ -233,12 +233,12 @@ cc_library(
         ":point_factory",
         ":points_downsampler",
         ":util_lib",
-        "@core//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/math",
+        "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
-        "@com_github_gflags_gflags//:gflags",
     ],
 )
 
@@ -246,9 +246,9 @@ cc_library(
     name = "points_downsampler",
     hdrs = ["points_downsampler.h"],
     deps = [
-        "@core//cyber",
         "//modules/common/math",
-    ]
+        "@core//cyber",
+    ],
 )
 
 cc_test(
@@ -266,10 +266,10 @@ cc_library(
     srcs = ["json_util.cc"],
     hdrs = ["json_util.h"],
     deps = [
-        "@core//cyber",
         "@com_github_nlohmann_json//:json",
         "@com_google_protobuf//:protobuf",
-    ]
+        "@core//cyber",
+    ],
 )
 
 cc_test(
@@ -278,15 +278,15 @@ cc_test(
     srcs = ["json_util_test.cc"],
     deps = [
         ":json_util",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@com_google_googletest//:gtest_main",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
     ],
 )
 
 cc_library(
     name = "eigen_defs",
     hdrs = ["eigen_defs.h"],
-    deps = ["@eigen"]
+    deps = ["@eigen"],
 )
 
 cc_library(
@@ -294,9 +294,9 @@ cc_library(
     srcs = ["perf_util.cc"],
     hdrs = ["perf_util.h"],
     deps = [
-        "@core//cyber",
         "@com_google_absl//absl/strings",
-    ]
+        "@core//cyber",
+    ],
 )
 
 cc_library(

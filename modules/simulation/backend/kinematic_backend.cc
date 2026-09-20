@@ -30,22 +30,54 @@ bool KinematicBackend::Init(const std::string& /*model_path*/) {
   return true;
 }
 
+bool KinematicBackend::SetVehicleGeometry(double wheelbase_m,
+                                          double track_width_m,
+                                          double wheel_radius_m) {
+  if (!std::isfinite(wheelbase_m) || wheelbase_m <= 0.0 ||
+      !std::isfinite(track_width_m) || track_width_m <= 0.0 ||
+      !std::isfinite(wheel_radius_m) || wheel_radius_m <= 0.0) {
+    return false;
+  }
+  wheelbase_m_ = wheelbase_m;
+  track_width_m_ = track_width_m;
+  wheel_radius_m_ = wheel_radius_m;
+  return true;
+}
+
+bool KinematicBackend::SetMaxSteerAngle(double max_steer_angle_rad) {
+  if (!std::isfinite(max_steer_angle_rad) || max_steer_angle_rad <= 0.0) {
+    return false;
+  }
+  max_steer_angle_rad_ = max_steer_angle_rad;
+  return true;
+}
+
+bool KinematicBackend::SetMaxRearSteerAngle(double max_rear_steer_angle_rad) {
+  return std::isfinite(max_rear_steer_angle_rad) &&
+         max_rear_steer_angle_rad >= 0.0;
+}
+
 void KinematicBackend::Reset(double x, double y, double yaw) {
   sim_time_sec_ = 0.0;
   x_ = x;
   y_ = y;
-  z_ = 0.0;
+  z_ = wheel_radius_m_;
   yaw_ = yaw;
   speed_mps_ = 0.0;
   acceleration_mps2_ = 0.0;
   front_steering_rad_ = 0.0;
+  rear_steering_rad_ = 0.0;
   current_actuation_ = VehicleActuation{};
+  wheel_steer_rad_ = {0.0, 0.0, 0.0, 0.0};
 }
 
 bool KinematicBackend::ApplyActuation(const VehicleActuation& actuation) {
   current_actuation_ = actuation;
+  wheel_steer_rad_ = actuation.wheel_steer_rad;
   front_steering_rad_ =
       (actuation.wheel_steer_rad[0] + actuation.wheel_steer_rad[1]) * 0.5;
+  rear_steering_rad_ =
+      (actuation.wheel_steer_rad[2] + actuation.wheel_steer_rad[3]) * 0.5;
   return true;
 }
 
@@ -105,8 +137,10 @@ bool KinematicBackend::Step(double dt_sec) {
     }
   }
 
-  // Kinematic bicycle update
-  double curvature = std::tan(front_steering_rad_) / wheelbase_m_;
+  // Four-wheel bicycle update; rear steering is zero for Ackermann vehicles.
+  double curvature = (std::tan(front_steering_rad_) -
+                      std::tan(rear_steering_rad_)) /
+                     wheelbase_m_;
   double yaw_rate = speed_mps_ * curvature;
 
   yaw_ += yaw_rate * dt_sec;
@@ -143,12 +177,46 @@ bool KinematicBackend::GetVehicleState(VehicleState* state) const {
   state->linear_velocity_mps = speed_mps_;
   state->lateral_velocity_mps = 0.0;
   state->angular_velocity_yaw_radps =
-      speed_mps_ * std::tan(front_steering_rad_) / wheelbase_m_;
+      speed_mps_ * (std::tan(front_steering_rad_) -
+                    std::tan(rear_steering_rad_)) /
+      wheelbase_m_;
   state->linear_acceleration_mps2 = acceleration_mps2_;
+  state->lateral_acceleration_mps2 =
+      speed_mps_ * state->angular_velocity_yaw_radps;
+  state->linear_acceleration_body_mps2 = {acceleration_mps2_,
+                                          state->lateral_acceleration_mps2, 0.0};
+  state->angular_velocity_body_radps = {0.0, 0.0,
+                                        state->angular_velocity_yaw_radps};
+  state->angular_velocity_world_radps = state->angular_velocity_body_radps;
+  state->linear_velocity_world_mps = {
+      speed_mps_ * std::cos(yaw_), speed_mps_ * std::sin(yaw_), 0.0};
+  state->linear_acceleration_world_mps2 = {
+      acceleration_mps2_ * std::cos(yaw_) -
+          state->lateral_acceleration_mps2 * std::sin(yaw_),
+      acceleration_mps2_ * std::sin(yaw_) +
+          state->lateral_acceleration_mps2 * std::cos(yaw_),
+      0.0};
+  const double yaw_rate = state->angular_velocity_yaw_radps;
+  const auto wheel_speed = [this, yaw_rate](double x, double y,
+                                            double steer) {
+    const double vx = speed_mps_ - yaw_rate * y;
+    const double vy = yaw_rate * x;
+    return vx * std::cos(steer) + vy * std::sin(steer);
+  };
+  state->wheel_speed_mps = {
+      wheel_speed(wheelbase_m_, 0.5 * track_width_m_,
+                  wheel_steer_rad_[0]),
+      wheel_speed(wheelbase_m_, -0.5 * track_width_m_,
+                  wheel_steer_rad_[1]),
+      wheel_speed(0.0, 0.5 * track_width_m_,
+                  wheel_steer_rad_[2]),
+      wheel_speed(0.0, -0.5 * track_width_m_,
+                  wheel_steer_rad_[3])};
 
   state->front_steering_rad = front_steering_rad_;
-  const double max_steer_rad = 0.50;  // ~28.6 degrees
-  state->steering_percentage = (front_steering_rad_ / max_steer_rad) * 100.0;
+  state->rear_steering_rad = rear_steering_rad_;
+  state->steering_percentage =
+      (front_steering_rad_ / max_steer_angle_rad_) * 100.0;
   state->steering_percentage =
       std::max(-100.0, std::min(100.0, state->steering_percentage));
 

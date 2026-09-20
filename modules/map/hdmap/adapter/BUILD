@@ -17,36 +17,36 @@ cc_library(
     hdrs = [
         "opendrive_adapter.h",
     ],
+    visibility = ["//visibility:public"],
     deps = [
         ":proto_organizer",
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "//modules/common/math",
         "//modules/common/status",
         "//modules/common/util",
         "//modules/map/hdmap/adapter/xml_parser",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@proj",
         "@tinyxml2",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "proto_organizer",
     srcs = ["proto_organizer.cc"],
     hdrs = ["proto_organizer.h"],
-    alwayslink = True,
+    linkstatic = True,
+    visibility = ["//visibility:private"],
     deps = [
-        "@core//cyber",
         "//modules/common/math",
         "//modules/common/util",
         "//modules/map/hdmap/adapter/xml_parser",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
     ],
-    visibility = ["//visibility:private"],
-    linkstatic = True,
+    alwayslink = True,
 )
 
 cpplint()

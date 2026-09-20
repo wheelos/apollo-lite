@@ -12,11 +12,11 @@ cc_library(
         "*.h",
     ]),
     deps = [
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "//modules/drivers/canbus/can_comm:message_manager_base",
+        "//modules/drivers/radar/racobit_radar/proto:racobit_radar_conf_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:racobit_radar_cc_proto",
-        "//modules/drivers/radar/racobit_radar/proto:racobit_radar_conf_cc_proto",
     ],
 )
 

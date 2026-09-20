@@ -25,10 +25,10 @@ cc_library(
     ],
     deps = [
         ":base_init_options",
-        "@core//cyber",
         "//modules/perception/camera/common",
         "//modules/perception/lib/registerer",
         "//modules/perception/pipeline:plugin",
+        "@core//cyber",
     ],
 )
 
@@ -39,10 +39,10 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         ":base_init_options",
         "//modules/perception/camera/common",
         "//modules/perception/lib/registerer",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -54,11 +54,11 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         ":base_init_options",
-        "//modules/perception/lib/registerer",
-        "//modules/perception/camera/lib/traffic_light/preprocessor:pose",
         "//modules/perception/base:traffic_light",
+        "//modules/perception/camera/lib/traffic_light/preprocessor:pose",
+        "//modules/perception/lib/registerer",
+        "@core//cyber",
     ],
 )
 
@@ -271,10 +271,14 @@ cc_library(
 
 cc_library(
     name = "interface",
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
+    ],
     deps = [
         ":base_calibration_service",
         ":base_calibrator",
         ":base_camera_perception",
+        ":base_cipv",
         ":base_feature_extractor",
         ":base_inference_engine",
         ":base_init_options",
@@ -287,13 +291,9 @@ cc_library(
         ":base_obstacle_tracker",
         ":base_obstacle_transformer",
         ":base_scene_parser",
+        ":base_tl_preprocessor",
         ":base_traffic_light_detector",
         ":base_traffic_light_tracker",
-        ":base_cipv",
-        ":base_tl_preprocessor",
-    ],
-    copts = [
-        '-DMODULE_NAME=\\"perception\\"',
     ],
 )
 

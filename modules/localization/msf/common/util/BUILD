@@ -16,7 +16,7 @@ cc_library(
 cc_library(
     name = "md5",
     srcs = ["md5.cc"],
-    hdrs = ["md5.h"]
+    hdrs = ["md5.h"],
 )
 
 cc_library(
@@ -25,9 +25,9 @@ cc_library(
     hdrs = ["file_utility.h"],
     deps = [
         ":md5",
-        "@core//cyber",
         "@boost.filesystem",
         "@com_github_google_glog//:glog",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -37,8 +37,8 @@ cc_library(
     srcs = ["system_utility.cc"],
     hdrs = ["system_utility.h"],
     deps = [
-        "@core//cyber",
         "@boost.filesystem",
+        "@core//cyber",
         "@eigen",
     ],
 )
@@ -48,9 +48,9 @@ cc_library(
     srcs = ["frame_transform.cc"],
     hdrs = ["frame_transform.h"],
     deps = [
-        "@core//cyber",
         "//modules/common/util:proj_helper",
         "@com_google_absl//absl/strings",
+        "@core//cyber",
         "@eigen",
         "@proj",
     ],
@@ -65,12 +65,12 @@ cc_library(
         "voxel_grid_covariance_hdmap.h",
     ],
     deps = [
-        "@core//cyber",
         "@boost.mpl",
+        "@core//cyber",
         "@eigen",
-        "@local_config_pcl//:sample_consensus",
         "@local_config_pcl//:filters",
         "@local_config_pcl//:kdtree",
+        "@local_config_pcl//:sample_consensus",
     ],
 )
 
@@ -89,11 +89,11 @@ cc_test(
     size = "small",
     timeout = "short",
     srcs = ["compression_test.cc"],
+    linkstatic = True,
     deps = [
         "//modules/localization/msf/common/util:compression",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -101,11 +101,11 @@ cc_test(
     size = "small",
     timeout = "short",
     srcs = ["rect2d_test.cc"],
+    linkstatic = True,
     deps = [
         "//modules/localization/msf/common/util",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 filegroup(
@@ -119,11 +119,11 @@ cc_test(
     timeout = "short",
     srcs = ["system_utility_test.cc"],
     data = [":test_data"],
+    linkstatic = True,
     deps = [
         "//modules/localization/msf/common/util:system_utility",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -140,12 +140,12 @@ cc_test(
 cc_test(
     name = "base_map_cache_test",
     srcs = ["base_map_cache_test.cc"],
+    linkstatic = True,
     deps = [
         ":base_map_cache",
-        "@core//cyber",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber",
     ],
-    linkstatic = True,
 )
 
 cpplint()

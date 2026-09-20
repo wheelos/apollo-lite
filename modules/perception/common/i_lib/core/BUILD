@@ -5,15 +5,15 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "core",
-    copts = [
-        '-DMODULE_NAME=\\"perception\\"',
-    ],
     hdrs = [
         "i_alloc.h",
         "i_basic.h",
         "i_blas.h",
         "i_constant.h",
         "i_rand.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"perception\\"',
     ],
 )
 

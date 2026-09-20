@@ -116,14 +116,18 @@ The production path is the Bazel module dependency `wheelos_core` (`@core//...`)
 Use the unified runtime entrypoint after building with the module dependency already resolved:
 
 ```bash
-source scripts/runtime_env.sh
+source setup.bash
 ```
+
+In managed Docker containers, the login shell sources `setup.bash`
+automatically after the container user and Bazel output ownership are
+initialized.
 
 If you intentionally need to validate a local source checkout, set the override explicitly and keep it temporary:
 
 ```bash
 export APOLLO_CORE_ROOT=/path/to/core
-source scripts/runtime_env.sh
+source setup.bash
 ```
 
 Then build the cyber runtime targets from this workspace:

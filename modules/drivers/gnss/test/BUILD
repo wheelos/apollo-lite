@@ -8,7 +8,7 @@ install(
     name = "install",
     runtime_dest = "drivers/bin",
     targets = [
-      ":parser_cli",
+        ":parser_cli",
     ],
 )
 
@@ -16,11 +16,11 @@ cc_binary(
     name = "parser_cli",
     srcs = ["parser_cli.cc"],
     deps = [
-        "@core//cyber",
+        "//modules/drivers/gnss/parser:data_parser",
+        "//modules/drivers/gnss/proto:config_cc_proto",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/hal/stream",
-        "//modules/drivers/gnss/parser:data_parser",
-        "//modules/drivers/gnss/proto:config_cc_proto"
+        "@core//cyber",
     ],
 )
 

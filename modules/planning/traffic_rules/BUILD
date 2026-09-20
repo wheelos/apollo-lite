@@ -34,8 +34,6 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "//modules/common/util:util_tool",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_context",
@@ -44,6 +42,8 @@ cc_library(
         "//modules/planning/common/util:common_lib",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/proto:traffic_rule_config_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -57,11 +57,10 @@ cc_library(
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/status",
         "//modules/common/util:util_tool",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:traffic_rule_config_cc_proto",
         "//modules/planning/reference_line",
-        "//modules/planning/common:vehicle_frenet_geometry",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
 

@@ -21,17 +21,17 @@ cc_library(
     ],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/planning/common:planning_common",
         "//modules/planning/common/util:common_lib",
         "//modules/planning/common/util:util_lib",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning/scenarios:scenario",
         "//modules/planning/scenarios/util:scenario_util_lib",
         "//modules/planning/tasks/deciders/path_bounds_decider",
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
 
@@ -43,11 +43,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":park_and_go_scenario",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -63,11 +63,11 @@ cc_test(
         "//modules/planning:planning_conf",
     ],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":park_and_go_scenario",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cpplint()

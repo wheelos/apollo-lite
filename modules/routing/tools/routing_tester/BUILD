@@ -11,6 +11,7 @@ install(
         ":routing_tester",
     ],
 )
+
 cc_binary(
     name = "routing_tester",
     srcs = ["routing_tester.cc"],

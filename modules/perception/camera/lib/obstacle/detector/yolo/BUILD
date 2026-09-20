@@ -29,8 +29,8 @@ cc_library(
     deps = [
         ":object_maintainer",
         ":region_output_cuda",
-        "@core//cyber",
         "//modules/perception/camera/common:temporary_transition_types",
+        "@core//cyber",
     ],
 )
 
@@ -43,7 +43,6 @@ cc_library(
     ],
     deps = [
         ":region_output",
-        "@core//cyber",
         "//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/common",
@@ -59,6 +58,7 @@ cc_library(
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:yolo_obstacle_detector_config_cc_proto",
         "@boost.algorithm",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -71,8 +71,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@core//cyber",
         "//modules/perception/base",
+        "@core//cyber",
     ],
 )
 

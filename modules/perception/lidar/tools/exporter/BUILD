@@ -6,15 +6,15 @@ cc_library(
     srcs = ["msg_exporter.cc"],
     hdrs = ["msg_exporter.h"],
     deps = [
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
         "//modules/perception/lidar/common:pcl_util",
         "//modules/perception/onboard/transform_wrapper",
         "//modules/transform:transform_query",
         "@com_google_absl//absl/strings",
-        "@opencv//:imgproc",
+        "@core//cyber",
         "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
     ],
 )
 
@@ -23,9 +23,9 @@ cc_binary(
     srcs = ["msg_exporter_main.cc"],
     deps = [
         ":msgexporterlib",
+        "@com_google_absl//absl/strings",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -33,9 +33,9 @@ cc_binary(
     name = "pcd_exporter",
     srcs = ["pcd_exporter_main.cc"],
     deps = [
+        "//modules/perception/lidar/common:pcl_util",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
-        "//modules/perception/lidar/common:pcl_util",
     ],
 )
 
