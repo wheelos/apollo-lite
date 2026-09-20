@@ -153,6 +153,7 @@ Status VehicleStateProvider::Update(
   motion_state_snapshot_ = motion_state;
   operating_state_snapshot_ = operating_state;
   state_snapshot_ = next_state;
+  original_localization_pose_snapshot_.CopyFrom(localization.pose());
   has_valid_state_ = true;
   return Status::OK();
 }
@@ -294,6 +295,11 @@ bool VehicleStateProvider::MergeStates(
 
 const VehicleState& VehicleStateProvider::state() const {
   return state_snapshot_;
+}
+
+const localization::Pose& VehicleStateProvider::original_localization_pose()
+    const {
+  return original_localization_pose_snapshot_;
 }
 
 bool VehicleStateProvider::HasValidState() const { return has_valid_state_; }

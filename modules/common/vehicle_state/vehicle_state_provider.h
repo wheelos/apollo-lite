@@ -36,6 +36,11 @@ class VehicleStateProvider {
   // across update cycles must make a copy.
   const VehicleState& state() const;
 
+  // Returns the ENU pose reported by localization before any reference-point
+  // transformation. This is for consumers that explicitly require the
+  // localization reference point rather than the aggregated VehicleState.
+  const localization::Pose& original_localization_pose() const;
+
   // Returns true after at least one complete state snapshot has been
   // successfully committed. A failed later Update() does not invalidate the
   // previously committed snapshot.
@@ -60,6 +65,7 @@ class VehicleStateProvider {
   VehicleMotionState motion_state_snapshot_;
   VehicleOperatingState operating_state_snapshot_;
   VehicleState state_snapshot_;
+  localization::Pose original_localization_pose_snapshot_;
   bool has_valid_state_ = false;
 };
 

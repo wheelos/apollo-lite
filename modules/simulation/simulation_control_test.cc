@@ -230,7 +230,7 @@ TEST_F(SimulationControlTest, ClosedLoopControlSimulation) {
     trajectory.mutable_header()->set_timestamp_sec(0.0);
 
     // Update vehicle state provider in injector
-    injector->vehicle_state()->Update(localization, chassis);
+    ASSERT_TRUE(injector->UpdateVehicleState(localization, chassis).ok());
 
     // c. Compute Control Command
     auto status = controller_agent.ComputeControlCommand(
