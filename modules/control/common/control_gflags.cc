@@ -88,15 +88,6 @@ DEFINE_int32(pad_msg_pending_queue_size, 10,
 
 DEFINE_bool(reverse_heading_control, false, "test vehicle reverse control");
 
-DEFINE_bool(
-    trajectory_transform_to_com_reverse, false,
-    "Enable planning trajectory coordinate transformation from center of "
-    "rear-axis to center of mass, during reverse driving");
-DEFINE_bool(
-    trajectory_transform_to_com_drive, false,
-    "Enable planning trajectory coordinate transformation from center of "
-    "rear-axis to center of mass, during forward driving");
-
 DEFINE_bool(enable_maximum_steer_rate_limit, false,
             "Enable steer rate limit obtained from vehicle_param.pb.txt");
 
@@ -112,9 +103,6 @@ DEFINE_bool(enable_feedback_augment_on_high_speed, false,
 DEFINE_bool(
     enable_gear_drive_negative_speed_protection, false,
     "Enable estop to prevent following negative speed during gear drive");
-
-DEFINE_bool(use_control_submodules, false,
-            "use control submodules instead of controller agent");
 
 DEFINE_bool(use_acceleration_lookup_limit, false,
             "use acceleration lookup limit within vehicle max acceleration");

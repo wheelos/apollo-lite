@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/proto/open_space_task_config.pb.h"
 
 namespace apollo {
@@ -29,7 +30,11 @@ namespace planning {
 class OpenSpaceTrajectoryOptimizerTest : public ::testing::Test {
  public:
   virtual void SetUp() {
-    OpenSpaceTrajectoryOptimizer open_space_trajectory_optimizer(config);
+    const common::VehicleGeometryModel geometry_model;
+    const PlanningGeometryAdapter geometry_adapter(
+        geometry_model, common::VehicleReferencePoint::REAR_AXLE_CENTER);
+    OpenSpaceTrajectoryOptimizer open_space_trajectory_optimizer(
+        config, geometry_adapter);
   }
 
  protected:

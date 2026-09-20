@@ -770,7 +770,10 @@ bool ResolveTargetParkingLane(
   }
 
   LaneInfoConstPtr nearest_lane_to_vehicle;
-  const auto point = common::util::PointFactory::ToPointENU(vehicle_state);
+  common::PointENU point;
+  point.set_x(vehicle_state.x());
+  point.set_y(vehicle_state.y());
+  point.set_z(vehicle_state.z());
   double vehicle_lane_s = 0.0;
   double vehicle_lane_l = 0.0;
   const int status = hdmap->GetNearestLaneWithHeading(
@@ -1662,7 +1665,8 @@ bool OpenSpaceRoiDecider::GetParkingBoundary(
   const double origin_heading = frame->open_space_info().origin_heading();
   double vehicle_s = 0.0;
   double vehicle_l = 0.0;
-  if (!nearby_path.GetProjection(Vec2d(vehicle_state_.x(), vehicle_state_.y()),
+  if (!nearby_path.GetProjection(
+          Vec2d(vehicle_state_.x(), vehicle_state_.y()),
                                  &vehicle_s, &vehicle_l)) {
     if (error != nullptr) {
       *error = "failed to project ego on nearby path for parking roi";

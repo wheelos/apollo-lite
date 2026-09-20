@@ -29,6 +29,7 @@
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/vehicle_frenet_geometry.h"
 
 namespace apollo {
 namespace planning {
@@ -37,11 +38,14 @@ using apollo::common::Status;
 
 SpeedLimitDecider::SpeedLimitDecider(const SpeedBoundsDeciderConfig& config,
                                      const ReferenceLine& reference_line,
-                                     const PathData& path_data)
+                                     const PathData& path_data,
+                                     const PlanningGeometryAdapter&
+                                         geometry_adapter)
     : speed_bounds_config_(config),
       reference_line_(reference_line),
       path_data_(path_data),
-      vehicle_param_(common::VehicleConfigHelper::GetConfig().vehicle_param()) {
+      vehicle_param_(common::VehicleConfigHelper::GetConfig().vehicle_param()),
+      geometry_adapter_(geometry_adapter) {
 }
 
 Status SpeedLimitDecider::GetSpeedLimits(
@@ -97,10 +101,11 @@ Status SpeedLimitDecider::GetSpeedLimits(
 
       // TODO(all): potential problem here;
       // frenet and cartesian coordinates are mixed.
-      const double vehicle_front_s =
-          reference_line_s + vehicle_param_.front_edge_to_center();
-      const double vehicle_back_s =
-          reference_line_s - vehicle_param_.back_edge_to_center();
+      VehicleFrenetGeometry frenet_geometry(geometry_adapter_);
+      const auto s_range =
+          frenet_geometry.GetOccupancySRange(reference_line_s);
+      const double vehicle_back_s = s_range.first;
+      const double vehicle_front_s = s_range.second;
       const double obstacle_front_s =
           ptr_obstacle->PerceptionSLBoundary().end_s();
       const double obstacle_back_s =
@@ -115,12 +120,12 @@ Status SpeedLimitDecider::GetSpeedLimits(
 
       // Please notice the differences between adc_l and frenet_point_l
       const double frenet_point_l = frenet_path.at(i).l();
+      const auto l_range = frenet_geometry.GetOccupancyLRange(frenet_point_l);
 
       // obstacle is on the right of ego vehicle (at path point i)
       bool is_close_on_left =
           (nudge_decision.type() == ObjectNudge::LEFT_NUDGE) &&
-          (frenet_point_l - vehicle_param_.right_edge_to_center() -
-               collision_safety_range <
+          (l_range.first - collision_safety_range <
            ptr_obstacle->PerceptionSLBoundary().end_l());
 
       // obstacle is on the left of ego vehicle (at path point i)
@@ -128,7 +133,7 @@ Status SpeedLimitDecider::GetSpeedLimits(
           (nudge_decision.type() == ObjectNudge::RIGHT_NUDGE) &&
           (ptr_obstacle->PerceptionSLBoundary().start_l() -
                collision_safety_range <
-           frenet_point_l + vehicle_param_.left_edge_to_center());
+           l_range.second);
 
       // TODO(all): dynamic obstacles do not have nudge decision
       if (is_close_on_left || is_close_on_right) {

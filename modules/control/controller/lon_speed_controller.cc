@@ -34,7 +34,6 @@ namespace control {
 using apollo::common::ErrorCode;
 using apollo::common::Status;
 using apollo::common::TrajectoryPoint;
-using apollo::common::VehicleStateProvider;
 using apollo::cyber::Time;
 
 LonSpeedController::LonSpeedController()
@@ -83,6 +82,8 @@ Status LonSpeedController::ComputeControlCommand(
     const canbus::Chassis *chassis,
     const planning::ADCTrajectory *planning_published_trajectory,
     control::ControlCommand *cmd) {
+  CaptureVehicleState(injector_);
+  const auto& vehicle_state = captured_vehicle_state();
   localization_ = localization;
   chassis_ = chassis;
 
@@ -126,7 +127,7 @@ Status LonSpeedController::ComputeControlCommand(
   }
 
   // Choose PID config
-  if (injector_->vehicle_state()->linear_velocity() <=
+  if (vehicle_state.linear_velocity() <=
       lon_controller_conf.switch_speed()) {
     station_pid_controller_.SetPID(lon_controller_conf.low_speed_pid_conf());
   } else {
@@ -151,7 +152,8 @@ Status LonSpeedController::ComputeControlCommand(
   // the current steer target
   if ((trajectory_message_->trajectory_type() ==
        apollo::planning::ADCTrajectory::UNKNOWN) &&
-      std::abs(cmd->steering_target() - chassis->steering_percentage()) >
+      std::abs(cmd->steering_target() -
+               vehicle_state.steering_percentage()) >
           FLAGS_steer_cmd_interval) {
     // TODO(zero): parking controller should handle this case
     // desired_speed_cmd = 0.0;
@@ -184,7 +186,7 @@ Status LonSpeedController::ComputeControlCommand(
            << " m/s) at path_remain: " << debug->path_remain();
   }
 
-  if (chassis->gear_location() == canbus::Chassis::GEAR_NEUTRAL) {
+  if (vehicle_state.gear() == canbus::Chassis::GEAR_NEUTRAL) {
     desired_speed_cmd = 0.0;
     station_pid_controller_.Reset_integral();
     ADEBUG << "Commanding full stop (0 m/s) due to Neutral gear.";
@@ -202,9 +204,9 @@ Status LonSpeedController::ComputeControlCommand(
   cmd->set_speed(std::fabs(desired_speed_limited));
 
   // Switching vehicle gears
-  if (std::fabs(injector_->vehicle_state()->linear_velocity()) <=
+  if (std::fabs(vehicle_state.linear_velocity()) <=
           vehicle_param_.max_abs_speed_when_stopped() ||
-      chassis->gear_location() == canbus::Chassis::GEAR_NEUTRAL) {
+      vehicle_state.gear() == canbus::Chassis::GEAR_NEUTRAL) {
     cmd->set_gear_location(trajectory_message_->gear());
   } else {
     cmd->set_gear_location(chassis->gear_location());
@@ -242,13 +244,13 @@ void LonSpeedController::ComputeLongitudinalErrors(
   double d_matched = 0.0;
   double d_dot_matched = 0.0;
 
-  auto vehicle_state = injector_->vehicle_state();
+  const auto& vehicle_state = captured_vehicle_state();
   auto matched_point = trajectory_analyzer->QueryMatchedPathPoint(
-      vehicle_state->x(), vehicle_state->y());
+      vehicle_state.x(), vehicle_state.y());
 
   trajectory_analyzer->ToTrajectoryFrame(
-      vehicle_state->x(), vehicle_state->y(), vehicle_state->heading(),
-      vehicle_state->linear_velocity(), matched_point, &s_matched,
+      vehicle_state.x(), vehicle_state.y(), vehicle_state.heading(),
+      vehicle_state.linear_velocity(), matched_point, &s_matched,
       &s_dot_matched, &d_matched, &d_dot_matched);
 
   // double current_control_time = Time::Now().ToSecond();
@@ -279,13 +281,13 @@ void LonSpeedController::ComputeLongitudinalErrors(
   ADEBUG << "reference point:" << reference_point.DebugString();
   ADEBUG << "preview point:" << preview_point.DebugString();
 
-  double heading_error = common::math::NormalizeAngle(vehicle_state->heading() -
+  double heading_error = common::math::NormalizeAngle(vehicle_state.heading() -
                                                       matched_point.theta());
-  double lon_speed = vehicle_state->linear_velocity() * std::cos(heading_error);
+  double lon_speed = vehicle_state.linear_velocity() * std::cos(heading_error);
   double lon_acceleration =
-      vehicle_state->linear_acceleration() * std::cos(heading_error);
+      vehicle_state.linear_acceleration() * std::cos(heading_error);
   double one_minus_kappa_lat_error = 1 - reference_point.path_point().kappa() *
-                                             vehicle_state->linear_velocity() *
+                                             vehicle_state.linear_velocity() *
                                              std::sin(heading_error);
 
   debug->set_station_reference(reference_point.path_point().s());

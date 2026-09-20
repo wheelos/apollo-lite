@@ -24,25 +24,27 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/common/util/point_factory.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 
 namespace {
 
 double ComputePullOverPreparationDistance(
-    const apollo::planning::ScenarioPullOverConfig& config) {
-  const auto& vehicle_param =
-      apollo::common::VehicleConfigHelper::Instance()->GetConfig().vehicle_param();
-  return vehicle_param.front_edge_to_center() +
+    const apollo::planning::ScenarioPullOverConfig& config,
+    const apollo::planning::PlanningGeometryAdapter& geometry_adapter) {
+  return geometry_adapter.FrontEdgeDistance() +
          config.s_distance_to_stop_for_open_space_parking() +
          config.max_valid_stop_distance();
 }
 
 double ComputeEffectivePullOverMinDistance(
-    const apollo::planning::ScenarioPullOverConfig& config) {
-  return std::max({config.pull_over_min_distance_buffer(),
-                   config.max_distance_stop_search(),
-                   ComputePullOverPreparationDistance(config)});
+    const apollo::planning::ScenarioPullOverConfig& config,
+    const apollo::planning::PlanningGeometryAdapter& geometry_adapter) {
+  return std::max(
+      {config.pull_over_min_distance_buffer(), config.max_distance_stop_search(),
+       ComputePullOverPreparationDistance(config, geometry_adapter)});
 }
 
 }  // namespace
@@ -209,19 +211,23 @@ ScenarioDecisionResult ParkDecider::CheckPullOver(
   const auto& frame = context.frame;
   const auto& overlaps = context.first_encountered_overlaps;
 
+  // Must be in a single lane (not changing lanes) and have valid routing.
+  if (frame->reference_line_info().size() != 1) {
+    return ScenarioDecisionResult();
+  }
+
   // 3. Load Configuration
   const auto& config = config_.pull_over_config();
-  const double min_dist = ComputeEffectivePullOverMinDistance(config);
+  const PlanningGeometryAdapter geometry_adapter =
+      frame->reference_line_info().front().planning_geometry_adapter();
+  const double min_dist =
+      ComputeEffectivePullOverMinDistance(config, geometry_adapter);
   const double max_dist = config.start_pull_over_scenario_distance();
   const double stop_search_dist = config.max_distance_stop_search();
   const double junction_buffer = config.avoid_junction_distance();
   const uint32_t scenario_entry_score = config.scenario_entry_score();
 
   // 2. Pre-conditions Check
-  // Must be in a single lane (not changing lanes) and have valid routing.
-  if (frame->reference_line_info().size() != 1) {
-    return ScenarioDecisionResult();
-  }
 
   const auto& routing = frame->local_view().routing;
   if (!routing || routing->routing_request().waypoint().empty()) {
@@ -374,7 +380,7 @@ ScenarioDecisionResult ParkDecider::CheckParkAndGo(
   }
 
   // 2. Speed Check: Must be stationary (to enter)
-  const auto vehicle_state = injector_->vehicle_state()->vehicle_state();
+  const auto& vehicle_state = frame->vehicle_state();
   double adc_speed = std::abs(vehicle_state.linear_velocity());
 
   if (adc_speed > max_abs_speed_when_stopped) {

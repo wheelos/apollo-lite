@@ -30,6 +30,7 @@ namespace scenario {
 namespace valet_parking {
 
 using apollo::common::VehicleState;
+using apollo::common::VehicleState;
 using apollo::common::math::Vec2d;
 using apollo::hdmap::ParkingSpaceInfoConstPtr;
 

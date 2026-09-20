@@ -28,6 +28,7 @@
 #include "modules/common/math/linear_interpolation.h"
 #include "modules/common/util/map_util.h"
 #include "modules/common/util/util.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/common/speed/st_boundary.h"
 
@@ -289,7 +290,8 @@ void Obstacle::SetPerceptionSlBoundary(const SLBoundary& sl_boundary) {
 }
 
 double Obstacle::MinRadiusStopDistance(
-    const common::VehicleParam& vehicle_param) const {
+    const common::VehicleParam& vehicle_param,
+    const PlanningGeometryAdapter& geometry_adapter) const {
   if (min_radius_stop_distance_ > 0) {
     return min_radius_stop_distance_;
   }
@@ -305,7 +307,7 @@ double Obstacle::MinRadiusStopDistance(
                           (min_turn_radius - lateral_diff) *
                               (min_turn_radius - lateral_diff))) +
       stop_distance_buffer;
-  stop_distance -= vehicle_param.front_edge_to_center();
+  stop_distance -= geometry_adapter.FrontEdgeDistance();
   stop_distance = std::min(stop_distance, FLAGS_max_stop_distance_obstacle);
   stop_distance = std::max(stop_distance, FLAGS_min_stop_distance_obstacle);
   return stop_distance;

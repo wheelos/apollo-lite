@@ -49,7 +49,8 @@ class TrafficLightUnprotectedRightTurnStageStop : public Stage {
 
   bool CheckTrafficLightNoRightTurnOnRed(const std::string& traffic_light_id);
 
-  Stage::StageStatus FinishStage(const bool protected_mode);
+  Stage::StageStatus FinishStage(const bool protected_mode,
+                             const double adc_speed);
 
  private:
   ScenarioTrafficLightUnprotectedRightTurnConfig scenario_config_;

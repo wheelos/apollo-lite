@@ -339,7 +339,8 @@ void OpenSpaceTrajectoryPartition::UpdateVehicleInfo() {
                       shift_distance_ * std::sin(ego_theta_)};
   ego_box_.Shift(ego_shift_vec);
   vehicle_moving_direction_ =
-      vehicle_state.gear() == canbus::Chassis::GEAR_REVERSE
+      frame_->vehicle_state().travel_direction() ==
+              common::TravelDirection::TRAVEL_DIRECTION_REVERSE
           ? NormalizeAngle(ego_theta_ + M_PI)
           : ego_theta_;
 }

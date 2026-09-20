@@ -31,6 +31,7 @@
 #include "modules/common/math/line_segment2d.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/common/util/util.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
 
 namespace apollo {
@@ -48,15 +49,16 @@ namespace {
 using ObsTEdge = std::tuple<int, double, double, double, std::string>;
 }  // namespace
 
-void STObstaclesProcessor::Init(const double planning_distance,
-                                const double planning_time,
-                                const PathData& path_data,
-                                PathDecision* const path_decision,
-                                History* const history) {
+void STObstaclesProcessor::Init(
+    const double planning_distance, const double planning_time,
+    const PathData& path_data, PathDecision* const path_decision,
+    History* const history,
+    const PlanningGeometryAdapter& geometry_adapter) {
   planning_time_ = planning_time;
   planning_distance_ = planning_distance;
   path_data_ = path_data;
   vehicle_param_ = common::VehicleConfigHelper::GetConfig().vehicle_param();
+  geometry_adapter_ = geometry_adapter;
   adc_path_init_s_ = path_data_.discretized_path().front().s();
   path_decision_ = path_decision;
   history_ = history;
@@ -553,12 +555,14 @@ bool STObstaclesProcessor::GetOverlappingS(
     std::pair<double, double>* const overlapping_s) {
   // Locate the possible range to search in details.
   int pt_before_idx = GetSBoundingPathPointIndex(
-      adc_path_points, obstacle_instance, vehicle_param_.front_edge_to_center(),
-      true, 0, static_cast<int>(adc_path_points.size()) - 2);
+      adc_path_points, obstacle_instance,
+      geometry_adapter_.FrontEdgeDistance(), true, 0,
+      static_cast<int>(adc_path_points.size()) - 2);
   ADEBUG << "The index before is " << pt_before_idx;
   int pt_after_idx = GetSBoundingPathPointIndex(
-      adc_path_points, obstacle_instance, vehicle_param_.back_edge_to_center(),
-      false, 0, static_cast<int>(adc_path_points.size()) - 2);
+      adc_path_points, obstacle_instance,
+      geometry_adapter_.RearEdgeDistance(), false, 0,
+      static_cast<int>(adc_path_points.size()) - 2);
   ADEBUG << "The index after is " << pt_after_idx;
   if (pt_before_idx == static_cast<int>(adc_path_points.size()) - 2) {
     return false;
@@ -674,20 +678,8 @@ bool STObstaclesProcessor::IsPathPointAwayFromObstacle(
 bool STObstaclesProcessor::IsADCOverlappingWithObstacle(
     const PathPoint& adc_path_point, const Box2d& obs_box,
     const double l_buffer) const {
-  // Convert reference point from center of rear axis to center of ADC.
-  Vec2d ego_center_map_frame((vehicle_param_.front_edge_to_center() -
-                              vehicle_param_.back_edge_to_center()) *
-                                 0.5,
-                             (vehicle_param_.left_edge_to_center() -
-                              vehicle_param_.right_edge_to_center()) *
-                                 0.5);
-  ego_center_map_frame.SelfRotate(adc_path_point.theta());
-  ego_center_map_frame.set_x(ego_center_map_frame.x() + adc_path_point.x());
-  ego_center_map_frame.set_y(ego_center_map_frame.y() + adc_path_point.y());
-
-  // Compute the ADC bounding box.
-  Box2d adc_box(ego_center_map_frame, adc_path_point.theta(),
-                vehicle_param_.length(), vehicle_param_.width() + l_buffer * 2);
+  const Box2d adc_box = geometry_adapter_.BuildBox(
+      adc_path_point, l_buffer);
 
   ADEBUG << "    ADC box is: " << adc_box.DebugString();
   ADEBUG << "    Obs box is: " << obs_box.DebugString();

@@ -24,8 +24,10 @@
 #include "modules/planning/proto/dp_poly_path_config.pb.h"
 
 #include "modules/common/math/box2d.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/obstacle.h"
 #include "modules/planning/common/path_decision.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/common/speed/speed_data.h"
 #include "modules/planning/math/curve1d/quintic_polynomial_curve1d.h"
 #include "modules/planning/reference_line/reference_line.h"
@@ -42,6 +44,7 @@ class TrajectoryCost {
                  const bool is_change_lane_path,
                  const std::vector<const Obstacle *> &obstacles,
                  const common::VehicleParam &vehicle_param,
+                 const PlanningGeometryAdapter &geometry_adapter,
                  const SpeedData &heuristic_speed_data,
                  const common::SLPoint &init_sl_point,
                  const SLBoundary &adc_sl_boundary);
@@ -79,6 +82,7 @@ class TrajectoryCost {
   const ReferenceLine *reference_line_ = nullptr;
   bool is_change_lane_path_ = false;
   const common::VehicleParam vehicle_param_;
+  const PlanningGeometryAdapter geometry_adapter_;
   SpeedData heuristic_speed_data_;
   const common::SLPoint init_sl_point_;
   const SLBoundary adc_sl_boundary_;

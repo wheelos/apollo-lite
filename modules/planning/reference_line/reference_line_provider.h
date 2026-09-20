@@ -36,7 +36,6 @@
 #include "cyber/cyber.h"
 #include "modules/common/util/factory.h"
 #include "modules/common/util/util.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/pnc_map/pnc_map.h"
 #include "modules/planning/common/indexed_queue.h"
 #include "modules/planning/math/smoothing_spline/spline_2d_solver.h"
@@ -61,7 +60,6 @@ class ReferenceLineProvider {
  public:
   ReferenceLineProvider() = default;
   ReferenceLineProvider(
-      const common::VehicleStateProvider* vehicle_state_provider,
       const hdmap::HDMap* base_map,
       const std::shared_ptr<relative_map::MapMsg>& relative_map = nullptr);
 
@@ -72,6 +70,8 @@ class ReferenceLineProvider {
 
   bool UpdateRoutingResponse(const routing::RoutingResponse& routing);
 
+  // Planning supplies the already-normalized VehicleState. The provider uses
+  // it for map queries and must not choose or convert a reference point.
   void UpdateVehicleState(const common::VehicleState& vehicle_state);
 
   bool Start();
@@ -187,8 +187,6 @@ class ReferenceLineProvider {
 
   std::atomic<bool> is_reference_line_updated_{true};
 
-  const common::VehicleStateProvider* vehicle_state_provider_ = nullptr;
 };
-
 }  // namespace planning
 }  // namespace apollo

@@ -24,6 +24,7 @@
 
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/util/util.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 
 namespace apollo {
 namespace planning {
@@ -96,10 +97,10 @@ bool PathDecision::AddLongitudinalDecision(const std::string &tag,
   return true;
 }
 
-bool PathDecision::MergeWithMainStop(const ObjectStop &obj_stop,
-                                     const std::string &obj_id,
-                                     const ReferenceLine &reference_line,
-                                     const SLBoundary &adc_sl_boundary) {
+bool PathDecision::MergeWithMainStop(
+    const ObjectStop &obj_stop, const std::string &obj_id,
+    const ReferenceLine &reference_line, const SLBoundary &adc_sl_boundary,
+    const PlanningGeometryAdapter &geometry_adapter) {
   common::PointENU stop_point = obj_stop.stop_point();
   common::SLPoint stop_line_sl;
   reference_line.XYToSL(stop_point, &stop_line_sl);
@@ -112,10 +113,9 @@ bool PathDecision::MergeWithMainStop(const ObjectStop &obj_stop,
   }
 
   // check stop_line_s vs adc_s, ignore if it is further way than main stop
-  const auto &vehicle_config = common::VehicleConfigHelper::GetConfig();
   stop_line_s = std::fmax(
       stop_line_s, adc_sl_boundary.end_s() -
-                       vehicle_config.vehicle_param().front_edge_to_center());
+                       geometry_adapter.FrontEdgeDistance());
 
   if (stop_line_s >= stop_reference_line_s_) {
     ADEBUG << "stop point is farther than current main stop point.";

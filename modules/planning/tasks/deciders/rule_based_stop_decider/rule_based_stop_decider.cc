@@ -22,7 +22,6 @@
 
 #include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/common/util/common.h"
@@ -191,16 +190,14 @@ bool RuleBasedStopDecider::CheckSidePassStop(
             PathData::PathPointType::OUT_ON_REVERSE_LANE) {
       *stop_s_on_pathdata = std::get<0>(point_guide);
       // Approximate the stop fence s based on the vehicle position
-      const auto &vehicle_config =
-          common::VehicleConfigHelper::Instance()->GetConfig();
-      const double ego_front_to_center =
-          vehicle_config.vehicle_param().front_edge_to_center();
       common::PathPoint stop_pathpoint;
       if (!path_data.GetPathPointWithRefS(*stop_s_on_pathdata,
                                           &stop_pathpoint)) {
         AERROR << "Can't get stop point on path data";
         return false;
       }
+      const double ego_front_to_center =
+          reference_line_info.planning_geometry_adapter().FrontEdgeDistance();
       const double ego_theta = stop_pathpoint.theta();
       Vec2d shift_vec{ego_front_to_center * std::cos(ego_theta),
                       ego_front_to_center * std::sin(ego_theta)};
@@ -256,7 +253,7 @@ bool RuleBasedStopDecider::CheckADCStop(
     return false;
   }
 
-  const double adc_speed = injector_->vehicle_state()->linear_velocity();
+  const double adc_speed = reference_line_info.vehicle_state().linear_velocity();
   if (adc_speed > rule_based_stop_decider_config_.max_adc_stop_speed()) {
     ADEBUG << "ADC not stopped: speed[" << adc_speed << "]";
     return false;

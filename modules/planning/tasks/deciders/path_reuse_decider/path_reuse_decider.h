@@ -26,7 +26,6 @@
 
 #include "modules/planning/proto/planning_config.pb.h"
 
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/history.h"
 #include "modules/planning/common/indexed_list.h"
 #include "modules/planning/common/obstacle_blocking_analyzer.h"
@@ -57,6 +56,7 @@ class PathReuseDecider : public Decider {
           history_stop_positions);
 
   void GetADCSLPoint(const ReferenceLine& reference_line,
+                     const common::VehicleState& vehicle_state,
                      common::SLPoint* adc_position_sl);
 
   bool GetBlockingObstacleS(ReferenceLineInfo* const reference_line_info,

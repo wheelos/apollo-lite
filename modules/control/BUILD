@@ -19,10 +19,6 @@ cc_library(
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:preprocessor_cc_proto",
         "//modules/control/safety:safety_manager",
-        "//modules/control/submodules:lat_lon_controller_submodule_lib",
-        "//modules/control/submodules:mpc_controller_submodule_lib",
-        "//modules/control/submodules:postprocessor_submodule_lib",
-        "//modules/control/submodules:preprocessor_submodule_lib",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
@@ -74,7 +70,6 @@ install(
         ":pb_hdrs",
         ":testdata",
         "//modules/control/common:install",
-        "//modules/control/submodules:install",
         "//modules/control/tools:install",
     ],
 )

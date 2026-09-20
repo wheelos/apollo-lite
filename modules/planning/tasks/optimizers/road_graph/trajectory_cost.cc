@@ -25,7 +25,10 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/common/util/point_factory.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
+#include "modules/planning/common/vehicle_frenet_geometry.h"
 
 namespace apollo {
 namespace planning {
@@ -35,6 +38,7 @@ TrajectoryCost::TrajectoryCost(const DpPolyPathConfig &config,
                                const bool is_change_lane_path,
                                const std::vector<const Obstacle *> &obstacles,
                                const common::VehicleParam &vehicle_param,
+                               const PlanningGeometryAdapter &geometry_adapter,
                                const SpeedData &heuristic_speed_data,
                                const common::SLPoint &init_sl_point,
                                const SLBoundary &adc_sl_boundary)
@@ -42,6 +46,7 @@ TrajectoryCost::TrajectoryCost(const DpPolyPathConfig &config,
       reference_line_(&reference_line),
       is_change_lane_path_(is_change_lane_path),
       vehicle_param_(vehicle_param),
+      geometry_adapter_(geometry_adapter),
       heuristic_speed_data_(heuristic_speed_data),
       init_sl_point_(init_sl_point),
       adc_sl_boundary_(adc_sl_boundary) {
@@ -59,10 +64,11 @@ TrajectoryCost::TrajectoryCost(const DpPolyPathConfig &config,
     }
     const auto &sl_boundary = ptr_obstacle->PerceptionSLBoundary();
 
-    const double adc_left_l =
-        init_sl_point_.l() + vehicle_param_.left_edge_to_center();
-    const double adc_right_l =
-        init_sl_point_.l() - vehicle_param_.right_edge_to_center();
+    VehicleFrenetGeometry frenet_geometry(geometry_adapter_);
+    const auto l_range =
+        frenet_geometry.GetOccupancyLRange(init_sl_point_.l());
+    const double adc_right_l = l_range.first;
+    const double adc_left_l = l_range.second;
 
     if (adc_left_l + FLAGS_lateral_ignore_buffer < sl_boundary.start_l() ||
         adc_right_l - FLAGS_lateral_ignore_buffer > sl_boundary.end_l()) {
@@ -242,10 +248,13 @@ ComparableCost TrajectoryCost::GetCostFromObsSL(
     return obstacle_cost;
   }
 
-  const double adc_front_s = adc_s + vehicle_param.front_edge_to_center();
-  const double adc_end_s = adc_s - vehicle_param.back_edge_to_center();
-  const double adc_left_l = adc_l + vehicle_param.left_edge_to_center();
-  const double adc_right_l = adc_l - vehicle_param.right_edge_to_center();
+  VehicleFrenetGeometry frenet_geometry(geometry_adapter_);
+  const auto s_range = frenet_geometry.GetOccupancySRange(adc_s);
+  const double adc_end_s = s_range.first;
+  const double adc_front_s = s_range.second;
+  const auto l_range = frenet_geometry.GetOccupancyLRange(adc_l);
+  const double adc_right_l = l_range.first;
+  const double adc_left_l = l_range.second;
 
   if (adc_left_l + FLAGS_lateral_ignore_buffer < obs_sl_boundary.start_l() ||
       adc_right_l - FLAGS_lateral_ignore_buffer > obs_sl_boundary.end_l()) {

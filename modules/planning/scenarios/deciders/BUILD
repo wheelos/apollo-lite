@@ -98,8 +98,10 @@ cc_library(
         ":scenario_decider",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/util:point_factory",
+        "//modules/common/vehicle_state:vehicle_reference",
         "//modules/map/hdmap:hdmap_util",
         "//modules/planning/common:dependency_injector",
+        "//modules/planning/common:planning_geometry_adapter",
     ],
 )
 

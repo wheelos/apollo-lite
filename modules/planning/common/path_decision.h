@@ -63,7 +63,8 @@ class PathDecision {
   double stop_reference_line_s() const { return stop_reference_line_s_; }
   bool MergeWithMainStop(const ObjectStop &obj_stop, const std::string &obj_id,
                          const ReferenceLine &ref_line,
-                         const SLBoundary &adc_sl_boundary);
+                         const SLBoundary &adc_sl_boundary,
+                         const PlanningGeometryAdapter &geometry_adapter);
 
  private:
   IndexedList<std::string, Obstacle> obstacles_;

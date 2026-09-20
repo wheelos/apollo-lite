@@ -32,7 +32,6 @@
 
 #include "cyber/time/clock.h"
 #include "modules/common/util/util.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/planning/common/ego_info.h"
 #include "modules/planning/common/frame.h"
@@ -134,7 +133,7 @@ void Crosswalk::MakeDecisions(Frame* const frame,
     std::vector<std::string> pedestrians;
     for (const auto* obstacle : path_decision->obstacles().Items()) {
       const double stop_deceleration = util::GetADCStopDeceleration(
-          injector_->vehicle_state(), adc_front_edge_s,
+          frame->vehicle_state(), adc_front_edge_s,
           crosswalk_overlap->start_s);
 
       bool stop = CheckStopForObstacle(reference_line_info, crosswalk_ptr,

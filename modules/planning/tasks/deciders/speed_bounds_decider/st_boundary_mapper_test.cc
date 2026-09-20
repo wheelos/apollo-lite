@@ -21,6 +21,7 @@
 #include "cyber/common/log.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/planning/common/obstacle.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/reference_line/qp_spline_reference_line_smoother.h"
 #include "modules/planning/tasks/deciders/speed_bounds_decider/speed_limit_decider.h"
 
@@ -83,8 +84,12 @@ TEST_F(StBoundaryMapperTest, check_overlap_test) {
   SpeedBoundsDeciderConfig config;
   double planning_distance = 70.0;
   double planning_time = 10.0;
+  const common::VehicleGeometryModel geometry_model;
+  const PlanningGeometryAdapter geometry_adapter(
+      geometry_model, common::VehicleReferencePoint::REAR_AXLE_CENTER);
   STBoundaryMapper mapper(config, *reference_line_, path_data_,
-                          planning_distance, planning_time, injector_);
+                          planning_distance, planning_time, injector_,
+                          geometry_adapter);
   common::PathPoint path_point;
   path_point.set_x(1.0);
   path_point.set_y(1.0);

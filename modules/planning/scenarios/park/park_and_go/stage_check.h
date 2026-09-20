@@ -25,7 +25,6 @@
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/util/common.h"
@@ -57,7 +56,7 @@ class ParkAndGoStageCheck : public Stage {
 
  private:
   bool CheckObstacle(const ReferenceLineInfo& reference_line_info);
-  void ADCInitStatus();
+  void ADCInitStatus(const common::VehicleState& vehicle_state);
 
  private:
   ScenarioParkAndGoConfig scenario_config_;

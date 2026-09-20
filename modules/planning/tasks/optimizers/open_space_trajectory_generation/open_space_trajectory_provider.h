@@ -27,6 +27,7 @@
 #include "wheelos_msgs/planning_msgs/planning.pb.h"
 
 #include "modules/common/status/status.h"
+#include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
 #include "modules/planning/common/trajectory/discretized_trajectory.h"
 #include "modules/planning/tasks/optimizers/open_space_trajectory_generation/open_space_trajectory_optimizer.h"
 #include "modules/planning/tasks/optimizers/trajectory_optimizer.h"
@@ -85,11 +86,16 @@ class OpenSpaceTrajectoryProvider : public TrajectoryOptimizer {
 
   void ReuseLastFrameDebug(const Frame* last_frame);
 
+  void BindPlanningGeometry(const common::VehicleState& vehicle_state);
+
  private:
   bool thread_init_flag_ = false;
 
   std::unique_ptr<OpenSpaceTrajectoryOptimizer>
       open_space_trajectory_optimizer_;
+  bool planning_geometry_bound_ = false;
+  common::VehicleReferencePoint planning_reference_point_ =
+      common::VehicleReferencePoint::REAR_AXLE_CENTER;
 
   size_t optimizer_thread_counter = 0;
 

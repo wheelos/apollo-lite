@@ -21,7 +21,6 @@
 #include "modules/planning/tasks/optimizers/path_time_heuristic/path_time_heuristic_optimizer.h"
 
 #include "modules/common/configs/vehicle_config_helper.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/common/st_graph_data.h"
 #include "modules/planning/tasks/optimizers/path_time_heuristic/gridded_path_time_graph.h"

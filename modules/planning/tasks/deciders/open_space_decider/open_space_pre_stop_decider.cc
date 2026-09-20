@@ -25,7 +25,6 @@
 #include <string>
 #include <vector>
 
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/util/common.h"
@@ -36,6 +35,7 @@ namespace planning {
 
 using apollo::common::ErrorCode;
 using apollo::common::Status;
+using apollo::common::VehicleState;
 using apollo::common::VehicleState;
 using apollo::common::math::Vec2d;
 using apollo::hdmap::ParkingSpaceInfoConstPtr;

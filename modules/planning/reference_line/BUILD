@@ -154,7 +154,7 @@ cc_library(
         "//modules/common/configs:config_gflags",
         "//modules/common/configs:vehicle_config_helper",
         "//modules/common/util:util_tool",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/map/pnc_map",
         "//modules/planning/common:indexed_queue",
         "//modules/planning/common:planning_context",

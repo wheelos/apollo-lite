@@ -32,7 +32,11 @@ namespace planning {
 /**
  * @class planning
  *
- * @brief PlannerDispatcher module main class.
+ * @brief Initialization-time factory for the shell's supported planner.
+ *
+ * This class does not switch planners during a planning cycle. The shell
+ * selects and constructs one planner during Init(); runtime scenario changes
+ * are handled inside that planner.
  */
 class PlannerDispatcher {
  public:

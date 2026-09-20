@@ -25,7 +25,6 @@
 #include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 
 #include "cyber/time/clock.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/planning_context.h"
 
 namespace apollo {
@@ -81,8 +80,7 @@ bool Rerouting::ChangeLaneFailRerouting() {
   // 5. If the end of current passage region is further than kPrepareRoutingTime
   // * speed, no rerouting
   double adc_s = reference_line_info_->AdcSlBoundary().end_s();
-  const auto vehicle_state = injector_->vehicle_state();
-  double speed = vehicle_state->linear_velocity();
+  double speed = frame_->vehicle_state().linear_velocity();
   const double prepare_rerouting_time =
       config_.rerouting().prepare_rerouting_time();
   const double prepare_distance = speed * prepare_rerouting_time;

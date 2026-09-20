@@ -174,11 +174,12 @@ bool PathReuseDecider::IsIgnoredBlockingObstacle(
   static constexpr double kSDistBuffer = 30.0;  // meter
   static constexpr int kTimeBuffer = 3;         // second
   // vehicle speed
-  double adc_speed = injector_->vehicle_state()->linear_velocity();
+  double adc_speed = reference_line_info->vehicle_state().linear_velocity();
   double final_s_buffer = std::max(kSDistBuffer, kTimeBuffer * adc_speed);
   // current vehicle s position
   common::SLPoint adc_position_sl;
-  GetADCSLPoint(reference_line, &adc_position_sl);
+  GetADCSLPoint(reference_line, reference_line_info->vehicle_state(),
+                &adc_position_sl);
   // blocking obstacle start s
   double blocking_obstacle_start_s;
   if (GetBlockingObstacleS(reference_line_info, &blocking_obstacle_start_s) &&
@@ -215,9 +216,9 @@ bool PathReuseDecider::GetBlockingObstacleS(
 }
 
 void PathReuseDecider::GetADCSLPoint(const ReferenceLine& reference_line,
+                                     const common::VehicleState& vehicle_state,
                                      common::SLPoint* adc_position_sl) {
-  common::math::Vec2d adc_position = {injector_->vehicle_state()->x(),
-                                      injector_->vehicle_state()->y()};
+  common::math::Vec2d adc_position = {vehicle_state.x(), vehicle_state.y()};
   reference_line.XYToSL(adc_position, adc_position_sl);
 }
 
@@ -230,7 +231,8 @@ bool PathReuseDecider::IsCollisionFree(
   static constexpr double kPathBoundsDeciderResolution = 0.5;
   // current vehicle sl position
   common::SLPoint adc_position_sl;
-  GetADCSLPoint(reference_line, &adc_position_sl);
+  GetADCSLPoint(reference_line, reference_line_info->vehicle_state(),
+                &adc_position_sl);
 
   // current obstacles
   std::vector<Polygon2d> obstacle_polygons;
@@ -364,7 +366,7 @@ bool PathReuseDecider::TrimHistoryPath(
       history_frame->current_frame_planned_path();
   DiscretizedPath trimmed_path;
   common::SLPoint adc_position_sl;  // current vehicle sl position
-  GetADCSLPoint(reference_line, &adc_position_sl);
+  GetADCSLPoint(reference_line, frame->vehicle_state(), &adc_position_sl);
   ADEBUG << "adc_position_sl.s(): " << adc_position_sl.s();
 
   size_t path_start_index = 0;

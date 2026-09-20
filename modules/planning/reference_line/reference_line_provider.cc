@@ -30,8 +30,6 @@
 #include "cyber/time/clock.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
-#include "modules/common/util/point_factory.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/planning/common/planning_context.h"
@@ -45,7 +43,6 @@ namespace apollo {
 namespace planning {
 
 using apollo::common::VehicleConfigHelper;
-using apollo::common::VehicleState;
 using apollo::common::math::AngleDiff;
 using apollo::common::math::Vec2d;
 using apollo::cyber::Clock;
@@ -58,10 +55,9 @@ using apollo::hdmap::RouteSegments;
 ReferenceLineProvider::~ReferenceLineProvider() {}
 
 ReferenceLineProvider::ReferenceLineProvider(
-    const common::VehicleStateProvider *vehicle_state_provider,
     const hdmap::HDMap *base_map,
     const std::shared_ptr<relative_map::MapMsg> &relative_map)
-    : vehicle_state_provider_(vehicle_state_provider) {
+{
   if (!FLAGS_use_navigation_mode) {
     pnc_map_ = std::make_unique<hdmap::PncMap>(base_map);
     relative_map_ = nullptr;
@@ -107,7 +103,7 @@ ReferenceLineProvider::FutureRouteWaypoints() {
 }
 
 void ReferenceLineProvider::UpdateVehicleState(
-    const VehicleState &vehicle_state) {
+    const common::VehicleState &vehicle_state) {
   std::lock_guard<std::mutex> lock(vehicle_state_mutex_);
   vehicle_state_ = vehicle_state;
 }
@@ -309,11 +305,15 @@ bool ReferenceLineProvider::GetReferenceLinesFromRelativeMap(
     AERROR << "navigation path ids is empty";
     return false;
   }
-  // get current adc lane info by vehicle state
-  common::VehicleState vehicle_state = vehicle_state_provider_->vehicle_state();
+  // Get current ADC lane info from the canonical planning VehicleState.
+  common::VehicleState vehicle_state;
+  {
+    std::lock_guard<std::mutex> lock(vehicle_state_mutex_);
+    vehicle_state = vehicle_state_;
+  }
   hdmap::LaneWaypoint adc_lane_way_point;
-  if (!GetNearestWayPointFromNavigationPath(vehicle_state, navigation_lane_ids,
-                                            &adc_lane_way_point)) {
+  if (!GetNearestWayPointFromNavigationPath(
+          vehicle_state, navigation_lane_ids, &adc_lane_way_point)) {
     return false;
   }
   const std::string adc_lane_id = adc_lane_way_point.lane->id().id();
@@ -458,9 +458,12 @@ bool ReferenceLineProvider::GetNearestWayPointFromNavigationPath(
   const double kMaxDistance = 10.0;
   waypoint->lane = nullptr;
   std::vector<hdmap::LaneInfoConstPtr> lanes;
-  auto point = common::util::PointFactory::ToPointENU(state);
+  common::PointENU point;
+  point.set_x(state.x());
+  point.set_y(state.y());
+  point.set_z(state.z());
   if (std::isnan(point.x()) || std::isnan(point.y())) {
-    AERROR << "vehicle state is invalid";
+    AERROR << "reference state is invalid";
     return false;
   }
   auto *hdmap = HDMapUtil::BaseMapPtr();
@@ -589,7 +592,8 @@ bool ReferenceLineProvider::CreateReferenceLine(
         iter = segments->erase(iter);
       } else {
         common::SLPoint sl;
-        if (!reference_lines->back().XYToSL(vehicle_state, &sl)) {
+        common::math::Vec2d vehicle_xy(vehicle_state.x(), vehicle_state.y());
+        if (!reference_lines->back().XYToSL(vehicle_xy, &sl)) {
           AWARN << "Failed to project point: {" << vehicle_state.x() << ","
                 << vehicle_state.y() << "} to stitched reference line";
         }
@@ -621,7 +625,8 @@ bool ReferenceLineProvider::CreateReferenceLine(
   return true;
 }
 
-bool ReferenceLineProvider::ExtendReferenceLine(const VehicleState &state,
+bool ReferenceLineProvider::ExtendReferenceLine(
+    const common::VehicleState &state,
                                                 RouteSegments *segments,
                                                 ReferenceLine *reference_line) {
   RouteSegments segment_properties;

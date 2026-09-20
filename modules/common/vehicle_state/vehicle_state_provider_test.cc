@@ -16,19 +16,15 @@
 
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 
-#include <cstdlib>
-#include <string>
+#include <cmath>
 
 #include "gtest/gtest.h"
-
-#include "Eigen/Core"
 
 #include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
 
-#include "cyber/common/file.h"
-#include "cyber/common/log.h"
 #include "modules/common/configs/config_gflags.h"
+#include "modules/common/vehicle_state/vehicle_description.h"
 
 namespace apollo {
 namespace common {
@@ -37,30 +33,29 @@ namespace vehicle_state_provider {
 using apollo::canbus::Chassis;
 using apollo::localization::LocalizationEstimate;
 
-namespace {
-
-std::string RunfilePath(const std::string& relative_path) {
-  const char* test_srcdir = std::getenv("TEST_SRCDIR");
-  const char* test_workspace = std::getenv("TEST_WORKSPACE");
-  if (test_srcdir != nullptr && test_workspace != nullptr) {
-    return std::string(test_srcdir) + "/" + test_workspace + "/" +
-           relative_path;
-  }
-  return relative_path;
-}
-
-}  // namespace
-
 class VehicleStateProviderTest : public ::testing::Test {
  public:
-  virtual void SetUp() {
-    std::string localization_file =
-        RunfilePath(
-            "modules/common/vehicle_state/testdata/3_localization_result_1.pb.txt");
-    ACHECK(cyber::common::GetProtoFromFile(localization_file, &localization_));
+  void SetUp() override {
+    auto* header = localization_.mutable_header();
+    header->set_timestamp_sec(1173545122.22);
+    auto* pose = localization_.mutable_pose();
+    pose->mutable_position()->set_x(357.51331791372041);
+    pose->mutable_position()->set_y(96.165912376788725);
+    pose->mutable_position()->set_z(-31.983237908221781);
+    pose->mutable_orientation()->set_qx(0.024015498296453403);
+    pose->mutable_orientation()->set_qy(0.0021656820647661572);
+    pose->mutable_orientation()->set_qz(-0.99072964388722151);
+    pose->mutable_orientation()->set_qw(-0.13369120534226134);
+    pose->mutable_linear_acceleration()->set_y(-0.079383290718229638);
+    pose->mutable_linear_velocity()->set_x(-1.5626866011382312);
+    pose->mutable_linear_velocity()->set_y(-5.9852188341040344);
+    pose->mutable_angular_velocity()->set_z(-0.0079623083093763921);
+    pose->set_heading(-1.8388082455104939);
     chassis_.set_speed_mps(3.0);
     chassis_.set_gear_location(canbus::Chassis::GEAR_DRIVE);
     FLAGS_enable_map_reference_unify = false;
+    FLAGS_vehicle_state_reference_point = REAR_AXLE_CENTER;
+    FLAGS_vehicle_state_localization_reference_point = REAR_AXLE_CENTER;
   }
 
  protected:
@@ -69,32 +64,84 @@ class VehicleStateProviderTest : public ::testing::Test {
 };
 
 TEST_F(VehicleStateProviderTest, Accessors) {
-  auto vehicle_state_provider = std::make_shared<VehicleStateProvider>();
-  vehicle_state_provider->Update(localization_, chassis_);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->x(), 357.51331791372041);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->y(), 96.165912376788725);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->heading(), -1.8388082455104939);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->roll(), 0.047026695713820919);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->pitch(), -0.010712737572581465);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->yaw(), 2.8735807348741953);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->linear_velocity(), 3.0);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->angular_velocity(),
-                   -0.0079623083093763921);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->linear_acceleration(),
-                   -0.079383290718229638);
-  EXPECT_DOUBLE_EQ(vehicle_state_provider->gear(), canbus::Chassis::GEAR_DRIVE);
+  VehicleStateProvider vehicle_state_provider;
+  EXPECT_FALSE(vehicle_state_provider.HasValidState());
+  ASSERT_TRUE(vehicle_state_provider.Update(localization_, chassis_).ok());
+  EXPECT_TRUE(vehicle_state_provider.HasValidState());
+  const auto& state = vehicle_state_provider.state();
+  EXPECT_DOUBLE_EQ(state.x(), 357.51331791372041);
+  EXPECT_DOUBLE_EQ(state.y(), 96.165912376788725);
+  EXPECT_DOUBLE_EQ(state.heading(), -1.8388082455104939);
+  EXPECT_DOUBLE_EQ(state.roll(), 0.047026695713820919);
+  EXPECT_DOUBLE_EQ(state.pitch(), -0.010712737572581465);
+  EXPECT_DOUBLE_EQ(state.yaw(), 2.8735807348741953);
+  EXPECT_DOUBLE_EQ(state.linear_velocity(), 3.0);
+  EXPECT_NEAR(state.lateral_velocity(), 0.0780773, 1e-6);
+  EXPECT_DOUBLE_EQ(state.angular_velocity(), -0.0079623083093763921);
+  EXPECT_DOUBLE_EQ(state.linear_acceleration(), -0.079383290718229638);
+  EXPECT_EQ(state.gear(), canbus::Chassis::GEAR_DRIVE);
 }
 
-TEST_F(VehicleStateProviderTest, EstimateFuturePosition) {
-  auto vehicle_state_provider = std::make_shared<VehicleStateProvider>();
-  vehicle_state_provider->Update(localization_, chassis_);
-  common::math::Vec2d future_position =
-      vehicle_state_provider->EstimateFuturePosition(1.0);
-  EXPECT_NEAR(future_position.x(), 356.707, 1e-3);
-  EXPECT_NEAR(future_position.y(), 93.276, 1e-3);
-  future_position = vehicle_state_provider->EstimateFuturePosition(2.0);
-  EXPECT_NEAR(future_position.x(), 355.879, 1e-3);
-  EXPECT_NEAR(future_position.y(), 90.393, 1e-3);
+TEST_F(VehicleStateProviderTest, FailedUpdateDoesNotInvalidateCommittedState) {
+  VehicleStateProvider vehicle_state_provider;
+  ASSERT_TRUE(vehicle_state_provider.Update(localization_, chassis_).ok());
+  const VehicleState committed_state = vehicle_state_provider.state();
+
+  LocalizationEstimate invalid_localization;
+  EXPECT_FALSE(
+      vehicle_state_provider.Update(invalid_localization, chassis_).ok());
+  EXPECT_TRUE(vehicle_state_provider.HasValidState());
+  EXPECT_EQ(vehicle_state_provider.state().SerializeAsString(),
+            committed_state.SerializeAsString());
+}
+
+TEST_F(VehicleStateProviderTest, LowGearIsForward) {
+  chassis_.set_gear_location(canbus::Chassis::GEAR_LOW);
+  VehicleStateProvider vehicle_state_provider;
+
+  ASSERT_TRUE(vehicle_state_provider.Update(localization_, chassis_).ok());
+  EXPECT_EQ(vehicle_state_provider.state().travel_direction(),
+            TRAVEL_DIRECTION_FORWARD);
+}
+
+TEST_F(VehicleStateProviderTest, StateContainsAlignedOperatingFields) {
+  VehicleStateProvider vehicle_state_provider;
+  ASSERT_TRUE(vehicle_state_provider.Update(localization_, chassis_).ok());
+
+  const auto& state = vehicle_state_provider.state();
+  EXPECT_DOUBLE_EQ(state.timestamp(), localization_.header().timestamp_sec());
+  EXPECT_EQ(state.gear(), canbus::Chassis::GEAR_DRIVE);
+  EXPECT_EQ(state.travel_direction(), TRAVEL_DIRECTION_FORWARD);
+}
+
+TEST_F(VehicleStateProviderTest,
+       ConvertsLocalizationReferencePointToConfiguredOutputPoint) {
+  const int original_output_reference_point =
+      FLAGS_vehicle_state_reference_point;
+  const int original_localization_reference_point =
+      FLAGS_vehicle_state_localization_reference_point;
+  FLAGS_vehicle_state_reference_point = FRONT_AXLE_CENTER;
+  FLAGS_vehicle_state_localization_reference_point = REAR_AXLE_CENTER;
+
+  VehicleStateProvider vehicle_state_provider;
+  ASSERT_TRUE(vehicle_state_provider.Update(localization_, chassis_).ok());
+
+  const auto& state = vehicle_state_provider.state();
+  const double wheel_base = VehicleDescription().wheel_base();
+  EXPECT_EQ(state.reference_point(), FRONT_AXLE_CENTER);
+  const double heading = localization_.pose().heading();
+  EXPECT_NEAR(state.x(), localization_.pose().position().x() +
+                             wheel_base * std::cos(heading),
+              1e-6);
+  EXPECT_NEAR(state.y(), localization_.pose().position().y() +
+                             wheel_base * std::sin(heading),
+              1e-6);
+  EXPECT_NEAR(state.pose().position().x(), state.x(), 1e-6);
+  EXPECT_NEAR(state.pose().position().y(), state.y(), 1e-6);
+
+  FLAGS_vehicle_state_reference_point = original_output_reference_point;
+  FLAGS_vehicle_state_localization_reference_point =
+      original_localization_reference_point;
 }
 
 }  // namespace vehicle_state_provider

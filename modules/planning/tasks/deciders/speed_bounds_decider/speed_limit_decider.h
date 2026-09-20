@@ -27,8 +27,10 @@
 #include "modules/planning/proto/task_config.pb.h"
 
 #include "modules/common/status/status.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/obstacle.h"
 #include "modules/planning/common/path/path_data.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/common/speed_limit.h"
 #include "modules/planning/reference_line/reference_line.h"
 
@@ -39,7 +41,8 @@ class SpeedLimitDecider {
  public:
   SpeedLimitDecider(const SpeedBoundsDeciderConfig& config,
                     const ReferenceLine& reference_line,
-                    const PathData& path_data);
+                    const PathData& path_data,
+                    const PlanningGeometryAdapter& geometry_adapter);
 
   virtual ~SpeedLimitDecider() = default;
 
@@ -59,6 +62,7 @@ class SpeedLimitDecider {
   const ReferenceLine& reference_line_;
   const PathData& path_data_;
   const apollo::common::VehicleParam& vehicle_param_;
+  const PlanningGeometryAdapter geometry_adapter_;
 };
 
 }  // namespace planning

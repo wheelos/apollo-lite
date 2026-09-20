@@ -5,6 +5,53 @@ package apollo.common;
 import "wheelos_msgs/chassis_msgs/chassis.proto";
 import "wheelos_msgs/localization_msgs/pose.proto";
 
+// Longitudinal points on the vehicle body to which VehicleState.x/y and its
+// kinematic fields refer. These are semantic state coordinates, not sensor
+// frame names.
+enum VehicleReferencePoint {
+  REAR_AXLE_CENTER = 0;
+  FRONT_AXLE_CENTER = 1;
+  CENTER_OF_MASS = 2;
+}
+
+enum TravelDirection {
+  TRAVEL_DIRECTION_UNKNOWN = 0;
+  TRAVEL_DIRECTION_FORWARD = 1;
+  TRAVEL_DIRECTION_REVERSE = 2;
+}
+
+// System-level semantic vehicle state. VehicleStateProvider is the single
+// owner of reference-point normalization: consumers must interpret position,
+// heading, and kinematic fields at reference_point and must not silently
+// convert them to another default point.
+//
+// Position, heading, longitudinal
+// velocity, longitudinal acceleration, angular velocity, and curvature
+// describe reference_point. linear_velocity is the signed vehicle-frame
+// longitudinal component, not the magnitude of the reference point's planar
+// velocity. lateral_velocity is the signed vehicle-frame lateral component at
+// reference_point. The optional pose is retained as source/consumer metadata and,
+// when present, should be kept consistent with x, y, and heading by
+// state-producing code.
+message VehicleMotionState {
+  optional double x = 1 [default = 0.0];
+  optional double y = 2 [default = 0.0];
+  optional double z = 3 [default = 0.0];
+  optional double timestamp = 4 [default = 0.0];
+  optional double roll = 5 [default = 0.0];
+  optional double pitch = 6 [default = 0.0];
+  optional double yaw = 7 [default = 0.0];
+  optional double heading = 8 [default = 0.0];
+  optional double kappa = 9 [default = 0.0];
+  optional double linear_velocity = 10 [default = 0.0];
+  optional double angular_velocity = 11 [default = 0.0];
+  optional double linear_acceleration = 12 [default = 0.0];
+  optional apollo.localization.Pose pose = 13;
+  optional VehicleReferencePoint reference_point = 14
+      [default = REAR_AXLE_CENTER];
+  optional double lateral_velocity = 15 [default = 0.0];
+}
+
 message VehicleState {
   optional double x = 1 [default = 0.0];
   optional double y = 2 [default = 0.0];
@@ -22,4 +69,18 @@ message VehicleState {
   optional apollo.canbus.Chassis.DrivingMode driving_mode = 14;
   optional apollo.localization.Pose pose = 15;
   optional double steering_percentage = 16;
+  optional VehicleReferencePoint reference_point = 17
+      [default = REAR_AXLE_CENTER];
+  optional TravelDirection travel_direction = 18
+      [default = TRAVEL_DIRECTION_UNKNOWN];
+  optional double lateral_velocity = 19 [default = 0.0];
+}
+
+message VehicleOperatingState {
+  optional double timestamp = 1 [default = 0.0];
+  optional apollo.canbus.Chassis.GearPosition gear = 2;
+  optional apollo.canbus.Chassis.DrivingMode driving_mode = 3;
+  optional TravelDirection travel_direction = 4
+      [default = TRAVEL_DIRECTION_UNKNOWN];
+  optional double steering_percentage = 5;
 }

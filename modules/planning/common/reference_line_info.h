@@ -29,6 +29,10 @@
 #include <vector>
 
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
+#include "cyber/common/log.h"
+#include "modules/planning/common/vehicle_frenet_geometry.h"
 #include "wheelos_msgs/basic_msgs/drive_state.pb.h"
 #include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
 #include "wheelos_msgs/planning_msgs/planning.pb.h"
@@ -56,19 +60,26 @@ namespace planning {
 class ReferenceLineInfo {
  public:
   enum class LaneType { LeftForward, LeftReverse, RightForward, RightReverse };
-  ReferenceLineInfo() = default;
+  ReferenceLineInfo()
+      : planning_reference_point_(common::VehicleReferencePoint::REAR_AXLE_CENTER),
+        has_planning_reference_point_(false) {}
 
   ReferenceLineInfo(const common::VehicleState& vehicle_state,
                     const common::TrajectoryPoint& adc_planning_point,
                     const ReferenceLine& reference_line,
-                    const hdmap::RouteSegments& segments);
+                    const hdmap::RouteSegments& segments,
+                    const common::VehicleGeometryModel& vehicle_geometry_model);
 
   bool Init(const std::vector<const Obstacle*>& obstacles);
 
   bool AddObstacles(const std::vector<const Obstacle*>& obstacles);
   Obstacle* AddObstacle(const Obstacle* obstacle);
 
-  const common::VehicleState& vehicle_state() const { return vehicle_state_; }
+  // This is the read-only Planning-cycle state supplied by Frame. It must not
+  // be refreshed from VehicleStateProvider or transformed at this boundary.
+  const common::VehicleState& vehicle_state() const {
+    return vehicle_state_;
+  }
 
   PathDecision* path_decision();
   const PathDecision& path_decision() const;
@@ -137,6 +148,32 @@ class ReferenceLineInfo {
       DiscretizedTrajectory* adjusted_trajectory);
 
   const SLBoundary& AdcSlBoundary() const;
+  const common::VehicleGeometryModel& vehicle_geometry_model() const {
+    return vehicle_geometry_model_;
+  }
+  // Binds vehicle_geometry_model() to this reference line's planning
+  // reference point (vehicle_state_.reference_point()). This is the
+  // planning-side facade for interpreting PathPoint/TrajectoryPoint; it is
+  // the only correct source of the reference point used to build footprints
+  // from this reference line's trajectory, since it is the reference point
+  // that generated adc_planning_point_ and every path/speed data derived
+  // from it.
+  PlanningGeometryAdapter planning_geometry_adapter() const {
+    CHECK(has_planning_reference_point_);
+    return PlanningGeometryAdapter(vehicle_geometry_model_,
+                                   planning_reference_point_);
+  }
+  VehicleFrenetGeometry vehicle_frenet_geometry() const {
+    return VehicleFrenetGeometry(planning_geometry_adapter());
+  }
+  common::math::Box2d GetAdcBox() const {
+    return planning_geometry_adapter().BuildBox(adc_planning_point_.path_point());
+  }
+  common::math::Box2d GetVehicleBox() const {
+    common::math::Box2d box;
+    CHECK(vehicle_geometry_model_.BuildBox(vehicle_state_, &box).ok());
+    return box;
+  }
   std::string PathSpeedDebugString() const;
 
   /**
@@ -278,8 +315,11 @@ class ReferenceLineInfo {
  private:
   static std::unordered_map<std::string, bool> junction_right_of_way_map_;
   const common::VehicleState vehicle_state_;
+  const common::VehicleReferencePoint planning_reference_point_;
+  const bool has_planning_reference_point_;
   const common::TrajectoryPoint adc_planning_point_;
   ReferenceLine reference_line_;
+  common::VehicleGeometryModel vehicle_geometry_model_;
 
   /**
    * @brief this is the number that measures the goodness of this reference

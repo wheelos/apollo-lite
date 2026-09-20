@@ -16,6 +16,10 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+
+#include "modules/common/vehicle_model/vehicle_model.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/ego_info.h"
 #include "modules/planning/common/frame.h"
@@ -35,8 +39,18 @@ class DependencyInjector {
   FrameHistory* frame_history() { return &frame_history_; }
   History* history() { return &history_; }
   EgoInfo* ego_info() { return &ego_info_; }
-  apollo::common::VehicleStateProvider* vehicle_state() {
+  apollo::common::VehicleStateProvider* vehicle_state_provider() {
     return &vehicle_state_;
+  }
+  const apollo::common::VehicleState& vehicle_state() const {
+    return vehicle_state_.state();
+  }
+  apollo::common::Status InitVehicleModel(const std::string& config_file) {
+    return apollo::common::VehicleModel::CreateFromFile(config_file,
+                                                         &vehicle_model_);
+  }
+  const apollo::common::VehicleModel& vehicle_model() const {
+    return *vehicle_model_;
   }
   LearningBasedData* learning_based_data() { return &learning_based_data_; }
 
@@ -46,6 +60,7 @@ class DependencyInjector {
   History history_;
   EgoInfo ego_info_;
   apollo::common::VehicleStateProvider vehicle_state_;
+  std::unique_ptr<apollo::common::VehicleModel> vehicle_model_;
   LearningBasedData learning_based_data_;
 };
 

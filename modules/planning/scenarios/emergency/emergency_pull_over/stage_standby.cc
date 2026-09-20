@@ -68,7 +68,7 @@ Stage::StageStatus EmergencyPullOverStageStandby::Process(
     const double stop_distance = scenario_config_.stop_distance();
     double stop_line_s =
         pull_over_sl.s() + stop_distance +
-        VehicleConfigHelper::GetConfig().vehicle_param().front_edge_to_center();
+        reference_line_info.planning_geometry_adapter().FrontEdgeDistance();
     const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
     double distance = stop_line_s - adc_front_edge_s;
     if (distance <= 0.0) {

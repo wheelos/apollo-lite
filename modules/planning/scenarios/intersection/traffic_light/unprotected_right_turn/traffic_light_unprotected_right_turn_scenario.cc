@@ -26,7 +26,6 @@
 
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/scenarios/intersection/traffic_light/unprotected_right_turn/stage_creep.h"

@@ -142,12 +142,10 @@ void TrafficDecider::BuildPlanningTarget(
     }
   }
   if (min_s != std::numeric_limits<double>::infinity()) {
-    const auto &vehicle_config =
-        common::VehicleConfigHelper::Instance()->GetConfig();
-    double front_edge_to_center =
-        vehicle_config.vehicle_param().front_edge_to_center();
-    stop_point.set_s(min_s - front_edge_to_center +
-                     FLAGS_virtual_stop_wall_length / 2.0);
+    const double stop_s =
+        reference_line_info->vehicle_frenet_geometry().ComputeStopReferenceS(
+            min_s + FLAGS_virtual_stop_wall_length / 2.0);
+    stop_point.set_s(stop_s);
     reference_line_info->SetLatticeStopPoint(stop_point);
   }
 }

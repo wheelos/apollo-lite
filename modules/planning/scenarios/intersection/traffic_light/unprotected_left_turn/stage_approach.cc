@@ -25,7 +25,6 @@
 
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/speed_profile_generator.h"
@@ -112,7 +111,8 @@ Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::Process(
   }
 
   if (traffic_light_all_done) {
-    return FinishStage(frame);
+    return FinishStage(frame->vehicle_state().linear_velocity(),
+                       &frame->mutable_reference_line_info()->front());
   }
 
   return Stage::RUNNING;
@@ -120,8 +120,18 @@ Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::Process(
 
 Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::FinishStage(
     Frame* frame) {
+  ReferenceLineInfo* reference_line_info =
+      (frame != nullptr && !frame->mutable_reference_line_info()->empty())
+          ? &frame->mutable_reference_line_info()->front()
+          : nullptr;
+  const double adc_speed =
+      frame != nullptr ? frame->vehicle_state().linear_velocity() : 0.0;
+  return FinishStage(adc_speed, reference_line_info);
+}
+
+Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::FinishStage(
+    const double adc_speed, ReferenceLineInfo* reference_line_info) {
   // check speed at stop_stage
-  const double adc_speed = injector_->vehicle_state()->linear_velocity();
   if (adc_speed > scenario_config_.max_adc_speed_before_creep()) {
     // skip creep
     next_stage_ =
@@ -147,8 +157,9 @@ Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::FinishStage(
   }
 
   // reset cruise_speed
-  auto& reference_line_info = frame->mutable_reference_line_info()->front();
-  reference_line_info.SetCruiseSpeed(FLAGS_default_cruise_speed);
+  if (reference_line_info != nullptr) {
+    reference_line_info->SetCruiseSpeed(FLAGS_default_cruise_speed);
+  }
 
   return Stage::FINISHED;
 }

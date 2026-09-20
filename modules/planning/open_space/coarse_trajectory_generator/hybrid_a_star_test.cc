@@ -85,8 +85,11 @@ class HybridATest : public ::testing::Test {
         << "Failed to load open space config file "
         << FLAGS_planner_open_space_config_filename;
 
+    const common::VehicleGeometryModel vehicle_geometry_model;
+    const PlanningGeometryAdapter geometry_adapter(
+        vehicle_geometry_model, common::VehicleReferencePoint::REAR_AXLE_CENTER);
     hybrid_test = std::unique_ptr<HybridAStar>(
-        new HybridAStar(planner_open_space_config_));
+        new HybridAStar(planner_open_space_config_, geometry_adapter));
   }
 
  protected:

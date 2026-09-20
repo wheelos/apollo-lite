@@ -23,6 +23,7 @@
 #include "modules/open_space_planning/common/status.h"
 #include "modules/open_space_planning/common/types.h"
 #include "modules/open_space_planning/route/route_planner.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/open_space/coarse_trajectory_generator/hybrid_a_star.h"
 
 namespace apollo {
@@ -47,6 +48,8 @@ class HybridAStarRoutePlanner : public RoutePlanner {
 
  private:
   planning::PlannerOpenSpaceConfig config_;
+  common::VehicleGeometryModel vehicle_geometry_model_;
+  planning::PlanningGeometryAdapter geometry_adapter_;
   std::unique_ptr<planning::HybridAStar> hybrid_a_star_;
 };
 

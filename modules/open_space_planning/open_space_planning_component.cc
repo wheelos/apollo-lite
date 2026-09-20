@@ -132,21 +132,21 @@ bool OpenSpacePlanningComponent::BuildProblem(
     AERROR << "failed to construct vehicle state";
     return false;
   }
+  const auto& vehicle_state = vehicle_state_provider.state();
 
   problem->grid_map = std::move(grid);
   problem->start.pose =
-      ToPose(vehicle_state_provider.x(), vehicle_state_provider.y(),
-             vehicle_state_provider.heading());
+      ToPose(vehicle_state.x(), vehicle_state.y(), vehicle_state.heading());
   problem->start.longitudinal_velocity =
-      vehicle_state_provider.linear_velocity();
+      vehicle_state.linear_velocity();
   problem->start.longitudinal_acceleration =
-      vehicle_state_provider.linear_acceleration();
-  problem->start.steering_angle = vehicle_state_provider.steering_percentage();
+      vehicle_state.linear_acceleration();
+  problem->start.steering_angle = vehicle_state.steering_percentage();
   problem->start.gear =
-      vehicle_state_provider.gear() == canbus::Chassis::GEAR_REVERSE
+      vehicle_state.gear() == canbus::Chassis::GEAR_REVERSE
           ? Gear::kReverse
           : Gear::kDrive;
-  problem->start.timestamp_sec = vehicle_state_provider.timestamp();
+  problem->start.timestamp_sec = vehicle_state.timestamp();
   problem->vehicle.wheel_base = vehicle_model_.wheel_base();
   problem->vehicle.front_edge_to_center = vehicle_model_.front_edge_to_center();
   problem->vehicle.back_edge_to_center = vehicle_model_.back_edge_to_center();
@@ -167,7 +167,7 @@ bool OpenSpacePlanningComponent::BuildProblem(
   problem->goal.allow_reverse = true;
   problem->planning_timestamp_sec = prediction.has_header()
                                         ? prediction.header().timestamp_sec()
-                                        : vehicle_state_provider.timestamp();
+                                        : vehicle_state.timestamp();
 
   for (const auto& obstacle : prediction.prediction_obstacle()) {
     if (!obstacle.has_perception_obstacle()) {

@@ -661,24 +661,13 @@ void PathAssessmentDecider::SetPathPointType(
 
   // Go through every path_point, and add in-lane/out-of-lane info.
   const auto& discrete_path = path_data.discretized_path();
-  const auto& vehicle_config =
-      common::VehicleConfigHelper::Instance()->GetConfig();
-  const double ego_length = vehicle_config.vehicle_param().length();
-  const double ego_width = vehicle_config.vehicle_param().width();
-  const double ego_back_to_center =
-      vehicle_config.vehicle_param().back_edge_to_center();
-  const double ego_center_shift_distance =
-      ego_length / 2.0 - ego_back_to_center;
 
   bool is_prev_point_out_lane = false;
   for (size_t i = 0; i < discrete_path.size(); ++i) {
     const auto& rear_center_path_point = discrete_path[i];
-    const double ego_theta = rear_center_path_point.theta();
-    Box2d ego_box({rear_center_path_point.x(), rear_center_path_point.y()},
-                  ego_theta, ego_length, ego_width);
-    Vec2d shift_vec{ego_center_shift_distance * std::cos(ego_theta),
-                    ego_center_shift_distance * std::sin(ego_theta)};
-    ego_box.Shift(shift_vec);
+    const Box2d ego_box =
+        reference_line_info.planning_geometry_adapter().BuildBox(
+            rear_center_path_point);
     SLBoundary ego_sl_boundary;
     if (!reference_line_info.reference_line().GetSLBoundary(ego_box,
                                                             &ego_sl_boundary)) {

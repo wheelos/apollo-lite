@@ -19,6 +19,7 @@
  */
 
 #include "cyber/common/file.h"
+#include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/open_space/coarse_trajectory_generator/hybrid_a_star.h"
 
 namespace apollo {
@@ -77,12 +78,15 @@ class HybridAResultContainer {
 extern "C" {
 HybridAStar* CreatePlannerPtr() {
   apollo::planning::PlannerOpenSpaceConfig planner_open_space_config_;
+  const apollo::common::VehicleGeometryModel vehicle_geometry_model;
+  const apollo::planning::PlanningGeometryAdapter geometry_adapter(
+      vehicle_geometry_model, apollo::common::VehicleReferencePoint::REAR_AXLE_CENTER);
 
   ACHECK(apollo::cyber::common::GetProtoFromFile(
       FLAGS_planner_open_space_config_filename, &planner_open_space_config_))
       << "Failed to load open space config file "
       << FLAGS_planner_open_space_config_filename;
-  return new HybridAStar(planner_open_space_config_);
+  return new HybridAStar(planner_open_space_config_, geometry_adapter);
 }
 HybridAObstacleContainer* CreateObstaclesPtr() {
   return new HybridAObstacleContainer();

@@ -30,8 +30,6 @@
 #include "cyber/time/clock.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/vec2d.h"
-#include "modules/common/util/point_factory.h"
-#include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
 #include "modules/map/pnc_map/pnc_map.h"
@@ -68,6 +66,8 @@ Frame::Frame(uint32_t sequence_num, const LocalView &local_view,
       local_view_(local_view),
       planning_start_point_(planning_start_point),
       vehicle_state_(vehicle_state),
+      planning_reference_point_(vehicle_state.reference_point()),
+      has_planning_reference_point_(true),
       reference_line_provider_(reference_line_provider),
       monitor_logger_buffer_(common::monitor::MonitorMessageItem::PLANNING) {}
 
@@ -79,10 +79,6 @@ Frame::Frame(uint32_t sequence_num, const LocalView &local_view,
 
 const common::TrajectoryPoint &Frame::PlanningStartPoint() const {
   return planning_start_point_;
-}
-
-const common::VehicleState &Frame::vehicle_state() const {
-  return vehicle_state_;
 }
 
 bool Frame::Rerouting(PlanningContext *planning_context) {
@@ -101,7 +97,10 @@ bool Frame::Rerouting(PlanningContext *planning_context) {
   auto request = local_view_.routing->routing_request();
   request.clear_header();
 
-  auto point = common::util::PointFactory::ToPointENU(vehicle_state_);
+  common::PointENU point;
+  point.set_x(vehicle_state_.x());
+  point.set_y(vehicle_state_.y());
+  point.set_z(vehicle_state_.z());
   double s = 0.0;
   double l = 0.0;
   hdmap::LaneInfoConstPtr lane;
@@ -160,7 +159,8 @@ void Frame::UpdateReferenceLinePriority(
 
 bool Frame::CreateReferenceLineInfo(
     const std::list<ReferenceLine> &reference_lines,
-    const std::list<hdmap::RouteSegments> &segments) {
+    const std::list<hdmap::RouteSegments> &segments,
+    const common::VehicleGeometryModel &vehicle_geometry_model) {
   reference_line_info_.clear();
   auto ref_line_iter = reference_lines.begin();
   auto segments_iter = segments.begin();
@@ -169,7 +169,8 @@ bool Frame::CreateReferenceLineInfo(
       is_near_destination_ = true;
     }
     reference_line_info_.emplace_back(vehicle_state_, planning_start_point_,
-                                      *ref_line_iter, *segments_iter);
+                                      *ref_line_iter, *segments_iter,
+                                      vehicle_geometry_model);
     ++ref_line_iter;
     ++segments_iter;
   }
@@ -321,18 +322,19 @@ const Obstacle *Frame::CreateStaticVirtualObstacle(const std::string &id,
 }
 
 Status Frame::Init(
-    const common::VehicleStateProvider *vehicle_state_provider,
+    const common::VehicleState &vehicle_state,
     const std::list<ReferenceLine> &reference_lines,
     const std::list<hdmap::RouteSegments> &segments,
     const std::vector<routing::LaneWaypoint> &future_route_waypoints,
     const EgoInfo *ego_info) {
   // TODO(QiL): refactor this to avoid redundant nullptr checks in scenarios.
-  auto status = InitFrameData(vehicle_state_provider, ego_info);
+  auto status = InitFrameData(vehicle_state, ego_info);
   if (!status.ok()) {
     AERROR << "failed to init frame:" << status.ToString();
     return status;
   }
-  if (!CreateReferenceLineInfo(reference_lines, segments)) {
+  if (!CreateReferenceLineInfo(reference_lines, segments,
+                               ego_info->vehicle_geometry_model())) {
     const std::string msg = "Failed to init reference line info.";
     AERROR << msg;
     return Status(ErrorCode::PLANNING_ERROR, msg);
@@ -342,17 +344,18 @@ Status Frame::Init(
 }
 
 Status Frame::InitForOpenSpace(
-    const common::VehicleStateProvider *vehicle_state_provider,
+    const common::VehicleState &vehicle_state,
     const EgoInfo *ego_info) {
-  return InitFrameData(vehicle_state_provider, ego_info);
+  return InitFrameData(vehicle_state, ego_info);
 }
 
 Status Frame::InitFrameData(
-    const common::VehicleStateProvider *vehicle_state_provider,
+    const common::VehicleState &vehicle_state,
     const EgoInfo *ego_info) {
   hdmap_ = hdmap::HDMapUtil::BaseMapPtr();
   CHECK_NOTNULL(hdmap_);
-  vehicle_state_ = vehicle_state_provider->vehicle_state();
+  vehicle_state_ = vehicle_state;
+  planning_reference_point_ = vehicle_state.reference_point();
   if (!util::IsVehicleStateValid(vehicle_state_)) {
     AERROR << "Adc init point is not set";
     return Status(ErrorCode::PLANNING_ERROR, "Adc init point is not set");
