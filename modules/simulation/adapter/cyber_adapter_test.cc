@@ -51,7 +51,7 @@ TEST(CyberAdapterTest, FeedsCommonVehicleStateFromGroundTruth) {
 
   common::VehicleStateProvider provider;
   ASSERT_TRUE(provider.Update(localization, chassis).ok());
-  const auto& common_state = provider.vehicle_state();
+  const auto& common_state = provider.state();
   EXPECT_DOUBLE_EQ(chassis.speed_mps(), 2.0F);
   EXPECT_EQ(chassis.gear_location(), apollo::canbus::Chassis::GEAR_REVERSE);
   EXPECT_EQ(common_state.gear(), apollo::canbus::Chassis::GEAR_REVERSE);

@@ -138,6 +138,12 @@ TEST_F(VehicleStateProviderTest,
               1e-6);
   EXPECT_NEAR(state.pose().position().x(), state.x(), 1e-6);
   EXPECT_NEAR(state.pose().position().y(), state.y(), 1e-6);
+  EXPECT_NEAR(
+      vehicle_state_provider.original_localization_pose().position().x(),
+      localization_.pose().position().x(), 1e-6);
+  EXPECT_NEAR(
+      vehicle_state_provider.original_localization_pose().position().y(),
+      localization_.pose().position().y(), 1e-6);
 
   FLAGS_vehicle_state_reference_point = original_output_reference_point;
   FLAGS_vehicle_state_localization_reference_point =
