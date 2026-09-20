@@ -61,7 +61,7 @@ class ReferenceLineInfo {
  public:
   enum class LaneType { LeftForward, LeftReverse, RightForward, RightReverse };
   ReferenceLineInfo()
-      : planning_reference_point_(common::ReferencePoint::REAR_AXLE_CENTER),
+      : planning_reference_point_(common::VehicleReferencePoint::REAR_AXLE_CENTER),
         has_planning_reference_point_(false) {}
 
   ReferenceLineInfo(const common::VehicleState& vehicle_state,
@@ -315,7 +315,7 @@ class ReferenceLineInfo {
  private:
   static std::unordered_map<std::string, bool> junction_right_of_way_map_;
   const common::VehicleState vehicle_state_;
-  const common::ReferencePoint planning_reference_point_;
+  const common::VehicleReferencePoint planning_reference_point_;
   const bool has_planning_reference_point_;
   const common::TrajectoryPoint adc_planning_point_;
   ReferenceLine reference_line_;

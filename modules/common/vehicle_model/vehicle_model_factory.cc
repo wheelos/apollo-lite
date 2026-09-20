@@ -31,7 +31,7 @@ struct KinematicMotion {
 };
 
 Status ValidatePrediction(const double horizon, const double dt,
-                          const ReferencePoint canonical_point,
+                          const VehicleReferencePoint canonical_point,
                           const VehicleState& state,
                           VehicleState* predicted_state) {
   if (predicted_state == nullptr) {
@@ -66,7 +66,7 @@ Status ValidatePrediction(const double horizon, const double dt,
 }
 
 Status Propagate(const double horizon, const double dt,
-                 const ReferencePoint canonical_point,
+                 const VehicleReferencePoint canonical_point,
                  const VehicleState& state, const KinematicMotion& motion,
                  VehicleState* predicted_state) {
   auto status =

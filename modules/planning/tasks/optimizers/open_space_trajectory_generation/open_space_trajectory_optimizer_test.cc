@@ -32,7 +32,7 @@ class OpenSpaceTrajectoryOptimizerTest : public ::testing::Test {
   virtual void SetUp() {
     const common::VehicleGeometryModel geometry_model;
     const PlanningGeometryAdapter geometry_adapter(
-        geometry_model, common::ReferencePoint::REAR_AXLE_CENTER);
+        geometry_model, common::VehicleReferencePoint::REAR_AXLE_CENTER);
     OpenSpaceTrajectoryOptimizer open_space_trajectory_optimizer(
         config, geometry_adapter);
   }

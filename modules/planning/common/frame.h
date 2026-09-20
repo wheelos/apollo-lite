@@ -134,7 +134,7 @@ class Frame {
     return vehicle_state_;
   }
 
-  common::ReferencePoint planning_reference_point() const {
+  common::VehicleReferencePoint planning_reference_point() const {
     CHECK(has_planning_reference_point_);
     return planning_reference_point_;
   }
@@ -226,8 +226,8 @@ class Frame {
   const hdmap::HDMap* hdmap_ = nullptr;
   common::TrajectoryPoint planning_start_point_;
   common::VehicleState vehicle_state_;
-  common::ReferencePoint planning_reference_point_ =
-      common::ReferencePoint::REAR_AXLE_CENTER;
+  common::VehicleReferencePoint planning_reference_point_ =
+      common::VehicleReferencePoint::REAR_AXLE_CENTER;
   bool has_planning_reference_point_ = false;
   std::list<ReferenceLineInfo> reference_line_info_;
 

@@ -35,7 +35,7 @@ VehicleGeometryModel::VehicleGeometryModel(
     const VehicleDescription& description)
     : description_(description) {}
 
-Status VehicleGeometryModel::GetBounds(const ReferencePoint reference_point,
+Status VehicleGeometryModel::GetBounds(const VehicleReferencePoint reference_point,
                                        VehicleBounds* bounds) const {
   if (bounds == nullptr) {
     return Status(ErrorCode::PLANNING_ERROR, "bounds is null");
@@ -214,7 +214,7 @@ Status VehicleGeometryModel::BuildFrontRegion(const VehiclePose2d& pose,
   return Status::OK();
 }
 
-Status VehicleGeometryModel::FrontEdgeDistance(const ReferencePoint point,
+Status VehicleGeometryModel::FrontEdgeDistance(const VehicleReferencePoint point,
                                                double* distance) const {
   if (distance == nullptr || !IsSupportedReferencePoint(point)) {
     return Status(ErrorCode::PLANNING_ERROR,
@@ -229,7 +229,7 @@ Status VehicleGeometryModel::FrontEdgeDistance(const ReferencePoint point,
   return Status::OK();
 }
 
-Status VehicleGeometryModel::RearEdgeDistance(const ReferencePoint point,
+Status VehicleGeometryModel::RearEdgeDistance(const VehicleReferencePoint point,
                                               double* distance) const {
   if (distance == nullptr || !IsSupportedReferencePoint(point)) {
     return Status(ErrorCode::PLANNING_ERROR,

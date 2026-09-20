@@ -64,14 +64,14 @@ Status VehicleModel::CreateFromFile(
   return Create(config, VehicleDescription(), vehicle_model);
 }
 
-ReferencePoint VehicleModel::canonical_reference_point() const {
+VehicleReferencePoint VehicleModel::canonical_reference_point() const {
   return implementation_->canonical_reference_point();
 }
 
 Status VehicleModel::Predict(const double predicted_time_horizon,
                              const VehicleState& current_state,
                              const VehicleModelInput& input,
-                             const ReferencePoint target_reference_point,
+                             const VehicleReferencePoint target_reference_point,
                              VehicleState* predicted_state) const {
   return PredictInternal(predicted_time_horizon, current_state, &input,
                          target_reference_point, predicted_state);
@@ -79,7 +79,7 @@ Status VehicleModel::Predict(const double predicted_time_horizon,
 
 Status VehicleModel::PredictWithHeldCurvature(
     const double predicted_time_horizon, const VehicleState& current_state,
-    const ReferencePoint target_reference_point,
+    const VehicleReferencePoint target_reference_point,
     VehicleState* predicted_state) const {
   return PredictInternal(predicted_time_horizon, current_state, nullptr,
                          target_reference_point, predicted_state);
@@ -87,7 +87,7 @@ Status VehicleModel::PredictWithHeldCurvature(
 
 Status VehicleModel::PredictInternal(
     const double predicted_time_horizon, const VehicleState& current_state,
-    const VehicleModelInput* input, const ReferencePoint target_reference_point,
+    const VehicleModelInput* input, const VehicleReferencePoint target_reference_point,
     VehicleState* predicted_state) const {
   if (predicted_state == nullptr) {
     return Status(ErrorCode::PLANNING_ERROR, "predicted state is null");

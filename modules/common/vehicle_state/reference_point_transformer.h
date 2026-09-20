@@ -50,7 +50,7 @@ class ReferencePointTransformer {
   // gear and driving mode is preserved. The center-of-mass offset always
   // comes from description_.
   Status TransformState(const VehicleState& source_state,
-                        ReferencePoint target_point,
+                        VehicleReferencePoint target_point,
                         VehicleState* target_state) const;
 
   const VehicleDescription& description() const { return description_; }

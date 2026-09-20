@@ -94,8 +94,8 @@ class OpenSpaceTrajectoryProvider : public TrajectoryOptimizer {
   std::unique_ptr<OpenSpaceTrajectoryOptimizer>
       open_space_trajectory_optimizer_;
   bool planning_geometry_bound_ = false;
-  common::ReferencePoint planning_reference_point_ =
-      common::ReferencePoint::REAR_AXLE_CENTER;
+  common::VehicleReferencePoint planning_reference_point_ =
+      common::VehicleReferencePoint::REAR_AXLE_CENTER;
 
   size_t optimizer_thread_counter = 0;
 

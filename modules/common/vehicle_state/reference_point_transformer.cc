@@ -34,7 +34,7 @@ ReferencePointTransformer::ReferencePointTransformer(
     : description_(description) {}
 
 Status ReferencePointTransformer::TransformState(
-    const VehicleState& source_state, const ReferencePoint target_point,
+    const VehicleState& source_state, const VehicleReferencePoint target_point,
     VehicleState* target_state) const {
   if (target_state == nullptr) {
     return Status(ErrorCode::LOCALIZATION_ERROR, "target_state is null");

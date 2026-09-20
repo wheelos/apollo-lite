@@ -52,7 +52,7 @@ class VehicleModel {
   static Status CreateFromFile(const std::string& config_file,
                                std::unique_ptr<VehicleModel>* vehicle_model);
 
-  ReferencePoint canonical_reference_point() const;
+  VehicleReferencePoint canonical_reference_point() const;
 
   // Predicts with explicit actuator/model input. The input state may use any
   // supported reference point. A zero horizon returns the canonicalized state
@@ -61,7 +61,7 @@ class VehicleModel {
   Status Predict(double predicted_time_horizon,
                  const VehicleState& current_state,
                  const VehicleModelInput& input,
-                 ReferencePoint target_reference_point,
+                 VehicleReferencePoint target_reference_point,
                  VehicleState* predicted_state) const;
 
   // Extrapolates the state while holding its current curvature and
@@ -69,7 +69,7 @@ class VehicleModel {
   // and trajectory stitching, not for command-response prediction.
   Status PredictWithHeldCurvature(double predicted_time_horizon,
                                   const VehicleState& current_state,
-                                  ReferencePoint target_reference_point,
+                                  VehicleReferencePoint target_reference_point,
                                   VehicleState* predicted_state) const;
 
   Status PredictPositionWithHeldCurvature(
@@ -83,7 +83,7 @@ class VehicleModel {
   Status PredictInternal(double predicted_time_horizon,
                          const VehicleState& current_state,
                          const VehicleModelInput* input,
-                         ReferencePoint target_reference_point,
+                         VehicleReferencePoint target_reference_point,
                          VehicleState* predicted_state) const;
 
   std::unique_ptr<VehicleModelImplementation> implementation_;

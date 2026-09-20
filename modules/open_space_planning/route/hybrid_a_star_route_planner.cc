@@ -28,7 +28,7 @@ using apollo::common::math::Vec2d;
 
 HybridAStarRoutePlanner::HybridAStarRoutePlanner()
     : geometry_adapter_(vehicle_geometry_model_,
-                        common::ReferencePoint::REAR_AXLE_CENTER) {
+                        common::VehicleReferencePoint::REAR_AXLE_CENTER) {
   hybrid_a_star_.reset(new planning::HybridAStar(config_, geometry_adapter_));
 }
 
@@ -36,7 +36,7 @@ HybridAStarRoutePlanner::HybridAStarRoutePlanner(
     const planning::PlannerOpenSpaceConfig& config)
     : config_(config),
       geometry_adapter_(vehicle_geometry_model_,
-                        common::ReferencePoint::REAR_AXLE_CENTER) {
+                        common::VehicleReferencePoint::REAR_AXLE_CENTER) {
   hybrid_a_star_.reset(new planning::HybridAStar(config_, geometry_adapter_));
 }
 

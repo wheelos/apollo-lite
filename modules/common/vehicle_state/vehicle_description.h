@@ -23,7 +23,7 @@
 namespace apollo {
 namespace common {
 
-bool IsSupportedReferencePoint(ReferencePoint reference_point);
+bool IsSupportedReferencePoint(VehicleReferencePoint reference_point);
 
 // Immutable vehicle geometry used by reference-point conversion and spatial
 // occupancy calculations. It does not contain motion, steering, or prediction
@@ -39,12 +39,12 @@ class VehicleDescription {
 
   // Returns the signed longitudinal coordinate measured from
   // REAR_AXLE_CENTER. CENTER_OF_MASS uses the configured vehicle offset.
-  Status LongitudinalOffset(ReferencePoint reference_point,
+  Status LongitudinalOffset(VehicleReferencePoint reference_point,
                             double* offset) const;
 
   // Returns the geometric center relative to reference_point in vehicle-frame
   // coordinates as (longitudinal, lateral).
-  Status FootprintCenterOffset(ReferencePoint reference_point,
+  Status FootprintCenterOffset(VehicleReferencePoint reference_point,
                                math::Vec2d* offset) const;
 
   double wheel_base() const { return wheel_base_; }

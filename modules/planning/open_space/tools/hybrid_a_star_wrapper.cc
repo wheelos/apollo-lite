@@ -80,7 +80,7 @@ HybridAStar* CreatePlannerPtr() {
   apollo::planning::PlannerOpenSpaceConfig planner_open_space_config_;
   const apollo::common::VehicleGeometryModel vehicle_geometry_model;
   const apollo::planning::PlanningGeometryAdapter geometry_adapter(
-      vehicle_geometry_model, apollo::common::ReferencePoint::REAR_AXLE_CENTER);
+      vehicle_geometry_model, apollo::common::VehicleReferencePoint::REAR_AXLE_CENTER);
 
   ACHECK(apollo::cyber::common::GetProtoFromFile(
       FLAGS_planner_open_space_config_filename, &planner_open_space_config_))

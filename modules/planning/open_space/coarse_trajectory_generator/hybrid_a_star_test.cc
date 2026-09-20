@@ -87,7 +87,7 @@ class HybridATest : public ::testing::Test {
 
     const common::VehicleGeometryModel vehicle_geometry_model;
     const PlanningGeometryAdapter geometry_adapter(
-        vehicle_geometry_model, common::ReferencePoint::REAR_AXLE_CENTER);
+        vehicle_geometry_model, common::VehicleReferencePoint::REAR_AXLE_CENTER);
     hybrid_test = std::unique_ptr<HybridAStar>(
         new HybridAStar(planner_open_space_config_, geometry_adapter));
   }

@@ -32,7 +32,7 @@ namespace common {
 namespace {
 
 Status GetReferencePointFromFlag(const int flag_value, const char* flag_name,
-                                 ReferencePoint* reference_point) {
+                                 VehicleReferencePoint* reference_point) {
   if (reference_point == nullptr) {
     return Status(ErrorCode::LOCALIZATION_ERROR,
                   "reference point output is null");
@@ -41,7 +41,7 @@ Status GetReferencePointFromFlag(const int flag_value, const char* flag_name,
     case REAR_AXLE_CENTER:
     case FRONT_AXLE_CENTER:
     case CENTER_OF_MASS:
-      *reference_point = static_cast<ReferencePoint>(flag_value);
+      *reference_point = static_cast<VehicleReferencePoint>(flag_value);
       return Status::OK();
     default:
       return Status(ErrorCode::LOCALIZATION_ERROR,
@@ -92,14 +92,14 @@ Status VehicleStateProvider::Update(
     motion_state.set_kappa(motion_state.angular_velocity() /
                            motion_state.linear_velocity());
   }
-  ReferencePoint configured_reference_point;
+  VehicleReferencePoint configured_reference_point;
   const auto reference_point_status = GetReferencePointFromFlag(
       FLAGS_vehicle_state_reference_point, "vehicle_state_reference_point",
       &configured_reference_point);
   if (!reference_point_status.ok()) {
     return reference_point_status;
   }
-  ReferencePoint localization_reference_point;
+  VehicleReferencePoint localization_reference_point;
   const auto localization_reference_point_status = GetReferencePointFromFlag(
       FLAGS_vehicle_state_localization_reference_point,
       "vehicle_state_localization_reference_point",

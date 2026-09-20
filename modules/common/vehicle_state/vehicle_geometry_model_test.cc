@@ -147,7 +147,7 @@ TEST_F(VehicleGeometryModelTest, CollisionAndClearanceSemantics) {
 
 TEST_F(VehicleGeometryModelTest, RejectsUnknownReferencePointAndInvalidBuffer) {
   VehiclePose2d invalid_pose(math::Vec2d(0.0, 0.0), 0.0,
-                             static_cast<ReferencePoint>(99));
+                             static_cast<VehicleReferencePoint>(99));
   math::Box2d box;
   EXPECT_FALSE(geometry_model_.BuildBox(invalid_pose, &box).ok());
 

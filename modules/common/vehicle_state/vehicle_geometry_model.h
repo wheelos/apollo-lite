@@ -40,14 +40,14 @@ struct VehicleBounds {
 // invoke VehicleGeometryModel without fabricating a full VehicleState.
 struct VehiclePose2d {
   VehiclePose2d(const math::Vec2d& position, double body_heading,
-                ReferencePoint reference_point)
+                VehicleReferencePoint reference_point)
       : position(position),
         body_heading(body_heading),
         reference_point(reference_point) {}
 
   math::Vec2d position;
   double body_heading;
-  ReferencePoint reference_point;
+  VehicleReferencePoint reference_point;
 };
 
 // Provides geometry-only operations for vehicle footprint, collision, and
@@ -76,9 +76,9 @@ class VehicleGeometryModel {
   const VehicleDescription& description() const { return description_; }
 
   // Returns the footprint distances relative to reference_point.
-  // ReferencePoint currently has longitudinal anchors only, so left and right
+  // VehicleReferencePoint currently has longitudinal anchors only, so left and right
   // are independent of the selected reference point.
-  Status GetBounds(ReferencePoint reference_point, VehicleBounds* bounds) const;
+  Status GetBounds(VehicleReferencePoint reference_point, VehicleBounds* bounds) const;
 
   Status BuildBox(const VehicleState& vehicle_state,
                   math::Box2d* vehicle_box) const;
@@ -106,9 +106,9 @@ class VehicleGeometryModel {
                           math::Box2d* front_region) const;
 
   // Edge distances are measured from reference_point along body heading.
-  Status FrontEdgeDistance(ReferencePoint reference_point,
+  Status FrontEdgeDistance(VehicleReferencePoint reference_point,
                            double* distance) const;
-  Status RearEdgeDistance(ReferencePoint reference_point,
+  Status RearEdgeDistance(VehicleReferencePoint reference_point,
                           double* distance) const;
   double LeftEdgeDistance() const;
   double RightEdgeDistance() const;

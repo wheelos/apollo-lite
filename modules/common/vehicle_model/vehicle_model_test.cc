@@ -327,7 +327,7 @@ TEST(VehicleModelTest, RejectsInvalidConfigurationAndInput) {
                    .ok());
   EXPECT_FALSE(model
                    ->Predict(1.0, RearAxleState(), VehicleModelInput(),
-                             static_cast<ReferencePoint>(99), &predicted)
+                             static_cast<VehicleReferencePoint>(99), &predicted)
                    .ok());
   EXPECT_FALSE(model
                    ->PredictWithHeldCurvature(1.0, RearAxleState(),

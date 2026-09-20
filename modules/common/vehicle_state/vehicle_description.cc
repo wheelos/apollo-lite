@@ -20,7 +20,7 @@
 namespace apollo {
 namespace common {
 
-bool IsSupportedReferencePoint(const ReferencePoint reference_point) {
+bool IsSupportedReferencePoint(const VehicleReferencePoint reference_point) {
   return reference_point == REAR_AXLE_CENTER ||
          reference_point == FRONT_AXLE_CENTER ||
          reference_point == CENTER_OF_MASS;
@@ -57,7 +57,7 @@ VehicleDescription::VehicleDescription(const VehicleConfig& vehicle_config,
       center_of_mass_offset_(center_of_mass_offset) {}
 
 Status VehicleDescription::LongitudinalOffset(
-    const ReferencePoint reference_point, double* offset) const {
+    const VehicleReferencePoint reference_point, double* offset) const {
   if (offset == nullptr) {
     return Status(ErrorCode::PLANNING_ERROR, "offset is null");
   }
@@ -78,7 +78,7 @@ Status VehicleDescription::LongitudinalOffset(
 }
 
 Status VehicleDescription::FootprintCenterOffset(
-    const ReferencePoint reference_point, math::Vec2d* offset) const {
+    const VehicleReferencePoint reference_point, math::Vec2d* offset) const {
   if (offset == nullptr) {
     return Status(ErrorCode::PLANNING_ERROR, "offset is null");
   }

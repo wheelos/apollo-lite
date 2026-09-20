@@ -39,12 +39,13 @@ class PlanningGeometryAdapter {
  public:
   PlanningGeometryAdapter()
       : has_reference_point_(false),
-        reference_point_(common::ReferencePoint::REAR_AXLE_CENTER) {}
+        reference_point_(common::VehicleReferencePoint::REAR_AXLE_CENTER) {}
 
   PlanningGeometryAdapter(const common::VehicleGeometryModel& geometry_model,
-                          common::ReferencePoint reference_point)
+                          common::VehicleReferencePoint reference_point)
       : geometry_model_(geometry_model),
-        has_reference_point_(common::IsSupportedReferencePoint(reference_point)),
+        has_reference_point_(
+            common::IsSupportedReferencePoint(reference_point)),
         reference_point_(reference_point) {
     CHECK(common::IsSupportedReferencePoint(reference_point_));
   }
@@ -53,13 +54,13 @@ class PlanningGeometryAdapter {
     return geometry_model_;
   }
 
-  common::ReferencePoint reference_point() const { return reference_point_; }
+  common::VehicleReferencePoint reference_point() const { return reference_point_; }
 
   common::VehiclePose2d ToPose(const common::PathPoint& path_point) const {
     CHECK(IsBound());
     return common::VehiclePose2d(
-        common::math::Vec2d(path_point.x(), path_point.y()),
-        path_point.theta(), reference_point_);
+        common::math::Vec2d(path_point.x(), path_point.y()), path_point.theta(),
+        reference_point_);
   }
 
   common::VehiclePose2d ToPose(
@@ -144,9 +145,7 @@ class PlanningGeometryAdapter {
     return distance;
   }
 
-  double LeftEdgeDistance() const {
-    return geometry_model_.LeftEdgeDistance();
-  }
+  double LeftEdgeDistance() const { return geometry_model_.LeftEdgeDistance(); }
 
   double RightEdgeDistance() const {
     return geometry_model_.RightEdgeDistance();
@@ -167,7 +166,7 @@ class PlanningGeometryAdapter {
 
   common::VehicleGeometryModel geometry_model_;
   bool has_reference_point_ = true;
-  common::ReferencePoint reference_point_;
+  common::VehicleReferencePoint reference_point_;
 };
 
 }  // namespace planning

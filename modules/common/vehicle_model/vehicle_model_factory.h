@@ -22,7 +22,7 @@ class VehicleModelImplementation {
  public:
   virtual ~VehicleModelImplementation() = default;
 
-  virtual ReferencePoint canonical_reference_point() const = 0;
+  virtual VehicleReferencePoint canonical_reference_point() const = 0;
 
   virtual Status Predict(double predicted_time_horizon,
                          const VehicleState& canonical_state,
@@ -38,7 +38,7 @@ class VehicleModelImplementation {
 // point, matching the no-slip bicycle equations.
 class AckermannKinematicModel final : public VehicleModelImplementation {
  public:
-  ReferencePoint canonical_reference_point() const override {
+  VehicleReferencePoint canonical_reference_point() const override {
     return REAR_AXLE_CENTER;
   }
 
@@ -70,7 +70,7 @@ class AckermannKinematicModel final : public VehicleModelImplementation {
 class FourWheelSteeringKinematicModel final
     : public VehicleModelImplementation {
  public:
-  ReferencePoint canonical_reference_point() const override {
+  VehicleReferencePoint canonical_reference_point() const override {
     return CENTER_OF_MASS;
   }
 

@@ -86,7 +86,7 @@ TEST_F(StBoundaryMapperTest, check_overlap_test) {
   double planning_time = 10.0;
   const common::VehicleGeometryModel geometry_model;
   const PlanningGeometryAdapter geometry_adapter(
-      geometry_model, common::ReferencePoint::REAR_AXLE_CENTER);
+      geometry_model, common::VehicleReferencePoint::REAR_AXLE_CENTER);
   STBoundaryMapper mapper(config, *reference_line_, path_data_,
                           planning_distance, planning_time, injector_,
                           geometry_adapter);

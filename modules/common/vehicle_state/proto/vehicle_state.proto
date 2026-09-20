@@ -8,7 +8,7 @@ import "wheelos_msgs/localization_msgs/pose.proto";
 // Longitudinal points on the vehicle body to which VehicleState.x/y and its
 // kinematic fields refer. These are semantic state coordinates, not sensor
 // frame names.
-enum ReferencePoint {
+enum VehicleReferencePoint {
   REAR_AXLE_CENTER = 0;
   FRONT_AXLE_CENTER = 1;
   CENTER_OF_MASS = 2;
@@ -47,7 +47,7 @@ message VehicleMotionState {
   optional double angular_velocity = 11 [default = 0.0];
   optional double linear_acceleration = 12 [default = 0.0];
   optional apollo.localization.Pose pose = 13;
-  optional ReferencePoint reference_point = 14
+  optional VehicleReferencePoint reference_point = 14
       [default = REAR_AXLE_CENTER];
   optional double lateral_velocity = 15 [default = 0.0];
 }
@@ -69,7 +69,7 @@ message VehicleState {
   optional apollo.canbus.Chassis.DrivingMode driving_mode = 14;
   optional apollo.localization.Pose pose = 15;
   optional double steering_percentage = 16;
-  optional ReferencePoint reference_point = 17
+  optional VehicleReferencePoint reference_point = 17
       [default = REAR_AXLE_CENTER];
   optional TravelDirection travel_direction = 18
       [default = TRAVEL_DIRECTION_UNKNOWN];
