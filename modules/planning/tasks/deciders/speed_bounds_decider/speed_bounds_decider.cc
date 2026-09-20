@@ -94,8 +94,9 @@ Status SpeedBoundsDecider::Process(
   const double min_s_on_st_boundaries = SetSpeedFallbackDistance(path_decision);
 
   // 2. Create speed limit along path
-  SpeedLimitDecider speed_limit_decider(speed_bounds_config_, reference_line,
-                                        path_data);
+  SpeedLimitDecider speed_limit_decider(
+      speed_bounds_config_, reference_line, path_data,
+      injector_->vehicle_model().geometry_model());
 
   SpeedLimit speed_limit;
   if (!speed_limit_decider

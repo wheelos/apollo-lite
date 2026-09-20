@@ -19,9 +19,8 @@ namespace planning {
 
 double VehicleFrenetGeometry::ComputeStopReferenceS(
     const double target_s, const double stop_margin,
-    const common::TravelDirection travel_direction,
-    const common::ReferencePoint reference_point) const {
-  const common::VehicleBounds bounds = geometry_model_.Bounds(reference_point);
+    const common::TravelDirection travel_direction) const {
+  const common::VehicleBounds bounds = geometry_model_.Bounds();
   if (travel_direction == common::TravelDirection::TRAVEL_DIRECTION_REVERSE) {
     return target_s + stop_margin + bounds.rear;
   }
@@ -29,9 +28,8 @@ double VehicleFrenetGeometry::ComputeStopReferenceS(
 }
 
 std::pair<double, double> VehicleFrenetGeometry::GetOccupancySRange(
-    const double reference_s,
-    const common::ReferencePoint reference_point) const {
-  const common::VehicleBounds bounds = geometry_model_.Bounds(reference_point);
+    const double reference_s) const {
+  const common::VehicleBounds bounds = geometry_model_.Bounds();
   return {reference_s - bounds.rear, reference_s + bounds.front};
 }
 

@@ -26,11 +26,16 @@ VehicleGeometryModel::VehicleGeometryModel(
     const VehicleDescription& description)
     : description_(description) {}
 
-VehicleBounds VehicleGeometryModel::Bounds(
-    const ReferencePoint reference_point) const {
+VehicleGeometryModel::VehicleGeometryModel(
+    const VehicleDescription& description,
+    const ReferencePoint trajectory_reference_point)
+    : description_(description),
+      trajectory_reference_point_(trajectory_reference_point) {}
+
+VehicleBounds VehicleGeometryModel::Bounds() const {
   VehicleBounds bounds;
-  bounds.front = FrontEdgeDistance(reference_point);
-  bounds.rear = BackEdgeDistance(reference_point);
+  bounds.front = FrontEdgeDistance();
+  bounds.rear = BackEdgeDistance();
   bounds.left = LeftEdgeDistance();
   bounds.right = RightEdgeDistance();
   return bounds;
@@ -72,13 +77,13 @@ Status VehicleGeometryModel::BuildBox(const VehicleState& vehicle_state,
 
 Status VehicleGeometryModel::BuildBox(const math::Vec2d& position,
                                       const double heading,
-                                      const ReferencePoint reference_point,
                                       math::Box2d* vehicle_box) const {
   if (vehicle_box == nullptr) {
     return Status(ErrorCode::PLANNING_ERROR, "vehicle_box is null");
   }
   math::Vec2d center;
-  const auto status = GetCenter(position, heading, reference_point, &center);
+  const auto status =
+      GetCenter(position, heading, trajectory_reference_point_, &center);
   if (!status.ok()) {
     return status;
   }
@@ -88,16 +93,14 @@ Status VehicleGeometryModel::BuildBox(const math::Vec2d& position,
 }
 
 Status VehicleGeometryModel::BuildBox(const PathPoint& path_point,
-                                      const ReferencePoint reference_point,
                                       math::Box2d* vehicle_box) const {
   const math::Vec2d position(path_point.x(), path_point.y());
-  return BuildBox(position, path_point.theta(), reference_point, vehicle_box);
+  return BuildBox(position, path_point.theta(), vehicle_box);
 }
 
 Status VehicleGeometryModel::BuildBox(const TrajectoryPoint& trajectory_point,
-                                      const ReferencePoint reference_point,
                                       math::Box2d* vehicle_box) const {
-  return BuildBox(trajectory_point.path_point(), reference_point, vehicle_box);
+  return BuildBox(trajectory_point.path_point(), vehicle_box);
 }
 
 math::Box2d VehicleGeometryModel::BuildBox(
@@ -107,36 +110,33 @@ math::Box2d VehicleGeometryModel::BuildBox(
   return box;
 }
 
-math::Box2d VehicleGeometryModel::BuildBox(
-    const math::Vec2d& position, const double heading,
-    const ReferencePoint reference_point) const {
+math::Box2d VehicleGeometryModel::BuildBox(const math::Vec2d& position,
+                                           const double heading) const {
   math::Box2d box;
-  BuildBox(position, heading, reference_point, &box);
+  BuildBox(position, heading, &box);
+  return box;
+}
+
+math::Box2d VehicleGeometryModel::BuildBox(const PathPoint& path_point) const {
+  math::Box2d box;
+  BuildBox(path_point, &box);
   return box;
 }
 
 math::Box2d VehicleGeometryModel::BuildBox(
-    const PathPoint& path_point, const ReferencePoint reference_point) const {
+    const TrajectoryPoint& trajectory_point) const {
   math::Box2d box;
-  BuildBox(path_point, reference_point, &box);
-  return box;
-}
-
-math::Box2d VehicleGeometryModel::BuildBox(
-    const TrajectoryPoint& trajectory_point,
-    const ReferencePoint reference_point) const {
-  math::Box2d box;
-  BuildBox(trajectory_point, reference_point, &box);
+  BuildBox(trajectory_point, &box);
   return box;
 }
 
 math::Box2d VehicleGeometryModel::BuildBox(
     const PathPoint& path_point, const double lateral_buffer,
-    const double longitudinal_buffer,
-    const ReferencePoint reference_point) const {
+    const double longitudinal_buffer) const {
   const math::Vec2d position(path_point.x(), path_point.y());
   math::Vec2d center;
-  GetCenter(position, path_point.theta(), reference_point, &center);
+  GetCenter(position, path_point.theta(), trajectory_reference_point_,
+           &center);
   return math::Box2d(center, path_point.theta(),
                      description_.length() + 2.0 * longitudinal_buffer,
                      description_.width() + 2.0 * lateral_buffer);
@@ -165,16 +165,14 @@ Status VehicleGeometryModel::BuildFrontRegion(const VehicleState& vehicle_state,
   return Status::OK();
 }
 
-double VehicleGeometryModel::FrontEdgeDistance(
-    const ReferencePoint reference_point) const {
+double VehicleGeometryModel::FrontEdgeDistance() const {
   return description_.front_edge_to_center() -
-         description_.LongitudinalOffset(reference_point);
+         description_.LongitudinalOffset(trajectory_reference_point_);
 }
 
-double VehicleGeometryModel::BackEdgeDistance(
-    const ReferencePoint reference_point) const {
+double VehicleGeometryModel::BackEdgeDistance() const {
   return description_.back_edge_to_center() +
-         description_.LongitudinalOffset(reference_point);
+         description_.LongitudinalOffset(trajectory_reference_point_);
 }
 
 double VehicleGeometryModel::LeftEdgeDistance() const {
@@ -185,43 +183,41 @@ double VehicleGeometryModel::RightEdgeDistance() const {
   return description_.right_edge_to_center();
 }
 
-bool VehicleGeometryModel::CheckCollision(
-    const PathPoint& path_point, const math::Box2d& obstacle_box,
-    const double lateral_buffer, const double longitudinal_buffer,
-    const ReferencePoint reference_point) const {
-  const math::Box2d vehicle_box = BuildBox(
-      path_point, lateral_buffer, longitudinal_buffer, reference_point);
+bool VehicleGeometryModel::CheckCollision(const PathPoint& path_point,
+                                          const math::Box2d& obstacle_box,
+                                          const double lateral_buffer,
+                                          const double longitudinal_buffer) const {
+  const math::Box2d vehicle_box =
+      BuildBox(path_point, lateral_buffer, longitudinal_buffer);
   return obstacle_box.HasOverlap(vehicle_box);
 }
 
 bool VehicleGeometryModel::CheckCollision(
     const VehicleState& vehicle_state, const math::Box2d& obstacle_box,
     const double lateral_buffer, const double longitudinal_buffer) const {
-  PathPoint path_point;
-  path_point.set_x(vehicle_state.x());
-  path_point.set_y(vehicle_state.y());
-  path_point.set_theta(vehicle_state.heading());
-  return CheckCollision(path_point, obstacle_box, lateral_buffer,
-                        longitudinal_buffer, vehicle_state.reference_point());
+  math::Box2d vehicle_box;
+  BuildBox(vehicle_state, &vehicle_box);
+  // Grow the state-anchored box symmetrically to match the PathPoint
+  // overload's buffer semantics.
+  const math::Box2d buffered_box(
+      vehicle_box.center(), vehicle_box.heading(),
+      vehicle_box.length() + 2.0 * longitudinal_buffer,
+      vehicle_box.width() + 2.0 * lateral_buffer);
+  return obstacle_box.HasOverlap(buffered_box);
 }
 
 double VehicleGeometryModel::ComputeClearance(
-    const PathPoint& path_point, const math::Box2d& obstacle_box,
-    const ReferencePoint reference_point) const {
-  const math::Box2d vehicle_box =
-      BuildBox(path_point, 0.0, 0.0, reference_point);
+    const PathPoint& path_point, const math::Box2d& obstacle_box) const {
+  const math::Box2d vehicle_box = BuildBox(path_point, 0.0, 0.0);
   return vehicle_box.DistanceTo(obstacle_box);
 }
 
 double VehicleGeometryModel::ComputeClearance(
     const VehicleState& vehicle_state,
     const math::Box2d& obstacle_box) const {
-  PathPoint path_point;
-  path_point.set_x(vehicle_state.x());
-  path_point.set_y(vehicle_state.y());
-  path_point.set_theta(vehicle_state.heading());
-  return ComputeClearance(path_point, obstacle_box,
-                          vehicle_state.reference_point());
+  math::Box2d vehicle_box;
+  BuildBox(vehicle_state, &vehicle_box);
+  return vehicle_box.DistanceTo(obstacle_box);
 }
 
 }  // namespace common

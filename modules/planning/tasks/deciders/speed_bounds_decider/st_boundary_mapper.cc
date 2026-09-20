@@ -130,8 +130,7 @@ bool STBoundaryMapper::MapStopDecision(
   reference_line_.XYToSL(stop_decision.stop().stop_point(), &stop_sl_point);
 
   double st_stop_s = 0.0;
-  common::VehicleGeometryModel geometry_model;
-  VehicleFrenetGeometry frenet_geometry(geometry_model);
+  VehicleFrenetGeometry frenet_geometry(injector_->vehicle_model().geometry_model());
   const double stop_ref_s =
       frenet_geometry.ComputeStopReferenceS(stop_sl_point.s());
 
@@ -230,8 +229,8 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
       const Box2d& obs_box = obstacle.PerceptionBoundingBox();
       if (CheckOverlap(curr_point_on_path, obs_box, l_buffer)) {
         // If there is overlapping, then plot it on ST-graph.
-        common::VehicleGeometryModel geom_model;
-        const double backward_distance = -geom_model.FrontEdgeDistance();
+        const double backward_distance =
+            -injector_->vehicle_model().geometry_model().FrontEdgeDistance();
         const double forward_distance = obs_box.length();
         double low_s =
             std::fmax(0.0, curr_point_on_path.s() + backward_distance);
@@ -275,8 +274,8 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
         continue;
       }
 
-      common::VehicleGeometryModel geom_model;
-      const double step_length = geom_model.FrontEdgeDistance();
+      const double step_length =
+          injector_->vehicle_model().geometry_model().FrontEdgeDistance();
       auto path_len =
           std::min(FLAGS_max_trajectory_len, discretized_path.Length());
       // Go through every point of the ADC's path.
@@ -394,9 +393,8 @@ void STBoundaryMapper::ComputeSTBoundaryWithDecision(
 bool STBoundaryMapper::CheckOverlap(const PathPoint& path_point,
                                     const Box2d& obs_box,
                                     const double l_buffer) const {
-  common::VehicleGeometryModel geometry_model;
-  const Box2d adc_box = geometry_model.BuildBox(
-      path_point, l_buffer, 0.0, common::ReferencePoint::REAR_AXLE_CENTER);
+  const Box2d adc_box = injector_->vehicle_model().geometry_model().BuildBox(
+      path_point, l_buffer);
 
   // Check whether ADC bounding box overlaps with obstacle bounding box.
   return obs_box.HasOverlap(adc_box);

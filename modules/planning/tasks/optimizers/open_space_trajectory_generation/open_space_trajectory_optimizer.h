@@ -35,6 +35,7 @@
 
 #include "modules/common/math/vec2d.h"
 #include "modules/common/status/status.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/trajectory/discretized_trajectory.h"
 #include "modules/planning/open_space/coarse_trajectory_generator/hybrid_a_star.h"
 #include "modules/planning/open_space/trajectory_smoother/distance_approach_problem.h"
@@ -46,7 +47,9 @@ namespace planning {
 class OpenSpaceTrajectoryOptimizer {
  public:
   OpenSpaceTrajectoryOptimizer(
-      const OpenSpaceTrajectoryOptimizerConfig& config);
+      const OpenSpaceTrajectoryOptimizerConfig& config,
+      const common::VehicleGeometryModel& vehicle_geometry_model =
+          common::VehicleGeometryModel());
 
   virtual ~OpenSpaceTrajectoryOptimizer() = default;
 

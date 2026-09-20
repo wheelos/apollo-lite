@@ -188,7 +188,9 @@ class Frame {
       const EgoInfo* ego_info);
 
   bool CreateReferenceLineInfo(const std::list<ReferenceLine>& reference_lines,
-                               const std::list<hdmap::RouteSegments>& segments);
+                               const std::list<hdmap::RouteSegments>& segments,
+                               const common::VehicleGeometryModel&
+                                   vehicle_geometry_model);
 
   /**
    * Find an obstacle that collides with ADC (Autonomous Driving Car) if

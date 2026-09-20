@@ -63,7 +63,9 @@ class ReferenceLineInfo {
   ReferenceLineInfo(const common::VehicleState& vehicle_state,
                     const common::TrajectoryPoint& adc_planning_point,
                     const ReferenceLine& reference_line,
-                    const hdmap::RouteSegments& segments);
+                    const hdmap::RouteSegments& segments,
+                    const common::VehicleGeometryModel& vehicle_geometry_model =
+                        common::VehicleGeometryModel());
 
   bool Init(const std::vector<const Obstacle*>& obstacles);
 
@@ -150,9 +152,7 @@ class ReferenceLineInfo {
     return VehicleFrenetGeometry(vehicle_geometry_model_);
   }
   common::math::Box2d GetAdcBox() const {
-    return vehicle_geometry_model_.BuildBox(
-        adc_planning_point_.path_point(),
-        common::ReferencePoint::REAR_AXLE_CENTER);
+    return vehicle_geometry_model_.BuildBox(adc_planning_point_.path_point());
   }
   common::math::Box2d GetVehicleBox() const {
     return vehicle_geometry_model_.BuildBox(vehicle_state_);

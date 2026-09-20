@@ -34,6 +34,7 @@
 
 #include "modules/common/math/box2d.h"
 #include "modules/common/math/vec2d.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/indexed_list.h"
 #include "modules/planning/common/speed/st_boundary.h"
 #include "modules/planning/reference_line/reference_line.h"
@@ -190,9 +191,13 @@ class Obstacle {
 
   /**
    * @brief Calculate stop distance with the obstacle using the ADC's minimum
-   * turning radius
+   * turning radius. The caller supplies the vehicle's geometry model (owned
+   * by common::vehicle_state / common::vehicle_model), so this method never
+   * assumes a specific reference point (e.g. rear axle) itself.
    */
-  double MinRadiusStopDistance(const common::VehicleParam& vehicle_param) const;
+  double MinRadiusStopDistance(
+      const common::VehicleParam& vehicle_param,
+      const common::VehicleGeometryModel& vehicle_geometry_model) const;
 
   /**
    * @brief Check if this object can be safely ignored.

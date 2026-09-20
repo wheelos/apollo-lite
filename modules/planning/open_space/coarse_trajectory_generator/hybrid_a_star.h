@@ -58,7 +58,10 @@ struct HybridAStartResult {
 
 class HybridAStar {
  public:
-  explicit HybridAStar(const PlannerOpenSpaceConfig& open_space_conf);
+  explicit HybridAStar(
+      const PlannerOpenSpaceConfig& open_space_conf,
+      const common::VehicleGeometryModel& vehicle_geometry_model =
+          common::VehicleGeometryModel());
   virtual ~HybridAStar() = default;
   bool Plan(double sx, double sy, double sphi, double ex, double ey,
             double ephi, const std::vector<double>& XYbounds,
@@ -96,6 +99,7 @@ class HybridAStar {
   PlannerOpenSpaceConfig planner_open_space_config_;
   common::VehicleParam vehicle_param_ =
       common::VehicleConfigHelper::GetConfig().vehicle_param();
+  common::VehicleGeometryModel vehicle_geometry_model_;
   size_t next_node_num_ = 0;
   double max_steer_angle_ = 0.0;
   double step_size_ = 0.0;

@@ -23,7 +23,8 @@ VehicleModel::VehicleModel(
     std::unique_ptr<VehicleModelImplementation> implementation,
     const VehicleDescription& description)
     : implementation_(std::move(implementation)),
-      transformer_(description) {
+      transformer_(description),
+      geometry_model_(description, implementation_->canonical_reference_point()) {
 }
 
 VehicleModel::~VehicleModel() = default;

@@ -34,9 +34,11 @@ EgoInfo::EgoInfo() {
 }
 
 bool EgoInfo::Update(const common::TrajectoryPoint& start_point,
-                     const common::VehicleState& vehicle_state) {
+                     const common::VehicleState& vehicle_state,
+                     const common::VehicleGeometryModel& vehicle_geometry_model) {
   set_start_point(start_point);
   set_vehicle_state(vehicle_state);
+  vehicle_geometry_model_ = vehicle_geometry_model;
   CalculateEgoBox(vehicle_state);
   return true;
 }

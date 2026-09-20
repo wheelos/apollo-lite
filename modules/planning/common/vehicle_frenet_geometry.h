@@ -22,8 +22,11 @@ namespace apollo {
 namespace planning {
 
 // Planning-only conversion from vehicle footprint bounds to reference-line
-// s/l semantics. VehicleGeometryModel remains responsible for vehicle shape;
-// this class is the only owner of stop alignment and s/l occupancy meaning.
+// s/l semantics. VehicleGeometryModel remains responsible for vehicle shape,
+// including which reference point anchors its PathPoint/TrajectoryPoint
+// interpretation (bound at construction from the configured VehicleModel);
+// this class is the only owner of stop alignment and s/l occupancy meaning
+// and never selects or overrides that reference point itself.
 // Do not add reference-line distance semantics back to VehicleGeometryModel.
 class VehicleFrenetGeometry {
  public:
@@ -34,13 +37,9 @@ class VehicleFrenetGeometry {
   double ComputeStopReferenceS(
       double target_s, double stop_margin = 0.0,
       common::TravelDirection travel_direction =
-          common::TravelDirection::TRAVEL_DIRECTION_FORWARD,
-      common::ReferencePoint reference_point =
-          common::ReferencePoint::REAR_AXLE_CENTER) const;
+          common::TravelDirection::TRAVEL_DIRECTION_FORWARD) const;
 
-  std::pair<double, double> GetOccupancySRange(
-      double reference_s, common::ReferencePoint reference_point =
-                              common::ReferencePoint::REAR_AXLE_CENTER) const;
+  std::pair<double, double> GetOccupancySRange(double reference_s) const;
 
   std::pair<double, double> GetOccupancyLRange(double reference_l) const;
 

@@ -39,11 +39,14 @@ using apollo::common::Status;
 
 SpeedLimitDecider::SpeedLimitDecider(const SpeedBoundsDeciderConfig& config,
                                      const ReferenceLine& reference_line,
-                                     const PathData& path_data)
+                                     const PathData& path_data,
+                                     const common::VehicleGeometryModel&
+                                         vehicle_geometry_model)
     : speed_bounds_config_(config),
       reference_line_(reference_line),
       path_data_(path_data),
-      vehicle_param_(common::VehicleConfigHelper::GetConfig().vehicle_param()) {
+      vehicle_param_(common::VehicleConfigHelper::GetConfig().vehicle_param()),
+      vehicle_geometry_model_(vehicle_geometry_model) {
 }
 
 Status SpeedLimitDecider::GetSpeedLimits(
@@ -99,8 +102,7 @@ Status SpeedLimitDecider::GetSpeedLimits(
 
       // TODO(all): potential problem here;
       // frenet and cartesian coordinates are mixed.
-      common::VehicleGeometryModel geometry_model;
-      VehicleFrenetGeometry frenet_geometry(geometry_model);
+      VehicleFrenetGeometry frenet_geometry(vehicle_geometry_model_);
       const auto s_range =
           frenet_geometry.GetOccupancySRange(reference_line_s);
       const double vehicle_back_s = s_range.first;

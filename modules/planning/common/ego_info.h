@@ -41,7 +41,8 @@ class EgoInfo {
   ~EgoInfo() = default;
 
   bool Update(const common::TrajectoryPoint& start_point,
-              const common::VehicleState& vehicle_state);
+              const common::VehicleState& vehicle_state,
+              const common::VehicleGeometryModel& vehicle_geometry_model);
 
   void Clear();
 
@@ -54,6 +55,10 @@ class EgoInfo {
   double front_clear_distance() const { return front_clear_distance_; }
 
   common::math::Box2d ego_box() const { return ego_box_; }
+
+  const common::VehicleGeometryModel& vehicle_geometry_model() const {
+    return vehicle_geometry_model_;
+  }
 
   void CalculateFrontObstacleClearDistance(
       const std::vector<const Obstacle*>& obstacles);

@@ -157,7 +157,8 @@ void Frame::UpdateReferenceLinePriority(
 
 bool Frame::CreateReferenceLineInfo(
     const std::list<ReferenceLine> &reference_lines,
-    const std::list<hdmap::RouteSegments> &segments) {
+    const std::list<hdmap::RouteSegments> &segments,
+    const common::VehicleGeometryModel &vehicle_geometry_model) {
   reference_line_info_.clear();
   auto ref_line_iter = reference_lines.begin();
   auto segments_iter = segments.begin();
@@ -166,7 +167,8 @@ bool Frame::CreateReferenceLineInfo(
       is_near_destination_ = true;
     }
     reference_line_info_.emplace_back(vehicle_state_, planning_start_point_,
-                                      *ref_line_iter, *segments_iter);
+                                      *ref_line_iter, *segments_iter,
+                                      vehicle_geometry_model);
     ++ref_line_iter;
     ++segments_iter;
   }
@@ -329,7 +331,8 @@ Status Frame::Init(
     AERROR << "failed to init frame:" << status.ToString();
     return status;
   }
-  if (!CreateReferenceLineInfo(reference_lines, segments)) {
+  if (!CreateReferenceLineInfo(reference_lines, segments,
+                               ego_info->vehicle_geometry_model())) {
     const std::string msg = "Failed to init reference line info.";
     AERROR << msg;
     return Status(ErrorCode::PLANNING_ERROR, msg);

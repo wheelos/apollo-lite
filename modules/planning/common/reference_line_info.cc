@@ -54,17 +54,18 @@ ReferenceLineInfo::ReferenceLineInfo(
     const common::VehicleState& vehicle_state,
     const TrajectoryPoint& adc_planning_point,
     const ReferenceLine& reference_line,
-    const hdmap::RouteSegments& segments)
+    const hdmap::RouteSegments& segments,
+    const common::VehicleGeometryModel& vehicle_geometry_model)
     : vehicle_state_(vehicle_state),
       adc_planning_point_(adc_planning_point),
       reference_line_(reference_line),
+      vehicle_geometry_model_(vehicle_geometry_model),
       lanes_(segments) {}
 
 bool ReferenceLineInfo::Init(const std::vector<const Obstacle*>& obstacles) {
   // stitching point box
-  const Box2d box = vehicle_geometry_model_.BuildBox(
-      adc_planning_point_.path_point(),
-      common::ReferencePoint::REAR_AXLE_CENTER);
+  const Box2d box =
+      vehicle_geometry_model_.BuildBox(adc_planning_point_.path_point());
 
   if (!reference_line_.GetSLBoundary(box, &adc_sl_boundary_)) {
     AERROR << "Failed to get ADC boundary from box: " << box.DebugString();

@@ -18,6 +18,7 @@
 #include "modules/common/status/status.h"
 #include "modules/common/vehicle_state/reference_point_transformer.h"
 #include "modules/common/vehicle_state/vehicle_description.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 
 namespace apollo {
 namespace common {
@@ -54,6 +55,16 @@ class VehicleModel {
 
   ReferencePoint canonical_reference_point() const;
 
+  // Returns the geometry model whose trajectory-point anchor
+  // (trajectory_reference_point()) matches this model's
+  // canonical_reference_point(). Consumers that build vehicle footprints
+  // from PathPoint/TrajectoryPoint produced by this VehicleModel must use
+  // this instance instead of constructing their own, so that switching the
+  // configured vehicle model (e.g. Ackermann -> four-wheel-steering) never
+  // requires changes outside modules/common/vehicle_model /
+  // modules/common/vehicle_state.
+  const VehicleGeometryModel& geometry_model() const { return geometry_model_; }
+
   // Predicts with explicit actuator/model input. The input state may use any
   // supported reference point. The output is expressed at
   // target_reference_point.
@@ -87,6 +98,7 @@ class VehicleModel {
 
   std::unique_ptr<VehicleModelImplementation> implementation_;
   ReferencePointTransformer transformer_;
+  VehicleGeometryModel geometry_model_;
 };
 
 }  // namespace common

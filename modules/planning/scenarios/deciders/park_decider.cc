@@ -31,18 +31,19 @@
 namespace {
 
 double ComputePullOverPreparationDistance(
-    const apollo::planning::ScenarioPullOverConfig& config) {
-  apollo::common::VehicleGeometryModel geometry_model;
-  return geometry_model.FrontEdgeDistance() +
+    const apollo::planning::ScenarioPullOverConfig& config,
+    const apollo::common::VehicleGeometryModel& vehicle_geometry_model) {
+  return vehicle_geometry_model.FrontEdgeDistance() +
          config.s_distance_to_stop_for_open_space_parking() +
          config.max_valid_stop_distance();
 }
 
 double ComputeEffectivePullOverMinDistance(
-    const apollo::planning::ScenarioPullOverConfig& config) {
-  return std::max({config.pull_over_min_distance_buffer(),
-                   config.max_distance_stop_search(),
-                   ComputePullOverPreparationDistance(config)});
+    const apollo::planning::ScenarioPullOverConfig& config,
+    const apollo::common::VehicleGeometryModel& vehicle_geometry_model) {
+  return std::max(
+      {config.pull_over_min_distance_buffer(), config.max_distance_stop_search(),
+       ComputePullOverPreparationDistance(config, vehicle_geometry_model)});
 }
 
 }  // namespace
@@ -211,7 +212,8 @@ ScenarioDecisionResult ParkDecider::CheckPullOver(
 
   // 3. Load Configuration
   const auto& config = config_.pull_over_config();
-  const double min_dist = ComputeEffectivePullOverMinDistance(config);
+  const double min_dist = ComputeEffectivePullOverMinDistance(
+      config, injector_->vehicle_model().geometry_model());
   const double max_dist = config.start_pull_over_scenario_distance();
   const double stop_search_dist = config.max_distance_stop_search();
   const double junction_buffer = config.avoid_junction_distance();

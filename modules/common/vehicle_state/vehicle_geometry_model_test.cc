@@ -90,7 +90,7 @@ TEST_F(VehicleGeometryModelTest, BuildBoxFromPathPoint) {
   point.set_theta(0.0);
 
   math::Box2d box;
-  ASSERT_TRUE(geometry_model_.BuildBox(point, REAR_AXLE_CENTER, &box).ok());
+  ASSERT_TRUE(geometry_model_.BuildBox(point, &box).ok());
   EXPECT_NEAR(box.center_x(), 6.4, 1e-6);
   EXPECT_NEAR(box.center_y(), 5.0, 1e-6);
 

@@ -290,7 +290,8 @@ void Obstacle::SetPerceptionSlBoundary(const SLBoundary& sl_boundary) {
 }
 
 double Obstacle::MinRadiusStopDistance(
-    const common::VehicleParam& vehicle_param) const {
+    const common::VehicleParam& vehicle_param,
+    const common::VehicleGeometryModel& vehicle_geometry_model) const {
   if (min_radius_stop_distance_ > 0) {
     return min_radius_stop_distance_;
   }
@@ -306,8 +307,7 @@ double Obstacle::MinRadiusStopDistance(
                           (min_turn_radius - lateral_diff) *
                               (min_turn_radius - lateral_diff))) +
       stop_distance_buffer;
-  common::VehicleGeometryModel geometry_model;
-  stop_distance -= geometry_model.FrontEdgeDistance();
+  stop_distance -= vehicle_geometry_model.FrontEdgeDistance();
   stop_distance = std::min(stop_distance, FLAGS_max_stop_distance_obstacle);
   stop_distance = std::max(stop_distance, FLAGS_min_stop_distance_obstacle);
   return stop_distance;

@@ -30,12 +30,14 @@ using apollo::common::Status;
 using apollo::common::math::Vec2d;
 
 OpenSpaceTrajectoryOptimizer::OpenSpaceTrajectoryOptimizer(
-    const OpenSpaceTrajectoryOptimizerConfig& config)
+    const OpenSpaceTrajectoryOptimizerConfig& config,
+    const common::VehicleGeometryModel& vehicle_geometry_model)
     : config_(config) {
   // Load config
   AINFO << config_.DebugString();
   // Initialize hybrid astar class pointer
-  warm_start_.reset(new HybridAStar(config.planner_open_space_config()));
+  warm_start_.reset(new HybridAStar(config.planner_open_space_config(),
+                                    vehicle_geometry_model));
 
   // Initialize dual variable warm start class pointer
   dual_variable_warm_start_.reset(

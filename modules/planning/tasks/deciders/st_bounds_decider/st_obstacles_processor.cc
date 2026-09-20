@@ -49,15 +49,16 @@ namespace {
 using ObsTEdge = std::tuple<int, double, double, double, std::string>;
 }  // namespace
 
-void STObstaclesProcessor::Init(const double planning_distance,
-                                const double planning_time,
-                                const PathData& path_data,
-                                PathDecision* const path_decision,
-                                History* const history) {
+void STObstaclesProcessor::Init(
+    const double planning_distance, const double planning_time,
+    const PathData& path_data, PathDecision* const path_decision,
+    History* const history,
+    const common::VehicleGeometryModel& vehicle_geometry_model) {
   planning_time_ = planning_time;
   planning_distance_ = planning_distance;
   path_data_ = path_data;
   vehicle_param_ = common::VehicleConfigHelper::GetConfig().vehicle_param();
+  vehicle_geometry_model_ = vehicle_geometry_model;
   adc_path_init_s_ = path_data_.discretized_path().front().s();
   path_decision_ = path_decision;
   history_ = history;
@@ -553,14 +554,15 @@ bool STObstaclesProcessor::GetOverlappingS(
     const Box2d& obstacle_instance, const double adc_l_buffer,
     std::pair<double, double>* const overlapping_s) {
   // Locate the possible range to search in details.
-  common::VehicleGeometryModel geometry_model;
   int pt_before_idx = GetSBoundingPathPointIndex(
-      adc_path_points, obstacle_instance, geometry_model.FrontEdgeDistance(),
-      true, 0, static_cast<int>(adc_path_points.size()) - 2);
+      adc_path_points, obstacle_instance,
+      vehicle_geometry_model_.FrontEdgeDistance(), true, 0,
+      static_cast<int>(adc_path_points.size()) - 2);
   ADEBUG << "The index before is " << pt_before_idx;
   int pt_after_idx = GetSBoundingPathPointIndex(
-      adc_path_points, obstacle_instance, geometry_model.BackEdgeDistance(),
-      false, 0, static_cast<int>(adc_path_points.size()) - 2);
+      adc_path_points, obstacle_instance,
+      vehicle_geometry_model_.BackEdgeDistance(), false, 0,
+      static_cast<int>(adc_path_points.size()) - 2);
   ADEBUG << "The index after is " << pt_after_idx;
   if (pt_before_idx == static_cast<int>(adc_path_points.size()) - 2) {
     return false;
@@ -676,9 +678,8 @@ bool STObstaclesProcessor::IsPathPointAwayFromObstacle(
 bool STObstaclesProcessor::IsADCOverlappingWithObstacle(
     const PathPoint& adc_path_point, const Box2d& obs_box,
     const double l_buffer) const {
-  common::VehicleGeometryModel geometry_model;
-  const Box2d adc_box = geometry_model.BuildBox(
-      adc_path_point, l_buffer, 0.0, common::ReferencePoint::REAR_AXLE_CENTER);
+  const Box2d adc_box = vehicle_geometry_model_.BuildBox(
+      adc_path_point, l_buffer);
 
   ADEBUG << "    ADC box is: " << adc_box.DebugString();
   ADEBUG << "    Obs box is: " << obs_box.DebugString();

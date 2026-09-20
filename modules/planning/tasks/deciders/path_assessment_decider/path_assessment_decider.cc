@@ -667,7 +667,7 @@ void PathAssessmentDecider::SetPathPointType(
     const auto& rear_center_path_point = discrete_path[i];
     const Box2d ego_box =
         reference_line_info.vehicle_geometry_model().BuildBox(
-            rear_center_path_point, common::ReferencePoint::REAR_AXLE_CENTER);
+            rear_center_path_point);
     SLBoundary ego_sl_boundary;
     if (!reference_line_info.reference_line().GetSLBoundary(ego_box,
                                                             &ego_sl_boundary)) {

@@ -163,7 +163,8 @@ OpenSpaceTrajectoryProvider::OpenSpaceTrajectoryProvider(
     : TrajectoryOptimizer(config, injector) {
   open_space_trajectory_optimizer_.reset(new OpenSpaceTrajectoryOptimizer(
       config.open_space_trajectory_provider_config()
-          .open_space_trajectory_optimizer_config()));
+          .open_space_trajectory_optimizer_config(),
+      injector_->vehicle_model().geometry_model()));
   AINFO << config_.DebugString();
 }
 

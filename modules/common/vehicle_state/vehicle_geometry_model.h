@@ -38,12 +38,22 @@ struct VehicleBounds {
 // Provides geometry-only operations for vehicle footprint, collision, and
 // clearance calculations.
 //
-// VehicleGeometryModel consumes the reference point declared by VehicleState
-// and vehicle dimensions. For every operation that receives a VehicleState,
-// the input position is interpreted at that point and converted to the
-// geometric center using
-// VehicleDescription::CenterOffset(). Therefore rear axle, front axle, and
-// center-of-mass inputs describe the same physical footprint.
+// VehicleGeometryModel resolves two independent notions of "reference point":
+//
+// 1. VehicleState inputs carry their own reference_point() field, owned and
+//    normalized by VehicleStateProvider. Every overload that receives a
+//    VehicleState reads that field directly; callers never select it.
+// 2. PathPoint / TrajectoryPoint / (position, heading) inputs describe
+//    planning-generated trajectory points. These points do not carry a
+//    reference-point field of their own; their anchor is a structural
+//    property of whichever kinematic VehicleModel produced them (e.g. the
+//    rear axle for an Ackermann bicycle model, the center of mass for a
+//    four-wheel-steering model). This anchor is bound once at construction
+//    time as trajectory_reference_point() and must be supplied by the
+//    VehicleModel that owns this geometry model (see
+//    VehicleModel::geometry_model()). Planning must never pass a
+//    ReferencePoint into these overloads; doing so would let planning decide
+//    something that belongs to the configured vehicle model.
 //
 // It does not transform motion state, apply steering constraints, or predict
 // future motion; those responsibilities belong to ReferencePointTransformer
@@ -54,75 +64,69 @@ class VehicleGeometryModel {
   VehicleGeometryModel();
   explicit VehicleGeometryModel(const VehicleDescription& description);
 
+  // trajectory_reference_point binds the anchor used to interpret every
+  // PathPoint/TrajectoryPoint/(position, heading) overload below. It should
+  // come from the canonical_reference_point() of the VehicleModel currently
+  // configured for the vehicle; see VehicleModel::geometry_model().
+  VehicleGeometryModel(const VehicleDescription& description,
+                       ReferencePoint trajectory_reference_point);
+
   const VehicleDescription& description() const { return description_; }
 
-  // Returns the footprint distances relative to a center-line reference
-  // point. ReferencePoint currently has longitudinal anchors only, so left
-  // and right are independent of the selected reference point.
-  VehicleBounds Bounds(
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
+  ReferencePoint trajectory_reference_point() const {
+    return trajectory_reference_point_;
+  }
+
+  // Returns the footprint distances relative to trajectory_reference_point().
+  // ReferencePoint currently has longitudinal anchors only, so left and right
+  // are independent of the selected reference point.
+  VehicleBounds Bounds() const;
 
   Status BuildBox(const VehicleState& vehicle_state,
                   math::Box2d* vehicle_box) const;
 
   Status BuildBox(const math::Vec2d& position, double heading,
-                  ReferencePoint reference_point,
                   math::Box2d* vehicle_box) const;
 
-  Status BuildBox(const PathPoint& path_point, ReferencePoint reference_point,
-                  math::Box2d* vehicle_box) const;
+  Status BuildBox(const PathPoint& path_point, math::Box2d* vehicle_box) const;
 
   Status BuildBox(const TrajectoryPoint& trajectory_point,
-                  ReferencePoint reference_point,
                   math::Box2d* vehicle_box) const;
 
   math::Box2d BuildBox(const VehicleState& vehicle_state) const;
 
-  math::Box2d BuildBox(
-      const math::Vec2d& position, double heading,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
+  math::Box2d BuildBox(const math::Vec2d& position, double heading) const;
 
-  math::Box2d BuildBox(
-      const PathPoint& path_point,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
+  math::Box2d BuildBox(const PathPoint& path_point) const;
 
-  math::Box2d BuildBox(
-      const TrajectoryPoint& trajectory_point,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
+  math::Box2d BuildBox(const TrajectoryPoint& trajectory_point) const;
 
-  math::Box2d BuildBox(
-      const PathPoint& path_point, double lateral_buffer,
-      double longitudinal_buffer = 0.0,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
+  math::Box2d BuildBox(const PathPoint& path_point, double lateral_buffer,
+                       double longitudinal_buffer = 0.0) const;
 
   Status BuildFrontRegion(const VehicleState& vehicle_state,
                           double distance_threshold, double buffer,
                           math::Box2d* front_region) const;
 
-  // --- Edge and clearance distances ---
-  double FrontEdgeDistance(
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
-
-  double BackEdgeDistance(
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
-
+  // --- Edge and clearance distances (relative to trajectory_reference_point()) ---
+  double FrontEdgeDistance() const;
+  double BackEdgeDistance() const;
   double LeftEdgeDistance() const;
   double RightEdgeDistance() const;
 
   // --- Collision & Clearance Semantics ---
-  bool CheckCollision(
-      const PathPoint& path_point, const math::Box2d& obstacle_box,
-      double lateral_buffer = 0.0, double longitudinal_buffer = 0.0,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
+  bool CheckCollision(const PathPoint& path_point,
+                      const math::Box2d& obstacle_box,
+                      double lateral_buffer = 0.0,
+                      double longitudinal_buffer = 0.0) const;
 
   bool CheckCollision(const VehicleState& vehicle_state,
                       const math::Box2d& obstacle_box,
                       double lateral_buffer = 0.0,
                       double longitudinal_buffer = 0.0) const;
 
-  double ComputeClearance(
-      const PathPoint& path_point, const math::Box2d& obstacle_box,
-      ReferencePoint reference_point = ReferencePoint::REAR_AXLE_CENTER) const;
+  double ComputeClearance(const PathPoint& path_point,
+                          const math::Box2d& obstacle_box) const;
 
   double ComputeClearance(const VehicleState& vehicle_state,
                           const math::Box2d& obstacle_box) const;
@@ -135,6 +139,7 @@ class VehicleGeometryModel {
                    ReferencePoint reference_point, math::Vec2d* center) const;
 
   VehicleDescription description_;
+  ReferencePoint trajectory_reference_point_ = ReferencePoint::REAR_AXLE_CENTER;
 };
 
 }  // namespace common

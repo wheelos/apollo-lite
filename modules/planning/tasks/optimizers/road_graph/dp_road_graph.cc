@@ -121,8 +121,9 @@ bool DpRoadGraph::GenerateMinCostPath(
 
   TrajectoryCost trajectory_cost(
       config_, reference_line_, reference_line_info_.IsChangeLanePath(),
-      obstacles, vehicle_config.vehicle_param(), speed_data_, init_sl_point_,
-      reference_line_info_.AdcSlBoundary());
+      obstacles, vehicle_config.vehicle_param(),
+      reference_line_info_.vehicle_geometry_model(), speed_data_,
+      init_sl_point_, reference_line_info_.AdcSlBoundary());
 
   std::list<std::list<DpRoadGraphNode>> graph_nodes;
 

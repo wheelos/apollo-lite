@@ -30,6 +30,7 @@
 #include "wheelos_msgs/planning_msgs/decision.pb.h"
 
 #include "modules/common/status/status.h"
+#include "modules/common/vehicle_state/vehicle_geometry_model.h"
 #include "modules/planning/common/history.h"
 #include "modules/planning/common/obstacle.h"
 #include "modules/planning/common/path/path_data.h"
@@ -52,7 +53,8 @@ class STObstaclesProcessor {
 
   void Init(const double planning_distance, const double planning_time,
             const PathData& path_data, PathDecision* const path_decision,
-            History* const history);
+            History* const history,
+            const common::VehicleGeometryModel& vehicle_geometry_model);
 
   virtual ~STObstaclesProcessor() = default;
 
@@ -198,6 +200,7 @@ class STObstaclesProcessor {
   double planning_distance_;
   PathData path_data_;
   common::VehicleParam vehicle_param_;
+  common::VehicleGeometryModel vehicle_geometry_model_;
   double adc_path_init_s_;
   PathDecision* path_decision_;
 

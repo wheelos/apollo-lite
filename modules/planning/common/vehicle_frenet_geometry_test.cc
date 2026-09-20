@@ -41,21 +41,16 @@ class VehicleFrenetGeometryTest : public ::testing::Test {
 TEST_F(VehicleFrenetGeometryTest, ComputesForwardAndReverseStopReference) {
   EXPECT_NEAR(
       frenet_geometry_->ComputeStopReferenceS(
-          100.0, 1.0,
-          common::TravelDirection::TRAVEL_DIRECTION_FORWARD,
-          common::ReferencePoint::REAR_AXLE_CENTER),
+          100.0, 1.0, common::TravelDirection::TRAVEL_DIRECTION_FORWARD),
       95.2, 1e-6);
   EXPECT_NEAR(
       frenet_geometry_->ComputeStopReferenceS(
-          20.0, 0.5,
-          common::TravelDirection::TRAVEL_DIRECTION_REVERSE,
-          common::ReferencePoint::REAR_AXLE_CENTER),
+          20.0, 0.5, common::TravelDirection::TRAVEL_DIRECTION_REVERSE),
       21.5, 1e-6);
 }
 
 TEST_F(VehicleFrenetGeometryTest, ComputesOccupancyRanges) {
-  const auto s_range = frenet_geometry_->GetOccupancySRange(
-      50.0, common::ReferencePoint::REAR_AXLE_CENTER);
+  const auto s_range = frenet_geometry_->GetOccupancySRange(50.0);
   EXPECT_NEAR(s_range.first, 49.0, 1e-6);
   EXPECT_NEAR(s_range.second, 53.8, 1e-6);
 
