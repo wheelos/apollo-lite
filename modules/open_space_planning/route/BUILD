@@ -43,6 +43,7 @@ cc_library(
         "//modules/common/math:vec2d",
         "//modules/open_space_planning/common:status",
         "//modules/open_space_planning/common:types",
+        "//modules/planning/common:planning_geometry_adapter",
         "//modules/planning/open_space/coarse_trajectory_generator:hybrid_a_star",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
     ],

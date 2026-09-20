@@ -29,7 +29,6 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        ":navi_planning",
         ":on_lane_planning",
         "//modules/common/adapters:adapter_gflags",
         "//modules/common/util:util_tool",
@@ -38,7 +37,6 @@ cc_library(
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "@wheelos_msgs//wheelos_msgs/storytelling_msgs:story_cc_proto",
@@ -84,37 +82,6 @@ cc_library(
 )
 
 cc_library(
-    name = "navi_planning",
-    srcs = ["navi_planning.cc"],
-    hdrs = ["navi_planning.h"],
-    copts = [
-        "-fopenmp",
-        "-DMODULE_NAME=\\\"planning\\\"",
-    ],
-    deps = [
-        ":planning_base",
-        "//modules/common/math",
-        "//modules/common/util:util_tool",
-        "//modules/common/vehicle_state:vehicle_state_provider",
-        "//modules/map/hdmap:hdmap_util",
-        "//modules/planning/common:ego_info",
-        "//modules/planning/common:history",
-        "//modules/planning/common:planning_context",
-        "//modules/planning/common:planning_gflags",
-        "//modules/planning/common:trajectory_stitcher",
-        "//modules/planning/common/util:util_lib",
-        "//modules/planning/planner:planner_dispatcher",
-        "//modules/planning/planner/navi:navi_planner",
-        "//modules/planning/planner/rtk:rtk_planner",
-        "//modules/planning/reference_line:reference_line_provider",
-        "//modules/planning/traffic_rules:traffic_decider",
-        "@com_google_protobuf//:protobuf",
-        "@core//cyber",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
-    ],
-)
-
-cc_library(
     name = "on_lane_planning",
     srcs = ["on_lane_planning.cc"],
     hdrs = ["on_lane_planning.h"],
@@ -136,7 +103,6 @@ cc_library(
         "//modules/planning/common/util:util_lib",
         "//modules/planning/learning_based/img_feature_renderer:birdview_img_feature_renderer",
         "//modules/planning/planner:planner_dispatcher",
-        "//modules/planning/planner/rtk:rtk_planner",
         "//modules/planning/proto:planning_semantic_map_config_cc_proto",
         "//modules/planning/reference_line:reference_line_provider",
         "//modules/planning/scenarios/park/valet_parking",

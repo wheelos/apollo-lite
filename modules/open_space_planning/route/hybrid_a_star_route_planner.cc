@@ -26,18 +26,18 @@ namespace open_space_planning {
 
 using apollo::common::math::Vec2d;
 
-HybridAStarRoutePlanner::HybridAStarRoutePlanner() {
-  const apollo::common::VehicleGeometryModel vehicle_geometry_model;
-  hybrid_a_star_.reset(
-      new planning::HybridAStar(config_, vehicle_geometry_model));
+HybridAStarRoutePlanner::HybridAStarRoutePlanner()
+    : geometry_adapter_(vehicle_geometry_model_,
+                        common::ReferencePoint::REAR_AXLE_CENTER) {
+  hybrid_a_star_.reset(new planning::HybridAStar(config_, geometry_adapter_));
 }
 
 HybridAStarRoutePlanner::HybridAStarRoutePlanner(
     const planning::PlannerOpenSpaceConfig& config)
-    : config_(config) {
-  const apollo::common::VehicleGeometryModel vehicle_geometry_model;
-  hybrid_a_star_.reset(
-      new planning::HybridAStar(config_, vehicle_geometry_model));
+    : config_(config),
+      geometry_adapter_(vehicle_geometry_model_,
+                        common::ReferencePoint::REAR_AXLE_CENTER) {
+  hybrid_a_star_.reset(new planning::HybridAStar(config_, geometry_adapter_));
 }
 
 void HybridAStarRoutePlanner::ExtractXYBounds(const PlanningProblem& problem,
@@ -253,7 +253,7 @@ Status HybridAStarRoutePlanner::Plan(const RoutePlanningRequest& request,
     current_config.mutable_warm_start_config()->set_traj_steer_change_penalty(
         2.0);
   }
-  planning::HybridAStar solver(current_config);
+  planning::HybridAStar solver(current_config, geometry_adapter_);
 
   planning::HybridAStartResult search_result;
   const bool search_success =

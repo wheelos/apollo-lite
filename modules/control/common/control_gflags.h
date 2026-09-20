@@ -63,7 +63,6 @@ DECLARE_int32(pad_msg_pending_queue_size);
 
 DECLARE_bool(reverse_heading_control);
 
-
 DECLARE_bool(enable_maximum_steer_rate_limit);
 
 DECLARE_bool(query_time_nearest_point_only);
@@ -72,8 +71,6 @@ DECLARE_bool(query_forward_time_point_only);
 DECLARE_bool(enable_feedback_augment_on_high_speed);
 
 DECLARE_bool(enable_gear_drive_negative_speed_protection);
-
-DECLARE_bool(use_control_submodules);
 
 DECLARE_bool(use_acceleration_lookup_limit);
 
