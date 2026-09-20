@@ -1,0 +1,22 @@
+[Unit]
+Description=WheelOS Disk Cleanup Service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+# We use __APOLLO_ROOT_DIR__ which will be replaced during setup
+ExecStart=/bin/bash __APOLLO_ROOT_DIR__/docker/setup_host/disk_clean.sh
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=wheelos-disk-clean
+
+# Resource control and limits (production safe)
+Nice=19
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle
+OOMScoreAdjust=1000
+
+# Security (prevent destructive path operations even as root)
+ProtectSystem=full
+NoNewPrivileges=true
+PrivateTmp=true
