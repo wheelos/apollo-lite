@@ -19,10 +19,10 @@ cyber_modules {
 modules {
   key: "Localization"
   value: {
-    start_command: "mainboard -d /apollo/modules/localization/dag/dag_streaming_rtk_localization.dag"
+    start_command: "mainboard -d /apollo/modules/rtk_localization/dag/dag_streaming_rtk_localization.dag"
     process_monitor_config {
       command_keywords: "mainboard"
-      command_keywords: "/apollo/modules/localization/dag/dag_streaming_rtk_localization.dag"
+      command_keywords: "/apollo/modules/rtk_localization/dag/dag_streaming_rtk_localization.dag"
     }
     depends_on: "GPS"
   }

@@ -65,23 +65,6 @@ py_proto_library(
 )
 
 cc_proto_library(
-    name = "rtk_config_cc_proto",
-    deps = [
-        ":rtk_config_proto",
-    ],
-)
-
-proto_library(
-    name = "rtk_config_proto",
-    srcs = ["rtk_config.proto"],
-)
-
-py_proto_library(
-    name = "rtk_config_py_pb2",
-    deps = [":rtk_config_proto"],
-)
-
-cc_proto_library(
     name = "measure_cc_proto",
     deps = [
         ":measure_proto",

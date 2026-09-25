@@ -43,9 +43,6 @@ install(
         "//modules/localization/msf/local_tool/local_visualization/offline_visual:install",
         "//modules/localization/msf/local_tool/local_visualization/online_visual:install",
         "//modules/localization/msf/local_tool/map_creation:install",
-        "//modules/localization/ndt:install",
-        "//modules/localization/ndt/map_creation:install",
-        "//modules/localization/rtk:install",
     ],
 )
 
@@ -55,7 +52,6 @@ install(
         "//modules/localization/proto:gnss_pnt_result_cc_proto",
         "//modules/localization/proto:localization_config_cc_proto",
         "//modules/localization/proto:measure_cc_proto",
-        "//modules/localization/proto:rtk_config_cc_proto",
         "//modules/localization/proto:sins_pva_cc_proto",
     ],
     data_dest = "localization/include",
@@ -68,7 +64,6 @@ install_files(
         "//modules/localization/proto:gnss_pnt_result_py_pb2",
         "//modules/localization/proto:localization_config_py_pb2",
         "//modules/localization/proto:measure_py_pb2",
-        "//modules/localization/proto:rtk_config_py_pb2",
         "//modules/localization/proto:sins_pva_py_pb2",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_py_pb2",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:imu_py_pb2",

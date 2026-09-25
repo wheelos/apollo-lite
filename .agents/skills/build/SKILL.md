@@ -1,3 +1,8 @@
+---
+name: "build"
+description: "Apollo-Lite build and compile workflow. Use when compiling Apollo source modules inside the dev/test container or diagnosing a compile failure."
+---
+
 # Build and Compile
 
 ## When
