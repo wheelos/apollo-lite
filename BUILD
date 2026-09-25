@@ -63,10 +63,11 @@ install_src_files(
             "//modules/monitor:install_src",
             "//modules/planning:install_src",
             "//modules/routing:install_src",
-            "//modules/task_manager:install_src",
+            # task_manager has no BUILD file in this checkout; restore this
+            # dependency when its source-install target is available again.
             "//modules/transform:install_src",
             "//modules/calibration:install_src",
-            "//modules/canbus:install_src",
+            # canbus has an install target but no source-install target.
             "//modules/drivers:install_src",
             "//modules/guardian:install_src",
             "//modules/localization:install_src",
@@ -76,7 +77,8 @@ install_src_files(
             "//third_party/opengl:install_src",
             "//third_party/adolc:install_src",
             "//third_party/tf2:install_src",
-            "//third_party/localization_msf:install_src",
+            # The bundled MSF library was removed pending the localization
+            # refactor; keep it out of source-artifact installation meanwhile.
             "//third_party/rtklib:install_src",
         ],
     ),

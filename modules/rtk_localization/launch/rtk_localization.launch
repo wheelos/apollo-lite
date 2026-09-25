@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>rtk_localization</name>
+        <dag_conf>/apollo/modules/rtk_localization/dag/dag_streaming_rtk_localization.dag</dag_conf>
+        <process_name>rtk_localization</process_name>
+    </module>
+</cyber>

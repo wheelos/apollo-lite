@@ -13,7 +13,7 @@ cyber_modules {
 cyber_modules {
   key: "Localization"
   value: {
-    dag_files: "/apollo/modules/localization/dag/dag_streaming_rtk_localization.dag"
+    dag_files: "/apollo/modules/rtk_localization/dag/dag_streaming_rtk_localization.dag"
   }
 }
 cyber_modules {
@@ -84,7 +84,7 @@ monitored_components {
   value: {
     process {
       command_keywords: "mainboard"
-      command_keywords: "/apollo/modules/localization/dag/dag_streaming_rtk_localization.dag"
+      command_keywords: "/apollo/modules/rtk_localization/dag/dag_streaming_rtk_localization.dag"
     }
     channel {
       name: "/apollo/localization/pose"

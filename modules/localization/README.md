@@ -24,11 +24,15 @@
 An object instance defined by Protobuf message `LocalizationEstimate`, which can be found in file `localization/proto/localization.proto`.
 
 ## Implementing Localization
-  Currently the RTK based localization is implemented in class `RTKLocalization`. If you are implementing a new localization method, for example, `FooLocalization`, you would need to perform the following steps:
+  The RTK component is implemented in the standalone `modules/rtk_localization`
+  module. If you are implementing a new localization method, for example,
+  `FooLocalization`, you would need to perform the following steps:
 
   1. In `proto/localization_config.proto`, add a value `FOO` to the `LocalizationType` enum type
 
-  2. Go to the `modules/localization` directory, and create a `foo` directory. In the `foo` directory, implement the class `FooLocalization` by following the code in the `RTKLocalization` class in the `rtk` directory. `FooLocalization` has to be a subclass of `LocalizationBase`. Also create a file `foo/BUILD` by following the file `rtk/BUILD`
+  2. Go to the owning module directory and create a `foo` directory. Implement
+     `FooLocalization` by following the relevant localization component.
+     Define its own `BUILD` target and runtime configuration.
 
   3. You need to register the `FooLocalization` class in the function `Localization::RegisterLocalizationMethods()`, which is located in the `localization.cc` file. You can register it by inserting the following code at the end of the function:
 
