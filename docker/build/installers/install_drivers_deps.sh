@@ -18,15 +18,11 @@
 
 # Fail on first error.
 set -e
-MY_MODE="$1"
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
-# bash ${CURR_DIR}/install_opencv.sh
-bash ${CURR_DIR}/install_proj.sh
 bash ${CURR_DIR}/install_openh264.sh
-bash ${CURR_DIR}/install_ffmpeg.sh
 
 # Required by Python audio driver
 # apt_get_update_and_install \

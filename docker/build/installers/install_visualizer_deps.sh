@@ -19,8 +19,6 @@
 # Fail on first error.
 set -e
 
-BUILD_TYPE="${1:-download}"
-
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
@@ -41,7 +39,7 @@ apt_get_update_and_install \
 # DON'T INSTALL THESE!!!
 # libnvidia-gl-440 # trouble-maker for `nvidia-smi`
 
-bash ${CURR_DIR}/install_qt.sh "${BUILD_TYPE}"
+bash ${CURR_DIR}/install_qt.sh
 
 
 # Clean up cache to reduce layer size.

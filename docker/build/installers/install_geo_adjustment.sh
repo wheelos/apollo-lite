@@ -36,6 +36,15 @@ if [[ -z "${MY_GEO}" ]]; then
   error "Error: Geolocation parameter (MY_GEO) is required."
   exit 1
 fi
+MY_GEO="${MY_GEO,,}"
+case "${MY_GEO}" in
+  cn|us)
+    ;;
+  *)
+    error "Unsupported geolocation '${MY_GEO}'; expected cn or us."
+    exit 1
+    ;;
+esac
 
 info "Starting geo-adjustment for geolocation: ${MY_GEO^^}"
 
@@ -46,11 +55,7 @@ info "Detected system architecture: ${TARGET_ARCH}"
 # ============================
 # APT source configuration
 # ============================
-# Select and install the appropriate APT sources.list file based on geolocation and architecture.
-# Priority:
-#   1. sources.list.<geo>.<arch>
-#   2. sources.list.default.<arch>
-#   3. sources.list.default
+# Select the APT sources.list file matching geolocation, architecture, and OS.
 configure_apt_sources() {
   local geo="$1"
   local arch="$2"
@@ -59,28 +64,21 @@ configure_apt_sources() {
   # Specific sources file for geo, arch, os_id, and os_version
   local sources_list_file="/etc/apt/sources.list"
 
-  local preferred_sources=(
-    "${RCFILES_DIR}/sources.list.${geo}.${arch}.${os_id}.${os_version}"
-    "${RCFILES_DIR}/sources.list.${geo}.${arch}"
-  )
+  local preferred_source="${RCFILES_DIR}/sources.list.${geo}.${arch}.${os_id}.${os_version}"
 
   info "Configuring APT sources for ${geo^^} (${arch})..."
 
-  local found_source_file=""
-  for file in "${preferred_sources[@]}"; do
-    if [[ -f "${file}" ]]; then
-      found_source_file="${file}"
-      break
-    fi
-  done
-
-  if [[ -n "${found_source_file}" ]]; then
-    info "Using APT sources file: ${found_source_file}"
-    install -m 0644 "${found_source_file}" "${sources_list_file}" ||
-      error "Failed to copy APT sources file '${found_source_file}' to '${sources_list_file}'."
+  if [[ -f "${preferred_source}" ]]; then
+    info "Using APT sources file: ${preferred_source}"
+    install -m 0644 "${preferred_source}" "${sources_list_file}" ||
+      error "Failed to copy APT sources file '${preferred_source}' to '${sources_list_file}'."
   else
     warning "No suitable APT sources file found for ${geo^^} (${arch})."
-    warning "APT sources remain as default; downloads may be slow."
+    if [[ "${geo,,}" == "cn" ]]; then
+      error "A Tsinghua APT source is required for China builds."
+      exit 1
+    fi
+    warning "APT sources remain unchanged; downloads may be slow."
     # Uncomment below to enforce sources file requirement:
     # error "Critical: No suitable APT sources file found. Exiting."
     # exit 1
@@ -128,10 +126,40 @@ configure_pypi_mirror() {
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* || warning "Failed to remove temporary files."
 }
 
+# Configure JavaScript package registries when those tools are present.
+configure_npm_mirrors() {
+  local geo="$1"
+  local npm_registry
+
+  case "${geo}" in
+    cn)
+      npm_registry="https://registry.npmmirror.com"
+      ;;
+    us)
+      npm_registry="https://registry.npmjs.org"
+      ;;
+    *)
+      error "Unsupported geolocation '${geo}' for npm registry."
+      return 1
+      ;;
+  esac
+
+  if command -v npm >/dev/null 2>&1; then
+    info "Setting npm registry: ${npm_registry}"
+    npm config set registry "${npm_registry}"
+  fi
+
+  if command -v yarn >/dev/null 2>&1; then
+    info "Setting Yarn registry: ${npm_registry}"
+    yarn config set registry "${npm_registry}"
+  fi
+}
+
 # ============================
 # Execute configuration steps
 # ============================
 configure_apt_sources "${MY_GEO}" "${TARGET_ARCH}"
 configure_pypi_mirror "${MY_GEO}"
+configure_npm_mirrors "${MY_GEO}"
 
 info "Geolocation adjustment script finished."

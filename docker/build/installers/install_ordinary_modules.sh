@@ -32,7 +32,7 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # -----------------------------------------------------------------------------
 
 # Keep track of installed dependencies to prevent redundant calls.
-# Keys are dependency script filenames (e.g., "install_opencv.sh").
+# Keys are dependency script filenames.
 declare -A INSTALLED_DEPS
 
 # Global dependencies that are commonly used across many modules.
@@ -42,16 +42,16 @@ declare -a GLOBAL_DEPS=(
 
 # Define dependencies for each module as separate arrays.
 # Dependencies are listed without the CURR_DIR prefix, just the script names.
-declare -a module_common_deps=("install_osqp.sh")
+declare -a module_common_deps=()
 declare -a module_canbus_deps=()
 declare -a module_control_deps=()
 declare -a module_dreamview_deps=("install_dreamview_deps.sh")
 declare -a module_drivers_deps=("install_drivers_deps.sh")
 declare -a module_guardian_deps=()
-declare -a module_localization_deps=("install_proj.sh")
-declare -a module_map_deps=("install_proj.sh")
+declare -a module_localization_deps=()
+declare -a module_map_deps=()
 declare -a module_monitor_deps=()
-declare -a module_perception_deps=("install_liblz4.sh" "install_paddle_deps.sh" "install_ffmpeg.sh")
+declare -a module_perception_deps=("install_perception_deps.sh")
 declare -a module_planning_deps=("install_adolc.sh" "install_ipopt.sh" "install_libtorch.sh")
 declare -a module_prediction_deps=()
 declare -a module_routing_deps=()
@@ -59,8 +59,6 @@ declare -a module_storytelling_deps=()
 declare -a module_task_manager_deps=()
 declare -a module_tools_deps=("install_python_modules.sh")
 declare -a module_transform_deps=()
-# declare -a module_audio_deps=("install_fftw3.sh") # Uncomment if 'audio' module is active
-
 # Map module names to the names of their dependency arrays.
 declare -A MODULE_TO_DEPS_ARRAY_MAP=(
     ["common"]="module_common_deps"
@@ -80,7 +78,6 @@ declare -A MODULE_TO_DEPS_ARRAY_MAP=(
     ["task_manager"]="module_task_manager_deps"
     ["tools"]="module_tools_deps"
     ["transform"]="module_transform_deps"
-    # ["audio"]="module_audio_deps" # Uncomment if 'audio' module is active
 )
 
 # List of all known modules, used for validation and ' --all ' option.
@@ -94,7 +91,7 @@ declare -a ALL_MODULES=("${!MODULE_TO_DEPS_ARRAY_MAP[@]}")
 # Function to execute a dependency installation script only once.
 # It assumes the target script itself is idempotent.
 # Arguments:
-#   $1: The dependency script filename (e.g., "install_opencv.sh")
+#   $1: The dependency script filename
 function install_dep() {
     local dep_script_name="$1"
     local dep_script_path="${CURR_DIR}/${dep_script_name}"

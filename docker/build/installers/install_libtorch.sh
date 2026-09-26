@@ -18,6 +18,8 @@
 
 set -euo pipefail
 
+GPU_SUPPORT="${1:-${GPU_SUPPORT:-0}}"
+
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
@@ -94,16 +96,20 @@ function install_libtorch_cpp() {
     popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"
 
   # ============================================================================
-  # aarch64 Strategy: Prioritize pre-compiled wheel, fallback to source build
+  # aarch64 strategy: use the pinned CPU or Orin wheel
   # ============================================================================
   elif [ "${TARGET_ARCH}" = "aarch64" ]; then
-    # use 2.6.0 in l4t environment
-    PYTORCH_VERSION="2.6.0"
     info "Executing aarch64 strategy..."
-    if ! _install_libtorch_from_wheel_aarch64; then
-      warning "Pre-compiled wheel installation failed. Falling back to building from source."
-      if ! _build_libtorch_from_source_aarch64; then
-        error "LibTorch installation failed after both attempts."
+    if [ "${GPU_SUPPORT}" = "1" ]; then
+      PYTORCH_VERSION="2.6.0"
+      if ! _install_libtorch_from_wheel_aarch64; then
+        error "Could not install the pinned Orin LibTorch wheel; verify the HTTP cache artifact and checksum."
+        return 1
+      fi
+    else
+      PYTORCH_VERSION="2.10.0"
+      if ! _install_libtorch_from_wheel_aarch64_cpu; then
+        error "Could not install the pinned CPU-only aarch64 LibTorch wheel."
         return 1
       fi
     fi
@@ -140,11 +146,43 @@ function install_libtorch_cpp() {
   fi
 }
 
+# --- Helper: Install official CPU-only aarch64 wheel via cache ---
+function _install_libtorch_from_wheel_aarch64_cpu() {
+  local PKG_NAME="torch-2.10.0+cpu-cp310-cp310-linux_aarch64.whl"
+  local DOWNLOAD_LINK="https://download.pytorch.org/whl/cpu/torch-2.10.0%2Bcpu-cp310-cp310-linux_aarch64.whl"
+  local CHECKSUM="31ae44836c8b9bbd1a3943d29c7c7457709ddf7c6173aa34aefe9d2203e4c405"
+  local DOWNLOAD_DIR="/tmp/pytorch_wheel"
+
+  mkdir -p "${DOWNLOAD_DIR}"
+  pushd "${DOWNLOAD_DIR}" >/dev/null
+  if ! download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"; then
+    popd >/dev/null
+    rm -rf "${DOWNLOAD_DIR}"
+    return 1
+  fi
+
+  apt_get_update_and_install \
+    libopenblas-dev \
+    libomp-dev \
+    zlib1g-dev \
+    libffi-dev
+
+  if ! pip3 install "${PKG_NAME}"; then
+    error "pip3 install failed for the CPU-only aarch64 wheel."
+    popd >/dev/null
+    rm -rf "${DOWNLOAD_DIR}"
+    return 1
+  fi
+
+  popd >/dev/null
+  rm -rf "${DOWNLOAD_DIR}"
+}
+
 # --- Helper: Install aarch64 from pre-compiled wheel via cache ---
 function _install_libtorch_from_wheel_aarch64() {
   local PYTORCH_WHL_VERSION="2.6.0a0+git1eba9b3"
   local PKG_NAME="torch-${PYTORCH_WHL_VERSION}-cp310-cp310-linux_aarch64.whl"
-  local DOWNLOAD_LINK="http://10.0.39.103:8080/build/aarch64/${PKG_NAME}"
+  local DOWNLOAD_LINK="${LOCAL_HTTP_ADDR}/${PKG_NAME}"
 
   # IMPORTANT: Add the real SHA256 checksum for your wheel file.
   # Run this on your server: sha256sum torch-2.6.0a0+git1eba9b3-cp310-cp310-linux_aarch64.whl
@@ -174,49 +212,12 @@ function _install_libtorch_from_wheel_aarch64() {
     libffi-dev
 
   info "Installing downloaded wheel via pip..."
-  if ! pip3 install --no-cache-dir "${PKG_NAME}"; then
+  if ! pip3 install "${PKG_NAME}"; then
       error "pip3 install failed for the downloaded wheel."; popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"; return 1
   fi
 
   ok "Pre-compiled wheel installed successfully."
   popd >/dev/null; rm -rf "${DOWNLOAD_DIR}"; return 0 # Success
-}
-
-# --- Helper: Build aarch64 from source (Fallback) ---
-function _build_libtorch_from_source_aarch64() {
-  info "Attempt 2/2: Building LibTorch from source. This will take a very long time."
-  # Install build dependencies
-  info "Installing source build dependencies..."
-  sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-      git cmake ninja-build build-essential python3-dev python3-pip python3-setuptools \
-      python3-wheel libopenblas-dev libomp-dev libjpeg-dev zlib1g-dev libffi-dev \
-      && pip3 install --no-cache-dir numpy pyyaml typing_extensions sympy filelock \
-      && sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*
-
-  # Clone PyTorch source
-  local BUILD_DIR="/tmp/pytorch_build"
-  rm -rf "${BUILD_DIR}"; mkdir -p "${BUILD_DIR}"; pushd "${BUILD_DIR}" > /dev/null
-  info "Cloning PyTorch source v${PYTORCH_VERSION}..."
-  git clone --recursive --single-branch --branch "v${PYTORCH_VERSION}" https://github.com/pytorch/pytorch.git
-  cd pytorch
-
-  # Configure and build
-  info "Configuring build environment for Jetson..."
-  export USE_CUDA=1 USE_CUDNN=1 USE_TENSORRT=1 TORCH_CUDA_ARCH_LIST="8.7"
-  export USE_NCCL=0 USE_DISTRIBUTED=0 USE_QNNPACK=1 USE_PYTORCH_QNNPACK=1
-  export BUILD_TEST=0 CMAKE_GENERATOR="Ninja" CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
-
-  info "Starting PyTorch wheel build. Log: /tmp/pytorch_build.log"
-  if ! python3 setup.py bdist_wheel > /tmp/pytorch_build.log 2>&1; then
-    error "Build from source failed. Check /tmp/pytorch_build.log"; popd >/dev/null; rm -rf "${BUILD_DIR}"; return 1
-  fi
-
-  ok "PyTorch source build completed. Installing the new wheel..."
-  if ! pip3 install --no-cache-dir dist/*.whl; then
-      error "pip3 install failed for the newly built wheel."; return 1
-  fi
-
-  popd >/dev/null; rm -rf "${BUILD_DIR}"; return 0 # Success
 }
 
 # --- Main Execution Flow ---

@@ -1,105 +1,137 @@
 #!/usr/bin/env bash
 
 # ----- Constants -----
-DOCKER_IMAGE_REPO=${DOCKER_IMAGE_REPO:="wheelos/apollo"}
-GEOLOC=${GEOLOC:="cn"}
-GEO_REGISTRY=""
+DEFAULT_CONTAINER_OS="22.04"
 
-function geo_specific_config() {
-    local geo="$1"
-    if [[ -z "${geo}" ]]; then
-        echo "Use default GeoLocation settings"
-        return
-    fi
-    echo "Setup geolocation specific configurations for ${geo}"
+function resolve_apollo_repo() {
+    local geoloc="${GEOLOC:-cn}"
+    local default_repo
 
-    if [[ "${geo}" == "cn" ]]; then
-        echo "GeoLocation settings for Mainland China"
-        GEO_REGISTRY="registry.cn-hangzhou.aliyuncs.com"
-    else
-        echo "GeoLocation settings for ${geo} is not ready, fallback to default"
-    fi
+    case "${geoloc}" in
+        cn)
+            default_repo="registry.cn-hangzhou.aliyuncs.com/wheelos/apollo"
+            ;;
+        us)
+            default_repo="wheelos/apollo"
+            ;;
+        *)
+            echo "Unsupported geolocation '${geoloc}'; expected cn or us." >&2
+            return 1
+            ;;
+    esac
+
+    APOLLO_REPO="${APOLLO_REPO:-${default_repo}}"
 }
 
 # Function: Pull Docker image, check local cache first if requested
 function docker_pull() {
-    local base_image_name="$1"
-    local __final_image_var_name="$2"
-
-    # Determine the pull candidate based on geolocation
-    local pull_candidate_image_name="${base_image_name}"
-    if [[ -n "${GEO_REGISTRY}" ]]; then
-        pull_candidate_image_name="${GEO_REGISTRY}/${base_image_name}"
-    fi
+    local image_name="$1"
 
     # Check if local image exists
-    if docker image inspect "${pull_candidate_image_name}" >/dev/null 2>&1; then
-        echo "Using local image '${pull_candidate_image_name}'."
+    if docker image inspect "${image_name}" >/dev/null 2>&1; then
+        echo "Using local image '${image_name}'."
     else
-        echo "Starting pull of docker image '${pull_candidate_image_name}' ..."
-        if ! docker pull "${pull_candidate_image_name}"; then
-            echo "Failed to pull docker image: '${pull_candidate_image_name}'"
+        echo "Starting pull of docker image '${image_name}' ..."
+        if ! docker pull "${image_name}"; then
+            echo "Failed to pull docker image: '${image_name}'"
             return 1
         fi
     fi
 
-    eval "${__final_image_var_name}='${pull_candidate_image_name}'"  # Store the final image name
+    APOLLO_IMAGE="${image_name}"
     return 0
 }
 
 function resolve_image_name() {
-    local base_image_name="$1"
-    local __final_image_var_name="$2"
-
-    local final_image_name="${base_image_name}"
-    if [[ -n "${GEO_REGISTRY}" ]]; then
-        final_image_name="${GEO_REGISTRY}/${base_image_name}"
-    fi
-
-    eval "${__final_image_var_name}='${final_image_name}'"
+    APOLLO_IMAGE="$1"
     return 0
 }
 
-# Function: Determine image based on architecture and GPU usage
+# Resolve only image variants present in docker/build/docker-bake.hcl.
 function determine_image() {
-    local arch="$1"     # e.g., x86 or arm
-    local os_ver="$2"   # e.g., 20.04
-    local gpu="$3"      # e.g., true (for GPU) or false (for CPU)
+    local arch="$1"
+    local os_ver="$2"
+    local gpu="$3"
     local ensure_local="${4:-true}"
 
-    # Construct the base image name using the specified format
-    local base_image_name="dev-${arch}-${os_ver}"
     local image_name=""
 
-    # Append GPU or CPU suffix based on the input
-    if [[ "$gpu" == "true" ]]; then
-        image_name="${DOCKER_IMAGE_REPO}:${base_image_name}-gpu"
+    if [[ "${gpu}" != "true" && "${gpu}" != "false" ]]; then
+        echo "Unsupported GPU selection '${gpu}'; expected true or false." >&2
+        return 1
+    fi
+
+    if [[ "${arch}" == "aarch64" ]]; then
+        if [[ "${os_ver}" != "22.04" ]]; then
+            echo "Unsupported ARM64 container Ubuntu version '${os_ver}'; only 22.04 is available." >&2
+            return 1
+        fi
+        if [[ "${gpu}" == "true" ]]; then
+            if [[ ! -r /etc/nv_tegra_release ]]; then
+                echo "ARM64 GPU images are only supported on Jetson Orin with JetPack 6.2.1 / L4T 36.4.3." >&2
+                return 1
+            fi
+
+            local l4t_version
+            l4t_version="$(sed -nE 's/.*R([0-9]+) \(release\), REVISION: ([0-9]+)\.([0-9]+).*/\1.\2.\3/p' /etc/nv_tegra_release)"
+            if [[ "${l4t_version}" != "36.4.3" ]]; then
+                echo "Unsupported Jetson L4T version '${l4t_version:-unknown}'; this image targets L4T 36.4.3." >&2
+                return 1
+            fi
+            image_name="${APOLLO_REPO}:dev-aarch64-orin-jp6.2.1-l4t36.4.3-gpu"
+        else
+            image_name="${APOLLO_REPO}:dev-aarch64-22.04-cpu"
+        fi
+    elif [[ "${arch}" == "x86_64" ]]; then
+        if [[ "$gpu" == "true" ]]; then
+            if [[ "${os_ver}" != "22.04" ]]; then
+                echo "Unsupported x86_64 GPU container Ubuntu version '${os_ver}'; the CUDA image uses 22.04." >&2
+                return 1
+            fi
+            image_name="${APOLLO_REPO}:dev-x86_64-22.04-gpu"
+        else
+            if [[ "${os_ver}" != "20.04" && "${os_ver}" != "22.04" ]]; then
+                echo "Unsupported x86_64 CPU image Ubuntu version '${os_ver}'; supported versions are 20.04 and 22.04." >&2
+                return 1
+            fi
+            image_name="${APOLLO_REPO}:dev-x86_64-${os_ver}-cpu"
+        fi
     else
-        image_name="${DOCKER_IMAGE_REPO}:${base_image_name}-cpu"
+        echo "Unsupported container architecture '${arch}'; supported architectures are x86_64 and aarch64." >&2
+        return 1
     fi
 
     if [[ "${ensure_local}" == "true" ]]; then
-        # Pull the Docker image or use the existing one
-        if ! docker_pull "${image_name}" "APOLLO_IMAGE"; then
+        if ! docker_pull "${image_name}"; then
             echo "Failed to determine image."
-            exit 1
+            return 1
         fi
     else
-        if ! resolve_image_name "${image_name}" "APOLLO_IMAGE"; then
+        if ! resolve_image_name "${image_name}"; then
             echo "Failed to resolve image name."
-            exit 1
+            return 1
         fi
     fi
 }
 
 # Main function to call from whl.sh
 function select_container() {
+    if [[ $# -lt 3 || $# -gt 4 ]]; then
+        echo "Usage: select_container <arch> <container-ubuntu-version> <gpu:true|false> [ensure-local:true|false]" >&2
+        return 2
+    fi
+
     local arch="$1"
     local os_ver="$2"
     local gpu="$3"
     local ensure_local="${4:-true}"
 
-    geo_specific_config "${GEOLOC}"
+    if [[ "${ensure_local}" != "true" && "${ensure_local}" != "false" ]]; then
+        echo "Unsupported ensure-local value '${ensure_local}'; expected true or false." >&2
+        return 2
+    fi
+
+    resolve_apollo_repo || return
     determine_image "${arch}" "${os_ver}" "${gpu}" "${ensure_local}"
 }
 
