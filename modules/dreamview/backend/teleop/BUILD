@@ -21,9 +21,9 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ] + if_teleop([
-        "//modules/teleop/modem/proto:modem_info_cc_proto",
-        "//modules/teleop/daemon/proto:daemon_cmd_cc_proto",
-        "//modules/teleop/daemon/proto:daemon_rpt_cc_proto",
+        "//modules/dreamview/backend/teleop/proto:modem_info_cc_proto",
+        "//modules/dreamview/backend/teleop/proto:daemon_cmd_cc_proto",
+        "//modules/dreamview/backend/teleop/proto:daemon_rpt_cc_proto",
     ]),
 )
 
