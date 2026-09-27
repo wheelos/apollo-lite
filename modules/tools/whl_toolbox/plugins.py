@@ -288,7 +288,7 @@ class PerceptionLidarPlugin(ToolboxPlugin):
         )
         if not detection_conf or not tracking_conf:
             raise RuntimeError("missing detection_conf or tracking_conf")
-        flagfile = _first_existing(["modules/common/data/global_flagfile.txt"])
+        flagfile = _first_existing(["modules/global_config/global_flagfile.txt"])
         if not flagfile:
             raise RuntimeError("missing global flagfile")
 

@@ -46,7 +46,7 @@ cc_library(
     ],
     deps = [
         ":smoke_region_output",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/common:temporary_transition_types",

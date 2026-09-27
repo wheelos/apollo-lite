@@ -316,7 +316,7 @@ if ${APOLLO_IN_DOCKER} ; then
 fi
 
 function setup_dreamview_server_port() {
-  local GLOBAL_FLAGFILE="${TOP_DIR}/modules/common/data/global_flagfile.txt"
+  local GLOBAL_FLAGFILE="${TOP_DIR}/modules/global_config/global_flagfile.txt"
 
   # 2. Set default value (must be exported)
   export SERVER_PORT="8888"

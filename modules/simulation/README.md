@@ -59,7 +59,7 @@ The default configuration is:
 
 Use `simulation_throttle.conf` when explicitly testing throttle mode. The
 component reads the vehicle configuration from
-`/apollo/modules/common/data/vehicle_param.pb.txt` unless
+`/apollo/modules/global_config/vehicle_param.pb.txt` unless
 `--vehicle_config_path` is overridden.
 
 ### 4. Start the 4WS simulation

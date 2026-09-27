@@ -39,8 +39,8 @@ cc_library(
     deps = [
         ":dp_st_cost",
         ":st_graph_point",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:obstacle",
         "//modules/planning/common:path_decision",
         "//modules/planning/common:st_graph_data",
@@ -62,8 +62,8 @@ cc_library(
     deps = [
         ":dp_st_cost",
         ":gridded_path_time_graph",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning/common:st_graph_data",
         "//modules/planning/tasks/deciders/speed_bounds_decider:st_boundary_mapper",
         "//modules/planning/tasks/optimizers:speed_optimizer",

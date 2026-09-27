@@ -16,7 +16,7 @@ cc_library(
     ],
     deps = [
         ":buffer_interface",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//third_party/tf2",
         "@com_google_absl//absl/strings",
         "@core//cyber",
@@ -45,7 +45,7 @@ cc_library(
     hdrs = ["timed_transform_resolver.h"],
     deps = [
         ":transform_query",
-        "//modules/common/util:string_util",
+        "@wheelos_common//modules/common/util:string_util",
         "@core//cyber/common:global_data",
         "@core//cyber/common:log",
         "@core//cyber/time",
@@ -103,7 +103,7 @@ cc_library(
     ],
     hdrs = ["transform_broadcaster.h"],
     deps = [
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
@@ -138,8 +138,8 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"static_transform\\"'],
     deps = [
         ":calibration_registry",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/transform/proto:static_transform_conf_cc_proto",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@core//cyber",

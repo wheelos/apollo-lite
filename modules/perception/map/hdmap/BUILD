@@ -11,8 +11,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/math",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/map/hdmap",
         "//modules/map/hdmap:hdmap_util",
         "//modules/perception/base:base_type",

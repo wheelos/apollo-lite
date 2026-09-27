@@ -31,7 +31,7 @@ cc_library(
     srcs = ["racobit_radar_message_manager.cc"],
     hdrs = ["racobit_radar_message_manager.h"],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/canbus:sensor_gflags",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_sender",
@@ -58,9 +58,9 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"racobit_radar_canbus\\"'],
     deps = [
         ":racobit_radar_message_manager",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/monitor_log",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/status",
         "//modules/drivers/canbus:sensor_gflags",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",

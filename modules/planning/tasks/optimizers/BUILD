@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["path_optimizer.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:path_decision",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/common/path:path_data",
@@ -27,7 +27,7 @@ cc_library(
     hdrs = ["speed_optimizer.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:path_decision",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:reference_line_info",
@@ -46,7 +46,7 @@ cc_library(
     hdrs = ["trajectory_optimizer.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/tasks:task",

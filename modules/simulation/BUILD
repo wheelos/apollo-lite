@@ -90,7 +90,7 @@ cc_library(
     deps = [
         ":simulation_gflags",
         ":simulation_types",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
@@ -109,7 +109,7 @@ cc_library(
         ":simulation_engine",
         ":simulation_gflags",
         ":vehicle_model",
-        "//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/configs:config_gflags",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
     ],
@@ -158,8 +158,8 @@ cc_test(
     copts = SIMULATION_COPTS,
     deps = [
         ":cyber_adapter",
-        "//modules/common/configs:config_gflags",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -188,7 +188,7 @@ cc_test(
     deps = [
         ":cyber_adapter",
         ":simulation_engine",
-        "//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/configs:config_gflags",
         "//modules/control/common:control_gflags",
         "//modules/control/common:dependency_injector",
         "//modules/control/controller:controller_agent",

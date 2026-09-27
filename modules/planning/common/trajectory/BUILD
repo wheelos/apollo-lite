@@ -8,8 +8,8 @@ cc_library(
     srcs = ["discretized_trajectory.cc"],
     hdrs = ["discretized_trajectory.h"],
     deps = [
-        "//modules/common/math",
-        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/planning/common:planning_context",
         "@eigen",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
@@ -25,7 +25,7 @@ cc_test(
     ],
     deps = [
         ":discretized_trajectory",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -49,7 +49,7 @@ cc_test(
     ],
     deps = [
         ":publishable_trajectory",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
 )

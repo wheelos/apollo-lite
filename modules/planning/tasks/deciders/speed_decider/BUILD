@@ -9,9 +9,9 @@ cc_library(
     hdrs = ["speed_decider.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/math",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:path_decision",
         "//modules/planning/common:planning_gflags",

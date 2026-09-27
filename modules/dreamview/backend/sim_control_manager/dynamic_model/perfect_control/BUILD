@@ -11,8 +11,8 @@ cc_library(
     ],
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/map:map_service",
         "//modules/dreamview/backend/sim_control_manager/core:sim_control_base",

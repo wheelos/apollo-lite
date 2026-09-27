@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["perception_camera_updater.h"],
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
     deps = [
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/proto:camera_update_cc_proto",
         "//modules/transform:transform_query",

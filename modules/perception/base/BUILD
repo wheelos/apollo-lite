@@ -44,7 +44,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
 )
 
@@ -219,7 +219,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "@core//cyber",
         "@eigen",
     ],
@@ -250,7 +250,7 @@ cc_library(
     deps = [
         ":box",
         ":point_cloud",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@boost.circular_buffer",
         "@eigen",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
@@ -365,7 +365,7 @@ cc_library(
     ],
     deps = [
         ":point",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "@eigen",
     ],
 )

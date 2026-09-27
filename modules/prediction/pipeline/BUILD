@@ -39,8 +39,8 @@ cc_library(
         "-DMODULE_NAME=\\\"prediction\\\"",
     ],
     deps = [
-        "//modules/common/math",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util",
         "//modules/map/hdmap:hdmap_util",
         "//modules/prediction/common:prediction_system_gflags",
         "//modules/prediction/proto:vector_net_cc_proto",

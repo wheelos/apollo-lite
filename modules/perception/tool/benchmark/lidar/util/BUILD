@@ -30,7 +30,7 @@ cc_library(
     deps = [
         ":object_supplement",
         ":types",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
         "@eigen",
         "@local_config_pcl//:common",
@@ -43,7 +43,7 @@ cc_library(
     hdrs = ["object_util.h"],
     deps = [
         ":object",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
 )
 
@@ -83,7 +83,7 @@ cc_library(
     srcs = ["option_parser.cc"],
     hdrs = ["option_parser.h"],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
     ],
 )

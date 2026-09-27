@@ -11,8 +11,8 @@ cc_library(
         "-DMODULE_NAME=\\\"open_space_planning\\\"",
     ],
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/open_space_planning/common:types",
         "//modules/open_space_planning/proto:open_space_planning_cc_proto",
         "//modules/open_space_planning/route:skeleton_corridor_route_planner",

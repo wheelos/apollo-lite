@@ -20,9 +20,9 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":proto_organizer",
-        "//modules/common/math",
-        "//modules/common/status",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/util",
         "//modules/map/hdmap/adapter/xml_parser",
         "@com_google_absl//absl/strings",
         "@core//cyber",
@@ -39,8 +39,8 @@ cc_library(
     linkstatic = True,
     visibility = ["//visibility:private"],
     deps = [
-        "//modules/common/math",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util",
         "//modules/map/hdmap/adapter/xml_parser",
         "@com_google_absl//absl/strings",
         "@core//cyber",

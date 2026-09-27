@@ -11,8 +11,8 @@ cc_library(
     hdrs = ["parking_slot.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/math:math_utils",
-        "//modules/common/math:vec2d",
+        "@wheelos_common//modules/common/math:math_utils",
+        "@wheelos_common//modules/common/math:vec2d",
         "@core//cyber",
     ],
 )
@@ -37,9 +37,9 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":parking_slot",
-        "//modules/common/math:geometry",
-        "//modules/common/math:math_utils",
-        "//modules/common/math:vec2d",
+        "@wheelos_common//modules/common/math:geometry",
+        "@wheelos_common//modules/common/math:math_utils",
+        "@wheelos_common//modules/common/math:vec2d",
         "@boost.geometry",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
@@ -53,8 +53,8 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":parking_roi_geometry",
-        "//modules/common/math:geometry",
-        "//modules/common/math:vec2d",
+        "@wheelos_common//modules/common/math:geometry",
+        "@wheelos_common//modules/common/math:vec2d",
         "//modules/planning/open_space/coarse_trajectory_generator:node3d",
         "//modules/planning/proto:planning_config_cc_proto",
         "@core//cyber",
@@ -70,8 +70,8 @@ cc_library(
     deps = [
         ":parking_roi_geometry",
         ":parking_slot",
-        "//modules/common/math:math_utils",
-        "//modules/common/math:vec2d",
+        "@wheelos_common//modules/common/math:math_utils",
+        "@wheelos_common//modules/common/math:vec2d",
         "//modules/planning/proto:planning_config_cc_proto",
         "@core//cyber",
     ],

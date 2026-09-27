@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["discretized_path.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
@@ -22,7 +22,7 @@ cc_test(
     srcs = ["discretized_path_test.cc"],
     deps = [
         ":discretized_path",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -33,7 +33,7 @@ cc_library(
     hdrs = ["frenet_frame_path.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
@@ -57,7 +57,7 @@ cc_library(
     deps = [
         ":discretized_path",
         ":frenet_frame_path",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/reference_line",
     ],

@@ -71,7 +71,7 @@ cc_test(
     data = ["//modules/canbus:test_data"],
     deps = [
         ":ge3_controller",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
 )

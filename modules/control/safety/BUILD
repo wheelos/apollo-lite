@@ -17,8 +17,8 @@ cc_library(
     copts = PREPROCESS_SUB_COPTS,
     deps = [
         ":safety_defines",
-        "//modules/common/util:debouncer",
-        "//modules/common/util:message_util",
+        "@wheelos_common//modules/common/util:debouncer",
+        "@wheelos_common//modules/common/util:message_util",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:local_view_cc_proto",
         "//modules/control/proto:safety_status_cc_proto",

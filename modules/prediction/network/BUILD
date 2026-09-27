@@ -33,7 +33,7 @@ cc_library(
     hdrs = ["net_model.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/prediction/network:net_layer",
         "//modules/prediction/proto:network_model_cc_proto",
     ],

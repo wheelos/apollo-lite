@@ -27,7 +27,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":piecewise_jerk_speed_nonlinear_ipopt_interface",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/planning/common:speed_profile_generator",
         "//modules/planning/common:st_graph_data",
         "//modules/planning/common/path:path_data",

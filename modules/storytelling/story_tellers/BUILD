@@ -17,7 +17,7 @@ cc_library(
     hdrs = ["close_to_junction_teller.h"],
     deps = [
         ":base_teller",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/map/hdmap:hdmap_util",
         "//modules/storytelling:frame_manager",
         "//modules/storytelling/common:storytelling_gflags",

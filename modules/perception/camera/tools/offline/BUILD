@@ -20,7 +20,7 @@ cc_library(
     ],
     deps = [
         ":transform_server",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/camera/app:cipv_camera",
         "//modules/perception/camera/common",
         "//modules/perception/common:perception_gflags",
@@ -37,7 +37,7 @@ cc_library(
     srcs = ["transform_server.cc"],
     hdrs = ["transform_server.h"],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/common/io:io_util",

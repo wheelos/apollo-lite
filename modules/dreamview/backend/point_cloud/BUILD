@@ -8,8 +8,8 @@ cc_library(
     srcs = ["point_cloud_updater.cc"],
     hdrs = ["point_cloud_updater.h"],
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/math",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/backend/simulation_world:simulation_world_updater",

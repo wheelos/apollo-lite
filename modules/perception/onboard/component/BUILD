@@ -47,8 +47,8 @@ cc_library(
     copts = PERCEPTION_COPTS,
     linkopts = ["-lleveldb"],
     deps = [
-        "//modules/common/math",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app:cipv_camera",
         "//modules/perception/camera/app:lane_camera_perception",
@@ -128,7 +128,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/app:lidar_obstacle_detection",
@@ -162,7 +162,7 @@ cc_library(
     ],
     deps = [
         "@core//cyber",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/fusion/app:obstacle_multi_sensor_fusion",
         # "//modules/perception/fusion/lib/dummy:dummy_algorithms",
@@ -195,7 +195,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
@@ -240,7 +240,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",

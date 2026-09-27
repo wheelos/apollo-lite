@@ -10,8 +10,8 @@ cc_binary(
         "-DMODULE_NAME=\\\"prediction\\\"",
     ],
     deps = [
-        "//modules/common/configs:config_gflags",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/math",
         "//modules/map/hdmap:hdmap_util",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container/obstacles:obstacles_container",

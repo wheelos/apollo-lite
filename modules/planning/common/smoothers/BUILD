@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["smoother.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_gflags",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",

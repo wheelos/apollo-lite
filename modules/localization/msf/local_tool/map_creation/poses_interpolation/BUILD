@@ -8,7 +8,7 @@ cc_library(
     srcs = ["poses_interpolation.cc"],
     hdrs = ["poses_interpolation.h"],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/localization/msf/common/io:common_io",
     ],
 )

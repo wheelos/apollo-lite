@@ -11,7 +11,7 @@ cc_library(
         "-DMODULE_NAME=\\\"prediction\\\"",
     ],
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",

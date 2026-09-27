@@ -21,8 +21,8 @@ cc_binary(
     srcs = ["navigation_dummy.cc"],
     copts = MAP_COPTS,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util",
         "//modules/world_model/relative_map:relative_map_lib",
         "@core//cyber",
     ],
@@ -33,8 +33,8 @@ cc_binary(
     srcs = ["navigator.cc"],
     copts = MAP_COPTS,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util",
         "//modules/world_model/relative_map:relative_map_lib",
         "//modules/world_model/relative_map/proto:navigator_config_cc_proto",
         "@com_github_nlohmann_json//:json",

@@ -17,7 +17,7 @@ cc_library(
     srcs = ["can_client_factory.cc"],
     hdrs = ["can_client_factory.h"],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_client/fake:fake_can_client",
         "//modules/drivers/canbus/can_client/socket:socket_can_client_raw",
@@ -32,7 +32,7 @@ cc_library(
     name = "can_client",
     hdrs = ["can_client.h"],
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/drivers/canbus/common:canbus_common",
         "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
     ],

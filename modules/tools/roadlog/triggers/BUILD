@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["drive_event_trigger.h"],
     deps = [
         ":trigger_base",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
     ],
 )
 
@@ -19,7 +19,7 @@ cc_library(
     hdrs = ["emergency_mode_trigger.h"],
     deps = [
         ":trigger_base",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
     ],
@@ -31,7 +31,7 @@ cc_library(
     hdrs = ["bumper_crash_trigger.h"],
     deps = [
         ":trigger_base",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
     ],
 )
@@ -42,7 +42,7 @@ cc_library(
     hdrs = ["hard_brake_trigger.h"],
     deps = [
         ":trigger_base",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
     ],
@@ -54,7 +54,7 @@ cc_library(
     hdrs = ["swerve_trigger.h"],
     deps = [
         ":trigger_base",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
     ],

@@ -15,7 +15,7 @@ cc_library(
     ],
     hdrs = glob(["*.h"]),
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/common/util:base_map_cache",
         "//modules/localization/msf/common/util:compression",

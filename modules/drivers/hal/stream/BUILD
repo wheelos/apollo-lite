@@ -28,7 +28,7 @@ cc_library(
     deps = [
         ":stream",
         ":tcp_stream",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@core//cyber",
     ],
 )

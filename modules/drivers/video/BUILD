@@ -38,7 +38,7 @@ cc_library(
     hdrs = ["video_driver_component.h"],
     copts = ['-DMODULE_NAME=\\"video\\"'],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/video:driver",
         "//modules/drivers/video:socket",
         "@core//cyber",
@@ -68,7 +68,7 @@ cc_library(
         "socket_input.h",
     ],
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",

@@ -8,9 +8,9 @@ cc_library(
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.h"]),
     deps = [
-        "//modules/common/math",
-        "//modules/common/status",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/localization/common:localization_gflags",
         "//modules/localization/common:rigid_transform_helper",
         "//modules/localization/msf/common/util",

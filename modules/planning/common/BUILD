@@ -12,7 +12,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":planning_geometry_adapter",
-        "//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
     ],
 )
 
@@ -33,8 +33,8 @@ cc_library(
     hdrs = ["planning_geometry_adapter.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/math",
-        "//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
     ],
 )
@@ -44,7 +44,7 @@ cc_library(
     hdrs = ["indexed_list.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "@boost.thread",
     ],
 )
@@ -63,7 +63,7 @@ cc_test(
     srcs = ["indexed_list_test.cc"],
     deps = [
         ":indexed_list",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -73,7 +73,7 @@ cc_library(
     hdrs = ["indexed_queue.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
 )
 
@@ -83,7 +83,7 @@ cc_test(
     srcs = ["indexed_queue_test.cc"],
     deps = [
         ":indexed_queue",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -102,7 +102,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":obstacle",
-        "//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "//modules/planning/reference_line",
     ],
 )
@@ -130,9 +130,9 @@ cc_library(
     deps = [
         ":indexed_list",
         ":planning_geometry_adapter",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/util:util_tool",
-        "//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:lane_graph_cc_proto",
@@ -153,7 +153,7 @@ cc_test(
     ],
     deps = [
         ":obstacle",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
@@ -166,7 +166,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":frame",
-        "//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "//modules/planning/reference_line",
     ],
 )
@@ -198,7 +198,7 @@ cc_library(
     deps = [
         ":obstacle",
         ":planning_geometry_adapter",
-        "//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
         "//modules/planning/reference_line",
     ],
 )
@@ -226,10 +226,10 @@ cc_library(
         ":st_graph_data",
         ":obstacle_decider",
         "@core//cyber",
-        "//modules/common/math",
-        "//modules/common/util",
-        "//modules/common/vehicle_state:vehicle_reference",
-        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         ":vehicle_frenet_geometry",
         ":planning_geometry_adapter",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
@@ -312,9 +312,9 @@ cc_library(
         ":open_space_info",
         ":reference_line_info",
         "@core//cyber",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/monitor_log",
-        "//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/map/hdmap:hdmap_util",
         "//modules/map/pnc_map",
@@ -336,7 +336,7 @@ cc_test(
     ],
     deps = [
         ":frame",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/map/hdmap:hdmap_util",
         "//modules/planning/proto:planning_config_cc_proto",
         "@com_google_googletest//:gtest_main",
@@ -376,7 +376,7 @@ cc_library(
     hdrs = ["speed_limit.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
     ],
 )
 
@@ -398,10 +398,10 @@ cc_library(
     deps = [
         ":obstacle",
         "@core//cyber",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/math",
-        "//modules/common/vehicle_state:vehicle_reference",
-        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:lane_graph_cc_proto",
@@ -446,7 +446,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "@core//cyber",
-        "//modules/common/vehicle_model",
+        "@wheelos_common//modules/common/vehicle_model",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:publishable_trajectory",
@@ -461,8 +461,8 @@ cc_library(
     hdrs = ["open_space_info.h"],
     deps = [
         "@core//cyber",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/map/hdmap:hdmap_util",
         "//modules/map/pnc_map",
         "//modules/planning/common:indexed_queue",
@@ -504,7 +504,7 @@ cc_test(
     deps = [
         ":st_graph_data",
         "@core//cyber",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -516,7 +516,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         "@core//cyber",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:learning_data_cc_proto",
     ],
@@ -531,9 +531,9 @@ cc_library(
         ":dependency_injector",
         ":feature_output",
         "@core//cyber",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/configs:config_gflags",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/dreamview_msgs:hmi_status_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
@@ -573,9 +573,9 @@ cc_library(
         ":history",
         ":learning_based_data",
         ":planning_context",
-        "//modules/common/vehicle_model",
-        "//modules/common/vehicle_state:vehicle_state_provider",
-        "//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_common//modules/common/vehicle_model",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
     ],
 )
 

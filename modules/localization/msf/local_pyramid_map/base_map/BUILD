@@ -11,7 +11,7 @@ cc_library(
         "base_map_fwd.h",
     ],
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/localization/msf/common/util",
         "@com_github_google_glog//:glog",
         "@core//cyber",

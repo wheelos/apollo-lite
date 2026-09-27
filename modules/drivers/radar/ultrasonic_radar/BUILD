@@ -31,7 +31,7 @@ cc_library(
     srcs = ["ultrasonic_radar_message_manager.cc"],
     hdrs = ["ultrasonic_radar_message_manager.h"],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/canbus:sensor_gflags",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_sender",
@@ -57,8 +57,8 @@ cc_library(
     hdrs = ["ultrasonic_radar_canbus.h"],
     deps = [
         ":ultrasonic_radar_message_manager",
-        "//modules/common/monitor_log",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/status",
         "//modules/drivers/canbus:sensor_gflags",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",
@@ -86,7 +86,7 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"ultrasonic_radar_canbus\\"'],
     deps = [
         ":ultrasonic_radar_canbus_lib",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:ultrasonic_radar_cc_proto",
     ],
     alwayslink = True,

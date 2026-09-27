@@ -21,7 +21,7 @@ install(
             "//tools:install",
             "//modules/calibration:install",
             "//modules/canbus:install",
-            "//modules/common:install",
+            "//modules/global_config:install",
             "//modules/control:install",
             "//modules/planning:install",
             "//modules/dreamview:install",
@@ -56,7 +56,6 @@ install_src_files(
         ],
         [
             "//tools:install_src",
-            "//modules/common:install_src",
             "//modules/control:install_src",
             "//modules/dreamview:install_src",
             "//modules/map:install_src",

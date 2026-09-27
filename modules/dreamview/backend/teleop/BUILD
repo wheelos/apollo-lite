@@ -10,9 +10,9 @@ cc_library(
     hdrs = if_teleop(["teleop.h"]),
     copts = ['-DMODULE_NAME=\\"dreamview\\"'] + copts_if_teleop(),
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/monitor_log",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/util",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "@com_github_nlohmann_json//:json",

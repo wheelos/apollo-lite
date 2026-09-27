@@ -96,7 +96,7 @@ cc_library(
     hdrs = ["feature_output.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container/obstacles:obstacle",
         "//modules/prediction/proto:offline_features_cc_proto",
@@ -153,7 +153,7 @@ cc_library(
     srcs = ["validation_checker.cc"],
     hdrs = ["validation_checker.h"],
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "//modules/prediction/common:prediction_gflags",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:lane_graph_cc_proto",
     ],
@@ -227,8 +227,8 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":semantic_map",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/prediction/evaluator:evaluator_manager",
         "//modules/prediction/predictor:predictor_manager",
         "//modules/prediction/proto:offline_features_cc_proto",
@@ -264,9 +264,9 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":prediction_gflags",
-        "//modules/common/configs:config_gflags",
-        "//modules/common/util",
-        "//modules/common/util:string_util",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:string_util",
         "//modules/prediction/container:container_manager",
         "//modules/prediction/container/pose:pose_container",
         "@core//cyber",

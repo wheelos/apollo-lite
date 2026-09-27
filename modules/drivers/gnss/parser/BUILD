@@ -51,9 +51,9 @@ cc_library(
     deps = [
         ":parser",
         ":parser_factory",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:proj_helper",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:proj_helper",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/gnss/util",
         "@core//cyber",
@@ -81,7 +81,7 @@ cc_library(
     ],
     copts = ["-Ithird_party/rtklib"],
     deps = [
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/drivers/gnss/parser/rtcm3:rtcm3_parser",
         "//modules/drivers/gnss/proto:config_cc_proto",
         "//modules/drivers/gnss/util",

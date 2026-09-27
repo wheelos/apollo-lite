@@ -9,9 +9,9 @@ cc_library(
     hdrs = ["public_road_planner.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/status",
-        "//modules/common/util",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/map/hdmap",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:planning_gflags",

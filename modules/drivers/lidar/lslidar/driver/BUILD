@@ -18,7 +18,7 @@ cc_library(
         "-lpcap",
     ],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/lidar/lslidar/proto:config_cc_proto",
         "@core//cyber",
     ],
