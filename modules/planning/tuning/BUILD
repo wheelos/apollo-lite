@@ -8,7 +8,7 @@ cc_library(
     srcs = ["autotuning_raw_feature_generator.cc"],
     hdrs = ["autotuning_raw_feature_generator.h"],
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/common:speed_limit",
@@ -31,7 +31,7 @@ cc_library(
     name = "autotuning_feature_builder",
     hdrs = ["autotuning_feature_builder.h"],
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/proto:auto_tuning_model_input_cc_proto",
         "//modules/planning/proto:auto_tuning_raw_feature_cc_proto",
     ],
@@ -66,7 +66,7 @@ cc_library(
     deps = [
         ":autotuning_feature_builder",
         ":autotuning_mlp_net_model",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/proto:auto_tuning_model_input_cc_proto",
     ],
 )

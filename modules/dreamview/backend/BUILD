@@ -13,8 +13,8 @@ cc_library(
     hdrs = ["dreamview.h"],
     copts = DREAMVIEW_COPTS + copts_if_teleop(),
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/status",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/handlers:image_handler",
         "//modules/dreamview/backend/handlers:websocket_handler",

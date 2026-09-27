@@ -23,7 +23,7 @@ cc_library(
     hdrs = ["submodule_output.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container/obstacles:obstacle",
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
@@ -36,8 +36,8 @@ cc_library(
     hdrs = ["evaluator_submodule.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/adapters/proto:adapter_config_cc_proto",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters/proto:adapter_config_cc_proto",
         "//modules/prediction/common:message_process",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/evaluator:evaluator_manager",
@@ -54,9 +54,9 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":evaluator_submodule_lib",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/adapters/proto:adapter_config_cc_proto",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters/proto:adapter_config_cc_proto",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/prediction/common:message_process",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container/adc_trajectory:adc_trajectory_container",

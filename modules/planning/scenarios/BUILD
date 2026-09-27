@@ -12,7 +12,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":stage",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:frame",
         "//modules/planning/proto:planning_config_cc_proto",
@@ -28,7 +28,7 @@ cc_library(
     hdrs = ["stage.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_context",
         "//modules/planning/common/util:util_lib",
@@ -57,7 +57,7 @@ cc_library(
     deps = [
         ":scenario",
         ":transition_guard",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:frame",
         "//modules/planning/proto:planning_config_cc_proto",

@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["plugin_manager.h"],
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/proto:dv_plugin_msg_cc_proto",

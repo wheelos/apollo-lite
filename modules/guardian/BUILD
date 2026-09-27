@@ -13,8 +13,8 @@ cc_library(
     copts = GUARDIAN_COPTS,
     deps = [
         "//modules/collision_guardian/proto:collision_guardian_cc_proto",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/guardian/proto:guardian_conf_cc_proto",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",

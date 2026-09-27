@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["rss_decider.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:reference_line_info",

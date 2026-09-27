@@ -23,7 +23,7 @@ cuda_library(
     tags = ["exclude"],
     target_compatible_with = requires_cuda(),
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "@core//cyber",
         "@cuda//:cublas",
         "@cuda//:cuda_runtime",
@@ -40,7 +40,7 @@ cc_test(
     tags = ["exclude"],
     deps = [
         ":cuda_pnc_util",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -51,8 +51,8 @@ cc_library(
     hdrs = ["path.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/math",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/map/hdmap",
         "//modules/map/hdmap:hdmap_util",
         "@com_google_absl//absl/algorithm",
@@ -71,8 +71,8 @@ cc_library(
     copts = MAP_COPTS,
     deps = [
         ":path",
-        "//modules/common/util",
-        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/map/hdmap",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
@@ -95,11 +95,11 @@ cc_library(
     deps = [
         ":path",
         ":route_segments",
-        "//modules/common/configs:config_gflags",
-        "//modules/common/math",
-        "//modules/common/util",
-        "//modules/common/util:util_tool",
-        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/map/hdmap",
         "//modules/map/hdmap:hdmap_util",
         "@com_google_absl//absl/algorithm",
@@ -127,7 +127,7 @@ cc_test(
     srcs = ["path_test.cc"],
     deps = [
         ":path",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
     ],
@@ -143,8 +143,8 @@ cc_test(
     linkstatic = True,
     deps = [
         ":pnc_map",
-        "//modules/common/util",
-        "//modules/common/util:string_util",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:string_util",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -158,7 +158,7 @@ cc_test(
     ],
     deps = [
         ":route_segments",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
 )

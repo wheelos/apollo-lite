@@ -8,8 +8,8 @@ cc_library(
     srcs = ["raw_stream.cc"],
     hdrs = ["raw_stream.h"],
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/gnss/parser:data_parser",
         "//modules/drivers/gnss/parser:rtcm_parser",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",

@@ -23,8 +23,8 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":model_inference",
-        "//modules/common/math",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util",
         "//modules/planning/common/util:math_util_lib",
         "//modules/planning/learning_based/img_feature_renderer:birdview_img_feature_renderer",
         "@opencv//:core",
@@ -44,7 +44,7 @@ cc_test(
     deps = [
         ":model_inference",
         ":trajectory_imitation_libtorch_inference",
-        "//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/configs:config_gflags",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/learning_based/img_feature_renderer:birdview_img_feature_renderer",
         "@com_google_googletest//:gtest",

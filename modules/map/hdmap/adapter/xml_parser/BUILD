@@ -35,7 +35,7 @@ cc_library(
     hdrs = ["coordinate_convert_tool.h"],
     deps = [
         ":status",
-        "//modules/common/util:proj_helper",
+        "@wheelos_common//modules/common/util:proj_helper",
         "@com_github_google_glog//:glog",
         "@proj",
     ],
@@ -129,7 +129,7 @@ cc_library(
     name = "status",
     hdrs = ["status.h"],
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
     alwayslink = True,
 )

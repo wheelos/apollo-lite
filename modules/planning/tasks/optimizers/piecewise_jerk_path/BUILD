@@ -11,9 +11,9 @@ cc_library(
     hdrs = ["piecewise_jerk_path_optimizer.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/math",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util",
         "//modules/planning/common:obstacle",
         "//modules/planning/common:path_boundary",
         "//modules/planning/common:path_decision",

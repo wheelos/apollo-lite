@@ -8,7 +8,7 @@ cc_library(
     hdrs = ["planner.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/scenarios:scenario",
@@ -34,8 +34,8 @@ cc_library(
     ],
     deps = [
         ":planner",
-        "//modules/common/status",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/util",
         "//modules/planning/planner/public_road:public_road_planner",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],

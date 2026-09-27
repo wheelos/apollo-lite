@@ -30,8 +30,8 @@ cc_library(
     ],
     deps = [
         ":on_lane_planning",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/planning/common:history",
         "//modules/planning/common:message_process",
         "@core//cyber",
@@ -53,8 +53,8 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        "//modules/common/status",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/map/hdmap",
         "//modules/map/hdmap:hdmap_util",
         "//modules/planning/common:dependency_injector",
@@ -91,8 +91,8 @@ cc_library(
     ],
     deps = [
         ":planning_base",
-        "//modules/common/math",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/map/hdmap:hdmap_util",
         "//modules/planning/common:ego_info",
         "//modules/planning/common:history",

@@ -36,8 +36,8 @@ cc_library(
     ],
     copts = LIDAR_COMPENSATOR_COPTS,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/latency_recorder",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/latency_recorder",
         "//modules/drivers/lidar/compensator/proto:lidar_compensator_config_cc_proto",
         "//modules/transform:transform_query",
         "@core//cyber",

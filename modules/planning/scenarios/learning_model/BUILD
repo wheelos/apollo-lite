@@ -26,7 +26,7 @@ cc_library(
     ],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/planning/common:frame",
         "//modules/planning/scenarios:scenario",
         "@core//cyber",

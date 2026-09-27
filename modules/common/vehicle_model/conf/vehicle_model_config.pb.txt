@@ -1,5 +1,0 @@
-model_type: VEHICLE_MODEL_TYPE_ACKERMANN_KINEMATIC
-
-ackermann_kinematic_model: {
-    dt: 0.06
-}

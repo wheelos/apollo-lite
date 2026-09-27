@@ -18,7 +18,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface:base_init_options",
         "//modules/perception/camera/lib/motion",

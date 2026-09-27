@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["mission_component.h"],
     copts = MISSION_COPTS,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/mission/common:mission_context",
         "//modules/mission/nodes/action",
         "//modules/mission/nodes/condition",

@@ -30,9 +30,9 @@ cc_library(
     copts = MAP_COPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//modules/common/configs:config_gflags",
-        "//modules/common/math",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/map/hdmap/adapter:opendrive_adapter",
         "@com_github_google_glog//:glog",
         "@com_google_absl//absl/strings",
@@ -53,7 +53,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":hdmap",
-        "//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/configs:config_gflags",
         "@com_google_absl//absl/strings",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_id_cc_proto",
@@ -78,7 +78,7 @@ cc_test(
     ],
     data = [
         ":testdata",
-        #"//modules/common/util",
+        #"@wheelos_common//modules/common/util",
     ],
     tags = ["exclude"],
     deps = [

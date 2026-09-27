@@ -10,10 +10,10 @@ cc_library(
     name = "control_lib",
     copts = CONTROL_COPTS,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/latency_recorder",
-        "//modules/common/monitor_log",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/latency_recorder",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/util",
         "//modules/control/common",
         "//modules/control/controller",
         "//modules/control/proto:control_conf_cc_proto",
@@ -141,7 +141,7 @@ cc_test(
     linkstatic = True,
     deps = [
         ":control_component_lib",
-        "//modules/common/util:util_lib",
+        "@wheelos_common//modules/common/util:util_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )

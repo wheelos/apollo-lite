@@ -22,7 +22,7 @@ cc_library(
     copts = MONITOR_COPTS,
     visibility = ["//visibility:private"],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/monitor/common:recurrent_runner",
         "//modules/monitor/hardware:gps_monitor",
         "//modules/monitor/hardware:resource_monitor",

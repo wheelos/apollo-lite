@@ -14,10 +14,10 @@ cc_library(
     ],
     linkstatic = True,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/configs:config_gflags",
-        "//modules/common/util",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning:planning_component_lib",
         "@com_google_googletest//:gtest",
         "@core//cyber",
@@ -31,7 +31,7 @@ cc_library(
 #     size = "small",
 #     srcs = ["garage_test.cc"],
 #     data = [
-#         "//modules/common/configs:config_gflags",
+#         "@wheelos_common//modules/common/configs:config_gflags",
 #         "//modules/planning:planning_testdata",
 #     ],
 #     deps = [
@@ -44,7 +44,7 @@ cc_library(
 #     size = "small",
 #     srcs = ["sunnyvale_loop_test.cc"],
 #     data = [
-#         "//modules/common/configs:config_gflags",
+#         "@wheelos_common//modules/common/configs:config_gflags",
 #         "//modules/map/data:map_sunnyvale_loop",
 #         "//modules/planning:planning_testdata",
 #     ],
@@ -58,7 +58,7 @@ cc_library(
 #     size = "medium",
 #     srcs = ["sunnyvale_big_loop_test.cc"],
 #     data = [
-#         "//modules/common/configs:config_gflags",
+#         "@wheelos_common//modules/common/configs:config_gflags",
 #         "//modules/map/data:map_sunnyvale_big_loop",
 #         "//modules/planning:planning_testdata",
 #     ],
@@ -74,7 +74,7 @@ cc_library(
 #     size = "small",
 #     srcs = [navigation_mode_test.cc"],
 #     data = [
-#         "//modules/common/configs:config_gflags",
+#         "@wheelos_common//modules/common/configs:config_gflags",
 #         "//modules/planning:planning_testdata",
 #     ],
 #     deps = [

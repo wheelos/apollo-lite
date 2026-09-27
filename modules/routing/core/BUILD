@@ -20,7 +20,7 @@ cc_library(
     deps = [
         ":routing_black_list_range_generator",
         ":routing_result_generator",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/routing/strategy",
     ],
 )

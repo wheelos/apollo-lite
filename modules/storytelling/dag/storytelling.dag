@@ -5,7 +5,7 @@ module_config {
         config {
             name: "storytelling"
             config_file_path: "/apollo/modules/storytelling/conf/storytelling_conf.pb.txt"
-            flag_file_path: "/apollo/modules/common/data/global_flagfile.txt"
+            flag_file_path: "/apollo/modules/global_config/global_flagfile.txt"
             interval: 100
         }
     }

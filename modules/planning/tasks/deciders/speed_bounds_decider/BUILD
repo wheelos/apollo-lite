@@ -10,7 +10,7 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
         ":st_boundary_mapper",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:st_graph_data",
@@ -33,8 +33,8 @@ cc_library(
     ],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/status",
         "//modules/map/pnc_map",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:frame",
@@ -64,7 +64,7 @@ cc_test(
     ],
     deps = [
         ":st_boundary_mapper",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
     ],

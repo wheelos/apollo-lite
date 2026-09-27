@@ -8,7 +8,7 @@ package(default_visibility = ["//visibility:public"])
 #	hdrs = ["bev_obstacle_detector.h"],
 #	deps = [
 #		"@core//cyber",
-#		"//modules/common/util:util_tool",
+#		"@wheelos_common//modules/common/util:util_tool",
 #		"//modules/perception/base",
 #		"//modules/perception/camera/common",
 #		"//modules/perception/camera/lib/interface",

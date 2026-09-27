@@ -10,7 +10,7 @@ cc_library(
     srcs = ["st_point.cc"],
     hdrs = ["st_point.h"],
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "@com_github_gflags_gflags//:gflags",
     ],
 )
@@ -48,9 +48,9 @@ cc_library(
     hdrs = ["speed_data.h"],
     deps = [
         ":st_point",
-        "//modules/common/math",
-        "//modules/common/util",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
         "@com_github_gflags_gflags//:gflags",

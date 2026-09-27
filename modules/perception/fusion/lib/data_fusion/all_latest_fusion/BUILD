@@ -11,8 +11,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util:string_util",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:string_util",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/fusion/base:sensor_data_manager",
         "//modules/perception/pipeline:stage",
     ],

@@ -40,7 +40,7 @@ cc_library(
     deps = [
         ":route_planner",
         ":skeleton_corridor_route_planner",
-        "//modules/common/math:vec2d",
+        "@wheelos_common//modules/common/math:vec2d",
         "//modules/open_space_planning/common:status",
         "//modules/open_space_planning/common:types",
         "//modules/planning/common:planning_geometry_adapter",

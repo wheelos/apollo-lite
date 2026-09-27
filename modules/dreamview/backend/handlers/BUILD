@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["websocket_handler.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "@civetweb",
         "@civetweb//:civetserver",
         "@com_github_nlohmann_json//:json",
@@ -36,8 +36,8 @@ cc_library(
     hdrs = ["image_handler.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/configs:config_gflags",
         "@civetweb//:civetserver",
         "@core//cyber",
         "@opencv//:imgcodecs",

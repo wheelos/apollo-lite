@@ -21,9 +21,9 @@ cc_library(
     ],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/math",
-        "//modules/common/util",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/planning/common/util:util_lib",
         "//modules/planning/scenarios:scenario",
         "//modules/planning/scenarios/common:stage_intersection_cruise_impl",

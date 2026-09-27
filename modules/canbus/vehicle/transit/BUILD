@@ -41,7 +41,7 @@ cc_library(
     deps = [
         ":transit_message_manager",
         "//modules/canbus/vehicle:vehicle_controller_base",
-        "//modules/common/kv_db",
+        "@wheelos_common//modules/common/kv_db",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/common:canbus_common",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:vehicle_signal_cc_proto",
@@ -65,7 +65,7 @@ cc_test(
     data = ["//modules/canbus:test_data"],
     deps = [
         ":transit_controller",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_googletest//:gtest_main",
     ],
 )

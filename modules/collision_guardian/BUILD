@@ -29,7 +29,7 @@ cc_library(
         ":risk_filter",
         "//modules/collision_guardian/proto:collision_guardian_cc_proto",
         "//modules/collision_guardian/proto:collision_guardian_config_cc_proto",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/transform:transform_query",
         "@core//cyber",
         "@eigen",

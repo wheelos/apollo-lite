@@ -22,7 +22,7 @@ cc_binary(
     linkstatic = False,
     deps = [
         ":lane_common",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/calibration_service/online_calibration_service",

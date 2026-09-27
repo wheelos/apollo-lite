@@ -25,9 +25,9 @@
 #if WITH_TELEOP == 1
 #include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
 #include "wheelos_msgs/planning_msgs/planning.pb.h"
-#include "modules/teleop/daemon/proto/daemon_cmd.pb.h"
-#include "modules/teleop/daemon/proto/daemon_rpt.pb.h"
-#include "modules/teleop/modem/proto/modem_info.pb.h"
+#include "modules/dreamview/backend/teleop/proto/daemon_cmd.pb.h"
+#include "modules/dreamview/backend/teleop/proto/daemon_rpt.pb.h"
+#include "modules/dreamview/backend/teleop/proto/modem_info.pb.h"
 #endif
 
 #include "modules/dreamview/backend/handlers/websocket_handler.h"

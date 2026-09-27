@@ -19,8 +19,8 @@ cc_binary(
     srcs = ["control_tester.cc"],
     linkstatic = True,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util",
         "//modules/control/common:control_gflags",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
@@ -60,8 +60,8 @@ cc_binary(
     srcs = ["pad_terminal.cc"],
     linkstatic = True,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/control/common",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",

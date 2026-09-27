@@ -16,7 +16,7 @@ cc_library(
         ":disjoint_set",
         ":feature_generator",
         ":util",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/perception/base",
         "//modules/perception/inference:inference_factory",
         "//modules/perception/inference:inference_lib",

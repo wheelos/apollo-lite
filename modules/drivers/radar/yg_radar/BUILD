@@ -33,8 +33,8 @@ cc_library(
         "yg_radar_message_manager.h",
     ],
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:message_util",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:message_util",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",

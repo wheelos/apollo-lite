@@ -48,7 +48,7 @@ cc_library(
     srcs = ["frame_transform.cc"],
     hdrs = ["frame_transform.h"],
     deps = [
-        "//modules/common/util:proj_helper",
+        "@wheelos_common//modules/common/util:proj_helper",
         "@com_google_absl//absl/strings",
         "@core//cyber",
         "@eigen",
@@ -80,7 +80,7 @@ cc_library(
         "base_map_cache.h",
     ],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
 )
 

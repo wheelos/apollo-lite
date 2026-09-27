@@ -11,8 +11,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/util",
         "//modules/perception/base",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lib/registerer",

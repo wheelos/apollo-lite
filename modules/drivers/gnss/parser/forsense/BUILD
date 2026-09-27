@@ -15,7 +15,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/drivers/gnss/parser",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/gnss/util",

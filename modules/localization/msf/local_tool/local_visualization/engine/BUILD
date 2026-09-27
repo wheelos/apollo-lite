@@ -18,8 +18,8 @@ cc_library(
         "-DMODULE_NAME=\\\"localization_visualizer\\\"",
     ],
     deps = [
-        "//modules/common/util",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/localization/msf/common/io:common_io",
         "//modules/localization/msf/local_pyramid_map/base_map",
         "@boost.filesystem",

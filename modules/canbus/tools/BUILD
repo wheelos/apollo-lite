@@ -9,7 +9,7 @@ cc_binary(
     deps = [
         "//modules/canbus:canbus_component_lib",
         "//modules/canbus/common:canbus_common",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
     ],
@@ -21,9 +21,9 @@ cc_binary(
     deps = [
         "//modules/canbus/common:canbus_common",
         "//modules/canbus/vehicle:vehicle_controller_base",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/util:message_util",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/util:message_util",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",

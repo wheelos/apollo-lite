@@ -134,7 +134,7 @@ DEFINE_string(sim_obstacle_path,
               "sim obstacle binary placement.");
 
 DEFINE_string(gflag_command_arg,
-              " --flagfile=/apollo/modules/common/data/global_flagfile.txt",
+              " --flagfile=/apollo/modules/global_config/global_flagfile.txt",
               "sim obstacle need use gflag!");
 
 DEFINE_string(sim_perfect_control, "Simulation Perfect Control",

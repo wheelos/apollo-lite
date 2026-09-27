@@ -61,7 +61,7 @@ cc_library(
     deps = [
         ":latency_monitor",
         ":summary_monitor",
-        "//modules/common/latency_recorder/proto:latency_record_cc_proto",
+        "@wheelos_common//modules/common/latency_recorder/proto:latency_record_cc_proto",
         "//modules/dreamview/proto:hmi_mode_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
@@ -85,7 +85,7 @@ cc_library(
     copts = MONITOR_COPTS,
     deps = [
         ":summary_monitor",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
@@ -109,7 +109,7 @@ cc_library(
     hdrs = ["summary_monitor.h"],
     copts = MONITOR_COPTS,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
         "@com_google_absl//absl/strings",
@@ -123,7 +123,7 @@ cc_library(
     copts = MONITOR_COPTS,
     deps = [
         ":summary_monitor",
-        "//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:smart_recorder_status_cc_proto",
@@ -137,8 +137,8 @@ cc_library(
     copts = MONITOR_COPTS,
     deps = [
         ":summary_monitor",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/latency_recorder/proto:latency_record_cc_proto",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/latency_recorder/proto:latency_record_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
     ],

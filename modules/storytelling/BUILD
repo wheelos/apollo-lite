@@ -9,7 +9,7 @@ cc_library(
     srcs = ["frame_manager.cc"],
     hdrs = ["frame_manager.h"],
     deps = [
-        "//modules/common/monitor_log",
+        "@wheelos_common//modules/common/monitor_log",
         "@core//cyber",
     ],
 )
