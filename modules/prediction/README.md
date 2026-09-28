@@ -68,9 +68,25 @@ The list of available evaluators include:
 
 * **Semantic LSTM evaluator**: this evaluator is used in the new Caution Obstacle model to generate short term trajectory points which are calculated using CNN and LSTM. Both vehicles and pedestrians are using this same model, but with different parameters
 
-* **Vectornet LSTM evaluator**: this evaluator is used in place of Semantic LSTM evaluator to generate short term trajectory points for "Caution" tagged obstacles. More detail is in [vectornet lstm evaluator readme](https://github.com/ApolloAuto/apollo/docs/technical_documents/vectornet_lstm_evaluator.md).
+* **HiVT scene evaluator**: caution vehicles configured for this evaluator are
+  predicted together in one TensorRT inference per frame. The scene includes
+  up to 64 actors including ego; when caution targets exceed 63, the closest
+  targets are prioritized, and remaining actor capacity is filled with context
+  actors nearest to the selected targets. It uses up to 12 nearby complete lane
+  polylines and omits lanes that would exceed 1024 lane-vector segments. Targets
+  excluded by these limits, or by a scene inference failure, do not run a
+  per-obstacle evaluator. The predictor stage still runs: the configured
+  caution extrapolation predictor declines when no short-term trajectories are
+  available, and Prediction then uses its configured normal predictor. The
+  default engine path is `/apollo/modules/prediction/data/hivt64.engine`.
+  TensorRT engines are tied to their build/runtime environment and should be
+  rebuilt for the deployment TensorRT/GPU combination.
 
-* **Jointly prediction planning evaluator**: this evaluator is used in the new Interactive Obstacle(vehicle-type) model to generate short term trajectory points which are calculated using Vectornet and LSTM. By considering ADC's trajectory info, the obstacle trajectory prediction can be more accurate under interaction scenario. Please refer [jointly prediction planning evaluator](https://github.com/ApolloAuto/apollo/blob/master/docs/technical_documents/jointly_prediction_planning_evaluator.md).
+* **Interactive predictor**: generates bounded lane and longitudinal motion
+  candidates, aligns them to the timestamped ADC plan, and ranks them using
+  trajectory clearance and same-lane TTC costs. Invalid or unavailable ADC
+  plans use the configured kinematic predictor instead of a neural per-obstacle
+  evaluator.
 
 ### Predictor
 
@@ -83,7 +99,8 @@ Predictor generates predicted trajectories for obstacles. Currently, the support
 * **Free movement**: obstacle moves freely
 * **Regional movement**: obstacle moves in a possible region
 * **Junction**: Obstacles move toward junction exits with high probabilities
-* **Interaction predictor**: compute the likelihood to create posterior prediction results after all evaluators have run. This predictor was created for caution level obstacles
+* **Interaction predictor**: creates ADC-conditioned candidate trajectories
+  and normalizes their relative interaction scores into trajectory weights.
 * **Extrapolation predictor**: extends the Semantic LSTM evaluator's results to create an 8 sec trajectory.
 
 ## Prediction Architecture

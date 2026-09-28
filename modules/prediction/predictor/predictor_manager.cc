@@ -401,13 +401,24 @@ void PredictorManager::RunVehiclePredictor(
   Predictor* predictor = nullptr;
   if (obstacle->IsInteractiveObstacle()) {
     predictor = GetPredictor(vehicle_interactive_predictor_);
-    if (predictor->Predict(adc_trajectory_container, obstacle,
+    if (predictor != nullptr &&
+        predictor->Predict(adc_trajectory_container, obstacle,
                            obstacles_container)) {
       return;
     } else {
       AERROR << "Obstacle: " << obstacle->id()
-             << " interactive predictor failed!";
+             << " interactive predictor unavailable or failed; using "
+                "kinematic fallback";
+      predictor = GetPredictor(ObstacleConf::FREE_MOVE_PREDICTOR);
+      if (predictor != nullptr &&
+          predictor->Predict(adc_trajectory_container, obstacle,
+                             obstacles_container)) {
+        return;
+      }
+      AERROR << "Obstacle: " << obstacle->id()
+             << " kinematic fallback failed";
     }
+    return;
   }
   if (obstacle->IsCaution()) {
     if (obstacle->IsNearJunction()) {

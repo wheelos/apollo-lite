@@ -37,6 +37,8 @@ DECLARE_int32(max_thread_num);
 DECLARE_int32(max_caution_thread_num);
 DECLARE_bool(enable_async_draw_base_image);
 DECLARE_bool(use_cuda);
+DECLARE_string(hivt_tensorrt_engine);
+DECLARE_int32(hivt_tensorrt_device_id);
 
 // Bag replay timestamp gap
 DECLARE_double(replay_timestamp_gap);
@@ -51,13 +53,3 @@ DECLARE_string(evaluator_topic_name);
 DECLARE_string(container_submodule_name);
 DECLARE_string(evaluator_submodule_name);
 DECLARE_string(perception_obstacles_topic_name);
-
-// VectorNet
-DECLARE_string(prediction_target_file);
-DECLARE_string(world_coordinate_file);
-DECLARE_string(prediction_target_dir);
-DECLARE_double(obstacle_x);
-DECLARE_double(obstacle_y);
-DECLARE_double(obstacle_phi);
-DECLARE_double(road_distance);
-DECLARE_double(point_distance);

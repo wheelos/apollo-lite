@@ -13,7 +13,7 @@ obstacle_conf {
   obstacle_type: VEHICLE
   obstacle_status: ON_LANE
   priority_type: CAUTION
-  evaluator_type: VECTORNET_EVALUATOR
+  evaluator_type: HIVT_SCENE_EVALUATOR
   predictor_type: EXTRAPOLATION_PREDICTOR
 }
 obstacle_conf {
@@ -27,7 +27,7 @@ obstacle_conf {
   obstacle_type: VEHICLE
   obstacle_status: IN_JUNCTION
   priority_type: CAUTION
-  evaluator_type: VECTORNET_EVALUATOR
+  evaluator_type: HIVT_SCENE_EVALUATOR
   predictor_type: EXTRAPOLATION_PREDICTOR
 }
 obstacle_conf {
@@ -73,6 +73,5 @@ obstacle_conf {
 obstacle_conf {
   obstacle_type: VEHICLE
   interactive_tag: INTERACTION
-  evaluator_type: JOINTLY_PREDICTION_PLANNING_EVALUATOR
-  predictor_type: EXTRAPOLATION_PREDICTOR
+  predictor_type: INTERACTION_PREDICTOR
 }

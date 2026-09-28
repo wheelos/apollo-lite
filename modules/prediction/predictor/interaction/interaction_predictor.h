@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <utility>
 #include <vector>
 
 #include "modules/prediction/predictor/sequence/sequence_predictor.h"
@@ -53,9 +52,11 @@ class InteractionPredictor : public SequencePredictor {
  private:
   void Clear();
 
-  void BuildADCTrajectory(
+  bool BuildADCTrajectory(
       const ADCTrajectoryContainer* adc_trajectory_container,
-      const double time_resolution);
+      const double obstacle_timestamp, const double time_resolution,
+      const double prediction_horizon,
+      std::vector<apollo::common::TrajectoryPoint>* adc_trajectory);
 
   bool DrawTrajectory(
       const Obstacle& obstacle, const LaneSequence& lane_sequence,
@@ -65,8 +66,8 @@ class InteractionPredictor : public SequencePredictor {
 
   double ComputeTrajectoryCost(
       const Obstacle& obstacle, const LaneSequence& lane_sequence,
-      const double acceleration,
-      const ADCTrajectoryContainer* adc_trajectory_container);
+      const double acceleration, const Trajectory& candidate,
+      const std::vector<apollo::common::TrajectoryPoint>& adc_trajectory);
 
   double LongitudinalAccelerationCost(const double acceleration);
 
@@ -74,20 +75,18 @@ class InteractionPredictor : public SequencePredictor {
                                      const double speed,
                                      const double acceleration);
 
-  double CollisionWithEgoVehicleCost(const LaneSequence& lane_sequence,
-                                     const double speed,
-                                     const double acceleration);
+  double CollisionWithEgoVehicleCost(
+      const Obstacle& obstacle, const Trajectory& candidate,
+      const std::vector<apollo::common::TrajectoryPoint>& adc_trajectory) const;
 
-  bool LowerRightOfWayThanEgo(
-      const Obstacle& obstacle, const LaneSequence& lane_sequence,
-      const ADCTrajectoryContainer* adc_trajectory_container);
+  double ConflictZoneTimeGapCost(
+      const Obstacle& obstacle, const Trajectory& candidate,
+      const std::vector<apollo::common::TrajectoryPoint>& adc_trajectory,
+      double ego_length, double ego_width) const;
 
-  double ComputeLikelihood(const double cost);
-
-  double ComputePosterior(const double prior, const double likelihood);
-
- private:
-  std::vector<apollo::common::TrajectoryPoint> adc_trajectory_;
+  FRIEND_TEST(InteractionPredictorTest, RejectsCollidingCandidate);
+  FRIEND_TEST(InteractionPredictorTest, PenalizesOnlyClosingSameLaneTtc);
+  FRIEND_TEST(InteractionPredictorTest, ScoresCrossingConflictTimeGap);
 };
 
 }  // namespace prediction

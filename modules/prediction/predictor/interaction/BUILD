@@ -11,7 +11,8 @@ cc_library(
         "-DMODULE_NAME=\\\"prediction\\\"",
     ],
     deps = [
-        "//modules/common/adapters/proto:adapter_config_cc_proto",
+        "//modules/common/configs:vehicle_config_helper",
+        "//modules/common/math",
         "//modules/prediction/common:feature_output",
         "//modules/prediction/common:prediction_util",
         "//modules/prediction/predictor/sequence:sequence_predictor",
@@ -28,8 +29,9 @@ cc_test(
     ],
     deps = [
         "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/evaluator/vehicle:mlp_evaluator",
         "//modules/prediction/predictor/interaction:interaction_predictor",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

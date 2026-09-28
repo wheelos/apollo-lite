@@ -80,5 +80,33 @@ TEST_F(PredictorManagerTest, General) {
   EXPECT_EQ(prediction_obstacles.prediction_obstacle_size(), 1);
 }
 
+TEST_F(PredictorManagerTest, InteractiveFailureUsesKinematicFallback) {
+  ObstaclesContainer obstacles_container;
+  obstacles_container.Insert(perception_obstacles_);
+  Obstacle* obstacle = obstacles_container.GetObstacle(1);
+  ASSERT_NE(obstacle, nullptr);
+  obstacle->mutable_latest_feature()
+      ->mutable_interactive_tag()
+      ->set_interactive_tag(ObstacleInteractiveTag::INTERACTION);
+
+  auto* obstacle_conf = prediction_conf_.add_obstacle_conf();
+  obstacle_conf->set_obstacle_type(
+      apollo::perception::PerceptionObstacle::VEHICLE);
+  obstacle_conf->set_interactive_tag(ObstacleInteractiveTag::INTERACTION);
+  obstacle_conf->set_predictor_type(ObstacleConf::INTERACTION_PREDICTOR);
+  predictor_manager_->Init(prediction_conf_);
+
+  ADCTrajectoryContainer adc_trajectory_container;
+  PredictionObstacle prediction_obstacle;
+  predictor_manager_->PredictObstacle(&adc_trajectory_container, obstacle,
+                                      &obstacles_container,
+                                      &prediction_obstacle);
+
+  ASSERT_EQ(prediction_obstacle.trajectory_size(), 1);
+  EXPECT_GT(prediction_obstacle.trajectory(0).trajectory_point_size(), 0);
+  EXPECT_EQ(obstacle->obstacle_conf().predictor_type(),
+            ObstacleConf::FREE_MOVE_PREDICTOR);
+}
+
 }  // namespace prediction
 }  // namespace apollo

@@ -87,7 +87,6 @@ install(
         "//modules/prediction/proto:network_model_cc_proto",
         "//modules/prediction/proto:offline_features_cc_proto",
         "//modules/prediction/proto:prediction_conf_cc_proto",
-        "//modules/prediction/proto:vector_net_cc_proto",
     ],
     data_dest = "prediction/include",
 )
@@ -128,6 +127,7 @@ filegroup(
 filegroup(
     name = "prediction_data",
     srcs = glob([
+        "data/*.engine",
         "data/*.pt",
         "data/*.bin",
     ]),

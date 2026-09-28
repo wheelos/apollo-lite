@@ -209,40 +209,81 @@ cc_library(
 )
 
 cc_library(
-    name = "jointly_prediction_planning_evaluator",
-    srcs = ["jointly_prediction_planning_evaluator.cc"],
-    hdrs = ["jointly_prediction_planning_evaluator.h"],
-    copts = PREDICTION_FOPENMP_COPTS,
+    name = "hivt_scene_feature_builder",
+    srcs = ["hivt_scene_feature_builder.cc"],
+    hdrs = [
+        "hivt_scene.h",
+        "hivt_scene_feature_builder.h",
+    ],
+    copts = PREDICTION_COPTS,
     deps = [
-        "//modules/prediction/common:prediction_util",
-        "//modules/prediction/common:semantic_map",
+        "//modules/common/math",
+        "//modules/map/hdmap:hdmap",
+        "//modules/map/hdmap:hdmap_util",
+        "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container/obstacles:obstacles_container",
-        "//modules/prediction/evaluator",
-        "//modules/prediction/pipeline:vector_net",
-        #"//third_party/libtorch",
-        "@eigen",
-    ] + if_gpu(
-        ["@libtorch_gpu"],
-        ["@libtorch_cpu"],
-    ),
+    ],
+)
+
+cc_test(
+    name = "hivt_scene_feature_builder_test",
+    size = "small",
+    srcs = ["hivt_scene_feature_builder_test.cc"],
+    data = ["//modules/prediction:prediction_testdata"],
+    deps = [
+        ":hivt_scene_feature_builder",
+        "//modules/prediction/common:kml_map_based_test",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cc_library(
-    name = "vectornet_evaluator",
-    srcs = ["vectornet_evaluator.cc"],
-    hdrs = ["vectornet_evaluator.h"],
-    copts = PREDICTION_FOPENMP_COPTS,
+    name = "hivt_tensorrt_executor",
+    srcs = if_gpu(
+        ["hivt_tensorrt_executor_gpu.cc"],
+        ["hivt_tensorrt_executor_cpu.cc"],
+    ),
+    hdrs = [
+        "hivt_scene.h",
+        "hivt_tensorrt_executor.h",
+    ],
+    copts = PREDICTION_COPTS,
     deps = [
-        "//modules/prediction/common:prediction_util",
+        "@core//cyber",
+    ] + if_gpu(
+        [
+            "@cuda//:cuda_runtime",
+            "@local_config_tensorrt//:tensorrt",
+        ],
+        [],
+    ),
+)
+
+cc_test(
+    name = "hivt_tensorrt_executor_test",
+    size = "small",
+    srcs = ["hivt_tensorrt_executor_test.cc"],
+    tags = ["manual"],
+    deps = [
+        ":hivt_tensorrt_executor",
+        "//modules/prediction/common:prediction_system_gflags",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "hivt_scene_evaluator",
+    srcs = ["hivt_scene_evaluator.cc"],
+    hdrs = ["hivt_scene_evaluator.h"],
+    copts = PREDICTION_COPTS,
+    deps = [
+        ":hivt_scene_feature_builder",
+        ":hivt_tensorrt_executor",
+        "//modules/prediction/common:prediction_gflags",
+        "//modules/prediction/common:prediction_system_gflags",
         "//modules/prediction/container/obstacles:obstacles_container",
         "//modules/prediction/evaluator",
-        "//modules/prediction/pipeline:vector_net",
-        #"//third_party/libtorch",
-        "@eigen",
-    ] + if_gpu(
-        ["@libtorch_gpu"],
-        ["@libtorch_cpu"],
-    ),
+    ],
 )
 
 cpplint()
