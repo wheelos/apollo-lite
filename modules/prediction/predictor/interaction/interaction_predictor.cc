@@ -54,6 +54,7 @@ constexpr double kFootprintUncertaintyMargin = 0.25;
 constexpr double kTtcThresholdSeconds = 3.0;
 constexpr double kHeadingAlignmentThreshold = 0.35;
 constexpr double kConflictGapThresholdSeconds = 3.0;
+constexpr double kMinimumAdcScoringHorizonSeconds = 3.0;
 const std::vector<double> kCandidateAccelerations = {0.0, -0.75, -1.5, -2.5};
 
 struct InteractionCandidate {
@@ -267,8 +268,20 @@ bool InteractionPredictor::BuildADCTrajectory(
       plan_time_offset > points.rbegin()->relative_time()) {
     return false;
   }
-  const int sample_count =
+  const double available_horizon =
+      points.rbegin()->relative_time() - plan_time_offset;
+  const double required_horizon =
+      std::min(prediction_horizon, kMinimumAdcScoringHorizonSeconds);
+  if (available_horizon + 1e-6 < required_horizon) {
+    return false;
+  }
+  const int full_sample_count =
       static_cast<int>(std::floor(prediction_horizon / time_resolution));
+  const int available_sample_count =
+      static_cast<int>(
+          std::floor((available_horizon + 1e-6) / time_resolution)) +
+      1;
+  const int sample_count = std::min(full_sample_count, available_sample_count);
   if (sample_count <= 0) {
     return false;
   }
@@ -311,8 +324,8 @@ bool InteractionPredictor::DrawTrajectory(
       !feature.position().has_x() || !feature.position().has_y() ||
       !std::isfinite(feature.position().x()) ||
       !std::isfinite(feature.position().y()) ||
-      !std::isfinite(feature.speed()) ||
-      feature.speed() < 0.0 || feature.speed() > FLAGS_vehicle_max_speed ||
+      !std::isfinite(feature.speed()) || feature.speed() < 0.0 ||
+      feature.speed() > FLAGS_vehicle_max_speed ||
       lon_acceleration < FLAGS_vehicle_min_linear_acc ||
       lon_acceleration > FLAGS_vehicle_max_linear_acc ||
       lane_sequence.lane_segment_size() == 0 || period <= 0.0 ||
@@ -452,16 +465,16 @@ double InteractionPredictor::CollisionWithEgoVehicleCost(
     const std::vector<TrajectoryPoint>& adc_trajectory) const {
   const auto& vehicle_param = VehicleConfigHelper::GetConfig().vehicle_param();
   const auto& feature = obstacle.latest_feature();
+  const int sample_count = std::min(candidate.trajectory_point_size(),
+                                    static_cast<int>(adc_trajectory.size()));
   if (feature.length() <= 0.0 || feature.width() <= 0.0 ||
       vehicle_param.length() <= 0.0 || vehicle_param.width() <= 0.0 ||
-      candidate.trajectory_point_size() !=
-          static_cast<int>(adc_trajectory.size())) {
+      sample_count <= 0) {
     return std::numeric_limits<double>::infinity();
   }
   double clearance_cost = 0.0;
   double ttc_cost = 0.0;
-  int sample_count = 0;
-  for (int i = 0; i < candidate.trajectory_point_size(); ++i) {
+  for (int i = 0; i < sample_count; ++i) {
     const auto& target_point = candidate.trajectory_point(i);
     const auto& ego_point = adc_trajectory[i];
     if (!target_point.has_path_point() || !std::isfinite(target_point.v()) ||
@@ -476,11 +489,10 @@ double InteractionPredictor::CollisionWithEgoVehicleCost(
                            target_path.theta(),
                            feature.length() + 2.0 * kFootprintUncertaintyMargin,
                            feature.width() + 2.0 * kFootprintUncertaintyMargin);
-    const Box2d ego_box(Vec2d(ego_path.x(), ego_path.y()), ego_path.theta(),
-                        vehicle_param.length() +
-                            2.0 * kFootprintUncertaintyMargin,
-                        vehicle_param.width() +
-                            2.0 * kFootprintUncertaintyMargin);
+    const Box2d ego_box(
+        Vec2d(ego_path.x(), ego_path.y()), ego_path.theta(),
+        vehicle_param.length() + 2.0 * kFootprintUncertaintyMargin,
+        vehicle_param.width() + 2.0 * kFootprintUncertaintyMargin);
     if (target_box.HasOverlap(ego_box)) {
       if (target_point.relative_time() > 0.2) {
         return std::numeric_limits<double>::infinity();
@@ -525,10 +537,6 @@ double InteractionPredictor::CollisionWithEgoVehicleCost(
         }
       }
     }
-    ++sample_count;
-  }
-  if (sample_count == 0) {
-    return std::numeric_limits<double>::infinity();
   }
   const double conflict_cost =
       ConflictZoneTimeGapCost(obstacle, candidate, adc_trajectory,

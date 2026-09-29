@@ -250,6 +250,7 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         "@core//cyber",
+        "//modules/prediction/common:prediction_system_gflags",
     ] + if_gpu(
         [
             "@cuda//:cuda_runtime",
@@ -283,6 +284,16 @@ cc_library(
         "//modules/prediction/common:prediction_system_gflags",
         "//modules/prediction/container/obstacles:obstacles_container",
         "//modules/prediction/evaluator",
+    ],
+)
+
+cc_test(
+    name = "hivt_scene_evaluator_test",
+    size = "small",
+    srcs = ["hivt_scene_evaluator_test.cc"],
+    deps = [
+        ":hivt_scene_evaluator",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

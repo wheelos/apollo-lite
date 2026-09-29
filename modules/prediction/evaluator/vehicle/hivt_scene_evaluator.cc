@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <unordered_map>
@@ -31,17 +32,22 @@ namespace prediction {
 
 namespace {
 
-struct ModePrediction {
-  int actor_id = 0;
-  double probability = 0.0;
-  std::vector<common::TrajectoryPoint> points;
-};
+bool HasFiniteSceneTransform(const HiVTSceneInput& input) {
+  return std::isfinite(input.origin_x) && std::isfinite(input.origin_y) &&
+         std::isfinite(input.origin_cos) && std::isfinite(input.origin_sin);
+}
 
-bool BuildPredictions(const HiVTSceneInput& input,
-                      const HiVTSceneOutput& output,
-                      const std::vector<Obstacle*>& targets,
-                      std::vector<ModePrediction>* predictions) {
+}  // namespace
+
+bool DecodeHiVTSceneOutput(const HiVTSceneInput& input,
+                           const HiVTSceneOutput& output,
+                           const std::vector<Obstacle*>& targets,
+                           std::vector<HiVTModePrediction>* predictions) {
   if (predictions == nullptr ||
+      input.actor_ids.size() != static_cast<std::size_t>(input.actor_count) ||
+      input.rotate_angles.size() !=
+          static_cast<std::size_t>(input.actor_count) ||
+      !HasFiniteSceneTransform(input) ||
       output.trajectories.size() != static_cast<std::size_t>(kHiVTNumModes) *
                                         input.actor_count * kHiVTFutureSteps *
                                         4 ||
@@ -59,6 +65,11 @@ bool BuildPredictions(const HiVTSceneInput& input,
   predictions->reserve(targets.size() * kHiVTNumModes);
   const double time_step = FLAGS_prediction_trajectory_time_resolution;
   for (const Obstacle* actor : targets) {
+    if (actor == nullptr || actor->history_size() == 0 ||
+        !actor->latest_feature().has_position()) {
+      AERROR << "HiVT output target is null or has no current position";
+      return false;
+    }
     const auto actor_it = actor_indices.find(actor->id());
     if (actor_it == actor_indices.end()) {
       AERROR << "HiVT output is missing target actor " << actor->id();
@@ -92,13 +103,24 @@ bool BuildPredictions(const HiVTSceneInput& input,
     }
 
     const auto& latest = actor->latest_feature();
+    const double actor_rotation = input.rotate_angles[actor_index];
+    if (!std::isfinite(actor_rotation) ||
+        !std::isfinite(latest.position().x()) ||
+        !std::isfinite(latest.position().y())) {
+      AERROR << "HiVT output target has an invalid coordinate transform: "
+             << actor->id();
+      return false;
+    }
+    const double actor_cos = std::cos(actor_rotation);
+    const double actor_sin = std::sin(actor_rotation);
     for (int mode = 0; mode < kHiVTNumModes; ++mode) {
-      ModePrediction prediction;
+      HiVTModePrediction prediction;
       prediction.actor_id = actor->id();
       prediction.probability = probabilities[mode];
       prediction.points.reserve(kHiVTFutureSteps);
       double previous_x = latest.position().x();
       double previous_y = latest.position().y();
+      double previous_speed = latest.speed();
       for (int step = 0; step < kHiVTFutureSteps; ++step) {
         const std::size_t output_index =
             ((static_cast<std::size_t>(mode) * input.actor_count +
@@ -115,32 +137,36 @@ bool BuildPredictions(const HiVTSceneInput& input,
                  << actor->id();
           return false;
         }
-        const double x =
-            input.origin_x + dx * input.origin_cos - dy * input.origin_sin;
-        const double y =
-            input.origin_y + dx * input.origin_sin + dy * input.origin_cos;
+        const double scene_dx = dx * actor_cos - dy * actor_sin;
+        const double scene_dy = dx * actor_sin + dy * actor_cos;
+        const double world_dx =
+            scene_dx * input.origin_cos - scene_dy * input.origin_sin;
+        const double world_dy =
+            scene_dx * input.origin_sin + scene_dy * input.origin_cos;
+        const double x = latest.position().x() + world_dx;
+        const double y = latest.position().y() + world_dy;
+        const double displacement = std::hypot(x - previous_x, y - previous_y);
+        const double speed = displacement / time_step;
         common::TrajectoryPoint point;
         point.mutable_path_point()->set_x(x);
         point.mutable_path_point()->set_y(y);
         point.mutable_path_point()->set_theta(
-            std::hypot(x - previous_x, y - previous_y) > 1e-6
+            displacement > 1e-6
                 ? std::atan2(y - previous_y, x - previous_x)
                 : latest.velocity_heading());
         point.set_relative_time((step + 1) * time_step);
-        point.set_v(step == 0 ? latest.speed()
-                              : std::hypot(x - previous_x, y - previous_y) /
-                                    time_step);
+        point.set_v(speed);
+        point.set_a((speed - previous_speed) / time_step);
         prediction.points.push_back(std::move(point));
         previous_x = x;
         previous_y = y;
+        previous_speed = speed;
       }
       predictions->push_back(std::move(prediction));
     }
   }
   return true;
 }
-
-}  // namespace
 
 HiVTSceneEvaluator::HiVTSceneEvaluator() {
   evaluator_type_ = ObstacleConf::HIVT_SCENE_EVALUATOR;
@@ -160,6 +186,7 @@ bool HiVTSceneEvaluator::Evaluate(Obstacle*, ObstaclesContainer*) {
 bool HiVTSceneEvaluator::EvaluateScene(
     const std::vector<Obstacle*>& targets,
     ObstaclesContainer* obstacles_container) {
+  const auto profile_start = std::chrono::steady_clock::now();
   if (!executor_ready_ || obstacles_container == nullptr || targets.empty()) {
     AERROR << "HiVT scene evaluator is not ready or has no targets";
     return false;
@@ -198,18 +225,21 @@ bool HiVTSceneEvaluator::EvaluateScene(
     AERROR << "HiVT scene could not select actors within the input capacity";
     return false;
   }
+  const auto actor_selection_end = std::chrono::steady_clock::now();
 
   HiVTSceneInput input;
   if (!feature_builder_.Build(ego, actors, &input)) {
     return false;
   }
+  const auto feature_build_end = std::chrono::steady_clock::now();
   HiVTSceneOutput output;
   if (!executor_.Run(input, &output)) {
     return false;
   }
+  const auto inference_end = std::chrono::steady_clock::now();
 
-  std::vector<ModePrediction> predictions;
-  if (!BuildPredictions(input, output, selected_targets, &predictions)) {
+  std::vector<HiVTModePrediction> predictions;
+  if (!DecodeHiVTSceneOutput(input, output, selected_targets, &predictions)) {
     return false;
   }
   std::unordered_map<int, Feature*> target_features;
@@ -236,6 +266,56 @@ bool HiVTSceneEvaluator::EvaluateScene(
     for (const auto& point : prediction.points) {
       trajectory->add_trajectory_point()->CopyFrom(point);
     }
+  }
+  if (FLAGS_prediction_enable_profiling) {
+    const auto milliseconds = [](const auto& start, const auto& end) {
+      return std::chrono::duration<double, std::milli>(end - start).count();
+    };
+    AINFO << "HiVT profiling target_count=" << selected_targets.size()
+          << " actor_count=" << input.actor_count
+          << " lane_vector_count=" << input.lane_vector_count
+          << " lane_actor_edge_count=" << input.lane_actor_edge_count
+          << " selection_ms="
+          << milliseconds(profile_start, actor_selection_end)
+          << " feature_build_ms="
+          << milliseconds(actor_selection_end, feature_build_end)
+          << " tensorrt_run_ms="
+          << milliseconds(feature_build_end, inference_end)
+          << " input_prepare_ms=" << output.input_prepare_ms
+          << " input_pre_transfer_ms=" << output.input_pre_transfer_ms
+          << " input_pre_transfer_host_cpu_ms="
+          << output.input_pre_transfer_host_cpu_ms
+          << " input_pre_transfer_voluntary_context_switches="
+          << output.input_pre_transfer_voluntary_context_switches
+          << " input_pre_transfer_involuntary_context_switches="
+          << output.input_pre_transfer_involuntary_context_switches
+          << " input_device_select_ms=" << output.input_device_select_ms
+          << " input_validation_ms=" << output.input_validation_ms
+          << " input_shape_setup_ms=" << output.input_shape_setup_ms
+          << " input_pack_ms=" << output.input_pack_ms
+          << " input_transfer_profile_probe_ms="
+          << output.input_transfer_profile_probe_ms
+          << " input_transfer_submit_ms=" << output.input_transfer_submit_ms
+          << " input_transfer_host_cpu_ms="
+          << output.input_transfer_host_cpu_ms
+          << " input_transfer_voluntary_context_switches="
+          << output.input_transfer_voluntary_context_switches
+          << " input_transfer_involuntary_context_switches="
+          << output.input_transfer_involuntary_context_switches
+          << " input_copy_submit_ms=" << output.input_copy_submit_ms
+          << " tensor_binding_setup_ms=" << output.tensor_binding_setup_ms
+          << " enqueue_cpu_ms=" << output.enqueue_cpu_ms
+          << " enqueue_host_cpu_ms=" << output.enqueue_host_cpu_ms
+          << " enqueue_voluntary_context_switches="
+          << output.enqueue_voluntary_context_switches
+          << " enqueue_involuntary_context_switches="
+          << output.enqueue_involuntary_context_switches
+          << " completion_wait_ms=" << output.completion_wait_ms
+          << " gpu_inference_ms=" << output.gpu_inference_ms
+          << " decode_and_apply_ms="
+          << milliseconds(inference_end, std::chrono::steady_clock::now())
+          << " total_ms="
+          << milliseconds(profile_start, std::chrono::steady_clock::now());
   }
   return true;
 }

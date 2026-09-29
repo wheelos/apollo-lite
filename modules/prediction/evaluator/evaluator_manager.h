@@ -98,10 +98,7 @@ class EvaluatorManager {
   std::unique_ptr<Evaluator> CreateEvaluator(
       const ObstacleConf::EvaluatorType& type);
 
-  /**
-   * @brief Register all evaluators
-   */
-  void RegisterEvaluators();
+  void RegisterEvaluators(const PredictionConf& config);
 
  private:
   std::map<ObstacleConf::EvaluatorType, std::unique_ptr<Evaluator>> evaluators_;

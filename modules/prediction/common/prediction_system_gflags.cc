@@ -41,6 +41,8 @@ DEFINE_double(
     prediction_test_duration, std::numeric_limits<double>::infinity(),
     "The runtime duration in test mode (in seconds). Negative value will not "
     "restrict the runtime duration.");
+DEFINE_bool(prediction_enable_profiling, false,
+            "Emit per-frame Prediction pipeline timings");
 
 DEFINE_string(
     prediction_offline_bags, "",

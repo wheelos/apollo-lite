@@ -206,6 +206,7 @@ bool PredictionComponent::PredictionEndToEndProc(
                                  *ptr_localization_msg);
   auto end_time2 = std::chrono::system_clock::now();
   std::chrono::duration<double> diff = end_time2 - end_time1;
+  const double pose_container_ms = diff.count() * 1000;
   ADEBUG << "Time for updating PoseContainer: " << diff.count() * 1000
          << " msec.";
 
@@ -227,6 +228,7 @@ bool PredictionComponent::PredictionEndToEndProc(
   }
   auto end_time3 = std::chrono::system_clock::now();
   diff = end_time3 - end_time2;
+  const double planning_and_storytelling_ms = diff.count() * 1000;
   ADEBUG << "Time for updating ADCTrajectoryContainer: " << diff.count() * 1000
          << " msec.";
 
@@ -239,6 +241,7 @@ bool PredictionComponent::PredictionEndToEndProc(
       predictor_manager_.get(), scenario_manager_.get(), &prediction_obstacles);
   auto end_time4 = std::chrono::system_clock::now();
   diff = end_time4 - end_time3;
+  const double perception_pipeline_ms = diff.count() * 1000;
   ADEBUG << "Time for updating PerceptionContainer: " << diff.count() * 1000
          << " msec.";
 
@@ -271,11 +274,34 @@ bool PredictionComponent::PredictionEndToEndProc(
 
   auto end_time5 = std::chrono::system_clock::now();
   diff = end_time5 - end_time1;
+  const double pre_publish_pipeline_ms = diff.count() * 1000;
   ADEBUG << "End to end time elapsed: " << diff.count() * 1000 << " msec.";
+  if (FLAGS_prediction_enable_profiling) {
+    AINFO << "Prediction profiling lidar_timestamp="
+          << perception_msg.header().lidar_timestamp()
+          << " pose_container_ms=" << pose_container_ms
+          << " planning_and_storytelling_ms=" << planning_and_storytelling_ms
+          << " perception_pipeline_ms=" << perception_pipeline_ms
+          << " pre_publish_pipeline_ms=" << pre_publish_pipeline_ms;
+  }
 
   // Publish output
+  const auto publish_start = std::chrono::system_clock::now();
   common::util::FillHeader(node_->Name(), &prediction_obstacles);
   prediction_writer_->Write(prediction_obstacles);
+  if (FLAGS_prediction_enable_profiling) {
+    const auto publish_end = std::chrono::system_clock::now();
+    const double publish_ms =
+        std::chrono::duration<double, std::milli>(publish_end - publish_start)
+            .count();
+    const double callback_ms =
+        std::chrono::duration<double, std::milli>(publish_end - end_time1)
+            .count();
+    AINFO << "Prediction publish profiling lidar_timestamp="
+          << perception_msg.header().lidar_timestamp()
+          << " publish_ms=" << publish_ms
+          << " callback_total_ms=" << callback_ms;
+  }
   return true;
 }
 

@@ -16,6 +16,7 @@
 
 #include "modules/prediction/common/message_process.h"
 
+#include <chrono>
 #include <memory>
 
 #include "cyber/common/file.h"
@@ -189,7 +190,9 @@ void MessageProcess::OnPerception(
     EvaluatorManager* evaluator_manager, PredictorManager* predictor_manager,
     ScenarioManager* scenario_manager,
     PredictionObstacles* const prediction_obstacles) {
+  auto profile_start = std::chrono::steady_clock::now();
   ContainerProcess(container_manager, perception_obstacles, scenario_manager);
+  auto container_end = std::chrono::steady_clock::now();
 
   auto ptr_obstacles_container =
       container_manager->GetContainer<ObstaclesContainer>(
@@ -243,6 +246,7 @@ void MessageProcess::OnPerception(
   // Make evaluations
   evaluator_manager->Run(ptr_ego_trajectory_container,
                          ptr_obstacles_container);
+  auto evaluator_end = std::chrono::steady_clock::now();
   if (FLAGS_prediction_offline_mode ==
           PredictionConstants::kDumpDataForLearning ||
       FLAGS_prediction_offline_mode == PredictionConstants::kDumpFrameEnv) {
@@ -251,9 +255,24 @@ void MessageProcess::OnPerception(
   // Make predictions
   predictor_manager->Run(perception_obstacles, ptr_ego_trajectory_container,
                          ptr_obstacles_container);
+  auto predictor_end = std::chrono::steady_clock::now();
 
   // Get predicted obstacles
   *prediction_obstacles = predictor_manager->prediction_obstacles();
+  if (FLAGS_prediction_enable_profiling) {
+    const auto milliseconds = [](const auto& start, const auto& end) {
+      return std::chrono::duration<double, std::milli>(end - start).count();
+    };
+    AINFO << "Prediction perception profiling lidar_timestamp="
+          << perception_obstacles.header().lidar_timestamp()
+          << " container_process_ms="
+          << milliseconds(profile_start, container_end)
+          << " evaluator_manager_ms="
+          << milliseconds(container_end, evaluator_end)
+          << " predictor_manager_ms="
+          << milliseconds(evaluator_end, predictor_end)
+          << " total_ms=" << milliseconds(profile_start, predictor_end);
+  }
 }
 
 void MessageProcess::OnLocalization(

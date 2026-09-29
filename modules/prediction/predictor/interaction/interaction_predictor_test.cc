@@ -107,6 +107,54 @@ TEST_F(InteractionPredictorTest, RejectsMissingAdcPlan) {
   EXPECT_EQ(predictor.NumOfTrajectories(*obstacle_ptr), 0);
 }
 
+TEST_F(InteractionPredictorTest, AcceptsCommonAdcScoringHorizon) {
+  ADCTrajectoryContainer adc_trajectory_container;
+  apollo::planning::ADCTrajectory adc_trajectory;
+  adc_trajectory.mutable_header()->set_timestamp_sec(
+      perception_obstacles_.header().timestamp_sec() - 0.05);
+  for (int i = 0; i <= 60; ++i) {
+    auto* point = adc_trajectory.add_trajectory_point();
+    point->set_relative_time(i * 0.1);
+    point->set_v(0.0);
+    point->mutable_path_point()->set_x(0.0);
+    point->mutable_path_point()->set_y(0.0);
+    point->mutable_path_point()->set_theta(0.0);
+  }
+  adc_trajectory_container.Insert(adc_trajectory);
+
+  std::vector<apollo::common::TrajectoryPoint> samples;
+  InteractionPredictor predictor;
+  EXPECT_TRUE(predictor.BuildADCTrajectory(
+      &adc_trajectory_container, perception_obstacles_.header().timestamp_sec(),
+      0.1, 8.0, &samples));
+  ASSERT_EQ(samples.size(), 60);
+  EXPECT_DOUBLE_EQ(samples.front().relative_time(), 0.0);
+  EXPECT_DOUBLE_EQ(samples.back().relative_time(), 5.9);
+}
+
+TEST_F(InteractionPredictorTest, RejectsShortAdcScoringHorizon) {
+  ADCTrajectoryContainer adc_trajectory_container;
+  apollo::planning::ADCTrajectory adc_trajectory;
+  adc_trajectory.mutable_header()->set_timestamp_sec(
+      perception_obstacles_.header().timestamp_sec() - 0.05);
+  for (int i = 0; i <= 20; ++i) {
+    auto* point = adc_trajectory.add_trajectory_point();
+    point->set_relative_time(i * 0.1);
+    point->set_v(0.0);
+    point->mutable_path_point()->set_x(0.0);
+    point->mutable_path_point()->set_y(0.0);
+    point->mutable_path_point()->set_theta(0.0);
+  }
+  adc_trajectory_container.Insert(adc_trajectory);
+
+  std::vector<apollo::common::TrajectoryPoint> samples;
+  InteractionPredictor predictor;
+  EXPECT_FALSE(predictor.BuildADCTrajectory(
+      &adc_trajectory_container, perception_obstacles_.header().timestamp_sec(),
+      0.1, 8.0, &samples));
+  EXPECT_TRUE(samples.empty());
+}
+
 TEST_F(InteractionPredictorTest, RejectsCollidingCandidate) {
   ObstaclesContainer container;
   container.Insert(perception_obstacles_);

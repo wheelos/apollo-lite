@@ -29,6 +29,7 @@ DECLARE_string(extract_feature_type);
 
 DECLARE_bool(prediction_test_mode);
 DECLARE_double(prediction_test_duration);
+DECLARE_bool(prediction_enable_profiling);
 
 DECLARE_string(prediction_offline_bags);
 DECLARE_int32(prediction_offline_mode);

@@ -55,6 +55,28 @@ struct HiVTSceneInput {
 struct HiVTSceneOutput {
   std::vector<float> trajectories;
   std::vector<float> logits;
+  double input_prepare_ms = 0.0;
+  double input_pre_transfer_ms = 0.0;
+  double input_pre_transfer_host_cpu_ms = 0.0;
+  int64_t input_pre_transfer_voluntary_context_switches = 0;
+  int64_t input_pre_transfer_involuntary_context_switches = 0;
+  double input_device_select_ms = 0.0;
+  double input_validation_ms = 0.0;
+  double input_shape_setup_ms = 0.0;
+  double input_pack_ms = 0.0;
+  double input_transfer_profile_probe_ms = 0.0;
+  double input_transfer_submit_ms = 0.0;
+  double input_transfer_host_cpu_ms = 0.0;
+  int64_t input_transfer_voluntary_context_switches = 0;
+  int64_t input_transfer_involuntary_context_switches = 0;
+  double input_copy_submit_ms = 0.0;
+  double tensor_binding_setup_ms = 0.0;
+  double enqueue_cpu_ms = 0.0;
+  double enqueue_host_cpu_ms = 0.0;
+  int64_t enqueue_voluntary_context_switches = 0;
+  int64_t enqueue_involuntary_context_switches = 0;
+  double completion_wait_ms = 0.0;
+  double gpu_inference_ms = 0.0;
 };
 
 }  // namespace prediction

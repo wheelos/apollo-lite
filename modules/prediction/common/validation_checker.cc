@@ -16,6 +16,8 @@
 
 #include "modules/prediction/common/validation_checker.h"
 
+#include <cmath>
+
 #include "modules/common/math/math_utils.h"
 #include "modules/prediction/common/prediction_gflags.h"
 
@@ -65,12 +67,17 @@ bool ValidationChecker::ValidCentripetalAcceleration(
 bool ValidationChecker::ValidTrajectoryPoint(
     const TrajectoryPoint& trajectory_point) {
   return trajectory_point.has_path_point() &&
-         (!std::isnan(trajectory_point.path_point().x())) &&
-         (!std::isnan(trajectory_point.path_point().y())) &&
-         (!std::isnan(trajectory_point.path_point().theta())) &&
-         (!std::isnan(trajectory_point.v())) &&
-         (!std::isnan(trajectory_point.a())) &&
-         (!std::isnan(trajectory_point.relative_time()));
+         std::isfinite(trajectory_point.path_point().x()) &&
+         std::isfinite(trajectory_point.path_point().y()) &&
+         std::isfinite(trajectory_point.path_point().theta()) &&
+         std::isfinite(trajectory_point.path_point().z()) &&
+         std::isfinite(trajectory_point.path_point().kappa()) &&
+         std::isfinite(trajectory_point.path_point().s()) &&
+         std::isfinite(trajectory_point.path_point().dkappa()) &&
+         std::isfinite(trajectory_point.path_point().ddkappa()) &&
+         std::isfinite(trajectory_point.v()) &&
+         std::isfinite(trajectory_point.a()) &&
+         std::isfinite(trajectory_point.relative_time());
 }
 
 }  // namespace prediction

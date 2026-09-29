@@ -107,17 +107,17 @@ void GroupObstaclesByObstacleIds(ObstaclesContainer* const obstacles_container,
 
 EvaluatorManager::EvaluatorManager() {}
 
-void EvaluatorManager::RegisterEvaluators() {
-  RegisterEvaluator(ObstacleConf::MLP_EVALUATOR);
-  RegisterEvaluator(ObstacleConf::COST_EVALUATOR);
-  RegisterEvaluator(ObstacleConf::CRUISE_MLP_EVALUATOR);
-  RegisterEvaluator(ObstacleConf::JUNCTION_MLP_EVALUATOR);
-  RegisterEvaluator(ObstacleConf::CYCLIST_KEEP_LANE_EVALUATOR);
-  RegisterEvaluator(ObstacleConf::LANE_SCANNING_EVALUATOR);
-  RegisterEvaluator(ObstacleConf::LANE_AGGREGATING_EVALUATOR);
-  RegisterEvaluator(ObstacleConf::JUNCTION_MAP_EVALUATOR);
-  RegisterEvaluator(ObstacleConf::SEMANTIC_LSTM_EVALUATOR);
-  RegisterEvaluator(ObstacleConf::HIVT_SCENE_EVALUATOR);
+void EvaluatorManager::RegisterEvaluators(const PredictionConf& config) {
+  evaluators_.clear();
+  for (const auto& obstacle_conf : config.obstacle_conf()) {
+    if (!obstacle_conf.has_evaluator_type()) {
+      continue;
+    }
+    const auto type = CanonicalEvaluatorType(obstacle_conf.evaluator_type());
+    if (evaluators_.count(type) == 0) {
+      RegisterEvaluator(type);
+    }
+  }
 }
 
 void EvaluatorManager::Init(const PredictionConf& config) {
@@ -127,7 +127,7 @@ void EvaluatorManager::Init(const PredictionConf& config) {
     ADEBUG << "Init SemanticMap instance.";
   }
 
-  RegisterEvaluators();
+  RegisterEvaluators(config);
 
   for (const auto& obstacle_conf : config.obstacle_conf()) {
     if (!obstacle_conf.has_obstacle_type()) {
@@ -243,8 +243,9 @@ void EvaluatorManager::Run(
     }
   }
   if (!hivt_targets.empty()) {
-    for (const Obstacle* target : hivt_targets) {
+    for (Obstacle* target : hivt_targets) {
       hivt_handled_ids.insert(target->id());
+      target->SetEvaluatorType(ObstacleConf::HIVT_SCENE_EVALUATOR);
     }
     auto* evaluator = dynamic_cast<HiVTSceneEvaluator*>(
         GetEvaluator(ObstacleConf::HIVT_SCENE_EVALUATOR));
@@ -501,7 +502,9 @@ std::unique_ptr<Evaluator> EvaluatorManager::CreateEvaluator(
 
 void EvaluatorManager::RegisterEvaluator(
     const ObstacleConf::EvaluatorType& type) {
-  evaluators_[type] = CreateEvaluator(type);
+  auto evaluator = CreateEvaluator(type);
+  CHECK_NOTNULL(evaluator);
+  evaluators_[type] = std::move(evaluator);
   AINFO << "Evaluator [" << type << "] is registered.";
 }
 

@@ -85,6 +85,8 @@ class InteractionPredictor : public SequencePredictor {
       double ego_length, double ego_width) const;
 
   FRIEND_TEST(InteractionPredictorTest, RejectsCollidingCandidate);
+  FRIEND_TEST(InteractionPredictorTest, AcceptsCommonAdcScoringHorizon);
+  FRIEND_TEST(InteractionPredictorTest, RejectsShortAdcScoringHorizon);
   FRIEND_TEST(InteractionPredictorTest, PenalizesOnlyClosingSameLaneTtc);
   FRIEND_TEST(InteractionPredictorTest, ScoresCrossingConflictTimeGap);
 };

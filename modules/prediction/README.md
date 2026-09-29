@@ -81,6 +81,10 @@ The list of available evaluators include:
   default engine path is `/apollo/modules/prediction/data/hivt64.engine`.
   TensorRT engines are tied to their build/runtime environment and should be
   rebuilt for the deployment TensorRT/GPU combination.
+  `tools/validate_hivt_av1_sample.py` runs a limited Argoverse 1 forecasting
+  sample smoke against the deployed engine and checkpoint in the test container;
+  it uses approximate XML centerline lane selection and does not establish
+  official validation metrics or Apollo HDMap feature parity.
 
 * **Interactive predictor**: generates bounded lane and longitudinal motion
   candidates, aligns them to the timestamped ADC plan, and ranks them using
@@ -102,6 +106,60 @@ Predictor generates predicted trajectories for obstacles. Currently, the support
 * **Interaction predictor**: creates ADC-conditioned candidate trajectories
   and normalizes their relative interaction scores into trajectory weights.
 * **Extrapolation predictor**: extends the Semantic LSTM evaluator's results to create an 8 sec trajectory.
+
+For targeted replay profiling, set `--prediction_enable_profiling=true` in the
+Prediction component flag file. This emits INFO-level per-frame timing lines
+for pose/planning updates, container preparation, evaluator and predictor
+managers, HiVT scene selection/feature building, device selection, input
+validation/shape setup, pre-transfer CPU time and context switches, host input
+packing, profiling-probe overhead, H2D API-submit wall/CPU time and thread
+context switches around transfer submission and TensorRT enqueue, tensor
+binding, enqueue wall/CPU time, CUDA-event inference time, completion wait,
+decode, publishing, and total callback processing. The flag is disabled by
+default.
+
+## HiVT baseline and validation
+
+### Code layout
+
+| Responsibility | Implementation | Focused tests / evidence |
+| --- | --- | --- |
+| Build bounded actor/map tensors | `evaluator/vehicle/hivt_scene_feature_builder.h` and `.cc` | `hivt_scene_feature_builder_test.cc` |
+| Load the TensorRT engine, pack inputs, transfer, and enqueue | `evaluator/vehicle/hivt_tensorrt_executor.h`, `_gpu.cc`, and `_cpu.cc` | `hivt_tensorrt_executor_test.cc` |
+| Decode actor-local six-mode outputs to Apollo coordinates | `evaluator/vehicle/hivt_scene_evaluator.h` and `.cc` | `hivt_scene_evaluator_test.cc` |
+| Select eligible caution-vehicle targets once per frame | `evaluator/evaluator_manager.h` and `.cc` | `evaluator_manager_test.cc` |
+| Compare deployed TensorRT output to checkpoint on AV1 samples | `tools/validate_hivt_av1_sample.py` | Offline smoke only; approximate XML-centerline lane selection |
+| Record callback and transfer timings | `common/message_process.cc`, scene evaluator, and GPU executor | `--prediction_enable_profiling=true`; disabled by default |
+
+When at least one target is admitted, the HiVT path performs one bounded scene
+inference for the frame, not one model call per target. The engine admits up to
+64 actors including ego and 1024 lane-vector segments; at most 63 caution
+targets can be selected. See the
+[HiVT migration and validation record](../../wheelos-service/context/modules/prediction/knowledge/hivt-migration-and-scene-quality-analysis.md)
+for admission policy, replay contracts, and detailed evidence.
+
+### Current measured baseline
+
+| Validation tier | Data and result | What it establishes / does not establish |
+| --- | --- | --- |
+| Engine/checkpoint smoke | Five AV1 forecasting sample scenes; deployed TensorRT vs HiVT checkpoint max absolute error: trajectories `2.29e-5`, logits `3.82e-6`. Mean top-1 ADE/FDE `1.93/4.65 m`; best-of-six-by-ADE `1.15/2.40 m`. | TensorRT parity and smoke-level trajectory behavior on these five scenes. Approximate XML-centerline lane selection and a 12-lane cap mean this is not an official AV1 benchmark or Apollo feature-parity result. |
+| Apollo message replay | Matching `demo_3.5.record` / `sunnyvale_big_loop`, isolated keep-lane fixture, half-rate replay: 455/455 source timestamps matched; 52 HiVT targets had six finite, ordered modes with normalized probabilities. For 23 targets with complete 3-second labels, top-1 ADE/FDE `2.673/3.888 m`, best-of-six `1.101/1.522 m`. | Verifies selected Prediction output contracts on this record/fixture, not full-rate delivery, Planning consumption, or general model quality. Pair outputs by copied `Header.lidar_timestamp`. |
+| Callback/H2D profiling | Four matching-map replay rounds: 1,820 perception callbacks and 289 HiVT profiles. Each round had one first-after-idle H2D API outlier (`108.3–111.4 ms`); ordinary H2D p50 was about `0.015 ms`, p95 `0.018–0.023 ms`. | Exposes idle-associated transfer-submit latency, not sustained inference throughput. End-to-end production-rate performance remains unmeasured. |
+| Isolated CUDA idle control | Same pinned buffer and thread: warm H2D `0.017 ms`; after 120 seconds without CUDA calls, first H2D `109.539 ms` wall / `108.851 ms` thread CPU. | Reproduces the delay outside Apollo and TensorRT. The exact NVIDIA driver, power-state, or PCIe transition remains unidentified. |
+
+Run the AV1 smoke in the managed test container with the existing venv,
+checkpoint, engine, and sample data:
+
+```bash
+PYTHONPATH=/usr/lib/python3.10/dist-packages \
+  /apollo/.cache/hivt-inference/venv/bin/python \
+  /apollo/modules/prediction/tools/validate_hivt_av1_sample.py
+```
+
+This is the reproducible offline baseline command. The official Argoverse 1.1
+`val/data` split is absent locally, so official minADE, minFDE, miss-rate, and
+calibration baselines remain blocked. Do not present the five-scene sample or
+the 23-track Apollo subset as benchmark results.
 
 ## Prediction Architecture
 

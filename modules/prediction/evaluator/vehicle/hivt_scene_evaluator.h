@@ -18,12 +18,25 @@
 #include <string>
 #include <vector>
 
+#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
+
 #include "modules/prediction/evaluator/evaluator.h"
 #include "modules/prediction/evaluator/vehicle/hivt_scene_feature_builder.h"
 #include "modules/prediction/evaluator/vehicle/hivt_tensorrt_executor.h"
 
 namespace apollo {
 namespace prediction {
+
+struct HiVTModePrediction {
+  int actor_id = 0;
+  double probability = 0.0;
+  std::vector<common::TrajectoryPoint> points;
+};
+
+bool DecodeHiVTSceneOutput(const HiVTSceneInput& input,
+                           const HiVTSceneOutput& output,
+                           const std::vector<Obstacle*>& targets,
+                           std::vector<HiVTModePrediction>* predictions);
 
 class HiVTSceneEvaluator final : public Evaluator {
  public:

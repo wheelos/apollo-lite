@@ -16,6 +16,7 @@
 
 #include "modules/prediction/predictor/predictor_manager.h"
 
+#include <chrono>
 #include <list>
 #include <unordered_map>
 
@@ -131,6 +132,7 @@ void PredictorManager::Run(
     const PerceptionObstacles& perception_obstacles,
     const ADCTrajectoryContainer* adc_trajectory_container,
     ObstaclesContainer* obstacles_container) {
+  const auto profile_start = std::chrono::steady_clock::now();
   prediction_obstacles_.Clear();
 
   if (FLAGS_enable_multi_thread) {
@@ -139,6 +141,20 @@ void PredictorManager::Run(
   } else {
     PredictObstacles(perception_obstacles, adc_trajectory_container,
                      obstacles_container);
+  }
+  if (FLAGS_prediction_enable_profiling) {
+    const auto elapsed =
+        std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - profile_start)
+            .count();
+    AINFO << "Prediction predictor profiling lidar_timestamp="
+          << perception_obstacles.header().lidar_timestamp()
+          << " obstacle_count="
+          << perception_obstacles.perception_obstacle_size()
+          << " predicted_obstacle_count="
+          << prediction_obstacles_.prediction_obstacle_size()
+          << " parallel=" << FLAGS_enable_multi_thread
+          << " predictor_manager_ms=" << elapsed;
   }
 }
 
@@ -391,7 +407,9 @@ void PredictorManager::InitDefaultPredictors(const ObstacleConf& conf) {
       default_off_lane_predictor_ = conf.predictor_type();
       break;
     }
-    default: { break; }
+    default: {
+      break;
+    }
   }
 }
 
@@ -421,6 +439,23 @@ void PredictorManager::RunVehiclePredictor(
     return;
   }
   if (obstacle->IsCaution()) {
+    const bool used_hivt = obstacle->obstacle_conf().has_evaluator_type() &&
+                           obstacle->obstacle_conf().evaluator_type() ==
+                               ObstacleConf::HIVT_SCENE_EVALUATOR;
+    if (used_hivt &&
+        obstacle->latest_feature().predicted_trajectory().empty()) {
+      AERROR << "Obstacle: " << obstacle->id()
+             << " has no HiVT trajectory; using kinematic fallback";
+      predictor = GetPredictor(ObstacleConf::FREE_MOVE_PREDICTOR);
+      if (predictor != nullptr &&
+          predictor->Predict(adc_trajectory_container, obstacle,
+                             obstacles_container)) {
+        return;
+      }
+      AERROR << "Obstacle: " << obstacle->id()
+             << " HiVT kinematic fallback failed";
+      return;
+    }
     if (obstacle->IsNearJunction()) {
       predictor = GetPredictor(vehicle_in_junction_caution_predictor_);
     } else if (obstacle->IsOnLane()) {
@@ -433,8 +468,19 @@ void PredictorManager::RunVehiclePredictor(
                            obstacles_container)) {
       return;
     } else {
+      AERROR << "Obstacle: " << obstacle->id() << " caution predictor failed";
+    }
+    if (used_hivt) {
+      obstacle->mutable_latest_feature()->clear_predicted_trajectory();
+      predictor = GetPredictor(ObstacleConf::FREE_MOVE_PREDICTOR);
+      if (predictor != nullptr &&
+          predictor->Predict(adc_trajectory_container, obstacle,
+                             obstacles_container)) {
+        return;
+      }
       AERROR << "Obstacle: " << obstacle->id()
-             << " caution predictor failed, downgrade to normal level!";
+             << " HiVT kinematic fallback failed";
+      return;
     }
   }
 

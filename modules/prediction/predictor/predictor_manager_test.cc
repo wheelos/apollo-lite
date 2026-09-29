@@ -108,5 +108,33 @@ TEST_F(PredictorManagerTest, InteractiveFailureUsesKinematicFallback) {
             ObstacleConf::FREE_MOVE_PREDICTOR);
 }
 
+TEST_F(PredictorManagerTest, HiVTFailureUsesKinematicFallback) {
+  ObstaclesContainer obstacles_container;
+  obstacles_container.Insert(perception_obstacles_);
+  Obstacle* obstacle = obstacles_container.GetObstacle(1);
+  ASSERT_NE(obstacle, nullptr);
+  obstacle->SetCaution();
+  obstacle->SetEvaluatorType(ObstacleConf::HIVT_SCENE_EVALUATOR);
+
+  auto* obstacle_conf = prediction_conf_.add_obstacle_conf();
+  obstacle_conf->set_obstacle_type(
+      apollo::perception::PerceptionObstacle::VEHICLE);
+  obstacle_conf->set_obstacle_status(ObstacleConf::ON_LANE);
+  obstacle_conf->set_priority_type(ObstaclePriority::CAUTION);
+  obstacle_conf->set_predictor_type(ObstacleConf::EXTRAPOLATION_PREDICTOR);
+  predictor_manager_->Init(prediction_conf_);
+
+  ADCTrajectoryContainer adc_trajectory_container;
+  PredictionObstacle prediction_obstacle;
+  predictor_manager_->PredictObstacle(&adc_trajectory_container, obstacle,
+                                      &obstacles_container,
+                                      &prediction_obstacle);
+
+  ASSERT_EQ(prediction_obstacle.trajectory_size(), 1);
+  EXPECT_GT(prediction_obstacle.trajectory(0).trajectory_point_size(), 0);
+  EXPECT_EQ(obstacle->obstacle_conf().predictor_type(),
+            ObstacleConf::FREE_MOVE_PREDICTOR);
+}
+
 }  // namespace prediction
 }  // namespace apollo

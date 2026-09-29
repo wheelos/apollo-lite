@@ -41,6 +41,17 @@ class EvaluatorManagerTest : public KMLMapBasedTest {
 };
 
 TEST_F(EvaluatorManagerTest, General) {
+  auto* vehicle = prediction_conf_.add_obstacle_conf();
+  vehicle->set_obstacle_type(perception::PerceptionObstacle::VEHICLE);
+  vehicle->set_obstacle_status(ObstacleConf::ON_LANE);
+  vehicle->set_priority_type(ObstaclePriority::NORMAL);
+  vehicle->set_evaluator_type(ObstacleConf::COST_EVALUATOR);
+  auto* caution_vehicle = prediction_conf_.add_obstacle_conf();
+  caution_vehicle->set_obstacle_type(perception::PerceptionObstacle::VEHICLE);
+  caution_vehicle->set_obstacle_status(ObstacleConf::ON_LANE);
+  caution_vehicle->set_priority_type(ObstaclePriority::CAUTION);
+  caution_vehicle->set_evaluator_type(ObstacleConf::COST_EVALUATOR);
+
   std::string conf_file = "modules/prediction/testdata/adapter_conf.pb.txt";
   bool ret_load_conf =
       cyber::common::GetProtoFromFile(conf_file, &adapter_conf_);
@@ -71,6 +82,23 @@ TEST_F(EvaluatorManagerTest, General) {
   for (const auto& lane_sequence : lane_graph.lane_sequence()) {
     EXPECT_TRUE(lane_sequence.has_probability());
   }
+}
+
+TEST_F(EvaluatorManagerTest, RegistersOnlyConfiguredEvaluators) {
+  auto* vehicle = prediction_conf_.add_obstacle_conf();
+  vehicle->set_obstacle_type(perception::PerceptionObstacle::VEHICLE);
+  vehicle->set_evaluator_type(ObstacleConf::COST_EVALUATOR);
+  auto* cyclist = prediction_conf_.add_obstacle_conf();
+  cyclist->set_obstacle_type(perception::PerceptionObstacle::BICYCLE);
+  cyclist->set_evaluator_type(ObstacleConf::COST_EVALUATOR);
+
+  EvaluatorManager evaluator_manager;
+  evaluator_manager.Init(prediction_conf_);
+
+  EXPECT_NE(evaluator_manager.GetEvaluator(ObstacleConf::COST_EVALUATOR),
+            nullptr);
+  EXPECT_EQ(evaluator_manager.GetEvaluator(ObstacleConf::CRUISE_MLP_EVALUATOR),
+            nullptr);
 }
 
 }  // namespace prediction
