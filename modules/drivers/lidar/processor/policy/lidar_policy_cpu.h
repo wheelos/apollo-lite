@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,12 +42,10 @@ class CpuLidarFusionPolicy : public LidarFusionPolicy {
   bool Init(const LidarUnifiedComponentConfig& config,
             apollo::transform::BufferInterface* tf_buffer) override;
 
-  bool FuseToBaseLink(
-      double reference_timestamp_sec, const Eigen::Affine3d& map2base_ref,
-      const std::vector<SensorFrameContext>& frames,
-      const std::vector<std::vector<Eigen::Affine3d>>& frames_motion_poses,
-      const std::vector<std::vector<double>>& frames_motion_times,
-      PointCloudBuffer* output_buffer) override;
+  bool FuseToBaseLink(double reference_timestamp_sec,
+                      const Eigen::Affine3d& map2base_ref,
+                      const std::vector<SensorFrameContext>& frames,
+                      PointCloudBuffer* output_buffer) override;
 
  private:
   LidarUnifiedComponentConfig config_;

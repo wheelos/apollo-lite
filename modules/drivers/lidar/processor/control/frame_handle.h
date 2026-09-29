@@ -20,7 +20,7 @@
 
 #include "Eigen/Geometry"
 
-#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+#include "modules/drivers/lidar/processor/common/pod_pointcloud_view.h"
 #include "modules/drivers/lidar/processor/control/time_contract.h"
 
 namespace apollo {
@@ -29,7 +29,7 @@ namespace lidar {
 
 struct BufferedFrame {
   uint64_t frame_id = 0;
-  std::shared_ptr<const ::apollo::drivers::PointCloud> point_cloud;
+  std::shared_ptr<const PointCloudView> point_cloud;
   TimeContract time_contract;
   std::vector<double> motion_sample_times;
   std::vector<Eigen::Affine3d> motion_poses;
@@ -40,7 +40,7 @@ struct BufferedFrame {
 
 struct FrameHandle {
   std::string sensor_id;
-  std::shared_ptr<const ::apollo::drivers::PointCloud> point_cloud;
+  std::shared_ptr<const PointCloudView> point_cloud;
   std::shared_ptr<const BufferedFrame> buffered_frame;
   bool is_primary = false;
   uint64_t frame_id = 0;

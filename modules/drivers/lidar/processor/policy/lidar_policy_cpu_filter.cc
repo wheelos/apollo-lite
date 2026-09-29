@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "modules/drivers/lidar/processor/policy/cpu_lidar_policy.h"
 #include "modules/drivers/lidar/processor/policy/lidar_policy_common.h"
+#include "modules/drivers/lidar/processor/policy/lidar_policy_cpu.h"
 
 namespace apollo {
 namespace drivers {

@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ enum class TsSanityStatus {
   kFirstFrame = 1,        // no previous timestamp to compare
   kIntervalTooShort = 2,  // frames arriving faster than min_interval_ms
   kIntervalTooLong = 3,   // gap exceeds max_interval_ms (late / dropped)
-  kJump = 4,              // |delta| > max_jump_ms (clock reset / backward jump)
+  kJump = 4,              // backward time or |delta| > max_jump_ms
 };
 
 struct TsSanityResult {

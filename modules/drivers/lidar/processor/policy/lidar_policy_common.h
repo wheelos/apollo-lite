@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,9 +22,8 @@
 #include "Eigen/Geometry"
 #include "Eigen/StdVector"
 
-#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
-
 #include "cyber/time/time.h"
+#include "modules/drivers/lidar/processor/common/pod_pointcloud_view.h"
 #include "modules/drivers/lidar/processor/policy/lidar_policy_interface.h"
 
 namespace apollo {
@@ -44,29 +43,30 @@ struct UniformPoseInterpolation {
       rotations;
 };
 
-bool ResolvePointTimestampBounds(const PointCloud& cloud, double* min_sec,
+bool ResolvePointTimestampBounds(const PointCloudView& cloud, double* min_sec,
                                  double* max_sec);
 
-bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
-                            bool use_gpu_timestamp_range, int gpu_device_id,
+bool BuildMotionSampleTimes(const PointCloudView& cloud, size_t bins,
                             std::vector<double>* sample_times,
                             bool* used_measurement_time_fallback = nullptr);
 
-double ResolvePointTimestampSec(const PointXYZIT& point,
+double ResolvePointTimestampSec(const PointXYZITPod& point,
                                 double fallback_measurement_time);
 
-uint64_t ResolvePointTimestampNs(const PointXYZIT& point,
+uint64_t ResolvePointTimestampNs(const PointXYZITPod& point,
                                  double fallback_measurement_time);
+
+bool AddTimestampOffset(uint64_t timestamp_ns, int64_t offset_ns,
+                        uint64_t* adjusted_timestamp_ns);
 
 bool InterpolateAffinePose(double point_time,
                            const std::vector<double>& sample_times,
                            const std::vector<Eigen::Affine3d>& poses,
                            Eigen::Affine3d* interpolated_pose);
 
-bool BuildUniformPoseInterpolation(
-    const std::vector<double>& sample_times,
-    const std::vector<Eigen::Affine3d>& poses,
-    UniformPoseInterpolation* interpolation);
+bool BuildUniformPoseInterpolation(const std::vector<double>& sample_times,
+                                   const std::vector<Eigen::Affine3d>& poses,
+                                   UniformPoseInterpolation* interpolation);
 
 bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
                           const std::string& target_frame,
@@ -77,7 +77,7 @@ bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
 size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
                                              float voxel_size);
 
-bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
+bool TransformPointToBase(const PointXYZITPod& point, double measurement_time,
                           double timestamp_offset_sec,
                           const std::vector<double>& sample_times,
                           const std::vector<Eigen::Affine3d>& map_from_sensor,
@@ -85,31 +85,18 @@ bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
                           PointXYZIT* output_point);
 
 bool TransformPointWithInterpolatedPoses(
-    const PointXYZIT& point, uint64_t fallback_timestamp_ns,
+    const PointXYZITPod& point, uint64_t fallback_timestamp_ns,
     int64_t timestamp_offset_ns, const std::vector<double>& sample_times,
     const std::vector<Eigen::Affine3d>& base_from_sensor_poses,
     PointXYZIT* output_point);
 
 bool TransformPointWithUniformInterpolatedPoses(
-    const PointXYZIT& point, uint64_t fallback_timestamp_ns,
+    const PointXYZITPod& point, uint64_t fallback_timestamp_ns,
     int64_t timestamp_offset_ns, const std::vector<double>& sample_times,
     const std::vector<Eigen::Affine3d>& base_from_sensor_poses,
     const UniformPoseInterpolation& interpolation, PointXYZIT* output_point);
 
 PointXYZIT* GetHostPoints(PointCloudBuffer* buffer);
-
-bool EnsureGpuBackendAvailable(const char* policy_name);
-
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-struct CudaPointXYZIT;
-struct CudaPose;
-
-CudaPointXYZIT ToCudaPoint(const PointXYZIT& point,
-                           double measurement_time_sec,
-                           int64_t timestamp_offset_ns = 0);
-PointXYZIT ToProtoPoint(const CudaPointXYZIT& point);
-CudaPose ToCudaPose(const Eigen::Affine3d& in);
-#endif
 
 }  // namespace lidar
 }  // namespace drivers

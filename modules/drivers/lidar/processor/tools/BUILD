@@ -11,6 +11,7 @@ cc_binary(
         "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
         "//modules/transform:buffer_interface",
         "@core//cyber",
+        "@core//cyber/record:record_reader",
         "@eigen",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],

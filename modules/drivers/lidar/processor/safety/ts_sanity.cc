@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ TsSanityResult TsSanity::Check(double timestamp_seconds) {
 
   TsSanityStatus status = TsSanityStatus::kOk;
 
-  if (abs_delta_ms > static_cast<double>(max_jump_ms_)) {
+  if (delta_s < 0.0 || abs_delta_ms > static_cast<double>(max_jump_ms_)) {
     status = TsSanityStatus::kJump;
   } else if (abs_delta_ms > static_cast<double>(max_interval_ms_)) {
     status = TsSanityStatus::kIntervalTooLong;
