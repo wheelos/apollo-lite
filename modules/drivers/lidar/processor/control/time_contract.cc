@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,8 +31,7 @@ bool SecondsToNanoseconds(double seconds, int64_t* nanoseconds) {
   if (nanoseconds == nullptr || !std::isfinite(seconds) || seconds <= 0.0) {
     return false;
   }
-  const long double value =
-      static_cast<long double>(seconds) * kNsPerSecond;
+  const long double value = static_cast<long double>(seconds) * kNsPerSecond;
   if (value > static_cast<long double>(std::numeric_limits<int64_t>::max())) {
     return false;
   }
@@ -89,8 +88,8 @@ int64_t PointAnchorNanoseconds(
     case LidarUnifiedComponentConfig::SCAN_BEGIN:
       return static_cast<int64_t>(point_min_ns);
     case LidarUnifiedComponentConfig::SCAN_MIDPOINT:
-      return static_cast<int64_t>(
-          point_min_ns + (point_max_ns - point_min_ns) / 2U);
+      return static_cast<int64_t>(point_min_ns +
+                                  (point_max_ns - point_min_ns) / 2U);
     case LidarUnifiedComponentConfig::SCAN_END:
     default:
       return static_cast<int64_t>(point_max_ns);
@@ -104,7 +103,7 @@ double TimeContract::CanonicalAnchorSec() const {
 }
 
 bool NormalizePointCloudTime(
-    const PointCloud& cloud,
+    const PointCloudView& cloud,
     const LidarUnifiedComponentConfig::TimeSettings& settings,
     TimeContract* contract) {
   if (contract == nullptr) {
@@ -159,9 +158,9 @@ bool NormalizePointCloudTime(
     quality = TimestampQuality::kPointTimestamps;
   } else {
     if (!has_measurement_time ||
-        !BuildMeasurementInterval(
-            measurement_ns, expected_duration_ns,
-            settings.measurement_time_anchor(), &begin_ns, &end_ns)) {
+        !BuildMeasurementInterval(measurement_ns, expected_duration_ns,
+                                  settings.measurement_time_anchor(), &begin_ns,
+                                  &end_ns)) {
       return false;
     }
   }
@@ -188,9 +187,9 @@ bool NormalizePointCloudTime(
 }
 
 int64_t IntervalOverlapNs(const TimeContract& lhs, const TimeContract& rhs) {
-  return std::max<int64_t>(
-      0, std::min(lhs.scan_end_ns, rhs.scan_end_ns) -
-             std::max(lhs.scan_begin_ns, rhs.scan_begin_ns));
+  return std::max<int64_t>(0,
+                           std::min(lhs.scan_end_ns, rhs.scan_end_ns) -
+                               std::max(lhs.scan_begin_ns, rhs.scan_begin_ns));
 }
 
 }  // namespace lidar

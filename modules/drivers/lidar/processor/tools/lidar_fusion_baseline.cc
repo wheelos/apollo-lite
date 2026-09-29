@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,10 +29,13 @@
 
 #include "Eigen/Geometry"
 
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+
 #include "cyber/record/record_message.h"
 #include "cyber/record/record_reader.h"
+#include "modules/drivers/lidar/processor/common/pod_pointcloud_view.h"
 #include "modules/drivers/lidar/processor/control/time_contract.h"
-#include "modules/drivers/lidar/processor/policy/cpu_lidar_policy.h"
+#include "modules/drivers/lidar/processor/policy/lidar_policy_cpu.h"
 #include "modules/transform/buffer_interface.h"
 
 namespace apollo {
@@ -47,6 +50,7 @@ struct Options {
   std::string record;
   std::string primary_topic;
   std::vector<std::string> auxiliary_topics;
+  std::vector<LidarUnifiedComponentConfig::TimestampAnchor> time_anchors;
   size_t max_frames = 100;
   size_t max_points = 600000;
   uint32_t max_delta_ms = 80;
@@ -59,7 +63,7 @@ struct Options {
 };
 
 struct InputFrame {
-  std::shared_ptr<PointCloud> cloud;
+  std::shared_ptr<const PointCloudView> cloud;
   TimeContract time_contract;
 };
 
@@ -97,22 +101,20 @@ class NonQueryingBuffer final : public apollo::transform::BufferInterface {
     throw std::runtime_error("baseline mock TF does not support lookup");
   }
 
-  bool canTransform(const std::string&, const std::string&,
-                    const cyber::Time&, const float,
+  bool canTransform(const std::string&, const std::string&, const cyber::Time&,
+                    const float, std::string*) const override {
+    return false;
+  }
+
+  bool canTransform(const std::string&, const cyber::Time&, const std::string&,
+                    const cyber::Time&, const std::string&, const float,
                     std::string*) const override {
     return false;
   }
 
-  bool canTransform(const std::string&, const cyber::Time&,
-                    const std::string&, const cyber::Time&,
-                    const std::string&, const float,
-                    std::string*) const override {
-    return false;
-  }
-
-  bool GetLatestStaticTransform(const std::string&, const std::string&,
-                                apollo::transform::TransformStamped*)
-      const override {
+  bool GetLatestStaticTransform(
+      const std::string&, const std::string&,
+      apollo::transform::TransformStamped*) const override {
     return false;
   }
 };
@@ -171,6 +173,44 @@ bool ParseBool(const std::string& value, bool* output) {
   return false;
 }
 
+bool ParseTimeAnchor(const std::string& value,
+                     LidarUnifiedComponentConfig::TimestampAnchor* output) {
+  if (output == nullptr) {
+    return false;
+  }
+  if (value == "SCAN_BEGIN") {
+    *output = LidarUnifiedComponentConfig::SCAN_BEGIN;
+  } else if (value == "SCAN_END") {
+    *output = LidarUnifiedComponentConfig::SCAN_END;
+  } else if (value == "SCAN_MIDPOINT") {
+    *output = LidarUnifiedComponentConfig::SCAN_MIDPOINT;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+LidarUnifiedComponentConfig::TimestampAnchor TimeAnchorFor(
+    const Options& options, size_t topic_index) {
+  if (options.time_anchors.empty()) {
+    return LidarUnifiedComponentConfig::SCAN_END;
+  }
+  return options.time_anchors[topic_index];
+}
+
+const char* TimeAnchorName(
+    LidarUnifiedComponentConfig::TimestampAnchor anchor) {
+  switch (anchor) {
+    case LidarUnifiedComponentConfig::SCAN_BEGIN:
+      return "SCAN_BEGIN";
+    case LidarUnifiedComponentConfig::SCAN_END:
+      return "SCAN_END";
+    case LidarUnifiedComponentConfig::SCAN_MIDPOINT:
+      return "SCAN_MIDPOINT";
+  }
+  return "UNKNOWN";
+}
+
 bool ParseOptions(int argc, char** argv, Options* options) {
   if (options == nullptr) {
     return false;
@@ -190,6 +230,20 @@ bool ParseOptions(int argc, char** argv, Options* options) {
       options->primary_topic = value;
     } else if (name == "auxiliary_topics") {
       options->auxiliary_topics = Split(value, ',');
+    } else if (name == "time_anchors") {
+      const auto anchor_names = Split(value, ',');
+      if (anchor_names.empty()) {
+        std::cerr << "--time_anchors cannot be empty" << std::endl;
+        return false;
+      }
+      for (const auto& anchor_name : anchor_names) {
+        LidarUnifiedComponentConfig::TimestampAnchor anchor;
+        if (!ParseTimeAnchor(anchor_name, &anchor)) {
+          std::cerr << "Invalid time anchor: " << anchor_name << std::endl;
+          return false;
+        }
+        options->time_anchors.push_back(anchor);
+      }
     } else if (name == "max_frames") {
       if (!ParseUnsigned(value, &options->max_frames)) {
         return false;
@@ -257,6 +311,12 @@ bool LoadFrames(const Options& options,
   std::vector<std::string> topics = {options.primary_topic};
   topics.insert(topics.end(), options.auxiliary_topics.begin(),
                 options.auxiliary_topics.end());
+  if (!options.time_anchors.empty() &&
+      options.time_anchors.size() != topics.size()) {
+    std::cerr << "--time_anchors must contain one value per input topic"
+              << std::endl;
+    return false;
+  }
   frames_by_topic->assign(topics.size(), {});
 
   RecordReader reader(options.record);
@@ -272,11 +332,10 @@ bool LoadFrames(const Options& options,
     }
   }
 
-  const auto time_settings = DefaultTimeSettings();
   RecordMessage message;
   while (reader.ReadMessage(&message)) {
-    const auto topic = std::find(topics.begin(), topics.end(),
-                                 message.channel_name);
+    const auto topic =
+        std::find(topics.begin(), topics.end(), message.channel_name);
     if (topic == topics.end()) {
       continue;
     }
@@ -287,13 +346,20 @@ bool LoadFrames(const Options& options,
       continue;
     }
 
-    auto cloud = std::make_shared<PointCloud>();
+    ::apollo::drivers::PointCloud proto;
     TimeContract time_contract;
-    if (!cloud->ParseFromString(message.content) ||
-        !NormalizePointCloudTime(*cloud, time_settings, &time_contract)) {
+    auto time_settings = DefaultTimeSettings();
+    time_settings.set_measurement_time_anchor(
+        TimeAnchorFor(options, topic_index));
+    if (!proto.ParseFromString(message.content)) {
       continue;
     }
-    frames.push_back(InputFrame{std::move(cloud), time_contract});
+    auto point_cloud = std::make_shared<const PointCloudView>(
+        std::make_shared<const ::apollo::drivers::PointCloud>(std::move(proto)));
+    if (!NormalizePointCloudTime(*point_cloud, time_settings, &time_contract)) {
+      continue;
+    }
+    frames.push_back(InputFrame{std::move(point_cloud), time_contract});
 
     bool complete = true;
     for (const auto& topic_frames : *frames_by_topic) {
@@ -329,8 +395,7 @@ Eigen::Affine3d MockMapFromBase(double timestamp_sec, double origin_sec,
 
 Eigen::Affine3d MockBaseFromSensor(size_t sensor_index) {
   if (sensor_index == 0U) {
-    return Eigen::Translation3d(1.5, 0.0, 1.8) *
-           Eigen::Quaterniond::Identity();
+    return Eigen::Translation3d(1.5, 0.0, 1.8) * Eigen::Quaterniond::Identity();
   }
   const double lateral = sensor_index % 2U == 0U ? -1.0 : 1.0;
   return Eigen::Translation3d(0.0, lateral, 1.6) *
@@ -339,11 +404,8 @@ Eigen::Affine3d MockBaseFromSensor(size_t sensor_index) {
 
 bool PrepareFrame(const InputFrame& input, size_t sensor_index,
                   const Options& options, double origin_sec,
-                  SensorFrameContext* context,
-                  std::vector<double>* sample_times,
-                  std::vector<Eigen::Affine3d>* poses) {
-  if (context == nullptr || sample_times == nullptr || poses == nullptr ||
-      input.cloud == nullptr) {
+                  SensorFrameContext* context) {
+  if (context == nullptr || input.cloud == nullptr) {
     return false;
   }
   context->sensor_id = input.cloud->frame_id().empty()
@@ -361,9 +423,9 @@ bool PrepareFrame(const InputFrame& input, size_t sensor_index,
       1e9;
   context->timestamp_offset_sec =
       static_cast<double>(input.time_contract.static_offset_ns) / 1e9;
-  context->fallback_timestamp_ns = static_cast<uint64_t>(
-      input.time_contract.canonical_anchor_ns -
-      input.time_contract.static_offset_ns);
+  context->fallback_timestamp_ns =
+      static_cast<uint64_t>(input.time_contract.canonical_anchor_ns -
+                            input.time_contract.static_offset_ns);
   context->timestamp_offset_ns = input.time_contract.static_offset_ns;
   context->all_points_have_timestamps =
       input.time_contract.all_points_have_timestamps;
@@ -372,32 +434,31 @@ bool PrepareFrame(const InputFrame& input, size_t sensor_index,
       input.time_contract.quality == TimestampQuality::kPointTimestamps
           ? options.motion_bins
           : 1U;
-  sample_times->resize(bins);
-  poses->resize(bins);
+  context->motion_sample_times.resize(bins);
+  context->motion_poses.resize(bins);
   const double begin_sec =
       static_cast<double>(input.time_contract.scan_begin_ns) / 1e9;
   const double end_sec =
       static_cast<double>(input.time_contract.scan_end_ns) / 1e9;
-  const Eigen::Affine3d base_from_sensor =
-      MockBaseFromSensor(sensor_index);
+  const Eigen::Affine3d base_from_sensor = MockBaseFromSensor(sensor_index);
   for (size_t index = 0; index < bins; ++index) {
-    const double ratio =
-        bins == 1U ? 0.0
-                   : static_cast<double>(index) /
-                         static_cast<double>(bins - 1U);
+    const double ratio = bins == 1U ? 0.0
+                                    : static_cast<double>(index) /
+                                          static_cast<double>(bins - 1U);
     const double timestamp = begin_sec + ratio * (end_sec - begin_sec);
-    (*sample_times)[index] = timestamp;
-    (*poses)[index] =
-        MockMapFromBase(timestamp, origin_sec, options.speed_mps,
-                        options.yaw_rate_rps) *
-        base_from_sensor;
+    context->motion_sample_times[index] = timestamp;
+    context->motion_poses[index] = MockMapFromBase(timestamp, origin_sec,
+                                                   options.speed_mps,
+                                                   options.yaw_rate_rps) *
+                                   base_from_sensor;
   }
   return true;
 }
 
-const InputFrame* FindNearestUnconsumed(
-    const std::vector<InputFrame>& frames, int64_t reference_ns,
-    int64_t max_delta_ns, size_t* next_index) {
+const InputFrame* FindNearestUnconsumed(const std::vector<InputFrame>& frames,
+                                        int64_t reference_ns,
+                                        int64_t max_delta_ns,
+                                        size_t* next_index) {
   if (next_index == nullptr || *next_index >= frames.size()) {
     return nullptr;
   }
@@ -485,9 +546,8 @@ bool RunBaseline(const Options& options,
     std::vector<const InputFrame*> selected = {&primary};
     for (size_t sensor = 1; sensor < frames_by_topic.size(); ++sensor) {
       const InputFrame* auxiliary = FindNearestUnconsumed(
-          frames_by_topic[sensor],
-          primary.time_contract.canonical_anchor_ns, max_delta_ns,
-          &auxiliary_indices[sensor - 1U]);
+          frames_by_topic[sensor], primary.time_contract.canonical_anchor_ns,
+          max_delta_ns, &auxiliary_indices[sensor - 1U]);
       if (auxiliary != nullptr) {
         selected.push_back(auxiliary);
       }
@@ -499,13 +559,10 @@ bool RunBaseline(const Options& options,
 
     const auto begin = std::chrono::steady_clock::now();
     std::vector<SensorFrameContext> contexts(selected.size());
-    std::vector<std::vector<double>> sample_times(selected.size());
-    std::vector<std::vector<Eigen::Affine3d>> poses(selected.size());
     size_t required_points = 0;
     for (size_t sensor = 0; sensor < selected.size(); ++sensor) {
       if (!PrepareFrame(*selected[sensor], sensor, options, origin_sec,
-                        &contexts[sensor], &sample_times[sensor],
-                        &poses[sensor])) {
+                        &contexts[sensor])) {
         return false;
       }
       if (selected[sensor]->time_contract.quality ==
@@ -527,11 +584,9 @@ bool RunBaseline(const Options& options,
     output.data_ptr = output_points.data();
     output.capacity = output_points.size();
     output.item_size = sizeof(PointXYZIT);
-    output.device_type = MemoryDeviceType::kHost;
-    output.device_id = -1;
     const auto fusion_begin = std::chrono::steady_clock::now();
-    if (!fusion.FuseToBaseLink(reference_sec, map2base_ref, contexts, poses,
-                               sample_times, &output)) {
+    if (!fusion.FuseToBaseLink(reference_sec, map2base_ref, contexts,
+                               &output)) {
       return false;
     }
     const auto fusion_end = std::chrono::steady_clock::now();
@@ -583,10 +638,18 @@ void PrintLatencyStats(const std::vector<double>& values) {
 void PrintResult(const Options& options,
                  const std::vector<std::vector<InputFrame>>& frames_by_topic,
                  const RunMetrics& metrics) {
-  std::cout << std::fixed << std::setprecision(6)
-            << "{"
+  std::cout << std::fixed << std::setprecision(6) << "{"
             << "\"record\":\"" << options.record << "\","
             << "\"sensor_count\":" << frames_by_topic.size() << ","
+            << "\"time_anchors\":[";
+  for (size_t index = 0; index < frames_by_topic.size(); ++index) {
+    if (index != 0U) {
+      std::cout << ",";
+    }
+    std::cout << "\"" << TimeAnchorName(TimeAnchorFor(options, index))
+              << "\"";
+  }
+  std::cout << "],"
             << "\"loaded_frames\":[";
   for (size_t index = 0; index < frames_by_topic.size(); ++index) {
     if (index != 0U) {
@@ -599,16 +662,15 @@ void PrintResult(const Options& options,
             << metrics.requested_primary_frames << ","
             << "\"processed_frames\":" << metrics.processed_frames << ","
             << "\"full_match_frames\":" << metrics.full_match_frames << ","
-            << "\"point_timestamp_frames\":"
-            << metrics.point_timestamp_frames << ","
+            << "\"point_timestamp_frames\":" << metrics.point_timestamp_frames
+            << ","
             << "\"fallback_timestamp_frames\":"
             << metrics.fallback_timestamp_frames << ","
             << "\"input_points\":" << metrics.input_points << ","
             << "\"compact_points\":" << metrics.compact_points << ","
-            << "\"ego_filtered_points\":" << metrics.ego_filtered_points
+            << "\"ego_filtered_points\":" << metrics.ego_filtered_points << ","
+            << "\"voxel_filtered_points\":" << metrics.voxel_filtered_points
             << ","
-            << "\"voxel_filtered_points\":"
-            << metrics.voxel_filtered_points << ","
             << "\"output_points\":" << metrics.output_points << ","
             << "\"truncated_frames\":" << metrics.truncated_frames << ","
             << "\"mock_speed_mps\":" << options.speed_mps << ","
@@ -641,14 +703,14 @@ void PrintResult(const Options& options,
 int main(int argc, char** argv) {
   apollo::drivers::lidar::Options options;
   if (!apollo::drivers::lidar::ParseOptions(argc, argv, &options)) {
-    std::cerr
-        << "Usage: lidar_fusion_baseline --record=<record> "
-           "--primary_topic=<topic> [--auxiliary_topics=<topic,...>] "
-           "[--max_frames=100] [--max_points=600000] [--max_delta_ms=80] "
-           "[--motion_bins=12] [--speed_mps=5.0] [--yaw_rate_rps=0.05] "
-           "[--enable_ego_filter=true|false] "
-           "[--enable_voxel_filter=true|false] [--voxel_size=0.15]"
-        << std::endl;
+    std::cerr << "Usage: lidar_fusion_baseline --record=<record> "
+                 "--primary_topic=<topic> [--auxiliary_topics=<topic,...>] "
+                 "[--max_frames=100] [--max_points=600000] [--max_delta_ms=80] "
+                 "[--motion_bins=12] [--speed_mps=5.0] [--yaw_rate_rps=0.05] "
+                 "[--time_anchors=SCAN_END,SCAN_BEGIN,...] "
+                 "[--enable_ego_filter=true|false] "
+                 "[--enable_voxel_filter=true|false] [--voxel_size=0.15]"
+              << std::endl;
     return 2;
   }
 

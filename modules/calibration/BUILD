@@ -6,7 +6,6 @@ install(
     name = "install",
     data = [
         ":calibrated_vehicles",
-        ":calibration.BUILD",
     ],
     data_dest = "calibration",
 )

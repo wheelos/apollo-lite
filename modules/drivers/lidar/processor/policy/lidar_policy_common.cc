@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,13 +21,11 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "cyber/cyber.h"
 #include "modules/transform/transform_query.h"
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-#include "modules/drivers/lidar/processor/policy/lidar_policy_cuda_kernels.h"
-#endif
 
 namespace apollo {
 namespace drivers {
@@ -61,14 +59,14 @@ bool ShouldFallbackToMeasurementTime(double measurement_time_sec,
   }
 
   return std::fabs(point_min_time_sec - measurement_time_sec) >
-                 kDeskewTimestampFallbackThresholdSec ||
+             kDeskewTimestampFallbackThresholdSec ||
          std::fabs(point_max_time_sec - measurement_time_sec) >
-                 kDeskewTimestampFallbackThresholdSec;
+             kDeskewTimestampFallbackThresholdSec;
 }
 
 }  // namespace
 
-bool ResolvePointTimestampBounds(const PointCloud& cloud, double* min_sec,
+bool ResolvePointTimestampBounds(const PointCloudView& cloud, double* min_sec,
                                  double* max_sec) {
   if (min_sec == nullptr || max_sec == nullptr) {
     return false;
@@ -91,8 +89,7 @@ bool ResolvePointTimestampBounds(const PointCloud& cloud, double* min_sec,
   return true;
 }
 
-bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
-                            bool use_gpu_timestamp_range, int gpu_device_id,
+bool BuildMotionSampleTimes(const PointCloudView& cloud, size_t bins,
                             std::vector<double>* sample_times,
                             bool* used_measurement_time_fallback) {
   if (bins == 0U || sample_times == nullptr) {
@@ -105,53 +102,25 @@ bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
 
   double local_min = 0.0;
   double local_max = 0.0;
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-  if (use_gpu_timestamp_range) {
-    std::vector<uint64_t> timestamps;
-    timestamps.reserve(static_cast<size_t>(cloud.point_size()));
-    const uint64_t fallback_ts =
-        static_cast<uint64_t>(cloud.measurement_time() * kSecondToNano);
-    for (const auto& point : cloud.point()) {
-      timestamps.push_back(point.timestamp() == 0U ? fallback_ts
-                                                   : point.timestamp());
-    }
-    if (timestamps.empty()) {
-      timestamps.push_back(fallback_ts);
-    }
-
-    uint64_t min_ts = 0U;
-    uint64_t max_ts = 0U;
-    if (!CudaComputeTimestampRange(timestamps.data(), timestamps.size(),
-                                   gpu_device_id, &min_ts, &max_ts)) {
-      return false;
-    }
-    local_min = static_cast<double>(min_ts) / kSecondToNano;
-    local_max = static_cast<double>(max_ts) / kSecondToNano;
-  } else {
-#endif
-    if (!ResolvePointTimestampBounds(cloud, &local_min, &local_max)) {
-      return false;
-    }
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
+  if (!ResolvePointTimestampBounds(cloud, &local_min, &local_max)) {
+    return false;
   }
-#endif
 
   if (ShouldFallbackToMeasurementTime(cloud.measurement_time(), local_min,
                                       local_max)) {
     if (used_measurement_time_fallback != nullptr) {
       *used_measurement_time_fallback = true;
     }
-    ADEBUG
-        << "Invalid per-point timestamps detected, "
-        << "fallback to measurement_time and disable intra-frame deskew. "
-        << "measurement=" << FormatTimestampSummary(cloud.measurement_time())
-        << ", point_range=[" << FormatTimestampSummary(local_min) << ", "
-        << FormatTimestampSummary(local_max) << "]"
-        << ", min_delta="
-        << std::showpos << std::fixed << std::setprecision(6)
-        << (local_min - cloud.measurement_time()) << "s"
-        << ", max_delta=" << (local_max - cloud.measurement_time()) << "s"
-        << std::noshowpos;
+    ADEBUG << "Invalid per-point timestamps detected, "
+           << "fallback to measurement_time and disable intra-frame deskew. "
+           << "measurement=" << FormatTimestampSummary(cloud.measurement_time())
+           << ", point_range=[" << FormatTimestampSummary(local_min) << ", "
+           << FormatTimestampSummary(local_max) << "]"
+           << ", min_delta=" << std::showpos << std::fixed
+           << std::setprecision(6) << (local_min - cloud.measurement_time())
+           << "s"
+           << ", max_delta=" << (local_max - cloud.measurement_time()) << "s"
+           << std::noshowpos;
     FillUniformMotionSampleTimes(cloud.measurement_time(), bins, sample_times);
     return true;
   }
@@ -166,7 +135,7 @@ bool BuildMotionSampleTimes(const PointCloud& cloud, size_t bins,
   return true;
 }
 
-double ResolvePointTimestampSec(const PointXYZIT& point,
+double ResolvePointTimestampSec(const PointXYZITPod& point,
                                 double fallback_measurement_time) {
   if (point.timestamp() == 0U) {
     return fallback_measurement_time;
@@ -174,12 +143,34 @@ double ResolvePointTimestampSec(const PointXYZIT& point,
   return static_cast<double>(point.timestamp()) / kSecondToNano;
 }
 
-uint64_t ResolvePointTimestampNs(const PointXYZIT& point,
+uint64_t ResolvePointTimestampNs(const PointXYZITPod& point,
                                  double fallback_measurement_time) {
   if (point.timestamp() != 0U) {
     return point.timestamp();
   }
   return static_cast<uint64_t>(fallback_measurement_time * kSecondToNano);
+}
+
+bool AddTimestampOffset(uint64_t timestamp_ns, int64_t offset_ns,
+                        uint64_t* adjusted_timestamp_ns) {
+  if (adjusted_timestamp_ns == nullptr ||
+      timestamp_ns >
+          static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+    return false;
+  }
+  const int64_t signed_timestamp_ns = static_cast<int64_t>(timestamp_ns);
+  if ((offset_ns > 0 &&
+       signed_timestamp_ns > std::numeric_limits<int64_t>::max() - offset_ns) ||
+      (offset_ns < 0 &&
+       signed_timestamp_ns < std::numeric_limits<int64_t>::min() - offset_ns)) {
+    return false;
+  }
+  const int64_t adjusted = signed_timestamp_ns + offset_ns;
+  if (adjusted <= 0) {
+    return false;
+  }
+  *adjusted_timestamp_ns = static_cast<uint64_t>(adjusted);
+  return true;
 }
 
 bool InterpolateAffinePose(double point_time,
@@ -236,10 +227,9 @@ bool InterpolateAffinePose(double point_time,
   return true;
 }
 
-bool BuildUniformPoseInterpolation(
-    const std::vector<double>& sample_times,
-    const std::vector<Eigen::Affine3d>& poses,
-    UniformPoseInterpolation* interpolation) {
+bool BuildUniformPoseInterpolation(const std::vector<double>& sample_times,
+                                   const std::vector<Eigen::Affine3d>& poses,
+                                   UniformPoseInterpolation* interpolation) {
   if (interpolation == nullptr || sample_times.size() < 2U ||
       sample_times.size() != poses.size()) {
     return false;
@@ -282,10 +272,11 @@ bool BuildUniformPoseInterpolation(
 
 namespace {
 
-bool InterpolateUniformPose(
-    double point_time, const std::vector<double>& sample_times,
-    const UniformPoseInterpolation& interpolation,
-    Eigen::Vector3d* translation, Eigen::Quaterniond* rotation) {
+bool InterpolateUniformPose(double point_time,
+                            const std::vector<double>& sample_times,
+                            const UniformPoseInterpolation& interpolation,
+                            Eigen::Vector3d* translation,
+                            Eigen::Quaterniond* rotation) {
   if (translation == nullptr || rotation == nullptr ||
       sample_times.size() < 2U ||
       sample_times.size() != interpolation.translations.size() ||
@@ -303,12 +294,11 @@ bool InterpolateUniformPose(
     return true;
   }
 
-  const double scaled =
-      (point_time - interpolation.first_time_sec) *
-      interpolation.inverse_bin_duration_sec;
-  const size_t right_index = std::clamp(
-      static_cast<size_t>(std::ceil(scaled)), size_t{1U},
-      interpolation.translations.size() - 1U);
+  const double scaled = (point_time - interpolation.first_time_sec) *
+                        interpolation.inverse_bin_duration_sec;
+  const size_t right_index =
+      std::clamp(static_cast<size_t>(std::ceil(scaled)), size_t{1U},
+                 interpolation.translations.size() - 1U);
   const size_t left_index = right_index - 1U;
   const double ratio =
       std::clamp((point_time - sample_times[left_index]) /
@@ -321,13 +311,12 @@ bool InterpolateUniformPose(
   if (interpolation.rotations[left_index].dot(right_rotation) < 0.0) {
     right_rotation.coeffs() *= -1.0;
   }
-  *rotation =
-      interpolation.rotations[left_index].slerp(ratio, right_rotation);
+  *rotation = interpolation.rotations[left_index].slerp(ratio, right_rotation);
   return true;
 }
 
 bool TransformPointWithPose(
-    const PointXYZIT& point, uint64_t fallback_timestamp_ns,
+    const PointXYZITPod& point, uint64_t fallback_timestamp_ns,
     int64_t timestamp_offset_ns, const std::vector<double>& sample_times,
     const std::vector<Eigen::Affine3d>& base_from_sensor_poses,
     const UniformPoseInterpolation* uniform_interpolation,
@@ -342,9 +331,13 @@ bool TransformPointWithPose(
 
   const uint64_t raw_timestamp =
       point.timestamp() == 0U ? fallback_timestamp_ns : point.timestamp();
-  const double point_time = static_cast<double>(
-      static_cast<int64_t>(raw_timestamp) + timestamp_offset_ns) /
-      kSecondToNano;
+  uint64_t adjusted_timestamp_ns = 0;
+  if (!AddTimestampOffset(raw_timestamp, timestamp_offset_ns,
+                          &adjusted_timestamp_ns)) {
+    return false;
+  }
+  const double point_time =
+      static_cast<double>(adjusted_timestamp_ns) / kSecondToNano;
   Eigen::Vector3d target;
   if (uniform_interpolation != nullptr) {
     Eigen::Vector3d translation;
@@ -358,8 +351,7 @@ bool TransformPointWithPose(
              translation;
   } else {
     Eigen::Affine3d base_from_sensor = Eigen::Affine3d::Identity();
-    if (!InterpolateAffinePose(point_time, sample_times,
-                               base_from_sensor_poses,
+    if (!InterpolateAffinePose(point_time, sample_times, base_from_sensor_poses,
                                &base_from_sensor)) {
       return false;
     }
@@ -370,8 +362,7 @@ bool TransformPointWithPose(
   output_point->set_y(static_cast<float>(target.y()));
   output_point->set_z(static_cast<float>(target.z()));
   output_point->set_intensity(point.intensity());
-  output_point->set_timestamp(static_cast<uint64_t>(
-      static_cast<int64_t>(raw_timestamp) + timestamp_offset_ns));
+  output_point->set_timestamp(adjusted_timestamp_ns);
   return true;
 }
 
@@ -397,8 +388,6 @@ bool QueryTransformAffine(apollo::transform::BufferInterface* tf_buffer,
 
   return true;
 }
-
-#include <unordered_map>
 
 namespace {
 
@@ -462,7 +451,7 @@ size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
   for (uint64_t key : active_keys) {
     const auto& cell = grid[key];
     const double count_inv = 1.0 / static_cast<double>(cell.count);
-    PointXYZIT centroid_point;
+    PointXYZITPod centroid_point;
     centroid_point.set_x(static_cast<float>(cell.sum_x * count_inv));
     centroid_point.set_y(static_cast<float>(cell.sum_y * count_inv));
     centroid_point.set_z(static_cast<float>(cell.sum_z * count_inv));
@@ -476,7 +465,7 @@ size_t ApplyDeterministicVoxelCentroidFilter(PointXYZIT* points, size_t count,
   return write_idx;
 }
 
-bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
+bool TransformPointToBase(const PointXYZITPod& point, double measurement_time,
                           double timestamp_offset_sec,
                           const std::vector<double>& sample_times,
                           const std::vector<Eigen::Affine3d>& map_from_sensor,
@@ -518,13 +507,13 @@ bool TransformPointToBase(const PointXYZIT& point, double measurement_time,
       static_cast<int64_t>(std::llround(timestamp_offset_sec * kSecondToNano));
   const uint64_t raw_timestamp =
       ResolvePointTimestampNs(point, measurement_time);
-  output_point->set_timestamp(static_cast<uint64_t>(
-      static_cast<int64_t>(raw_timestamp) + offset_ns));
+  output_point->set_timestamp(
+      static_cast<uint64_t>(static_cast<int64_t>(raw_timestamp) + offset_ns));
   return true;
 }
 
 bool TransformPointWithInterpolatedPoses(
-    const PointXYZIT& point, uint64_t fallback_timestamp_ns,
+    const PointXYZITPod& point, uint64_t fallback_timestamp_ns,
     int64_t timestamp_offset_ns, const std::vector<double>& sample_times,
     const std::vector<Eigen::Affine3d>& base_from_sensor_poses,
     PointXYZIT* output_point) {
@@ -534,77 +523,22 @@ bool TransformPointWithInterpolatedPoses(
 }
 
 bool TransformPointWithUniformInterpolatedPoses(
-    const PointXYZIT& point, uint64_t fallback_timestamp_ns,
+    const PointXYZITPod& point, uint64_t fallback_timestamp_ns,
     int64_t timestamp_offset_ns, const std::vector<double>& sample_times,
     const std::vector<Eigen::Affine3d>& base_from_sensor_poses,
     const UniformPoseInterpolation& interpolation, PointXYZIT* output_point) {
-  return TransformPointWithPose(point, fallback_timestamp_ns,
-                                timestamp_offset_ns, sample_times,
-                                base_from_sensor_poses, &interpolation,
-                                output_point);
+  return TransformPointWithPose(
+      point, fallback_timestamp_ns, timestamp_offset_ns, sample_times,
+      base_from_sensor_poses, &interpolation, output_point);
 }
 
 PointXYZIT* GetHostPoints(PointCloudBuffer* buffer) {
   if (buffer == nullptr || buffer->data_ptr == nullptr ||
-      buffer->item_size != sizeof(PointXYZIT) ||
-      buffer->device_type != MemoryDeviceType::kHost) {
+      buffer->item_size != sizeof(PointXYZIT)) {
     return nullptr;
   }
   return reinterpret_cast<PointXYZIT*>(buffer->data_ptr);
 }
-
-bool EnsureGpuBackendAvailable(const char* policy_name) {
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-  (void)policy_name;
-  return true;
-#else
-  AERROR
-      << policy_name
-      << " requested GPU execution, but this target is built without "
-         "CUDA backend support. Rebuild with --define=lidar_gpu_backend=true";
-  return false;
-#endif
-}
-
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-CudaPointXYZIT ToCudaPoint(const PointXYZIT& point,
-                           double measurement_time_sec,
-                           int64_t timestamp_offset_ns) {
-  CudaPointXYZIT out;
-  out.x = point.x();
-  out.y = point.y();
-  out.z = point.z();
-  out.intensity = point.intensity();
-  out.timestamp = static_cast<uint64_t>(
-      static_cast<int64_t>(
-          ResolvePointTimestampNs(point, measurement_time_sec)) +
-      timestamp_offset_ns);
-  return out;
-}
-
-PointXYZIT ToProtoPoint(const CudaPointXYZIT& point) {
-  PointXYZIT out;
-  out.set_x(point.x);
-  out.set_y(point.y);
-  out.set_z(point.z);
-  out.set_intensity(point.intensity);
-  out.set_timestamp(point.timestamp);
-  return out;
-}
-
-CudaPose ToCudaPose(const Eigen::Affine3d& in) {
-  CudaPose out;
-  out.tx = static_cast<float>(in.translation().x());
-  out.ty = static_cast<float>(in.translation().y());
-  out.tz = static_cast<float>(in.translation().z());
-  const Eigen::Quaterniond rotation(in.linear());
-  out.qx = static_cast<float>(rotation.x());
-  out.qy = static_cast<float>(rotation.y());
-  out.qz = static_cast<float>(rotation.z());
-  out.qw = static_cast<float>(rotation.w());
-  return out;
-}
-#endif
 
 }  // namespace lidar
 }  // namespace drivers

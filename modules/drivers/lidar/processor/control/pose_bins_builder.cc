@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,22 +26,14 @@ namespace lidar {
 bool PoseBinsBuilder::Build(
     const std::vector<FrameHandle>& frame_handles,
     LidarDeskewPolicy* deskew_policy, std::vector<SensorFrameContext>* contexts,
-    std::vector<std::vector<double>>* motion_sample_times,
-    std::vector<std::vector<Eigen::Affine3d>>* motion_poses,
     size_t* required_points) const {
-  if (contexts == nullptr || motion_sample_times == nullptr ||
-      motion_poses == nullptr || required_points == nullptr) {
+  if (contexts == nullptr || required_points == nullptr) {
     return false;
   }
 
   contexts->clear();
-  motion_sample_times->clear();
-  motion_poses->clear();
   *required_points = 0;
-
   contexts->reserve(frame_handles.size());
-  motion_sample_times->reserve(frame_handles.size());
-  motion_poses->reserve(frame_handles.size());
 
   for (const auto& handle : frame_handles) {
     if (handle.point_cloud == nullptr) {
@@ -67,27 +59,28 @@ bool PoseBinsBuilder::Build(
         1e9;
     context.timestamp_offset_sec =
         static_cast<double>(handle.time_contract.static_offset_ns) / 1e9;
-    context.fallback_timestamp_ns = static_cast<uint64_t>(
-        handle.time_contract.canonical_anchor_ns -
-        handle.time_contract.static_offset_ns);
+    context.fallback_timestamp_ns =
+        static_cast<uint64_t>(handle.time_contract.canonical_anchor_ns -
+                              handle.time_contract.static_offset_ns);
     context.timestamp_offset_ns = handle.time_contract.static_offset_ns;
     context.all_points_have_timestamps =
         handle.time_contract.all_points_have_timestamps;
 
-    std::vector<double> sample_times;
-    std::vector<Eigen::Affine3d> poses;
     if (handle.buffered_frame != nullptr &&
         handle.buffered_frame->pose_prefetch_ok &&
         !handle.buffered_frame->motion_sample_times.empty() &&
         handle.buffered_frame->motion_sample_times.size() ==
             handle.buffered_frame->motion_poses.size()) {
-      sample_times = handle.buffered_frame->motion_sample_times;
-      poses = handle.buffered_frame->motion_poses;
+      context.motion_sample_times = handle.buffered_frame->motion_sample_times;
+      context.motion_poses = handle.buffered_frame->motion_poses;
     } else if (deskew_policy != nullptr &&
                deskew_policy->ComputeMotionCompensationPoses(
-                   context, &sample_times, &poses) &&
-               !sample_times.empty() && !poses.empty() &&
-               sample_times.size() == poses.size()) {
+                   context, &context.motion_sample_times,
+                   &context.motion_poses) &&
+               !context.motion_sample_times.empty() &&
+               !context.motion_poses.empty() &&
+               context.motion_sample_times.size() ==
+                   context.motion_poses.size()) {
       // Legacy fallback for call sites that have not migrated to prefetched
       // motion samples yet.
     } else {
@@ -101,10 +94,8 @@ bool PoseBinsBuilder::Build(
       continue;
     }
 
-    contexts->push_back(std::move(context));
-    motion_sample_times->push_back(std::move(sample_times));
-    motion_poses->push_back(std::move(poses));
     *required_points += static_cast<size_t>(handle.point_cloud->point_size());
+    contexts->push_back(std::move(context));
   }
 
   return !contexts->empty();

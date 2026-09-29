@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -26,12 +30,14 @@
 
 #include "Eigen/Geometry"
 
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+
 #include "cyber/time/time.h"
 #include "modules/drivers/lidar/processor/control/time_contract.h"
 #include "modules/drivers/lidar/processor/lidar_unified_component.h"
-#include "modules/drivers/lidar/processor/policy/cpu_lidar_policy.h"
-#include "modules/drivers/lidar/processor/policy/gpu_lidar_policy.h"
 #include "modules/drivers/lidar/processor/policy/lidar_policy_common.h"
+#include "modules/drivers/lidar/processor/policy/lidar_policy_cpu.h"
+#include "modules/drivers/lidar/processor/safety/ts_sanity.h"
 
 namespace apollo {
 namespace drivers {
@@ -152,23 +158,24 @@ class MockBuffer : public apollo::transform::BufferInterface {
   std::map<Key, apollo::transform::TransformStamped> transforms_;
 };
 
-std::shared_ptr<PointCloud> MakePointCloud(
+std::shared_ptr<const PointCloudView> MakePointCloud(
     const std::string& frame_id, double measurement_time,
     const std::vector<std::tuple<float, float, float, uint64_t>>& points) {
-  auto cloud = std::make_shared<PointCloud>();
-  cloud->set_frame_id(frame_id);
-  cloud->set_measurement_time(measurement_time);
-  cloud->set_is_dense(true);
+  ::apollo::drivers::PointCloud proto;
+  proto.set_frame_id(frame_id);
+  proto.set_measurement_time(measurement_time);
+  proto.set_is_dense(true);
   for (const auto& point : points) {
-    auto* out = cloud->add_point();
+    auto* out = proto.add_point();
     out->set_x(std::get<0>(point));
     out->set_y(std::get<1>(point));
     out->set_z(std::get<2>(point));
     out->set_timestamp(std::get<3>(point));
   }
-  cloud->set_width(cloud->point_size());
-  cloud->set_height(1);
-  return cloud;
+  proto.set_width(proto.point_size());
+  proto.set_height(1);
+  return std::make_shared<const PointCloudView>(
+      std::make_shared<const PointCloud>(std::move(proto)));
 }
 
 TimeContract MakeTimeContract(double begin_sec, double end_sec,
@@ -184,9 +191,10 @@ TimeContract MakeTimeContract(double begin_sec, double end_sec,
   return contract;
 }
 
-std::shared_ptr<BufferedFrame> MakeBufferedFrame(
-    const std::string& sensor_id, double begin_sec, double end_sec,
-    uint64_t frame_id = 1) {
+std::shared_ptr<BufferedFrame> MakeBufferedFrame(const std::string& sensor_id,
+                                                 double begin_sec,
+                                                 double end_sec,
+                                                 uint64_t frame_id = 1) {
   auto frame = std::make_shared<BufferedFrame>();
   frame->frame_id = frame_id;
   frame->point_cloud = MakePointCloud(sensor_id, end_sec, {});
@@ -212,6 +220,48 @@ LidarUnifiedComponentConfig MakeConfig() {
 
 }  // namespace
 
+TEST(PointCloudViewTest, CopiesProtobufPointsToContiguousPodStorage) {
+  const auto cloud =
+      MakePointCloud("lidar", 10.0,
+                     {{1.0f, 2.0f, 3.0f, 100U},
+                      {-1.0f, -2.0f, -3.0f, 200U}});
+
+  ASSERT_NE(cloud, nullptr);
+  ASSERT_TRUE(cloud->valid());
+  ASSERT_EQ(cloud->point_size(), 2);
+  ASSERT_NE(cloud->raw_points_data(), nullptr);
+  const auto* first_point =
+      reinterpret_cast<const unsigned char*>(&cloud->point(0));
+  const auto* second_point =
+      reinterpret_cast<const unsigned char*>(&cloud->point(1));
+  EXPECT_EQ(second_point - first_point,
+            static_cast<std::ptrdiff_t>(sizeof(PointXYZITPod)));
+  EXPECT_FLOAT_EQ(cloud->point(0).x(), 1.0F);
+  EXPECT_FLOAT_EQ(cloud->point(0).y(), 2.0F);
+  EXPECT_FLOAT_EQ(cloud->point(0).z(), 3.0F);
+  EXPECT_EQ(cloud->point(0).timestamp(), 100U);
+  EXPECT_FLOAT_EQ(cloud->raw_points_data()[1].x(), -1.0F);
+  EXPECT_EQ(cloud->raw_points_data()[1].timestamp(), 200U);
+  ASSERT_NE(cloud->message(), nullptr);
+  EXPECT_EQ(cloud->message()->point_size(), 2);
+}
+
+TEST(TsSanityTest, TreatsBackwardTimestampAsJump) {
+  TsSanity sanity;
+  sanity.SetConfig(40, 200, 500);
+
+  EXPECT_EQ(sanity.Check(10.0).status, TsSanityStatus::kFirstFrame);
+  const auto result = sanity.Check(9.9);
+  EXPECT_EQ(result.status, TsSanityStatus::kJump);
+  EXPECT_NEAR(result.interval_ms, 100.0, 1e-9);
+  EXPECT_EQ(result.consecutive_errors, 1);
+}
+
+TEST(LidarUnifiedComponentConfigTest, DisablesCompensationByDefault) {
+  LidarUnifiedComponentConfig config;
+  EXPECT_EQ(config.compensation_mode(), LidarUnifiedComponentConfig::OFF);
+}
+
 TEST(TimeContractTest, NormalizesScanEndFallback) {
   LidarUnifiedComponentConfig::TimeSettings settings;
   settings.set_measurement_time_anchor(LidarUnifiedComponentConfig::SCAN_END);
@@ -219,8 +269,8 @@ TEST(TimeContractTest, NormalizesScanEndFallback) {
   settings.set_max_scan_duration_ms(200.0);
 
   TimeContract contract;
-  ASSERT_TRUE(NormalizePointCloudTime(
-      *MakePointCloud("lidar", 10.0, {}), settings, &contract));
+  ASSERT_TRUE(NormalizePointCloudTime(*MakePointCloud("lidar", 10.0, {}),
+                                      settings, &contract));
   EXPECT_EQ(contract.scan_begin_ns, 9900000000LL);
   EXPECT_EQ(contract.scan_end_ns, 10000000000LL);
   EXPECT_EQ(contract.canonical_anchor_ns, 10000000000LL);
@@ -229,24 +279,35 @@ TEST(TimeContractTest, NormalizesScanEndFallback) {
 
 TEST(TimeContractTest, NormalizesScanBeginFallback) {
   LidarUnifiedComponentConfig::TimeSettings settings;
-  settings.set_measurement_time_anchor(
-      LidarUnifiedComponentConfig::SCAN_BEGIN);
+  settings.set_measurement_time_anchor(LidarUnifiedComponentConfig::SCAN_BEGIN);
   settings.set_expected_scan_duration_ms(80.0);
   settings.set_max_scan_duration_ms(100.0);
   settings.set_static_time_offset_ns(-1000000);
 
   TimeContract contract;
-  ASSERT_TRUE(NormalizePointCloudTime(
-      *MakePointCloud("lidar", 10.0, {}), settings, &contract));
+  ASSERT_TRUE(NormalizePointCloudTime(*MakePointCloud("lidar", 10.0, {}),
+                                      settings, &contract));
   EXPECT_EQ(contract.scan_begin_ns, 9999000000LL);
   EXPECT_EQ(contract.scan_end_ns, 10079000000LL);
   EXPECT_EQ(contract.canonical_anchor_ns, 10079000000LL);
 }
 
+TEST(LidarPolicyCommonTest, TimestampOffsetRejectsOverflowAndUnderflow) {
+  uint64_t adjusted_timestamp_ns = 0;
+  EXPECT_TRUE(
+      AddTimestampOffset(10000000000ULL, -1000000, &adjusted_timestamp_ns));
+  EXPECT_EQ(adjusted_timestamp_ns, 9999000000ULL);
+  EXPECT_FALSE(AddTimestampOffset(100U, -100, &adjusted_timestamp_ns));
+  EXPECT_FALSE(AddTimestampOffset(
+      static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), 1,
+      &adjusted_timestamp_ns));
+  EXPECT_FALSE(AddTimestampOffset(std::numeric_limits<uint64_t>::max(), 0,
+                                  &adjusted_timestamp_ns));
+}
+
 TEST(TimeContractTest, PointTimestampsOverrideMeasurementAnchor) {
   LidarUnifiedComponentConfig::TimeSettings settings;
-  settings.set_measurement_time_anchor(
-      LidarUnifiedComponentConfig::SCAN_BEGIN);
+  settings.set_measurement_time_anchor(LidarUnifiedComponentConfig::SCAN_BEGIN);
   settings.set_expected_scan_duration_ms(100.0);
   settings.set_max_scan_duration_ms(200.0);
 
@@ -281,8 +342,7 @@ TEST(TimeContractTest, FallsBackFromImplausiblePointTimestamps) {
 
 TEST(TimeContractTest, FallsBackFromSecondUnitPointTimestamps) {
   LidarUnifiedComponentConfig::TimeSettings settings;
-  settings.set_measurement_time_anchor(
-      LidarUnifiedComponentConfig::SCAN_BEGIN);
+  settings.set_measurement_time_anchor(LidarUnifiedComponentConfig::SCAN_BEGIN);
   settings.set_expected_scan_duration_ms(100.0);
   settings.set_max_scan_duration_ms(200.0);
 
@@ -297,66 +357,16 @@ TEST(TimeContractTest, FallsBackFromSecondUnitPointTimestamps) {
   EXPECT_TRUE(contract.all_points_have_timestamps);
 }
 
-TEST(LidarPolicyFactoryTest, CreatesPoliciesForKnownModes) {
-#ifdef APOLLO_LIDAR_POLICY_FORCE_CPU
-  EXPECT_NE(LidarPolicyFactory::CreateDeskewPolicy("cpu"), nullptr);
-  EXPECT_EQ(LidarPolicyFactory::CreateDeskewPolicy("gpu"), nullptr);
-  EXPECT_NE(LidarPolicyFactory::CreateFusionPolicy("cpu"), nullptr);
-  EXPECT_EQ(LidarPolicyFactory::CreateFusionPolicy("gpu"), nullptr);
-  EXPECT_NE(LidarPolicyFactory::CreateFilterPolicy("cpu"), nullptr);
-  EXPECT_EQ(LidarPolicyFactory::CreateFilterPolicy("gpu"), nullptr);
-#elif defined(APOLLO_LIDAR_POLICY_FORCE_GPU)
-  EXPECT_EQ(LidarPolicyFactory::CreateDeskewPolicy("cpu"), nullptr);
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-  EXPECT_NE(LidarPolicyFactory::CreateDeskewPolicy("gpu"), nullptr);
-#else
-  EXPECT_EQ(LidarPolicyFactory::CreateDeskewPolicy("gpu"), nullptr);
-#endif
-  EXPECT_EQ(LidarPolicyFactory::CreateFusionPolicy("cpu"), nullptr);
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-  EXPECT_NE(LidarPolicyFactory::CreateFusionPolicy("gpu"), nullptr);
-#else
-  EXPECT_EQ(LidarPolicyFactory::CreateFusionPolicy("gpu"), nullptr);
-#endif
-  EXPECT_EQ(LidarPolicyFactory::CreateFilterPolicy("cpu"), nullptr);
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-  EXPECT_NE(LidarPolicyFactory::CreateFilterPolicy("gpu"), nullptr);
-#else
-  EXPECT_EQ(LidarPolicyFactory::CreateFilterPolicy("gpu"), nullptr);
-#endif
-#else
-  EXPECT_NE(LidarPolicyFactory::CreateDeskewPolicy("cpu"), nullptr);
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-  EXPECT_NE(LidarPolicyFactory::CreateDeskewPolicy("gpu"), nullptr);
-#else
-  EXPECT_EQ(LidarPolicyFactory::CreateDeskewPolicy("gpu"), nullptr);
-#endif
-  EXPECT_NE(LidarPolicyFactory::CreateFusionPolicy("cpu"), nullptr);
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-  EXPECT_NE(LidarPolicyFactory::CreateFusionPolicy("gpu"), nullptr);
-#else
-  EXPECT_EQ(LidarPolicyFactory::CreateFusionPolicy("gpu"), nullptr);
-#endif
-  EXPECT_NE(LidarPolicyFactory::CreateFilterPolicy("cpu"), nullptr);
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-  EXPECT_NE(LidarPolicyFactory::CreateFilterPolicy("gpu"), nullptr);
-#else
-  EXPECT_EQ(LidarPolicyFactory::CreateFilterPolicy("gpu"), nullptr);
-#endif
-  EXPECT_EQ(LidarPolicyFactory::CreateFilterPolicy("unknown"), nullptr);
-#endif
-}
-
 TEST(CpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
   MockBuffer tf_buffer;
   tf_buffer.AddTransform(
-    "map", "lidar", cyber::Time(10.0),
+      "map", "lidar", cyber::Time(10.0),
       Eigen::Translation3d(0.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
   tf_buffer.AddTransform(
-    "map", "lidar", cyber::Time(10.5),
+      "map", "lidar", cyber::Time(10.5),
       Eigen::Translation3d(0.5, 0.0, 0.0) * Eigen::Quaterniond::Identity());
   tf_buffer.AddTransform(
-    "map", "lidar", cyber::Time(11.0),
+      "map", "lidar", cyber::Time(11.0),
       Eigen::Translation3d(1.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
 
   CpuLidarDeskewPolicy policy;
@@ -395,10 +405,10 @@ TEST(CpuLidarDeskewPolicyTest,
 
   SensorFrameContext frame_context;
   frame_context.sensor_id = "lidar";
-  frame_context.point_cloud = MakePointCloud(
-      "lidar", 12.0,
-      {{0.0f, 0.0f, 0.0f, 2085983134000164270ULL},
-       {0.0f, 0.0f, 0.0f, 2085983134000263691ULL}});
+  frame_context.point_cloud =
+      MakePointCloud("lidar", 12.0,
+                     {{0.0f, 0.0f, 0.0f, 2085983134000164270ULL},
+                      {0.0f, 0.0f, 0.0f, 2085983134000263691ULL}});
 
   std::vector<double> sample_times;
   std::vector<Eigen::Affine3d> poses;
@@ -428,6 +438,11 @@ TEST(CpuLidarFusionPolicyTest, FusesPointsIntoReferenceBaseFrame) {
       MakePointCloud("lidar", 12.0,
                      {{1.0f, 0.0f, 0.0f, 10 * kTestSecondToNano},
                       {1.0f, 0.0f, 0.0f, 12 * kTestSecondToNano}});
+  frame_context.motion_sample_times = {10.0, 12.0};
+  frame_context.motion_poses = {
+      Eigen::Translation3d(5.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
+      Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
+  };
 
   std::vector<PointXYZIT> storage(8);
   PointCloudBuffer buffer;
@@ -435,20 +450,49 @@ TEST(CpuLidarFusionPolicyTest, FusesPointsIntoReferenceBaseFrame) {
   buffer.capacity = storage.size();
   buffer.valid_count = 0;
   buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
-  buffer.device_id = -1;
 
-  const std::vector<std::vector<double>> sample_times{{10.0, 12.0}};
-  const std::vector<std::vector<Eigen::Affine3d>> poses{{
-      Eigen::Translation3d(5.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
-      Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
-  }};
-
-  ASSERT_TRUE(policy.FuseToBaseLink(12.0, map2base_ref, {frame_context}, poses,
-                                    sample_times, &buffer));
+  ASSERT_TRUE(
+      policy.FuseToBaseLink(12.0, map2base_ref, {frame_context}, &buffer));
   ASSERT_EQ(buffer.valid_count, 2U);
   EXPECT_FLOAT_EQ(storage[0].x(), 4.0f);
   EXPECT_FLOAT_EQ(storage[1].x(), 6.0f);
+}
+
+TEST(CpuLidarFusionPolicyTest, FusesPodPointsWithScalarTailAndInvalidPoints) {
+  MockBuffer tf_buffer;
+  auto config = MakeConfig();
+  config.set_enable_ego_query_filter(false);
+  CpuLidarFusionPolicy policy;
+  ASSERT_TRUE(policy.Init(config, &tf_buffer));
+
+  SensorFrameContext frame_context;
+  frame_context.sensor_id = "lidar";
+  frame_context.all_points_have_timestamps = true;
+  frame_context.point_cloud = MakePointCloud(
+      "lidar", 12.0,
+      {{1.0f, 2.0f, 3.0f, 10U},
+       {2.0f, 3.0f, 4.0f, 20U},
+       {3.0f, 4.0f, 5.0f, 30U},
+       {4.0f, 5.0f, 6.0f, 40U},
+       {5.0f, 6.0f, 7.0f, 50U}});
+  frame_context.motion_sample_times = {12.0};
+  frame_context.motion_poses = {Eigen::Affine3d::Identity()};
+
+  std::vector<PointXYZIT> storage(5);
+  PointCloudBuffer buffer;
+  buffer.data_ptr = storage.data();
+  buffer.capacity = storage.size();
+  buffer.item_size = sizeof(PointXYZIT);
+
+  ASSERT_TRUE(policy.FuseToBaseLink(12.0, Eigen::Affine3d::Identity(),
+                                   {frame_context}, &buffer));
+  ASSERT_EQ(buffer.valid_count, 5U);
+  for (size_t index = 0; index < storage.size(); ++index) {
+    EXPECT_FLOAT_EQ(storage[index].x(), static_cast<float>(index + 1));
+    EXPECT_FLOAT_EQ(storage[index].y(), static_cast<float>(index + 2));
+    EXPECT_FLOAT_EQ(storage[index].z(), static_cast<float>(index + 3));
+    EXPECT_EQ(storage[index].timestamp(), (index + 1) * 10U);
+  }
 }
 
 TEST(CpuLidarFusionPolicyTest, InterpolatesIntermediatePoseBins) {
@@ -459,10 +503,13 @@ TEST(CpuLidarFusionPolicyTest, InterpolatesIntermediatePoseBins) {
 
   SensorFrameContext frame_context;
   frame_context.sensor_id = "lidar";
-  frame_context.point_cloud =
-      MakePointCloud(
-          "lidar", 11.0,
-          {{0.0f, 0.0f, 0.0f, 11 * kTestSecondToNano}});
+  frame_context.point_cloud = MakePointCloud(
+      "lidar", 11.0, {{0.0f, 0.0f, 0.0f, 11 * kTestSecondToNano}});
+  frame_context.motion_sample_times = {10.0, 12.0};
+  frame_context.motion_poses = {
+      Eigen::Translation3d(5.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
+      Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
+  };
 
   std::vector<PointXYZIT> storage(4);
   PointCloudBuffer buffer;
@@ -470,17 +517,9 @@ TEST(CpuLidarFusionPolicyTest, InterpolatesIntermediatePoseBins) {
   buffer.capacity = storage.size();
   buffer.valid_count = 0;
   buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
-  buffer.device_id = -1;
 
-  const std::vector<std::vector<double>> sample_times{{10.0, 12.0}};
-  const std::vector<std::vector<Eigen::Affine3d>> poses{{
-      Eigen::Translation3d(5.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
-      Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
-  }};
-
-  ASSERT_TRUE(policy.FuseToBaseLink(11.0, map2base_ref, {frame_context}, poses,
-                                    sample_times, &buffer));
+  ASSERT_TRUE(
+      policy.FuseToBaseLink(11.0, map2base_ref, {frame_context}, &buffer));
   ASSERT_EQ(buffer.valid_count, 1U);
   EXPECT_FLOAT_EQ(storage[0].x(), 6.0f);
 }
@@ -511,8 +550,8 @@ TEST(LidarPolicyCommonTest,
 
     PointXYZIT generic;
     PointXYZIT uniform;
-    ASSERT_TRUE(TransformPointWithInterpolatedPoses(
-        point, 0U, 0, sample_times, poses, &generic));
+    ASSERT_TRUE(TransformPointWithInterpolatedPoses(point, 0U, 0, sample_times,
+                                                    poses, &generic));
     ASSERT_TRUE(TransformPointWithUniformInterpolatedPoses(
         point, 0U, 0, sample_times, poses, interpolation, &uniform));
     EXPECT_NEAR(uniform.x(), generic.x(), 1e-6);
@@ -540,21 +579,17 @@ TEST(CpuLidarFusionPolicyTest,
       MakePointCloud("lidar", 12.0,
                      {{0.1f, 0.1f, 0.0f, 10 * kTestSecondToNano},
                       {0.6f, 0.1f, 0.0f, 12 * kTestSecondToNano}});
+  frame_context.motion_sample_times = {12.0};
+  frame_context.motion_poses = {Eigen::Affine3d::Identity()};
 
   std::vector<PointXYZIT> storage(2);
   PointCloudBuffer buffer;
   buffer.data_ptr = storage.data();
   buffer.capacity = storage.size();
   buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
 
-  const std::vector<std::vector<double>> sample_times{{12.0}};
-  const std::vector<std::vector<Eigen::Affine3d>> poses{{
-      Eigen::Affine3d::Identity(),
-  }};
-  ASSERT_TRUE(fusion_policy.FuseToBaseLink(
-      12.0, Eigen::Affine3d::Identity(), {frame_context}, poses,
-      sample_times, &buffer));
+  ASSERT_TRUE(fusion_policy.FuseToBaseLink(12.0, Eigen::Affine3d::Identity(),
+                                           {frame_context}, &buffer));
   EXPECT_EQ(buffer.unfiltered_valid_count, 2U);
   EXPECT_TRUE(buffer.ego_filter_applied);
   EXPECT_EQ(buffer.prefiltered_ego_count, 1U);
@@ -572,6 +607,47 @@ TEST(CpuLidarFusionPolicyTest,
 }
 
 TEST(CpuLidarFusionPolicyTest,
+     StaticFastPathRejectsInvalidPointsAndProcessesScalarTail) {
+  MockBuffer tf_buffer;
+  auto config = MakeConfig();
+  config.set_enable_voxel_filter(false);
+  CpuLidarFusionPolicy policy;
+  ASSERT_TRUE(policy.Init(config, &tf_buffer));
+
+  SensorFrameContext frame_context;
+  frame_context.sensor_id = "lidar";
+  frame_context.all_points_have_timestamps = true;
+  frame_context.point_cloud = MakePointCloud(
+      "lidar", 12.0,
+      {{0.1f, 0.1f, 0.0f, 10U},
+       {1.0f, 0.0f, 0.0f, 11U},
+       {std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f, 12U},
+       {2.0f, 0.0f, 0.0f, 13U},
+       {3.0f, 0.0f, 0.0f, 14U}});
+  frame_context.motion_sample_times = {12.0};
+  frame_context.motion_poses = {Eigen::Affine3d::Identity()};
+
+  std::vector<PointXYZIT> storage(5);
+  PointCloudBuffer buffer;
+  buffer.data_ptr = storage.data();
+  buffer.capacity = storage.size();
+  buffer.item_size = sizeof(PointXYZIT);
+
+  ASSERT_TRUE(policy.FuseToBaseLink(12.0, Eigen::Affine3d::Identity(),
+                                    {frame_context}, &buffer));
+
+  EXPECT_EQ(buffer.unfiltered_valid_count, 4U);
+  EXPECT_EQ(buffer.prefiltered_ego_count, 1U);
+  ASSERT_EQ(buffer.valid_count, 3U);
+  EXPECT_FLOAT_EQ(storage[0].x(), 1.0f);
+  EXPECT_FLOAT_EQ(storage[1].x(), 2.0f);
+  EXPECT_FLOAT_EQ(storage[2].x(), 3.0f);
+  EXPECT_EQ(storage[0].timestamp(), 11U);
+  EXPECT_EQ(storage[1].timestamp(), 13U);
+  EXPECT_EQ(storage[2].timestamp(), 14U);
+}
+
+TEST(CpuLidarFusionPolicyTest,
      ReportsEgoFilterCountWhenStaticFusionRejectsAllPoints) {
   MockBuffer tf_buffer;
   auto config = MakeConfig();
@@ -586,21 +662,17 @@ TEST(CpuLidarFusionPolicyTest,
   frame_context.all_points_have_timestamps = true;
   frame_context.point_cloud = MakePointCloud(
       "lidar", 12.0, {{0.1f, 0.1f, 0.0f, 12 * kTestSecondToNano}});
+  frame_context.motion_sample_times = {12.0};
+  frame_context.motion_poses = {Eigen::Affine3d::Identity()};
 
   std::vector<PointXYZIT> storage(1);
   PointCloudBuffer buffer;
   buffer.data_ptr = storage.data();
   buffer.capacity = storage.size();
   buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
 
-  const std::vector<std::vector<double>> sample_times{{12.0}};
-  const std::vector<std::vector<Eigen::Affine3d>> poses{{
-      Eigen::Affine3d::Identity(),
-  }};
-  ASSERT_TRUE(fusion_policy.FuseToBaseLink(
-      12.0, Eigen::Affine3d::Identity(), {frame_context}, poses,
-      sample_times, &buffer));
+  ASSERT_TRUE(fusion_policy.FuseToBaseLink(12.0, Eigen::Affine3d::Identity(),
+                                           {frame_context}, &buffer));
   EXPECT_EQ(buffer.valid_count, 0U);
   EXPECT_EQ(buffer.prefiltered_ego_count, 1U);
 
@@ -630,8 +702,6 @@ TEST(CpuLidarFilterPolicyTest, AppliesEgoFilterBeforeVoxelDownsample) {
   buffer.capacity = storage.size();
   buffer.valid_count = 3;
   buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
-  buffer.device_id = -1;
 
   size_t ego_filtered_count = 0;
   size_t voxel_filtered_count = 0;
@@ -669,8 +739,6 @@ TEST(CpuLidarFilterPolicyTest,
   buffer.capacity = storage.size();
   buffer.valid_count = 2;
   buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
-  buffer.device_id = -1;
 
   size_t ego_filtered_count = 0;
   size_t voxel_filtered_count = 0;
@@ -699,13 +767,12 @@ TEST(CpuLidarFilterPolicyTest, LeavesVoxelsUntouchedWhenDisabled) {
   buffer.capacity = storage.size();
   buffer.valid_count = storage.size();
   buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
 
   size_t ego_filtered_count = 0;
   size_t voxel_filtered_count = 0;
-  EXPECT_EQ(policy.ApplyFilters(&buffer, &ego_filtered_count,
-                                &voxel_filtered_count),
-            2U);
+  EXPECT_EQ(
+      policy.ApplyFilters(&buffer, &ego_filtered_count, &voxel_filtered_count),
+      2U);
   EXPECT_EQ(voxel_filtered_count, 0U);
 }
 
@@ -721,18 +788,15 @@ TEST(LidarUnifiedComponentTest, RejectsPrimarySensorIdDrift) {
 TEST(LidarUnifiedComponentTest, FindsNearestFrameFromOutOfOrderBuffer) {
   LidarUnifiedComponent component;
   auto sensor_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
-  sensor_state->frames.push_back(
-      MakeBufferedFrame("lidar", 10.10, 10.20, 1));
-  sensor_state->frames.push_back(
-      MakeBufferedFrame("lidar", 9.90, 10.00, 2));
-  sensor_state->frames.push_back(
-      MakeBufferedFrame("lidar", 10.00, 10.10, 3));
+  sensor_state->frames.push_back(MakeBufferedFrame("lidar", 10.10, 10.20, 1));
+  sensor_state->frames.push_back(MakeBufferedFrame("lidar", 9.90, 10.00, 2));
+  sensor_state->frames.push_back(MakeBufferedFrame("lidar", 10.00, 10.10, 3));
 
   FrameHandle nearest_frame;
   auto failure_reason = LidarUnifiedComponent::FrameLookupFailureReason::kNone;
-  ASSERT_TRUE(component.FindNearestFrame(
-      sensor_state, "lidar", MakeTimeContract(9.95, 10.05), 100,
-      &nearest_frame, &failure_reason));
+  ASSERT_TRUE(component.FindNearestFrame(sensor_state, "lidar",
+                                         MakeTimeContract(9.95, 10.05), 100,
+                                         &nearest_frame, &failure_reason));
   ASSERT_NE(nearest_frame.point_cloud, nullptr);
   EXPECT_EQ(failure_reason,
             LidarUnifiedComponent::FrameLookupFailureReason::kNone);
@@ -749,9 +813,9 @@ TEST(LidarUnifiedComponentTest, ReportsTimeDeltaExceededForNearestFrame) {
 
   FrameHandle nearest_frame;
   auto failure_reason = LidarUnifiedComponent::FrameLookupFailureReason::kNone;
-  EXPECT_FALSE(component.FindNearestFrame(
-      sensor_state, "lidar", MakeTimeContract(9.95, 10.05), 40,
-      &nearest_frame, &failure_reason));
+  EXPECT_FALSE(component.FindNearestFrame(sensor_state, "lidar",
+                                          MakeTimeContract(9.95, 10.05), 40,
+                                          &nearest_frame, &failure_reason));
   EXPECT_EQ(
       failure_reason,
       LidarUnifiedComponent::FrameLookupFailureReason::kTimeDeltaExceeded);
@@ -771,9 +835,9 @@ TEST(LidarUnifiedComponentTest, AppliesFixedDelayDuringFrameLookup) {
 
   FrameHandle nearest_frame;
   auto failure_reason = LidarUnifiedComponent::FrameLookupFailureReason::kNone;
-  ASSERT_TRUE(component.FindNearestFrame(
-      sensor_state, "lidar", MakeTimeContract(9.90, 10.0), 40,
-      &nearest_frame, &failure_reason));
+  ASSERT_TRUE(component.FindNearestFrame(sensor_state, "lidar",
+                                         MakeTimeContract(9.90, 10.0), 40,
+                                         &nearest_frame, &failure_reason));
   EXPECT_DOUBLE_EQ(nearest_frame.point_cloud->measurement_time(), 10.02);
   EXPECT_NEAR(nearest_frame.clock_offset_residual_ms, 0.0, 1e-6);
 }
@@ -781,32 +845,28 @@ TEST(LidarUnifiedComponentTest, AppliesFixedDelayDuringFrameLookup) {
 TEST(LidarUnifiedComponentTest, PrefersMaximumIntervalOverlap) {
   LidarUnifiedComponent component;
   auto sensor_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
-  sensor_state->frames.push_back(
-      MakeBufferedFrame("lidar", 9.90, 10.01, 1));
-  sensor_state->frames.push_back(
-      MakeBufferedFrame("lidar", 9.99, 10.04, 2));
+  sensor_state->frames.push_back(MakeBufferedFrame("lidar", 9.90, 10.01, 1));
+  sensor_state->frames.push_back(MakeBufferedFrame("lidar", 9.99, 10.04, 2));
 
   FrameHandle selected;
   auto failure_reason = LidarUnifiedComponent::FrameLookupFailureReason::kNone;
-  ASSERT_TRUE(component.FindNearestFrame(
-      sensor_state, "lidar", MakeTimeContract(9.90, 10.0), 100, &selected,
-      &failure_reason));
+  ASSERT_TRUE(component.FindNearestFrame(sensor_state, "lidar",
+                                         MakeTimeContract(9.90, 10.0), 100,
+                                         &selected, &failure_reason));
   EXPECT_EQ(selected.frame_id, 1U);
 }
 
 TEST(LidarUnifiedComponentTest, BreaksOverlapTieByAnchorDistance) {
   LidarUnifiedComponent component;
   auto sensor_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
-  sensor_state->frames.push_back(
-      MakeBufferedFrame("lidar", 9.95, 10.05, 1));
-  sensor_state->frames.push_back(
-      MakeBufferedFrame("lidar", 9.94, 9.99, 2));
+  sensor_state->frames.push_back(MakeBufferedFrame("lidar", 9.95, 10.05, 1));
+  sensor_state->frames.push_back(MakeBufferedFrame("lidar", 9.94, 9.99, 2));
 
   FrameHandle selected;
   auto failure_reason = LidarUnifiedComponent::FrameLookupFailureReason::kNone;
-  ASSERT_TRUE(component.FindNearestFrame(
-      sensor_state, "lidar", MakeTimeContract(9.90, 10.0), 100, &selected,
-      &failure_reason));
+  ASSERT_TRUE(component.FindNearestFrame(sensor_state, "lidar",
+                                         MakeTimeContract(9.90, 10.0), 100,
+                                         &selected, &failure_reason));
   EXPECT_EQ(selected.frame_id, 2U);
 }
 
@@ -819,18 +879,18 @@ TEST(LidarUnifiedComponentTest, ExcludesFramesOnlyAfterCommit) {
 
   FrameHandle first;
   auto failure_reason = LidarUnifiedComponent::FrameLookupFailureReason::kNone;
-  ASSERT_TRUE(component.FindNearestFrame(
-      sensor_state, "aux", MakeTimeContract(9.9, 10.0), 10, &first,
-      &failure_reason));
+  ASSERT_TRUE(component.FindNearestFrame(sensor_state, "aux",
+                                         MakeTimeContract(9.9, 10.0), 10,
+                                         &first, &failure_reason));
   FrameHandle retry;
-  ASSERT_TRUE(component.FindNearestFrame(
-      sensor_state, "aux", MakeTimeContract(9.9, 10.0), 10, &retry,
-      &failure_reason));
+  ASSERT_TRUE(component.FindNearestFrame(sensor_state, "aux",
+                                         MakeTimeContract(9.9, 10.0), 10,
+                                         &retry, &failure_reason));
 
   component.CommitSelectedFrames({first});
-  EXPECT_FALSE(component.FindNearestFrame(
-      sensor_state, "aux", MakeTimeContract(9.9, 10.0), 10, &retry,
-      &failure_reason));
+  EXPECT_FALSE(component.FindNearestFrame(sensor_state, "aux",
+                                          MakeTimeContract(9.9, 10.0), 10,
+                                          &retry, &failure_reason));
 }
 
 TEST(LidarUnifiedComponentTest, UpdatesSensorTimingModel) {
@@ -918,9 +978,8 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesSkipsLowQualityAuxiliary) {
   component.config_.set_max_ref_time_delta_ms(100);
   component.config_.set_auxiliary_min_overlap_quality_weight(0.2);
   component.config_.set_enable_overlap_quality_gate(true);
-  component.auxiliary_inputs_.push_back(
-      LidarUnifiedComponent::SensorInput{
-          "/aux", LidarUnifiedComponentConfig::TimeSettings()});
+  component.auxiliary_inputs_.push_back(LidarUnifiedComponent::SensorInput{
+      "/aux", LidarUnifiedComponentConfig::TimeSettings()});
   component.auxiliary_sensor_ids_by_topic_["/aux"] = "aux_lidar";
 
   auto primary_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
@@ -937,8 +996,8 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesSkipsLowQualityAuxiliary) {
 
   std::vector<FrameHandle> frame_handles;
   LidarUnifiedComponent::FrameMetrics metrics;
-  ASSERT_TRUE(component.CollectNearestFrames(
-      "primary", primary_frame, &frame_handles, &metrics));
+  ASSERT_TRUE(component.CollectNearestFrames("primary", primary_frame,
+                                             &frame_handles, &metrics));
   ASSERT_EQ(frame_handles.size(), 1U);
   EXPECT_TRUE(frame_handles.front().is_primary);
   EXPECT_EQ(metrics.missing_auxiliary_count, 1U);
@@ -949,12 +1008,10 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesMatchesThreeSensors) {
   component.config_.set_strict_auxiliary_sync(false);
   component.config_.set_max_ref_time_delta_ms(80);
   component.config_.set_auxiliary_min_overlap_quality_weight(0.0);
-  component.auxiliary_inputs_.push_back(
-      LidarUnifiedComponent::SensorInput{
-          "/left", LidarUnifiedComponentConfig::TimeSettings()});
-  component.auxiliary_inputs_.push_back(
-      LidarUnifiedComponent::SensorInput{
-          "/right", LidarUnifiedComponentConfig::TimeSettings()});
+  component.auxiliary_inputs_.push_back(LidarUnifiedComponent::SensorInput{
+      "/left", LidarUnifiedComponentConfig::TimeSettings()});
+  component.auxiliary_inputs_.push_back(LidarUnifiedComponent::SensorInput{
+      "/right", LidarUnifiedComponentConfig::TimeSettings()});
   component.auxiliary_sensor_ids_by_topic_["/left"] = "left_lidar";
   component.auxiliary_sensor_ids_by_topic_["/right"] = "right_lidar";
 
@@ -964,8 +1021,7 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesMatchesThreeSensors) {
   component.sensor_states_["primary"] = primary_state;
 
   auto left_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
-  left_state->frames.push_back(
-      MakeBufferedFrame("left_lidar", 9.92, 10.02, 2));
+  left_state->frames.push_back(MakeBufferedFrame("left_lidar", 9.92, 10.02, 2));
   component.sensor_states_["left_lidar"] = left_state;
 
   auto right_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
@@ -975,8 +1031,8 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesMatchesThreeSensors) {
 
   std::vector<FrameHandle> frame_handles;
   LidarUnifiedComponent::FrameMetrics metrics;
-  ASSERT_TRUE(component.CollectNearestFrames(
-      "primary", primary_frame, &frame_handles, &metrics));
+  ASSERT_TRUE(component.CollectNearestFrames("primary", primary_frame,
+                                             &frame_handles, &metrics));
   EXPECT_EQ(frame_handles.size(), 3U);
   EXPECT_EQ(metrics.expected_sensor_count, 3U);
   EXPECT_EQ(metrics.matched_sensor_count, 3U);
@@ -987,12 +1043,10 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesAllowsMissingAuxiliary) {
   LidarUnifiedComponent component;
   component.config_.set_strict_auxiliary_sync(false);
   component.config_.set_max_ref_time_delta_ms(80);
-  component.auxiliary_inputs_.push_back(
-      LidarUnifiedComponent::SensorInput{
-          "/left", LidarUnifiedComponentConfig::TimeSettings()});
-  component.auxiliary_inputs_.push_back(
-      LidarUnifiedComponent::SensorInput{
-          "/right", LidarUnifiedComponentConfig::TimeSettings()});
+  component.auxiliary_inputs_.push_back(LidarUnifiedComponent::SensorInput{
+      "/left", LidarUnifiedComponentConfig::TimeSettings()});
+  component.auxiliary_inputs_.push_back(LidarUnifiedComponent::SensorInput{
+      "/right", LidarUnifiedComponentConfig::TimeSettings()});
   component.auxiliary_sensor_ids_by_topic_["/left"] = "left_lidar";
 
   auto primary_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
@@ -1001,14 +1055,13 @@ TEST(LidarUnifiedComponentTest, CollectNearestFramesAllowsMissingAuxiliary) {
   component.sensor_states_["primary"] = primary_state;
 
   auto left_state = std::make_shared<LidarUnifiedComponent::SensorState>(4);
-  left_state->frames.push_back(
-      MakeBufferedFrame("left_lidar", 9.92, 10.02, 2));
+  left_state->frames.push_back(MakeBufferedFrame("left_lidar", 9.92, 10.02, 2));
   component.sensor_states_["left_lidar"] = left_state;
 
   std::vector<FrameHandle> frame_handles;
   LidarUnifiedComponent::FrameMetrics metrics;
-  ASSERT_TRUE(component.CollectNearestFrames(
-      "primary", primary_frame, &frame_handles, &metrics));
+  ASSERT_TRUE(component.CollectNearestFrames("primary", primary_frame,
+                                             &frame_handles, &metrics));
   EXPECT_EQ(frame_handles.size(), 2U);
   EXPECT_EQ(metrics.expected_sensor_count, 3U);
   EXPECT_EQ(metrics.matched_sensor_count, 2U);
@@ -1020,9 +1073,8 @@ TEST(LidarUnifiedComponentTest,
   LidarUnifiedComponent component;
   component.config_.set_strict_auxiliary_sync(true);
   component.config_.set_max_ref_time_delta_ms(80);
-  component.auxiliary_inputs_.push_back(
-      LidarUnifiedComponent::SensorInput{
-          "/left", LidarUnifiedComponentConfig::TimeSettings()});
+  component.auxiliary_inputs_.push_back(LidarUnifiedComponent::SensorInput{
+      "/left", LidarUnifiedComponentConfig::TimeSettings()});
   component.auxiliary_sensor_ids_by_topic_["/left"] = "left_lidar";
 
   auto primary_frame = MakeBufferedFrame("primary", 9.9, 10.0, 1);
@@ -1032,8 +1084,8 @@ TEST(LidarUnifiedComponentTest,
 
   std::vector<FrameHandle> frame_handles;
   LidarUnifiedComponent::FrameMetrics metrics;
-  EXPECT_FALSE(component.CollectNearestFrames(
-      "primary", primary_frame, &frame_handles, &metrics));
+  EXPECT_FALSE(component.CollectNearestFrames("primary", primary_frame,
+                                              &frame_handles, &metrics));
 }
 
 TEST(LidarUnifiedComponentTest, RejectsDuplicateAuxiliaryTopics) {
@@ -1080,8 +1132,8 @@ TEST(LidarUnifiedComponentTest, RejectsImpossibleScanDurations) {
   component.config_.set_fusion_flush_interval_ms(5);
   component.config_.mutable_primary_time_settings()
       ->set_expected_scan_duration_ms(201.0);
-  component.config_.mutable_primary_time_settings()
-      ->set_max_scan_duration_ms(200.0);
+  component.config_.mutable_primary_time_settings()->set_max_scan_duration_ms(
+      200.0);
 
   EXPECT_FALSE(component.ValidateConfig());
 }
@@ -1106,8 +1158,8 @@ TEST(LidarUnifiedComponentTest, OffCompensationUsesStaticExtrinsicOnly) {
   ASSERT_TRUE(component.filter_policy_->Init(component.config_));
   component.full_pointcloud_buffer_.resize(8);
 
-  auto cloud = MakePointCloud(
-      "lidar", 10.0, {{1.0f, 0.0f, 0.0f, 10000000000ULL}});
+  auto cloud =
+      MakePointCloud("lidar", 10.0, {{1.0f, 0.0f, 0.0f, 10000000000ULL}});
   auto buffered = MakeBufferedFrame("lidar", 9.9, 10.0, 1);
   buffered->point_cloud = cloud;
   buffered->time_contract.scan_begin_ns += 250;
@@ -1123,14 +1175,56 @@ TEST(LidarUnifiedComponentTest, OffCompensationUsesStaticExtrinsicOnly) {
   handle.is_primary = true;
 
   LidarUnifiedComponent::FrameMetrics metrics;
-  std::shared_ptr<PointCloud> output;
+  std::shared_ptr<::apollo::drivers::PointCloud> output;
   ASSERT_TRUE(
       component.BuildUnifiedPointCloud(cloud, {handle}, &metrics, &output));
   ASSERT_NE(output, nullptr);
+  ASSERT_TRUE(output->has_header());
+  EXPECT_EQ(output->frame_id(), "base_link");
+  EXPECT_EQ(output->header().frame_id(), "base_link");
   ASSERT_EQ(output->point_size(), 1);
   EXPECT_NEAR(output->point(0).x(), 3.0, 1e-6);
   EXPECT_DOUBLE_EQ(output->measurement_time(), 10.00000025);
   EXPECT_EQ(output->point(0).timestamp(), 10000000250ULL);
+}
+
+TEST(LidarUnifiedComponentTest, DoesNotPublishEmptyFusedPointCloud) {
+  MockBuffer tf_buffer;
+  tf_buffer.AddTransform("base_link", "lidar", cyber::Time(1.0),
+                         Eigen::Affine3d::Identity());
+
+  LidarUnifiedComponent component;
+  component.config_ = MakeConfig();
+  component.config_.set_compensation_mode(LidarUnifiedComponentConfig::OFF);
+  component.tf_buffer_ = &tf_buffer;
+  component.deskew_policy_ = std::make_unique<CpuLidarDeskewPolicy>();
+  component.fusion_policy_ = std::make_unique<CpuLidarFusionPolicy>();
+  component.filter_policy_ = std::make_unique<CpuLidarFilterPolicy>();
+  ASSERT_TRUE(component.deskew_policy_->Init(component.config_, &tf_buffer));
+  ASSERT_TRUE(component.fusion_policy_->Init(component.config_, &tf_buffer));
+  ASSERT_TRUE(component.filter_policy_->Init(component.config_));
+  component.full_pointcloud_buffer_.resize(8);
+
+  auto cloud = MakePointCloud(
+      "lidar", 10.0, {{0.0f, 0.0f, 0.0f, 10000000000ULL}});
+  auto buffered = MakeBufferedFrame("lidar", 9.9, 10.0, 1);
+  buffered->point_cloud = cloud;
+  buffered->motion_sample_times = {10.0};
+  buffered->motion_poses = {Eigen::Affine3d::Identity()};
+  FrameHandle handle;
+  handle.sensor_id = "lidar";
+  handle.point_cloud = cloud;
+  handle.buffered_frame = buffered;
+  handle.frame_id = buffered->frame_id;
+  handle.time_contract = buffered->time_contract;
+  handle.is_primary = true;
+
+  LidarUnifiedComponent::FrameMetrics metrics;
+  std::shared_ptr<::apollo::drivers::PointCloud> output;
+  EXPECT_FALSE(
+      component.BuildUnifiedPointCloud(cloud, {handle}, &metrics, &output));
+  EXPECT_EQ(metrics.output_points, 0U);
+  EXPECT_EQ(output, nullptr);
 }
 
 TEST(LidarUnifiedComponentTest, EstimatesOverlapQualityWeight) {
@@ -1155,242 +1249,13 @@ TEST(LidarUnifiedComponentTest, EstimatesOverlapQualityWeight) {
   EXPECT_DOUBLE_EQ(overlap_weight, 0.5);
 }
 
-TEST(GpuLidarFilterPolicyTest, AppliesGpuFilteringOrFailsWithoutBackend) {
-  GpuLidarFilterPolicy policy;
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-  ASSERT_TRUE(policy.Init(MakeConfig()));
-#else
-  EXPECT_FALSE(policy.Init(MakeConfig()));
-  return;
-#endif
-
-  std::vector<PointXYZIT> storage(4);
-  storage[0].set_x(0.1f);
-  storage[0].set_y(0.1f);
-  storage[1].set_x(0.6f);
-  storage[1].set_y(0.1f);
-  storage[2].set_x(1.6f);
-  storage[2].set_y(0.1f);
-
-  PointCloudBuffer buffer;
-  buffer.data_ptr = storage.data();
-  buffer.capacity = storage.size();
-  buffer.valid_count = 3;
-  buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
-  buffer.device_id = 0;
-
-  size_t ego_filtered_count = 0;
-  size_t voxel_filtered_count = 0;
-  const size_t final_count =
-      policy.ApplyFilters(&buffer, &ego_filtered_count, &voxel_filtered_count);
-  EXPECT_EQ(final_count, 2U);
-  EXPECT_EQ(ego_filtered_count, 1U);
-  EXPECT_EQ(voxel_filtered_count, 0U);
-}
-
-#ifdef APOLLO_LIDAR_POLICY_GPU_ENABLED
-TEST(GpuLidarFilterPolicyTest,
-     AggregatesDeterministicVoxelCentroidAndIntensity) {
-  GpuLidarFilterPolicy policy;
-  auto config = MakeConfig();
-  config.set_enable_ego_query_filter(false);
-  config.set_gpu_device_id(0);
-  ASSERT_TRUE(policy.Init(config));
-
-  std::vector<PointXYZIT> storage(4);
-  storage[0].set_x(0.1f);
-  storage[0].set_y(0.1f);
-  storage[0].set_intensity(1.0f);
-  storage[0].set_timestamp(10U);
-  storage[1].set_x(0.3f);
-  storage[1].set_y(0.3f);
-  storage[1].set_intensity(3.0f);
-  storage[1].set_timestamp(14U);
-
-  PointCloudBuffer buffer;
-  buffer.data_ptr = storage.data();
-  buffer.capacity = storage.size();
-  buffer.valid_count = 2;
-  buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
-  buffer.device_id = 0;
-
-  size_t ego_filtered_count = 0;
-  size_t voxel_filtered_count = 0;
-  const size_t final_count =
-      policy.ApplyFilters(&buffer, &ego_filtered_count, &voxel_filtered_count);
-  EXPECT_EQ(final_count, 1U);
-  EXPECT_EQ(voxel_filtered_count, 1U);
-  EXPECT_FLOAT_EQ(storage[0].x(), 0.2f);
-  EXPECT_FLOAT_EQ(storage[0].y(), 0.2f);
-  EXPECT_FLOAT_EQ(storage[0].intensity(), 2.0f);
-  EXPECT_EQ(storage[0].timestamp(), 12U);
-}
-
-TEST(GpuLidarFusionPolicyTest, FusesPointsIntoReferenceBaseFrame) {
-  MockBuffer tf_buffer;
-  GpuLidarFusionPolicy policy;
-  auto config = MakeConfig();
-  config.set_gpu_device_id(0);
-  ASSERT_TRUE(policy.Init(config, &tf_buffer));
-  const Eigen::Affine3d map2base_ref =
-      (Eigen::Translation3d(2.0, 0.0, 0.0) * Eigen::Quaterniond::Identity())
-          .inverse();
-
-  SensorFrameContext frame_context;
-  frame_context.sensor_id = "lidar";
-  frame_context.point_cloud =
-      MakePointCloud("lidar", 12.0,
-                     {{1.0f, 0.0f, 0.0f, 10 * kTestSecondToNano},
-                      {1.0f, 0.0f, 0.0f, 12 * kTestSecondToNano}});
-
-  std::vector<PointXYZIT> storage(8);
-  PointCloudBuffer buffer;
-  buffer.data_ptr = storage.data();
-  buffer.capacity = storage.size();
-  buffer.valid_count = 0;
-  buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
-  buffer.device_id = -1;
-
-  const std::vector<std::vector<double>> sample_times{{10.0, 12.0}};
-  const std::vector<std::vector<Eigen::Affine3d>> poses{{
-      Eigen::Translation3d(5.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
-      Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
-  }};
-
-  ASSERT_TRUE(policy.FuseToBaseLink(12.0, map2base_ref, {frame_context},
-                                    poses, sample_times, &buffer));
-  ASSERT_EQ(buffer.valid_count, 2U);
-  std::vector<float> xs{storage[0].x(), storage[1].x()};
-  std::sort(xs.begin(), xs.end());
-  EXPECT_FLOAT_EQ(xs[0], 4.0f);
-  EXPECT_FLOAT_EQ(xs[1], 6.0f);
-}
-
-TEST(GpuLidarFusionPolicyTest, InterpolatesIntermediatePoseBins) {
-  MockBuffer tf_buffer;
-  GpuLidarFusionPolicy policy;
-  auto config = MakeConfig();
-  config.set_gpu_device_id(0);
-  ASSERT_TRUE(policy.Init(config, &tf_buffer));
-  const Eigen::Affine3d map2base_ref = Eigen::Affine3d::Identity();
-
-  SensorFrameContext frame_context;
-  frame_context.sensor_id = "lidar";
-  frame_context.point_cloud =
-      MakePointCloud(
-          "lidar", 11.0,
-          {{0.0f, 0.0f, 0.0f, 11 * kTestSecondToNano}});
-
-  std::vector<PointXYZIT> storage(4);
-  PointCloudBuffer buffer;
-  buffer.data_ptr = storage.data();
-  buffer.capacity = storage.size();
-  buffer.valid_count = 0;
-  buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
-  buffer.device_id = -1;
-
-  const std::vector<std::vector<double>> sample_times{{10.0, 12.0}};
-  const std::vector<std::vector<Eigen::Affine3d>> poses{{
-      Eigen::Translation3d(5.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
-      Eigen::Translation3d(7.0, 0.0, 0.0) * Eigen::Quaterniond::Identity(),
-  }};
-
-  ASSERT_TRUE(policy.FuseToBaseLink(11.0, map2base_ref, {frame_context},
-                                    poses, sample_times, &buffer));
-  ASSERT_EQ(buffer.valid_count, 1U);
-  EXPECT_NEAR(storage[0].x(), 6.0f, 1e-4f);
-}
-
-TEST(GpuLidarFusionPolicyTest,
-    PreservesRelativePrecisionWithLargeMapOffsets) {
-  constexpr double kMapOffset = 1e8;
-
-  MockBuffer tf_buffer;
-
-  GpuLidarFusionPolicy policy;
-  auto config = MakeConfig();
-  config.set_gpu_device_id(0);
-  ASSERT_TRUE(policy.Init(config, &tf_buffer));
-    const Eigen::Affine3d map2base_ref =
-      (Eigen::Translation3d(kMapOffset + 2.0, 0.0, 0.0) *
-       Eigen::Quaterniond::Identity())
-          .inverse();
-
-  SensorFrameContext frame_context;
-  frame_context.sensor_id = "lidar";
-  frame_context.point_cloud =
-      MakePointCloud("lidar", 12.0,
-                     {{1.0f, 0.0f, 0.0f, 10 * kTestSecondToNano},
-                      {1.0f, 0.0f, 0.0f, 12 * kTestSecondToNano}});
-
-  std::vector<PointXYZIT> storage(8);
-  PointCloudBuffer buffer;
-  buffer.data_ptr = storage.data();
-  buffer.capacity = storage.size();
-  buffer.valid_count = 0;
-  buffer.item_size = sizeof(PointXYZIT);
-  buffer.device_type = MemoryDeviceType::kHost;
-  buffer.device_id = -1;
-
-  const std::vector<std::vector<double>> sample_times{{10.0, 12.0}};
-  const std::vector<std::vector<Eigen::Affine3d>> poses{{
-      Eigen::Translation3d(kMapOffset + 5.0, 0.0, 0.0) *
-          Eigen::Quaterniond::Identity(),
-      Eigen::Translation3d(kMapOffset + 7.0, 0.0, 0.0) *
-          Eigen::Quaterniond::Identity(),
-  }};
-
-    ASSERT_TRUE(policy.FuseToBaseLink(12.0, map2base_ref, {frame_context},
-                                    poses, sample_times, &buffer));
-  ASSERT_EQ(buffer.valid_count, 2U);
-  std::vector<float> xs{storage[0].x(), storage[1].x()};
-  std::sort(xs.begin(), xs.end());
-  EXPECT_NEAR(xs[0], 4.0f, 1e-3f);
-  EXPECT_NEAR(xs[1], 6.0f, 1e-3f);
-}
-
-TEST(GpuLidarDeskewPolicyTest, ComputesSampledPosesFromPointTimestamps) {
-  MockBuffer tf_buffer;
-  tf_buffer.AddTransform(
-    "map", "lidar", cyber::Time(10.0),
-      Eigen::Translation3d(0.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
-  tf_buffer.AddTransform(
-    "map", "lidar", cyber::Time(10.5),
-      Eigen::Translation3d(0.5, 0.0, 0.0) * Eigen::Quaterniond::Identity());
-  tf_buffer.AddTransform(
-    "map", "lidar", cyber::Time(11.0),
-      Eigen::Translation3d(1.0, 0.0, 0.0) * Eigen::Quaterniond::Identity());
-
-  GpuLidarDeskewPolicy policy;
-  auto config = MakeConfig();
-  config.set_gpu_device_id(0);
-  ASSERT_TRUE(policy.Init(config, &tf_buffer));
-
-  SensorFrameContext frame_context;
-  frame_context.sensor_id = "lidar";
-  frame_context.point_cloud =
-      MakePointCloud("lidar", 11.0,
-                     {{0.0f, 0.0f, 0.0f, 10 * kTestSecondToNano},
-                      {0.0f, 0.0f, 0.0f, 11 * kTestSecondToNano}});
-
-  std::vector<double> sample_times;
-  std::vector<Eigen::Affine3d> poses;
-  ASSERT_TRUE(policy.ComputeMotionCompensationPoses(frame_context,
-                                                    &sample_times, &poses));
-  ASSERT_EQ(sample_times.size(), 3U);
-  ASSERT_EQ(poses.size(), 3U);
-  EXPECT_DOUBLE_EQ(sample_times.front(), 10.0);
-  EXPECT_DOUBLE_EQ(sample_times.back(), 11.0);
-  EXPECT_DOUBLE_EQ(poses[0].translation().x(), 0.0);
-  EXPECT_DOUBLE_EQ(poses[1].translation().x(), 0.5);
-  EXPECT_DOUBLE_EQ(poses[2].translation().x(), 1.0);
-}
-#endif
-
 }  // namespace lidar
 }  // namespace drivers
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  const int result = RUN_ALL_TESTS();
+  std::fflush(nullptr);
+  std::_Exit(result);
+}

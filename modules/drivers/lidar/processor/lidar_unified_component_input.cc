@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <iomanip>
 #include <memory>
-#include <sstream>
 #include <string>
 
 #include "modules/drivers/lidar/processor/lidar_unified_component.h"
@@ -29,80 +27,18 @@ namespace lidar {
 
 namespace {
 constexpr char kPrimaryTopicFallback[] = "primary_lidar";
-constexpr int kPosePrefetchLogFrequency = 10;
+}  // namespace
 
-std::string FormatTimestampForLog(double timestamp_sec) {
-  std::ostringstream stream;
-  stream << std::fixed << std::setprecision(9) << timestamp_sec << "s";
-  if (timestamp_sec > 0.0) {
-    stream << " [" << cyber::Time(timestamp_sec).ToString() << "]";
-  }
-  return stream.str();
-}
-
-std::string FormatDeltaForLog(double delta_sec) {
-  const double abs_delta_sec = std::fabs(delta_sec);
-  std::ostringstream stream;
-  stream << std::showpos << std::fixed
-         << std::setprecision(abs_delta_sec >= 1.0 ? 3 : 6) << delta_sec
-         << "s" << std::noshowpos;
-  if (abs_delta_sec >= 86400.0) {
-    stream << " (~" << std::fixed << std::setprecision(3)
-           << abs_delta_sec / 86400.0 << " days)";
-  } else if (abs_delta_sec >= 3600.0) {
-    stream << " (~" << std::fixed << std::setprecision(3)
-           << abs_delta_sec / 3600.0 << " h)";
-  } else if (abs_delta_sec >= 60.0) {
-    stream << " (~" << std::fixed << std::setprecision(3)
-           << abs_delta_sec / 60.0 << " min)";
-  } else if (abs_delta_sec > 0.0 && abs_delta_sec < 1.0) {
-    stream << " (~" << std::fixed << std::setprecision(3)
-           << abs_delta_sec * 1000.0 << " ms)";
-  }
-  return stream.str();
-}
-
-const char* DescribeTimeRelation(double delta_sec) {
-  return std::fabs(delta_sec) <= 1e-6 ? "aligned"
-                                      : (delta_sec > 0.0 ? "ahead"
-                                                         : "behind");
-}
-
-std::string BuildPointCloudTimeSummary(const PointCloud& point_cloud) {
-  double min_point_time_sec = point_cloud.measurement_time();
-  double max_point_time_sec = point_cloud.measurement_time();
-  ResolvePointTimestampBounds(point_cloud, &min_point_time_sec,
-                              &max_point_time_sec);
-
-  const double measurement_time_sec = point_cloud.measurement_time();
-  const double now_sec = cyber::Time::Now().ToSecond();
-  const double measurement_vs_now_sec = measurement_time_sec - now_sec;
-
-  std::ostringstream message;
-  message << "measurement=" << FormatTimestampForLog(measurement_time_sec)
-          << ", point_range=[" << FormatTimestampForLog(min_point_time_sec)
-          << ", " << FormatTimestampForLog(max_point_time_sec) << "]"
-          << ", measurement_vs_now="
-          << FormatDeltaForLog(measurement_vs_now_sec) << " ("
-          << DescribeTimeRelation(measurement_vs_now_sec) << ")";
-  if (std::fabs(max_point_time_sec - min_point_time_sec) > 1e-6) {
-    message << ", scan_span="
-            << FormatDeltaForLog(max_point_time_sec - min_point_time_sec);
-  }
-  return message.str();
-}
-
-apollo::transform::TimedTransformResolverOptions BuildTransformResolverOptions(
-    const LidarUnifiedComponentConfig& config) {
+apollo::transform::TimedTransformResolverOptions
+LidarUnifiedComponent::BuildTransformResolverOptions() const {
   apollo::transform::TimedTransformResolverOptions options;
-  options.query_timeout_sec =
-      static_cast<float>(config.sensor_pose_query_timeout_sec());
-  options.cache_duration_sec = config.sensor_pose_cache_duration_sec();
-  options.max_extrapolation_sec =
-      config.sensor_pose_cache_max_extrapolation_sec();
+  options.tf2_buffer_size_sec =
+      static_cast<float>(config_.sensor_pose_query_timeout_sec());
+  options.cache_duration_sec = config_.sensor_pose_cache_duration_sec();
+  options.max_extrapolation_latency_sec =
+      config_.sensor_pose_cache_max_extrapolation_sec();
   return options;
 }
-}  // namespace
 
 std::string LidarUnifiedComponent::MakeFallbackSensorId(
     const std::string& topic_name) const {
@@ -181,8 +117,7 @@ bool LidarUnifiedComponent::PrepareBufferedFrame(
   bool used_measurement_time_fallback =
       frame->time_contract.quality ==
       TimestampQuality::kMeasurementTimeFallback;
-  if (config_.compensation_mode() ==
-          LidarUnifiedComponentConfig::RIGID_FRAME ||
+  if (config_.compensation_mode() == LidarUnifiedComponentConfig::RIGID_FRAME ||
       used_measurement_time_fallback) {
     frame->motion_sample_times = {frame->time_contract.CanonicalAnchorSec()};
   } else {
@@ -192,8 +127,8 @@ bool LidarUnifiedComponent::PrepareBufferedFrame(
     const double end_sec =
         static_cast<double>(frame->time_contract.scan_end_ns) / 1e9;
     for (size_t index = 0; index < configured_bins; ++index) {
-      const double ratio =
-          configured_bins == 1 ? 0.0
+      const double ratio = configured_bins == 1
+                               ? 0.0
                                : static_cast<double>(index) /
                                      static_cast<double>(configured_bins - 1);
       frame->motion_sample_times[index] =
@@ -202,29 +137,32 @@ bool LidarUnifiedComponent::PrepareBufferedFrame(
   }
 
   if (used_measurement_time_fallback) {
-    ADEBUG
-        << "Fallback to measurement_time and disable intra-frame deskew. "
-        << "sensor=" << sensor_id << ", target=" << config_.map_frame_id()
-        << ", " << BuildPointCloudTimeSummary(*point_cloud);
+    ADEBUG << "Fallback to measurement_time and disable intra-frame deskew. "
+           << "sensor=" << sensor_id << ", target=" << config_.map_frame_id()
+           << ", " << BuildPointCloudTimeSummary(*point_cloud);
   }
 
-  if (!sensor_state->pose_resolver->PrefetchBatch(frame->motion_sample_times)) {
-    std::lock_guard<std::mutex> lock(sensor_state->mutex);
-    ++sensor_state->pose_prefetch_timeout_count;
-    total_pose_prefetch_timeouts_.fetch_add(1);
-  }
-
-  apollo::transform::TransformResolveStatus cache_status =
-      apollo::transform::TransformResolveStatus::kOk;
-  if (!sensor_state->pose_resolver->QueryCachedBatchStrict(
-          frame->motion_sample_times, &frame->motion_poses, &cache_status)) {
-    ADEBUG
-      << "Pose prefetch unavailable. sensor=" << sensor_id
-      << ", target=" << config_.map_frame_id()
-      << ", status=" << static_cast<int>(cache_status) << ", "
-      << BuildPointCloudTimeSummary(*point_cloud);
-    total_tf_query_failures_.fetch_add(1);
-    return false;
+  frame->motion_poses.clear();
+  frame->motion_poses.reserve(frame->motion_sample_times.size());
+  for (const double sample_time : frame->motion_sample_times) {
+    apollo::transform::StampedTransform stamped_transform;
+    if (!sensor_state->pose_resolver->Resolve(sample_time,
+                                              config_.map_frame_id(), sensor_id,
+                                              &stamped_transform)) {
+      {
+        std::lock_guard<std::mutex> lock(sensor_state->mutex);
+        ++sensor_state->pose_prefetch_timeout_count;
+      }
+      total_pose_prefetch_timeouts_.fetch_add(1);
+      total_tf_query_failures_.fetch_add(1);
+      ADEBUG << "Pose lookup unavailable. sensor=" << sensor_id
+             << ", target=" << config_.map_frame_id()
+             << ", sample_time=" << sample_time << ", "
+             << BuildPointCloudTimeSummary(*point_cloud);
+      return false;
+    }
+    frame->motion_poses.emplace_back(stamped_transform.translation *
+                                     stamped_transform.rotation);
   }
 
   frame->pose_prefetch_ok = true;
@@ -242,10 +180,12 @@ LidarUnifiedComponent::EnsureSensorState(const std::string& sensor_id) {
 
   auto sensor_state = std::make_shared<SensorState>(sensor_buffer_capacity_);
   if (config_.compensation_mode() != LidarUnifiedComponentConfig::OFF) {
+    sensor_state->transform_query =
+        std::make_unique<apollo::transform::TransformQuery>(tf_buffer_);
     sensor_state->pose_resolver =
         std::make_unique<apollo::transform::TimedTransformResolver>(
-            tf_buffer_, config_.map_frame_id(), sensor_id,
-            BuildTransformResolverOptions(config_));
+            sensor_state->transform_query.get());
+    sensor_state->pose_resolver->SetOptions(BuildTransformResolverOptions());
   }
   sensor_states_.emplace(sensor_id, sensor_state);
   return sensor_state;
@@ -288,17 +228,16 @@ void LidarUnifiedComponent::OnAuxiliaryLidarMessage(
   }
 
   std::shared_ptr<BufferedFrame> buffered_frame;
-  const auto input = std::find_if(
-      auxiliary_inputs_.begin(), auxiliary_inputs_.end(),
-      [&topic_name](const SensorInput& candidate) {
-        return candidate.topic_name == topic_name;
-      });
+  const auto input =
+      std::find_if(auxiliary_inputs_.begin(), auxiliary_inputs_.end(),
+                   [&topic_name](const SensorInput& candidate) {
+                     return candidate.topic_name == topic_name;
+                   });
   if (input == auxiliary_inputs_.end() ||
       !PrepareBufferedFrame(sensor_id, point_cloud, input->time_settings,
                             &buffered_frame)) {
-    ADEBUG
-        << "Skip auxiliary lidar frame due to pose prefetch failure. sensor="
-        << sensor_id << ", topic=" << topic_name;
+    ADEBUG << "Skip auxiliary lidar frame due to pose prefetch failure. sensor="
+           << sensor_id << ", topic=" << topic_name;
     return;
   }
   PushToBuffer(sensor_id, buffered_frame);

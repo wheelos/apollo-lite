@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include <cstdint>
 
-#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+#include "modules/drivers/lidar/processor/common/pod_pointcloud_view.h"
 #include "modules/drivers/lidar/proto/lidar_unified_component_config.pb.h"
 
 namespace apollo {
@@ -40,7 +40,7 @@ struct TimeContract {
 };
 
 bool NormalizePointCloudTime(
-    const PointCloud& cloud,
+    const PointCloudView& cloud,
     const LidarUnifiedComponentConfig::TimeSettings& settings,
     TimeContract* contract);
 

@@ -38,6 +38,75 @@ using apollo::cyber::common::SetProtoToASCIIFile;
 using google::protobuf::util::JsonStringToMessage;
 using Json = WebSocketHandler::Json;
 
+namespace {
+
+Json MakeTypedJson(const std::string& json_type,
+                   const google::protobuf::Message& proto) {
+  google::protobuf::util::JsonPrintOptions options;
+  options.always_print_fields_with_no_presence = true;
+  std::string json_string;
+  const auto status =
+      google::protobuf::util::MessageToJsonString(proto, &json_string, options);
+  ACHECK(status.ok()) << "Cannot convert proto to json:" << proto.DebugString();
+  return {{"type", json_type}, {"data", Json::parse(json_string)}};
+}
+
+bool GetString(const Json& json, const std::string& key, std::string* value) {
+  const auto iter = json.find(key);
+  if (iter == json.end()) {
+    AERROR << "The json has no such key: " << key;
+    return false;
+  }
+  if (!iter->is_string()) {
+    AERROR << "The value of json[" << key << "] is not a string";
+    return false;
+  }
+  *value = *iter;
+  return true;
+}
+
+bool GetBoolean(const Json& json, const std::string& key, bool* value) {
+  const auto iter = json.find(key);
+  if (iter == json.end()) {
+    AERROR << "The json has no such key: " << key;
+    return false;
+  }
+  if (!iter->is_boolean()) {
+    AERROR << "The value of json[" << key << "] is not a boolean";
+    return false;
+  }
+  *value = *iter;
+  return true;
+}
+
+bool GetStringVector(const Json& json, const std::string& key,
+                     std::vector<std::string>* value) {
+  const auto iter = json.find(key);
+  if (iter == json.end()) {
+    AERROR << "The json has no such key: " << key;
+    return false;
+  }
+  if (!iter->is_array()) {
+    AERROR << "The value of json[" << key << "] is not an array";
+    return false;
+  }
+
+  bool success = true;
+  value->clear();
+  value->reserve(iter->size());
+  for (const auto& element : *iter) {
+    if (!element.is_string()) {
+      AWARN << "The value of json[" << key << "] contains non-string element";
+      success = false;
+    } else {
+      value->push_back(element);
+    }
+  }
+  return success;
+}
+
+}  // namespace
+
 HMI::HMI(WebSocketHandler* websocket, MapService* map_service)
     : hmi_worker_(new HMIWorker()),
       monitor_log_buffer_(apollo::common::monitor::MonitorMessageItem::HMI),
@@ -60,8 +129,7 @@ void HMI::RegisterMessageHandlers() {
           // Status doesn't change, skip broadcasting.
           return;
         }
-        websocket_->BroadcastData(
-            JsonUtil::ProtoToTypedJson("HMIStatus", *status).dump());
+        websocket_->BroadcastData(MakeTypedJson("HMIStatus", *status).dump());
         if (status->current_map().empty()) {
           monitor_log_buffer_.WARN("You haven't selected a map yet!");
         }
@@ -79,7 +147,7 @@ void HMI::RegisterMessageHandlers() {
         // Run HMIWorker::Trigger(action) if json is {action: "<action>"}
         // Run HMIWorker::Trigger(action, value) if "value" field is provided.
         std::string action;
-        if (!JsonUtil::GetString(json, "action", &action)) {
+        if (!GetString(json, "action", &action)) {
           AERROR << "Truncated HMIAction request.";
           return;
         }
@@ -89,7 +157,7 @@ void HMI::RegisterMessageHandlers() {
           return;
         }
         std::string value;
-        if (JsonUtil::GetString(json, "value", &value)) {
+        if (GetString(json, "value", &value)) {
           hmi_worker_->Trigger(hmi_action, value);
         } else {
           hmi_worker_->Trigger(hmi_action);
@@ -120,7 +188,7 @@ void HMI::RegisterMessageHandlers() {
             JsonUtil::GetNumber(json, "audio_type", &audio_type) &&
             JsonUtil::GetNumber(json, "moving_result", &moving_result) &&
             JsonUtil::GetNumber(json, "audio_direction", &audio_direction) &&
-            JsonUtil::GetBoolean(json, "is_siren_on", &is_siren_on)) {
+            GetBoolean(json, "is_siren_on", &is_siren_on)) {
           hmi_worker_->SubmitAudioEvent(event_time_ms, obstacle_id, audio_type,
                                         moving_result, audio_direction,
                                         is_siren_on);
@@ -141,9 +209,9 @@ void HMI::RegisterMessageHandlers() {
         std::vector<std::string> event_types;
         bool is_reportable;
         if (JsonUtil::GetNumber(json, "event_time_ms", &event_time_ms) &&
-            JsonUtil::GetString(json, "event_msg", &event_msg) &&
-            JsonUtil::GetStringVector(json, "event_type", &event_types) &&
-            JsonUtil::GetBoolean(json, "is_reportable", &is_reportable)) {
+            GetString(json, "event_msg", &event_msg) &&
+            GetStringVector(json, "event_type", &event_types) &&
+            GetBoolean(json, "is_reportable", &is_reportable)) {
           hmi_worker_->SubmitDriveEvent(event_time_ms, event_msg, event_types,
                                         is_reportable);
           monitor_log_buffer_.INFO("Drive event added.");
@@ -199,7 +267,7 @@ void HMI::RegisterMessageHandlers() {
 
 void HMI::SendStatus(WebSocketHandler::Connection* conn) {
   const auto status_json =
-      JsonUtil::ProtoToTypedJson("HMIStatus", hmi_worker_->GetStatus());
+      MakeTypedJson("HMIStatus", hmi_worker_->GetStatus());
   websocket_->SendData(conn, status_json.dump());
 }
 

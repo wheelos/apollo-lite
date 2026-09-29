@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "modules/drivers/lidar/processor/policy/cpu_lidar_policy.h"
 #include "modules/drivers/lidar/processor/policy/lidar_policy_common.h"
+#include "modules/drivers/lidar/processor/policy/lidar_policy_cpu.h"
 
 namespace apollo {
 namespace drivers {
@@ -39,8 +39,7 @@ bool CpuLidarDeskewPolicy::ComputeMotionCompensationPoses(
 
   const size_t bins = std::max<size_t>(
       1, static_cast<size_t>(config_.motion_compensation_bins()));
-  if (!BuildMotionSampleTimes(*frame_context.point_cloud, bins, false, -1,
-                              sample_times)) {
+  if (!BuildMotionSampleTimes(*frame_context.point_cloud, bins, sample_times)) {
     return false;
   }
   poses->assign(bins, Eigen::Affine3d::Identity());

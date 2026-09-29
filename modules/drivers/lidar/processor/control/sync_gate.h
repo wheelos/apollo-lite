@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,11 +37,10 @@ class SyncGate {
   using ResolveSensorIdByTopicFn = std::function<bool(
       const std::string& topic_name, std::string* sensor_id)>;
 
-  using LookupNearestFrameFn =
-      std::function<bool(const std::string& sensor_id,
-                         const TimeContract& reference_time,
-                         uint32_t max_ref_time_delta_ms,
-                         FrameHandle* frame_handle, bool* time_delta_exceeded)>;
+  using LookupNearestFrameFn = std::function<bool(
+      const std::string& sensor_id, const TimeContract& reference_time,
+      uint32_t max_ref_time_delta_ms, FrameHandle* frame_handle,
+      bool* time_delta_exceeded)>;
 
   bool SelectFrames(const FrameHandle& primary_handle,
                     const std::vector<std::string>& auxiliary_topics,

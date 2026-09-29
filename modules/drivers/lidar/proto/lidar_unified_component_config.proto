@@ -3,11 +3,6 @@ syntax = "proto2";
 package apollo.drivers.lidar;
 
 message LidarUnifiedComponentConfig {
-  enum ComputeMode {
-    COMPUTE_MODE_CPU = 0;
-    COMPUTE_MODE_GPU = 1;
-  }
-
   enum TimestampAnchor {
     SCAN_BEGIN = 0;
     SCAN_END = 1;
@@ -41,7 +36,7 @@ message LidarUnifiedComponentConfig {
   // Buffer / capacity
   optional uint32 sensor_buffer_size = 4 [default = 8];
   optional uint32 max_full_pointcloud_points = 5 [default = 300000];
-  optional uint32 worker_num = 6 [default = 0];
+  reserved 6;
 
   // Ego-box filter
   optional bool enable_ego_query_filter = 7 [default = false];
@@ -61,14 +56,11 @@ message LidarUnifiedComponentConfig {
   // Observability
   optional uint32 metrics_log_interval = 15 [default = 100];
 
-  // Compute backend
-  optional ComputeMode compute_mode = 17 [default = COMPUTE_MODE_CPU];
-  optional uint32 gpu_device_id = 18 [default = 0];
+  reserved 17, 18;
 
   // Auxiliary sensors
   repeated AuxiliaryLidarInput auxiliary_lidar_inputs = 19;
-  // Primary lidar input channel consumed by unified processor.
-  optional string primary_lidar_topic = 49;
+  reserved 49;
 
   // M4 – Timestamp sanity
   optional bool ts_sanity_enabled = 20 [default = true];
@@ -117,7 +109,7 @@ message LidarUnifiedComponentConfig {
   // Production temporal-fusion controls.
   optional TimeSettings primary_time_settings = 44;
   optional CompensationMode compensation_mode = 45
-      [default = CONTINUOUS_POINT];
+      [default = OFF];
   optional bool enable_online_time_offset_update = 46 [default = true];
   optional bool enable_overlap_quality_gate = 47 [default = true];
   optional bool enable_voxel_filter = 48 [default = true];
