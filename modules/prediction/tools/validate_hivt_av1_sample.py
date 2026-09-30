@@ -1,12 +1,13 @@
 """Smoke-test deployed HiVT on AV1 forecasting samples in their city frame.
 
-Run in the managed test container with the existing HiVT venv and system
-TensorRT bindings. Lane selection uses XML centerlines, not ArgoverseMap's
-hallucinated polygon bboxes; the reported errors are not reference metrics.
+Dataset, HiVT checkout, checkpoint, and engine paths are supplied via CLI.
+Lane selection uses XML centerlines, not ArgoverseMap's polygon bboxes; the
+reported errors are not reference metrics.
 """
 
 import argparse
 import csv
+import importlib
 import math
 import sys
 import xml.etree.ElementTree as ET
@@ -15,14 +16,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-
-sys.path.insert(0, "/apollo/.cache/hivt-inference")
-sys.path.insert(0, "/apollo/.cache/hivt-inference/source")
-from build_hivt_trt_engine import cuda_api, run_engine, check_cuda
-from export_trace import TensorHiVT, tensor_inputs
-from models.hivt import HiVT
-from utils import TemporalData
-import tensorrt as trt
 
 
 def load_map(path):
@@ -44,7 +37,7 @@ def load_map(path):
     return lanes
 
 
-def build_scene(path, lanes):
+def build_scene(path, lanes, temporal_data_type):
     with path.open(newline="") as stream:
         rows = list(csv.DictReader(stream))
     timestamps = sorted({float(row["TIMESTAMP"]) for row in rows})
@@ -149,7 +142,7 @@ def build_scene(path, lanes):
                 relative.append(vector)
     if not pairs or len(pairs) > 64 * 1024:
         raise ValueError(f"{path}: invalid lane/actor edges: {len(pairs)}")
-    scene = TemporalData(
+    scene = temporal_data_type(
         x=x, positions=positions,
         edge_index=torch.tensor(
             [(i, j) for i in range(count) for j in range(count) if i != j],
@@ -169,27 +162,80 @@ def build_scene(path, lanes):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=Path, default=Path("/mnt/synology/dataset/argoverse"))
+    parser = argparse.ArgumentParser(
+        description="Compare the deployed HiVT engine with its checkpoint on AV1 samples."
+    )
+    parser.add_argument(
+        "--dataset",
+        type=Path,
+        required=True,
+        help="Argoverse dataset root containing forecasting_sample/data and map_files",
+    )
+    parser.add_argument(
+        "--hivt-root",
+        type=Path,
+        required=True,
+        help="HiVT checkout containing deployment/, models/, and utils.py",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        required=True,
+        help="HiVT checkpoint compatible with the deployed engine",
+    )
+    parser.add_argument(
+        "--engine",
+        type=Path,
+        default=Path(__file__).resolve().parents[1] / "data" / "hivt64.engine",
+        help="TensorRT engine (default: modules/prediction/data/hivt64.engine)",
+    )
     args = parser.parse_args()
-    paths = sorted((args.dataset / "forecasting_sample/data").glob("*.csv"))
+
+    hivt_root = args.hivt_root.resolve()
+    dataset_root = args.dataset.resolve()
+    checkpoint_path = args.checkpoint.resolve()
+    engine_path = args.engine.resolve()
+    runtime_paths = [
+        hivt_root / "deployment" / "build_hivt_trt_engine.py",
+        hivt_root / "deployment" / "export_trace.py",
+        hivt_root / "models" / "hivt.py",
+        hivt_root / "utils.py",
+    ]
+    for path in [*runtime_paths, checkpoint_path, engine_path]:
+        if not path.is_file():
+            parser.error(f"required file does not exist: {path}")
+    sample_dir = dataset_root / "forecasting_sample" / "data"
+    map_dir = dataset_root / "map_files"
+    if not sample_dir.is_dir() or not map_dir.is_dir():
+        parser.error(
+            "--dataset must contain forecasting_sample/data and map_files"
+        )
+
+    sys.path[:0] = [str(hivt_root / "deployment"), str(hivt_root)]
+    engine_runtime = importlib.import_module("build_hivt_trt_engine")
+    trace_export = importlib.import_module("export_trace")
+    hivt_model = importlib.import_module("models.hivt")
+    temporal_data_type = importlib.import_module("utils").TemporalData
+    trt = importlib.import_module("tensorrt")
+
+    paths = sorted(sample_dir.glob("*.csv"))
     if not paths:
         raise ValueError("No AV1 forecasting sample CSVs found")
     logger = trt.Logger(trt.Logger.WARNING)
     if not trt.init_libnvinfer_plugins(logger, ""):
         raise RuntimeError("TensorRT plugin initialization failed")
     runtime = trt.Runtime(logger)
-    with open("/apollo/modules/prediction/data/hivt64.engine", "rb") as stream:
+    with engine_path.open("rb") as stream:
         engine = runtime.deserialize_cuda_engine(stream.read())
     if engine is None:
         raise RuntimeError("Could not load deployed HiVT engine")
-    cuda = cuda_api()
-    check_cuda(cuda.cudaSetDevice(0), "cudaSetDevice")
-    model = HiVT.load_from_checkpoint(
-        checkpoint_path="/apollo/.cache/hivt-inference/checkpoint/hivt-64.ckpt",
+    cuda = engine_runtime.cuda_api()
+    engine_runtime.check_cuda(cuda.cudaSetDevice(0), "cudaSetDevice")
+    model = hivt_model.HiVT.load_from_checkpoint(
+        checkpoint_path=str(checkpoint_path),
         map_location="cpu", weights_only=False, parallel=True,
     ).eval()
-    wrapper = TensorHiVT(model).eval()
+    wrapper = trace_export.TensorHiVT(model).eval()
     maps = {}
     errors = []
     for path in paths:
@@ -198,13 +244,15 @@ def main():
         if city not in maps:
             city_id = {"PIT": "PIT_10314", "MIA": "MIA_10316"}[city]
             maps[city] = load_map(
-                args.dataset / "map_files" / f"pruned_argoverse_{city_id}_vector_map.xml"
+                map_dir / f"pruned_argoverse_{city_id}_vector_map.xml"
             )
-        scene, agent, anchor, truth, theta, lane_count = build_scene(path, maps[city])
-        inputs = tensor_inputs(scene)
+        scene, agent, anchor, truth, theta, lane_count = build_scene(
+            path, maps[city], temporal_data_type
+        )
+        inputs = trace_export.tensor_inputs(scene)
         with torch.inference_mode():
             torch_traj, torch_logits = wrapper(*inputs)
-        actual = run_engine(engine, runtime, cuda, inputs)
+        actual = engine_runtime.run_engine(engine, runtime, cuda, inputs)
         expected = torch_traj.numpy()
         delta = float(np.max(np.abs(actual["trajectories"] - expected)))
         logit_delta = float(np.max(np.abs(actual["logits"] - torch_logits.numpy())))

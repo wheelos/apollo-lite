@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS. All Rights Reserved.
+// Copyright 2026 WheelOS All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 #include "modules/prediction/evaluator/vehicle/hivt_scene_feature_builder.h"
 
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -39,6 +40,27 @@ std::unique_ptr<Obstacle> MakeObstacle(int id, double x, double y) {
     feature.mutable_position()->set_y(y);
     feature.set_velocity_heading(0.0);
     feature.set_speed(kSpeed);
+    feature.set_length(4.0);
+    feature.set_width(2.0);
+    obstacle->InsertFeature(feature);
+  }
+  return obstacle;
+}
+
+std::unique_ptr<Obstacle> MakeObstacleWithTimestamps(
+    int id, const std::array<double, kHiVTHistoricalSteps>& timestamps,
+    double x, double y, double speed) {
+  auto obstacle = std::make_unique<Obstacle>();
+  for (int step = 0; step < kHiVTHistoricalSteps; ++step) {
+    Feature feature;
+    feature.set_id(id);
+    feature.set_timestamp(timestamps[step]);
+    feature.set_type(apollo::perception::PerceptionObstacle::VEHICLE);
+    feature.mutable_position()->set_x(x + (step - 19) * speed *
+                                              kHiVTTimeStepSeconds);
+    feature.mutable_position()->set_y(y);
+    feature.set_velocity_heading(0.0);
+    feature.set_speed(speed);
     feature.set_length(4.0);
     feature.set_width(2.0);
     obstacle->InsertFeature(feature);
@@ -87,6 +109,41 @@ TEST_F(HiVTSceneFeatureBuilderTest, BuildsSceneTensorsInEgoCoordinates) {
             static_cast<std::size_t>(input.lane_actor_edge_count * 2));
   EXPECT_EQ(input.lane_actor_index.size(),
             static_cast<std::size_t>(input.lane_actor_edge_count * 2));
+}
+
+TEST_F(HiVTSceneFeatureBuilderTest, CharacterizesIrregularAV1TimestampBinning) {
+  // Sorted timestamp sequence from AV1.1 validation scene 25121.
+  constexpr std::array<double, kHiVTHistoricalSteps> kSceneTimestamps = {
+      315967728.49760795, 315967728.60998267, 315967728.73888332,
+      315967728.85506177, 315967728.97353548, 315967729.09231985,
+      315967729.20849931, 315967729.34512115, 315967729.46767986,
+      315967729.60159171, 315967729.74804962, 315967729.86651629,
+      315967729.98271036, 315967730.10536653, 315967730.24281365,
+      315967730.38013685, 315967730.50786024, 315967730.65273708,
+      315967730.77254385, 315967730.89987141};
+  auto ego = MakeObstacleWithTimestamps(FLAGS_ego_vehicle_id, kSceneTimestamps,
+                                        -458.941, -159.240, 10.0);
+  auto target =
+      MakeObstacleWithTimestamps(1, kSceneTimestamps, -455.941, -159.240, 0.0);
+  std::vector<Obstacle*> actors{ego.get(), target.get()};
+
+  HiVTSceneInput input;
+  HiVTSceneFeatureBuilder builder;
+  ASSERT_TRUE(builder.Build(ego.get(), actors, &input));
+
+  const std::size_t target_history_offset =
+      kHiVTHistoricalSteps + kHiVTFutureSteps;
+  std::vector<uint8_t> target_history_mask;
+  target_history_mask.reserve(kHiVTHistoricalSteps);
+  for (int time_index = 0; time_index < kHiVTHistoricalSteps; ++time_index) {
+    target_history_mask.push_back(
+        input.padding_mask[target_history_offset + time_index]);
+  }
+
+  // Reference preprocessing assigns all 20 rows to their sorted time slots.
+  EXPECT_EQ(target_history_mask,
+            (std::vector<uint8_t>{0, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+                                  0, 0, 0, 1, 0, 0, 1, 0, 0, 0}));
 }
 
 TEST_F(HiVTSceneFeatureBuilderTest, RejectsScenesBeyondActorCapacity) {

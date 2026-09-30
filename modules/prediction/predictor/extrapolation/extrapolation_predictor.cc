@@ -16,6 +16,8 @@
 
 #include "modules/prediction/predictor/extrapolation/extrapolation_predictor.h"
 
+#include <cmath>
+
 #include "modules/common/math/vec2d.h"
 #include "modules/prediction/common/prediction_gflags.h"
 #include "modules/prediction/common/prediction_map.h"
@@ -190,10 +192,14 @@ void ExtrapolationPredictor::ExtrapolateByFreeMove(
   const TrajectoryPoint& last_point =
       trajectory_ptr->trajectory_point(num_trajectory_point - 1);
   double theta = last_point.path_point().theta();
+  const double last_relative_time = last_point.relative_time();
   double time_resolution = FLAGS_prediction_trajectory_time_resolution;
   double time_length = FLAGS_prediction_trajectory_time_length;
-  double relative_time = last_point.relative_time() + time_resolution;
-  while (relative_time < time_length) {
+  const double remaining_steps =
+      (time_length - last_relative_time) / time_resolution;
+  const int num_remaining_points =
+      static_cast<int>(std::floor(remaining_steps + 1e-6));
+  for (int i = 1; i <= num_remaining_points; ++i) {
     int prev_size = trajectory_ptr->trajectory_point_size();
     const TrajectoryPoint& prev_point =
         trajectory_ptr->trajectory_point(prev_size - 1);
@@ -210,9 +216,13 @@ void ExtrapolationPredictor::ExtrapolateByFreeMove(
     curr_path_point_ptr->set_theta(theta);
     curr_point->set_v(extraplation_speed);
     curr_point->set_a(acceleration);
-    curr_point->set_relative_time(relative_time);
-
-    relative_time += time_resolution;
+    double next_relative_time =
+        last_relative_time + static_cast<double>(i) * time_resolution;
+    if (i == num_remaining_points &&
+        std::abs(remaining_steps - num_remaining_points) <= 1e-6) {
+      next_relative_time = time_length;
+    }
+    curr_point->set_relative_time(next_relative_time);
   }
 }
 
