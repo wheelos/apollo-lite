@@ -10,6 +10,19 @@ bool IsDockLikeScene(planning::PlanningSceneType scene) {
          scene == planning::SCENE_PULL_OVER;
 }
 
+planning::ControlExecutionChannel ResolveExecutionChannelFromIntent(
+    const planning::ControlIntent& intent, bool has_trajectory_points) {
+  if (intent.primitive_type() != planning::CONTROL_PRIMITIVE_NONE ||
+      intent.tracking_mode() == planning::TRACKING_MODE_POSE_SERVO ||
+      intent.tracking_mode() == planning::TRACKING_MODE_STANDSTILL_HOLD) {
+    return planning::EXECUTION_CHANNEL_PRIMITIVE;
+  }
+  if (has_trajectory_points) {
+    return planning::EXECUTION_CHANNEL_TRAJECTORY;
+  }
+  return planning::EXECUTION_CHANNEL_UNKNOWN;
+}
+
 }  // namespace
 
 SemanticControlProfile StrategyOrchestrator::Resolve(
@@ -112,6 +125,10 @@ void StrategyOrchestrator::Apply(const SemanticControlProfile& profile,
   } else {
     intent->set_reason("profile=" + profile.profile_key);
   }
+
+  intent->set_execution_channel(
+      ResolveExecutionChannelFromIntent(*intent,
+                                        trajectory->trajectory_point_size() > 0));
 }
 
 }  // namespace control

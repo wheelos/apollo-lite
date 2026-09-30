@@ -37,9 +37,8 @@ using apollo::control::ControlRuntimeStatus;
 using apollo::localization::LocalizationEstimate;
 using apollo::planning::PadMessage;
 using apollo::mission::MissionRuntimeStatus;
-using apollo::planning::PlanningCommand;
+using apollo::planning::MissionDirective;
 using apollo::planning::PlanningRuntimeStatus;
-using apollo::routing::RoutingRequest;
 
 namespace {
 
@@ -97,6 +96,9 @@ bool MissionComponent::Init() {
     return false;
   }
   AINFO << "Mission config loaded from: " << ConfigFilePath();
+  MissionContext::Instance()->SetProducerEpoch(
+      "mission-" +
+      std::to_string(cyber::Time::Now().ToNanosecond()));
 
   // 2. Modular Initialization
   if (!RegisterBehaviorNodes()) {
@@ -182,16 +184,12 @@ bool MissionComponent::InitCyberCommunication() {
         MissionContext::Instance()->UpdateLocalization(msg);
       });
 
-  auto routing_writer =
-      node_->CreateWriter<RoutingRequest>(FLAGS_routing_request_topic);
-  MissionContext::Instance()->SetRoutingWriter(routing_writer);
-
-  auto planning_pad_writer =
-      node_->CreateWriter<PadMessage>(FLAGS_planning_pad_topic);
-  MissionContext::Instance()->SetPlanningPadWriter(planning_pad_writer);
-  auto planning_command_writer =
-      node_->CreateWriter<PlanningCommand>(mission_config_.planning_command_topic());
-  MissionContext::Instance()->SetPlanningCommandWriter(planning_command_writer);
+  auto mission_directive_writer = node_->CreateWriter<MissionDirective>(
+      mission_config_.mission_directive_topic());
+  MissionContext::Instance()->SetMissionDirectiveWriter(
+      mission_directive_writer);
+  MissionContext::Instance()->SetPlanningPadWriter(
+      node_->CreateWriter<PadMessage>(FLAGS_planning_pad_topic));
 
   planning_runtime_status_reader_ = node_->CreateReader<PlanningRuntimeStatus>(
       mission_config_.planning_runtime_status_topic(),

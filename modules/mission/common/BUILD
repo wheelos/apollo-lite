@@ -28,6 +28,7 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:mission_directive_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_command_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_runtime_status_cc_proto",
     ],

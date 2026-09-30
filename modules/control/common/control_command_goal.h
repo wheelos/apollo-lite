@@ -23,6 +23,8 @@ struct ControlCommandGoal {
   bool has_control_intent = false;
   planning::PlanningSceneType active_scene = planning::SCENE_UNKNOWN;
   planning::PlanningMode active_mode = planning::MODE_UNKNOWN;
+  planning::ControlExecutionChannel execution_channel =
+      planning::EXECUTION_CHANNEL_UNKNOWN;
   planning::ControlIntent control_intent;
   std::string reason;
 };

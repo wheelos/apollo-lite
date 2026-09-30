@@ -73,7 +73,7 @@ ScenarioDecisionResult MissionDecider::CheckMissionIdle(
       frame->local_view().routing->routing_request().waypoint().empty()) {
     // If we have no routing, or routing is empty, we are Idle.
     return ScenarioDecisionResult(ScenarioType::MISSION_IDLE,
-                                  ScenarioGrade::MISSION, kScoreMissionIdle,
+                                  ScenarioGrade::CRUISE, kScoreMissionIdle,
                                   "Routing Empty or Finished");
   }
 
@@ -86,7 +86,7 @@ ScenarioDecisionResult MissionDecider::CheckMissionIdle(
   bool is_at_destination = IsCloseToDestination(frame);
   if (is_stopped && is_at_destination) {
     return ScenarioDecisionResult(ScenarioType::MISSION_IDLE,
-                                  ScenarioGrade::MISSION, kScoreMissionIdle,
+                                  ScenarioGrade::CRUISE, kScoreMissionIdle,
                                   "Destination");
   }
 
@@ -131,7 +131,7 @@ ScenarioDecisionResult MissionDecider::CheckNarrowStreet(
   double buffer = lane_left_width + lane_right_width - vehicle_width;
   if (buffer > 0.0 && buffer < kNarrowStreetWidthThreshold) {
     return ScenarioDecisionResult(ScenarioType::NARROW_STREET_MANEUVER,
-                                  ScenarioGrade::MISSION, kScoreNarrowStreet,
+                                  ScenarioGrade::MANEUVER, kScoreNarrowStreet,
                                   "Narrow Lane Detected (<2.8m)");
   }
   return ScenarioDecisionResult();

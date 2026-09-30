@@ -379,12 +379,6 @@ void MessageProcess::ProcessOfflineData(const std::string& record_file) {
         OnPrediction(prediction_obstacles);
       }
     } else if (message.channel_name ==
-               planning_config_.topic_config().routing_response_topic()) {
-      RoutingResponse routing_response;
-      if (routing_response.ParseFromString(message.content)) {
-        OnRoutingResponse(routing_response);
-      }
-    } else if (message.channel_name ==
                planning_config_.topic_config().story_telling_topic()) {
       Stories stories;
       if (stories.ParseFromString(message.content)) {

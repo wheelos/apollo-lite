@@ -81,7 +81,7 @@ TEST(MissionCommandSupervisorTest, FailureKeepsQueueBlockedForRecovery) {
   EXPECT_FALSE(snapshot.recovery_state.allowed_actions.empty());
 }
 
-TEST(MissionCommandSupervisorTest, CancelledPreemptionDispatchesQueuedCommand) {
+TEST(MissionCommandSupervisorTest, PriorityDoesNotImplicitlyPreempt) {
   MissionCommandSupervisor supervisor;
   supervisor.SetCurrentMissionId("mission-A");
 
@@ -93,14 +93,12 @@ TEST(MissionCommandSupervisorTest, CancelledPreemptionDispatchesQueuedCommand) {
   commands_to_publish.clear();
   supervisor.EvaluatePlanningCommand(
       BuildCommand("mission-A", "cmd-B", 2, true), &commands_to_publish);
-  ASSERT_EQ(commands_to_publish.size(), 1u);
-  EXPECT_EQ(commands_to_publish.front().action(), planning::COMMAND_CANCEL);
-  EXPECT_EQ(commands_to_publish.front().command_id(), "cmd-A");
+  EXPECT_TRUE(commands_to_publish.empty());
 
   commands_to_publish.clear();
   supervisor.UpdatePlanningRuntimeStatus(
-      BuildPlanningStatus("mission-A", "cmd-A", planning::RUNTIME_CANCELLED,
-                          "cancelled for preemption"),
+      BuildPlanningStatus("mission-A", "cmd-A", planning::RUNTIME_COMPLETED,
+                          "completed"),
       &commands_to_publish);
   ASSERT_EQ(commands_to_publish.size(), 1u);
   EXPECT_EQ(commands_to_publish.front().action(), planning::COMMAND_ACTIVATE);
@@ -208,6 +206,32 @@ TEST(MissionCommandSupervisorTest, RecoveryAckAndResumeDispatchesQueuedCommand) 
   const auto snapshot = supervisor.GetSnapshot();
   EXPECT_EQ(snapshot.active_command_id, "cmd-B");
   EXPECT_FALSE(snapshot.operator_recovery_required);
+}
+
+TEST(MissionCommandSupervisorTest, ControlStatusIsDiagnosticOnly) {
+  MissionCommandSupervisor supervisor;
+  supervisor.SetCurrentMissionId("mission-A");
+
+  std::vector<planning::PlanningCommand> commands_to_publish;
+  supervisor.EvaluatePlanningCommand(
+      BuildCommand("mission-A", "cmd-A", 1, false), &commands_to_publish);
+  ASSERT_EQ(commands_to_publish.size(), 1u);
+  commands_to_publish.clear();
+
+  control::ControlRuntimeStatus control_status;
+  control_status.set_mission_id("mission-A");
+  control_status.set_command_id("cmd-A");
+  control_status.set_state(control::CONTROL_RUNTIME_FAULTED);
+  control_status.set_reason("diagnostic control fault");
+  supervisor.UpdateControlRuntimeStatus(control_status, &commands_to_publish);
+
+  EXPECT_TRUE(commands_to_publish.empty());
+  const auto snapshot = supervisor.GetSnapshot();
+  EXPECT_EQ(snapshot.active_command_id, "cmd-A");
+  EXPECT_EQ(snapshot.active_command_status.state,
+            CommandLifecycleState::kDispatched);
+  EXPECT_EQ(snapshot.active_command_status.control_state,
+            control::CONTROL_RUNTIME_FAULTED);
 }
 
 }  // namespace mission
