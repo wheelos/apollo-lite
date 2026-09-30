@@ -14,6 +14,7 @@ install(
         ":sim_map_generator",
         ":proto_map_generator",
         ":bin_map_generator",
+        ":bidirectional_lane_converter_tool",
         ":quaternion_euler",
     ],
     deps = [
@@ -90,6 +91,36 @@ cc_binary(
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "bidirectional_lane_converter",
+    srcs = ["bidirectional_lane_converter.cc"],
+    hdrs = ["bidirectional_lane_converter.h"],
+    deps = [
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
+    ],
+)
+
+cc_binary(
+    name = "bidirectional_lane_converter_tool",
+    srcs = ["bidirectional_lane_converter_main.cc"],
+    deps = [
+        ":bidirectional_lane_converter",
+        "@com_github_gflags_gflags//:gflags",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "bidirectional_lane_converter_test",
+    size = "small",
+    srcs = ["bidirectional_lane_converter_test.cc"],
+    deps = [
+        ":bidirectional_lane_converter",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

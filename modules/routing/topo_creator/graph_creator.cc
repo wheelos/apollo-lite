@@ -16,6 +16,7 @@
 
 #include "modules/routing/topo_creator/graph_creator.h"
 
+#include <algorithm>
 #include <vector>
 
 #include "absl/strings/match.h"
@@ -94,8 +95,18 @@ bool GraphCreator::Create() {
   }
 
   InitForbiddenLanes();
+  const auto u_turn_lane = std::find_if(
+      pbmap_.lane().begin(), pbmap_.lane().end(),
+      [this](const hdmap::Lane& lane) {
+        return lane.type() == hdmap::Lane::CITY_DRIVING &&
+               lane.turn() == hdmap::Lane::U_TURN &&
+               forbidden_lane_id_set_.find(lane.id().id()) ==
+                   forbidden_lane_id_set_.end();
+      });
   const double min_turn_radius =
-      VehicleConfigHelper::GetConfig().vehicle_param().min_turn_radius();
+      u_turn_lane == pbmap_.lane().end()
+          ? 0.0
+          : VehicleConfigHelper::GetConfig().vehicle_param().min_turn_radius();
 
   for (const auto& lane : pbmap_.lane()) {
     const auto& lane_id = lane.id().id();

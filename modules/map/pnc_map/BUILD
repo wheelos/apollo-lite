@@ -150,6 +150,16 @@ cc_test(
 )
 
 cc_test(
+    name = "bidirectional_lane_test",
+    size = "small",
+    srcs = ["bidirectional_lane_test.cc"],
+    deps = [
+        ":pnc_map",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "route_segments_test",
     size = "small",
     srcs = ["route_segments_test.cc"],
