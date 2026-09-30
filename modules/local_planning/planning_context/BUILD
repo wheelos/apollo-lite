@@ -20,7 +20,7 @@ cc_library(
     hdrs = ["input_gate.h"],
     deps = [
         ":input_contract",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -29,7 +29,7 @@ cc_library(
     hdrs = ["trajectory_geometry.h"],
     deps = [
         ":input_contract",
-        "//modules/common/math:geometry",
+        "@wheelos_common//modules/common/math:geometry",
     ],
 )
 
@@ -40,7 +40,7 @@ cc_library(
     deps = [
         ":input_contract",
         ":trajectory_geometry",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/world_model/local_map:local_scene_contracts",
     ],
 )
@@ -51,8 +51,8 @@ cc_library(
     hdrs = ["corridor_selector.h"],
     deps = [
         ":input_contract",
-        "//modules/common/math:geometry",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/math:geometry",
+        "@wheelos_common//modules/common/status",
         "//modules/world_model/local_map:local_scene_contracts",
     ],
 )
@@ -63,7 +63,7 @@ cc_library(
     hdrs = ["boundary_geometry.h"],
     deps = [
         ":input_contract",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -74,8 +74,8 @@ cc_library(
     deps = [
         ":corridor_selector",
         ":trajectory_geometry",
-        "//modules/common/math:geometry",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/math:geometry",
+        "@wheelos_common//modules/common/status",
         "//modules/world_model/local_map:local_scene_contracts",
     ],
 )
@@ -89,8 +89,8 @@ cc_library(
         ":corridor_selector",
         ":reference_continuity",
         ":trajectory_geometry",
-        "//modules/common/math:geometry",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/math:geometry",
+        "@wheelos_common//modules/common/status",
         "//modules/world_model/local_map:local_scene_contracts",
     ],
 )
@@ -102,7 +102,7 @@ cc_library(
     deps = [
         ":environment_geometry",
         ":reference_line",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/world_model/local_map:local_scene_contracts",
     ],
 )
@@ -115,7 +115,7 @@ cc_library(
         ":environment_geometry",
         ":input_gate",
         ":planning_geometry",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/world_model/local_map:local_scene_contracts",
     ],
 )
@@ -126,7 +126,7 @@ cc_test(
     srcs = ["planning_input_builder_test.cc"],
     deps = [
         ":planning_input_builder",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/world_model/local_map:local_scene_contracts",
         "@com_google_googletest//:gtest_main",
     ],

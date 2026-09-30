@@ -13,7 +13,7 @@ cc_library(
     hdrs = ["lane_association.h"],
     deps = [
         ":lane_types",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -24,7 +24,7 @@ cc_library(
     deps = [
         ":lane_association",
         ":lane_types",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -34,7 +34,7 @@ cc_library(
     hdrs = ["measured_lane_geometry.h"],
     deps = [
         ":temporal_lane_map",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -71,7 +71,7 @@ cc_library(
     deps = [
         ":lane_types",
         ":local_scene_contracts",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -82,7 +82,7 @@ cc_library(
     deps = [
         ":lane_types",
         ":local_scene_contracts",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -92,7 +92,7 @@ cc_library(
     hdrs = ["navigation_prior.h"],
     deps = [
         ":local_scene_contracts",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -105,7 +105,7 @@ cc_library(
         ":lane_synthesis",
         ":local_scene_contracts",
         ":navigation_prior",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -129,7 +129,7 @@ cc_library(
         ":local_scene_contracts",
         ":scene_assembly",
         ":temporal_lane_map",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 

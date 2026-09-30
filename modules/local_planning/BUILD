@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["scenario.h"],
     deps = [
         "//modules/local_planning/planning_context:input_gate",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -20,7 +20,7 @@ cc_test(
     deps = [
         ":scenario",
         "//modules/local_planning/planning_context:input_gate",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -36,8 +36,8 @@ cc_library(
         "//modules/local_planning/planning_context:environment_geometry",
         "//modules/local_planning/planning_context:planning_input_builder",
         "//modules/local_planning/planning_context:trajectory_geometry",
-        "//modules/common/math:geometry",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/math:geometry",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -48,7 +48,7 @@ cc_library(
     deps = [
         "//modules/local_planning/planning_context:input_gate",
         ":lane_follow_planner",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/simulation:simulation_engine",
         "//modules/simulation:simulation_types",
         "//modules/world_model/local_map:local_scene_builder",
@@ -61,7 +61,7 @@ cc_binary(
     data = ["//modules/simulation:runtime_data"],
     deps = [
         ":closed_loop",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -73,7 +73,7 @@ cc_test(
         ":closed_loop",
         ":lane_follow_planner",
         "//modules/local_planning/planning_context:input_gate",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -85,7 +85,7 @@ cc_test(
     data = ["//modules/simulation:runtime_data"],
     deps = [
         ":closed_loop",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "@com_google_googletest//:gtest_main",
     ],
 )

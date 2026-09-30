@@ -14,8 +14,8 @@ cc_library(
         "//modules/local_planning/planning_context:environment_geometry",
         "//modules/local_planning/planning_context:input_gate",
         "//modules/local_planning/planning_context:trajectory_geometry",
-        "//modules/common/math:geometry",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/math:geometry",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
@@ -25,7 +25,7 @@ cc_library(
     hdrs = ["trajectory_continuity.h"],
     deps = [
         ":trajectory_validation",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
     ],
 )
 
