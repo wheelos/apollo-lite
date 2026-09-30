@@ -9,34 +9,22 @@ message CameraSourceConfig {
   optional uint32 height = 4 [default = 720];
   optional double fps = 5 [default = 30.0];
   optional string fourcc = 6 [default = "MJPG"];
-  optional PublishConfig publish = 7;
-  optional string capture_pipeline = 8;
+  reserved 7;
+  reserved "publish";
+  // Removed source implementations retain their field numbers for wire
+  // compatibility. Supported backends are V4L2_MMAP and NVV4L2_DMABUF.
+  reserved 8;
   optional uint32 read_timeout_ms = 9 [default = 1000];
-  optional string capture_backend = 10 [default = "AUTO"];
-  optional uint32 sensor_id = 11 [default = 0];
-  optional uint32 sensor_mode = 12 [default = 0];
-  optional string device = 13;
-  optional uint32 virtual_channel_id = 14 [default = 0];
-  optional uint32 gmsl_link_id = 15 [default = 0];
-  optional bool allow_backend_fallback = 16 [default = true];
+  optional string capture_backend = 10 [default = "V4L2_MMAP"];
+  reserved 11, 12, 13, 14, 15, 16;
+  reserved "capture_pipeline", "sensor_id", "sensor_mode", "device",
+      "virtual_channel_id", "gmsl_link_id", "allow_backend_fallback";
 }
 
 message LayoutSlot {
   optional string source_name = 1;
   optional uint32 row = 2;
   optional uint32 col = 3;
-}
-
-message PublishConfig {
-  optional string channel_name = 1;
-  optional string frame_id = 2 [default = "camera_gst"];
-  optional uint32 output_width = 3 [default = 0];
-  optional uint32 output_height = 4 [default = 0];
-  optional double output_fps = 5 [default = 0.0];
-  optional uint32 queue_capacity = 6 [default = 1];
-  optional uint32 buffer_pool_size = 7 [default = 4];
-  optional string output_format = 8 [default = "RGB"];
-  optional bool channel_publish_enabled = 9 [default = true];
 }
 
 message StreamConfig {
@@ -101,12 +89,14 @@ message Config {
   optional uint32 tile_height = 6 [default = 720];
   optional double fps = 7 [default = 30.0];
   optional uint32 capture_retry_ms = 8 [default = 20];
-  optional double publish_rate = 9 [default = 30.0];
-  optional PublishConfig publish = 10;
+  reserved 9, 10;
+  reserved "publish_rate", "publish";
   optional StreamConfig stream = 11;
   optional bool publish_gpu_channel = 12 [default = false];
   optional bool validate_nvidia_plugins = 13 [default = false];
+  // Applies to NVMM samples delivered through the GPU frame callback.
   optional bool zero_copy_required = 14 [default = false];
   optional PlatformContract platform = 15;
-  optional bool allow_high_bandwidth_raw_publish = 16 [default = false];
+  reserved 16;
+  reserved "allow_high_bandwidth_raw_publish";
 }

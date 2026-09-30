@@ -27,28 +27,10 @@ namespace apollo {
 namespace drivers {
 namespace camera_gst {
 
-struct PublishedFrame {
-  uint32_t width = 0;
-  uint32_t height = 0;
-  uint32_t step = 0;
-  double measurement_time = 0.0;
-  std::string encoding = "rgb8";
-  std::string data;
-  uint64_t sequence = 0;
-};
-
 struct SourceStats {
   std::string source_name;
-  uint64_t cpu_frames = 0;
   uint64_t gpu_frames = 0;
-  uint64_t cpu_rate_limited_frames = 0;
-  uint64_t cpu_drop_frames = 0;
   uint64_t gpu_drop_frames = 0;
-  uint64_t published_frames = 0;
-  uint64_t queue_drop_frames = 0;
-  uint64_t last_sequence = 0;
-  double last_measurement_time = 0.0;
-  uint32_t queue_depth = 0;
 };
 
 struct StreamStats {

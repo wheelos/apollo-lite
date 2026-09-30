@@ -60,47 +60,6 @@ bool HasNvmmMemory(GstCaps* caps) {
 
 }  // namespace
 
-PublishedFrame ExtractCpuFrame(GstSample* sample) {
-  PublishedFrame frame;
-  if (sample == nullptr) {
-    return frame;
-  }
-
-  GstBuffer* buffer = gst_sample_get_buffer(sample);
-  GstCaps* caps = gst_sample_get_caps(sample);
-  if (buffer == nullptr || caps == nullptr) {
-    return frame;
-  }
-
-  int width = 0;
-  int height = 0;
-  std::string format;
-  if (!ReadFrameShape(caps, &width, &height, &format)) {
-    return frame;
-  }
-
-  GstMapInfo map_info;
-  if (!gst_buffer_map(buffer, &map_info, GST_MAP_READ)) {
-    return frame;
-  }
-  if (map_info.size == 0 || map_info.size % static_cast<size_t>(height) != 0) {
-    gst_buffer_unmap(buffer, &map_info);
-    return frame;
-  }
-
-  frame.width = static_cast<uint32_t>(width);
-  frame.height = static_cast<uint32_t>(height);
-  frame.step =
-      static_cast<uint32_t>(map_info.size / static_cast<size_t>(height));
-  frame.measurement_time = MeasurementTimeFromBuffer(buffer);
-  frame.encoding = format == "BGR" ? "bgr8" : "rgb8";
-  frame.data.assign(reinterpret_cast<const char*>(map_info.data),
-                    map_info.size);
-
-  gst_buffer_unmap(buffer, &map_info);
-  return frame;
-}
-
 GpuFrame ExtractNvmmFrame(GstSample* sample, const std::string& source_name) {
   GpuFrame frame;
   frame.source_name = source_name;

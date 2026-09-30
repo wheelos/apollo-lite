@@ -1,11 +1,11 @@
 sources {
-  name: "video2"
-  uri: "/dev/video2"
+  name: "video0_mmap"
+  uri: "/dev/video0"
   width: 1920
   height: 1080
   fps: 30.0
   fourcc: "YUYV"
-  capture_backend: "NVV4L2_DMABUF"
+  capture_backend: "V4L2_MMAP"
 }
 
 publish_gpu_channel: true

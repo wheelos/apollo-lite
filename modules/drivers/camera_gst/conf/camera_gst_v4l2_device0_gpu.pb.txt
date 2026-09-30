@@ -4,8 +4,8 @@ sources {
   width: 1920
   height: 1080
   fps: 30.0
-  fourcc: "YUYV"
-  capture_backend: "V4L2_DMABUF"
+  fourcc: "UYVY"
+  capture_backend: "NVV4L2_DMABUF"
 }
 
 publish_gpu_channel: true
