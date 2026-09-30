@@ -29,7 +29,7 @@
 
     * RNN评估器：用RNN模型计算概率
 
-    * 预测规划交互评估器：可以参考 [预测规划交互评估器简介](https://github.com/ApolloAuto/apollo/blob/master/docs/technical_documents/jointly_prediction_planning_evaluator_cn.md).
+    * HiVT TensorRT 场景评估器：对普通 caution 车辆进行有界批量推理。
 
 * 预测器
 
@@ -41,3 +41,4 @@
     * 移动序列：障碍物沿其运动模式沿车道移动
     * 自由运动：障碍物自由移动
     * 区域运动：障碍物在可能的区域中移动
+    * 交互预测器：基于时间对齐的 ADC 规划轨迹，生成并评分有限的车道/纵向运动候选；输入无效时由配置的运动学预测器处理。

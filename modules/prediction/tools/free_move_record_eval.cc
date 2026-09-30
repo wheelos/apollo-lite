@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS. All Rights Reserved.
+// Copyright 2026 WheelOS All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,12 +32,13 @@
 #include <utility>
 #include <vector>
 
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
+
 #include "cyber/cyber.h"
 #include "cyber/record/record_message.h"
 #include "cyber/record/record_reader.h"
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/math/math_utils.h"
-#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/prediction/container/obstacles/obstacles_container.h"
 #include "modules/prediction/predictor/free_move/free_move_predictor.h"
@@ -53,7 +54,6 @@ using apollo::perception::PerceptionObstacle;
 using apollo::perception::PerceptionObstacles;
 
 constexpr char kPerceptionTopic[] = "/apollo/perception/obstacles";
-constexpr char kDefaultRecordPath[] = "/mnt/synology/apollo/demo_3.5.record";
 constexpr double kHistoryWindowSec = 1.0;
 constexpr double kMinReliableHistorySec = 0.2;
 constexpr double kStraightYawRateThreshold = 0.05;
@@ -237,8 +237,7 @@ double ComputeHistoryTime(const std::vector<const TrackPoint*>& history) {
   if (history.size() < 2) {
     return 0.0;
   }
-  return std::max(0.0,
-                  history.back()->timestamp - history.front()->timestamp);
+  return std::max(0.0, history.back()->timestamp - history.front()->timestamp);
 }
 
 MotionMode ClassifyMotionMode(const double abs_yaw_rate) {
@@ -265,11 +264,10 @@ std::string MotionModeName(const MotionMode mode) {
 
 bool InterpolateTrackPosition(const std::vector<TrackPoint>& track,
                               const double target_time, double* x, double* y) {
-  auto it = std::lower_bound(
-      track.begin(), track.end(), target_time,
-      [](const TrackPoint& point, const double time) {
-        return point.timestamp < time;
-      });
+  auto it = std::lower_bound(track.begin(), track.end(), target_time,
+                             [](const TrackPoint& point, const double time) {
+                               return point.timestamp < time;
+                             });
   if (it != track.end() && std::fabs(it->timestamp - target_time) <= 1e-6) {
     *x = it->x;
     *y = it->y;
@@ -422,8 +420,10 @@ std::vector<PredPoint> BuildLegacyTrajectory(const TrackPoint& current,
   const double y = current.y;
   const double vx = current.vx;
   const double vy = current.vy;
-  const double ax = common::math::Clamp(current.ax, kLegacyMinAcc, kLegacyMaxAcc);
-  const double ay = common::math::Clamp(current.ay, kLegacyMinAcc, kLegacyMaxAcc);
+  const double ax =
+      common::math::Clamp(current.ax, kLegacyMinAcc, kLegacyMaxAcc);
+  const double ay =
+      common::math::Clamp(current.ay, kLegacyMinAcc, kLegacyMaxAcc);
 
   const size_t num_points = static_cast<size_t>(total_time / period);
   std::vector<PredPoint> points;
@@ -437,10 +437,9 @@ std::vector<PredPoint> BuildLegacyTrajectory(const TrackPoint& current,
     const double py = y + vy * t + 0.5 * ay * t * t;
     const double speed_x = vx + ax * t;
     const double speed_y = vy + ay * t;
-    const double theta =
-        std::hypot(speed_x, speed_y) > 1e-3
-            ? std::atan2(speed_y, speed_x)
-            : points.back().theta;
+    const double theta = std::hypot(speed_x, speed_y) > 1e-3
+                             ? std::atan2(speed_y, speed_x)
+                             : points.back().theta;
     points.push_back({t, px, py, theta});
   }
   return points;
@@ -494,28 +493,27 @@ bool ComputeSampleMetrics(const std::vector<PredPoint>& trajectory,
   }
 
   metrics->ade_1s =
-      (PointDistance(predicted_positions[0].first, predicted_positions[0].second,
-                     actual_positions[0].first, actual_positions[0].second) +
-       PointDistance(predicted_positions[1].first, predicted_positions[1].second,
-                     actual_positions[1].first, actual_positions[1].second)) /
+      (PointDistance(predicted_positions[0].first,
+                     predicted_positions[0].second, actual_positions[0].first,
+                     actual_positions[0].second) +
+       PointDistance(predicted_positions[1].first,
+                     predicted_positions[1].second, actual_positions[1].first,
+                     actual_positions[1].second)) /
       2.0;
-  metrics->fde_1s = PointDistance(predicted_positions[1].first,
-                                  predicted_positions[1].second,
-                                  actual_positions[1].first,
-                                  actual_positions[1].second);
+  metrics->fde_1s =
+      PointDistance(predicted_positions[1].first, predicted_positions[1].second,
+                    actual_positions[1].first, actual_positions[1].second);
 
   double ade_2s_sum = 0.0;
   for (size_t i = 0; i < horizons.size(); ++i) {
-    ade_2s_sum += PointDistance(predicted_positions[i].first,
-                                predicted_positions[i].second,
-                                actual_positions[i].first,
-                                actual_positions[i].second);
+    ade_2s_sum += PointDistance(
+        predicted_positions[i].first, predicted_positions[i].second,
+        actual_positions[i].first, actual_positions[i].second);
   }
   metrics->ade_2s = ade_2s_sum / static_cast<double>(horizons.size());
-  metrics->fde_2s = PointDistance(predicted_positions.back().first,
-                                  predicted_positions.back().second,
-                                  actual_positions.back().first,
-                                  actual_positions.back().second);
+  metrics->fde_2s = PointDistance(
+      predicted_positions.back().first, predicted_positions.back().second,
+      actual_positions.back().first, actual_positions.back().second);
 
   metrics->lateral_std = ComputeLateralStd(trajectory);
   metrics->heading_std = ComputeHeadingStd(trajectory);
@@ -624,8 +622,10 @@ void LoadRecord(const std::string& record_path,
       point.y = obstacle.position().y();
       point.vx = obstacle.velocity().x();
       point.vy = obstacle.velocity().y();
-      point.ax = obstacle.has_acceleration() ? obstacle.acceleration().x() : 0.0;
-      point.ay = obstacle.has_acceleration() ? obstacle.acceleration().y() : 0.0;
+      point.ax =
+          obstacle.has_acceleration() ? obstacle.acceleration().x() : 0.0;
+      point.ay =
+          obstacle.has_acceleration() ? obstacle.acceleration().y() : 0.0;
       point.theta = obstacle.theta();
       point.obstacle_type = obstacle.type();
 
@@ -641,9 +641,8 @@ void LoadRecord(const std::string& record_path,
 }
 
 void PrintSummaryLine(const std::string& cohort_name,
-                      const MetricSummary& legacy,
-                      const MetricSummary& current, const size_t unique_obstacles,
-                      const bool gate_pass) {
+                      const MetricSummary& legacy, const MetricSummary& current,
+                      const size_t unique_obstacles, const bool gate_pass) {
   std::cout << cohort_name << " samples=" << current.samples
             << " unique_obstacles=" << unique_obstacles
             << " legacy_ade_1s=" << legacy.ade_1s_mean
@@ -663,8 +662,9 @@ void PrintSummaryLine(const std::string& cohort_name,
 
 void PrintUsage(const char* program_name) {
   std::cout
-      << "Usage: " << program_name << " [--record=/path/to/file.record]\n"
-      << "Purpose: evaluate the production free-move predictor offline against\n"
+      << "Usage: " << program_name << " --record=/path/to/file.record\n"
+      << "Purpose: evaluate the production free-move predictor offline "
+         "against\n"
       << "record-derived perception tracks and compare it with the legacy CA\n"
       << "baseline for release validation.\n"
       << "Outputs: aggregate, linear, gentle-turn, sharp-turn, and runtime\n"
@@ -677,13 +677,26 @@ void PrintUsage(const char* program_name) {
 }  // namespace apollo
 
 int main(int argc, char** argv) {
+  std::string record_path;
   for (int i = 1; i < argc; ++i) {
     const std::string arg(argv[i]);
     if (arg == "--help" || arg == "-h") {
       apollo::prediction::free_move_record_eval::PrintUsage(argv[0]);
       return 0;
+    } else if (arg.rfind("--record=", 0) == 0) {
+      record_path = arg.substr(std::string("--record=").size());
+    } else {
+      std::cerr << "Unknown argument: " << arg << std::endl;
+      apollo::prediction::free_move_record_eval::PrintUsage(argv[0]);
+      return 1;
     }
   }
+  if (record_path.empty()) {
+    std::cerr << "Missing required --record argument." << std::endl;
+    apollo::prediction::free_move_record_eval::PrintUsage(argv[0]);
+    return 1;
+  }
+
   apollo::cyber::Init(argv[0]);
   FLAGS_map_dir = "modules/prediction/testdata";
   FLAGS_base_map_filename = "kml_map.bin";
@@ -694,19 +707,6 @@ int main(int argc, char** argv) {
       apollo::prediction::free_move_record_eval::kPeriodSec;
   CHECK(apollo::hdmap::HDMapUtil::ReloadMaps());
 
-  std::string record_path =
-      apollo::prediction::free_move_record_eval::kDefaultRecordPath;
-  for (int i = 1; i < argc; ++i) {
-    const std::string arg(argv[i]);
-    if (arg.rfind("--record=", 0) == 0) {
-      record_path = arg.substr(std::string("--record=").size());
-    } else {
-      std::cerr << "Unknown argument: " << arg << std::endl;
-      apollo::prediction::free_move_record_eval::PrintUsage(argv[0]);
-      return 1;
-    }
-  }
-
   std::vector<apollo::perception::PerceptionObstacles> frames;
   apollo::prediction::free_move_record_eval::TrackMap tracks;
   apollo::prediction::free_move_record_eval::LoadRecord(record_path, &frames,
@@ -715,11 +715,13 @@ int main(int argc, char** argv) {
   apollo::prediction::FreeMovePredictor predictor;
   apollo::prediction::ObstaclesContainer container;
   std::unordered_map<int, double> last_sample_timestamp;
-  std::unordered_map<apollo::prediction::free_move_record_eval::MotionMode,
-                     std::vector<apollo::prediction::free_move_record_eval::SampleMetrics>>
+  std::unordered_map<
+      apollo::prediction::free_move_record_eval::MotionMode,
+      std::vector<apollo::prediction::free_move_record_eval::SampleMetrics>>
       legacy_metrics;
-  std::unordered_map<apollo::prediction::free_move_record_eval::MotionMode,
-                     std::vector<apollo::prediction::free_move_record_eval::SampleMetrics>>
+  std::unordered_map<
+      apollo::prediction::free_move_record_eval::MotionMode,
+      std::vector<apollo::prediction::free_move_record_eval::SampleMetrics>>
       current_metrics;
   std::unordered_map<apollo::prediction::free_move_record_eval::MotionMode,
                      std::set<int>>
@@ -756,19 +758,21 @@ int main(int argc, char** argv) {
       if (track_it == tracks.end()) {
         continue;
       }
-      const auto history = apollo::prediction::free_move_record_eval::
-          CollectRecentHistory(track_it->second, timestamp);
+      const auto history =
+          apollo::prediction::free_move_record_eval::CollectRecentHistory(
+              track_it->second, timestamp);
       if (history.size() < 3 ||
           apollo::prediction::free_move_record_eval::ComputeHistoryTime(
-              history) <
-              apollo::prediction::free_move_record_eval::kMinReliableHistorySec) {
+              history) < apollo::prediction::free_move_record_eval::
+                             kMinReliableHistorySec) {
         continue;
       }
       double future_x = 0.0;
       double future_y = 0.0;
       if (!apollo::prediction::free_move_record_eval::InterpolateTrackPosition(
               track_it->second,
-              timestamp + apollo::prediction::free_move_record_eval::kHorizonSec,
+              timestamp +
+                  apollo::prediction::free_move_record_eval::kHorizonSec,
               &future_x, &future_y)) {
         continue;
       }
@@ -844,7 +848,8 @@ int main(int argc, char** argv) {
           all_current_metrics);
   const bool all_gate_pass =
       all_current_summary.samples >= 80 && all_obstacles.size() >= 8 &&
-      all_current_summary.ade_1s_mean <= all_legacy_summary.ade_1s_mean * 1.50 &&
+      all_current_summary.ade_1s_mean <=
+          all_legacy_summary.ade_1s_mean * 1.50 &&
       all_current_summary.fde_2s_mean <= all_legacy_summary.fde_2s_mean * 1.60;
   apollo::prediction::free_move_record_eval::PrintSummaryLine(
       "all_dynamic", all_legacy_summary, all_current_summary,
@@ -885,9 +890,8 @@ int main(int argc, char** argv) {
   std::cout << "predict_throughput_hz="
             << (predict_latency_ms.empty()
                     ? 0.0
-                    : 1000.0 /
-                          apollo::prediction::free_move_record_eval::Mean(
-                              predict_latency_ms))
+                    : 1000.0 / apollo::prediction::free_move_record_eval::Mean(
+                                   predict_latency_ms))
             << std::endl;
   return 0;
 }

@@ -53,6 +53,8 @@ class ExtrapolationPredictor : public SequencePredictor {
                ObstaclesContainer* obstacles_container) override;
 
  private:
+  friend class ExtrapolationPredictorTest;
+
   struct LaneSearchResult {
     bool found = false;
     std::string lane_id = "";

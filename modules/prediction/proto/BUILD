@@ -45,23 +45,6 @@ py_proto_library(
 )
 
 cc_proto_library(
-    name = "vector_net_cc_proto",
-    deps = [
-        ":vector_net_proto",
-    ],
-)
-
-proto_library(
-    name = "vector_net_proto",
-    srcs = ["vector_net.proto"],
-)
-
-py_proto_library(
-    name = "vector_net_py_pb2",
-    deps = [":vector_net_proto"],
-)
-
-cc_proto_library(
     name = "fnn_model_base_cc_proto",
     deps = [
         ":fnn_model_base_proto",

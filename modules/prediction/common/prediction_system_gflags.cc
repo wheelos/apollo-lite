@@ -41,6 +41,8 @@ DEFINE_double(
     prediction_test_duration, std::numeric_limits<double>::infinity(),
     "The runtime duration in test mode (in seconds). Negative value will not "
     "restrict the runtime duration.");
+DEFINE_bool(prediction_enable_profiling, false,
+            "Emit per-frame Prediction pipeline timings");
 
 DEFINE_string(
     prediction_offline_bags, "",
@@ -61,6 +63,11 @@ DEFINE_int32(max_caution_thread_num, 2,
 DEFINE_bool(enable_async_draw_base_image, true,
             "If enable async to draw base image");
 DEFINE_bool(use_cuda, true, "If use cuda for torch.");
+DEFINE_string(hivt_tensorrt_engine,
+              "/apollo/modules/prediction/data/hivt64.engine",
+              "HiVT scene-level TensorRT engine file");
+DEFINE_int32(hivt_tensorrt_device_id, 0,
+             "CUDA device used by HiVT TensorRT inference");
 
 // Bag replay timestamp gap
 DEFINE_double(replay_timestamp_gap, 10.0,
@@ -84,18 +91,3 @@ DEFINE_string(evaluator_submodule_name, "evaluator_submodule",
 DEFINE_string(perception_obstacles_topic_name,
               "/apollo/prediction/perception_obstacles",
               "Internal topic of perception obstacles");
-
-// VectorNet
-DEFINE_string(prediction_target_file, "/apollo/data/train/test.pb.txt",
-              "VectorNet target pb file name");
-DEFINE_string(world_coordinate_file, "/apollo/data/world_coord.bin",
-              "VectorNet world coordinate file name");
-DEFINE_string(prediction_target_dir, "/apollo/data/train/",
-              "VectorNet target dir");
-DEFINE_double(obstacle_x, 0.0, "obstacle position x");
-DEFINE_double(obstacle_y, 0.0, "obstacle position y");
-DEFINE_double(obstacle_phi, 0.0, "obstacle heading phi");
-DEFINE_double(road_distance, 100.0,
-              "road distance within which the points are got");
-DEFINE_double(point_distance, 5.0,
-              "sampling distance of two points");

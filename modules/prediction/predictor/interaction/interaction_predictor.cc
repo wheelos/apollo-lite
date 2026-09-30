@@ -17,12 +17,15 @@
 #include "modules/prediction/predictor/interaction/interaction_predictor.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <string>
+#include <utility>
 
-#include "modules/common/adapters/proto/adapter_config.pb.h"
-
+#include "modules/common/configs/vehicle_config_helper.h"
+#include "modules/common/math/box2d.h"
+#include "modules/common/math/linear_interpolation.h"
 #include "modules/prediction/common/feature_output.h"
 #include "modules/prediction/common/prediction_constants.h"
 #include "modules/prediction/common/prediction_gflags.h"
@@ -36,8 +39,31 @@ namespace prediction {
 
 using apollo::common::PathPoint;
 using apollo::common::TrajectoryPoint;
+using apollo::common::VehicleConfigHelper;
+using apollo::common::math::Box2d;
+using apollo::common::math::InterpolateUsingLinearApproximation;
+using apollo::common::math::Vec2d;
 using apollo::hdmap::LaneInfo;
 using apollo::prediction::math_util::GetSByConstantAcceleration;
+
+namespace {
+
+constexpr int kMaxLaneCandidates = 4;
+constexpr double kSoftClearanceMeters = 3.0;
+constexpr double kFootprintUncertaintyMargin = 0.25;
+constexpr double kTtcThresholdSeconds = 3.0;
+constexpr double kHeadingAlignmentThreshold = 0.35;
+constexpr double kConflictGapThresholdSeconds = 3.0;
+constexpr double kMinimumAdcScoringHorizonSeconds = 3.0;
+const std::vector<double> kCandidateAccelerations = {0.0, -0.75, -1.5, -2.5};
+
+struct InteractionCandidate {
+  Trajectory trajectory;
+  double score = -std::numeric_limits<double>::infinity();
+  double probability = 0.0;
+};
+
+}  // namespace
 
 InteractionPredictor::InteractionPredictor() {
   predictor_type_ = ObstacleConf::INTERACTION_PREDICTOR;
@@ -50,8 +76,15 @@ bool InteractionPredictor::Predict(
   CHECK_NOTNULL(obstacle);
   CHECK_GT(obstacle->history_size(), 0U);
 
-  BuildADCTrajectory(adc_trajectory_container,
-                     FLAGS_collision_cost_time_resolution);
+  std::vector<TrajectoryPoint> adc_trajectory;
+  if (!BuildADCTrajectory(
+          adc_trajectory_container, obstacle->latest_feature().timestamp(),
+          FLAGS_prediction_trajectory_time_resolution,
+          FLAGS_prediction_trajectory_time_length, &adc_trajectory)) {
+    AERROR << "Interactive prediction has no valid time-aligned ADC plan for "
+           << obstacle->id();
+    return false;
+  }
 
   obstacle->SetPredictorType(predictor_type_);
 
@@ -63,106 +96,220 @@ bool InteractionPredictor::Predict(
   }
   auto* lane_graph = feature_ptr->mutable_lane()->mutable_lane_graph();
 
-  int num_lane_sequence = lane_graph->lane_sequence_size();
-  std::vector<double> best_lon_accelerations(num_lane_sequence, 0.0);
-  std::vector<double> candidate_lon_accelerations = {0.0,  -0.5, -1.0, -1.5,
-                                                     -2.0, -2.5, -3.0};
-  double smallest_cost = std::numeric_limits<double>::max();
-  std::vector<double> posteriors(num_lane_sequence, 0.0);
-  double posterior_sum = 0.0;
-  for (int i = 0; i < num_lane_sequence; ++i) {
-    const LaneSequence& lane_sequence = lane_graph->lane_sequence(i);
-    for (const double lon_acceleration : candidate_lon_accelerations) {
-      double cost = ComputeTrajectoryCost(
-          *obstacle, lane_sequence, lon_acceleration, adc_trajectory_container);
-      if (cost < smallest_cost) {
-        smallest_cost = cost;
-        best_lon_accelerations[i] = lon_acceleration;
+  std::vector<int> lane_indices;
+  lane_indices.reserve(lane_graph->lane_sequence_size());
+  std::vector<double> lane_priors(lane_graph->lane_sequence_size(), 0.0);
+  bool has_lane_priors = false;
+  for (int i = 0; i < lane_graph->lane_sequence_size(); ++i) {
+    const auto& sequence = lane_graph->lane_sequence(i);
+    if (sequence.lane_segment_size() > 0) {
+      lane_indices.push_back(i);
+      if (std::isfinite(sequence.probability()) &&
+          sequence.probability() > 0.0) {
+        lane_priors[i] = sequence.probability();
+        has_lane_priors = true;
       }
     }
-
-    double likelihood = ComputeLikelihood(smallest_cost);
-    double prior = lane_sequence.probability();
-    double posterior = ComputePosterior(prior, likelihood);
-    posteriors[i] = posterior;
-    posterior_sum += posterior;
   }
-
-  int best_seq_idx = 0;
-  double largest_posterior = 0.0;
-  CHECK_EQ(posteriors.size(),
-           static_cast<size_t>(lane_graph->lane_sequence_size()));
-  for (int i = 0; i < num_lane_sequence; ++i) {
-    double normalized_posterior =
-        posteriors[i] / (posterior_sum + FLAGS_double_precision);
-    lane_graph->mutable_lane_sequence(i)->set_probability(normalized_posterior);
-    if (normalized_posterior > largest_posterior) {
-      largest_posterior = normalized_posterior;
-      best_seq_idx = i;
+  if (lane_indices.empty()) {
+    AERROR << "Obstacle [" << obstacle->id() << "] has no lane candidates";
+    return false;
+  }
+  if (!has_lane_priors) {
+    for (const int lane_index : lane_indices) {
+      lane_priors[lane_index] = 1.0;
     }
   }
+  std::stable_sort(lane_indices.begin(), lane_indices.end(),
+                   [&lane_priors](const int left, const int right) {
+                     return lane_priors[left] > lane_priors[right];
+                   });
+  std::string current_lane_id;
+  if (feature_ptr->has_lane() && feature_ptr->lane().has_lane_feature()) {
+    current_lane_id = feature_ptr->lane().lane_feature().lane_id();
+  }
+  std::vector<int> selected_lane_indices;
+  std::vector<LaneChangeType> selected_maneuvers;
+  for (const int lane_index : lane_indices) {
+    const auto maneuver = GetLaneChangeType(
+        current_lane_id, lane_graph->lane_sequence(lane_index));
+    if (maneuver != LaneChangeType::INVALID &&
+        std::find(selected_maneuvers.begin(), selected_maneuvers.end(),
+                  maneuver) == selected_maneuvers.end()) {
+      selected_lane_indices.push_back(lane_index);
+      selected_maneuvers.push_back(maneuver);
+      if (selected_lane_indices.size() == kMaxLaneCandidates) {
+        break;
+      }
+    }
+  }
+  for (const int lane_index : lane_indices) {
+    if (selected_lane_indices.size() == kMaxLaneCandidates) {
+      break;
+    }
+    if (std::find(selected_lane_indices.begin(), selected_lane_indices.end(),
+                  lane_index) == selected_lane_indices.end()) {
+      selected_lane_indices.push_back(lane_index);
+    }
+  }
+  lane_indices.swap(selected_lane_indices);
 
-  double probability_threshold = 0.5;
-  if (largest_posterior > probability_threshold) {
-    for (int i = 0; i < num_lane_sequence; ++i) {
-      const LaneSequence& lane_sequence = lane_graph->lane_sequence(i);
-      if (lane_sequence.probability() < probability_threshold) {
+  std::vector<InteractionCandidate> candidates;
+  candidates.reserve(lane_indices.size() * kCandidateAccelerations.size());
+  for (const int lane_index : lane_indices) {
+    const LaneSequence& lane_sequence = lane_graph->lane_sequence(lane_index);
+    std::vector<double> accelerations = kCandidateAccelerations;
+    if (lane_sequence.has_stop_sign()) {
+      double stop_acceleration = 0.0;
+      const double stop_distance =
+          lane_sequence.stop_sign().lane_sequence_s() - lane_sequence.lane_s();
+      if (SupposedToStop(*feature_ptr, stop_distance, &stop_acceleration) &&
+          std::find_if(accelerations.begin(), accelerations.end(),
+                       [stop_acceleration](const double acceleration) {
+                         return std::abs(acceleration - stop_acceleration) <
+                                1e-3;
+                       }) == accelerations.end()) {
+        accelerations.push_back(stop_acceleration);
+      }
+    }
+    const double raw_lane_prior = lane_priors[lane_index];
+    if (raw_lane_prior <= 0.0) {
+      continue;
+    }
+    for (const double acceleration : accelerations) {
+      std::vector<TrajectoryPoint> points;
+      if (!DrawTrajectory(*obstacle, lane_sequence, acceleration,
+                          FLAGS_prediction_trajectory_time_length,
+                          FLAGS_prediction_trajectory_time_resolution,
+                          &points)) {
         continue;
       }
-      double best_lon_acceleration = best_lon_accelerations[i];
-      if (lane_sequence.has_stop_sign()) {
-        double stop_acceleration = 0.0;
-        double stop_distance = lane_sequence.stop_sign().lane_sequence_s() -
-                               lane_sequence.lane_s();
-        SupposedToStop(*feature_ptr, stop_distance, &stop_acceleration);
-        best_lon_acceleration =
-            std::min(best_lon_acceleration, stop_acceleration);
+      InteractionCandidate candidate;
+      candidate.trajectory = GenerateTrajectory(points);
+      const double prior =
+          raw_lane_prior * std::exp(-0.1 * acceleration * acceleration);
+      const double cost =
+          ComputeTrajectoryCost(*obstacle, lane_sequence, acceleration,
+                                candidate.trajectory, adc_trajectory);
+      if (prior > 0.0 && std::isfinite(prior) && std::isfinite(cost)) {
+        candidate.score =
+            std::log(prior) - FLAGS_likelihood_exp_coefficient * cost;
+        if (std::isfinite(candidate.score)) {
+          candidates.emplace_back(std::move(candidate));
+        }
       }
-      std::vector<TrajectoryPoint> points;
-      DrawTrajectory(*obstacle, lane_sequence, best_lon_acceleration,
-                     FLAGS_prediction_trajectory_time_length,
-                     FLAGS_prediction_trajectory_time_resolution, &points);
-      Trajectory trajectory = GenerateTrajectory(points);
-      obstacle->mutable_latest_feature()->add_predicted_trajectory()->CopyFrom(
-          trajectory);
     }
-  } else {
-    const LaneSequence& sequence = lane_graph->lane_sequence(best_seq_idx);
-    double best_lon_acceleration = best_lon_accelerations[best_seq_idx];
-    if (sequence.has_stop_sign()) {
-      double stop_distance =
-          sequence.stop_sign().lane_sequence_s() - sequence.lane_s();
-      SupposedToStop(*feature_ptr, stop_distance, &best_lon_acceleration);
-    }
-    std::vector<TrajectoryPoint> points;
-    DrawTrajectory(*obstacle, lane_graph->lane_sequence(best_seq_idx),
-                   best_lon_acceleration,
-                   FLAGS_prediction_trajectory_time_length,
-                   FLAGS_prediction_trajectory_time_resolution, &points);
-    Trajectory trajectory = GenerateTrajectory(points);
-    obstacle->mutable_latest_feature()->add_predicted_trajectory()->CopyFrom(
-        trajectory);
+  }
+  if (candidates.empty()) {
+    AERROR << "No feasible interaction candidates for obstacle "
+           << obstacle->id();
+    return false;
+  }
+
+  const double max_score =
+      std::max_element(candidates.begin(), candidates.end(),
+                       [](const auto& left, const auto& right) {
+                         return left.score < right.score;
+                       })
+          ->score;
+  double probability_sum = 0.0;
+  for (auto& candidate : candidates) {
+    candidate.probability = std::exp(candidate.score - max_score);
+    probability_sum += candidate.probability;
+  }
+  if (!std::isfinite(probability_sum) || probability_sum <= 0.0) {
+    AERROR << "Invalid interaction candidate posterior for obstacle "
+           << obstacle->id();
+    return false;
+  }
+  for (const auto& candidate : candidates) {
+    auto* trajectory = feature_ptr->add_predicted_trajectory();
+    trajectory->CopyFrom(candidate.trajectory);
+    trajectory->set_probability(candidate.probability / probability_sum);
   }
   return true;
 }
 
 void InteractionPredictor::Clear() { Predictor::Clear(); }
 
-void InteractionPredictor::BuildADCTrajectory(
+bool InteractionPredictor::BuildADCTrajectory(
     const ADCTrajectoryContainer* adc_trajectory_container,
-    const double time_resolution) {
-  if (adc_trajectory_container == nullptr) {
-    AERROR << "Null adc trajectory container";
-    return;
+    const double obstacle_timestamp, const double time_resolution,
+    const double prediction_horizon,
+    std::vector<TrajectoryPoint>* adc_trajectory) {
+  CHECK_NOTNULL(adc_trajectory);
+  adc_trajectory->clear();
+  if (adc_trajectory_container == nullptr ||
+      !std::isfinite(obstacle_timestamp) || !std::isfinite(time_resolution) ||
+      !std::isfinite(prediction_horizon) || time_resolution <= 0.0 ||
+      prediction_horizon <= 0.0) {
+    return false;
   }
-  const auto& adc_trajectory = adc_trajectory_container->adc_trajectory();
-  double curr_timestamp = 0.0;
-  for (const TrajectoryPoint& point : adc_trajectory.trajectory_point()) {
-    if (point.relative_time() + FLAGS_double_precision > curr_timestamp) {
-      adc_trajectory_.push_back(point);
-      curr_timestamp += time_resolution;
+  const auto& adc_trajectory_msg = adc_trajectory_container->adc_trajectory();
+  const auto& points = adc_trajectory_msg.trajectory_point();
+  if (!adc_trajectory_msg.has_header() || points.size() < 2) {
+    return false;
+  }
+  for (int i = 0; i < points.size(); ++i) {
+    if (!std::isfinite(points[i].relative_time()) ||
+        !points[i].has_path_point() ||
+        !std::isfinite(points[i].path_point().x()) ||
+        !std::isfinite(points[i].path_point().y()) ||
+        !std::isfinite(points[i].path_point().theta()) ||
+        !std::isfinite(points[i].v()) ||
+        (i > 0 && points[i].relative_time() <= points[i - 1].relative_time())) {
+      return false;
     }
   }
+  const double plan_time_offset =
+      obstacle_timestamp - adc_trajectory_msg.header().timestamp_sec();
+  if (!std::isfinite(plan_time_offset) ||
+      plan_time_offset < points[0].relative_time() ||
+      plan_time_offset > points.rbegin()->relative_time()) {
+    return false;
+  }
+  const double available_horizon =
+      points.rbegin()->relative_time() - plan_time_offset;
+  const double required_horizon =
+      std::min(prediction_horizon, kMinimumAdcScoringHorizonSeconds);
+  if (available_horizon + 1e-6 < required_horizon) {
+    return false;
+  }
+  const int full_sample_count =
+      static_cast<int>(std::floor(prediction_horizon / time_resolution));
+  const int available_sample_count =
+      static_cast<int>(
+          std::floor((available_horizon + 1e-6) / time_resolution)) +
+      1;
+  const int sample_count = std::min(full_sample_count, available_sample_count);
+  if (sample_count <= 0) {
+    return false;
+  }
+  adc_trajectory->reserve(sample_count);
+  for (int i = 0; i < sample_count; ++i) {
+    const double prediction_time = i * time_resolution;
+    const double plan_time = plan_time_offset + prediction_time;
+    auto upper =
+        std::lower_bound(points.begin(), points.end(), plan_time,
+                         [](const TrajectoryPoint& point, const double time) {
+                           return point.relative_time() < time;
+                         });
+    if (upper == points.end()) {
+      adc_trajectory->clear();
+      return false;
+    }
+    TrajectoryPoint sample;
+    if (upper == points.begin() ||
+        std::abs(upper->relative_time() - plan_time) < 1e-6) {
+      sample = *upper;
+    } else {
+      sample =
+          InterpolateUsingLinearApproximation(*(upper - 1), *upper, plan_time);
+    }
+    sample.set_relative_time(prediction_time);
+    adc_trajectory->emplace_back(std::move(sample));
+  }
+  return adc_trajectory->size() == static_cast<std::size_t>(sample_count);
 }
 
 bool InteractionPredictor::DrawTrajectory(
@@ -174,7 +321,15 @@ bool InteractionPredictor::DrawTrajectory(
   trajectory_points->clear();
   const Feature& feature = obstacle.latest_feature();
   if (!feature.has_position() || !feature.has_velocity() ||
-      !feature.position().has_x() || !feature.position().has_y()) {
+      !feature.position().has_x() || !feature.position().has_y() ||
+      !std::isfinite(feature.position().x()) ||
+      !std::isfinite(feature.position().y()) ||
+      !std::isfinite(feature.speed()) || feature.speed() < 0.0 ||
+      feature.speed() > FLAGS_vehicle_max_speed ||
+      lon_acceleration < FLAGS_vehicle_min_linear_acc ||
+      lon_acceleration > FLAGS_vehicle_max_linear_acc ||
+      lane_sequence.lane_segment_size() == 0 || period <= 0.0 ||
+      total_time <= 0.0) {
     AERROR << "Obstacle [" << obstacle.id()
            << " is missing position or velocity";
     return false;
@@ -187,6 +342,11 @@ bool InteractionPredictor::DrawTrajectory(
   std::string lane_id =
       lane_sequence.lane_segment(lane_segment_index).lane_id();
   std::shared_ptr<const LaneInfo> lane_info = PredictionMap::LaneById(lane_id);
+  if (lane_info == nullptr) {
+    AERROR << "Cannot find lane [" << lane_id << "] for obstacle "
+           << obstacle.id();
+    return false;
+  }
   double lane_s = 0.0;
   double lane_l = 0.0;
   if (!PredictionMap::GetProjection(position, lane_info, &lane_s, &lane_l)) {
@@ -223,26 +383,31 @@ bool InteractionPredictor::DrawTrajectory(
 
     lane_s += std::max(
         0.0, speed * period + 0.5 * lon_acceleration * period * period);
-    speed += lon_acceleration * period;
+    speed = std::max(0.0, speed + lon_acceleration * period);
 
-    while (lane_s > PredictionMap::LaneById(lane_id)->total_length() &&
+    while (lane_s > lane_info->total_length() &&
            lane_segment_index + 1 < lane_sequence.lane_segment_size()) {
       lane_segment_index += 1;
-      lane_s = lane_s - PredictionMap::LaneById(lane_id)->total_length();
+      lane_s = lane_s - lane_info->total_length();
       lane_id = lane_sequence.lane_segment(lane_segment_index).lane_id();
+      lane_info = PredictionMap::LaneById(lane_id);
+      if (lane_info == nullptr) {
+        AERROR << "Cannot find lane [" << lane_id << "] for obstacle "
+               << obstacle.id();
+        return false;
+      }
     }
 
     lane_l *= approach_rate;
   }
 
-  return true;
+  return trajectory_points->size() == total_num;
 }
 
 double InteractionPredictor::ComputeTrajectoryCost(
     const Obstacle& obstacle, const LaneSequence& lane_sequence,
-    const double acceleration,
-    const ADCTrajectoryContainer* adc_trajectory_container) {
-  CHECK_GT(obstacle.history_size(), 0U);
+    const double acceleration, const Trajectory& candidate,
+    const std::vector<TrajectoryPoint>& adc_trajectory) {
   double speed = obstacle.latest_feature().speed();
   double total_cost = 0.0;
 
@@ -253,11 +418,10 @@ double InteractionPredictor::ComputeTrajectoryCost(
       CentripetalAccelerationCost(lane_sequence, speed, acceleration);
   total_cost += FLAGS_centripedal_acceleration_cost_weight * centri_acc_cost;
 
-  double collision_cost = 0.0;
-  if (LowerRightOfWayThanEgo(obstacle, lane_sequence,
-                             adc_trajectory_container)) {
-    collision_cost =
-        CollisionWithEgoVehicleCost(lane_sequence, speed, acceleration);
+  const double collision_cost =
+      CollisionWithEgoVehicleCost(obstacle, candidate, adc_trajectory);
+  if (!std::isfinite(collision_cost)) {
+    return collision_cost;
   }
   total_cost += FLAGS_collision_cost_weight * collision_cost;
 
@@ -267,7 +431,7 @@ double InteractionPredictor::ComputeTrajectoryCost(
                                        collision_cost};
     FeatureOutput::InsertDataForTuning(obstacle.latest_feature(), cost_values,
                                        "interaction", lane_sequence,
-                                       adc_trajectory_);
+                                       adc_trajectory);
   }
 
   return total_cost;
@@ -297,76 +461,191 @@ double InteractionPredictor::CentripetalAccelerationCost(
 }
 
 double InteractionPredictor::CollisionWithEgoVehicleCost(
-    const LaneSequence& lane_sequence, const double speed,
-    const double acceleration) {
-  CHECK_GT(lane_sequence.lane_segment_size(), 0);
-  double cost_abs_sum = 0.0;
-  double cost_sqr_sum = 0.0;
-  int num_lane_segment = lane_sequence.lane_segment_size();
-
-  double remained_s = lane_sequence.lane_segment(0).start_s();
-  int lane_seg_idx = 0;
-  double prev_s = 0.0;
-
-  for (const TrajectoryPoint& adc_trajectory_point : adc_trajectory_) {
-    double relative_time = adc_trajectory_point.relative_time();
-    double curr_s =
-        GetSByConstantAcceleration(speed, acceleration, relative_time);
-    double delta_s = curr_s - prev_s;
-    remained_s += delta_s;
-    while (lane_seg_idx < num_lane_segment) {
-      const LaneSegment& lane_segment =
-          lane_sequence.lane_segment(lane_seg_idx);
-      const std::string& lane_id = lane_segment.lane_id();
-      std::shared_ptr<const LaneInfo> lane_info_ptr =
-          PredictionMap::LaneById(lane_id);
-      if (lane_info_ptr == nullptr) {
-        AERROR << "Null lane info ptr found with lane ID [" << lane_id << "]";
-        continue;
+    const Obstacle& obstacle, const Trajectory& candidate,
+    const std::vector<TrajectoryPoint>& adc_trajectory) const {
+  const auto& vehicle_param = VehicleConfigHelper::GetConfig().vehicle_param();
+  const auto& feature = obstacle.latest_feature();
+  const int sample_count = std::min(candidate.trajectory_point_size(),
+                                    static_cast<int>(adc_trajectory.size()));
+  if (feature.length() <= 0.0 || feature.width() <= 0.0 ||
+      vehicle_param.length() <= 0.0 || vehicle_param.width() <= 0.0 ||
+      sample_count <= 0) {
+    return std::numeric_limits<double>::infinity();
+  }
+  double clearance_cost = 0.0;
+  double ttc_cost = 0.0;
+  for (int i = 0; i < sample_count; ++i) {
+    const auto& target_point = candidate.trajectory_point(i);
+    const auto& ego_point = adc_trajectory[i];
+    if (!target_point.has_path_point() || !std::isfinite(target_point.v()) ||
+        !std::isfinite(target_point.path_point().x()) ||
+        !std::isfinite(target_point.path_point().y()) ||
+        !std::isfinite(target_point.path_point().theta())) {
+      return std::numeric_limits<double>::infinity();
+    }
+    const auto& target_path = target_point.path_point();
+    const auto& ego_path = ego_point.path_point();
+    const Box2d target_box(Vec2d(target_path.x(), target_path.y()),
+                           target_path.theta(),
+                           feature.length() + 2.0 * kFootprintUncertaintyMargin,
+                           feature.width() + 2.0 * kFootprintUncertaintyMargin);
+    const Box2d ego_box(
+        Vec2d(ego_path.x(), ego_path.y()), ego_path.theta(),
+        vehicle_param.length() + 2.0 * kFootprintUncertaintyMargin,
+        vehicle_param.width() + 2.0 * kFootprintUncertaintyMargin);
+    if (target_box.HasOverlap(ego_box)) {
+      if (target_point.relative_time() > 0.2) {
+        return std::numeric_limits<double>::infinity();
       }
-      double lane_length = lane_info_ptr->total_length();
-      if (remained_s < lane_length) {
-        apollo::common::PointENU point_enu =
-            lane_info_ptr->GetSmoothPoint(remained_s);
-        double obs_x = point_enu.x();
-        double obs_y = point_enu.y();
-        double adc_x = adc_trajectory_point.path_point().x();
-        double adc_y = adc_trajectory_point.path_point().y();
-        double distance = std::hypot(adc_x - obs_x, adc_y - obs_y);
-        double cost = std::exp(-FLAGS_collision_cost_exp_coefficient *
-                               distance * distance);
-        cost_abs_sum += std::abs(cost);
-        cost_sqr_sum += cost * cost;
-        break;
-      } else {
-        ++lane_seg_idx;
-        remained_s -= lane_length;
+      clearance_cost += 1.0;
+    } else {
+      const double clearance = target_box.DistanceTo(ego_box);
+      if (clearance < kSoftClearanceMeters) {
+        const double normalized =
+            (kSoftClearanceMeters - clearance) / kSoftClearanceMeters;
+        clearance_cost += normalized * normalized;
       }
     }
-    // Out of the while loop
-    prev_s = curr_s;
+
+    const double heading_difference = std::abs(
+        std::remainder(target_path.theta() - ego_path.theta(), 2.0 * M_PI));
+    if (heading_difference < kHeadingAlignmentThreshold) {
+      const double dx = ego_path.x() - target_path.x();
+      const double dy = ego_path.y() - target_path.y();
+      const double longitudinal_gap = dx * std::cos(target_path.theta()) +
+                                      dy * std::sin(target_path.theta());
+      const double lateral_gap = -dx * std::sin(target_path.theta()) +
+                                 dy * std::cos(target_path.theta());
+      const double lateral_clearance =
+          (feature.width() + vehicle_param.width()) * 0.5 +
+          2.0 * kFootprintUncertaintyMargin;
+      const double relative_speed =
+          ego_point.v() * std::cos(heading_difference) - target_point.v();
+      const double longitudinal_sign = longitudinal_gap > 0.0 ? 1.0 : -1.0;
+      const double closing_speed = -relative_speed * longitudinal_sign;
+      const double bumper_gap =
+          std::max(0.0, std::abs(longitudinal_gap) -
+                            0.5 * (feature.length() + vehicle_param.length() +
+                                   4.0 * kFootprintUncertaintyMargin));
+      if (bumper_gap > 0.0 && std::abs(lateral_gap) < lateral_clearance &&
+          closing_speed > 0.1) {
+        const double ttc = bumper_gap / closing_speed;
+        if (ttc < kTtcThresholdSeconds) {
+          const double normalized =
+              (kTtcThresholdSeconds - ttc) / kTtcThresholdSeconds;
+          ttc_cost = std::max(ttc_cost, normalized * normalized);
+        }
+      }
+    }
   }
-  return cost_sqr_sum / (cost_abs_sum + FLAGS_double_precision);
+  const double conflict_cost =
+      ConflictZoneTimeGapCost(obstacle, candidate, adc_trajectory,
+                              vehicle_param.length(), vehicle_param.width());
+  return clearance_cost / sample_count + 2.0 * ttc_cost + 2.0 * conflict_cost;
 }
 
-bool InteractionPredictor::LowerRightOfWayThanEgo(
-    const Obstacle& obstacle, const LaneSequence& lane_sequence,
-    const ADCTrajectoryContainer* adc_trajectory_container) {
-  if (adc_trajectory_container != nullptr &&
-      adc_trajectory_container->IsProtected()) {
-    return true;
+double InteractionPredictor::ConflictZoneTimeGapCost(
+    const Obstacle& obstacle, const Trajectory& candidate,
+    const std::vector<TrajectoryPoint>& adc_trajectory, const double ego_length,
+    const double ego_width) const {
+  const auto& feature = obstacle.latest_feature();
+  const int sample_count = std::min(candidate.trajectory_point_size(),
+                                    static_cast<int>(adc_trajectory.size()));
+  if (sample_count < 4) {
+    return 0.0;
   }
-  return lane_sequence.right_of_way() < 0;
-}
 
-double InteractionPredictor::ComputeLikelihood(const double cost) {
-  double alpha = FLAGS_likelihood_exp_coefficient;
-  return std::exp(-alpha * cost);
-}
+  const int stride = std::max(1, sample_count / 40);
+  double min_distance_squared = std::numeric_limits<double>::infinity();
+  int target_conflict_index = -1;
+  int ego_conflict_index = -1;
+  for (int target_index = 2; target_index < sample_count;
+       target_index += stride) {
+    const auto& target_path =
+        candidate.trajectory_point(target_index).path_point();
+    for (int ego_index = 2; ego_index < sample_count; ego_index += stride) {
+      const auto& ego_path = adc_trajectory[ego_index].path_point();
+      const double heading_difference = std::abs(
+          std::remainder(target_path.theta() - ego_path.theta(), 2.0 * M_PI));
+      if (heading_difference < kHeadingAlignmentThreshold ||
+          std::abs(M_PI - heading_difference) < kHeadingAlignmentThreshold) {
+        continue;
+      }
+      const double dx = target_path.x() - ego_path.x();
+      const double dy = target_path.y() - ego_path.y();
+      const double distance_squared = dx * dx + dy * dy;
+      if (distance_squared < min_distance_squared) {
+        min_distance_squared = distance_squared;
+        target_conflict_index = target_index;
+        ego_conflict_index = ego_index;
+      }
+    }
+  }
+  if (target_conflict_index < 0 ||
+      min_distance_squared > kSoftClearanceMeters * kSoftClearanceMeters) {
+    return 0.0;
+  }
 
-double InteractionPredictor::ComputePosterior(const double prior,
-                                              const double likelihood) {
-  return prior * likelihood;
+  const auto& target_conflict_point =
+      candidate.trajectory_point(target_conflict_index).path_point();
+  const auto& ego_conflict_point =
+      adc_trajectory[ego_conflict_index].path_point();
+  const Vec2d conflict_center(
+      0.5 * (target_conflict_point.x() + ego_conflict_point.x()),
+      0.5 * (target_conflict_point.y() + ego_conflict_point.y()));
+
+  auto get_occupancy_interval = [&conflict_center](
+                                    const auto& point_at, const int count,
+                                    const double length, const double width,
+                                    double* enter_time, double* exit_time) {
+    bool occupied = false;
+    for (int i = 0; i < count; ++i) {
+      const auto& point = point_at(i);
+      const auto& path = point.path_point();
+      const Box2d box(Vec2d(path.x(), path.y()), path.theta(),
+                      length + 2.0 * kFootprintUncertaintyMargin,
+                      width + 2.0 * kFootprintUncertaintyMargin);
+      if (box.IsPointIn(conflict_center)) {
+        if (!occupied) {
+          *enter_time = point.relative_time();
+          occupied = true;
+        }
+        *exit_time = point.relative_time();
+      } else if (occupied) {
+        break;
+      }
+    }
+    return occupied;
+  };
+
+  double target_enter = 0.0;
+  double target_exit = 0.0;
+  double ego_enter = 0.0;
+  double ego_exit = 0.0;
+  if (!get_occupancy_interval(
+          [&candidate](const int i) -> const TrajectoryPoint& {
+            return candidate.trajectory_point(i);
+          },
+          candidate.trajectory_point_size(), feature.length(), feature.width(),
+          &target_enter, &target_exit) ||
+      !get_occupancy_interval(
+          [&adc_trajectory](const int i) -> const TrajectoryPoint& {
+            return adc_trajectory[i];
+          },
+          sample_count, ego_length, ego_width, &ego_enter, &ego_exit)) {
+    return 0.0;
+  }
+
+  const double time_gap =
+      target_exit < ego_enter
+          ? ego_enter - target_exit
+          : (ego_exit < target_enter ? target_enter - ego_exit : 0.0);
+  if (time_gap >= kConflictGapThresholdSeconds) {
+    return 0.0;
+  }
+  const double normalized =
+      (kConflictGapThresholdSeconds - time_gap) / kConflictGapThresholdSeconds;
+  return normalized * normalized;
 }
 
 }  // namespace prediction

@@ -16,6 +16,8 @@
 
 #include "modules/prediction/common/validation_checker.h"
 
+#include <limits>
+
 #include "gtest/gtest.h"
 
 #include "modules/prediction/common/prediction_gflags.h"
@@ -88,6 +90,22 @@ TEST_F(ValidationCheckerTest, invalid_trajectory_point) {
   trajectory_point.set_v(0.0);
   trajectory_point.set_a(0.0);
   trajectory_point.set_relative_time(0.0);
+  EXPECT_FALSE(ValidationChecker::ValidTrajectoryPoint(trajectory_point));
+}
+
+TEST_F(ValidationCheckerTest, rejects_infinite_trajectory_values) {
+  TrajectoryPoint trajectory_point;
+  trajectory_point.mutable_path_point()->set_x(0.0);
+  trajectory_point.mutable_path_point()->set_y(0.0);
+  trajectory_point.mutable_path_point()->set_theta(0.0);
+  trajectory_point.set_v(std::numeric_limits<double>::infinity());
+  trajectory_point.set_a(0.0);
+  trajectory_point.set_relative_time(0.0);
+  EXPECT_FALSE(ValidationChecker::ValidTrajectoryPoint(trajectory_point));
+
+  trajectory_point.set_v(0.0);
+  trajectory_point.mutable_path_point()->set_ddkappa(
+      std::numeric_limits<double>::infinity());
   EXPECT_FALSE(ValidationChecker::ValidTrajectoryPoint(trajectory_point));
 }
 

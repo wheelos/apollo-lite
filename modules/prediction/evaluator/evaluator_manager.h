@@ -25,13 +25,13 @@
 #include <map>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "cyber/common/macros.h"
 #include "modules/prediction/common/semantic_map.h"
 #include "modules/prediction/evaluator/evaluator.h"
 #include "modules/prediction/proto/prediction_conf.pb.h"
-#include "modules/prediction/pipeline/vector_net.h"
 
 /**
  * @namespace apollo::prediction
@@ -98,10 +98,7 @@ class EvaluatorManager {
   std::unique_ptr<Evaluator> CreateEvaluator(
       const ObstacleConf::EvaluatorType& type);
 
-  /**
-   * @brief Register all evaluators
-   */
-  void RegisterEvaluators();
+  void RegisterEvaluators(const PredictionConf& config);
 
  private:
   std::map<ObstacleConf::EvaluatorType, std::unique_ptr<Evaluator>> evaluators_;
@@ -127,14 +124,8 @@ class EvaluatorManager {
   ObstacleConf::EvaluatorType pedestrian_evaluator_ =
       ObstacleConf::SEMANTIC_LSTM_EVALUATOR;
 
-  ObstacleConf::EvaluatorType vectornet_evaluator_ =
-      ObstacleConf::VECTORNET_EVALUATOR;
-
   ObstacleConf::EvaluatorType default_on_lane_evaluator_ =
       ObstacleConf::MLP_EVALUATOR;
-
-  ObstacleConf::EvaluatorType interaction_evaluator_ =
-      ObstacleConf::JOINTLY_PREDICTION_PLANNING_EVALUATOR;
 
   std::unordered_map<int, ObstacleHistory> obstacle_id_history_map_;
 

@@ -16,6 +16,8 @@
 
 #include "modules/prediction/predictor/extrapolation/extrapolation_predictor.h"
 
+#include <cmath>
+
 #include "modules/common/math/vec2d.h"
 #include "modules/prediction/common/prediction_gflags.h"
 #include "modules/prediction/common/prediction_map.h"
@@ -130,6 +132,7 @@ void ExtrapolationPredictor::ExtrapolateByLane(
   }
 
   double last_relative_time = last_point.relative_time();
+  double previous_speed = last_point.v();
   double time_range =
       FLAGS_prediction_trajectory_time_length - last_relative_time;
   double time_resolution = FLAGS_prediction_trajectory_time_resolution;
@@ -143,7 +146,9 @@ void ExtrapolationPredictor::ExtrapolateByLane(
   std::string lane_id =
       lane_sequence.lane_segment(lane_segment_index).lane_id();
 
-  int num_point_remained = static_cast<int>(time_range / time_resolution);
+  const double remaining_steps = time_range / time_resolution;
+  const int num_point_remained =
+      static_cast<int>(std::floor(remaining_steps + 1e-6));
   for (int i = 1; i <= num_point_remained; ++i) {
     double relative_time =
         last_relative_time + static_cast<double>(i) * time_resolution;
@@ -163,8 +168,10 @@ void ExtrapolationPredictor::ExtrapolateByLane(
     path_point->set_theta(theta);
     path_point->set_lane_id(lane_id);
     trajectory_point->set_v(extraplation_speed);
-    trajectory_point->set_a(0.0);
+    trajectory_point->set_a((extraplation_speed - previous_speed) /
+                            time_resolution);
     trajectory_point->set_relative_time(relative_time);
+    previous_speed = extraplation_speed;
 
     lane_s += extraplation_speed * time_resolution;
     while (lane_s > PredictionMap::LaneById(lane_id)->total_length() &&
@@ -185,13 +192,19 @@ void ExtrapolationPredictor::ExtrapolateByFreeMove(
   const TrajectoryPoint& last_point =
       trajectory_ptr->trajectory_point(num_trajectory_point - 1);
   double theta = last_point.path_point().theta();
+  const double last_relative_time = last_point.relative_time();
   double time_resolution = FLAGS_prediction_trajectory_time_resolution;
   double time_length = FLAGS_prediction_trajectory_time_length;
-  double relative_time = last_point.relative_time() + time_resolution;
-  while (relative_time < time_length) {
+  const double remaining_steps =
+      (time_length - last_relative_time) / time_resolution;
+  const int num_remaining_points =
+      static_cast<int>(std::floor(remaining_steps + 1e-6));
+  for (int i = 1; i <= num_remaining_points; ++i) {
     int prev_size = trajectory_ptr->trajectory_point_size();
     const TrajectoryPoint& prev_point =
         trajectory_ptr->trajectory_point(prev_size - 1);
+    const double acceleration =
+        (extraplation_speed - prev_point.v()) / time_resolution;
     TrajectoryPoint* curr_point = trajectory_ptr->add_trajectory_point();
     double dx = time_resolution * extraplation_speed * std::cos(theta);
     double dy = time_resolution * extraplation_speed * std::sin(theta);
@@ -202,9 +215,14 @@ void ExtrapolationPredictor::ExtrapolateByFreeMove(
     curr_path_point_ptr->set_y(curr_y);
     curr_path_point_ptr->set_theta(theta);
     curr_point->set_v(extraplation_speed);
-    curr_point->set_relative_time(relative_time);
-
-    relative_time += time_resolution;
+    curr_point->set_a(acceleration);
+    double next_relative_time =
+        last_relative_time + static_cast<double>(i) * time_resolution;
+    if (i == num_remaining_points &&
+        std::abs(remaining_steps - num_remaining_points) <= 1e-6) {
+      next_relative_time = time_length;
+    }
+    curr_point->set_relative_time(next_relative_time);
   }
 }
 
