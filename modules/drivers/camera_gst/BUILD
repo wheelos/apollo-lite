@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install")
+load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -61,7 +61,6 @@ cc_library(
         ":camera_gst_core",
         "@core//cyber",
         "@gstreamer",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
     ],
     alwayslink = True,
 )
@@ -70,8 +69,8 @@ cc_binary(
     name = "libcamera_gst_component.so",
     linkshared = True,
     linkstatic = False,
-    target_compatible_with = ["//tools/platform:jetson_orin"],
     deps = [":camera_gst_component_lib"],
+    target_compatible_with = ["//tools/platform:jetson_orin"],
 )
 
 cc_test(
@@ -82,6 +81,7 @@ cc_test(
     target_compatible_with = ["//tools/platform:jetson_orin"],
     deps = [
         ":camera_gst_core",
+        "@core//cyber",
         "@com_google_googletest//:gtest",
     ],
 )

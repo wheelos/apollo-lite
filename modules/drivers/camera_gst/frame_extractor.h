@@ -26,7 +26,6 @@ namespace apollo {
 namespace drivers {
 namespace camera_gst {
 
-PublishedFrame ExtractCpuFrame(GstSample* sample);
 GpuFrame ExtractNvmmFrame(GstSample* sample, const std::string& source_name);
 
 }  // namespace camera_gst

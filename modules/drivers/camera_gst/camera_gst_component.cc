@@ -30,33 +30,10 @@ CameraGstComponent::~CameraGstComponent() {
   }
 }
 
-bool CameraGstComponent::ValidateGpuOnlyConfig() const {
-  for (const auto& source_config : config_.sources()) {
-    if (!source_config.has_publish()) {
-      continue;
-    }
-    AERROR
-        << "camera_gst is GPU-only in this workspace. Source publish/readback"
-        << " is unsupported for " << source_config.name()
-        << ". Use publish_gpu_channel or stream output instead.";
-    return false;
-  }
-
-  if (config_.has_publish() && !config_.publish().channel_name().empty()) {
-    AERROR << "camera_gst is GPU-only in this workspace. Stitched CPU image "
-           << "publishing is unsupported. Use the stream branch instead.";
-    return false;
-  }
-
+bool CameraGstComponent::ValidateOutputConfig() const {
   if (!config_.publish_gpu_channel() && !config_.stream().enable()) {
-    AERROR << "camera_gst requires publish_gpu_channel=true or an enabled "
-           << "stream branch in GPU-only mode.";
+    AERROR << "camera_gst requires GPU frame callback or stream output.";
     return false;
-  }
-
-  if (config_.publish_gpu_channel() && !config_.zero_copy_required()) {
-    AWARN << "camera_gst GPU-only mode is most effective with "
-          << "zero_copy_required=true.";
   }
   return true;
 }
@@ -68,7 +45,7 @@ bool CameraGstComponent::Init() {
   }
   gpu_frames_.store(0);
 
-  if (!ValidateGpuOnlyConfig()) {
+  if (!ValidateOutputConfig()) {
     return false;
   }
 
@@ -83,9 +60,7 @@ bool CameraGstComponent::Init() {
     };
   }
 
-  if (!driver_->Init(config_, CameraGstDriver::SourcePublishCallback(),
-                     CameraGstDriver::PublishCallback(),
-                     std::move(gpu_frame_callback))) {
+  if (!driver_->Init(config_, std::move(gpu_frame_callback))) {
     AERROR << "Failed to initialize camera_gst driver.";
     driver_.reset();
     return false;

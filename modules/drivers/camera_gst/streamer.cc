@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <set>
 #include <thread>
 #include <utility>
@@ -32,7 +33,6 @@ namespace camera_gst {
 namespace {
 
 constexpr const char* kStitchedTeeName = "stitched_tee";
-constexpr const char* kStitchedPublishSinkName = "stitched_publish_sink";
 constexpr GstClockTime kBusPollInterval = 100 * GST_MSECOND;
 constexpr auto kRecoveryDelay = std::chrono::milliseconds(250);
 
@@ -53,22 +53,11 @@ void GstInitOnce() {
   });
 }
 
-double MeasurementTimeFromSample(GstSample* sample) {
-  GstBuffer* buffer = gst_sample_get_buffer(sample);
-  if (buffer != nullptr && GST_BUFFER_PTS_IS_VALID(buffer)) {
-    return static_cast<double>(GST_BUFFER_PTS(buffer)) /
-           static_cast<double>(GST_SECOND);
-  }
-  return apollo::cyber::Time::Now().ToSecond();
-}
-
 }  // namespace
 
 CameraGstStreamer::~CameraGstStreamer() { Stop(); }
 
 bool CameraGstStreamer::Start(const config::Config& config,
-                              SourcePublishCallback source_publish_callback,
-                              PublishCallback stitched_publish_callback,
                               GpuFrameCallback gpu_frame_callback) {
   GstInitOnce();
   std::lock_guard<std::mutex> lock(mutex_);
@@ -77,8 +66,6 @@ bool CameraGstStreamer::Start(const config::Config& config,
   }
 
   config_ = config;
-  source_publish_callback_ = std::move(source_publish_callback);
-  stitched_publish_callback_ = std::move(stitched_publish_callback);
   gpu_frame_callback_ = std::move(gpu_frame_callback);
   stream_enabled_ = config_.stream().enable();
   stop_requested_ = false;
@@ -163,11 +150,7 @@ StreamStats CameraGstStreamer::stats() const {
   for (const auto& source_state : source_states_) {
     SourceStats source;
     source.source_name = source_state->source_name;
-    source.cpu_frames = source_state->cpu_frames.load();
     source.gpu_frames = source_state->gpu_frames.load();
-    source.cpu_rate_limited_frames =
-        source_state->cpu_rate_limited_frames.load();
-    source.cpu_drop_frames = source_state->cpu_drop_frames.load();
     source.gpu_drop_frames = source_state->gpu_drop_frames.load();
     snapshot.source_stats.push_back(std::move(source));
   }
@@ -177,17 +160,6 @@ StreamStats CameraGstStreamer::stats() const {
 bool CameraGstStreamer::ValidateConfigLocked() {
   if (config_.sources_size() == 0) {
     AERROR << "camera_gst requires at least one source.";
-    return false;
-  }
-
-  if (source_publish_callback_) {
-    AERROR << "camera_gst source CPU publish callbacks are unsupported in "
-           << "GPU-only mode.";
-    return false;
-  }
-  if (stitched_publish_callback_) {
-    AERROR << "camera_gst stitched CPU publish callback is unsupported in "
-           << "GPU-only mode.";
     return false;
   }
 
@@ -207,24 +179,16 @@ bool CameraGstStreamer::ValidateConfigLocked() {
       AERROR << "Duplicate camera_gst source name: " << source_config.name();
       return false;
     }
-    if (source_config.uri().empty() &&
-        source_config.capture_pipeline().empty()) {
+    if (source_config.uri().empty()) {
       AERROR << "camera_gst source " << source_config.name()
-             << " requires a uri or capture_pipeline.";
-      return false;
-    }
-    if (source_config.has_publish()) {
-      AERROR << "camera_gst source " << source_config.name()
-             << " declares CPU publish config, which is unsupported in "
-             << "GPU-only mode.";
+             << " requires a V4L2 device uri.";
       return false;
     }
     source_states_.emplace_back(
         std::make_unique<SourceRuntimeState>(source_config.name()));
   }
 
-  const bool stitched_consumer_enabled =
-      static_cast<bool>(stitched_publish_callback_) || stream_enabled_;
+  const bool stitched_consumer_enabled = stream_enabled_;
   if (stitched_consumer_enabled) {
     if (config_.layout_slots_size() == 0) {
       AERROR << "camera_gst requires layout slots when stitched publish or "
@@ -271,12 +235,11 @@ bool CameraGstStreamer::ValidateConfigLocked() {
   }
 
   for (const auto& source_config : config_.sources()) {
-    const bool publish_enabled = false;
     const bool stitch_selected =
         FindLayoutSlotLocked(source_config.name()) != nullptr;
     const bool gpu_publish_enabled =
         config_.publish_gpu_channel() && static_cast<bool>(gpu_frame_callback_);
-    if (!publish_enabled && !stitch_selected && !gpu_publish_enabled) {
+    if (!stitch_selected && !gpu_publish_enabled) {
       AERROR << "camera_gst source " << source_config.name()
              << " is not connected to publish or stitch output.";
       return false;
@@ -344,50 +307,10 @@ bool CameraGstStreamer::BuildPipelineLocked() {
 
   bus_ = gst_element_get_bus(pipeline_);
   stitched_tee_ = gst_bin_get_by_name(GST_BIN(pipeline_), kStitchedTeeName);
-  if ((static_cast<bool>(stitched_publish_callback_) || stream_enabled_) &&
-      stitched_tee_ == nullptr) {
+  if (stream_enabled_ && stitched_tee_ == nullptr) {
     AERROR << "camera_gst failed to locate the stitched tee.";
     ReleasePipelineLocked();
     return false;
-  }
-
-  source_sink_contexts_.clear();
-  source_sink_contexts_.reserve(static_cast<size_t>(config_.sources_size()));
-  for (int index = 0; index < config_.sources_size(); ++index) {
-    const auto& source_config = config_.sources(index);
-    const bool publish_enabled =
-        source_config.has_publish() &&
-        !source_config.publish().channel_name().empty();
-    if (!publish_enabled) {
-      continue;
-    }
-
-    GstElement* appsink = gst_bin_get_by_name(
-        GST_BIN(pipeline_),
-        builder.SourcePublishSinkName(static_cast<size_t>(index)).c_str());
-    if (appsink == nullptr) {
-      AERROR << "camera_gst failed to locate appsink for source "
-             << source_config.name();
-      ReleasePipelineLocked();
-      return false;
-    }
-
-    auto context = std::make_unique<SinkContext>();
-    context->owner = this;
-    context->source_name = source_config.name();
-    context->source_state = source_states_[static_cast<size_t>(index)].get();
-    if (source_config.publish().output_fps() > 0.0) {
-      context->min_publish_interval_sec =
-          1.0 / source_config.publish().output_fps();
-    }
-    GstAppSinkCallbacks callbacks = {};
-    callbacks.new_sample = &CameraGstStreamer::OnSourceSample;
-    g_object_set(appsink, "sync", FALSE, "max-buffers", 1u, "drop", TRUE,
-                 nullptr);
-    gst_app_sink_set_callbacks(GST_APP_SINK(appsink), &callbacks, context.get(),
-                               nullptr);
-    gst_object_unref(appsink);
-    source_sink_contexts_.push_back(std::move(context));
   }
 
   gpu_sink_contexts_.clear();
@@ -418,27 +341,6 @@ bool CameraGstStreamer::BuildPipelineLocked() {
       gst_object_unref(appsink);
       gpu_sink_contexts_.push_back(std::move(context));
     }
-  }
-
-  stitched_publish_sink_ = nullptr;
-  if (stitched_publish_callback_) {
-    stitched_publish_sink_ =
-        gst_bin_get_by_name(GST_BIN(pipeline_), kStitchedPublishSinkName);
-    if (stitched_publish_sink_ == nullptr) {
-      AERROR << "camera_gst failed to locate the stitched publish appsink.";
-      ReleasePipelineLocked();
-      return false;
-    }
-
-    stitched_sink_context_ = std::make_unique<SinkContext>();
-    stitched_sink_context_->owner = this;
-    stitched_sink_context_->stitched = true;
-    GstAppSinkCallbacks callbacks = {};
-    callbacks.new_sample = &CameraGstStreamer::OnStitchedSample;
-    g_object_set(stitched_publish_sink_, "sync", FALSE, "max-buffers", 1u,
-                 "drop", TRUE, nullptr);
-    gst_app_sink_set_callbacks(GST_APP_SINK(stitched_publish_sink_), &callbacks,
-                               stitched_sink_context_.get(), nullptr);
   }
 
   if (gst_element_set_state(pipeline_, GST_STATE_PLAYING) ==
@@ -581,13 +483,6 @@ void CameraGstStreamer::StopStreamBranchDirectLocked() {
 
 void CameraGstStreamer::ReleasePipelineLocked() {
   StopStreamBranchDirectLocked();
-  if (stitched_publish_sink_ != nullptr) {
-    GstAppSinkCallbacks callbacks = {};
-    gst_app_sink_set_callbacks(GST_APP_SINK(stitched_publish_sink_), &callbacks,
-                               nullptr, nullptr);
-    gst_object_unref(stitched_publish_sink_);
-    stitched_publish_sink_ = nullptr;
-  }
   if (stitched_tee_ != nullptr) {
     gst_object_unref(stitched_tee_);
     stitched_tee_ = nullptr;
@@ -602,9 +497,7 @@ void CameraGstStreamer::ReleasePipelineLocked() {
     gst_object_unref(pipeline_);
     pipeline_ = nullptr;
   }
-  source_sink_contexts_.clear();
   gpu_sink_contexts_.clear();
-  stitched_sink_context_.reset();
 }
 
 bool CameraGstStreamer::ForceKeyFrameLocked() {
@@ -752,75 +645,8 @@ const PipelineLayoutSlot* CameraGstStreamer::FindLayoutSlotLocked(
 
 CameraGstPipelineBuilder CameraGstStreamer::MakePipelineBuilderLocked() const {
   return CameraGstPipelineBuilder(
-      config_, layout_slots_, false, false, stream_enabled_,
+      config_, layout_slots_, stream_enabled_,
       config_.publish_gpu_channel() && static_cast<bool>(gpu_frame_callback_));
-}
-
-GstFlowReturn CameraGstStreamer::OnSourceSample(GstAppSink* appsink,
-                                                gpointer user_data) {
-  auto* context = static_cast<SinkContext*>(user_data);
-  if (context == nullptr || context->owner == nullptr) {
-    return GST_FLOW_ERROR;
-  }
-
-  GstSample* sample = gst_app_sink_pull_sample(appsink);
-  if (sample == nullptr) {
-    return GST_FLOW_EOS;
-  }
-
-  const double measurement_time = MeasurementTimeFromSample(sample);
-  if (context->min_publish_interval_sec > 0.0 &&
-      context->has_last_measurement_time &&
-      measurement_time - context->last_measurement_time <
-          context->min_publish_interval_sec) {
-    if (context->source_state != nullptr) {
-      ++context->source_state->cpu_rate_limited_frames;
-    }
-    gst_sample_unref(sample);
-    return GST_FLOW_OK;
-  }
-
-  PublishedFrame frame = ExtractCpuFrame(sample);
-  gst_sample_unref(sample);
-  if (frame.data.empty()) {
-    if (context->source_state != nullptr) {
-      ++context->source_state->cpu_drop_frames;
-    }
-    return GST_FLOW_ERROR;
-  }
-  if (context->source_state != nullptr) {
-    frame.sequence = ++context->source_state->cpu_frames;
-  }
-  context->last_measurement_time = measurement_time;
-  context->has_last_measurement_time = true;
-  if (context->owner->source_publish_callback_) {
-    context->owner->source_publish_callback_(context->source_name,
-                                             std::move(frame));
-  }
-  return GST_FLOW_OK;
-}
-
-GstFlowReturn CameraGstStreamer::OnStitchedSample(GstAppSink* appsink,
-                                                  gpointer user_data) {
-  auto* context = static_cast<SinkContext*>(user_data);
-  if (context == nullptr || context->owner == nullptr) {
-    return GST_FLOW_ERROR;
-  }
-
-  GstSample* sample = gst_app_sink_pull_sample(appsink);
-  if (sample == nullptr) {
-    return GST_FLOW_EOS;
-  }
-
-  PublishedFrame frame = ExtractCpuFrame(sample);
-  gst_sample_unref(sample);
-  if (frame.data.empty()) {
-    return GST_FLOW_ERROR;
-  }
-  if (context->owner->stitched_publish_callback_) {
-    context->owner->stitched_publish_callback_(std::move(frame));
-  }
-  return GST_FLOW_OK;
 }
 
 GstFlowReturn CameraGstStreamer::OnGpuSample(GstAppSink* appsink,
