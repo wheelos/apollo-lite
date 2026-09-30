@@ -22,6 +22,7 @@
 #include "modules/perception/pipeline/proto/stage/probabilistic_fusion_config.pb.h"
 
 #include "cyber/common/macros.h"
+#include "modules/perception/fusion/base/frame_scheduler.h"
 #include "modules/perception/fusion/base/sensor_data_manager.h"
 #include "modules/perception/fusion/lib/interface/base_data_association.h"
 #include "modules/perception/fusion/lib/interface/base_fusion_system.h"
@@ -50,6 +51,8 @@ class ProbabilisticFusion : public BaseFusionSystem {
 
   bool Init(const FusionInitOptions& init_options) override;
 
+  // Compatibility adapter retains main-frame-triggered publication; periodic
+  // publication and source-health reporting are owned by FusionRuntime.
   bool Fuse(const FusionOptions& options,
             const base::FrameConstPtr& sensor_frame,
             std::vector<base::ObjectPtr>* fused_objects) override;
@@ -65,27 +68,27 @@ class ProbabilisticFusion : public BaseFusionSystem {
  private:
   bool IsPublishSensor(const base::FrameConstPtr& sensor_frame) const;
 
-  void FuseFrame(const SensorFramePtr& frame);
+  bool FuseFrame(const SensorFramePtr& frame);
+  bool PredictTracks(double timestamp);
 
-  void CollectFusedObjects(double timestamp,
+  bool CollectFusedObjects(double timestamp,
                            std::vector<base::ObjectPtr>* fused_objects);
 
-  void FuseForegroundTrack(const SensorFramePtr& frame);
+  bool FuseForegroundTrack(const SensorFramePtr& frame);
   void FusebackgroundTrack(const SensorFramePtr& frame);
 
   void RemoveLostTrack();
 
-  void UpdateAssignedTracks(
-      const SensorFramePtr& frame,
-      const std::vector<TrackMeasurmentPair>& assignments);
+  bool UpdateAssignedTracks(const SensorFramePtr& frame,
+                            const AssociationResult& association);
 
-  void UpdateUnassignedTracks(const SensorFramePtr& frame,
-                              const std::vector<size_t>& unassigned_track_inds);
+  bool UpdateUnassignedTracks(const SensorFramePtr& frame,
+                              const AssociationResult& association);
 
-  void CreateNewTracks(const SensorFramePtr& frame,
+  bool CreateNewTracks(const SensorFramePtr& frame,
                        const std::vector<size_t>& unassigned_obj_inds);
 
-  void CollectObjectsByTrack(double timestamp, const TrackPtr& track,
+  bool CollectObjectsByTrack(double timestamp, const TrackPtr& track,
                              std::vector<base::ObjectPtr>* fused_objects);
 
   void CollectSensorMeasurementFromObject(
@@ -105,6 +108,8 @@ class ProbabilisticFusion : public BaseFusionSystem {
   FusionParams params_;
 
   ProbabilisticFusionConfig probabilistic_fusion_config_;
+  FrameScheduler legacy_scheduler_;
+  bool faulted_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(ProbabilisticFusion);
 };

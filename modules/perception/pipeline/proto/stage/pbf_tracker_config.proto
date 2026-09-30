@@ -7,4 +7,9 @@ message PbfTrackerConfig {
   optional string motion_fusion_method = 2 [default = "KalmanMotionFusion"];
   optional string shape_fusion_method = 3 [default = "PbfShapeFusion"];
   optional string existence_fusion_method = 4 [default = "DstExistenceFusion"];
+  optional double jerk_variance = 5 [default = 4.0];
+  optional double covariance_floor = 6 [default = 0.001];
+  // Upstream object tracks can share unknown estimation history.
+  optional bool use_covariance_intersection = 7 [default = true];
+  optional double covariance_intersection_prior_weight = 8 [default = 0.5];
 }

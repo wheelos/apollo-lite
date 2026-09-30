@@ -3,9 +3,9 @@ publish_if_has_radar: true
 publish_if_has_camera: true
 use_camera_3d: true
 
-min_radar_confident_distance: 40
+min_radar_confident_distance: 0
 max_radar_confident_angle: 20
-min_camera_publish_distance: 50
+min_camera_publish_distance: 0
 invisible_period_threshold: 0.001
 toic_threshold: 0.8
 

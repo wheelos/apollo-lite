@@ -13,6 +13,8 @@ cc_library(
     deps = [
         "@wheelos_common//modules/common/util:string_util",
         "@wheelos_common//modules/common/util:util_tool",
+        "//modules/perception/fusion/base:frame_scheduler",
+        "//modules/perception/fusion/base:observation_validation",
         "//modules/perception/fusion/base:sensor_data_manager",
         "//modules/perception/pipeline:stage",
     ],

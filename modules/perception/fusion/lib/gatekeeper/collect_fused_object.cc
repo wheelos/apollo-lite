@@ -13,154 +13,65 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
-
 #include "modules/perception/fusion/lib/gatekeeper/collect_fused_object.h"
 
-#include "modules/common/util/string_util.h"
-#include "modules/perception/base/object_supplement.h"
-#include "modules/perception/base/object.h"
-#include "modules/perception/fusion/base/sensor_object.h"
-#include "modules/perception/fusion/base/track.h"
-#include "modules/perception/pipeline/plugin_factory.h"
+#include <cmath>
+
+#include "modules/perception/fusion/base/object_snapshot.h"
+#include "modules/perception/fusion/lib/gatekeeper/pbf_gatekeeper/pbf_gatekeeper.h"
 
 namespace apollo {
 namespace perception {
 namespace fusion {
 
-
 bool CollectFusedObject::Init(const StageConfig& stage_config) {
-  if (!Initialize(stage_config)) {
+  if (!Initialize(stage_config)) return false;
+  const auto it = plugin_config_map_.find(PluginType::PBF_GATEKEEPER);
+  if (it == plugin_config_map_.end() || !it->second.enabled()) {
+    AERROR << "Fusion collection requires an enabled publication policy.";
     return false;
   }
-
-  // create plugins
-  gate_keeper_ =
-      pipeline::dynamic_unique_cast<BaseGatekeeper>(
-          pipeline::PluginFactory::CreatePlugin(
-              plugin_config_map_[PluginType::PBF_GATEKEEPER]));
-  CHECK_NOTNULL(gate_keeper_);
-  return true;
+  gate_keeper_.reset(new PbfGatekeeper());
+  return gate_keeper_->Init(it->second);
 }
 
 bool CollectFusedObject::Process(DataFrame* data_frame) {
-  if (data_frame == nullptr)
+  if (!data_frame || !data_frame->fusion_frame) {
+    AERROR << "Missing fusion collection input.";
     return false;
-
-  FusionFrame* fusion_frame = data_frame->fusion_frame;
-  if (fusion_frame == nullptr)
+  }
+  auto* frame = data_frame->fusion_frame;
+  frame->fused_objects.clear();
+  if (!frame->ready) return true;
+  if (!frame->frame || !frame->scene_ptr ||
+      !std::isfinite(frame->max_prediction_age) ||
+      frame->max_prediction_age <= 0 || !gate_keeper_) {
+    AERROR << "Fusion collection requires a valid completed cycle.";
     return false;
-
-  base::FrameConstPtr sensor_frame = fusion_frame->frame;
-  if (sensor_frame == nullptr)
+  }
+  scenes_ = frame->scene_ptr;
+  max_prediction_age_ = frame->max_prediction_age;
+  if (!Process(frame->frame->timestamp, &frame->fused_objects)) {
+    frame->fused_objects.clear();
     return false;
-
-  double fusion_time = sensor_frame->timestamp;
-  scenes_ = fusion_frame->scene_ptr;
-  Process(fusion_time, &fusion_frame->fused_objects);
-
+  }
   return true;
 }
 
-void CollectFusedObject::Process(
-    double timestamp, std::vector<base::ObjectPtr>* fused_objects) {
-  fused_objects->clear();
-
-  size_t fg_obj_num = 0;
-  const std::vector<TrackPtr>& foreground_tracks =
-      scenes_->GetForegroundTracks();
-  for (const auto& track_ptr : foreground_tracks) {
-    if (gate_keeper_->AbleToPublish(track_ptr)) {
-      CollectObjectsByTrack(timestamp, track_ptr, fused_objects);
-      ++fg_obj_num;
+bool CollectFusedObject::Process(double timestamp,
+                               std::vector<base::ObjectPtr>* output) {
+  for (const auto* tracks : {&scenes_->GetForegroundTracks(),
+                            &scenes_->GetBackgroundTracks()}) {
+    for (const auto& track : *tracks) {
+      const double age = timestamp - track->GetLastMotionObservationTimestamp();
+      if (age < 0 || age > max_prediction_age_ ||
+          !gate_keeper_->AbleToPublish(track)) {
+        continue;
+      }
+      if (!AppendTrackSnapshot(timestamp, track, output)) return false;
     }
   }
-
-  size_t bg_obj_num = 0;
-  const std::vector<TrackPtr>& background_tracks =
-      scenes_->GetBackgroundTracks();
-  for (const auto& track_ptr : background_tracks) {
-    if (gate_keeper_->AbleToPublish(track_ptr)) {
-      CollectObjectsByTrack(timestamp, track_ptr, fused_objects);
-      ++bg_obj_num;
-    }
-  }
-
-  AINFO << "collect objects : fg_obj_cnt = " << fg_obj_num
-        << ", bg_obj_cnt = " << bg_obj_num
-        << ", timestamp = " << FORMAT_TIMESTAMP(timestamp);
-}
-
-void CollectFusedObject::CollectObjectsByTrack(
-    double timestamp,
-    const TrackPtr& track,
-    std::vector<base::ObjectPtr>* fused_objects) {
-  const FusedObjectPtr& fused_object = track->GetFusedObject();
-  base::ObjectPtr obj = base::ObjectPool::Instance().Get();
-  *obj = *(fused_object->GetBaseObject());
-
-  // create obj->fusion_supplement.measurements
-  const SensorId2ObjectMap& lidar_measurements = track->GetLidarObjects();
-  const SensorId2ObjectMap& camera_measurements = track->GetCameraObjects();
-  const SensorId2ObjectMap& radar_measurements = track->GetRadarObjects();
-
-  size_t num_measurements = lidar_measurements.size() +
-                            camera_measurements.size() +
-                            radar_measurements.size();
-  obj->fusion_supplement.on_use = true;
-  auto& measurements = obj->fusion_supplement.measurements;
-  measurements.resize(num_measurements);
-
-  // fill measurements
-  size_t m_index = 0;
-  for (const auto& iter : lidar_measurements) {
-    CollectSensorMeasurementFromObject(iter.second, &measurements[m_index]);
-    ++m_index;
-  }
-  for (const auto& iter : camera_measurements) {
-    CollectSensorMeasurementFromObject(iter.second, &measurements[m_index]);
-    ++m_index;
-  }
-  for (const auto& iter : radar_measurements) {
-    CollectSensorMeasurementFromObject(iter.second, &measurements[m_index]);
-    ++m_index;
-  }
-
-  // save to fused_objects
-  obj->track_id = track->GetTrackId();
-  obj->latest_tracked_time = timestamp;
-  obj->tracking_time = track->GetTrackingPeriod();
-  fused_objects->emplace_back(obj);
-
-  ADEBUG << "fusion_reporting..." << obj->track_id << "@"
-         << FORMAT_TIMESTAMP(timestamp) << "@(" << std::setprecision(10)
-         << obj->center(0) << ","
-         << obj->center(1) << ","
-         << obj->center_uncertainty(0, 0) << ","
-         << obj->center_uncertainty(0, 1) << ","
-         << obj->center_uncertainty(1, 0) << ","
-         << obj->center_uncertainty(1, 1) << ","
-         << obj->velocity(0) << ","
-         << obj->velocity(1) << ","
-         << obj->velocity_uncertainty(0, 0) << ","
-         << obj->velocity_uncertainty(0, 1) << ","
-         << obj->velocity_uncertainty(1, 0) << ","
-         << obj->velocity_uncertainty(1, 1) << ")";
-}
-
-void CollectFusedObject::CollectSensorMeasurementFromObject(
-    const SensorObjectConstPtr& object,
-    base::SensorObjectMeasurement* measurement) {
-  measurement->sensor_id = object->GetSensorId();
-  measurement->timestamp = object->GetTimestamp();
-  measurement->track_id = object->GetBaseObject()->track_id;
-  measurement->center = object->GetBaseObject()->center;
-  measurement->theta = object->GetBaseObject()->theta;
-  measurement->size = object->GetBaseObject()->size;
-  measurement->velocity = object->GetBaseObject()->velocity;
-  measurement->type = object->GetBaseObject()->type;
-  if (IsCamera(object)) {
-    measurement->box = object->GetBaseObject()->camera_supplement.box;
-  }
+  return true;
 }
 
 }  // namespace fusion

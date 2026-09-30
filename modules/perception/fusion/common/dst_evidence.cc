@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <bitset>
+#include <cmath>
 #include <numeric>
 
 #include <boost/format.hpp>
@@ -231,15 +232,19 @@ bool Dst::SetBbaVec(const std::vector<double> &bba_vec) {
   }
   // check belief mass valid
   for (auto belief_mass : bba_vec) {
-    if (belief_mass < 0.0) {
+    if (!std::isfinite(belief_mass) || belief_mass < 0.0) {
       AWARN << boost::format(" belief mass: %lf is not valid") % belief_mass;
       return false;
     }
   }
   // reset
   // *this = Dst(app_name_);
+  const auto previous = bba_vec_;
   bba_vec_ = bba_vec;
-  Normalize();
+  if (!Normalize()) {
+    bba_vec_ = previous;
+    return false;
+  }
   return true;
 }
 
@@ -255,7 +260,7 @@ bool Dst::SetBba(const std::map<uint64_t, double> &bba_map) {
       AERROR << "the input bba map has invalid fod subset";
       return false;
     }
-    if (belief_mass < 0.0) {
+    if (!std::isfinite(belief_mass) || belief_mass < 0.0) {
       AWARN << boost::format("belief mass: %lf is not valid. Dst name: %s") %
                    belief_mass % app_name_;
       return false;
@@ -264,9 +269,7 @@ bool Dst::SetBba(const std::map<uint64_t, double> &bba_map) {
   }
   // reset
   // *this = Dst(app_name_);
-  bba_vec_ = bba_vec;
-  Normalize();
-  return true;
+  return SetBbaVec(bba_vec);
 }
 
 std::string Dst::PrintBba() const {
@@ -356,26 +359,29 @@ void Dst::ComputeProbability() const {
   }
 }
 
-void Dst::Normalize() {
+bool Dst::Normalize() {
   SelfCheck();
   double mass_sum = std::accumulate(bba_vec_.begin(), bba_vec_.end(), 0.0);
-  if (mass_sum == 0.0) {
-    ADEBUG << "mass_sum equal 0!!";
+  if (!std::isfinite(mass_sum) || mass_sum <= 1e-12) {
+    AERROR << "DST evidence has invalid mass or total conflict: " << app_name_;
+    return false;
   }
   for (auto &belief_mass : bba_vec_) {
     belief_mass /= mass_sum;
   }
+  return true;
 }
 
-Dst operator+(const Dst &lhs, const Dst &rhs) {
-  CHECK_EQ(lhs.app_name_, rhs.app_name_)
-      << boost::format("lhs Dst(%s) is not equal to rhs Dst(%s)") %
-             lhs.app_name_ % rhs.app_name_;
-  lhs.SelfCheck();
+bool Dst::TryCombine(const Dst& rhs, Dst* result) const {
+  if (!result || app_name_ != rhs.app_name_) {
+    AERROR << "Cannot combine incompatible DST evidence.";
+    return false;
+  }
+  SelfCheck();
   rhs.SelfCheck();
-  Dst res(lhs.app_name_);
+  Dst res(app_name_);
   std::vector<double> &resbba_vec_ = res.bba_vec_;
-  const auto &combination_relations = lhs.dst_data_ptr_->combination_relations_;
+  const auto &combination_relations = dst_data_ptr_->combination_relations_;
   for (size_t i = 0; i < resbba_vec_.size(); ++i) {
     const auto &combination_pairs = combination_relations[i];
     // AINFO << "pairs size: " << combination_pairs.size();
@@ -384,12 +390,19 @@ Dst operator+(const Dst &lhs, const Dst &rhs) {
     for (auto combination_pair : combination_pairs) {
       // AINFO << boost::format("(%d %d)") % combination_pair.first
       //     % combination_pair.second;
-      belief_mass += lhs.GetIndBfmass(combination_pair.first) *
+      belief_mass += GetIndBfmass(combination_pair.first) *
                      rhs.GetIndBfmass(combination_pair.second);
     }
     // AINFO << boost::format("belief_mass: %lf") % belief_mass;
   }
-  res.Normalize();
+  if (!res.Normalize()) return false;
+  *result = res;
+  return true;
+}
+
+Dst operator+(const Dst &lhs, const Dst &rhs) {
+  Dst res(lhs.app_name_);
+  ACHECK(lhs.TryCombine(rhs, &res)) << "DST combination failed.";
   return res;
 }
 
@@ -397,12 +410,8 @@ Dst operator*(const Dst &dst, double w) {
   dst.SelfCheck();
   Dst res(dst.app_name_);
   // check w
-  if (w < 0.0 || w > 1.0) {
-    AERROR << boost::format(
-                  "the weight of bba %lf is not valid, return default bba") %
-                  w;
-    return res;
-  }
+  ACHECK(std::isfinite(w) && w >= 0.0 && w <= 1.0)
+      << "Invalid DST reliability weight: " << w;
   size_t fod_loc = dst.dst_data_ptr_->fod_loc_;
   std::vector<double> &resbba_vec_ = res.bba_vec_;
   const std::vector<double> &bba_vec = dst.bba_vec_;

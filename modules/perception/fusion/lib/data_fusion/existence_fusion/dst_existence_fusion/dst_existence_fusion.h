@@ -22,6 +22,7 @@
 #include "cyber/common/macros.h"
 #include "modules/perception/fusion/common/dst_evidence.h"
 #include "modules/perception/fusion/lib/interface/base_existence_fusion.h"
+#include "modules/perception/pipeline/proto/plugin/dst_existence_fusion_config.pb.h"
 
 namespace apollo {
 namespace perception {
@@ -41,13 +42,15 @@ struct ExistenceDstMaps {
 };
 
 struct DstExistenceFusionOptions {
-  std::map<std::string, double> camera_max_valid_dist_ = {
-      {"camera_smartereye", 110},
-      {"camera_front_obstacle", 110},
-      {"camera_front_narrow", 150},
-      {"front_6mm", 110},
-  };
+  std::map<std::string, double> camera_max_valid_dist_;
+  std::map<std::string, SensorMissEvidencePolicy> miss_evidence_policy;
   double track_object_max_match_distance_ = 4.0;
+  double evidence_half_life = 5.0;
+  double lidar_reliability = 0.9;
+  double radar_reliability = 0.6;
+  double camera_reliability = 0.8;
+  double unknown_type_discount = 0.6;
+  double camera_toic_weight = 0.7;
 };
 
 class DstExistenceFusion : public BaseExistenceFusion {
@@ -61,11 +64,11 @@ class DstExistenceFusion : public BaseExistenceFusion {
   // @brief: update track state with measurement
   // @param [in]: measurement
   // @param [in]: target_timestamp
-  void UpdateWithMeasurement(const SensorObjectPtr measurement,
+  bool UpdateWithMeasurement(const SensorObjectPtr measurement,
                              double target_timestamp,
                              double match_dist) override;
 
-  void UpdateWithoutMeasurement(const std::string &sensor_id,
+  bool UpdateWithoutMeasurement(const std::string &sensor_id,
                                 double measurement_timestamp,
                                 double target_timestamp,
                                 double min_match_dist) override;
@@ -75,15 +78,10 @@ class DstExistenceFusion : public BaseExistenceFusion {
   double GetExistenceProbability() const;
 
  private:
-  void UpdateToicWithCameraMeasurement(const SensorObjectPtr &camera_obj,
-                                       double match_dist);
-  void UpdateToicWithoutCameraMeasurement(const std::string &sensor_id,
-                                          double measurement_timestamp,
-                                          double match_dist);
-
-  double ComputeDistDecay(base::ObjectConstPtr obj,
-                          const std::string &sensor_id, double timestamp);
-  double ComputeFeatureInfluence(const SensorObjectPtr measurement);
+  bool AdvanceEvidence(double timestamp);
+  bool Visibility(const std::string& sensor_id, double timestamp,
+                  double* visibility);
+  bool DistanceDecay(const SensorObjectPtr& measurement, double* decay);
   double GetExistReliability(const SensorObjectPtr measurement);
   double GetUnexistReliability(const std::string &sensor_id);
   double GetToicProbability() const;
@@ -96,6 +94,7 @@ class DstExistenceFusion : public BaseExistenceFusion {
   Dst fused_toic_;
   Dst fused_existence_;
   double toic_score_ = 0.0;
+  double last_evidence_timestamp_ = 0.0;
 
  private:
   static const char *name_;

@@ -83,7 +83,18 @@ void Track::Reset() {
   is_background_ = false;
   is_alive_ = true;
   tracked_times_ = 0;
+  last_observation_time_ = -1.0;
+  first_observation_time_ = -1.0;
+  last_motion_observation_time_ = -1.0;
+  existence_prob_ = 0.0;
   toic_prob_ = 0.0;
+}
+
+void Track::Expire() {
+  lidar_objects_.clear();
+  radar_objects_.clear();
+  camera_objects_.clear();
+  is_alive_ = false;
 }
 
 SensorObjectConstPtr Track::GetSensorObject(
@@ -163,8 +174,14 @@ void Track::UpdateWithSensorObject(const SensorObjectPtr& obj) {
     return;
   }
   UpdateSensorObject(objects, obj);
-  double time_diff = obj->GetTimestamp() - fused_object_->GetTimestamp();
-  tracking_period_ += time_diff;
+  if (obj->GetTimestamp() > last_observation_time_) {
+    ++tracked_times_;
+    last_observation_time_ = obj->GetTimestamp();
+  }
+  if (first_observation_time_ < 0.0) {
+    first_observation_time_ = obj->GetTimestamp();
+  }
+  tracking_period_ = last_observation_time_ - first_observation_time_;
 
   UpdateSensorObjectWithMeasurement(&lidar_objects_, sensor_id,
                                     obj->GetTimestamp(),
@@ -184,6 +201,30 @@ void Track::UpdateWithSensorObject(const SensorObjectPtr& obj) {
   UpdateSupplementState(obj);
   UpdateUnfusedState(obj);
   is_alive_ = true;
+}
+
+void Track::ExpireSensorObjects(double timestamp) {
+  UpdateSensorObjectWithoutMeasurement(&lidar_objects_, "", timestamp,
+                                       s_max_lidar_invisible_period_);
+  UpdateSensorObjectWithoutMeasurement(&radar_objects_, "", timestamp,
+                                       s_max_radar_invisible_period_);
+  UpdateSensorObjectWithoutMeasurement(&camera_objects_, "", timestamp,
+                                       s_max_camera_invisible_period_);
+  UpdateSupplementState();
+  is_alive_ = !lidar_objects_.empty() || !radar_objects_.empty() ||
+              !camera_objects_.empty();
+}
+
+void Track::PredictBackgroundTo(double timestamp) {
+  if (!is_background_) return;
+  auto object = fused_object_->GetBaseObject();
+  const double dt = timestamp - object->latest_tracked_time;
+  if (dt <= 0.0) return;
+  // Background obstacles are held static, not passed through the foreground
+  // estimator. Their observation age remains available separately.
+  object->velocity.setZero();
+  object->acceleration.setZero();
+  object->latest_tracked_time = timestamp;
 }
 
 void Track::UpdateWithoutSensorObject(const std::string& sensor_id,
@@ -211,7 +252,8 @@ void Track::UpdateSensorObjectWithoutMeasurement(SensorId2ObjectMap* objects,
     double period = measurement_timestamp - it->second->GetTimestamp();
     if (it->first == sensor_id) {
       it->second->SetInvisiblePeriod(period);
-    } else if (it->second->GetInvisiblePeriod() > 0.0) {
+    } else if (sensor_id.empty() ||
+               it->second->GetInvisiblePeriod() > 0.0) {
       it->second->SetInvisiblePeriod(period);
     }
 
@@ -320,6 +362,7 @@ void Track::UpdateWithSensorObjectForBackground(const SensorObjectPtr& obj) {
   int track_id = fused_base_object->track_id;
   *fused_base_object = *measurement_base_object;
   fused_base_object->track_id = track_id;
+  fused_base_object->latest_tracked_time = obj->GetTimestamp();
 }
 
 void Track::UpdateWithoutSensorObjectForBackground(

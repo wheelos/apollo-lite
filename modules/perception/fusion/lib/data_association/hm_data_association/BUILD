@@ -22,11 +22,14 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        ":track_object_distance",
+        "//modules/perception/fusion/base:sensor_data_manager",
+        "//modules/perception/fusion/common:camera_util",
         "//modules/perception/common/graph:gated_hungarian_bigraph_matcher",
         "//modules/perception/common/graph:secure_matrix",
         "//modules/perception/fusion/base:scene",
+        "//modules/perception/fusion/base:observation_validation",
         "//modules/perception/fusion/lib/interface",
+        "@eigen",
     ],
 )
 

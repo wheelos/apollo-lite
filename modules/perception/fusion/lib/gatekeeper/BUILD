@@ -14,6 +14,7 @@ cc_library(
         "@wheelos_common//modules/common/util:string_util",
         "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/fusion/base:sensor_data_manager",
+        "//modules/perception/fusion/base:object_snapshot",
         "//modules/perception/fusion/lib/gatekeeper/pbf_gatekeeper",
         "//modules/perception/fusion/lib/interface",
         "//modules/perception/pipeline:stage",

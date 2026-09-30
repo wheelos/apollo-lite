@@ -7,3 +7,5 @@ output_obstacles_channel_name: "/apollo/perception/obstacles"
 output_viz_fused_content_channel_name: "/perception/inner/visualization/FusedObjects"
 sensor_fusion_conf_dir: "/apollo/modules/perception/pipeline/config"
 sensor_fusion_conf_file: "multi_sensor_fusion_pipeline.txt"
+publish_period_ms: 50
+reorder_window: 0.05

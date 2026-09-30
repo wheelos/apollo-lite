@@ -1,0 +1,13 @@
+lidar_params {
+  name: "velodyne128"
+  reliability: 0.5
+  reliability_for_unknown: 0.5
+}
+evidence_half_life: 5.0
+
+camera_params {
+  name: "front_6mm"
+  valid_dist: 110
+  reliability: 0.95
+  reliability_for_unknown: 0.2
+}

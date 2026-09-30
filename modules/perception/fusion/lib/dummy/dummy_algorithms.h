@@ -66,16 +66,17 @@ class DummyTracker : public BaseTracker {
 
   bool Init(TrackPtr track, SensorObjectPtr measurement) override;
 
-  void UpdateWithMeasurement(const TrackerOptions& options,
+  bool UpdateWithMeasurement(const TrackerOptions& options,
                              const SensorObjectPtr measurement,
                              double target_timestamp) override;
 
-  void UpdateWithoutMeasurement(const TrackerOptions& options,
+  bool UpdateWithoutMeasurement(const TrackerOptions& options,
                                 const std::string& sensor_id,
                                 double measurement_timestamp,
                                 double target_timestamp) override;
 
-  std::string Name() const override { return "DummyTracker"; }
+  bool PredictTo(double timestamp) override { return true; }
+  std::string Name() const { return "DummyTracker"; }
 
   DISALLOW_COPY_AND_ASSIGN(DummyTracker);
 };

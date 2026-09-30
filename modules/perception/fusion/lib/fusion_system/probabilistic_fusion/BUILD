@@ -17,6 +17,8 @@ cc_library(
         "//modules/perception/common:perception_gflags",
         "//modules/perception/common/graph",
         "//modules/perception/fusion/base",
+        "//modules/perception/fusion/base:frame_scheduler",
+        "//modules/perception/fusion/base:object_snapshot",
         "//modules/perception/fusion/common:camera_util",
         "//modules/perception/fusion/common:dst_evidence",
         "//modules/perception/fusion/lib/data_association/hm_data_association:chi_squared_cdf",

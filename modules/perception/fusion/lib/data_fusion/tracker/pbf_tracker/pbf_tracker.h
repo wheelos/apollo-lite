@@ -18,6 +18,8 @@
 #include <memory>
 #include <string>
 
+#include "modules/perception/pipeline/proto/stage/pbf_tracker_config.pb.h"
+
 #include "cyber/common/macros.h"
 #include "modules/perception/fusion/base/base_init_options.h"
 #include "modules/perception/fusion/lib/interface/base_existence_fusion.h"
@@ -25,7 +27,6 @@
 #include "modules/perception/fusion/lib/interface/base_shape_fusion.h"
 #include "modules/perception/fusion/lib/interface/base_tracker.h"
 #include "modules/perception/fusion/lib/interface/base_type_fusion.h"
-#include "modules/perception/pipeline/proto/stage/pbf_tracker_config.pb.h"
 
 namespace apollo {
 namespace perception {
@@ -40,14 +41,16 @@ class PbfTracker : public BaseTracker {
 
   bool Init(TrackPtr track, SensorObjectPtr measurement) override;
 
-  void UpdateWithMeasurement(const TrackerOptions& options,
+  bool UpdateWithMeasurement(const TrackerOptions& options,
                              const SensorObjectPtr measurement,
                              double target_timestamp) override;
 
-  void UpdateWithoutMeasurement(const TrackerOptions& options,
+  bool UpdateWithoutMeasurement(const TrackerOptions& options,
                                 const std::string& sensor_id,
                                 double measurement_timestamp,
                                 double target_timestamp) override;
+
+  bool PredictTo(double timestamp) override;
 
  protected:
   bool InitMethods();
@@ -57,6 +60,10 @@ class PbfTracker : public BaseTracker {
   static std::string s_motion_fusion_method_;
   static std::string s_shape_fusion_method_;
   static std::string s_existence_fusion_method_;
+  static double s_jerk_variance_;
+  static double s_covariance_floor_;
+  static bool s_use_covariance_intersection_;
+  static double s_covariance_intersection_prior_weight_;
 
   std::unique_ptr<BaseTypeFusion> type_fusion_ = nullptr;
   std::unique_ptr<BaseMotionFusion> motion_fusion_ = nullptr;

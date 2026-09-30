@@ -96,6 +96,7 @@ class Dst {
   bool SetBbaVec(const std::vector<double>& bba_vec);
   // strictly require the fod in bba_map is valid
   bool SetBba(const std::map<uint64_t, double>& bba_map);
+  bool TryCombine(const Dst& other, Dst* result) const;
 
   void ComputeSptPlsUct() const;
   void ComputeProbability() const;
@@ -121,7 +122,7 @@ class Dst {
   std::string Name() const { return app_name_; }
 
  private:
-  void Normalize();
+  bool Normalize();
   void SelfCheck() const;
 
  private:

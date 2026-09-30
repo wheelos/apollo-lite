@@ -1,7 +1,26 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "fusion_runtime",
+    srcs = ["fusion_runtime.cc"],
+    hdrs = ["fusion_runtime.h"],
+    deps = [
+        "//modules/perception/fusion/base:fusion_frame",
+        "@core//cyber",
+    ],
+)
+
+cc_test(
+    name = "fusion_runtime_test",
+    srcs = ["fusion_runtime_test.cc"],
+    deps = [
+        ":fusion_runtime",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_library(
     name = "obstacle_multi_sensor_fusion",

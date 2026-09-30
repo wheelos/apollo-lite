@@ -15,20 +15,23 @@
  *****************************************************************************/
 #include "modules/perception/fusion/lib/data_fusion/type_fusion/dst_type_fusion/dst_type_fusion.h"
 
+#include <cmath>
 #include <limits>
 #include <numeric>
 
 #include <boost/format.hpp>
+
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 
+#include "modules/perception/pipeline/proto/plugin/dst_type_fusion_config.pb.h"
+
 #include "cyber/common/file.h"
+#include "modules/perception/common/sensor_manager/sensor_manager.h"
 #include "modules/perception/fusion/base/base_init_options.h"
 #include "modules/perception/fusion/base/sensor_data_manager.h"
 #include "modules/perception/fusion/common/camera_util.h"
 #include "modules/perception/lib/config_manager/config_manager.h"
-#include "modules/perception/pipeline/proto/plugin/dst_type_fusion_config.pb.h"
-#include "modules/perception/common/sensor_manager/sensor_manager.h"
 
 namespace apollo {
 namespace perception {
@@ -46,7 +49,8 @@ DstMaps DstTypeFusion::dst_maps_;
 DstTypeFusionOptions DstTypeFusion::options_;
 
 DstTypeFusion::DstTypeFusion(TrackPtr track)
-    : BaseTypeFusion(track), fused_dst_(name_) {
+    : BaseTypeFusion(track), fused_dst_(name_),
+      last_evidence_timestamp_(track->GetLastObservationTimestamp()) {
   Dst sensor_dst(name_);
   sensor_dst =
       TypeProbsToDst(track->GetFusedObject()->GetBaseObject()->type_probs);
@@ -83,7 +87,24 @@ bool DstTypeFusion::Init() {
     return false;
   }
 
+  options_ = DstTypeFusionOptions();
+  options_.evidence_half_life = params.evidence_half_life();
+  if (!std::isfinite(options_.evidence_half_life) ||
+      options_.evidence_half_life <= 0) {
+    AERROR << "Invalid class-evidence half life.";
+    return false;
+  }
+  auto valid_reliability = [](double value) {
+    return std::isfinite(value) && value >= 0 && value <= 1;
+  };
   for (auto camera_param : params.camera_params()) {
+    if (camera_param.name().empty() || !std::isfinite(camera_param.valid_dist()) ||
+        camera_param.valid_dist() <= 0 ||
+        !valid_reliability(camera_param.reliability()) ||
+        !valid_reliability(camera_param.reliability_for_unknown())) {
+      AERROR << "Invalid camera class-evidence configuration.";
+      return false;
+    }
     std::string camera_id = camera_param.name();
     options_.camera_max_valid_dist_[camera_id] = camera_param.valid_dist();
     options_.sensor_reliability_[camera_id] = camera_param.reliability();
@@ -97,6 +118,12 @@ bool DstTypeFusion::Init() {
   }
 
   for (auto lidar_param : params.lidar_params()) {
+    if (lidar_param.name().empty() ||
+        !valid_reliability(lidar_param.reliability()) ||
+        !valid_reliability(lidar_param.reliability_for_unknown())) {
+      AERROR << "Invalid LiDAR class-evidence configuration.";
+      return false;
+    }
     std::string lidar_id = lidar_param.name();
     options_.sensor_reliability_[lidar_id] = lidar_param.reliability();
     options_.sensor_reliability_for_unknown_[lidar_id] =
@@ -115,14 +142,24 @@ bool DstTypeFusion::Init() {
   return DstManager::Instance()->IsAppAdded(name_);
 }
 
-void DstTypeFusion::UpdateWithMeasurement(const SensorObjectPtr measurement,
+bool DstTypeFusion::UpdateWithMeasurement(const SensorObjectPtr measurement,
                                           double target_timestamp) {
+  if (!measurement || !std::isfinite(target_timestamp) ||
+      target_timestamp < last_evidence_timestamp_) {
+    AERROR << "Invalid class-evidence update timestamp.";
+    return false;
+  }
+  fused_dst_ = fused_dst_ * std::exp2(
+      -(target_timestamp - last_evidence_timestamp_) / options_.evidence_half_life);
+  last_evidence_timestamp_ = target_timestamp;
   Dst measurement_dst(name_);
   measurement_dst = TypeProbsToDst(measurement->GetBaseObject()->type_probs);
   ADEBUG << "type_probs: "
          << vector2string<float>(measurement->GetBaseObject()->type_probs);
-  fused_dst_ =
-      fused_dst_ + measurement_dst * GetReliability(measurement->GetSensorId());
+  if (!fused_dst_.TryCombine(
+      measurement_dst * GetReliability(measurement->GetSensorId()), &fused_dst_)) {
+    return false;
+  }
   ADEBUG << "reliability: " << GetReliability(measurement->GetSensorId());
   // update subtype
   if (IsCamera(measurement)) {
@@ -130,12 +167,22 @@ void DstTypeFusion::UpdateWithMeasurement(const SensorObjectPtr measurement,
         measurement->GetBaseObject()->sub_type;
   }
   UpdateTypeState();
+  return true;
 }
 
-void DstTypeFusion::UpdateWithoutMeasurement(const std::string &sensor_id,
+bool DstTypeFusion::UpdateWithoutMeasurement(const std::string &sensor_id,
                                              double measurement_timestamp,
                                              double target_timestamp,
                                              double min_match_dist) {
+  if (!std::isfinite(target_timestamp) ||
+      target_timestamp < last_evidence_timestamp_ ||
+      !std::isfinite(min_match_dist) || min_match_dist < 0 || min_match_dist > 1) {
+    AERROR << "Invalid missed class-evidence update.";
+    return false;
+  }
+  fused_dst_ = fused_dst_ * std::exp2(
+      -(target_timestamp - last_evidence_timestamp_) / options_.evidence_half_life);
+  last_evidence_timestamp_ = target_timestamp;
   common::SensorManager *sensor_manager = common::SensorManager::Instance();
   if (sensor_manager->IsCamera(sensor_id)) {
     // add the evidence of OTHERS_UNMOVABLE
@@ -144,12 +191,18 @@ void DstTypeFusion::UpdateWithoutMeasurement(const std::string &sensor_id,
     SensorDataManager *sensor_data_manager = SensorDataManager::Instance();
     base::BaseCameraModelPtr camera_model =
         sensor_data_manager->GetCameraIntrinsic(sensor_id);
-    ACHECK(camera_model != nullptr)
-        << "Failed to get camera intrinsic for " << sensor_id;
+    if (!camera_model) {
+      AERROR << "Missing camera intrinsics for class evidence: " << sensor_id;
+      return false;
+    }
 
     Eigen::Affine3d sensor2world_pose;
     bool status = sensor_data_manager->GetPose(sensor_id, measurement_timestamp,
                                                &sensor2world_pose);
+    if (!status) {
+      AERROR << "Missing camera pose for class evidence: " << sensor_id;
+      return false;
+    }
     auto max_dist_it = options_.camera_max_valid_dist_.find(sensor_id);
     if (max_dist_it == options_.camera_max_valid_dist_.end()) {
       AWARN << boost::format(
@@ -191,12 +244,16 @@ void DstTypeFusion::UpdateWithoutMeasurement(const std::string &sensor_id,
     std::map<uint64_t, double> fp_dst_map = {{DstMaps::OTHERS, 0.7},
                                              {DstMaps::UNKNOWN, 0.3}};
     Dst fp_dst(name_);
-    fp_dst.SetBba(fp_dst_map);
-    fused_dst_ = fused_dst_ +
-                 (fp_dst * in_view_ratio * occlusion_score) *
-                     GetReliabilityForUnKnown(sensor_id, measurement_timestamp);
-    UpdateTypeState();
+    if (!fp_dst.SetBba(fp_dst_map) ||
+        !fused_dst_.TryCombine(
+            (fp_dst * in_view_ratio * occlusion_score) *
+                GetReliabilityForUnKnown(sensor_id, measurement_timestamp),
+            &fused_dst_)) {
+      return false;
+    }
   }
+  UpdateTypeState();
+  return true;
 }
 
 std::string DstTypeFusion::Name() const { return name_; }
@@ -274,15 +331,7 @@ double DstTypeFusion::GetReliabilityForUnKnown(
            << " is not supported by class fusion";
     return 0.0;
   }
-  time_t rawtime = static_cast<time_t>(measurement_timestamp);
-  struct tm timeinfo;
-  localtime_r(&rawtime, &timeinfo);
-  bool is_night = (timeinfo.tm_hour >= 17);
-  double prob =
-      (common::SensorManager::Instance()->IsCamera(sensor_id) && is_night)
-          ? 0.1
-          : 1.0;
-  return find_res->second * prob;
+  return find_res->second;
 }
 
 void DstTypeFusion::UpdateTypeState() {

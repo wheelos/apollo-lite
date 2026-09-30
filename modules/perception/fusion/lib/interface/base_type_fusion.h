@@ -37,10 +37,10 @@ class BaseTypeFusion {
   // @brief: update track state with measurement
   // @param [in]: measurement
   // @param [in]: target_timestamp
-  virtual void UpdateWithMeasurement(const SensorObjectPtr measurement,
+  virtual bool UpdateWithMeasurement(const SensorObjectPtr measurement,
                                      double target_timestamp) = 0;
 
-  virtual void UpdateWithoutMeasurement(const std::string& sensor_id,
+  virtual bool UpdateWithoutMeasurement(const std::string& sensor_id,
                                         double measurement_timestamp,
                                         double target_timestamp,
                                         double min_match_dist) = 0;

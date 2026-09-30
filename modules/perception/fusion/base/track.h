@@ -50,6 +50,7 @@ class Track {
   bool Initialize(SensorObjectPtr obj, bool is_background = false);
 
   void Reset();
+  void Expire();
 
   SensorObjectConstPtr GetSensorObject(const std::string& sensor_id) const;
   SensorObjectConstPtr GetLatestLidarObject() const;
@@ -83,7 +84,16 @@ class Track {
 
   inline size_t GetTrackedTimes() const { return tracked_times_; }
 
-  inline void AddTrackedTimes() { ++tracked_times_; }
+  // Confirmation counts distinct observation timestamps, never publish ticks.
+  double GetLastObservationTimestamp() const { return last_observation_time_; }
+  double GetLastMotionObservationTimestamp() const {
+    return is_background_ ? last_observation_time_ : last_motion_observation_time_;
+  }
+  void RecordMotionObservation(double timestamp) {
+    last_motion_observation_time_ = timestamp;
+  }
+  void ExpireSensorObjects(double timestamp);
+  void PredictBackgroundTo(double timestamp);
 
   inline double GetExistenceProb() const { return existence_prob_; }
 
@@ -108,7 +118,8 @@ class Track {
   void UpdateWithoutSensorObject(const std::string& sensor_id,
                                  double measurement_timestamp);
 
-  static int ComputeBackgroundGlobalId(const std::string& sensor_id, int local_id);
+  static int ComputeBackgroundGlobalId(const std::string& sensor_id,
+                                       int local_id);
 
   std::string DebugString() const;
 
@@ -147,6 +158,9 @@ class Track {
   bool is_alive_ = true;
 
   size_t tracked_times_ = 0;
+  double last_observation_time_ = -1.0;
+  double first_observation_time_ = -1.0;
+  double last_motion_observation_time_ = -1.0;
 
  private:
   // FRIEND_TEST(TrackTest, test);

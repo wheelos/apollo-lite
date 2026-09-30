@@ -69,24 +69,10 @@ struct DstMaps {
 };
 
 struct DstTypeFusionOptions {
-  std::map<std::string, double> camera_max_valid_dist_ = {
-      {"camera_smartereye", 110},
-      {"camera_front_obstacle", 110},
-      {"front_6mm", 110},
-      {"camera_front_narrow", 150},
-  };
-  std::map<std::string, double> sensor_reliability_ = {
-      {"velodyne16", 0.5}, {"velodyne64", 0.5}, {"velodyne_64", 0.5},
-      {"velodyne128", 0.5},         {"camera_smartereye", 0.95},
-      {"front_6mm", 0.95},          {"camera_front_obstacle", 0.95},
-      {"camera_front_narrow", 0.5},
-  };
-  std::map<std::string, double> sensor_reliability_for_unknown_ = {
-      {"velodyne16", 0.5}, {"velodyne64", 0.5}, {"velodyne_64", 0.5},
-      {"velodyne128", 0.5},         {"camera_smartereye", 0.2},
-      {"front_6mm", 0.2},           {"camera_front_obstacle", 0.2},
-      {"camera_front_narrow", 0.2},
-  };
+  std::map<std::string, double> camera_max_valid_dist_;
+  std::map<std::string, double> sensor_reliability_;
+  std::map<std::string, double> sensor_reliability_for_unknown_;
+  double evidence_half_life = 5.0;
 };
 
 class DstTypeFusion : public BaseTypeFusion {
@@ -100,10 +86,10 @@ class DstTypeFusion : public BaseTypeFusion {
   // @brief: update track state with measurement
   // @param [in]: measurement
   // @param [in]: target_timestamp
-  void UpdateWithMeasurement(const SensorObjectPtr measurement,
+  bool UpdateWithMeasurement(const SensorObjectPtr measurement,
                              double target_timestamp) override;
 
-  void UpdateWithoutMeasurement(const std::string &sensor_id,
+  bool UpdateWithoutMeasurement(const std::string &sensor_id,
                                 double measurement_timestamp,
                                 double target_timestamp,
                                 double min_match_dist) override;
@@ -123,6 +109,7 @@ class DstTypeFusion : public BaseTypeFusion {
 
  private:
   Dst fused_dst_;
+  double last_evidence_timestamp_ = 0.0;
 
  private:
   static std::string name_;

@@ -15,9 +15,12 @@
  *****************************************************************************/
 #include "modules/perception/onboard/component/multi_sensor_fusion_component.h"
 
+#include <cmath>
+#include <memory>
+
+#include "cyber/common/file.h"
 #include "cyber/time/clock.h"
-#include "modules/common/util/perf_util.h"
-#include "modules/perception/base/object_pool_types.h"
+#include "modules/perception/common/sensor_manager/sensor_manager.h"
 #include "modules/perception/onboard/common_flags/common_flags.h"
 #include "modules/perception/onboard/msg_serializer/msg_serializer.h"
 
@@ -25,209 +28,190 @@ namespace apollo {
 namespace perception {
 namespace onboard {
 
-using apollo::cyber::common::GetAbsolutePath;
-
-uint32_t MultiSensorFusionComponent::s_seq_num_ = 0;
-std::mutex MultiSensorFusionComponent::s_mutex_;
+MultiSensorFusionComponent::~MultiSensorFusionComponent() {
+  if (timer_) timer_->Stop();
+}
 
 bool MultiSensorFusionComponent::Init() {
-  FusionComponentConfig comp_config;
-  if (!GetProtoConfig(&comp_config)) {
+  FusionComponentConfig config;
+  if (!GetProtoConfig(&config)) return false;
+  if (config.publish_period_ms() == 0 ||
+      !std::isfinite(config.reorder_window()) || config.reorder_window() < 0) {
+    AERROR << "Invalid fusion publication period or reorder window.";
     return false;
   }
-  AINFO << "Fusion Component Configs: " << comp_config.DebugString();
-
-  // to load component configs
-  fusion_name_ = comp_config.fusion_name();
-  fusion_method_ = comp_config.fusion_method();
-  fusion_main_sensor_ = comp_config.fusion_main_sensor();
-  object_in_roi_check_ = comp_config.object_in_roi_check();
-  radius_for_roi_object_check_ = comp_config.radius_for_roi_object_check();
-
-  // read pipeline config
-  std::string sensor_fusion_conf_dir = comp_config.sensor_fusion_conf_dir();
-  std::string sensor_fusion_conf_file = comp_config.sensor_fusion_conf_file();
-
-  std::string work_root = "";
-  std::string sensor_fusion_config_path =
-      GetAbsolutePath(sensor_fusion_conf_dir, sensor_fusion_conf_file);
-  sensor_fusion_config_path =
-      GetAbsolutePath(work_root, sensor_fusion_config_path);
-
-  if (!cyber::common::GetProtoFromFile(
-          sensor_fusion_config_path, &multi_sensor_fusion_config_)) {
-    AERROR << "Read config failed: " << sensor_fusion_config_path;
+  fusion_name_ = config.fusion_name();
+  fusion_method_ = config.fusion_method();
+  fusion_main_sensor_ = config.fusion_main_sensor();
+  const auto path = cyber::common::GetAbsolutePath(
+      config.sensor_fusion_conf_dir(), config.sensor_fusion_conf_file());
+  if (!cyber::common::GetProtoFromFile(path, &multi_sensor_fusion_config_)) {
+    AERROR << "Failed to read fusion pipeline: " << path;
     return false;
   }
-
-  // init algorithm plugin
-  ACHECK(InitAlgorithmPlugin()) << "Failed to init algorithm plugin.";
+  const pipeline::StageType expected_stages[] = {
+      pipeline::StageType::ALL_LATEST_FUSION,
+      pipeline::StageType::PROBABILISTIC_FUSION,
+      pipeline::StageType::COLLECT_FUSED_OBJECT};
+  if (multi_sensor_fusion_config_.stage_type_size() != 3 ||
+      multi_sensor_fusion_config_.stage_config_size() != 3) {
+    AERROR << "Periodic fusion requires scheduler, fusion and collection.";
+    return false;
+  }
+  for (int index = 0; index < 3; ++index) {
+    if (multi_sensor_fusion_config_.stage_type(index) != expected_stages[index] ||
+        multi_sensor_fusion_config_.stage_config(index).stage_type() !=
+            expected_stages[index] ||
+        !multi_sensor_fusion_config_.stage_config(index).enabled()) {
+      AERROR << "Invalid fusion pipeline order or disabled required stage.";
+      return false;
+    }
+  }
+  fusion::AllLatestFusionConfig scheduler_config;
+  bool scheduler_found = false;
+  for (const auto& stage : multi_sensor_fusion_config_.stage_config()) {
+    if (stage.stage_type() != pipeline::StageType::ALL_LATEST_FUSION) continue;
+    scheduler_found =
+        stage.enabled() &&
+        stage.all_latest_fusion_config().main_sensor() == fusion_main_sensor_;
+    scheduler_config = stage.all_latest_fusion_config();
+    if (config.reorder_window() >=
+        stage.all_latest_fusion_config().max_prediction_age()) {
+      AERROR << "Reorder window must be smaller than maximum prediction age.";
+      return false;
+    }
+  }
+  if (!scheduler_found || !InitAlgorithmPlugin()) {
+    AERROR << "Fusion requires an enabled scheduler with matching main sensor.";
+    return false;
+  }
+  const auto& fusion_config =
+      multi_sensor_fusion_config_.stage_config(1).probabilistic_fusion_config();
+  if (scheduler_config.use_lidar() != fusion_config.use_lidar() ||
+      scheduler_config.use_radar() != fusion_config.use_radar() ||
+      scheduler_config.use_camera() != fusion_config.use_camera() ||
+      std::fabs(scheduler_config.max_prediction_age() -
+                fusion_config.max_prediction_age()) > 1e-9) {
+    AERROR << "Fusion scheduler and estimator configuration must agree.";
+    return false;
+  }
+  auto source_validator = [scheduler_config](const std::string& source) {
+    auto* manager = common::SensorManager::Instance();
+    base::SensorInfo info;
+    if (!manager->GetSensorInfo(source, &info)) return false;
+    return (manager->IsLidar(source) && scheduler_config.use_lidar()) ||
+           (manager->IsRadar(source) && scheduler_config.use_radar()) ||
+           (manager->IsCamera(source) && scheduler_config.use_camera());
+  };
+  if (!source_validator(fusion_main_sensor_)) {
+    AERROR << "Fusion main sensor must be registered and enabled.";
+    return false;
+  }
+  if (!runtime_.Init(fusion_main_sensor_, config.reorder_window(),
+                     [this](fusion::FusionFrame* frame) {
+                       pipeline::DataFrame data;
+                       data.fusion_frame = frame;
+                       return fusion_->Process(&data);
+                     }, source_validator)) {
+    return false;
+  }
   writer_ = node_->CreateWriter<PerceptionObstacles>(
-      comp_config.output_obstacles_channel_name());
+      config.output_obstacles_channel_name());
   inner_writer_ = node_->CreateWriter<SensorFrameMessage>(
-      comp_config.output_viz_fused_content_channel_name());
+      config.output_viz_fused_content_channel_name());
+  if (!writer_ || !inner_writer_) {
+    AERROR << "Failed to create fusion writers.";
+    return false;
+  }
+  if (config.object_in_roi_check()) {
+    AWARN
+        << "Fusion ROI filtering remains unsupported; no map-based filtering.";
+  }
+  timer_ = std::make_unique<cyber::Timer>(
+      config.publish_period_ms(), [this]() { PublishTick(); }, false);
+  timer_->Start();
+  return true;
+}
+
+bool MultiSensorFusionComponent::InitAlgorithmPlugin() {
+  fusion_.reset(
+      fusion::BaseMultiSensorFusionRegisterer::GetInstanceByName(fusion_name_));
+  if (!fusion_ || !fusion_->Init(multi_sensor_fusion_config_)) {
+    AERROR << "Failed to initialize fusion pipeline: " << fusion_name_;
+    return false;
+  }
   return true;
 }
 
 bool MultiSensorFusionComponent::Proc(
-  const std::shared_ptr<SensorFrameMessage>& message) {
-  if (message->process_stage_ == ProcessStage::SENSOR_FUSION) {
-    return true;
+    const std::shared_ptr<SensorFrameMessage>& message) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!message) {
+    AERROR << "Null fusion input message.";
+    return false;
   }
-  std::shared_ptr<PerceptionObstacles> out_message(new (std::nothrow)
-                                                       PerceptionObstacles);
-  std::shared_ptr<SensorFrameMessage> viz_message(new (std::nothrow)
-                                                      SensorFrameMessage);
-  bool status = InternalProc(message, out_message, viz_message);
-  if (status) {
-    // TODO(conver sensor id)
-    if (message->sensor_id_ != fusion_main_sensor_) {
-      AINFO << "Fusion receive from " << message->sensor_id_ << "not from "
-            << fusion_main_sensor_ << ". Skip send.";
-    } else {
-      // Send("/apollo/perception/obstacles", out_message);
-      writer_->Write(out_message);
-      AINFO << "Send fusion processing output message.";
-      // send msg for visualization
-      if (FLAGS_obs_enable_visualization) {
-        // Send("/apollo/perception/inner/PrefusedObjects", viz_message);
-        inner_writer_->Write(viz_message);
+  if (message->process_stage_ == ProcessStage::SENSOR_FUSION) return true;
+  if (message->error_code_ != apollo::common::ErrorCode::OK) {
+    return runtime_.ReportSourceError(message->sensor_id_, message->timestamp_);
+  }
+  if (!message->frame_ ||
+      message->sensor_id_ != message->frame_->sensor_info.name) {
+    AERROR << "Missing fusion frame or inconsistent source identity.";
+    return false;
+  }
+  auto frame = std::make_shared<base::Frame>(*message->frame_);
+  frame->timestamp = message->timestamp_;
+  if (!runtime_.Add(frame)) return false;
+  if (message->sensor_id_ == fusion_main_sensor_) {
+    pending_lidar_timestamps_[frame->timestamp] = message->lidar_timestamp_;
+  }
+  return true;
+}
+
+void MultiSensorFusionComponent::PublishTick() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  fusion::FusionFrame frame;
+  const bool success = runtime_.Tick(cyber::Clock::NowInSeconds(), &frame);
+  if (success) {
+    for (const auto& processed : frame.sensor_frames) {
+      if (processed->GetSensorId() != fusion_main_sensor_) continue;
+      const auto metadata = pending_lidar_timestamps_.find(
+          processed->GetTimestamp());
+      if (metadata != pending_lidar_timestamps_.end()) {
+        lidar_timestamp_ = metadata->second;
+        pending_lidar_timestamps_.erase(pending_lidar_timestamps_.begin(),
+            pending_lidar_timestamps_.upper_bound(processed->GetTimestamp()));
       }
     }
   }
-  return status;
-}
-
-bool MultiSensorFusionComponent::InitAlgorithmPlugin() {
-  fusion::BaseMultiSensorFusion* fusion =
-    fusion::BaseMultiSensorFusionRegisterer::GetInstanceByName(fusion_name_);
-  CHECK_NOTNULL(fusion);
-  fusion_.reset(fusion);
-  // fusion::ObstacleMultiSensorFusionParam param;
-  // param.main_sensor = fusion_main_sensor_;
-  // param.fusion_method = fusion_method_;
-  // ACHECK(fusion_->Init(param)) << "Failed to init ObstacleMultiSensorFusion";
-
-  ACHECK(fusion_->Init(multi_sensor_fusion_config_))
-      << "Failed to init ObstacleMultiSensorFusion";
-
-  if (FLAGS_obs_enable_hdmap_input && object_in_roi_check_) {
-    hdmap_input_ = map::HDMapInput::Instance();
-    ACHECK(hdmap_input_->Init()) << "Failed to init hdmap input.";
+  const auto error = success && !frame.degraded
+                         ? apollo::common::ErrorCode::OK
+                         : apollo::common::ErrorCode::PERCEPTION_ERROR_PROCESS;
+  auto output = std::make_shared<PerceptionObstacles>();
+  const double timestamp =
+      frame.frame ? frame.frame->timestamp : cyber::Clock::NowInSeconds();
+  if (!success) frame.fused_objects.clear();
+  if (!MsgSerializer::SerializeMsg(timestamp, lidar_timestamp_, ++sequence_,
+                                   frame.fused_objects, error, output.get())) {
+    AERROR << "Failed to serialize periodic fusion output.";
+    return;
   }
-  AINFO << "Init algorithm successfully, onboard fusion: " << fusion_method_;
-  return true;
-}
-
-bool MultiSensorFusionComponent::InternalProc(
-    const std::shared_ptr<SensorFrameMessage const>& in_message,
-    std::shared_ptr<PerceptionObstacles> out_message,
-    std::shared_ptr<SensorFrameMessage> viz_message) {
-  {
-    std::unique_lock<std::mutex> lock(s_mutex_);
-    s_seq_num_++;
+  if (!writer_->Write(output)) {
+    AERROR << "Failed to publish periodic fusion output.";
   }
-
-  PERF_BLOCK_START();
-  const double timestamp = in_message->timestamp_;
-  const uint64_t lidar_timestamp = in_message->lidar_timestamp_;
-  std::vector<base::ObjectPtr> valid_objects;
-  if (in_message->error_code_ != apollo::common::ErrorCode::OK) {
-    if (!MsgSerializer::SerializeMsg(
-            timestamp, lidar_timestamp, in_message->seq_num_, valid_objects,
-            in_message->error_code_, out_message.get())) {
-      AERROR << "Failed to gen PerceptionObstacles object.";
-      return false;
+  if (FLAGS_obs_enable_visualization && frame.frame && frame.has_publish_pose) {
+    auto visualization = std::make_shared<SensorFrameMessage>();
+    visualization->timestamp_ = timestamp;
+    visualization->sensor_id_ = fusion_main_sensor_;
+    visualization->seq_num_ = sequence_;
+    visualization->process_stage_ = ProcessStage::SENSOR_FUSION;
+    visualization->error_code_ = error;
+    visualization->frame_ = frame.frame;
+    visualization->frame_->objects = frame.fused_objects;
+    if (!inner_writer_->Write(visualization)) {
+      AERROR << "Failed to publish fusion visualization.";
     }
-    if (FLAGS_obs_enable_visualization) {
-      viz_message->process_stage_ = ProcessStage::SENSOR_FUSION;
-      viz_message->error_code_ = in_message->error_code_;
-    }
-    AERROR << "Fusion receive message with error code, skip it.";
-    return true;
   }
-
-  pipeline::DataFrame data_frame;
-  fusion::FusionFrame fusion_frame;
-  data_frame.fusion_frame = &fusion_frame;
-
-  fusion_frame.frame = in_message->frame_;
-  fusion_frame.frame->timestamp = in_message->timestamp_;
-  if (!fusion_->Process(&data_frame)) {
-    AERROR << "Failed to call fusion plugin.";
-    return false;
-  }
-  std::vector<base::ObjectPtr>& fused_objects = fusion_frame.fused_objects;
-
-  // base::FramePtr frame = in_message->frame_;
-  // frame->timestamp = in_message->timestamp_;
-
-  // std::vector<base::ObjectPtr> fused_objects;
-  // if (!fusion_->Process(frame, &fused_objects)) {
-  //   AERROR << "Failed to call fusion plugin.";
-  //   return false;
-  // }
-
-  PERF_BLOCK_END_WITH_INDICATOR("fusion_process", in_message->sensor_id_);
-
-  if (in_message->sensor_id_ != fusion_main_sensor_) {
-    return true;
-  }
-
-  Eigen::Matrix4d sensor2world_pose =
-      in_message->frame_->sensor2world_pose.matrix();
-  if (object_in_roi_check_ && FLAGS_obs_enable_hdmap_input) {
-    // get hdmap
-    base::HdmapStructPtr hdmap(new base::HdmapStruct());
-    if (hdmap_input_) {
-      base::PointD position;
-      position.x = sensor2world_pose(0, 3);
-      position.y = sensor2world_pose(1, 3);
-      position.z = sensor2world_pose(2, 3);
-      hdmap_input_->GetRoiHDMapStruct(position, radius_for_roi_object_check_,
-                                      hdmap);
-      // TODO(use check)
-      // ObjectInRoiSlackCheck(hdmap, fused_objects, &valid_objects);
-      valid_objects.assign(fused_objects.begin(), fused_objects.end());
-    } else {
-      valid_objects.assign(fused_objects.begin(), fused_objects.end());
-    }
-  } else {
-    valid_objects.assign(fused_objects.begin(), fused_objects.end());
-  }
-  PERF_BLOCK_END_WITH_INDICATOR("fusion_roi_check", in_message->sensor_id_);
-
-  // produce visualization msg
-  if (FLAGS_obs_enable_visualization) {
-    viz_message->timestamp_ = in_message->timestamp_;
-    viz_message->seq_num_ = in_message->seq_num_;
-    viz_message->frame_ = base::FramePool::Instance().Get();
-    viz_message->frame_->sensor2world_pose =
-        in_message->frame_->sensor2world_pose;
-    viz_message->sensor_id_ = in_message->sensor_id_;
-    viz_message->hdmap_ = in_message->hdmap_;
-    viz_message->process_stage_ = ProcessStage::SENSOR_FUSION;
-    viz_message->error_code_ = in_message->error_code_;
-    viz_message->frame_->objects = fused_objects;
-  }
-  // produce pb output msg
-  apollo::common::ErrorCode error_code = apollo::common::ErrorCode::OK;
-  if (!MsgSerializer::SerializeMsg(timestamp, lidar_timestamp,
-                                   in_message->seq_num_, valid_objects,
-                                   error_code, out_message.get())) {
-    AERROR << "Failed to gen PerceptionObstacles object.";
-    return false;
-  }
-  PERF_BLOCK_END_WITH_INDICATOR("fusion_serialize_message",
-                                in_message->sensor_id_);
-
-  const double cur_time = ::apollo::cyber::Clock::NowInSeconds();
-  const double latency = (cur_time - timestamp) * 1e3;
-  AINFO << std::setprecision(16) << "FRAME_STATISTICS:Obstacle:End:msg_time["
-        << timestamp << "]:cur_time[" << cur_time << "]:cur_latency[" << latency
-        << "]:obj_cnt[" << valid_objects.size() << "]";
-  AINFO << "publish_number: " << valid_objects.size() << " obj";
-  return true;
 }
 
 }  // namespace onboard

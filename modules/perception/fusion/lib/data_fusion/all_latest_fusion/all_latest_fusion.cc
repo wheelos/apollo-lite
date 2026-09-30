@@ -16,8 +16,11 @@
 
 #include "modules/perception/fusion/lib/data_fusion/all_latest_fusion/all_latest_fusion.h"
 
+#include <cmath>
+
 #include "modules/common/util/string_util.h"
 #include "modules/perception/fusion/base/sensor_data_manager.h"
+#include "modules/perception/fusion/base/observation_validation.h"
 #include "modules/perception/pipeline/data_frame.h"
 
 namespace apollo {
@@ -35,7 +38,16 @@ bool AllLatestFusion::Init(const StageConfig& stage_config) {
   use_lidar_ = all_latest_fusion_config_.use_lidar();
   use_radar_ = all_latest_fusion_config_.use_radar();
   use_camera_ = all_latest_fusion_config_.use_camera();
-  return true;
+  if (main_sensor_.empty() || all_latest_fusion_config_.queue_capacity() == 0 ||
+      !std::isfinite(all_latest_fusion_config_.main_sensor_timeout()) ||
+      all_latest_fusion_config_.main_sensor_timeout() <= 0 ||
+      !std::isfinite(all_latest_fusion_config_.max_prediction_age()) ||
+      all_latest_fusion_config_.max_prediction_age() <= 0) {
+    AERROR << "Invalid fusion scheduling configuration.";
+    return false;
+  }
+  scheduler_ = FrameScheduler(all_latest_fusion_config_.queue_capacity());
+  return SensorDataManager::Instance()->Init();
 }
 
 bool AllLatestFusion::Process(DataFrame* data_frame) {
@@ -50,9 +62,14 @@ bool AllLatestFusion::Process(DataFrame* data_frame) {
   if (sensor_frame == nullptr) return false;
 
   SensorDataManager* sensor_data_manager = SensorDataManager::Instance();
-  // 1. save frame data
-  {
-    std::lock_guard<std::mutex> data_lock(data_mutex_);
+  fusion_frame->ready = false;
+  fusion_frame->admitted = false;
+  fusion_frame->sensor_frames.clear();
+  if (!fusion_frame->publish_tick) {
+    if (!sensor_data_manager->IsKnownSensor(sensor_frame)) {
+      AERROR << "Unregistered fusion source or inconsistent source type.";
+      return false;
+    }
     if (!use_lidar_ && sensor_data_manager->IsLidar(sensor_frame)) {
       return true;
     }
@@ -62,31 +79,35 @@ bool AllLatestFusion::Process(DataFrame* data_frame) {
     if (!use_camera_ && sensor_data_manager->IsCamera(sensor_frame)) {
       return true;
     }
-    AINFO << "add sensor measurement: " << sensor_frame->sensor_info.name
-          << ", obj_cnt : " << sensor_frame->objects.size() << ", "
-          << FORMAT_TIMESTAMP(sensor_frame->timestamp);
-
-    sensor_data_manager->AddSensorMeasurements(sensor_frame);
-
-    bool is_publish_sensor = IsPublishSensor(sensor_frame);
-    if (!is_publish_sensor) {
-      return true;
+    for (const auto& object : sensor_frame->objects) {
+      if (!object ||
+          (sensor_data_manager->IsCamera(sensor_frame) &&
+           !ValidCameraObservation(*object)) ||
+          (sensor_data_manager->IsRadar(sensor_frame) &&
+           (!std::isfinite(object->radar_supplement.range) ||
+            object->radar_supplement.range < 0))) {
+        AERROR << "Invalid modality-specific fusion observation.";
+        return false;
+      }
     }
+    fusion_frame->admitted = scheduler_.Add(sensor_frame);
+    return fusion_frame->admitted;
   }
 
-  // 2. query related sensor_frames for fusion
-  std::lock_guard<std::mutex> fuse_lock(fuse_mutex_);
-  double fusion_time = sensor_frame->timestamp;
-  std::vector<SensorFramePtr>* frames = &fusion_frame->sensor_frames;
-  sensor_data_manager->GetLatestFrames(fusion_time, frames);
-  AINFO << "Get " << frames->size() << " related frames for fusion";
-
+  std::vector<base::FrameConstPtr> frames;
+  if (!scheduler_.Drain(sensor_frame->timestamp, &frames)) {
+    return false;
+  }
+  for (const auto& frame : frames) {
+    fusion_frame->sensor_frames.emplace_back(new SensorFrame(frame));
+  }
+  fusion_frame->ready = true;
+  fusion_frame->degraded = !scheduler_.HasFreshSensor(
+      main_sensor_, sensor_frame->timestamp,
+      all_latest_fusion_config_.main_sensor_timeout());
+  fusion_frame->max_prediction_age =
+      all_latest_fusion_config_.max_prediction_age();
   return true;
-}
-
-bool AllLatestFusion::IsPublishSensor(
-    const base::FrameConstPtr& sensor_frame) const {
-  return main_sensor_ == sensor_frame->sensor_info.name;
 }
 
 }  // namespace fusion

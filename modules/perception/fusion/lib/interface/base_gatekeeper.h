@@ -28,6 +28,20 @@ namespace apollo {
 namespace perception {
 namespace fusion {
 
+enum class PublicationReason {
+  kAccepted,
+  kUninitialized,
+  kInvalidTrack,
+  kExpired,
+  kUnconfirmed,
+  kNoEligibleSource
+};
+
+struct PublicationDecision {
+  bool publish = false;
+  PublicationReason reason = PublicationReason::kInvalidTrack;
+};
+
 class BaseGatekeeper : public pipeline::Plugin {
  public:
   using PluginConfig = pipeline::PluginConfig;
@@ -39,6 +53,8 @@ class BaseGatekeeper : public pipeline::Plugin {
   virtual bool Init() = 0;
 
   virtual bool AbleToPublish(const TrackPtr& track) = 0;
+  // Publication policy must not mutate lifecycle, confirmation or estimates.
+  virtual PublicationDecision Decide(const TrackPtr& track) const = 0;
 
   virtual bool Init(const PluginConfig& plugin_config) = 0;
 

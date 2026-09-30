@@ -16,6 +16,7 @@
 #include "modules/perception/fusion/lib/fusion_system/probabilistic_fusion/probabilistic_fusion.h"
 
 #include <map>
+#include <cmath>
 #include <utility>
 
 #include "cyber/common/file.h"
@@ -24,6 +25,7 @@
 #include "modules/perception/base/object_pool_types.h"
 #include "modules/perception/fusion/base/base_init_options.h"
 #include "modules/perception/fusion/base/track_pool_types.h"
+#include "modules/perception/fusion/base/object_snapshot.h"
 #include "modules/perception/fusion/lib/data_association/hm_data_association/hm_tracks_objects_match.h"
 #include "modules/perception/fusion/lib/data_fusion/existence_fusion/dst_existence_fusion/dst_existence_fusion.h"
 #include "modules/perception/fusion/lib/data_fusion/tracker/pbf_tracker/pbf_tracker.h"
@@ -37,7 +39,39 @@ namespace fusion {
 
 using cyber::common::GetAbsolutePath;
 
+namespace {
+
+bool ValidFusionConfig(const ProbabilisticFusionConfig& config) {
+  return config.max_cached_frame_num() > 0 &&
+      std::isfinite(config.max_lidar_invisible_period()) &&
+      config.max_lidar_invisible_period() > 0 &&
+      std::isfinite(config.max_radar_invisible_period()) &&
+      config.max_radar_invisible_period() > 0 &&
+      std::isfinite(config.max_camera_invisible_period()) &&
+      config.max_camera_invisible_period() > 0 &&
+      std::isfinite(config.max_prediction_age()) &&
+      config.max_prediction_age() > 0;
+}
+
+AssociationParams AssociationConfig(const ProbabilisticFusionConfig& config) {
+  AssociationParams params;
+  params.max_center_distance = config.association_max_center_distance();
+  params.max_mahalanobis_distance = config.association_max_mahalanobis_distance();
+  params.covariance_floor = config.association_covariance_floor();
+  params.class_penalty = config.association_class_penalty();
+  params.min_camera_similarity = config.association_min_camera_similarity();
+  params.max_velocity_difference = config.association_max_velocity_difference();
+  params.velocity_penalty = config.association_velocity_penalty();
+  params.size_penalty = config.association_size_penalty();
+  params.heading_penalty = config.association_heading_penalty();
+  return params;
+}
+
+}  // namespace
+
 bool ProbabilisticFusion::Init(const FusionInitOptions& init_options) {
+  faulted_ = false;
+  if (!SensorDataManager::Instance()->Init()) return false;
   main_sensor_ = init_options.main_sensor;
 
   BaseInitOptions options;
@@ -55,10 +89,23 @@ bool ProbabilisticFusion::Init(const FusionInitOptions& init_options) {
     AERROR << "Read config failed: " << config;
     return false;
   }
+  if (!ValidFusionConfig(params) || main_sensor_.empty()) {
+    AERROR << "Invalid legacy fusion configuration.";
+    return false;
+  }
+  params_.prohibition_sensors.clear();
+  probabilistic_fusion_config_ = params;
+  trackers_.clear();
+  legacy_scheduler_ = FrameScheduler(
+      static_cast<size_t>(params.max_cached_frame_num()));
   params_.use_lidar = params.use_lidar();
   params_.use_radar = params.use_radar();
   params_.use_camera = params.use_camera();
   params_.tracker_method = params.tracker_method();
+  if (params_.tracker_method != "PbfTracker") {
+    AERROR << "Unknown tracker method: " << params_.tracker_method;
+    return false;
+  }
   params_.data_association_method = params.data_association_method();
   params_.gate_keeper_method = params.gate_keeper_method();
   for (int i = 0; i < params.prohibition_sensors_size(); ++i) {
@@ -73,7 +120,7 @@ bool ProbabilisticFusion::Init(const FusionInitOptions& init_options) {
 
   scenes_.reset(new Scene());
   if (params_.data_association_method == "HMAssociation") {
-    matcher_.reset(new HMTrackersObjectsAssociation());
+    matcher_.reset(new HMTrackersObjectsAssociation(AssociationConfig(params)));
   } else {
     AERROR << "Unknown association method: " << params_.data_association_method;
     return false;
@@ -101,13 +148,28 @@ bool ProbabilisticFusion::Init(const FusionInitOptions& init_options) {
 }
 
 bool ProbabilisticFusion::Init(const StageConfig& stage_config) {
+  faulted_ = false;
+  if (!SensorDataManager::Instance()->Init()) return false;
   if (!Initialize(stage_config)) {
     return false;
   }
 
   probabilistic_fusion_config_ = stage_config.probabilistic_fusion_config();
+  if (!ValidFusionConfig(probabilistic_fusion_config_)) {
+    AERROR << "Invalid fusion lifecycle or cache configuration.";
+    return false;
+  }
+  trackers_.clear();
+  params_.prohibition_sensors.clear();
+  params_.use_lidar = probabilistic_fusion_config_.use_lidar();
+  params_.use_radar = probabilistic_fusion_config_.use_radar();
+  params_.use_camera = probabilistic_fusion_config_.use_camera();
 
   params_.tracker_method = probabilistic_fusion_config_.tracker_method();
+  if (params_.tracker_method != "PbfTracker") {
+    AERROR << "Unknown tracker method: " << params_.tracker_method;
+    return false;
+  }
   params_.data_association_method =
       probabilistic_fusion_config_.data_association_method();
   for (const auto& prohibition_sensor :
@@ -127,7 +189,8 @@ bool ProbabilisticFusion::Init(const StageConfig& stage_config) {
 
   scenes_.reset(new Scene());
   if (params_.data_association_method == "HMAssociation") {
-    matcher_.reset(new HMTrackersObjectsAssociation());
+    matcher_.reset(new HMTrackersObjectsAssociation(
+        AssociationConfig(probabilistic_fusion_config_)));
   } else {
     AERROR << "Unknown association method: " << params_.data_association_method;
     return false;
@@ -148,12 +211,33 @@ bool ProbabilisticFusion::Process(DataFrame* data_frame) {
 
   FusionFrame* fusion_frame = data_frame->fusion_frame;
   if (fusion_frame == nullptr) return false;
+  if (!fusion_frame->ready) return true;
+  if (faulted_) {
+    AERROR << "Fusion state is faulted; reinitialization is required.";
+    return false;
+  }
+  if (std::fabs(fusion_frame->max_prediction_age -
+      probabilistic_fusion_config_.max_prediction_age()) > 1e-9) {
+    AERROR << "Scheduler and fusion prediction-age limits must agree.";
+    return false;
+  }
+  if (!fusion_frame->frame || !scenes_) {
+    AERROR << "Fusion cycle requires a timestamp and initialized scene.";
+    return false;
+  }
 
   // 3. perform fusion on related frames
   for (const auto& frame : fusion_frame->sensor_frames) {
-    FuseFrame(frame);
+    if (!FuseFrame(frame)) {
+      faulted_ = true;
+      return false;
+    }
   }
 
+  if (!PredictTracks(fusion_frame->frame->timestamp)) {
+    faulted_ = true;
+    return false;
+  }
   fusion_frame->scene_ptr = scenes_;
   return true;
 }
@@ -161,51 +245,71 @@ bool ProbabilisticFusion::Process(DataFrame* data_frame) {
 bool ProbabilisticFusion::Fuse(const FusionOptions& options,
                                const base::FrameConstPtr& sensor_frame,
                                std::vector<base::ObjectPtr>* fused_objects) {
-  if (fused_objects == nullptr) {
+  if (fused_objects == nullptr || !sensor_frame) {
     AERROR << "fusion error: fused_objects is nullptr";
     return false;
   }
+  fused_objects->clear();
 
   auto* sensor_data_manager = SensorDataManager::Instance();
-  // 1. save frame data
-  {
-    std::lock_guard<std::mutex> data_lock(data_mutex_);
-    if (!params_.use_lidar && sensor_data_manager->IsLidar(sensor_frame)) {
-      return true;
-    }
-    if (!params_.use_radar && sensor_data_manager->IsRadar(sensor_frame)) {
-      return true;
-    }
-    if (!params_.use_camera && sensor_data_manager->IsCamera(sensor_frame)) {
-      return true;
-    }
-
-    bool is_publish_sensor = IsPublishSensor(sensor_frame);
-
-    AINFO << "add sensor measurement: " << sensor_frame->sensor_info.name
-          << ", obj_cnt : " << sensor_frame->objects.size() << ", "
-          << FORMAT_TIMESTAMP(sensor_frame->timestamp);
-    sensor_data_manager->AddSensorMeasurements(sensor_frame);
-
-    if (!is_publish_sensor) {
-      return true;
-    }
+  if (!sensor_data_manager->IsKnownSensor(sensor_frame)) {
+    AERROR << "Unregistered legacy fusion source.";
+    return false;
+  }
+  std::lock_guard<std::mutex> data_lock(data_mutex_);
+  if (faulted_ || !scenes_) {
+    AERROR << "Legacy fusion is uninitialized or faulted.";
+    return false;
+  }
+  if (!params_.use_lidar && sensor_data_manager->IsLidar(sensor_frame)) {
+    return true;
+  }
+  if (!params_.use_radar && sensor_data_manager->IsRadar(sensor_frame)) {
+    return true;
+  }
+  if (!params_.use_camera && sensor_data_manager->IsCamera(sensor_frame)) {
+    return true;
   }
 
+  bool is_publish_sensor = IsPublishSensor(sensor_frame);
+
+  AINFO << "add sensor measurement: " << sensor_frame->sensor_info.name
+        << ", obj_cnt : " << sensor_frame->objects.size() << ", "
+        << FORMAT_TIMESTAMP(sensor_frame->timestamp);
+  if (!legacy_scheduler_.Add(sensor_frame)) return false;
+
+  if (!is_publish_sensor) {
+    return true;
+  }
   // 2. query related sensor_frames for fusion
   std::lock_guard<std::mutex> fuse_lock(fuse_mutex_);
   double fusion_time = sensor_frame->timestamp;
   std::vector<SensorFramePtr> frames;
-  sensor_data_manager->GetLatestFrames(fusion_time, &frames);
+  std::vector<base::FrameConstPtr> observations;
+  if (!legacy_scheduler_.Drain(fusion_time, &observations)) return false;
+  for (const auto& observation : observations) {
+    frames.emplace_back(new SensorFrame(observation));
+  }
   AINFO << "Get " << frames.size() << " related frames for fusion";
 
   // 3. perform fusion on related frames
   for (const auto& frame : frames) {
-    FuseFrame(frame);
+    if (!FuseFrame(frame)) {
+      faulted_ = true;
+      return false;
+    }
+  }
+  if (!PredictTracks(fusion_time)) {
+    faulted_ = true;
+    return false;
   }
 
   // 4. collect fused objects
-  CollectFusedObjects(fusion_time, fused_objects);
+  if (!CollectFusedObjects(fusion_time, fused_objects)) {
+    faulted_ = true;
+    fused_objects->clear();
+    return false;
+  }
   return true;
 }
 
@@ -215,80 +319,113 @@ bool ProbabilisticFusion::IsPublishSensor(
   return main_sensor_ == sensor_id;
 }
 
-void ProbabilisticFusion::FuseFrame(const SensorFramePtr& frame) {
+bool ProbabilisticFusion::FuseFrame(const SensorFramePtr& frame) {
+  if (!frame) {
+    AERROR << "Null fusion observation frame.";
+    return false;
+  }
+  // Register only the frame being processed, so queued batches cannot evict
+  // poses before camera projection or evidence updates have consumed them.
+  if (!SensorDataManager::Instance()->AddSensorFrame(frame)) return false;
   AINFO << "Fusing frame: " << frame->GetSensorId()
         << ", foreground_object_number: "
         << frame->GetForegroundObjects().size()
         << ", background_object_number: "
         << frame->GetBackgroundObjects().size()
         << ", timestamp: " << FORMAT_TIMESTAMP(frame->GetTimestamp());
-  FuseForegroundTrack(frame);
+  if (!PredictTracks(frame->GetTimestamp()) || !FuseForegroundTrack(frame))
+    return false;
   FusebackgroundTrack(frame);
   RemoveLostTrack();
+  return true;
 }
 
-void ProbabilisticFusion::FuseForegroundTrack(const SensorFramePtr& frame) {
+bool ProbabilisticFusion::PredictTracks(double timestamp) {
+  const auto& foreground = scenes_->GetForegroundTracks();
+  if (foreground.size() != trackers_.size()) {
+    AERROR << "Fusion tracker and track ownership are inconsistent.";
+    return false;
+  }
+  for (size_t index = 0; index < trackers_.size(); ++index) {
+    if (timestamp - foreground[index]->GetLastMotionObservationTimestamp() >
+        probabilistic_fusion_config_.max_prediction_age()) {
+      foreground[index]->Expire();
+    } else if (!trackers_[index]->PredictTo(timestamp)) {
+      return false;
+    }
+  }
+  for (const auto& track : scenes_->GetBackgroundTracks()) {
+    if (timestamp - track->GetLastMotionObservationTimestamp() >
+        probabilistic_fusion_config_.max_prediction_age()) {
+      track->Expire();
+      continue;
+    }
+    track->PredictBackgroundTo(timestamp);
+    track->ExpireSensorObjects(timestamp);
+  }
+  RemoveLostTrack();
+  return true;
+}
+
+bool ProbabilisticFusion::FuseForegroundTrack(const SensorFramePtr& frame) {
   PERF_BLOCK_START();
   std::string indicator = "fusion_" + frame->GetSensorId();
 
   AssociationOptions options;
   AssociationResult association_result;
-  matcher_->Associate(options, frame, scenes_, &association_result);
+  if (!matcher_->Associate(options, frame, scenes_, &association_result)) {
+    AERROR << "Fusion association failed.";
+    return false;
+  }
   PERF_BLOCK_END_WITH_INDICATOR(indicator, "association");
 
-  const std::vector<TrackMeasurmentPair>& assignments =
-      association_result.assignments;
-  UpdateAssignedTracks(frame, assignments);
+  if (!UpdateAssignedTracks(frame, association_result)) return false;
   PERF_BLOCK_END_WITH_INDICATOR(indicator, "update_assigned_track");
 
-  const std::vector<size_t>& unassigned_track_inds =
-      association_result.unassigned_tracks;
-  UpdateUnassignedTracks(frame, unassigned_track_inds);
+  if (!UpdateUnassignedTracks(frame, association_result)) return false;
   PERF_BLOCK_END_WITH_INDICATOR(indicator, "update_unassigned_track");
 
   const std::vector<size_t>& unassigned_obj_inds =
       association_result.unassigned_measurements;
-  CreateNewTracks(frame, unassigned_obj_inds);
+  if (!CreateNewTracks(frame, unassigned_obj_inds)) return false;
   PERF_BLOCK_END_WITH_INDICATOR(indicator, "create_track");
+  return true;
 }
 
-void ProbabilisticFusion::UpdateAssignedTracks(
-    const SensorFramePtr& frame,
-    const std::vector<TrackMeasurmentPair>& assignments) {
-  // Attention: match_distance should be used
-  // in ExistenceFusion to calculate existence score.
-  // We set match_distance to zero if track and object are matched,
-  // which only has a small difference compared with actural match_distance
+bool ProbabilisticFusion::UpdateAssignedTracks(
+    const SensorFramePtr& frame, const AssociationResult& association) {
+  const auto& assignments = association.assignments;
   TrackerOptions options;
-  options.match_distance = 0;
   std::vector<SensorObjectPtr>& f_ground_objs = frame->GetForegroundObjects();
   for (size_t i = 0; i < assignments.size(); ++i) {
     size_t track_ind = assignments[i].first;
     size_t obj_ind = assignments[i].second;
-    trackers_[track_ind]->UpdateWithMeasurement(options, f_ground_objs[obj_ind],
-                                                frame->GetTimestamp());
+    options.match_distance = association.track_association_loss[track_ind];
+    if (!trackers_[track_ind]->UpdateWithMeasurement(
+            options, f_ground_objs[obj_ind], frame->GetTimestamp())) {
+      return false;
+    }
   }
+  return true;
 }
 
-void ProbabilisticFusion::UpdateUnassignedTracks(
-    const SensorFramePtr& frame,
-    const std::vector<size_t>& unassigned_track_inds) {
-  // Attention: match_distance(min_match_distance) should be used
-  // in ExistenceFusion to calculate toic score.
-  // Due to it hasn't been used(mainly for front radar object pub in
-  // gatekeeper),
-  // we do not set match_distance temporarily.
+bool ProbabilisticFusion::UpdateUnassignedTracks(
+    const SensorFramePtr& frame, const AssociationResult& association) {
+  const auto& unassigned_track_inds = association.unassigned_tracks;
   TrackerOptions options;
-  options.match_distance = 0;
   std::string sensor_id = frame->GetSensorId();
   for (size_t i = 0; i < unassigned_track_inds.size(); ++i) {
     size_t track_ind = unassigned_track_inds[i];
-    trackers_[track_ind]->UpdateWithoutMeasurement(
-        options, sensor_id, frame->GetTimestamp(), frame->GetTimestamp());
+    options.match_distance = association.track_miss_similarity[track_ind];
+    if (!trackers_[track_ind]->UpdateWithoutMeasurement(
+            options, sensor_id, frame->GetTimestamp(), frame->GetTimestamp())) {
+      return false;
+    }
   }
+  return true;
 }
 
-void ProbabilisticFusion::CreateNewTracks(
+bool ProbabilisticFusion::CreateNewTracks(
     const SensorFramePtr& frame,
     const std::vector<size_t>& unassigned_obj_inds) {
   // check valid
@@ -300,15 +437,20 @@ void ProbabilisticFusion::CreateNewTracks(
                     prohibition_sensor_flag = true;
                 });
   if (prohibition_sensor_flag) {
-    return;
+    return true;
   }
 
   // add new track
   std::vector<SensorObjectPtr>& f_ground_objs = frame->GetForegroundObjects();
   for (const size_t& obj_ind : unassigned_obj_inds) {
+    if (IsCamera(f_ground_objs[obj_ind]) &&
+        f_ground_objs[obj_ind]->GetBaseObject()
+                ->camera_supplement.local_center.z() <= 0) {
+      ADEBUG << "Camera 2D observation cannot initialize a planar motion track.";
+      continue;
+    }
     TrackPtr track = TrackPool::Instance().Get();
     track->Initialize(f_ground_objs[obj_ind]);
-    scenes_->AddForegroundTrack(track);
 
     ADEBUG << "object id: " << f_ground_objs[obj_ind]->GetBaseObject()->track_id
            << ", create new track: " << track->GetTrackId();
@@ -316,10 +458,18 @@ void ProbabilisticFusion::CreateNewTracks(
     if (params_.tracker_method == "PbfTracker") {
       std::shared_ptr<BaseTracker> tracker;
       tracker.reset(new PbfTracker());
-      tracker->Init(track, f_ground_objs[obj_ind]);
+      if (!tracker->Init(track, f_ground_objs[obj_ind])) {
+        AERROR << "Failed to initialize fusion track.";
+        return false;
+      }
+      scenes_->AddForegroundTrack(track);
       trackers_.emplace_back(tracker);
+    } else {
+      AERROR << "Unknown tracker method: " << params_.tracker_method;
+      return false;
     }
   }
+  return true;
 }
 
 void ProbabilisticFusion::FusebackgroundTrack(const SensorFramePtr& frame) {
@@ -407,7 +557,7 @@ void ProbabilisticFusion::RemoveLostTrack() {
   background_tracks.resize(b_alive_index);
 }
 
-void ProbabilisticFusion::CollectFusedObjects(
+bool ProbabilisticFusion::CollectFusedObjects(
     double timestamp, std::vector<base::ObjectPtr>* fused_objects) {
   fused_objects->clear();
 
@@ -415,8 +565,10 @@ void ProbabilisticFusion::CollectFusedObjects(
   const std::vector<TrackPtr>& foreground_tracks =
       scenes_->GetForegroundTracks();
   for (const auto& track_ptr : foreground_tracks) {
-    if (gate_keeper_->AbleToPublish(track_ptr)) {
-      CollectObjectsByTrack(timestamp, track_ptr, fused_objects);
+    if (timestamp - track_ptr->GetLastMotionObservationTimestamp() <=
+        probabilistic_fusion_config_.max_prediction_age() &&
+        gate_keeper_->AbleToPublish(track_ptr)) {
+      if (!CollectObjectsByTrack(timestamp, track_ptr, fused_objects)) return false;
       ++fg_obj_num;
     }
   }
@@ -425,8 +577,10 @@ void ProbabilisticFusion::CollectFusedObjects(
   const std::vector<TrackPtr>& background_tracks =
       scenes_->GetBackgroundTracks();
   for (const auto& track_ptr : background_tracks) {
-    if (gate_keeper_->AbleToPublish(track_ptr)) {
-      CollectObjectsByTrack(timestamp, track_ptr, fused_objects);
+    if (timestamp - track_ptr->GetLastMotionObservationTimestamp() <=
+        probabilistic_fusion_config_.max_prediction_age() &&
+        gate_keeper_->AbleToPublish(track_ptr)) {
+      if (!CollectObjectsByTrack(timestamp, track_ptr, fused_objects)) return false;
       ++bg_obj_num;
     }
   }
@@ -434,72 +588,19 @@ void ProbabilisticFusion::CollectFusedObjects(
   AINFO << "collect objects : fg_obj_cnt = " << fg_obj_num
         << ", bg_obj_cnt = " << bg_obj_num
         << ", timestamp = " << FORMAT_TIMESTAMP(timestamp);
+  return true;
 }
 
-void ProbabilisticFusion::CollectObjectsByTrack(
+bool ProbabilisticFusion::CollectObjectsByTrack(
     double timestamp, const TrackPtr& track,
     std::vector<base::ObjectPtr>* fused_objects) {
-  const FusedObjectPtr& fused_object = track->GetFusedObject();
-  base::ObjectPtr obj = base::ObjectPool::Instance().Get();
-  *obj = *(fused_object->GetBaseObject());
-
-  // create obj->fusion_supplement.measurements
-  const SensorId2ObjectMap& lidar_measurements = track->GetLidarObjects();
-  const SensorId2ObjectMap& camera_measurements = track->GetCameraObjects();
-  const SensorId2ObjectMap& radar_measurements = track->GetRadarObjects();
-
-  size_t num_measurements = lidar_measurements.size() +
-                            camera_measurements.size() +
-                            radar_measurements.size();
-  obj->fusion_supplement.on_use = true;
-  auto& measurements = obj->fusion_supplement.measurements;
-  measurements.resize(num_measurements);
-
-  // fill measurements
-  size_t m_index = 0;
-  for (const auto& iter : lidar_measurements) {
-    CollectSensorMeasurementFromObject(iter.second, &measurements[m_index++]);
-  }
-  for (const auto& iter : camera_measurements) {
-    CollectSensorMeasurementFromObject(iter.second, &measurements[m_index++]);
-  }
-  for (const auto& iter : radar_measurements) {
-    CollectSensorMeasurementFromObject(iter.second, &measurements[m_index++]);
-  }
-
-  // save to fused_objects
-  obj->track_id = track->GetTrackId();
-  obj->latest_tracked_time = timestamp;
-  obj->tracking_time = track->GetTrackingPeriod();
-  fused_objects->emplace_back(obj);
-
-  ADEBUG << "fusion_reporting..." << obj->track_id << "@"
-         << FORMAT_TIMESTAMP(timestamp) << "@(" << std::setprecision(10)
-         << obj->center(0) << "," << obj->center(1) << ","
-         << obj->center_uncertainty(0, 0) << ","
-         << obj->center_uncertainty(0, 1) << ","
-         << obj->center_uncertainty(1, 0) << ","
-         << obj->center_uncertainty(1, 1) << "," << obj->velocity(0) << ","
-         << obj->velocity(1) << "," << obj->velocity_uncertainty(0, 0) << ","
-         << obj->velocity_uncertainty(0, 1) << ","
-         << obj->velocity_uncertainty(1, 0) << ","
-         << obj->velocity_uncertainty(1, 1) << ")";
+  return AppendTrackSnapshot(timestamp, track, fused_objects);
 }
 
 void ProbabilisticFusion::CollectSensorMeasurementFromObject(
     const SensorObjectConstPtr& object,
     base::SensorObjectMeasurement* measurement) {
-  measurement->sensor_id = object->GetSensorId();
-  measurement->timestamp = object->GetTimestamp();
-  measurement->track_id = object->GetBaseObject()->track_id;
-  measurement->center = object->GetBaseObject()->center;
-  measurement->theta = object->GetBaseObject()->theta;
-  measurement->size = object->GetBaseObject()->size;
-  measurement->velocity = object->GetBaseObject()->velocity;
-  measurement->type = object->GetBaseObject()->type;
-  if (IsCamera(object)) {
-    measurement->box = object->GetBaseObject()->camera_supplement.box;
-  }
+  CopySensorMeasurement(object, measurement);
 }
 
 FUSION_REGISTER_FUSIONSYSTEM(ProbabilisticFusion);

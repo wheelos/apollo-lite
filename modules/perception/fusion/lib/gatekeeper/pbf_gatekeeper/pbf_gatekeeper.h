@@ -15,6 +15,7 @@
  *****************************************************************************/
 #pragma once
 
+#include <set>
 #include <string>
 
 #include "cyber/common/macros.h"
@@ -52,6 +53,7 @@ class PbfGatekeeper : public BaseGatekeeper {
   bool Init() override;
 
   bool AbleToPublish(const TrackPtr& track) override;
+  PublicationDecision Decide(const TrackPtr& track) const override;
 
   bool Init(const PluginConfig& plugin_config) override;
 
@@ -60,11 +62,14 @@ class PbfGatekeeper : public BaseGatekeeper {
   std::string Name() const override { return name_; }
 
  private:
-  bool LidarAbleToPublish(const TrackPtr& track);
-  bool RadarAbleToPublish(const TrackPtr& track, bool is_night);
-  bool CameraAbleToPublish(const TrackPtr& track, bool is_night);
+  bool LidarAbleToPublish(const TrackPtr& track) const;
+  bool RadarAbleToPublish(const TrackPtr& track) const;
+  bool CameraAbleToPublish(const TrackPtr& track) const;
+  bool SourceAllowed(const SensorObjectConstPtr& object) const;
 
   PbfGatekeeperParams params_;
+  std::set<std::string> blocked_publish_sensors_;
+  bool initialized_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(PbfGatekeeper);
 };

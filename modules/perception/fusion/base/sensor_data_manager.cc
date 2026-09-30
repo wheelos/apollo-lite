@@ -42,8 +42,12 @@ void SensorDataManager::Reset() {
   sensors_.clear();
 }
 
-void SensorDataManager::AddSensorMeasurements(
+bool SensorDataManager::AddSensorMeasurements(
     const base::FrameConstPtr& frame_ptr) {
+  if (!IsKnownSensor(frame_ptr)) {
+    AERROR << "Unknown sensor or mismatched sensor type.";
+    return false;
+  }
   const base::SensorInfo& sensor_info = frame_ptr->sensor_info;
   std::string sensor_id = sensor_info.name;
   const auto it = sensors_.find(sensor_id);
@@ -51,7 +55,7 @@ void SensorDataManager::AddSensorMeasurements(
   if (it == sensors_.end()) {
     if (!sensor_manager_->IsSensorExist(sensor_id)) {
       AERROR << "Failed to find sensor " << sensor_id << " in sensor manager.";
-      return;
+      return false;
     }
     sensor_ptr.reset(new Sensor(sensor_info));
     sensors_.emplace(sensor_id, sensor_ptr);
@@ -60,6 +64,23 @@ void SensorDataManager::AddSensorMeasurements(
   }
 
   sensor_ptr->AddFrame(frame_ptr);
+  return true;
+}
+
+bool SensorDataManager::AddSensorFrame(const SensorFramePtr& frame) {
+  if (!frame) {
+    AERROR << "Cannot register a null sensor frame.";
+    return false;
+  }
+  auto header = std::make_shared<base::Frame>();
+  header->timestamp = frame->GetTimestamp();
+  header->sensor_info.name = frame->GetSensorId();
+  header->sensor_info.type = frame->GetSensorType();
+  if (!frame->GetPose(&header->sensor2world_pose)) {
+    AERROR << "Missing processed sensor pose.";
+    return false;
+  }
+  return AddSensorMeasurements(header);
 }
 
 bool SensorDataManager::IsLidar(const base::FrameConstPtr& frame_ptr) {
@@ -75,6 +96,14 @@ bool SensorDataManager::IsRadar(const base::FrameConstPtr& frame_ptr) {
 bool SensorDataManager::IsCamera(const base::FrameConstPtr& frame_ptr) {
   base::SensorType type = frame_ptr->sensor_info.type;
   return sensor_manager_->IsCamera(type);
+}
+
+bool SensorDataManager::IsKnownSensor(
+    const base::FrameConstPtr& frame_ptr) const {
+  base::SensorInfo info;
+  return sensor_manager_ && frame_ptr &&
+         sensor_manager_->GetSensorInfo(frame_ptr->sensor_info.name, &info) &&
+         info.type == frame_ptr->sensor_info.type;
 }
 
 void SensorDataManager::GetLatestSensorFrames(

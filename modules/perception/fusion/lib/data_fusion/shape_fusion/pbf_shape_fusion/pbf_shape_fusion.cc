@@ -39,7 +39,6 @@ void PbfShapeFusion::UpdateWithMeasurement(const SensorObjectPtr measurement,
                       latest_camera->GetTimestamp()) <
             s_camera_radar_time_diff_th_) {
           UpdateShape(latest_camera);
-          UpdateCenter(measurement);
         } else {
           // nothing to do
         }
@@ -67,7 +66,6 @@ std::string PbfShapeFusion::Name() const { return "PbfShapeFusion"; }
 
 void PbfShapeFusion::UpdateState(const SensorObjectConstPtr& measurement) {
   UpdateShape(measurement);
-  UpdateCenter(measurement);
 }
 
 void PbfShapeFusion::UpdateShape(const SensorObjectConstPtr& measurement) {
@@ -78,14 +76,12 @@ void PbfShapeFusion::UpdateShape(const SensorObjectConstPtr& measurement) {
   dst_obj->direction = src_obj->direction;
   dst_obj->theta = src_obj->theta;
   dst_obj->polygon = src_obj->polygon;
-}
-
-void PbfShapeFusion::UpdateCenter(const SensorObjectConstPtr& measurement) {
-  base::ObjectPtr dst_obj = track_ref_->GetFusedObject()->GetBaseObject();
-  base::ObjectConstPtr src_obj = measurement->GetBaseObject();
-
-  dst_obj->center = src_obj->center;
-  dst_obj->anchor_point = src_obj->anchor_point;
+  const Eigen::Vector3d displacement = dst_obj->center - src_obj->center;
+  for (auto& point : dst_obj->polygon) {
+    point.x += displacement.x();
+    point.y += displacement.y();
+    point.z += displacement.z();
+  }
 }
 
 // FUSION_REGISTER_SHAPEFUSION(PbfShapeFusion)

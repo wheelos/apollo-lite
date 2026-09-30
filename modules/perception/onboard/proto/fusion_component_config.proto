@@ -15,4 +15,6 @@ message FusionComponentConfig {
       [default = "/perception/inner/visualization/FusedObjects"];
   optional string sensor_fusion_conf_dir = 8;
   optional string sensor_fusion_conf_file = 9;
+  optional uint32 publish_period_ms = 10 [default = 50];
+  optional double reorder_window = 11 [default = 0.05];
 }

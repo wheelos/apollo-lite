@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "modules/perception/fusion/base/frame_scheduler.h"
 #include "modules/perception/fusion/base/fusion_frame.h"
 #include "modules/perception/pipeline/stage.h"
 
@@ -45,13 +46,9 @@ class AllLatestFusion : public pipeline::Stage {
   std::string Name() const override { return name_; }
 
  private:
-  bool IsPublishSensor(const base::FrameConstPtr& sensor_frame) const;
-
- private:
   AllLatestFusionConfig all_latest_fusion_config_;
 
-  std::mutex data_mutex_;
-  std::mutex fuse_mutex_;
+  FrameScheduler scheduler_;
 
   // FusionParams params_;
   bool use_lidar_;

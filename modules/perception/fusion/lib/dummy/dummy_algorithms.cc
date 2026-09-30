@@ -59,14 +59,18 @@ bool DummyTracker::Init(TrackPtr track, SensorObjectPtr measurement) {
   return true;
 }
 
-void DummyTracker::UpdateWithMeasurement(const TrackerOptions& options,
+bool DummyTracker::UpdateWithMeasurement(const TrackerOptions& options,
                                          const SensorObjectPtr measurement,
-                                         double target_timestamp) {}
+                                         double target_timestamp) {
+  return true;
+}
 
-void DummyTracker::UpdateWithoutMeasurement(const TrackerOptions& options,
+bool DummyTracker::UpdateWithoutMeasurement(const TrackerOptions& options,
                                             const std::string& sensor_id,
                                             double measurement_timestamp,
-                                            double target_timestamp) {}
+                                            double target_timestamp) {
+  return true;
+}
 
 FUSION_REGISTER_FUSIONSYSTEM(DummyFusionSystem);
 

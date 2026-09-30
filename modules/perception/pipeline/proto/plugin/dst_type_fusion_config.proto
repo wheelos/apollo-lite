@@ -18,4 +18,5 @@ message LidarDstTypeFusionParam {
 message DstTypeFusionConfig {
   repeated CameraDstTypeFusionParam camera_params = 1;
   repeated LidarDstTypeFusionParam lidar_params = 2;
+  optional double evidence_half_life = 3 [default = 5.0];
 }

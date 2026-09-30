@@ -37,12 +37,14 @@ class BaseMotionFusion {
   // @brief: update track state with measurement
   // @param [in]: measurement
   // @param [in]: target_timestamp
-  virtual void UpdateWithMeasurement(const SensorObjectConstPtr& measurement,
+  virtual bool UpdateWithMeasurement(const SensorObjectConstPtr& measurement,
                                      double target_timestamp) = 0;
 
-  virtual void UpdateWithoutMeasurement(const std::string& sensor_id,
+  virtual bool UpdateWithoutMeasurement(const std::string& sensor_id,
                                         double measurement_timestamp,
                                         double target_timestamp) = 0;
+
+  virtual bool PredictTo(double timestamp) = 0;
 
   virtual std::string Name() const = 0;
 

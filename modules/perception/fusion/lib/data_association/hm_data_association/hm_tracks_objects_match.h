@@ -15,86 +15,41 @@
  *****************************************************************************/
 #pragma once
 
-#include <string>
-#include <vector>
-
-#include "cyber/common/macros.h"
 #include "modules/perception/common/graph/gated_hungarian_bigraph_matcher.h"
-#include "modules/perception/fusion/lib/data_association/hm_data_association/track_object_distance.h"
 #include "modules/perception/fusion/lib/interface/base_data_association.h"
 
 namespace apollo {
 namespace perception {
 namespace fusion {
 
+struct AssociationParams {
+  double max_center_distance = 4.0;
+  double max_mahalanobis_distance = 9.21;
+  double covariance_floor = 0.001;
+  double class_penalty = 0.2;
+  double min_camera_similarity = 0.5;
+  double max_velocity_difference = 10.0;
+  double velocity_penalty = 0.1;
+  double size_penalty = 0.1;
+  double heading_penalty = 0.1;
+};
+
 class HMTrackersObjectsAssociation : public BaseDataAssociation {
  public:
-  HMTrackersObjectsAssociation() = default;
-  ~HMTrackersObjectsAssociation() = default;
+  explicit HMTrackersObjectsAssociation(
+      const AssociationParams& params = AssociationParams()) : params_(params) {}
 
-  bool Init() override {
-    track_object_distance_.set_distance_thresh(
-        static_cast<float>(s_match_distance_thresh_));
-    return true;
-  }
-
+  bool Init() override;
   bool Associate(const AssociationOptions& options,
                  SensorFramePtr sensor_measurements, ScenePtr scene,
                  AssociationResult* association_result) override;
 
  private:
-  void ComputeAssociationDistanceMat(
-      const std::vector<TrackPtr>& fusion_tracks,
-      const std::vector<SensorObjectPtr>& sensor_objects,
-      const Eigen::Vector3d& ref_point,
-      const std::vector<size_t>& unassigned_tracks,
-      const std::vector<size_t>& unassigned_measurements,
-      std::vector<std::vector<double>>* association_mat);
+  bool Evaluate(const TrackPtr& track, const SensorObjectPtr& object,
+                double* loss, bool* accepted);
 
-  void IdAssign(const std::vector<TrackPtr>& fusion_tracks,
-                const std::vector<SensorObjectPtr>& sensor_objects,
-                std::vector<TrackMeasurmentPair>* assignments,
-                std::vector<size_t>* unassigned_fusion_tracks,
-                std::vector<size_t>* unassigned_sensor_objects,
-                bool do_nothing = false, bool post = false);
-
-  void PostIdAssign(const std::vector<TrackPtr>& fusion_tracks,
-                    const std::vector<SensorObjectPtr>& sensor_objects,
-                    const std::vector<size_t>& unassigned_fusion_tracks,
-                    const std::vector<size_t>& unassigned_sensor_objects,
-                    std::vector<TrackMeasurmentPair>* post_assignments);
-
-  bool MinimizeAssignment(
-      const std::vector<std::vector<double>>& association_mat,
-      const std::vector<size_t>& track_ind_l2g,
-      const std::vector<size_t>& measurement_ind_l2g,
-      std::vector<TrackMeasurmentPair>* assignments,
-      std::vector<size_t>* unassigned_tracks,
-      std::vector<size_t>* unassigned_measurements);
-
-  void ComputeDistance(const std::vector<TrackPtr>& fusion_tracks,
-                       const std::vector<SensorObjectPtr>& sensor_objects,
-                       const std::vector<size_t>& unassigned_fusion_track,
-                       const std::vector<int>& track_ind_g2l,
-                       const std::vector<int>& measurement_ind_g2l,
-                       const std::vector<size_t>& measurement_ind_l2g,
-                       const std::vector<std::vector<double>>& association_mat,
-                       AssociationResult* association_result);
-
-  void GenerateUnassignedData(
-      size_t track_num, size_t objects_num,
-      const std::vector<TrackMeasurmentPair>& assignments,
-      std::vector<size_t>* unassigned_tracks,
-      std::vector<size_t>* unassigned_objects);
-
- private:
+  AssociationParams params_;
   common::GatedHungarianMatcher<float> optimizer_;
-  TrackObjectDistance track_object_distance_;
-  static double s_match_distance_thresh_;
-  static double s_match_distance_bound_;
-  static double s_association_center_dist_threshold_;
-
-  DISALLOW_COPY_AND_ASSIGN(HMTrackersObjectsAssociation);
 };
 
 }  // namespace fusion

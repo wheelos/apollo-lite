@@ -19,12 +19,15 @@
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
 #include "modules/perception/fusion/base/sensor_data_manager.h"
 #include "modules/perception/fusion/common/camera_util.h"
+#include "modules/perception/fusion/tests/test_support.h"
 
 namespace apollo {
 namespace perception {
 namespace fusion {
 
-TEST(CameraUtilTest, test_is_pt_in_frustum) {
+class CameraUtilTest : public testing::FusionTest {};
+
+TEST_F(CameraUtilTest, test_is_pt_in_frustum) {
   double width = 1080;
   double height = 920;
   float x[3] = {-1, 500, 2000};
@@ -39,21 +42,15 @@ TEST(CameraUtilTest, test_is_pt_in_frustum) {
   }
 }
 
-TEST(CameraUtilTest, test_object_in_camera_view_and_is_behind_camera) {
-  FLAGS_work_root = "/apollo/modules/perception/testdata/fusion/base";
-  FLAGS_obs_sensor_intrinsic_path =
-      "/apollo/modules/perception/testdata/"
-      "fusion/base/params";
-  FLAGS_obs_sensor_meta_path = "./data/sensor_meta.pt";
-
+TEST_F(CameraUtilTest, test_object_in_camera_view_and_is_behind_camera) {
   // create a lidar sensor object
   base::ObjectPtr base_lidar_object(new base::Object());
   base_lidar_object->center = Eigen::Vector3d(0, 0, 15);
   base_lidar_object->size = Eigen::Vector3f(1, 1, 1);
   base_lidar_object->direction = Eigen::Vector3f(1, 0, 0);
   base::FramePtr lidar_frame(new base::Frame());
-  lidar_frame->sensor_info.name = "velodyne64";
-  lidar_frame->sensor_info.type = base::SensorType::VELODYNE_64;
+  lidar_frame->sensor_info.name = "velodyne128";
+  lidar_frame->sensor_info.type = base::SensorType::VELODYNE_128;
 
   SensorPtr lidar_sensor(new Sensor(lidar_frame->sensor_info));
   lidar_sensor->AddFrame(lidar_frame);
@@ -64,7 +61,7 @@ TEST(CameraUtilTest, test_object_in_camera_view_and_is_behind_camera) {
       new SensorObject(base_lidar_object, lidar_sensor_frame));
 
   Eigen::Affine3d pose(Eigen::Affine3d::Identity());
-  std::string sensor_id = "camera_smartereye";
+  std::string sensor_id = "front_6mm";
   base::BaseCameraModelPtr camera_model =
       common::SensorManager::Instance()->GetUndistortCameraModel(sensor_id);
   EXPECT_NE(camera_model, nullptr);

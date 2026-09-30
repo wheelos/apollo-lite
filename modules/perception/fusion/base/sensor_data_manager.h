@@ -39,11 +39,13 @@ class SensorDataManager {
 
   void Reset();
 
-  void AddSensorMeasurements(const base::FrameConstPtr& frame_ptr);
+  bool AddSensorMeasurements(const base::FrameConstPtr& frame_ptr);
+  bool AddSensorFrame(const SensorFramePtr& frame);
 
   bool IsLidar(const base::FrameConstPtr& frame_ptr);
   bool IsRadar(const base::FrameConstPtr& frame_ptr);
   bool IsCamera(const base::FrameConstPtr& frame_ptr);
+  bool IsKnownSensor(const base::FrameConstPtr& frame_ptr) const;
 
   // Getter
   void GetLatestSensorFrames(double timestamp, const std::string& sensor_id,

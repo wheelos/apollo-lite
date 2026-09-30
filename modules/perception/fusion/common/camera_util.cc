@@ -21,12 +21,66 @@
 #include "modules/perception/fusion/common/camera_util.h"
 
 #include <limits>
+#include <algorithm>
+#include <cmath>
+
+#include "cyber/common/log.h"
 
 namespace apollo {
 namespace perception {
 namespace fusion {
 
 using apollo::common::EigenVector;
+
+bool ProjectedBoxSimilarity(
+    const base::ObjectConstPtr& object, const base::BBox2DF& camera_box,
+    const Eigen::Affine3d& camera_to_world,
+    const base::BaseCameraModelPtr& camera_model, double* similarity) {
+  if (!object || !camera_model || !similarity ||
+      !camera_to_world.matrix().allFinite() ||
+      !object->direction.allFinite() ||
+      object->direction.head<2>().squaredNorm() <= 0) {
+    AERROR << "Invalid object-box camera projection.";
+    return false;
+  }
+  *similarity = 0;
+  EigenVector<Eigen::Vector3d> vertices;
+  GetObjectEightVertices(object, &vertices);
+  const Eigen::Matrix4d world_to_camera = camera_to_world.inverse().matrix();
+  base::BBox2DF projected;
+  projected.xmin = projected.ymin = std::numeric_limits<float>::max();
+  projected.xmax = projected.ymax = std::numeric_limits<float>::lowest();
+  bool visible = false;
+  for (const auto& vertex : vertices) {
+    Eigen::Vector2d point;
+    if (!Pt3dToCamera2d(vertex, world_to_camera, camera_model, &point)) continue;
+    if (!point.allFinite()) {
+      AERROR << "Non-finite projected object box.";
+      return false;
+    }
+    visible = true;
+    projected.xmin = std::min(projected.xmin, static_cast<float>(point.x()));
+    projected.xmax = std::max(projected.xmax, static_cast<float>(point.x()));
+    projected.ymin = std::min(projected.ymin, static_cast<float>(point.y()));
+    projected.ymax = std::max(projected.ymax, static_cast<float>(point.y()));
+  }
+  if (!visible) return true;
+  const float width = static_cast<float>(camera_model->get_width());
+  const float height = static_cast<float>(camera_model->get_height());
+  projected.xmin = std::max(0.0f, projected.xmin);
+  projected.xmax = std::min(width, projected.xmax);
+  projected.ymin = std::max(0.0f, projected.ymin);
+  projected.ymax = std::min(height, projected.ymax);
+  if (projected.xmax <= projected.xmin || projected.ymax <= projected.ymin) {
+    return true;
+  }
+  *similarity = common::CalculateIOUBBox(projected, camera_box);
+  if (!std::isfinite(*similarity) || *similarity < 0 || *similarity > 1) {
+    AERROR << "Invalid camera projected-box IoU.";
+    return false;
+  }
+  return true;
+}
 
 void GetObjectEightVertices(std::shared_ptr<const base::Object> obj,
                             EigenVector<Eigen::Vector3d>* vertices) {

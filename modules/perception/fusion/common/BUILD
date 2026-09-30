@@ -25,6 +25,7 @@ cc_library(
         "//modules/perception/base:camera",
         "//modules/perception/common/geometry:common",
         "//modules/perception/fusion/base:sensor",
+        "@core//cyber",
     ],
 )
 
@@ -36,6 +37,7 @@ cc_test(
         ":camera_util",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/fusion/base",
+        "//modules/perception/fusion/tests:test_support",
         "@com_google_googletest//:gtest_main",
     ],
 )

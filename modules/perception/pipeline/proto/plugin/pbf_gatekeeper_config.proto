@@ -19,4 +19,5 @@ message PbfGatekeeperConfig {
 
   optional double existence_threshold = 12;
   optional double radar_existence_threshold = 13;
+  repeated string blocked_publish_sensors = 14;
 }

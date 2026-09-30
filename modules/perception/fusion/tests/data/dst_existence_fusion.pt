@@ -1,0 +1,11 @@
+track_object_max_match_distance: 4.0
+evidence_half_life: 5.0
+lidar_reliability: 0.9
+radar_reliability: 0.6
+camera_reliability: 0.8
+unknown_type_discount: 0.6
+camera_toic_weight: 0.7
+camera_valid_dist {
+  camera_name: "front_6mm"
+  valid_dist: 110
+}

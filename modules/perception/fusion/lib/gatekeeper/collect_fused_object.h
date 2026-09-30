@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "modules/perception/fusion/lib/interface/base_gatekeeper.h"
@@ -46,20 +46,12 @@ class CollectFusedObject : public pipeline::Stage {
   std::string Name() const override { return name_; }
 
  private:
-  void Process(double timestamp, std::vector<base::ObjectPtr>* fused_objects);
-
-  void CollectObjectsByTrack(
-      double timestamp,
-      const TrackPtr& track,
-      std::vector<base::ObjectPtr>* fused_objects);
-
-  void CollectSensorMeasurementFromObject(
-      const SensorObjectConstPtr& object,
-      base::SensorObjectMeasurement* measurement);
+  bool Process(double timestamp, std::vector<base::ObjectPtr>* fused_objects);
 
  private:
   std::unique_ptr<BaseGatekeeper> gate_keeper_;
   ScenePtr scenes_;
+  double max_prediction_age_ = 0.5;
 };
 
 }  // namespace fusion

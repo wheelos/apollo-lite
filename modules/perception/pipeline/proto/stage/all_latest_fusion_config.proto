@@ -7,4 +7,7 @@ message AllLatestFusionConfig {
   optional bool use_lidar = 2 [default = true];
   optional bool use_radar = 3 [default = true];
   optional bool use_camera = 4 [default = true];
+  optional uint32 queue_capacity = 5 [default = 200];
+  optional double main_sensor_timeout = 6 [default = 0.25];
+  optional double max_prediction_age = 7 [default = 0.5];
 }

@@ -48,7 +48,6 @@ class PbfShapeFusion : public BaseShapeFusion {
   // Update state
   void UpdateState(const SensorObjectConstPtr& measurement);
   void UpdateShape(const SensorObjectConstPtr& measurement);
-  void UpdateCenter(const SensorObjectConstPtr& measurement);
 
   static bool s_use_camera_3d_;
   static float s_camera_radar_time_diff_th_;

@@ -15,205 +15,132 @@
  *****************************************************************************/
 #include "modules/perception/fusion/lib/gatekeeper/pbf_gatekeeper/pbf_gatekeeper.h"
 
-#include "cyber/common/file.h"
-#include "modules/perception/base/object_types.h"
-#include "modules/perception/fusion/base/base_init_options.h"
+#include <cmath>
+
 #include "modules/perception/pipeline/proto/plugin/pbf_gatekeeper_config.pb.h"
+
+#include "cyber/common/file.h"
+#include "modules/perception/fusion/base/base_init_options.h"
 #include "modules/perception/lib/config_manager/config_manager.h"
 
 namespace apollo {
 namespace perception {
 namespace fusion {
 
-using cyber::common::GetAbsolutePath;
-
-PbfGatekeeper::PbfGatekeeper(const PluginConfig& plugin_config) {
-  Init(plugin_config);
+PbfGatekeeper::PbfGatekeeper(const PluginConfig& config) {
+  name_ = "PbfGatekeeper";
+  if (!Init(config)) AERROR << "Failed to initialize fusion publication policy.";
 }
 
 bool PbfGatekeeper::Init() {
   BaseInitOptions options;
-  if (!GetFusionInitOptions("PbfGatekeeper", &options)) {
-    return false;
-  }
-
-  std::string woork_root_config = GetAbsolutePath(
+  if (!GetFusionInitOptions("PbfGatekeeper", &options)) return false;
+  const std::string root = cyber::common::GetAbsolutePath(
       lib::ConfigManager::Instance()->work_root(), options.root_dir);
-
-  std::string config = GetAbsolutePath(woork_root_config, options.conf_file);
-  PbfGatekeeperConfig params;
-
-  if (!cyber::common::GetProtoFromFile(config, &params)) {
-    AERROR << "Read config failed: " << config;
+  PluginConfig plugin;
+  if (!cyber::common::GetProtoFromFile(
+          cyber::common::GetAbsolutePath(root, options.conf_file),
+          plugin.mutable_pbf_gatekeeper_config())) {
+    AERROR << "Failed to load fusion publication policy.";
     return false;
   }
-  params_.publish_if_has_lidar = params.publish_if_has_lidar();
-  params_.publish_if_has_radar = params.publish_if_has_radar();
-  params_.publish_if_has_camera = params.publish_if_has_camera();
-  params_.use_camera_3d = params.use_camera_3d();
-  params_.min_radar_confident_distance = params.min_radar_confident_distance();
-  params_.max_radar_confident_angle = params.max_radar_confident_angle();
-  params_.min_camera_publish_distance = params.min_camera_publish_distance();
-  params_.invisible_period_threshold = params.invisible_period_threshold();
-  params_.existence_threshold = params.existence_threshold();
-  params_.radar_existence_threshold = params.radar_existence_threshold();
-  params_.toic_threshold = params.toic_threshold();
-  params_.use_track_time_pub_strategy = params.use_track_time_pub_strategy();
-  params_.pub_track_time_thresh = params.pub_track_time_thresh();
-  return true;
+  return Init(plugin);
 }
 
-bool PbfGatekeeper::Init(const PluginConfig& plugin_config) {
-  PbfGatekeeperConfig config = plugin_config.pbf_gatekeeper_config();
-
+bool PbfGatekeeper::Init(const PluginConfig& plugin) {
+  initialized_ = false;
+  const auto& config = plugin.pbf_gatekeeper_config();
   params_.publish_if_has_lidar = config.publish_if_has_lidar();
   params_.publish_if_has_radar = config.publish_if_has_radar();
   params_.publish_if_has_camera = config.publish_if_has_camera();
   params_.use_camera_3d = config.use_camera_3d();
   params_.min_radar_confident_distance = config.min_radar_confident_distance();
-  params_.max_radar_confident_angle = config.max_radar_confident_angle();
   params_.min_camera_publish_distance = config.min_camera_publish_distance();
-  params_.invisible_period_threshold = config.invisible_period_threshold();
   params_.existence_threshold = config.existence_threshold();
   params_.radar_existence_threshold = config.radar_existence_threshold();
-  params_.toic_threshold = config.toic_threshold();
   params_.use_track_time_pub_strategy = config.use_track_time_pub_strategy();
   params_.pub_track_time_thresh = config.pub_track_time_thresh();
+  blocked_publish_sensors_.clear();
+  blocked_publish_sensors_.insert(config.blocked_publish_sensors().begin(),
+                                  config.blocked_publish_sensors().end());
+  if (params_.pub_track_time_thresh < 0 ||
+      !std::isfinite(params_.min_radar_confident_distance) ||
+      params_.min_radar_confident_distance < 0 ||
+      !std::isfinite(params_.min_camera_publish_distance) ||
+      params_.min_camera_publish_distance < 0 ||
+      !std::isfinite(params_.existence_threshold) ||
+      params_.existence_threshold < 0 || params_.existence_threshold > 1 ||
+      !std::isfinite(params_.radar_existence_threshold) ||
+      params_.radar_existence_threshold < 0 ||
+      params_.radar_existence_threshold > 1) {
+    AERROR << "Invalid fusion publication policy.";
+    return false;
+  }
+  initialized_ = true;
+  enable_ = plugin.enabled();
   return true;
 }
 
-bool PbfGatekeeper::AbleToPublish(const TrackPtr &track) {
-  bool invisible_in_lidar = !(track->IsLidarVisible());
-  bool invisible_in_radar = !(track->IsRadarVisible());
-  bool invisible_in_camera = !(track->IsCameraVisible());
-  if (invisible_in_lidar && invisible_in_radar &&
-      (!params_.use_camera_3d || invisible_in_camera)) {
-    auto sensor_obj = track->GetFusedObject();
-    if (sensor_obj != nullptr && sensor_obj->GetBaseObject()->sub_type !=
-                                     base::ObjectSubType::TRAFFICCONE) {
-      return false;
-    }
-  }
-  time_t rawtime = static_cast<time_t>(track->GetFusedObject()->GetTimestamp());
+bool PbfGatekeeper::SourceAllowed(const SensorObjectConstPtr& object) const {
+  return object && blocked_publish_sensors_.count(object->GetSensorId()) == 0;
+}
 
-  // use thread-safe localtime_r instead of localtime
-  struct tm timeinfo;
-  localtime_r(&rawtime, &timeinfo);
-  bool is_night = (timeinfo.tm_hour >= 23);
-  if (!LidarAbleToPublish(track) && !RadarAbleToPublish(track, is_night) &&
-      !CameraAbleToPublish(track, is_night)) {
-    return false;
-  }
+bool PbfGatekeeper::AbleToPublish(const TrackPtr& track) {
+  return Decide(track).publish;
+}
 
-  track->AddTrackedTimes();
+PublicationDecision PbfGatekeeper::Decide(const TrackPtr& track) const {
+  if (!initialized_) return {false, PublicationReason::kUninitialized};
+  if (!track) return {false, PublicationReason::kInvalidTrack};
+  if (!track->IsAlive()) return {false, PublicationReason::kExpired};
   if (params_.use_track_time_pub_strategy &&
       track->GetTrackedTimes() <=
           static_cast<size_t>(params_.pub_track_time_thresh)) {
-    return false;
+    return {false, PublicationReason::kUnconfirmed};
   }
-  return true;
+  if (LidarAbleToPublish(track) || RadarAbleToPublish(track) ||
+      CameraAbleToPublish(track)) {
+    return {true, PublicationReason::kAccepted};
+  }
+  return {false, PublicationReason::kNoEligibleSource};
 }
 
-bool PbfGatekeeper::LidarAbleToPublish(const TrackPtr &track) {
-  bool visible_in_lidar = track->IsLidarVisible();
-  if (params_.publish_if_has_lidar && visible_in_lidar) {
-    return true;
+bool PbfGatekeeper::LidarAbleToPublish(const TrackPtr& track) const {
+  if (!params_.publish_if_has_lidar) return false;
+  for (const auto& item : track->GetLidarObjects()) {
+    if (SourceAllowed(item.second)) return true;
   }
   return false;
 }
 
-bool PbfGatekeeper::RadarAbleToPublish(const TrackPtr &track, bool is_night) {
-  bool visible_in_radar = track->IsRadarVisible();
-  SensorObjectConstPtr radar_object = track->GetLatestRadarObject();
-  if (params_.publish_if_has_radar && visible_in_radar &&
-      radar_object != nullptr) {
-    if (radar_object->GetSensorId() == "radar_front") {
-      // TODO(henjiahao): enable radar front
-      return false;
-      // if (radar_object->GetBaseObject()->radar_supplement.range >
-      //         params_.min_radar_confident_distance &&
-      //     radar_object->GetBaseObject()->radar_supplement.angle <
-      //         params_.max_radar_confident_angle) {
-      //   double heading_v =
-      //       std::abs(track->GetFusedObject()->GetBaseObject()->velocity.dot(
-      //           track->GetFusedObject()->GetBaseObject()->direction));
-      //   double toic_p = track->GetToicProb();
-      //   auto set_velocity_to_zero = [heading_v, track]() {
-      //     if (heading_v < 0.3) {
-      //       track->GetFusedObject()->GetBaseObject()->velocity.setZero();
-      //     }
-      //   };
-      //   if (!is_night) {
-      //     if (toic_p > params_.toic_threshold) {
-      //       set_velocity_to_zero();
-      //       return true;
-      //     }
-      //   } else {
-      //     // the velocity buffer is [-3, +3] m/s
-      //     double v_ct = 4.0;
-      //     double v_slope = 1.0;
-      //     auto heading_v_decision = [](double x, double c, double k) {
-      //       x = x - c;
-      //       return 0.5 + 0.5 * x * k / std::sqrt(1 + x * x * k * k);
-      //     };
-      //     auto fuse_two_probabilities = [](double p1, double p2) {
-      //       double p = (p1 * p2) / (2 * p1 * p2 + 1 - p1 - p2);
-      //       p = std::min(1.0 - std::numeric_limits<float>::epsilon(), p);
-      //       return p;
-      //     };
-
-      //     double min_toic_p = 0.2;
-      //     toic_p = std::max(min_toic_p, toic_p);
-      //     double v_p = heading_v_decision(heading_v, v_ct, v_slope);
-      //     double p = fuse_two_probabilities(toic_p, v_p);
-      //     if (p > 0.5) {
-      //       set_velocity_to_zero();
-      //       return true;
-      //     }
-      //   }
-      // }
-    } else if (radar_object->GetSensorId() == "radar_rear") {
-      ADEBUG << "radar_rear: min_dis: " << params_.min_radar_confident_distance
-             << " obj dist: "
-             << radar_object->GetBaseObject()->radar_supplement.range
-             << " track_id: " << track->GetTrackId()
-             << " exist_prob: " << track->GetExistenceProb();
-      if (radar_object->GetBaseObject()->radar_supplement.range >
-              params_.min_radar_confident_distance &&
-          (radar_object->GetBaseObject()->velocity.norm() > 4.0 ||
-           track->GetExistenceProb() > params_.radar_existence_threshold)) {
-        return true;
-      }
+bool PbfGatekeeper::RadarAbleToPublish(const TrackPtr& track) const {
+  if (!params_.publish_if_has_radar ||
+      track->GetExistenceProb() < params_.radar_existence_threshold) {
+    return false;
+  }
+  for (const auto& item : track->GetRadarObjects()) {
+    if (SourceAllowed(item.second) &&
+        item.second->GetBaseObject()->radar_supplement.range >=
+            params_.min_radar_confident_distance) {
+      return true;
     }
   }
   return false;
 }
 
-bool PbfGatekeeper::CameraAbleToPublish(const TrackPtr &track, bool is_night) {
-  bool visible_in_camera = track->IsCameraVisible();
-  SensorId2ObjectMap &camera_objects = track->GetCameraObjects();
-  auto iter = camera_objects.find("front_6mm");
-  auto iter_narrow = camera_objects.find("front_12mm");
-  iter = iter != camera_objects.end() ? iter : iter_narrow;
-  if (params_.publish_if_has_camera && visible_in_camera &&
-      iter != camera_objects.end() && params_.use_camera_3d && !is_night) {
-    SensorObjectConstPtr camera_object = iter->second;
-    double range =
-        camera_object->GetBaseObject()->camera_supplement.local_center.norm();
-    // If sub_type of object is traffic cone publish it regardless of range
-    if ((camera_object->GetBaseObject()->sub_type ==
-         base::ObjectSubType::TRAFFICCONE) ||
-        (range >= params_.min_camera_publish_distance ||
-         ((camera_object->GetBaseObject()->type ==
-           base::ObjectType::UNKNOWN_UNMOVABLE) &&
-          (range >= params_.min_camera_publish_distance)))) {
-      double exist_prob = track->GetExistenceProb();
-      if (exist_prob > params_.existence_threshold) {
-        static int cnt_cam = 1;
-        AINFO << "publish camera only object : cnt =  " << cnt_cam;
-        cnt_cam++;
-        return true;
-      }
+bool PbfGatekeeper::CameraAbleToPublish(const TrackPtr& track) const {
+  if (!params_.publish_if_has_camera || !params_.use_camera_3d ||
+      track->GetExistenceProb() < params_.existence_threshold) {
+    return false;
+  }
+  for (const auto& item : track->GetCameraObjects()) {
+    if (!SourceAllowed(item.second)) continue;
+    const auto& object = item.second->GetBaseObject();
+    if (object->camera_supplement.local_center.z() > 0 &&
+        (object->sub_type == base::ObjectSubType::TRAFFICCONE ||
+        object->camera_supplement.local_center.norm() >=
+            params_.min_camera_publish_distance)) {
+      return true;
     }
   }
   return false;

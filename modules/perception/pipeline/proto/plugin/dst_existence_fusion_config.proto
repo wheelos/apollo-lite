@@ -7,7 +7,23 @@ message CameraValidDist {
   optional double valid_dist = 2 [default = 0];
 }
 
+message SensorMissEvidencePolicy {
+  // Enable only for sensors whose complete frames report absence throughout
+  // this calibrated coverage. No policy means no invented negative evidence.
+  optional string sensor_name = 1;
+  optional double min_range = 2 [default = 0.0];
+  optional double max_range = 3;
+  optional double horizontal_half_fov_degrees = 4;
+}
+
 message DstExistenceFusionConfig {
   optional double track_object_max_match_distance = 1 [default = 4.0];
   repeated CameraValidDist camera_valid_dist = 2;
+  optional double evidence_half_life = 3 [default = 5.0];
+  repeated SensorMissEvidencePolicy miss_evidence_policy = 4;
+  optional double lidar_reliability = 5 [default = 0.9];
+  optional double radar_reliability = 6 [default = 0.6];
+  optional double camera_reliability = 7 [default = 0.8];
+  optional double unknown_type_discount = 8 [default = 0.6];
+  optional double camera_toic_weight = 9 [default = 0.7];
 }

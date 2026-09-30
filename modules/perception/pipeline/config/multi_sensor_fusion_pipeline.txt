@@ -11,6 +11,9 @@ stage_config: {
     use_lidar: true
     use_radar: true
     use_camera: true
+    queue_capacity: 200
+    main_sensor_timeout: 0.25
+    max_prediction_age: 0.5
   }
 }
 
@@ -25,13 +28,22 @@ stage_config: {
     tracker_method: "PbfTracker"
     data_association_method: "HMAssociation"
     gate_keeper_method: "PbfGatekeeper"
-    prohibition_sensors: "radar_front"
 
     max_lidar_invisible_period: 0.25
     max_radar_invisible_period: 0.50
     max_camera_invisible_period: 0.75
 
     max_cached_frame_num: 50
+    max_prediction_age: 0.5
+    association_max_center_distance: 4.0
+    association_max_mahalanobis_distance: 9.21
+    association_covariance_floor: 0.001
+    association_class_penalty: 0.2
+    association_min_camera_similarity: 0.5
+    association_max_velocity_difference: 10.0
+    association_velocity_penalty: 0.1
+    association_size_penalty: 0.1
+    association_heading_penalty: 0.1
   }
 }
 
@@ -49,9 +61,9 @@ stage_config: {
       publish_if_has_camera: true
       use_camera_3d: true
 
-      min_radar_confident_distance: 40
+      min_radar_confident_distance: 0
       max_radar_confident_angle: 20
-      min_camera_publish_distance: 50
+      min_camera_publish_distance: 0
       invisible_period_threshold: 0.001
       toic_threshold: 0.8
 

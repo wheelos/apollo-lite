@@ -30,6 +30,17 @@ namespace fusion {
 struct FusionFrame {
   base::FramePtr frame;
 
+  // Admission snapshots observations only. A tick drains the bounded queue,
+  // predicts the scene, then collects output at frame->timestamp.
+  bool publish_tick = false;
+  bool admitted = false;
+  // Visualization uses the last processed main-sensor pose, not an admitted
+  // future pose or an invented identity pose.
+  bool has_publish_pose = false;
+  bool ready = false;
+  bool degraded = false;
+  double max_prediction_age = 0.5;
+
   std::vector<SensorFramePtr> sensor_frames;
 
   std::vector<base::ObjectPtr> fused_objects;

@@ -47,6 +47,9 @@ class KalmanFilter : public BaseFilter {
   //             the observation in current time.
   bool Correct(const Eigen::VectorXd &cur_observation,
                const Eigen::MatrixXd &cur_observation_uncertainty);
+  bool CorrectCorrelated(const Eigen::VectorXd& observation,
+                         const Eigen::MatrixXd& covariance,
+                         double prior_weight);
 
   // @brief set the control matrix
   bool SetControlMatrix(const Eigen::MatrixXd &control_matrix);

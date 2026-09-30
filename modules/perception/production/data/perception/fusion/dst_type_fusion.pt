@@ -1,3 +1,5 @@
+evidence_half_life: 5.0
+
 camera_params {
   name: "camera_front_obstacle"
   valid_dist: 110
@@ -34,6 +36,12 @@ camera_params {
 
 lidar_params {
   name: "velodyne64"
+  reliability: 0.5
+  reliability_for_unknown: 0.5
+}
+
+lidar_params {
+  name: "velodyne128"
   reliability: 0.5
   reliability_for_unknown: 0.5
 }

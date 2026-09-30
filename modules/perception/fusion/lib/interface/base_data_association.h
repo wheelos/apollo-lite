@@ -39,6 +39,9 @@ struct AssociationResult {
   std::vector<size_t> unassigned_measurements;
   std::vector<double> track2measurements_dist;
   std::vector<double> measurement2track_dist;
+  // Matched loss: 0 is best. Miss similarity: 1 suppresses negative evidence.
+  std::vector<double> track_association_loss;
+  std::vector<double> track_miss_similarity;
 };
 
 class BaseDataAssociation {

@@ -28,6 +28,7 @@ namespace perception {
 namespace fusion {
 
 struct TrackerOptions {
+  // Matched update: normalized loss. Missed update: normalized similarity.
   double match_distance = 0.0;
 };
 
@@ -42,14 +43,16 @@ class BaseTracker {
   // @param [in]: measurement
   // @param [in]: target_timestamp
   // @param [in/out]: track
-  virtual void UpdateWithMeasurement(const TrackerOptions& options,
+  virtual bool UpdateWithMeasurement(const TrackerOptions& options,
                                      const SensorObjectPtr measurement,
                                      double target_timestamp) = 0;
 
-  virtual void UpdateWithoutMeasurement(const TrackerOptions& options,
+  virtual bool UpdateWithoutMeasurement(const TrackerOptions& options,
                                         const std::string& sensor_id,
                                         double measurement_timestamp,
                                         double target_timestamp) = 0;
+
+  virtual bool PredictTo(double timestamp) = 0;
 
  protected:
   TrackPtr track_ = nullptr;

@@ -17,6 +17,7 @@ cc_library(
         "//modules/perception/common/geometry:basic",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/fusion/base",
+        "//modules/perception/fusion/base:observation_validation",
         "//modules/perception/fusion/common:base_filter",
         "//modules/perception/fusion/common:kalman_filter",
         "//modules/perception/fusion/lib/interface",

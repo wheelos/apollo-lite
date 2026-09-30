@@ -4,6 +4,46 @@ load("//tools:cpplint.bzl", "cpplint")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "object_snapshot",
+    srcs = ["object_snapshot.cc"],
+    hdrs = ["object_snapshot.h"],
+    deps = [
+        ":track",
+        "//modules/perception/base:object_pool_types",
+        "@core//cyber",
+    ],
+)
+
+cc_library(
+    name = "observation_validation",
+    hdrs = ["observation_validation.h"],
+    deps = [
+        "//modules/perception/base:object",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "frame_scheduler",
+    srcs = ["frame_scheduler.cc"],
+    hdrs = ["frame_scheduler.h"],
+    deps = [
+        ":observation_validation",
+        "//modules/perception/base:frame",
+        "@core//cyber",
+    ],
+)
+
+cc_test(
+    name = "frame_scheduler_test",
+    srcs = ["frame_scheduler_test.cc"],
+    deps = [
+        ":frame_scheduler",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "base",
     copts = [
         '-DMODULE_NAME=\\"perception\\"',

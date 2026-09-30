@@ -18,4 +18,14 @@ message ProbabilisticFusionConfig {
 
   // initialization for static members in base/sensor.h
   optional int64 max_cached_frame_num = 11 [default = 50];
+  optional double association_max_center_distance = 12 [default = 4.0];
+  optional double association_max_mahalanobis_distance = 13 [default = 9.21];
+  optional double association_covariance_floor = 14 [default = 0.001];
+  optional double association_class_penalty = 15 [default = 0.2];
+  optional double association_min_camera_similarity = 16 [default = 0.5];
+  optional double max_prediction_age = 17 [default = 0.5];
+  optional double association_max_velocity_difference = 18 [default = 10.0];
+  optional double association_velocity_penalty = 19 [default = 0.1];
+  optional double association_size_penalty = 20 [default = 0.1];
+  optional double association_heading_penalty = 21 [default = 0.1];
 }

@@ -16,17 +16,21 @@
 #pragma once
 
 #include <memory>
+#include <map>
+#include <mutex>
 #include <string>
 #include <vector>
 
-#include "cyber/component/component.h"
-#include "modules/perception/base/object.h"
-#include "modules/perception/fusion/lib/interface/base_fusion_system.h"
-#include "modules/perception/fusion/lib/interface/base_multisensor_fusion.h"
-#include "modules/perception/map/hdmap/hdmap_input.h"
-#include "modules/perception/onboard/inner_component_messages/inner_component_messages.h"
 #include "modules/perception/onboard/proto/fusion_component_config.pb.h"
 #include "modules/perception/pipeline/proto/pipeline_config.pb.h"
+
+#include "cyber/component/component.h"
+#include "cyber/timer/timer.h"
+#include "modules/perception/base/object.h"
+#include "modules/perception/fusion/app/fusion_runtime.h"
+#include "modules/perception/fusion/lib/interface/base_fusion_system.h"
+#include "modules/perception/fusion/lib/interface/base_multisensor_fusion.h"
+#include "modules/perception/onboard/inner_component_messages/inner_component_messages.h"
 
 namespace apollo {
 namespace perception {
@@ -35,30 +39,29 @@ namespace onboard {
 class MultiSensorFusionComponent : public cyber::Component<SensorFrameMessage> {
  public:
   MultiSensorFusionComponent() = default;
-  ~MultiSensorFusionComponent() = default;
+  ~MultiSensorFusionComponent() override;
   bool Init() override;
   bool Proc(const std::shared_ptr<SensorFrameMessage>& message) override;
 
  private:
   bool InitAlgorithmPlugin();
-  bool InternalProc(const std::shared_ptr<SensorFrameMessage const>& in_message,
-                    std::shared_ptr<PerceptionObstacles> out_message,
-                    std::shared_ptr<SensorFrameMessage> viz_message);
+  void PublishTick();
 
  private:
-  static std::mutex s_mutex_;
-  static uint32_t s_seq_num_;
+  std::mutex mutex_;
+  uint32_t sequence_ = 0;
+  uint64_t lidar_timestamp_ = 0;
+  std::map<double, uint64_t> pending_lidar_timestamps_;
+  fusion::FusionRuntime runtime_;
+  std::unique_ptr<cyber::Timer> timer_;
 
   std::string fusion_name_;
   std::string fusion_method_;
   std::string fusion_main_sensor_;
-  bool object_in_roi_check_ = false;
-  double radius_for_roi_object_check_ = 0;
 
   pipeline::PipelineConfig multi_sensor_fusion_config_;
 
   std::unique_ptr<fusion::BaseMultiSensorFusion> fusion_;
-  map::HDMapInput* hdmap_input_ = nullptr;
   std::shared_ptr<apollo::cyber::Writer<PerceptionObstacles>> writer_;
   std::shared_ptr<apollo::cyber::Writer<SensorFrameMessage>> inner_writer_;
 };

@@ -36,6 +36,13 @@ void GetObjectEightVertices(
     std::shared_ptr<const base::Object> obj,
     apollo::common::EigenVector<Eigen::Vector3d>* vertices);
 
+bool ProjectedBoxSimilarity(
+    const base::ObjectConstPtr& object,
+    const base::BBox2DF& camera_box,
+    const Eigen::Affine3d& camera_to_world,
+    const base::BaseCameraModelPtr& camera_model,
+    double* similarity);
+
 template <typename VectorType>
 bool IsPtInFrustum(const VectorType& pt, double width, double height) {
   if (pt[0] < 0 || pt[0] > width || pt[1] < 0 || pt[1] > height) {
