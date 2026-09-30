@@ -1,22 +1,21 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
-config_setting(
-    name = "lidar_gpu_backend_enabled",
-    values = {"define": "lidar_gpu_backend=true"},
+filegroup(
+    name = "runtime_data",
+    srcs = glob([
+        "conf/*.txt",
+        "conf/*.conf",
+        "dag/*.dag",
+        "launch/*.launch",
+    ]),
 )
 
 config_setting(
-    name = "lidar_mode_force_cpu",
-    values = {"define": "lidar_policy_mode=cpu"},
-)
-
-config_setting(
-    name = "lidar_mode_force_gpu",
-    values = {"define": "lidar_policy_mode=gpu"},
+    name = "lidar_mock_tf",
+    values = {"define": "lidar_mock_tf=true"},
 )
 
 cc_binary(
@@ -26,69 +25,36 @@ cc_binary(
     deps = [":lidar_unified_component_lib"],
 )
 
-cc_binary(
-    name = "libpod_pointcloud_adapter.so",
-    linkshared = True,
-    linkstatic = False,
-    deps = [":pod_pointcloud_adapter_lib"],
-)
-
-cuda_library(
-    name = "lidar_policy_cuda_kernels_lib",
-    srcs = ["policy/lidar_policy_cuda_kernels.cu"],
-    hdrs = ["policy/lidar_policy_cuda_kernels.h"],
-    copts = [
-        "-std=c++17",
-        "-Xcompiler",
-        "-std=c++17",
-    ],
-    features = [
-        "-nvcc_extended_lambda",
-        "-nvcc_relaxed_constexpr",
-    ],
-    deps = [
-        "@cuda//:cuda_runtime",
-    ],
-)
-
 cc_library(
     name = "lidar_policy_lib",
     srcs = [
+        "common/pod_pointcloud_view.cc",
         "policy/lidar_policy_common.cc",
         "policy/lidar_policy_cpu_deskew.cc",
         "policy/lidar_policy_cpu_filter.cc",
         "policy/lidar_policy_cpu_fusion.cc",
-        "policy/lidar_policy_factory.cc",
-        "policy/lidar_policy_gpu_deskew.cc",
-        "policy/lidar_policy_gpu_filter.cc",
-        "policy/lidar_policy_gpu_fusion.cc",
     ],
     hdrs = [
-        "policy/cpu_lidar_policy.h",
-        "policy/gpu_lidar_policy.h",
+        "common/pod_pointcloud_view.h",
         "policy/lidar_policy_common.h",
-        "policy/lidar_policy_cuda_kernels.h",
+        "policy/lidar_policy_cpu.h",
         "policy/lidar_policy_interface.h",
     ],
     copts = select({
-        ":lidar_gpu_backend_enabled": ["-DAPOLLO_LIDAR_POLICY_GPU_ENABLED"],
-        "//conditions:default": [],
-    }) + select({
-        ":lidar_mode_force_cpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_CPU"],
-        ":lidar_mode_force_gpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_GPU"],
-        "//conditions:default": [],
+        "@platforms//cpu:aarch64": [
+            "-march=armv8-a+simd",
+            "-DAPOLLO_LIDAR_USE_NEON=1",
+        ],
+        "//conditions:default": ["-DAPOLLO_LIDAR_USE_NEON=0"],
     }),
     deps = [
         "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
         "//modules/transform:buffer",
-        "//modules/transform:transform_query_core",
+        "//modules/transform:transform_query",
         "@core//cyber",
         "@eigen",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
-    ] + select({
-        ":lidar_gpu_backend_enabled": [":lidar_policy_cuda_kernels_lib"],
-        "//conditions:default": [],
-    }),
+    ],
 )
 
 cc_library(
@@ -109,42 +75,28 @@ cc_library(
 )
 
 cc_library(
-    name = "pod_pointcloud_adapter_lib",
-    srcs = ["transport/pod_pointcloud_adapter.cc"],
-    hdrs = ["transport/pod_pointcloud_adapter.h"],
-    deps = [
-        "//modules/drivers/lidar/proto:pod_pointcloud_adapter_config_cc_proto",
-        "@core//cyber",
-        "@core//cyber/transport/message:pod_message",
-        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
-    ],
-    alwayslink = True,
-)
-
-cc_library(
     name = "lidar_unified_component_lib",
     srcs = [
         "control/pose_bins_builder.cc",
         "control/sync_gate.cc",
         "control/time_contract.cc",
         "lidar_unified_component.cc",
-        "lidar_unified_component_config.cc",
-        "lidar_unified_component_ingest.cc",
+        "lidar_unified_component_input.cc",
         "lidar_unified_component_observability.cc",
+        "lidar_unified_component_validation.cc",
     ],
     hdrs = [
+        "common/pod_pointcloud_view.h",
         "control/frame_handle.h",
         "control/pose_bins_builder.h",
         "control/sync_gate.h",
         "control/time_contract.h",
         "lidar_unified_component.h",
-        "policy/cpu_lidar_policy.h",
-        "policy/gpu_lidar_policy.h",
+        "policy/lidar_policy_cpu.h",
         "policy/lidar_policy_interface.h",
     ],
-    copts = ['-DMODULE_NAME=\\"lidar_unified_component\\"'] + select({
-        ":lidar_mode_force_cpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_CPU"],
-        ":lidar_mode_force_gpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_GPU"],
+    copts = ['-DMODULE_NAME=\\\"lidar_unified_component\\\"'] + select({
+        ":lidar_mock_tf": ["-DAPOLLO_LIDAR_PROCESSOR_MOCK_TF"],
         "//conditions:default": [],
     }),
     deps = [
@@ -153,6 +105,7 @@ cc_library(
         "//modules/drivers/lidar/proto:lidar_unified_component_config_cc_proto",
         "//modules/transform:buffer",
         "//modules/transform:timed_transform_resolver",
+        "//modules/transform:transform_query",
         "@boost.circular_buffer",
         "@core//cyber",
         "@eigen",
@@ -164,33 +117,12 @@ cc_library(
 cc_test(
     name = "lidar_policy_test",
     size = "small",
-    srcs = [
-        "lidar_policy_test.cc",
-        "lidar_policy_test_main.cc",
-    ],
-    copts = select({
-        ":lidar_gpu_backend_enabled": ["-DAPOLLO_LIDAR_POLICY_GPU_ENABLED"],
-        "//conditions:default": [],
-    }) + select({
-        ":lidar_mode_force_cpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_CPU"],
-        ":lidar_mode_force_gpu": ["-DAPOLLO_LIDAR_POLICY_FORCE_GPU"],
-        "//conditions:default": [],
-    }),
+    srcs = ["policy/lidar_policy_test.cc"],
     deps = [
         ":lidar_policy_lib",
         ":lidar_unified_component_lib",
         "@com_google_googletest//:gtest",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
-    ],
-)
-
-cc_test(
-    name = "pod_pointcloud_adapter_test",
-    size = "small",
-    srcs = ["transport/pod_pointcloud_adapter_test.cc"],
-    deps = [
-        ":pod_pointcloud_adapter_lib",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

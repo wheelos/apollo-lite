@@ -22,7 +22,6 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "gst/app/gstappsink.h"
@@ -39,19 +38,12 @@ namespace camera_gst {
 
 class CameraGstStreamer {
  public:
-  // CPU callback types are maintained for backward compatibility; GPU-first
-  // runtime should prefer GpuFrameCallback.
-  using PublishCallback = std::function<void(PublishedFrame&&)>;
-  using SourcePublishCallback =
-      std::function<void(const std::string&, PublishedFrame&&)>;
   using GpuFrameCallback = std::function<void(GpuFrame&&)>;
 
   CameraGstStreamer() = default;
   ~CameraGstStreamer();
 
   bool Start(const config::Config& config,
-             SourcePublishCallback source_publish_callback,
-             PublishCallback stitched_publish_callback,
              GpuFrameCallback gpu_frame_callback);
   void Stop();
   bool StartStreaming();
@@ -75,32 +67,16 @@ class CameraGstStreamer {
         : source_name(std::move(name)) {}
 
     std::string source_name;
-    std::atomic<uint64_t> cpu_frames{0};
     std::atomic<uint64_t> gpu_frames{0};
-    std::atomic<uint64_t> cpu_rate_limited_frames{0};
-    std::atomic<uint64_t> cpu_drop_frames{0};
     std::atomic<uint64_t> gpu_drop_frames{0};
-    std::atomic<uint64_t> published_frames{0};
-    std::atomic<uint64_t> queue_drop_frames{0};
-    std::atomic<uint64_t> last_sequence{0};
-    std::atomic<uint32_t> queue_depth{0};
-    std::atomic<double> last_measurement_time{0.0};
   };
 
   struct SinkContext {
     CameraGstStreamer* owner = nullptr;
     std::string source_name;
     SourceRuntimeState* source_state = nullptr;
-    double min_publish_interval_sec = 0.0;
-    double last_measurement_time = 0.0;
-    bool has_last_measurement_time = false;
-    bool stitched = false;
-    bool cpu_readback = false;
   };
 
-  static GstFlowReturn OnSourceSample(GstAppSink* appsink, gpointer user_data);
-  static GstFlowReturn OnStitchedSample(GstAppSink* appsink,
-                                        gpointer user_data);
   static GstFlowReturn OnGpuSample(GstAppSink* appsink, gpointer user_data);
   bool BuildPipelineLocked();
   bool ValidateConfigLocked();
@@ -120,12 +96,8 @@ class CameraGstStreamer {
   config::Config config_;
   std::vector<PipelineLayoutSlot> layout_slots_;
   std::vector<std::unique_ptr<SourceRuntimeState>> source_states_;
-  SourcePublishCallback source_publish_callback_;
-  PublishCallback stitched_publish_callback_;
   GpuFrameCallback gpu_frame_callback_;
-  std::vector<std::unique_ptr<SinkContext>> source_sink_contexts_;
   std::vector<std::unique_ptr<SinkContext>> gpu_sink_contexts_;
-  std::unique_ptr<SinkContext> stitched_sink_context_;
   std::thread bus_thread_;
   RunState state_ = RunState::kStopped;
   bool running_ = false;
@@ -140,7 +112,6 @@ class CameraGstStreamer {
 
   GstElement* pipeline_ = nullptr;
   GstElement* stitched_tee_ = nullptr;
-  GstElement* stitched_publish_sink_ = nullptr;
   GstElement* stream_branch_bin_ = nullptr;
   GstBus* bus_ = nullptr;
   GstPad* stream_tee_pad_ = nullptr;

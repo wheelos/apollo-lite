@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,8 +31,6 @@ class PoseBinsBuilder {
   bool Build(const std::vector<FrameHandle>& frame_handles,
              LidarDeskewPolicy* deskew_policy,
              std::vector<SensorFrameContext>* contexts,
-             std::vector<std::vector<double>>* motion_sample_times,
-             std::vector<std::vector<Eigen::Affine3d>>* motion_poses,
              size_t* required_points) const;
 };
 

@@ -23,7 +23,7 @@ cc_library(
     deps = [
         "//modules/canbus/proto:canbus_conf_cc_proto",
         "//modules/canbus/proto:vehicle_parameter_cc_proto",
-        "//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -41,7 +41,7 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         "//modules/canbus/vehicle:vehicle_controller_base",
-        "//modules/common/util:registry",
+        "@wheelos_common//modules/common/util:registry",
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_detail_cc_proto",
@@ -55,7 +55,7 @@ cc_library(
     copts = CANBUS_COPTS,
     deps = [
         ":abstract_vehicle_factory",
-        "//modules/common/util:registry",
+        "@wheelos_common//modules/common/util:registry",
     ],
 )
 

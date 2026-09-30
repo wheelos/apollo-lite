@@ -18,7 +18,7 @@ cc_library(
     srcs = ["nano_radar_message_manager.cc"],
     hdrs = ["nano_radar_message_manager.h"],
     deps = [
-        "//modules/common/util:message_util",
+        "@wheelos_common//modules/common/util:message_util",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -33,8 +33,8 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"nano_radar\\"'],
     deps = [
         ":nano_radar_message_manager",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/monitor_log",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/monitor_log",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",
         "//modules/drivers/canbus/can_comm:message_manager_base",

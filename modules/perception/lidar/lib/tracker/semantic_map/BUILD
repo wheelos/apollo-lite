@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "//modules/prediction/common:feature_output",
         "//modules/prediction/common:semantic_map",
         "//modules/prediction/container/obstacles:obstacles_container",

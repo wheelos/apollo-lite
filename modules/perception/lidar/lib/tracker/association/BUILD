@@ -44,7 +44,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "//modules/perception/common/geometry:basic",
         "//modules/perception/common/geometry:common",
         "//modules/perception/lidar/common:lidar_log",

@@ -29,7 +29,7 @@ cc_library(
     hdrs = ["sensor_canbus.h"],
     deps = [
         ":sensor_gflags",
-        "//modules/common/monitor_log",
+        "@wheelos_common//modules/common/monitor_log",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",
         "//modules/drivers/canbus/can_comm:can_sender",

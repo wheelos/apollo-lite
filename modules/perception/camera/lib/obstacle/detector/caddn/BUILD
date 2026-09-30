@@ -8,7 +8,7 @@ package(default_visibility = ["//visibility:public"])
 #     hdrs = ["caddn_obstacle_detector.h"],
 #     deps = [
 #         "//cyber/common:file",
-#         "//modules/common/util:perf_util",
+#         "@wheelos_common//modules/common/util:perf_util",
 #         "//modules/perception/base",
 #         "//modules/perception/common:perception_gflags",
 #         "//modules/perception/camera/common",

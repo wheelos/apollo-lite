@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base:object",
         "@core//cyber",
         "@eigen",
@@ -42,7 +42,7 @@ cc_library(
     deps = [
         ":type_fusion_interface",
         ":util",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base:object",
         "//modules/perception/base:point_cloud",
         "//modules/perception/lib/config_manager",

@@ -1,11 +1,11 @@
 sources {
-  name: "v4l2_device0"
-  uri: "/dev/video0"
+  name: "v4l2_device1"
+  uri: "/dev/video1"
   width: 1920
   height: 1080
   fps: 30.0
-  fourcc: "YUYV"
-  capture_backend: "V4L2_DMABUF"
+  fourcc: "UYVY"
+  capture_backend: "NVV4L2_DMABUF"
 }
 
 sources {
@@ -14,8 +14,8 @@ sources {
   width: 1920
   height: 1080
   fps: 30.0
-  fourcc: "YUYV"
-  capture_backend: "V4L2_DMABUF"
+  fourcc: "UYVY"
+  capture_backend: "NVV4L2_DMABUF"
 }
 
 sources {
@@ -24,8 +24,8 @@ sources {
   width: 1920
   height: 1080
   fps: 30.0
-  fourcc: "YUYV"
-  capture_backend: "V4L2_DMABUF"
+  fourcc: "UYVY"
+  capture_backend: "NVV4L2_DMABUF"
 }
 
 publish_gpu_channel: true

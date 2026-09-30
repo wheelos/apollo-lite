@@ -14,7 +14,7 @@ Required (generation):
 Optional (generation):
   --pose_dir=DIR                                (if empty, tracking is forced off)
   --sensor_name=NAME                            (default: velodyne64)
-  --flagfile=FILE                               (default: modules/common/data/global_flagfile.txt; forwarded to offline binary)
+  --flagfile=FILE                               (default: modules/global_config/global_flagfile.txt; forwarded to offline binary)
   --enable_tracking=true|false                  (default: false)
   --use_hdmap=true|false                        (default: false)
   --use_tracking_info=true|false                (default: false)
@@ -118,7 +118,7 @@ if [[ -z "${tag}" ]]; then
 fi
 
 if [[ -z "${flagfile}" ]]; then
-  flagfile="${ROOT}/modules/common/data/global_flagfile.txt"
+  flagfile="${ROOT}/modules/global_config/global_flagfile.txt"
 fi
 
 if [[ ! -f "${flagfile}" ]]; then

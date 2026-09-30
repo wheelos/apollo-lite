@@ -11,12 +11,12 @@ cc_library(
     hdrs = ["simulation_world_service.h"],
     copts = DREAMVIEW_COPTS,
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/math",
-        "//modules/common/monitor_log",
-        "//modules/common/util",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/map:map_service",
         "//modules/dreamview/proto:simulation_world_cc_proto",
@@ -50,7 +50,7 @@ cc_test(
     linkstatic = True,
     deps = [
         ":simulation_world_service",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -62,7 +62,7 @@ cc_library(
     copts = DREAMVIEW_COPTS,
     deps = [
         ":simulation_world_service",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/backend/map:map_service",

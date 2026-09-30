@@ -11,8 +11,8 @@ cc_library(
     copts = ["-Ithird_party/rtklib"],
     visibility = ["//visibility:public"],
     deps = [
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/util:time_conversion",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:time_conversion",
         "//modules/drivers/gnss/parser",
         "//modules/drivers/gnss/parser:rtcm_decode",
         "//modules/drivers/gnss/proto:config_cc_proto",

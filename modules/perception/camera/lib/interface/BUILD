@@ -99,7 +99,7 @@ cc_library(
     ],
     deps = [
         ":base_init_options",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/camera/common",
         "//modules/perception/lib/registerer",
         "//modules/perception/pipeline:stage",

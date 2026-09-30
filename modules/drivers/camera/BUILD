@@ -50,7 +50,7 @@ cc_library(
     hdrs = ["camera_component.h"],
     copts = CAMERA_COPTS,
     deps = [
-        "//modules/common/util:rate_limiter",
+        "@wheelos_common//modules/common/util:rate_limiter",
         "//modules/drivers/camera/backend:camera_device",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",

@@ -24,7 +24,7 @@ cc_library(
     hdrs = ["quartic_polynomial_curve1d.h"],
     deps = [
         ":polynomial_curve1d",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
         "@core//cyber",
     ],
@@ -50,7 +50,7 @@ cc_library(
     hdrs = ["quintic_polynomial_curve1d.h"],
     deps = [
         ":polynomial_curve1d",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "@com_google_absl//absl/strings",
         "@core//cyber",
     ],
@@ -91,7 +91,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":quintic_polynomial_curve1d",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "@com_google_absl//absl/strings",
         "@core//cyber",
     ],
@@ -104,7 +104,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":quintic_spiral_path",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "@com_google_absl//absl/strings",
         "@core//cyber",
     ],

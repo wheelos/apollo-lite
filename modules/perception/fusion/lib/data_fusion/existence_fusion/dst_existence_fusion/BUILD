@@ -11,7 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/fusion/base",
         "//modules/perception/fusion/common:camera_util",

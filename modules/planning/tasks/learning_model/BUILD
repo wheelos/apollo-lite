@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["learning_model_inference_task.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/common:trajectory_evaluator",
@@ -27,7 +27,7 @@ cc_library(
     hdrs = ["learning_model_inference_trajectory_task.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/common:reference_line_info",
         "//modules/planning/proto:planning_config_cc_proto",

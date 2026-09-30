@@ -45,7 +45,7 @@ cc_library(
     copts = PERCEPTION_COPTS,
     deps = [
         ":plugin",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/camera/lib/obstacle/camera_detection_postprocessor/camera_get_object",
         "//modules/perception/camera/lib/obstacle/camera_detection_postprocessor/filter_bbox",
         "//modules/perception/camera/lib/obstacle/camera_detection_postprocessor/recover_bbox",
@@ -102,7 +102,7 @@ cc_library(
     deps = [
         ":stage",
         "@core//cyber",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/camera/lib/obstacle/camera_detection_postprocessor",
         "//modules/perception/camera/lib/obstacle/detector/smoke:smoke_obstacle_detector",
         "//modules/perception/camera/lib/obstacle/detector/yolo:yolo_obstacle_detector",

@@ -9,8 +9,8 @@ cc_library(
     hdrs = ["path_decider.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/util",
         "//modules/planning/common:planning_context",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planning_config_cc_proto",

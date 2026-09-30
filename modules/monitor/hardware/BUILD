@@ -25,7 +25,7 @@ cc_library(
     hdrs = ["resource_monitor.h"],
     copts = MONITOR_COPTS,
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/dreamview/proto:hmi_mode_cc_proto",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
@@ -40,7 +40,7 @@ cc_library(
     hdrs = ["socket_can_monitor.h"],
     copts = MONITOR_COPTS,
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/monitor/common:monitor_manager",
         "//modules/monitor/common:recurrent_runner",
         "//modules/monitor/software:summary_monitor",

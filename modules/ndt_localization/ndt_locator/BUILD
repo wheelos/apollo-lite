@@ -14,9 +14,9 @@ cc_library(
         "ndt_voxel_grid_covariance.hpp",
     ],
     deps = [
-        "//modules/common/math",
-        "//modules/common/monitor_log",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/localization/common:localization_gflags",
         "//modules/localization/msf/common/util",
         "//modules/localization/msf/local_pyramid_map/ndt_map",

@@ -31,7 +31,7 @@ cc_library(
     srcs = ["conti_radar_message_manager.cc"],
     hdrs = ["conti_radar_message_manager.h"],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
@@ -46,8 +46,8 @@ cc_library(
     copts = ['-DMODULE_NAME=\\"conti_radar\\"'],
     deps = [
         ":conti_radar_message_manager",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/monitor_log",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/monitor_log",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",
         "//modules/drivers/canbus/can_comm:message_manager_base",

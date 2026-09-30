@@ -19,7 +19,7 @@ cc_library(
     hdrs = ["gnss_component.h"],
     copts = GNSS_COPTS,
     deps = [
-        "//modules/common/monitor_log",
+        "@wheelos_common//modules/common/monitor_log",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/gnss/stream:raw_stream",
         "@core//cyber",

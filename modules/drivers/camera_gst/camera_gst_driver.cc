@@ -38,8 +38,6 @@ CameraGstDriver::~CameraGstDriver() {
 }
 
 bool CameraGstDriver::Init(const config::Config& config,
-                           SourcePublishCallback source_publish_callback,
-                           PublishCallback stitched_publish_callback,
                            GpuFrameCallback gpu_frame_callback) {
   config_ = config;
   if (config_.sources_size() == 0) {
@@ -48,9 +46,7 @@ bool CameraGstDriver::Init(const config::Config& config,
   }
   stream_enabled_ = config_.stream().enable();
 
-  if (!streamer_->Start(config_, std::move(source_publish_callback),
-                        std::move(stitched_publish_callback),
-                        std::move(gpu_frame_callback))) {
+  if (!streamer_->Start(config_, std::move(gpu_frame_callback))) {
     AERROR << "camera_gst failed to start the GPU capture graph.";
     return false;
   }

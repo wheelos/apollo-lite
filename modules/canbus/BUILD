@@ -14,9 +14,9 @@ cc_library(
     deps = [
         "//modules/canbus/common:canbus_common",
         "//modules/canbus/vehicle:vehicle_factory",
-        "//modules/common/adapters:adapter_gflags",
-        "//modules/common/monitor_log",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/status",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",
@@ -34,7 +34,7 @@ cc_test(
     srcs = ["canbus_test.cc"],
     deps = [
         ":canbus_component_lib",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "@com_google_googletest//:gtest_main",
     ],
 )

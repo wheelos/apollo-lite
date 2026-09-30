@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,8 +60,8 @@ bool SyncGate::SelectFrames(const FrameHandle& primary_handle,
     FrameHandle nearest_handle;
     bool time_delta_exceeded = false;
     if (!lookup_nearest_frame(sensor_id, primary_handle.time_contract,
-                              max_ref_time_delta_ms,
-                              &nearest_handle, &time_delta_exceeded)) {
+                              max_ref_time_delta_ms, &nearest_handle,
+                              &time_delta_exceeded)) {
       ++metrics->missing_auxiliary_count;
       if (time_delta_exceeded) {
         ++metrics->time_delta_exceeded_count;

@@ -130,7 +130,7 @@ template <class FlagType, class ValueType>
 void SetGlobalFlag(std::string_view flag_name, const ValueType &value,
                    FlagType *flag) {
   constexpr char kGlobalFlagfile[] =
-      "/apollo/modules/common/data/global_flagfile.txt";
+      "/apollo/modules/global_config/global_flagfile.txt";
   if (*flag != value) {
     *flag = value;
     // Overwrite global flagfile.

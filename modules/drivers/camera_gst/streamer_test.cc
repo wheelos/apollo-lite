@@ -52,13 +52,12 @@ PipelineLayoutSlot MakeSlot(const std::string& source_name, size_t pad_index,
 
 }  // namespace
 
-TEST(CameraGstPipelineBuilderTest, BuildsGpuHandleAndCpuPublishBranches) {
+TEST(CameraGstPipelineBuilderTest, BuildsDirectNvmmGpuAndStreamBranches) {
   config::Config config;
-  auto* source = AddSource(&config, "front", "csi://0");
-  source->mutable_publish()->set_channel_name("/apollo/sensor/camera/front");
-  source->mutable_publish()->set_output_width(1280);
-  source->mutable_publish()->set_output_height(720);
-  source->mutable_publish()->set_output_fps(15.0);
+  auto* source = AddSource(&config, "front", "/dev/video0");
+  source->set_fourcc("UYVY");
+  source->set_capture_backend("NVV4L2_DMABUF");
+  config.set_publish_gpu_channel(true);
   config.set_rows(1);
   config.set_cols(1);
   config.set_tile_width(1920);
@@ -66,22 +65,17 @@ TEST(CameraGstPipelineBuilderTest, BuildsGpuHandleAndCpuPublishBranches) {
 
   const std::vector<PipelineLayoutSlot> layout_slots = {
       MakeSlot("front", 0, 0, 0)};
-  CameraGstPipelineBuilder builder(config, layout_slots, true, false, true,
-                                   true);
+  CameraGstPipelineBuilder builder(config, layout_slots, true, true);
 
   const std::string pipeline = builder.BuildPipelineDescription();
-  EXPECT_NE(pipeline.find("nvarguscamerasrc sensor-id=0"), std::string::npos);
-  EXPECT_NE(pipeline.find("video/x-raw(memory:NVMM)"), std::string::npos);
-  EXPECT_NE(pipeline.find("appsink name=source_publish_sink_0"),
+  EXPECT_NE(pipeline.find("nvv4l2camerasrc device=\"/dev/video0\""),
             std::string::npos);
+  EXPECT_NE(pipeline.find("video/x-raw(memory:NVMM)"), std::string::npos);
+  EXPECT_NE(pipeline.find("videorate drop-only=true"), std::string::npos);
+  EXPECT_NE(pipeline.find("framerate=(fraction)30/1"), std::string::npos);
   EXPECT_NE(pipeline.find("appsink name=source_gpu_sink_0"), std::string::npos);
   EXPECT_EQ(pipeline.find("nvcompositor name=comp"), std::string::npos);
   EXPECT_NE(pipeline.find("tee name=stitched_tee allow-not-linked=true"),
-            std::string::npos);
-  EXPECT_NE(pipeline.find("video/x-raw,width=(int)1280,height=(int)720"),
-            std::string::npos);
-  EXPECT_NE(pipeline.find("videorate ! video/x-raw,format=(string)RGB,"
-                          "framerate=(fraction)15/1"),
             std::string::npos);
 }
 
@@ -89,57 +83,32 @@ TEST(CameraGstPipelineBuilderTest, BuildsMjpegHardwareDecodeSource) {
   config::Config config;
   auto* source = AddSource(&config, "usb", "/dev/video0");
   source->set_fourcc("MJPG");
+  source->set_capture_backend("V4L2_MMAP");
 
-  CameraGstPipelineBuilder builder(config, {}, false, false, false, true);
+  CameraGstPipelineBuilder builder(config, {}, false, true);
 
   const std::string pipeline = builder.BuildPipelineDescription();
-  EXPECT_NE(pipeline.find("v4l2src device=\"/dev/video0\""), std::string::npos);
+  EXPECT_NE(pipeline.find("v4l2src device=\"/dev/video0\" io-mode=2"),
+            std::string::npos);
   EXPECT_NE(pipeline.find("jpegparse ! nvv4l2decoder mjpeg=1"),
             std::string::npos);
   EXPECT_NE(pipeline.find("appsink name=source_gpu_sink_0"), std::string::npos);
 }
 
-TEST(CameraGstPipelineBuilderTest, BuildsGpuPublishOnlyRgbBranch) {
+TEST(CameraGstPipelineBuilderTest, BuildsV4l2MmapForYuyv) {
   config::Config config;
-  auto* source = AddSource(&config, "video2", "/dev/video2");
+  auto* source = AddSource(&config, "front", "/dev/video0");
   source->set_fourcc("YUYV");
-  source->mutable_publish()->set_channel_name(
-      "/apollo/sensor/camera/video2/image");
-  source->mutable_publish()->set_output_width(1280);
-  source->mutable_publish()->set_output_height(720);
-  source->mutable_publish()->set_output_fps(15.0);
+  source->set_capture_backend("V4L2_MMAP");
+  config.set_publish_gpu_channel(true);
 
-  CameraGstPipelineBuilder builder(config, {}, true, false, false, false);
+  CameraGstPipelineBuilder builder(config, {}, false, true);
 
   const std::string pipeline = builder.BuildPipelineDescription();
-  EXPECT_NE(pipeline.find("nvv4l2camerasrc device=\"/dev/video2\""),
+  EXPECT_NE(pipeline.find("v4l2src device=\"/dev/video0\" io-mode=2"),
             std::string::npos);
-  EXPECT_NE(pipeline.find("video/x-raw(memory:NVMM),format=(string)NV12"),
-            std::string::npos);
-  EXPECT_NE(pipeline.find("tee name=source_tee_0"), std::string::npos);
-  EXPECT_NE(
-      pipeline.find(
-          "video/x-raw,width=(int)1280,height=(int)720,format=(string)BGRx ! "
-          "videoconvert ! video/x-raw,format=(string)RGB"),
-      std::string::npos);
-  EXPECT_NE(pipeline.find("videorate ! video/x-raw,format=(string)RGB,"
-                          "framerate=(fraction)15/1"),
-            std::string::npos);
-  EXPECT_NE(pipeline.find("appsink name=source_publish_sink_0"),
-            std::string::npos);
-}
-
-TEST(CameraGstPipelineBuilderTest, PrefersArgusForCsiSources) {
-  config::Config config;
-  auto* source = AddSource(&config, "front", "csi://0");
-  source->set_capture_backend("AUTO");
-  source->mutable_publish()->set_channel_name("/apollo/sensor/camera/front");
-
-  CameraGstPipelineBuilder builder(config, {}, true, false, false, false);
-
-  const std::string pipeline = builder.BuildPipelineDescription();
-  EXPECT_NE(pipeline.find("nvarguscamerasrc sensor-id=0"), std::string::npos);
-  EXPECT_EQ(pipeline.find("v4l2src device="), std::string::npos);
+  EXPECT_NE(pipeline.find("format=(string)YUY2"), std::string::npos);
+  EXPECT_EQ(pipeline.find("nvv4l2camerasrc"), std::string::npos);
 }
 
 TEST(CameraGstPipelineBuilderTest, UsesNvv4l2CameraSrcForSupportedV4l2Yuv) {
@@ -148,49 +117,34 @@ TEST(CameraGstPipelineBuilderTest, UsesNvv4l2CameraSrcForSupportedV4l2Yuv) {
   source->set_fourcc("UYVY");
   source->set_capture_backend("NVV4L2_DMABUF");
 
-  CameraGstPipelineBuilder builder(config, {}, false, false, false, false);
+  CameraGstPipelineBuilder builder(config, {}, false, false);
 
   const std::string pipeline = builder.BuildPipelineDescription();
   EXPECT_NE(pipeline.find("nvv4l2camerasrc device="), std::string::npos);
   EXPECT_NE(pipeline.find("memory:NVMM"), std::string::npos);
 }
 
-TEST(CameraGstPipelineBuilderTest, DefaultsQueueCapacityToOneForPublish) {
+TEST(CameraGstPipelineBuilderTest, RejectsYuyvOnNvv4l2Backend) {
   config::Config config;
-  auto* source = AddSource(&config, "video2", "/dev/video2");
+  auto* source = AddSource(&config, "video3", "/dev/video3");
   source->set_fourcc("YUYV");
-  source->mutable_publish()->set_channel_name(
-      "/apollo/sensor/camera/video2/image");
+  source->set_capture_backend("NVV4L2_DMABUF");
 
-  CameraGstPipelineBuilder builder(config, {}, true, false, false, false);
+  CameraGstPipelineBuilder builder(config, {}, false, false);
 
-  const std::string pipeline = builder.BuildPipelineDescription();
-  EXPECT_NE(pipeline.find("max-buffers=1"), std::string::npos);
+  EXPECT_TRUE(builder.BuildPipelineDescription().empty());
 }
 
-TEST(CameraGstPipelineBuilderTest, BuildsGpuPublishOnlyYuyvBranch) {
+TEST(CameraGstPipelineBuilderTest, UsesCompatibleMmapProtoDefaults) {
   config::Config config;
-  auto* source = AddSource(&config, "video2", "/dev/video2");
-  source->set_fourcc("YUYV");
-  source->mutable_publish()->set_channel_name(
-      "/apollo/sensor/camera/video2/image");
-  source->mutable_publish()->set_output_format("YUYV");
-  source->mutable_publish()->set_output_fps(15.0);
+  AddSource(&config, "video2", "/dev/video2");
 
-  CameraGstPipelineBuilder builder(config, {}, true, false, false, false);
+  CameraGstPipelineBuilder builder(config, {}, false, false);
 
   const std::string pipeline = builder.BuildPipelineDescription();
-  EXPECT_NE(pipeline.find("nvv4l2camerasrc device=\"/dev/video2\""),
+  EXPECT_NE(pipeline.find("v4l2src device=\"/dev/video2\" io-mode=2"),
             std::string::npos);
-  EXPECT_NE(pipeline.find("tee name=source_tee_0"), std::string::npos);
-  EXPECT_NE(pipeline.find("video/x-raw,format=(string)YUY2"),
-            std::string::npos);
-  EXPECT_NE(pipeline.find("video/x-raw(memory:NVMM),format=(string)NV12"),
-            std::string::npos);
-  EXPECT_NE(pipeline.find("videorate ! video/x-raw,format=(string)YUY2,"
-                          "framerate=(fraction)15/1"),
-            std::string::npos);
-  EXPECT_EQ(pipeline.find("videoconvert ! video/x-raw,format=(string)RGB"),
+  EXPECT_NE(pipeline.find("jpegparse ! nvv4l2decoder mjpeg=1"),
             std::string::npos);
 }
 
@@ -201,7 +155,7 @@ TEST(CameraGstPipelineBuilderTest, BuildsDefaultNvencRtpStreamBranch) {
   config.mutable_stream()->set_bitrate(8000000);
   config.mutable_stream()->set_rtp_payload_type(98);
 
-  CameraGstPipelineBuilder builder(config, {}, false, false, true, false);
+  CameraGstPipelineBuilder builder(config, {}, true, false);
 
   const std::string branch = builder.BuildDefaultStreamBranch();
   EXPECT_NE(branch.find("nvv4l2h264enc name=stream_encoder"),
@@ -216,7 +170,7 @@ TEST(CameraGstPipelineBuilderTest, BuildsDefaultNvencRtpStreamBranch) {
 TEST(CameraGstPipelineBuilderTest, BuildsPerceptionTranscodePublishBranch) {
   config::Config config;
   auto* source = AddSource(&config, "video2", "/dev/video2");
-  source->set_fourcc("YUYV");
+  source->set_fourcc("UYVY");
   config.mutable_stream()->set_enable(true);
   config.mutable_stream()->set_host("192.0.2.20");
   config.mutable_stream()->set_port(5600);
@@ -224,7 +178,8 @@ TEST(CameraGstPipelineBuilderTest, BuildsPerceptionTranscodePublishBranch) {
   config.mutable_stream()->set_perception_transcode_before_publish(true);
   config.mutable_stream()->set_perception_bitrate(6000000);
 
-  CameraGstPipelineBuilder builder(config, {}, false, false, true, true);
+  source->set_capture_backend("NVV4L2_DMABUF");
+  CameraGstPipelineBuilder builder(config, {}, true, true);
 
   const std::string pipeline = builder.BuildPipelineDescription();
   EXPECT_NE(
@@ -236,6 +191,26 @@ TEST(CameraGstPipelineBuilderTest, BuildsPerceptionTranscodePublishBranch) {
   EXPECT_NE(pipeline.find("h264parse ! nvv4l2decoder"), std::string::npos);
   EXPECT_EQ(pipeline.find("perception_stream_encoder"), std::string::npos);
   EXPECT_NE(pipeline.find("appsink name=source_gpu_sink_0"), std::string::npos);
+}
+
+TEST(CameraGstPipelineBuilderTest, UsesNativeVideorateForStitchedOutput) {
+  config::Config config;
+  AddSource(&config, "front", "/dev/video0");
+  AddSource(&config, "rear", "/dev/video1");
+  config.set_rows(1);
+  config.set_cols(2);
+  config.set_tile_width(640);
+  config.set_tile_height(360);
+
+  const std::vector<PipelineLayoutSlot> layout_slots = {
+      MakeSlot("front", 0, 0, 0), MakeSlot("rear", 1, 0, 1)};
+  CameraGstPipelineBuilder builder(config, layout_slots, true, false);
+
+  const std::string pipeline = builder.BuildPipelineDescription();
+  EXPECT_NE(pipeline.find("videorate drop-only=true"), std::string::npos);
+  EXPECT_NE(pipeline.find(
+                "framerate=(fraction)30/1 ! tee name=stitched_tee"),
+            std::string::npos);
 }
 
 }  // namespace camera_gst

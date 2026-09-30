@@ -3,7 +3,6 @@
 
 #include <atomic>
 #include <memory>
-#include <string>
 
 #include "modules/drivers/camera_gst/proto/config.pb.h"
 
@@ -21,7 +20,7 @@ class CameraGstComponent : public apollo::cyber::Component<> {
   bool Init() override;
 
  private:
-  bool ValidateGpuOnlyConfig() const;
+  bool ValidateOutputConfig() const;
   void HandleStreamControl(
       const std::shared_ptr<config::StreamControlRequest>& request,
       std::shared_ptr<config::StreamControlResponse>& response);

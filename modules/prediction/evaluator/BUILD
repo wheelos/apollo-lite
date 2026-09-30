@@ -12,7 +12,7 @@ cc_library(
         "-DMODULE_NAME=\\\"prediction\\\"",
     ],
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "//modules/prediction/common:feature_output",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/common:prediction_thread_pool",

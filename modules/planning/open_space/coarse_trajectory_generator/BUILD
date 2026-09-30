@@ -11,8 +11,8 @@ cc_library(
     hdrs = ["node3d.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/math",
         "//modules/planning/common:obstacle",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@core//cyber",
@@ -29,8 +29,8 @@ cc_library(
     ],
     linkopts = ["-lgomp"],
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/math",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/open_space/coarse_trajectory_generator:node3d",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
@@ -45,7 +45,7 @@ cc_library(
     hdrs = ["grid_search.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@core//cyber",
     ],
@@ -68,8 +68,8 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":open_space_utils",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/vehicle_state:vehicle_reference",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
         "//modules/planning/common:obstacle",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/path:discretized_path",
@@ -87,8 +87,8 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":open_space_utils",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/math",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",

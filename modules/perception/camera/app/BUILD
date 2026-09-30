@@ -27,7 +27,7 @@ cc_library(
     ],
     deps = [
         ":debug_info",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app/proto:perception_cc_proto",
         "//modules/perception/camera/common",
@@ -64,7 +64,7 @@ cc_library(
     deps = [
         ":debug_info",
         "@core//cyber",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app/proto:perception_cc_proto",
         "//modules/perception/camera/common",
@@ -101,7 +101,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/camera/app/proto:perception_cc_proto",
         "//modules/perception/camera/common",
         "//modules/perception/camera/lib/interface",
@@ -122,7 +122,7 @@ cc_library(
     ],
     deps = [
         ":debug_info",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app/proto:perception_cc_proto",
         "//modules/perception/camera/common",
@@ -150,8 +150,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/math",
         "//modules/perception/base",
         "//modules/perception/camera/common:lane_object",
         "//modules/perception/camera/lib/interface",

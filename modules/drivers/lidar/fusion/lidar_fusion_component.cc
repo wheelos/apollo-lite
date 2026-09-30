@@ -35,9 +35,6 @@ bool LidarFusionComponent::Init() {
     AERROR << "Load config file " << ConfigFilePath() << " failed.";
     return false;
   }
-  transform_query_ =
-      apollo::transform::TransformQuery(apollo::transform::Buffer::Instance());
-
   writer_ = node_->CreateWriter<apollo::drivers::PointCloud>(
       config_.output_channel());
 

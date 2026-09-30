@@ -33,7 +33,7 @@ cc_library(
     deps = [
         ":edge_creator",
         ":node_creator",
-        "//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "//modules/map/hdmap/adapter:opendrive_adapter",
     ],
 )

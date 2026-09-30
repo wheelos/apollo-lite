@@ -1,5 +1,5 @@
 # Simulation-only 4WS vehicle configuration. It is intentionally separate
-# from modules/common/data/vehicle_param.pb.txt, whose MKZ configuration is
+# from modules/global_config/vehicle_param.pb.txt, whose MKZ configuration is
 # front-wheel Ackermann.
 vehicle_param {
   brand: LINCOLN_MKZ

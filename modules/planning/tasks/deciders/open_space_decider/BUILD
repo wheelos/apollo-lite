@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["open_space_roi_decider.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/util:point_factory",
+        "@wheelos_common//modules/common/util:point_factory",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_context",

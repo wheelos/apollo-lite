@@ -23,7 +23,7 @@ cc_library(
     ],
     deps = [
         "@core//cyber",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/common:lidar_error_code",
         "//modules/perception/lidar/app/proto:lidar_obstacle_detection_config_cc_proto",
@@ -52,8 +52,8 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "//modules/common/util",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/app/proto:lidar_obstacle_tracking_config_cc_proto",

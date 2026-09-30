@@ -30,7 +30,7 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":obstacle_clusters",
-        "//modules/common/filters",
+        "@wheelos_common//modules/common/filters",
         "//modules/prediction/common:junction_analyzer",
         "//modules/prediction/common:prediction_constants",
         "//modules/prediction/network/rnn_model",
@@ -75,7 +75,7 @@ cc_library(
     hdrs = ["obstacle_clusters.h"],
     copts = PREDICTION_COPTS,
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "//modules/prediction/common:road_graph",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
     ],

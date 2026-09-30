@@ -92,7 +92,7 @@ cc_library(
     srcs = ["pj_transformer.cc"],
     hdrs = ["pj_transformer.h"],
     deps = [
-        "//modules/common/util:proj_helper",
+        "@wheelos_common//modules/common/util:proj_helper",
         "@core//cyber",
         "@proj",
     ],
@@ -115,7 +115,7 @@ cc_library(
         ":common",
         ":pj_transformer",
         ":pose_collection",
-        "//modules/common/util:time_conversion",
+        "@wheelos_common//modules/common/util:time_conversion",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
     ],

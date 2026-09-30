@@ -1,5 +1,4 @@
 output_channel: "/apollo/sensor/lidar/unified/PointCloud2"
-primary_lidar_topic: "/apollo/sensor/rslidar/front_left/PointCloud2"
 
 primary_time_settings {
   measurement_time_anchor: SCAN_END
@@ -40,7 +39,6 @@ auxiliary_lidar_inputs {
 
 sensor_buffer_size: 16
 max_full_pointcloud_points: 600000
-worker_num: 0
 
 base_link_frame_id: "base_link"
 map_frame_id: "world"

@@ -26,7 +26,7 @@ cc_library(
         "pcd_exporter.h",
     ],
     deps = [
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "//modules/localization/msf/common/io:common_io",
         "//modules/localization/proto:measure_cc_proto",
         "@core//cyber",

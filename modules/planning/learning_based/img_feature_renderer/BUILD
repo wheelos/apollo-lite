@@ -9,8 +9,8 @@ cc_library(
     hdrs = ["birdview_img_feature_renderer.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/util",
         "//modules/map/hdmap:hdmap_util",
         "//modules/planning/proto:learning_data_cc_proto",
         "//modules/planning/proto:planning_semantic_map_config_cc_proto",

@@ -63,8 +63,8 @@ cc_library(
     hdrs = ["mrac_controller.h"],
     copts = CONTROL_COPTS,
     deps = [
-        "//modules/common/math",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/status",
         "//modules/control/proto:mrac_conf_cc_proto",
         "@com_google_absl//absl/strings",
         "@core//cyber",
@@ -91,7 +91,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":pid_controller",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "//modules/control/proto:pid_conf_cc_proto",
         "@core//cyber",
     ],
@@ -104,7 +104,7 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":pid_controller",
-        "//modules/common/math",
+        "@wheelos_common//modules/common/math",
         "//modules/control/proto:pid_conf_cc_proto",
         "@core//cyber",
     ],
@@ -117,8 +117,8 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":control_gflags",
-        "//modules/common/math",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "@core//cyber",
         "@eigen",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
@@ -262,7 +262,7 @@ cc_library(
     name = "dependency_injector",
     hdrs = ["dependency_injector.h"],
     deps = [
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
     ],
 )
 

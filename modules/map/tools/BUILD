@@ -24,7 +24,7 @@ cc_binary(
     name = "map_tool",
     srcs = ["map_tool.cc"],
     deps = [
-        "//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/configs:config_gflags",
         "//modules/map/hdmap:hdmap_util",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
@@ -36,9 +36,9 @@ cc_binary(
     name = "map_xysl",
     srcs = ["map_xysl.cc"],
     deps = [
-        "//modules/common/configs:config_gflags",
-        "//modules/common/util",
-        "//modules/common/util:string_util",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:string_util",
         "//modules/map/hdmap:hdmap_util",
         "@com_github_gflags_gflags//:gflags",
     ],
@@ -59,8 +59,8 @@ cc_binary(
     name = "sim_map_generator",
     srcs = ["sim_map_generator.cc"],
     deps = [
-        "//modules/common/configs:config_gflags",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/util",
         "//modules/map/hdmap:hdmap_util",
         "//modules/map/hdmap/adapter:opendrive_adapter",
         "@com_github_gflags_gflags//:gflags",
@@ -97,8 +97,8 @@ cc_binary(
     name = "quaternion_euler",
     srcs = ["quaternion_euler.cc"],
     deps = [
-        "//modules/common/math",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util",
         "@com_github_gflags_gflags//:gflags",
     ],
 )

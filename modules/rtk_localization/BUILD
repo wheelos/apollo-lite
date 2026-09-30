@@ -16,9 +16,9 @@ cc_library(
     ],
     copts = ["-DMODULE_NAME=\\\"localization\\\""],
     deps = [
-        "//modules/common/math",
-        "//modules/common/monitor_log",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/rtk_localization/proto:rtk_config_cc_proto",
         "//modules/transform:transform_broadcaster",
         "@com_google_googletest//:gtest",
@@ -49,7 +49,7 @@ cc_test(
     linkstatic = True,
     data = ["//modules/localization:localization_testdata"],
     deps = [
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         ":rtk_localization_component_lib",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",

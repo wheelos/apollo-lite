@@ -28,7 +28,7 @@ cc_library(
     hdrs = ["frame_processor.h"],
     deps = [
         ":h265_decoder",
-        "//modules/common/util",
+        "@wheelos_common//modules/common/util",
         "@com_google_absl//absl/strings",
     ],
 )

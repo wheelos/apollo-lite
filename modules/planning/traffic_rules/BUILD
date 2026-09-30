@@ -33,7 +33,7 @@ cc_library(
     ],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:frame",
         "//modules/planning/common:planning_context",
@@ -54,9 +54,9 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":traffic_rules",
-        "//modules/common/configs:vehicle_config_helper",
-        "//modules/common/status",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:traffic_rule_config_cc_proto",
         "//modules/planning/reference_line",

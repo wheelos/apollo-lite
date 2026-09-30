@@ -33,9 +33,9 @@ namespace simulation {
 namespace {
 
 constexpr char kDefaultVehicleConfigPath[] =
-    "/apollo/modules/common/data/vehicle_param.pb.txt";
+    "/apollo/modules/global_config/vehicle_param.pb.txt";
 constexpr char kWorkspaceVehicleConfigPath[] =
-    "modules/common/data/vehicle_param.pb.txt";
+    "modules/global_config/vehicle_param.pb.txt";
 
 bool LoadVehicleConfig(common::VehicleConfig* config) {
   std::vector<std::string> candidate_paths{FLAGS_vehicle_config_path};

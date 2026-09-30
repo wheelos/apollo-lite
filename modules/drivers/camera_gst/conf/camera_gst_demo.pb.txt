@@ -1,33 +1,21 @@
 sources {
-  name: "left"
-  uri: "csi://0"
+  name: "video0"
+  uri: "/dev/video0"
   width: 1920
   height: 1080
   fps: 30.0
-}
-
-sources {
-  name: "right"
-  uri: "csi://1"
-  width: 1920
-  height: 1080
-  fps: 30.0
+  fourcc: "UYVY"
+  capture_backend: "NVV4L2_DMABUF"
 }
 
 layout_slots {
-  source_name: "left"
+  source_name: "video0"
   row: 0
   col: 0
 }
 
-layout_slots {
-  source_name: "right"
-  row: 0
-  col: 1
-}
-
 rows: 1
-cols: 2
+cols: 1
 tile_width: 1920
 tile_height: 1080
 fps: 30.0

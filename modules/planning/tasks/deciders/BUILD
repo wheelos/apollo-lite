@@ -9,7 +9,7 @@ cc_library(
     hdrs = ["decider.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "//modules/common/status",
+        "@wheelos_common//modules/common/status",
         "//modules/planning/common:frame",
         "//modules/planning/tasks:task",
     ],

@@ -15,8 +15,8 @@ cc_library(
     ],
     deps = [
         ":open_space_trajectory_optimizer",
-        "//modules/common/math",
-        "//modules/common/status",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/status",
         "//modules/map/hdmap:hdmap_util",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:planning_gflags",
@@ -36,9 +36,9 @@ cc_library(
         "-fopenmp",
     ],
     deps = [
-        "//modules/common/status",
-        "//modules/common/util",
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning/common:frame",
         "//modules/planning/open_space/coarse_trajectory_generator:hybrid_a_star",
         "//modules/planning/open_space/trajectory_smoother:distance_approach_problem",

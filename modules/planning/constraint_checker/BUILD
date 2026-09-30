@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["constraint_checker.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:discretized_trajectory",
         "@core//cyber",

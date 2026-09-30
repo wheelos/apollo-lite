@@ -1,4 +1,4 @@
-// Copyright 2026 WheelOS All Rights Reserved.
+// Copyright 2026 The Wheel.OS Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,14 +13,55 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cmath>
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 #include "modules/drivers/lidar/processor/lidar_unified_component.h"
+#include "modules/drivers/lidar/processor/policy/lidar_policy_common.h"
 
 namespace apollo {
 namespace drivers {
 namespace lidar {
 
 namespace {
+
+std::string FormatTimestampForLog(double timestamp_sec) {
+  std::ostringstream stream;
+  stream << std::fixed << std::setprecision(9) << timestamp_sec << "s";
+  if (timestamp_sec > 0.0) {
+    stream << " [" << cyber::Time(timestamp_sec).ToString() << "]";
+  }
+  return stream.str();
+}
+
+std::string FormatDeltaForLog(double delta_sec) {
+  const double abs_delta_sec = std::fabs(delta_sec);
+  std::ostringstream stream;
+  stream << std::showpos << std::fixed
+         << std::setprecision(abs_delta_sec >= 1.0 ? 3 : 6) << delta_sec << "s"
+         << std::noshowpos;
+  if (abs_delta_sec >= 86400.0) {
+    stream << " (~" << std::fixed << std::setprecision(3)
+           << abs_delta_sec / 86400.0 << " days)";
+  } else if (abs_delta_sec >= 3600.0) {
+    stream << " (~" << std::fixed << std::setprecision(3)
+           << abs_delta_sec / 3600.0 << " h)";
+  } else if (abs_delta_sec >= 60.0) {
+    stream << " (~" << std::fixed << std::setprecision(3)
+           << abs_delta_sec / 60.0 << " min)";
+  } else if (abs_delta_sec > 0.0 && abs_delta_sec < 1.0) {
+    stream << " (~" << std::fixed << std::setprecision(3)
+           << abs_delta_sec * 1000.0 << " ms)";
+  }
+  return stream.str();
+}
+
+const char* DescribeTimeRelation(double delta_sec) {
+  return std::fabs(delta_sec) <= 1e-6 ? "aligned"
+                                      : (delta_sec > 0.0 ? "ahead" : "behind");
+}
 
 const char* DegradeModeName(DegradeMode mode) {
   switch (mode) {
@@ -34,6 +75,31 @@ const char* DegradeModeName(DegradeMode mode) {
 }
 
 }  // namespace
+
+std::string LidarUnifiedComponent::BuildPointCloudTimeSummary(
+    const PointCloudView& point_cloud) const {
+  double min_point_time_sec = point_cloud.measurement_time();
+  double max_point_time_sec = point_cloud.measurement_time();
+  ResolvePointTimestampBounds(point_cloud, &min_point_time_sec,
+                              &max_point_time_sec);
+
+  const double measurement_time_sec = point_cloud.measurement_time();
+  const double measurement_vs_now_sec =
+      measurement_time_sec - cyber::Time::Now().ToSecond();
+
+  std::ostringstream message;
+  message << "measurement=" << FormatTimestampForLog(measurement_time_sec)
+          << ", point_range=[" << FormatTimestampForLog(min_point_time_sec)
+          << ", " << FormatTimestampForLog(max_point_time_sec) << "]"
+          << ", measurement_vs_now="
+          << FormatDeltaForLog(measurement_vs_now_sec) << " ("
+          << DescribeTimeRelation(measurement_vs_now_sec) << ")";
+  if (std::fabs(max_point_time_sec - min_point_time_sec) > 1e-6) {
+    message << ", scan_span="
+            << FormatDeltaForLog(max_point_time_sec - min_point_time_sec);
+  }
+  return message.str();
+}
 
 void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
   const uint64_t frame_index = frames_total_.fetch_add(1) + 1;
@@ -65,51 +131,52 @@ void LidarUnifiedComponent::LogFrameMetrics(const FrameMetrics& frame_metrics) {
   const uint64_t degrade_transitions = dtc_reporter_.degrade_transition_count();
 
   ADEBUG << "LidarUnifiedProcessor metrics: frame=" << frame_index
-        << ", primary_sequence_num=" << frame_metrics.primary_sequence_num
-        << ", matched_sensors=" << frame_metrics.matched_sensor_count << "/"
-        << frame_metrics.expected_sensor_count
-        << ", degrade_mode=" << DegradeModeName(degrade_policy_.CurrentMode())
-        << ", missing_aux=" << frame_metrics.missing_auxiliary_count
-        << ", input_points=" << frame_metrics.total_input_points
-        << ", compact_points=" << frame_metrics.compact_points
-        << ", voxel_filtered_points=" << frame_metrics.voxel_filtered_points
-        << ", ego_filtered_points=" << frame_metrics.ego_filtered_points
-        << ", output_points=" << frame_metrics.output_points
-        << ", max_abs_clock_offset_ms=" << frame_metrics.max_abs_clock_offset_ms
-        << ", min_overlap_quality_weight="
-        << frame_metrics.min_overlap_quality_weight
-        << ", fusion_wait_ms=" << frame_metrics.fusion_wait_ms
-        << ", frame_selection_ms=" << frame_metrics.frame_selection_ms
-        << ", pose_bins_ms=" << frame_metrics.pose_bins_ms
-        << ", reference_pose_ms=" << frame_metrics.reference_pose_ms
-        << ", fusion_ms=" << frame_metrics.fusion_ms
-        << ", filter_ms=" << frame_metrics.filter_ms
-        << ", output_build_ms=" << frame_metrics.output_build_ms
-        << ", writer_ms=" << frame_metrics.writer_ms
-        << ", processing_ms=" << frame_metrics.processing_ms
-        << ", end_to_end_ms=" << frame_metrics.end_to_end_ms
-        << ", fusion_deadline_exceeded="
-        << frame_metrics.fusion_deadline_exceeded
-        << ", ts_anomalies=" << ts_anomalies
-        << ", degrade_transitions=" << degrade_transitions
-        << ", avg_output_ratio="
-        << static_cast<double>(total_output) / static_cast<double>(total_input)
-        << ", avg_aux_drop_per_frame="
-        << static_cast<double>(total_aux_missing) /
-               static_cast<double>(total_frames)
-        << ", avg_time_window_violations="
-        << static_cast<double>(total_time_delta) /
-               static_cast<double>(total_frames)
-        << ", avg_fusion_deadline_exceeded="
-        << static_cast<double>(total_deadline_exceeded) /
-               static_cast<double>(total_frames)
-        << ", pending_fusion_dropped=" << total_pending_dropped
-        << ", avg_pose_prefetch_timeouts="
-        << static_cast<double>(total_pose_prefetch_timeouts) /
-               static_cast<double>(total_frames)
-        << ", avg_tf_failures="
-        << static_cast<double>(total_tf_failures) /
-               static_cast<double>(total_frames);
+         << ", primary_sequence_num=" << frame_metrics.primary_sequence_num
+         << ", matched_sensors=" << frame_metrics.matched_sensor_count << "/"
+         << frame_metrics.expected_sensor_count
+         << ", degrade_mode=" << DegradeModeName(degrade_policy_.CurrentMode())
+         << ", missing_aux=" << frame_metrics.missing_auxiliary_count
+         << ", input_points=" << frame_metrics.total_input_points
+         << ", compact_points=" << frame_metrics.compact_points
+         << ", voxel_filtered_points=" << frame_metrics.voxel_filtered_points
+         << ", ego_filtered_points=" << frame_metrics.ego_filtered_points
+         << ", output_points=" << frame_metrics.output_points
+         << ", max_abs_clock_offset_ms="
+         << frame_metrics.max_abs_clock_offset_ms
+         << ", min_overlap_quality_weight="
+         << frame_metrics.min_overlap_quality_weight
+         << ", fusion_wait_ms=" << frame_metrics.fusion_wait_ms
+         << ", frame_selection_ms=" << frame_metrics.frame_selection_ms
+         << ", pose_bins_ms=" << frame_metrics.pose_bins_ms
+         << ", reference_pose_ms=" << frame_metrics.reference_pose_ms
+         << ", fusion_ms=" << frame_metrics.fusion_ms
+         << ", filter_ms=" << frame_metrics.filter_ms
+         << ", output_build_ms=" << frame_metrics.output_build_ms
+         << ", writer_ms=" << frame_metrics.writer_ms
+         << ", processing_ms=" << frame_metrics.processing_ms
+         << ", end_to_end_ms=" << frame_metrics.end_to_end_ms
+         << ", fusion_deadline_exceeded="
+         << frame_metrics.fusion_deadline_exceeded
+         << ", ts_anomalies=" << ts_anomalies
+         << ", degrade_transitions=" << degrade_transitions
+         << ", avg_output_ratio="
+         << static_cast<double>(total_output) / static_cast<double>(total_input)
+         << ", avg_aux_drop_per_frame="
+         << static_cast<double>(total_aux_missing) /
+                static_cast<double>(total_frames)
+         << ", avg_time_window_violations="
+         << static_cast<double>(total_time_delta) /
+                static_cast<double>(total_frames)
+         << ", avg_fusion_deadline_exceeded="
+         << static_cast<double>(total_deadline_exceeded) /
+                static_cast<double>(total_frames)
+         << ", pending_fusion_dropped=" << total_pending_dropped
+         << ", avg_pose_prefetch_timeouts="
+         << static_cast<double>(total_pose_prefetch_timeouts) /
+                static_cast<double>(total_frames)
+         << ", avg_tf_failures="
+         << static_cast<double>(total_tf_failures) /
+                static_cast<double>(total_frames);
 }
 
 }  // namespace lidar

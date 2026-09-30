@@ -11,7 +11,7 @@ cc_library(
     hdrs = ["narrow_street_scenario.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "//modules/planning/scenarios:scenario",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",

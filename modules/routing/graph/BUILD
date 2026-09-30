@@ -58,7 +58,7 @@ cc_library(
     deps = [
         ":routing_range_utils",
         ":routing_topo_range",
-        "//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/util:util_tool",
         "//modules/routing/proto:topo_graph_cc_proto",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",

@@ -36,24 +36,19 @@ struct PipelineLayoutSlot {
 class CameraGstPipelineBuilder {
  public:
   enum class CaptureBackend {
-    kAuto,
-    kArgus,
     kNvV4l2Dmabuf,
-    kV4l2Dmabuf,
-    kCustom,
+    kV4l2Mmap,
+    kInvalid,
   };
 
   CameraGstPipelineBuilder(const config::Config& config,
                            const std::vector<PipelineLayoutSlot>& layout_slots,
-                           bool source_publish_enabled,
-                           bool stitched_publish_enabled, bool stream_enabled,
-                           bool gpu_frame_enabled);
+                           bool stream_enabled, bool gpu_frame_enabled);
 
   std::string BuildPipelineDescription() const;
   std::string BuildDefaultStreamBranch() const;
   std::vector<std::string> RequiredFactories() const;
   bool ValidateRequiredFactories() const;
-  std::string SourcePublishSinkName(size_t source_index) const;
   std::string SourceGpuSinkName(size_t source_index) const;
 
  private:
@@ -76,8 +71,6 @@ class CameraGstPipelineBuilder {
 
   const config::Config& config_;
   const std::vector<PipelineLayoutSlot>& layout_slots_;
-  bool source_publish_enabled_ = false;
-  bool stitched_publish_enabled_ = false;
   bool stream_enabled_ = false;
   bool gpu_frame_enabled_ = false;
   int output_width_ = 0;
