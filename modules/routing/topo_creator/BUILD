@@ -45,6 +45,7 @@ cc_test(
     copts = ["-fno-access-control"],
     deps = [
         ":graph_creator",
+        "@core//cyber",
         "@com_google_googletest//:gtest_main",
     ],
 )

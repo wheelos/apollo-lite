@@ -71,7 +71,7 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         ":prediction_gflags",
-        "//modules/map/pnc_map",
+        "//modules/map/pnc_map:path",
     ],
 )
 

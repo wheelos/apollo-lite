@@ -30,7 +30,8 @@
 
 #include "modules/dreamview/proto/simulation_world.pb.h"
 
-#include "modules/map/pnc_map/pnc_map.h"
+#include "modules/map/pnc_map/path.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 
 /**
  * @namespace apollo::dreamview

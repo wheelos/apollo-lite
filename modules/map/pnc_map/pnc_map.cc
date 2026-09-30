@@ -536,14 +536,14 @@ bool PncMap::GetNearestPointFromRouting(const VehicleState &state,
     return false;
   }
 
-  // Choose the lane with the right heading if there is more than one candiate
-  // lanes. If there is no lane with the right heading, choose the closest one.
+  // Prefer the closest lane aligned with the vehicle when both directions
+  // share a centerline.
   size_t closest_index = 0;
   int right_heading_index = -1;
   // The distance as the sum of the lateral and longitude distance, to estimate
   // the distance from the vehicle to the lane.
   double distance = std::numeric_limits<double>::max();
-  double lane_heading = 0.0;
+  double aligned_distance = std::numeric_limits<double>::max();
   double vehicle_heading = state.heading();
   for (size_t i = 0; i < valid_way_points.size(); i++) {
     double distance_to_lane = std::fabs(valid_way_points[i].l);
@@ -557,27 +557,33 @@ bool PncMap::GetNearestPointFromRouting(const VehicleState &state,
       distance = distance_to_lane;
       closest_index = i;
     }
-    lane_heading = valid_way_points[i].lane->Heading(valid_way_points[i].s);
+    const double lane_heading =
+        valid_way_points[i].lane->Heading(valid_way_points[i].s);
     if (std::abs(common::math::AngleDiff(lane_heading, vehicle_heading)) <
-        M_PI_2) {
-      // Choose the lane with the closest distance to the vehicle and with the
-      // right heading.
-      if (-1 == right_heading_index || closest_index == i) {
-        waypoint->lane = valid_way_points[i].lane;
-        waypoint->s = valid_way_points[i].s;
-        waypoint->l = valid_way_points[i].l;
-        right_heading_index = i;
-      }
+            M_PI_2 &&
+        distance_to_lane < aligned_distance) {
+      aligned_distance = distance_to_lane;
+      right_heading_index = static_cast<int>(i);
     }
   }
-  // Use the lane with the closest distance to the current position of the
-  // vehicle.
-  if (-1 == right_heading_index) {
-    waypoint->lane = valid_way_points[closest_index].lane;
-    waypoint->s = valid_way_points[closest_index].s;
-    waypoint->l = valid_way_points[closest_index].l;
-    AWARN << "Find no lane with the right heading, use the cloesest lane!";
+  if (right_heading_index < 0 &&
+      !valid_way_points[closest_index].lane->lane()
+           .self_reverse_lane_id()
+           .empty()) {
+    AERROR << "No routing lane aligned with vehicle heading on bidirectional "
+              "lane: "
+           << valid_way_points[closest_index].lane->id().id();
+    return false;
   }
+  if (right_heading_index < 0) {
+    AWARN << "Find no lane with the right heading, use the closest lane!";
+  }
+  const auto &selected =
+      valid_way_points[right_heading_index < 0 ? closest_index
+                                                : right_heading_index];
+  waypoint->lane = selected.lane;
+  waypoint->s = selected.s;
+  waypoint->l = selected.l;
   return true;
 }
 

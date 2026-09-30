@@ -60,6 +60,19 @@ bool FindLaneSegment(const MapPathPoint& p1, const MapPathPoint& p2,
   return false;
 }
 
+LaneBoundaryType::Type BoundaryTypeAtS(const LaneBoundary& boundary,
+                                       double s) {
+  LaneBoundaryType::Type result = LaneBoundaryType::UNKNOWN;
+  for (const auto& type : boundary.boundary_type()) {
+    if (type.s() > s) {
+      break;
+    }
+    result = type.types_size() > 0 ? type.types(0)
+                                   : LaneBoundaryType::UNKNOWN;
+  }
+  return result;
+}
+
 }  // namespace
 
 std::string LaneWaypoint::DebugString() const {
@@ -73,34 +86,14 @@ LaneBoundaryType::Type LeftBoundaryType(const LaneWaypoint& waypoint) {
   if (!waypoint.lane) {
     return LaneBoundaryType::UNKNOWN;
   }
-  for (const auto& type :
-       waypoint.lane->lane().left_boundary().boundary_type()) {
-    if (type.s() <= waypoint.s) {
-      if (type.types_size() > 0) {
-        return type.types(0);
-      } else {
-        return LaneBoundaryType::UNKNOWN;
-      }
-    }
-  }
-  return LaneBoundaryType::UNKNOWN;
+  return BoundaryTypeAtS(waypoint.lane->lane().left_boundary(), waypoint.s);
 }
 
 LaneBoundaryType::Type RightBoundaryType(const LaneWaypoint& waypoint) {
   if (!waypoint.lane) {
     return LaneBoundaryType::UNKNOWN;
   }
-  for (const auto& type :
-       waypoint.lane->lane().right_boundary().boundary_type()) {
-    if (type.s() <= waypoint.s) {
-      if (type.types_size() > 0) {
-        return type.types(0);
-      } else {
-        return LaneBoundaryType::UNKNOWN;
-      }
-    }
-  }
-  return LaneBoundaryType::UNKNOWN;
+  return BoundaryTypeAtS(waypoint.lane->lane().right_boundary(), waypoint.s);
 }
 
 LaneWaypoint LeftNeighborWaypoint(const LaneWaypoint& waypoint) {
