@@ -36,6 +36,12 @@ DEFINE_double(sim_speed_kp, 1.5, "Proportional gain for target-speed control");
 DEFINE_double(sim_init_x, 0.0, "Initial vehicle X position in meters");
 DEFINE_double(sim_init_y, 0.0, "Initial vehicle Y position in meters");
 DEFINE_double(sim_init_yaw, 0.0, "Initial vehicle heading angle in radians");
+DEFINE_double(sim_init_speed_mps, 0.0,
+              "Initial longitudinal vehicle speed in meters per second");
+DEFINE_double(sim_init_lateral_speed_mps, 0.0,
+              "Initial lateral vehicle speed in meters per second");
+DEFINE_double(sim_init_yaw_rate_radps, 0.0,
+              "Initial vehicle yaw rate in radians per second");
 DEFINE_bool(sim_debug_log, false,
             "Enable sampled simulation physics debug logs");
 DEFINE_int32(sim_debug_log_interval, 20,

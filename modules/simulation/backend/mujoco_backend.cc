@@ -217,6 +217,24 @@ bool MujocoBackend::Init(const std::string& model_path) {
 }
 
 void MujocoBackend::Reset(double x, double y, double yaw) {
+  InitialVehicleState initial_state;
+  initial_state.x = x;
+  initial_state.y = y;
+  initial_state.yaw = yaw;
+  Reset(initial_state);
+}
+
+bool MujocoBackend::Reset(const InitialVehicleState& initial_state) {
+  if (!std::isfinite(initial_state.x) || !std::isfinite(initial_state.y) ||
+      !std::isfinite(initial_state.yaw) ||
+      !std::isfinite(initial_state.longitudinal_speed_mps) ||
+      !std::isfinite(initial_state.lateral_speed_mps) ||
+      !std::isfinite(initial_state.yaw_rate_radps)) {
+    return false;
+  }
+  const double x = initial_state.x;
+  const double y = initial_state.y;
+  const double yaw = initial_state.yaw;
   sim_time_sec_ = 0.0;
   cached_state_ = VehicleState{};
   cached_state_.x = x;
@@ -232,6 +250,7 @@ void MujocoBackend::Reset(double x, double y, double yaw) {
   has_previous_state_ = false;
   debug_step_count_ = 0;
   wheel_velocity_sign_ = {0.0, 0.0, 0.0, 0.0};
+  current_actuation_ = VehicleActuation{};
 
 #if defined(USE_MUJOCO)
   if (mj_model_ && mj_data_) {
@@ -249,10 +268,27 @@ void MujocoBackend::Reset(double x, double y, double yaw) {
     d->qpos[qpos_adr + 4] = 0.0;
     d->qpos[qpos_adr + 5] = 0.0;
     d->qpos[qpos_adr + 6] = std::sin(yaw * 0.5);
+    const int qvel_adr = m->jnt_dofadr[freejoint_id_];
+    const double world_vx =
+        initial_state.longitudinal_speed_mps * std::cos(yaw) -
+        initial_state.lateral_speed_mps * std::sin(yaw);
+    const double world_vy =
+        initial_state.longitudinal_speed_mps * std::sin(yaw) +
+        initial_state.lateral_speed_mps * std::cos(yaw);
+    d->qvel[qvel_adr + 0] =
+        world_vx - initial_state.yaw_rate_radps * half_wheelbase *
+                       std::sin(yaw);
+    d->qvel[qvel_adr + 1] =
+        world_vy + initial_state.yaw_rate_radps * half_wheelbase *
+                       std::cos(yaw);
+    d->qvel[qvel_adr + 2] = 0.0;
+    d->qvel[qvel_adr + 3] = 0.0;
+    d->qvel[qvel_adr + 4] = 0.0;
+    d->qvel[qvel_adr + 5] = initial_state.yaw_rate_radps;
     mj_forward(m, d);
   }
-
 #endif
+  return true;
 }
 
 bool MujocoBackend::SetVehicleGeometry(double wheelbase_m,
@@ -451,7 +487,7 @@ bool MujocoBackend::GetVehicleState(VehicleState* state) const {
   // Velocities from freejoint DOF or spatial vector
   if (freejoint_id_ >= 0) {
     int dof_adr = m->jnt_dofadr[freejoint_id_];
-    const std::array<double, 3> body_velocity{
+    const std::array<double, 3> world_velocity{
         d->qvel[dof_adr + 0], d->qvel[dof_adr + 1], d->qvel[dof_adr + 2]};
     const std::array<double, 3> body_angular_velocity{
         d->qvel[dof_adr + 3], d->qvel[dof_adr + 4], d->qvel[dof_adr + 5]};
@@ -466,11 +502,11 @@ bool MujocoBackend::GetVehicleState(VehicleState* state) const {
     const std::array<double, 3> rear_offset{
         rear_offset_x, rear_offset_y, rear_offset_z};
     const std::array<double, 3> rear_velocity_world{
-        body_velocity[0] + world_angular_velocity[1] * rear_offset[2] -
+        world_velocity[0] + world_angular_velocity[1] * rear_offset[2] -
             world_angular_velocity[2] * rear_offset[1],
-        body_velocity[1] + world_angular_velocity[2] * rear_offset[0] -
+        world_velocity[1] + world_angular_velocity[2] * rear_offset[0] -
             world_angular_velocity[0] * rear_offset[2],
-        body_velocity[2] + world_angular_velocity[0] * rear_offset[1] -
+        world_velocity[2] + world_angular_velocity[0] * rear_offset[1] -
             world_angular_velocity[1] * rear_offset[0]};
     const auto rear_velocity_body =
         RotateWorldToBody(quaternion, rear_velocity_world);

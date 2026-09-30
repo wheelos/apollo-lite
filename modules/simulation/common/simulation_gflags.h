@@ -30,5 +30,8 @@ DECLARE_double(sim_speed_kp);
 DECLARE_double(sim_init_x);
 DECLARE_double(sim_init_y);
 DECLARE_double(sim_init_yaw);
+DECLARE_double(sim_init_speed_mps);
+DECLARE_double(sim_init_lateral_speed_mps);
+DECLARE_double(sim_init_yaw_rate_radps);
 DECLARE_bool(sim_debug_log);
 DECLARE_int32(sim_debug_log_interval);

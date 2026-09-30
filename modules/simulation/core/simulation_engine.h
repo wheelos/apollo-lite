@@ -43,6 +43,7 @@ class SimulationEngine {
             bool command_received = true);
   bool GetVehicleState(VehicleState* state) const;
   void Reset(double x, double y, double yaw);
+  bool Reset(const InitialVehicleState& initial_state);
   void SetControlMode(const std::string& control_mode) {
     control_mode_ = control_mode;
   }

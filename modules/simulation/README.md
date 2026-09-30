@@ -123,12 +123,23 @@ Important flags include:
 --sim_physics_dt=0.002
 --sim_control_dt=0.02
 --sim_command_timeout=0.20
+--sim_init_speed_mps=0.0
+--sim_init_lateral_speed_mps=0.0
+--sim_init_yaw_rate_radps=0.0
 ```
 
 The component validates vehicle geometry and steering limits against the
 MuJoCo model during initialization. A geometry or steering-limit mismatch
 causes initialization to fail instead of silently running with inconsistent
 parameters.
+
+Initial longitudinal speed, lateral speed, and yaw rate are set in the vehicle
+body frame at the rear axle. MuJoCo maps that rear-axle velocity to its free
+joint, including the rotational velocity offset to the vehicle body origin.
+The kinematic backend supports longitudinal initial speed only; it rejects
+nonzero initial lateral speed or yaw rate. Initial speed does not bypass the
+command-timeout failsafe, so the vehicle brakes if control commands are not
+received before the configured timeout.
 
 ## Tests
 

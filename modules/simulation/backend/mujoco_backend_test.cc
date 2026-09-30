@@ -170,6 +170,53 @@ TEST(MujocoBackendTest, RejectsInvalidStepAndNullState) {
   EXPECT_FALSE(backend.GetVehicleState(nullptr));
 }
 
+TEST(MujocoBackendTest, InitializesRearAxleVelocityAtConfiguredPose) {
+  MujocoBackend backend;
+  ASSERT_TRUE(backend.Init(AckermannModelPath()));
+  InitialVehicleState initial_state;
+  initial_state.x = 3.0;
+  initial_state.y = -2.0;
+  initial_state.yaw = M_PI_2;
+  initial_state.longitudinal_speed_mps = 4.0;
+  initial_state.lateral_speed_mps = 1.0;
+  initial_state.yaw_rate_radps = 0.4;
+  ASSERT_TRUE(backend.Reset(initial_state));
+
+  VehicleState state;
+  ASSERT_TRUE(backend.GetVehicleState(&state));
+  EXPECT_NEAR(state.x, initial_state.x, 1e-6);
+  EXPECT_NEAR(state.y, initial_state.y, 1e-6);
+  EXPECT_NEAR(state.yaw, initial_state.yaw, 1e-6);
+  EXPECT_NEAR(state.linear_velocity_mps,
+              initial_state.longitudinal_speed_mps, 1e-6);
+  EXPECT_NEAR(state.lateral_velocity_mps,
+              initial_state.lateral_speed_mps, 1e-6);
+  EXPECT_NEAR(state.angular_velocity_yaw_radps,
+              initial_state.yaw_rate_radps, 1e-6);
+  EXPECT_NEAR(state.linear_velocity_world_mps[0], -1.0, 1e-6);
+  EXPECT_NEAR(state.linear_velocity_world_mps[1], 4.0, 1e-6);
+}
+
+TEST(MujocoBackendTest, ReportsFreeJointVelocityInVehicleAndWorldFrames) {
+  MujocoBackend backend;
+  ASSERT_TRUE(backend.Init(AckermannModelPath()));
+  backend.Reset(0.0, 0.0, M_PI_2);
+
+  VehicleActuation actuation;
+  actuation.drive_torque_nm = {600.0, 600.0, 600.0, 600.0};
+  ASSERT_TRUE(backend.ApplyActuation(actuation));
+  for (int i = 0; i < 100; ++i) {
+    ASSERT_TRUE(backend.Step(0.002));
+  }
+
+  VehicleState state;
+  ASSERT_TRUE(backend.GetVehicleState(&state));
+  EXPECT_GT(state.linear_velocity_mps, 0.01);
+  EXPECT_NEAR(state.lateral_velocity_mps, 0.0, 0.1);
+  EXPECT_NEAR(state.linear_velocity_world_mps[0], 0.0, 0.1);
+  EXPECT_GT(state.linear_velocity_world_mps[1], 0.01);
+}
+
 TEST(MujocoBackendTest, ReportsVehicleContactWithExternalBody) {
   const std::string model_path = WriteCollisionModel();
   MujocoBackend backend;

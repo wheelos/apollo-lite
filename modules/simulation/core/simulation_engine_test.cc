@@ -58,6 +58,31 @@ TEST(SimulationEngineTest, InitializationAndReset) {
   EXPECT_DOUBLE_EQ(state.linear_velocity_mps, 0.0);
 }
 
+TEST(SimulationEngineTest, ResetsToConfiguredLongitudinalSpeed) {
+  SimulationEngine engine;
+  ASSERT_TRUE(engine.Init("kinematic", ""));
+
+  InitialVehicleState initial_state;
+  initial_state.x = 1.0;
+  initial_state.y = 2.0;
+  initial_state.yaw = M_PI_2;
+  initial_state.longitudinal_speed_mps = 3.0;
+  ASSERT_TRUE(engine.Reset(initial_state));
+
+  VehicleState state{};
+  ASSERT_TRUE(engine.GetVehicleState(&state));
+  EXPECT_DOUBLE_EQ(state.x, initial_state.x);
+  EXPECT_DOUBLE_EQ(state.y, initial_state.y);
+  EXPECT_DOUBLE_EQ(state.yaw, initial_state.yaw);
+  EXPECT_DOUBLE_EQ(state.linear_velocity_mps,
+                   initial_state.longitudinal_speed_mps);
+  EXPECT_NEAR(state.linear_velocity_world_mps[0], 0.0, 1e-12);
+  EXPECT_NEAR(state.linear_velocity_world_mps[1], 3.0, 1e-12);
+
+  initial_state.lateral_speed_mps = 1.0;
+  EXPECT_FALSE(engine.Reset(initial_state));
+}
+
 TEST(SimulationEngineTest, ForwardAcceleration) {
   SimulationEngine engine;
   EXPECT_TRUE(engine.Init("kinematic", ""));
