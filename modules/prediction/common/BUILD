@@ -124,6 +124,7 @@ cc_library(
         "//modules/prediction/common:prediction_constants",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/common:prediction_system_gflags",
+        "@wheelos_common//modules/common/status",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:lane_graph_cc_proto",
     ],
 )

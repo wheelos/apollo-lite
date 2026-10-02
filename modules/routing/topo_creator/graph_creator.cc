@@ -24,7 +24,6 @@
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
-#include "modules/map/hdmap/adapter/opendrive_adapter.h"
 #include "modules/routing/common/routing_gflags.h"
 #include "modules/routing/topo_creator/edge_creator.h"
 #include "modules/routing/topo_creator/node_creator.h"
@@ -63,17 +62,9 @@ GraphCreator::GraphCreator(const std::string& base_map_file_path,
       routing_conf_(routing_conf) {}
 
 bool GraphCreator::Create() {
-  if (absl::EndsWith(base_map_file_path_, ".xml")) {
-    if (!hdmap::adapter::OpendriveAdapter::LoadData(base_map_file_path_,
-                                                    &pbmap_)) {
-      AERROR << "Failed to load base map file from " << base_map_file_path_;
-      return false;
-    }
-  } else {
-    if (!cyber::common::GetProtoFromFile(base_map_file_path_, &pbmap_)) {
-      AERROR << "Failed to load base map file from " << base_map_file_path_;
-      return false;
-    }
+  if (!cyber::common::GetProtoFromFile(base_map_file_path_, &pbmap_)) {
+    AERROR << "Failed to load base map file from " << base_map_file_path_;
+    return false;
   }
 
   AINFO << "Number of lanes: " << pbmap_.lane_size();

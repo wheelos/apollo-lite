@@ -12,7 +12,6 @@ install(
         ":map_xysl",
         ":refresh_default_end_way_point",
         ":sim_map_generator",
-        ":proto_map_generator",
         ":bin_map_generator",
         ":quaternion_euler",
     ],
@@ -55,11 +54,6 @@ cc_binary(
         "@wheelos_msgs//wheelos_msgs/routing_msgs:poi_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
     ],
-)
-
-alias(
-    name = "proto_map_generator",
-    actual = "@wheelos_map//modules/map/tools:proto_map_generator",
 )
 
 alias(
