@@ -33,8 +33,11 @@ cc_library(
     deps = [
         ":edge_creator",
         ":node_creator",
+        "@com_google_absl//absl/strings",
         "@wheelos_common//modules/common/configs:vehicle_config_helper",
-        "@wheelos_map//modules/map/hdmap/adapter:opendrive_adapter",
+        "@core//cyber/common:file",
+        "@core//cyber/common:log",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_cc_proto",
     ],
 )
 
