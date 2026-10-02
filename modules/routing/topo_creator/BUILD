@@ -34,7 +34,7 @@ cc_library(
         ":edge_creator",
         ":node_creator",
         "@wheelos_common//modules/common/configs:vehicle_config_helper",
-        "//modules/map/hdmap/adapter:opendrive_adapter",
+        "@wheelos_map//modules/map/hdmap/adapter:opendrive_adapter",
     ],
 )
 
@@ -68,7 +68,7 @@ cc_binary(
     copts = ['-DMODULE_NAME=\\"routing\\"'],
     deps = [
         ":graph_creator",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
     ],
 )
 

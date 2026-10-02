@@ -37,7 +37,7 @@ cc_test(
     srcs = ["scene_manager_test.cc"],
     deps = [
         ":scene_manager",
-        "//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap",
         "//modules/perception/base",
         "//modules/perception/common:perception_gflags",
         "//modules/perception/common/io:io_util",

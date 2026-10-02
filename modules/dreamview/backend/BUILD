@@ -33,7 +33,7 @@ cc_library(
         "//modules/dreamview/backend/sim_control_manager/proto:sim_control_internal_cc_proto",
         "//modules/dreamview/backend/sim_control_manager/proto:dynamic_model_conf_cc_proto",
         #"//modules/dreamview/backend/sim_control_manager/proto:fnn_model_cc_proto",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/map/pnc_map",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
         "@civetweb//:civetserver",

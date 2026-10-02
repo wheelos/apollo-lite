@@ -24,7 +24,7 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":parking_slot",
-        "//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap",
         "//modules/map/pnc_map",
         "@core//cyber",
     ],

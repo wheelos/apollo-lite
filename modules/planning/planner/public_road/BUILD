@@ -12,7 +12,7 @@ cc_library(
         "@wheelos_common//modules/common/status",
         "@wheelos_common//modules/common/util",
         "@wheelos_common//modules/common/util:util_tool",
-        "//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/constraint_checker",

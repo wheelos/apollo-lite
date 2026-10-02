@@ -121,7 +121,7 @@ cc_test(
     ],
     deps = [
         ":qp_spline_reference_line_smoother",
-        "//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -136,7 +136,7 @@ cc_test(
     ],
     deps = [
         ":discrete_points_reference_line_smoother",
-        "//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap",
         "@com_google_googletest//:gtest_main",
     ],
 )
