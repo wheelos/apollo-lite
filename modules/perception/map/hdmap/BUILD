@@ -13,8 +13,8 @@ cc_library(
     deps = [
         "@wheelos_common//modules/common/math",
         "@wheelos_common//modules/common/util:util_tool",
-        "//modules/map/hdmap",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/perception/base:base_type",
         "//modules/perception/base:blob",
         "//modules/perception/base:common",

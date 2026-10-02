@@ -15,7 +15,7 @@ cc_library(
         "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/monitor_log",
         "@wheelos_common//modules/common/util",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/routing/core",
         "//modules/routing/proto:routing_config_cc_proto",
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:monitor_log_cc_proto",

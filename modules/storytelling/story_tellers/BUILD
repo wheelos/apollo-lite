@@ -18,7 +18,7 @@ cc_library(
     deps = [
         ":base_teller",
         "@wheelos_common//modules/common/adapters:adapter_gflags",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/storytelling:frame_manager",
         "//modules/storytelling/common:storytelling_gflags",
         "//modules/storytelling/proto:storytelling_config_cc_proto",

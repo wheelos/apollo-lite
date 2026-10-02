@@ -12,7 +12,7 @@ cc_library(
     copts = PERCEPTION_COPTS,
     deps = [
         "@wheelos_common//modules/common/math",
-        "//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap",
         "//modules/perception/base:base_type",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/common:lidar_frame",

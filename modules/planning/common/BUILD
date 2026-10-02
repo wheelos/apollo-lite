@@ -118,7 +118,7 @@ cc_test(
         ":gtest_exit_main",
         ":obstacle_decider",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_cc_proto",
-        "//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap",
     ],
 )
 
@@ -316,7 +316,7 @@ cc_library(
         "@wheelos_common//modules/common/monitor_log",
         "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/map/pnc_map",
         "//modules/planning/common/trajectory:discretized_trajectory",
         "//modules/planning/common/trajectory:publishable_trajectory",
@@ -337,7 +337,7 @@ cc_test(
     deps = [
         ":frame",
         "@wheelos_common//modules/common/util",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/planning/proto:planning_config_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
@@ -463,7 +463,7 @@ cc_library(
         "@core//cyber",
         "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/map/pnc_map",
         "//modules/planning/common:indexed_queue",
         "//modules/planning/common:obstacle",

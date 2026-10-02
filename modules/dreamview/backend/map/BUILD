@@ -20,7 +20,7 @@ cc_library(
     deps = [
         "@wheelos_common//modules/common/util:util_tool",
         "//modules/dreamview/proto:simulation_world_cc_proto",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/map/pnc_map",
         "@boost.thread",
         "@com_github_google_glog//:glog",

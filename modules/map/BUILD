@@ -23,8 +23,6 @@ install(
     deps = [
         ":map_testdata",
         ":pb_map",
-        "//modules/map/hdmap:install",
-        "//modules/map/hdmap/adapter:install",
         "//modules/map/pnc_map:install",
         "//modules/map/tools:install",
     ],

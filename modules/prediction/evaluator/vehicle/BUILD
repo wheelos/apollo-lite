@@ -218,8 +218,8 @@ cc_library(
     copts = PREDICTION_COPTS,
     deps = [
         "@wheelos_common//modules/common/math",
-        "//modules/map/hdmap:hdmap",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container/obstacles:obstacles_container",
     ],

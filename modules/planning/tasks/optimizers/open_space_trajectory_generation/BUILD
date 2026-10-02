@@ -17,7 +17,7 @@ cc_library(
         ":open_space_trajectory_optimizer",
         "@wheelos_common//modules/common/math",
         "@wheelos_common//modules/common/status",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:trajectory_stitcher",

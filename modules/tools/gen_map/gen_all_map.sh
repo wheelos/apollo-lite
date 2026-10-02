@@ -32,13 +32,13 @@ fi
 
 cp -r "${YOUR_MAP_DIR}/." "${NEW_MAP_PATH}"
 
-# Define the executable file paths for sim_map_generator and topo_creator
-SIM_MAP_GENERATOR="./bazel-bin/modules/map/tools/sim_map_generator"
+# Define the executable file path for topo_creator
 TOPO_CREATOR="./bazel-bin/modules/routing/topo_creator/topo_creator"
 
 # Run the map generator
 echo "Generating map files to: ${NEW_MAP_PATH}"
-"${SIM_MAP_GENERATOR}" -map_dir="${NEW_MAP_PATH}" -output_dir="${NEW_MAP_PATH}" -downsample_distance=1
+bazel run @wheelos_map//modules/map/tools:sim_map_generator -- \
+  -map_dir="${NEW_MAP_PATH}" -output_dir="${NEW_MAP_PATH}" -downsample_distance=1
 
 # Check if the map generator ran successfully (optional, but recommended)
 if [ $? -ne 0 ]; then
