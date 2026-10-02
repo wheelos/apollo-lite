@@ -14,6 +14,8 @@ startup --host_jvm_args="-Xmx2G"
 common --color=yes
 common --enable_bzlmod
 common --distdir=/apollo/.cache/distdir
+# Opt in to vendored external repositories for offline builds.
+common:vendor --vendor_dir=vendor
 
 # Keep shared Bazel caches independent of the current working directory.
 build --repository_cache=/apollo/.cache/bazel/repo_cache
