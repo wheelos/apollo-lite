@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>localization_health_odom_only</name>
+        <dag_conf>/apollo/modules/localization_health/dag/localization_health_odom_only.dag</dag_conf>
+        <process_name>localization_health_odom_only</process_name>
+    </module>
+</cyber>

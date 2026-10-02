@@ -21,12 +21,12 @@
 #include "pcl/point_types.h"
 #include "boost/filesystem.hpp"
 
-#include "modules/localization/msf/local_pyramid_map/base_map/base_map_node_index.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map_config.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map_matrix.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map_node.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map_pool.h"
+#include "modules/ndt_localization/map_support/base_map/base_map_node_index.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map_config.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map_matrix.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map_node.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map_pool.h"
 
 namespace apollo {
 namespace localization {

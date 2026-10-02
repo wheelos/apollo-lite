@@ -7,44 +7,6 @@ load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 package(default_visibility = ["//visibility:public"])
 
 cc_proto_library(
-    name = "sins_pva_cc_proto",
-    deps = [
-        ":sins_pva_proto",
-    ],
-)
-
-proto_library(
-    name = "sins_pva_proto",
-    srcs = ["sins_pva.proto"],
-    deps = [
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
-    ],
-)
-
-py_proto_library(
-    name = "sins_pva_py_pb2",
-    deps = [":sins_pva_proto"],
-)
-
-cc_proto_library(
-    name = "localization_config_cc_proto",
-    deps = [
-        ":localization_config_proto",
-    ],
-)
-
-proto_library(
-    name = "localization_config_proto",
-    srcs = ["localization_config.proto"],
-)
-
-py_proto_library(
-    name = "localization_config_py_pb2",
-    deps = [":localization_config_proto"],
-)
-
-cc_proto_library(
     name = "gnss_pnt_result_cc_proto",
     deps = [
         ":gnss_pnt_result_proto",
@@ -83,4 +45,24 @@ proto_library(
 py_proto_library(
     name = "measure_py_pb2",
     deps = [":measure_proto"],
+)
+
+cc_proto_library(
+    name = "unified_localization_cc_proto",
+    deps = [":unified_localization_proto"],
+)
+
+proto_library(
+    name = "unified_localization_proto",
+    srcs = ["unified_localization.proto"],
+    deps = [
+        "//modules/localization_health/proto:localization_health_proto",
+        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_proto",
+    ],
+)
+
+py_proto_library(
+    name = "unified_localization_py_pb2",
+    deps = [":unified_localization_proto"],
 )

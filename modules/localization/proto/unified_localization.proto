@@ -1,0 +1,462 @@
+syntax = "proto2";
+
+package apollo.localization.unified;
+
+import "wheelos_msgs/localization_msgs/localization.proto";
+import "wheelos_msgs/basic_msgs/geometry.proto";
+import "modules/localization_health/proto/localization_health.proto";
+
+// Module-service envelopes reuse the canonical pose schema; they do not
+// redefine wheelos_msgs geometry or LocalizationEstimate.
+message OdomIdentity {
+  required string producer_session = 1;
+  required uint64 generation = 2;
+}
+
+message LocalOdometry {
+  required OdomIdentity epoch = 1;
+  required uint64 sequence = 2;
+  required string frame_id = 3;
+  required string child_frame_id = 4;
+  required string clock_id = 5;
+  required double publish_time = 6;
+  required double valid_until = 7;
+  required apollo.localization.LocalizationEstimate localization = 8;
+  // Row-major covariance of [p_odom, v_odom, theta_body, bg, ba], 225 values.
+  repeated double state_covariance = 9 [packed = true];
+  required bool valid = 10;
+  // valid is propagation integrity, not an assertion of full-pose precision.
+  optional bool precision_valid = 11 [default = false];
+  optional string degradation_reason = 12;
+  optional LocalMotionIncrement motion = 13;
+  // Whether covariance follows the declared estimator error model. Positive
+  // definiteness alone is not sufficient. This is not deployment qualification.
+  optional bool covariance_model_valid = 14 [default = false];
+}
+
+message LocalSourceSample {
+  required string source = 1;
+  required uint64 sequence = 2;
+}
+
+// One committed IMU interval, not a second independent pose measurement.
+// Epoch/clock/end state are inherited from the enclosing LocalOdometry.
+message LocalMotionIncrement {
+  // Presence asserts that the producer qualified this complete joint marginal.
+  // A continuous local pose alone is not sufficient eligibility.
+  required uint64 start_sequence = 1;
+  required apollo.localization.LocalizationEstimate start_pose = 2;
+  // Frozen start-state covariance and E[error_start * error_end^T].
+  // Both row-major 15x15 in the LocalOdometry state error convention.
+  repeated double start_covariance = 3 [packed = true];
+  repeated double cross_covariance = 4 [packed = true];
+  // Row-major 6x6 for [translation_start_body, right rotation_end_body].
+  repeated double relative_covariance = 5 [packed = true];
+  repeated LocalSourceSample source_samples = 6;
+  required string correlation_group = 7;
+  enum CovarianceModel {
+    // Includes cross-time covariance under the local linearized filter model.
+    // Shared bias/history and reused endpoint IMU samples correlate increments.
+    JOINT_LOCAL_MARGINAL = 0;
+  }
+  required CovarianceModel covariance_model = 8;
+}
+
+message GlobalObservationMessage {
+  enum Kind {
+    POSE = 0;
+    POSITION = 1;
+    PROJECTED_POSE = 2;
+  }
+  required OdomIdentity epoch = 1;
+  required string source = 2;
+  required uint64 sequence = 3;
+  required string clock_id = 4;
+  required string frame_id = 5;
+  required string child_frame_id = 6;
+  required string map_id = 7;
+  required string map_version = 8;
+  required string calibration_id = 9;
+  optional apollo.localization.LocalizationEstimate localization = 10;
+  // Row-major [translation_map, rotation_error_map], 36 values.
+  repeated double covariance = 11 [packed = true];
+  required bool quality_valid = 12;
+  optional bool georeferenced = 13 [default = false];
+  optional bool recovery = 14 [default = false];
+  optional bool ambiguous = 15 [default = false];
+  optional Kind kind = 16 [default = POSE];
+  optional double measurement_time = 17;
+  optional apollo.common.Point3D position = 18;
+  optional apollo.common.Point3D point_in_base = 19;
+  optional uint32 observed_dimension = 20;
+  // Row-major observed_dimension x 6; delta=[p_map, left theta_map].
+  repeated double projection = 21 [packed = true];
+  // Row-major observed_dimension squared; POSITION uses dimension 3.
+  repeated double observed_covariance = 22 [packed = true];
+  optional double valid_until = 23;
+  // Explicit source contract, not inferred from receiver FIX or match fitness.
+  optional bool independent_of_local = 24 [default = false];
+}
+
+// Observations at their original measurement time, not a partially valid TF.
+// PROJECTED_POSE.localization is only the residual linearization reference;
+// only projection rows are constrained. Missing sources revoke old evidence.
+message GlobalConstraintSet {
+  required OdomIdentity epoch = 1;
+  required double publish_time = 2;
+  repeated GlobalObservationMessage observations = 3;
+}
+
+message GlobalLocalization {
+  required OdomIdentity epoch = 1;
+  required string map_id = 2;
+  required string map_version = 3;
+  required string calibration_id = 4;
+  required uint64 correction_id = 5;
+  required double last_observation_time = 6;
+  required apollo.localization.LocalizationEstimate localization = 7;
+  required apollo.localization.LocalizationEstimate map_to_odom = 8;
+  repeated double covariance = 9 [packed = true];
+  repeated double alignment_covariance = 10 [packed = true];
+  required bool georeferenced = 11;
+}
+
+enum Availability {
+  UNKNOWN = 0;
+  INITIALIZING = 1;
+  NOMINAL = 2;
+  DEGRADED = 3;
+  INVALID = 4;
+}
+
+enum Recovery {
+  IDLE = 0;
+  RELOCALIZING = 1;
+  VERIFYING = 2;
+  AMBIGUOUS = 3;
+}
+
+// Bit values preserve the useful capability meanings of localization branch.
+enum LocalizationCapability {
+  NO_CAPABILITY = 0;
+  LOCAL_POSE_VALID = 1;
+  LOCAL_POSE_CONTINUOUS = 2;
+  VELOCITY_VALID = 4;
+  HEADING_VALID = 8;
+  GLOBAL_POSE_VALID = 16;
+  MAP_ALIGNED = 32;
+  LANE_LEVEL_VALID = 64;
+  SHORT_TERM_PREDICTION_VALID = 128;
+  RELOCALIZATION_AVAILABLE = 256;
+  GEOREFERENCE_VALID = 512;
+}
+
+message SourceAssessment {
+  required string source = 1;
+  required bool healthy = 2;
+  required double last_measurement_time = 3;
+  required double last_receive_time = 4;
+  required uint64 accepted = 5;
+  required uint64 rejected = 6;
+  required uint64 duplicates = 7;
+  required uint64 regressions = 8;
+  required uint64 evictions = 9;
+  required string reason_code = 10;
+}
+
+message LocalizationAssessment {
+  required string owner = 1;
+  required string session_id = 2;
+  required uint64 epoch_generation = 3;
+  required uint64 sequence = 4;
+  required double measurement_time = 5;
+  required double publish_time = 6;
+  required Availability availability = 7;
+  required uint64 capabilities = 8;
+  required string primary_reason = 9;
+  required bool covariance_valid = 10;
+  optional double position_std = 11;
+  optional double attitude_std = 12;
+  required bool output_continuous = 13;
+  required bool map_alignment_valid = 14;
+  required bool lane_level_valid = 15;
+  required Recovery recovery = 16;
+  required uint64 transition_id = 17;
+  repeated SourceAssessment sources = 18;
+  optional bool propagation_valid = 19 [default = false];
+  repeated apollo.localization.DirectionalConstraint directional_constraints = 20;
+}
+
+message LocalizationHealthEvent {
+  required string owner = 1;
+  required string session_id = 2;
+  required uint64 epoch_generation = 3;
+  required uint64 transition_id = 4;
+  required double publish_time = 5;
+  required Availability previous = 6;
+  required Availability current = 7;
+  required string primary_reason = 8;
+  required Recovery recovery = 9;
+}
+
+message LocalEstimatorConfig {
+  optional string imu_topic = 1 [default = "/apollo/sensor/gnss/imu"];
+  optional string chassis_topic = 2 [default = "/apollo/canbus/chassis"];
+  optional string odometry_topic = 3 [default = "/apollo/localization/odometry"];
+  optional string assessment_topic = 4 [default = "/apollo/localization/local_assessment"];
+  optional string event_topic = 5 [default = "/apollo/localization/local_event"];
+  optional string odom_frame = 6 [default = "odom"];
+  optional string base_frame = 7 [default = "base_link"];
+  optional string imu_frame = 8 [default = "imu_link"];
+  optional string clock_id = 9 [default = "unix"];
+  // Explicit offset: GPS-epoch seconds + 315964800 - current GPS-UTC leap.
+  required double imu_to_unix_offset = 10;
+  optional bool imu_rfu = 11 [default = false];
+  required double wheel_variance = 12;
+  optional bool signed_chassis_speed = 13 [default = false];
+  optional double health_period_ms = 14 [default = 50.0];
+  optional double max_sample_age = 15 [default = 0.2];
+  optional double future_tolerance = 16 [default = 0.02];
+  optional double max_imu_gap = 17 [default = 0.05];
+  optional double wheel_timeout = 18 [default = 0.2];
+  optional double stationary_speed = 19 [default = 0.02];
+  optional double stationary_gyro = 20 [default = 0.02];
+  optional double stationary_accel_tolerance = 21 [default = 0.3];
+  optional uint32 stationary_samples = 22 [default = 50];
+  required double gyro_noise = 23;
+  required double accel_noise = 24;
+  required double gyro_bias_noise = 25;
+  required double accel_bias_noise = 26;
+  required double max_position_std = 27;
+  required double max_velocity_std = 28;
+  required double max_attitude_std = 29;
+  optional bool use_nonholonomic_constraint = 30 [default = false];
+  optional double nonholonomic_variance = 31 [default = 0.01];
+  optional double innovation_gate = 32 [default = 11.345];
+  optional double gravity = 33 [default = 9.80665];
+  optional string reset_topic = 34 [default = "/apollo/localization/reset_odom"];
+  optional double history_duration = 35 [default = 3.0];
+  optional uint32 max_history_states = 36 [default = 4096];
+  optional bool enable_lidar = 100 [default = false];
+  optional string lidar_topic = 101;
+  optional string lidar_frame = 102;
+  optional string lidar_calibration_id = 103;
+  optional double lidar_scan_time_offset = 104;
+  optional double lidar_point_time_offset = 105;
+  optional double lidar_point_noise_std = 106;
+  optional double lidar_plane_noise_std = 107;
+  optional double lidar_voxel_size = 108;
+  optional uint32 lidar_max_voxels = 109;
+  optional uint32 lidar_max_scans = 110;
+  optional uint32 lidar_min_points_per_plane = 111;
+  optional uint32 lidar_min_correspondences = 112;
+  optional uint32 lidar_max_points = 113;
+  optional double lidar_max_correspondence_distance = 114;
+  optional double lidar_observed_singular_value = 115;
+  optional double lidar_innovation_gate = 116;
+  optional double lidar_max_scan_age = 117;
+  optional double lidar_future_tolerance = 118;
+  optional double lidar_time_tolerance = 119;
+  optional double lidar_max_translation_correction_rate = 120;
+  optional double lidar_max_rotation_correction_rate = 121;
+  optional double lidar_max_velocity_correction_acceleration = 122;
+  optional double lidar_anchor_variance_scale = 123;
+  optional double lidar_correction_variance_scale = 124;
+  optional uint32 lidar_max_buffered_scans = 125;
+  optional double lidar_max_translation_correction = 126;
+  optional double lidar_max_rotation_correction = 127;
+  optional double lidar_max_velocity_correction = 128;
+  optional uint32 lidar_max_update_iterations = 129;
+  optional bool lidar_input_is_raw = 130;
+  optional bool lidar_point_time_is_unix_nanoseconds = 131;
+  optional double lidar_process_noise_psd_tolerance = 132;
+  optional double lidar_rotation_length = 133;
+}
+
+message OdomResetRequest {
+  required OdomIdentity current_epoch = 1;
+  required double request_time = 2;
+}
+
+message MapManifest {
+  required string map_id = 1;
+  required string version = 2;
+  required string frame_id = 3;
+  required string calibration_id = 4;
+  required string pcd_path = 5;
+  optional bool georeferenced = 6 [default = false];
+  // WGS84 ellipsoid height, radians not used here: degrees for lat/lon.
+  optional double origin_latitude = 7;
+  optional double origin_longitude = 8;
+  optional double origin_height = 9;
+  // map is ENU rotated around up by this yaw.
+  optional double enu_to_map_yaw = 10 [default = 0.0];
+  // Bounded recovery seeds in map coordinates, not a false global prior.
+  repeated apollo.localization.LocalizationEstimate recovery_seeds = 11;
+}
+
+message GlobalEstimatorConfig {
+  optional string odometry_topic = 1 [default = "/apollo/localization/odometry"];
+  optional string observation_topic = 2 [default = "/apollo/localization/global_observation"];
+  optional string global_topic = 3 [default = "/apollo/localization/global"];
+  optional string pose_topic = 4 [default = "/apollo/localization/pose"];
+  optional string status_topic = 5 [default = "/apollo/localization/msf_status"];
+  optional string assessment_topic = 6 [default = "/apollo/localization/global_assessment"];
+  optional string event_topic = 7 [default = "/apollo/localization/global_event"];
+  optional string odom_frame = 8 [default = "odom"];
+  optional string base_frame = 9 [default = "base_link"];
+  optional string clock_id = 10 [default = "unix"];
+  required MapManifest map = 11;
+  optional double history_duration = 12 [default = 3.0];
+  optional double max_interpolation_gap = 13 [default = 0.05];
+  optional double max_observation_age = 14 [default = 2.0];
+  optional double local_timeout = 15 [default = 0.2];
+  optional double global_timeout = 16 [default = 2.0];
+  optional double future_tolerance = 17 [default = 0.02];
+  optional double innovation_gate = 18 [default = 22.458];
+  required double max_position_std = 19;
+  required double max_attitude_std = 20;
+  optional uint32 verification_frames = 21 [default = 3];
+  optional double verification_position = 22 [default = 0.5];
+  optional double verification_angle = 23 [default = 0.1];
+  optional double health_period_ms = 24 [default = 50.0];
+  optional bool enable_map_matching = 25 [default = false];
+  optional string lidar_topic = 26 [default = "/apollo/sensor/lidar/compensator/PointCloud2"];
+  optional double voxel_size = 27 [default = 0.5];
+  optional double ndt_resolution = 28 [default = 1.0];
+  optional double max_fitness = 29 [default = 0.5];
+  optional double correspondence_distance = 30 [default = 1.0];
+  optional double minimum_overlap = 31 [default = 0.5];
+  optional uint32 minimum_points = 32 [default = 100];
+  optional double max_match_translation = 33 [default = 2.0];
+  optional double max_match_rotation = 34 [default = 0.3];
+  optional double minimum_information_eigenvalue = 35 [default = 0.0001];
+  optional double max_information_condition = 36 [default = 1000000.0];
+  // Empirical model floors are required, not synthesized from fitness.
+  optional double map_position_variance_floor = 37;
+  optional double map_rotation_variance_floor = 38;
+  optional double ambiguity_score_margin = 39 [default = 0.2];
+  optional uint32 maximum_recovery_seeds = 40 [default = 16];
+  optional bool enable_gnss = 41 [default = false];
+  optional string gnss_topic = 42 [default = "/apollo/sensor/gnss/best_pose"];
+  optional string heading_topic = 43 [default = "/apollo/sensor/gnss/heading"];
+  optional string antenna_frame = 44 [default = "gnss_antenna"];
+  optional double gnss_to_unix_offset = 45;
+  optional double heading_to_unix_offset = 46;
+  // Receiver heading is clockwise from north, in degrees; apply mounting yaw.
+  optional double heading_mount_yaw = 47;
+  optional double heading_pair_window = 48 [default = 0.1];
+  optional double max_gnss_std = 49 [default = 2.0];
+  optional double max_heading_std = 50 [default = 0.1];
+  optional bool cloud_motion_compensated = 51 [default = false];
+  optional string local_assessment_topic = 52 [default = "/apollo/localization/local_assessment"];
+  optional uint32 maximum_scan_points = 53 [default = 200000];
+  optional bool use_gnss_heading = 54 [default = false];
+  optional double geometry_rotation_length = 55 [default = 1.0];
+  // Deployment-qualified alignment diffusion floors (m^2/s and rad^2/s).
+  optional double position_drift_variance_rate = 56 [default = 0.01];
+  optional double attitude_drift_variance_rate = 57 [default = 0.0001];
+  optional string constraints_topic = 58 [default = "/apollo/localization/constraints"];
+  optional bool enable_fixed_lag_graph = 59 [default = false];
+  // Must not be enabled merely because a motion envelope is present.
+  optional bool motion_error_model_qualified = 60 [default = false];
+  optional double graph_solve_budget_ms = 61 [default = 50.0];
+  optional double graph_robust_threshold = 62 [default = 2.5];
+  optional uint32 graph_max_states = 63 [default = 1000];
+  optional uint32 graph_max_observations = 64 [default = 2000];
+  optional bool enable_map_switching = 65 [default = false];
+  optional string map_switch_topic = 66 [default = "/apollo/localization/map_switch"];
+  optional string map_switch_status_topic = 67 [default = "/apollo/localization/map_switch_status"];
+  optional double map_load_timeout = 68 [default = 30.0];
+  optional uint32 graph_max_iterations = 69 [default = 5];
+  optional double graph_max_linearization_angle = 70 [default = 0.2];
+}
+
+message MapSwitchRequest {
+  required OdomIdentity current_epoch = 1;
+  required uint64 request_id = 2;
+  required double request_time = 3;
+  required string expected_map_id = 4;
+  required string expected_map_version = 5;
+  required MapManifest next_map = 6;
+}
+
+message MapSwitchStatus {
+  enum Phase {
+    LOADING = 0;
+    COMMITTED = 1;
+    REJECTED = 2;
+  }
+  required uint64 request_id = 1;
+  required double publish_time = 2;
+  required Phase phase = 3;
+  required string reason = 4;
+  required string active_map_id = 5;
+  required string active_map_version = 6;
+  required uint64 map_generation = 7;
+}
+
+message LaneRelativeState {
+  required OdomIdentity epoch = 1;
+  required uint64 observation_sequence = 2;
+  required double measurement_time = 3;
+  required double evaluation_time = 4;
+  required double valid_until = 5;
+  required string source = 6;
+  required string calibration_id = 7;
+  required bool valid = 8;
+  required string reason = 9;
+  optional double lateral_offset = 10;
+  optional double heading_error = 11;
+  optional double lane_width = 12;
+  optional double left_clearance = 13;
+  optional double right_clearance = 14;
+  optional double lateral_std = 15;
+  optional double heading_std = 16;
+  required bool containment_valid = 17;
+  optional double reference_distance = 18;
+  optional string containment_reason = 19;
+  optional string reference_id = 20;
+}
+
+message HealthBridgeConfig {
+  optional string odometry_topic = 1 [default = "/apollo/localization/odometry"];
+  optional string global_topic = 2 [default = "/apollo/localization/global"];
+  optional string local_assessment_topic = 3 [default = "/apollo/localization/local_assessment"];
+  optional string global_assessment_topic = 4 [default = "/apollo/localization/global_assessment"];
+  optional string health_pose_topic = 5 [default = "/apollo/localization/health/local_pose"];
+  optional string health_assessment_topic = 6 [default = "/apollo/localization/health/assessment"];
+  optional string lane_topic = 7 [default = "/perception/lanes"];
+  optional string lane_relative_topic = 8 [default = "/apollo/localization/lane_relative"];
+  optional bool enable_lane_evidence = 9 [default = false];
+  optional string odom_frame = 10 [default = "odom"];
+  optional string base_frame = 11 [default = "base_link"];
+  optional string clock_id = 12 [default = "unix"];
+  optional double local_timeout = 13 [default = 0.2];
+  optional double global_timeout = 14 [default = 2.0];
+  optional double health_period_ms = 15 [default = 50.0];
+  optional double lane_timeout = 16 [default = 0.2];
+  optional double future_tolerance = 17 [default = 0.02];
+  optional double history_duration = 18 [default = 2.0];
+  optional double interpolation_gap = 19 [default = 0.05];
+  optional double minimum_confidence = 20 [default = 0.8];
+  optional double minimum_lane_width = 21 [default = 2.0];
+  optional double maximum_lane_width = 22 [default = 5.0];
+  optional string lane_calibration_id = 23;
+  optional double boundary_std = 24;
+  optional double heading_std = 25;
+  optional double vehicle_front = 26;
+  optional double vehicle_rear = 27;
+  optional double vehicle_half_width = 28;
+  optional double clearance = 29;
+  optional double uncertainty_multiplier = 30 [default = 3.0];
+  optional double max_local_position_std = 31 [default = 1.0];
+  optional double max_local_attitude_std = 32 [default = 0.1];
+  optional double lane_reference_distance = 33 [default = 0.0];
+  // Qualified short-interval relative-motion error budgets, not ODOM-origin error.
+  optional double relative_position_std_per_second = 34;
+  optional double relative_heading_std_per_second = 35;
+  optional double max_lane_lateral_std = 36 [default = 0.3];
+  optional double max_lane_heading_std = 37 [default = 0.1];
+  optional double max_local_velocity_std = 38 [default = 0.5];
+}

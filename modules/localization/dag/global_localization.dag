@@ -1,0 +1,14 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/localization/libglobal_localization_component.so"
+  components {
+    class_name: "GlobalLocalizationComponent"
+    config {
+      name: "global_localization"
+      config_file_path: "/apollo/modules/localization/conf/global_estimator.pb.txt"
+      readers {
+        channel: "/apollo/localization/odometry"
+        pending_queue_size: 200
+      }
+    }
+  }
+}

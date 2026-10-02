@@ -24,8 +24,8 @@
 #include "pcl/io/pcd_io.h"
 
 #include "cyber/common/log.h"
-#include "modules/localization/msf/common/io/pcl_point_types.h"
-#include "modules/localization/msf/common/io/velodyne_utility.h"
+#include "modules/localization/common/pointcloud_io/pcl_point_types.h"
+#include "modules/localization/common/pointcloud_io/velodyne_utility.h"
 
 namespace apollo {
 namespace localization {

@@ -82,7 +82,7 @@ DEFINE_double(system_status_lifetime_seconds, 30,
               "the status change.");
 
 DEFINE_string(lidar_height_yaml,
-              "/apollo/modules/localization/msf/params/velodyne_params/"
+              "/apollo/modules/ndt_localization/conf/"
               "velodyne64_height.yaml",
               "The yaml file for reading height of lidar w.r.t. ground.");
 

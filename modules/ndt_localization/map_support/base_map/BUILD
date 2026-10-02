@@ -1,0 +1,127 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:cpplint.bzl", "cpplint")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "base_map_config",
+    srcs = ["base_map_config.cc"],
+    hdrs = [
+        "base_map_config.h",
+        "base_map_fwd.h",
+    ],
+    deps = [
+        "@wheelos_common//modules/common/util",
+        "//modules/ndt_localization/map_support/util",
+        "@com_github_google_glog//:glog",
+        "@core//cyber",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "base_map_matrix",
+    srcs = ["base_map_matrix.cc"],
+    hdrs = [
+        "base_map_fwd.h",
+        "base_map_matrix.h",
+    ],
+    deps = [
+        "@com_github_google_glog//:glog",
+        "@core//cyber",
+        "@eigen",
+        "@opencv//:imgcodecs",
+        "@zlib",
+    ],
+)
+
+cc_library(
+    name = "base_map_node_index",
+    srcs = ["base_map_node_index.cc"],
+    hdrs = [
+        "base_map_config.h",
+        "base_map_fwd.h",
+        "base_map_node_index.h",
+    ],
+    deps = [
+        ":base_map_config",
+        "@com_github_google_glog//:glog",
+        "@core//cyber",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "base_map_node_config",
+    srcs = ["base_map_node_config.cc"],
+    hdrs = ["base_map_node_config.h"],
+    deps = [
+        ":base_map_node_index",
+        "@com_github_google_glog//:glog",
+        "@core//cyber",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "base_map_node",
+    srcs = ["base_map_node.cc"],
+    hdrs = [
+        "base_map_fwd.h",
+        "base_map_matrix_handler.h",
+        "base_map_node.h",
+    ],
+    deps = [
+        ":base_map_config",
+        ":base_map_matrix",
+        ":base_map_node_config",
+        ":base_map_node_index",
+        "//modules/ndt_localization/map_support/util",
+        "//modules/ndt_localization/map_support/util:compression",
+        "//modules/ndt_localization/map_support/util:file_utility",
+        "@com_github_google_glog//:glog",
+        "@core//cyber",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "base_map_pool",
+    srcs = ["base_map_pool.cc"],
+    hdrs = [
+        "base_map_fwd.h",
+        "base_map_pool.h",
+    ],
+    deps = [
+        ":base_map_config",
+        ":base_map_node",
+        ":base_map_node_index",
+        "//modules/ndt_localization/map_support/util",
+        "@com_github_google_glog//:glog",
+        "@core//cyber",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "base_map",
+    srcs = ["base_map.cc"],
+    hdrs = [
+        "base_map.h",
+        "base_map_fwd.h",
+    ],
+    deps = [
+        ":base_map_config",
+        ":base_map_node",
+        ":base_map_node_index",
+        ":base_map_pool",
+        "//modules/ndt_localization/map_support/util",
+        "//modules/ndt_localization/map_support/util:base_map_cache",
+        "//modules/ndt_localization/map_support/util:file_utility",
+        "@com_github_google_glog//:glog",
+        "@core//cyber",
+        "@eigen",
+    ],
+)
+
+cpplint()

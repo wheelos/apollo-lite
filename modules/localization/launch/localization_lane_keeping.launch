@@ -1,0 +1,18 @@
+<cyber>
+    <!-- Requires qualified health_bridge_lane.pb.txt and a live lane producer. -->
+    <module>
+        <name>local_localization</name>
+        <dag_conf>/apollo/modules/localization/dag/local_localization.dag</dag_conf>
+        <process_name>local_localization</process_name>
+    </module>
+    <module>
+        <name>localization_health_bridge</name>
+        <dag_conf>/apollo/modules/localization/dag/health_bridge_lane.dag</dag_conf>
+        <process_name>localization_health_bridge</process_name>
+    </module>
+    <module>
+        <name>localization_health_lane_keeping</name>
+        <dag_conf>/apollo/modules/localization_health/dag/localization_health_lane_keeping.dag</dag_conf>
+        <process_name>localization_health_lane_keeping</process_name>
+    </module>
+</cyber>

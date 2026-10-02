@@ -29,7 +29,6 @@ filegroup(
 install(
     name = "install",
     data = [
-        "localization.BUILD",
         ":runtime_data",
     ],
     data_dest = "localization",
@@ -38,11 +37,9 @@ install(
         ":pb_localization",
         ":testdata",
         "//modules/localization/common:install",
-        "//modules/localization/msf:install",
-        "//modules/localization/msf/local_tool/data_extraction:install",
-        "//modules/localization/msf/local_tool/local_visualization/offline_visual:install",
-        "//modules/localization/msf/local_tool/local_visualization/online_visual:install",
-        "//modules/localization/msf/local_tool/map_creation:install",
+        "//modules/localization/runtime:install",
+        "//modules/localization_health:install",
+        "//modules/ndt_localization:height_config",
     ],
 )
 
@@ -50,9 +47,8 @@ install(
     name = "pb_hdrs",
     data = [
         "//modules/localization/proto:gnss_pnt_result_cc_proto",
-        "//modules/localization/proto:localization_config_cc_proto",
         "//modules/localization/proto:measure_cc_proto",
-        "//modules/localization/proto:sins_pva_cc_proto",
+        "//modules/localization/proto:unified_localization_cc_proto",
     ],
     data_dest = "localization/include",
 )
@@ -62,9 +58,8 @@ install_files(
     dest = "localization",
     files = [
         "//modules/localization/proto:gnss_pnt_result_py_pb2",
-        "//modules/localization/proto:localization_config_py_pb2",
         "//modules/localization/proto:measure_py_pb2",
-        "//modules/localization/proto:sins_pva_py_pb2",
+        "//modules/localization/proto:unified_localization_py_pb2",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_py_pb2",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:imu_py_pb2",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_py_pb2",
@@ -78,6 +73,7 @@ install_src_files(
     deps = [
         ":install_localization_hdrs",
         ":install_localization_src",
+        "//modules/localization_health:install_src",
     ],
 )
 

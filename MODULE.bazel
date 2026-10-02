@@ -50,27 +50,325 @@ python.toolchain(
 )
 
 # boost
-bazel_dep(name = "boost.bind", version = "1.87.0")
-bazel_dep(name = "boost.array", version = "1.87.0")
-bazel_dep(name = "boost.filesystem", version = "1.87.0")
-bazel_dep(name = "boost.range", version = "1.87.0")
-bazel_dep(name = "boost.algorithm", version = "1.87.0")
-bazel_dep(name = "boost.geometry", version = "1.87.0")
-bazel_dep(name = "boost.circular_buffer", version = "1.87.0")
-bazel_dep(name = "boost.thread", version = "1.87.0")
-bazel_dep(name = "boost.function", version = "1.87.0")
-bazel_dep(name = "boost.container", version = "1.87.0")
-bazel_dep(name = "boost.foreach", version = "1.87.0")
-bazel_dep(name = "boost.lexical_cast", version = "1.87.0")
-bazel_dep(name = "boost.math", version = "1.87.0")
-bazel_dep(name = "boost.random", version = "1.87.0")
-bazel_dep(name = "boost.format", version = "1.87.0")
-bazel_dep(name = "boost.mpl", version = "1.87.0")
-bazel_dep(name = "boost.property_tree", version = "1.87.0")
-bazel_dep(name = "boost.program_options", version = "1.87.0")
-bazel_dep(name = "boost.signals2", version = "1.87.0")
-bazel_dep(name = "boost.tuple", version = "1.87.0")
-bazel_dep(name = "boost.lockfree", version = "1.87.0")
+bazel_dep(name = "boost.algorithm", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.any", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.array", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.assert", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.atomic", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.bimap", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.bind", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.circular_buffer", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.concept_check", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.config", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.container", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.container_hash", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.conversion", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.core", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.detail", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.filesystem", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.foreach", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.format", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.function", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.function_types", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.functional", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.fusion", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.geometry", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.graph", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.integer", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.io", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.iterator", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.lambda", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.lexical_cast", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.lockfree", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.math", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.move", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.mpl", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.phoenix", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.predef", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.preprocessor", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.program_options", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.property_tree", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.random", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.range", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.scope", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.serialization", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.signals2", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.smart_ptr", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.spirit", version = "1.89.0.bcr.3")
+bazel_dep(name = "boost.static_assert", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.system", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.thread", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.tuple", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.type_traits", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.typeof", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.utility", version = "1.89.0.bcr.2")
+bazel_dep(name = "boost.winapi", version = "1.89.0.bcr.2")
+
+# PCL and wheelos_common request Boost 1.87. Pin their component closure to 1.89.
+single_version_override(
+    module_name = "boost.algorithm",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.any",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.array",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.assert",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.atomic",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.asio",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.bimap",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.bind",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.circular_buffer",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.concept_check",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.config",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.container",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.container_hash",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.conversion",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.core",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.detail",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.dynamic_bitset",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.filesystem",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.foreach",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.format",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.function",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.function_types",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.functional",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.fusion",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.geometry",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.graph",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.integer",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.interprocess",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.io",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.iostreams",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.iterator",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.lambda",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.lexical_cast",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.lockfree",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.math",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.move",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.mpl",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.multi_array",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.multiprecision",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.numeric_conversion",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.optional",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.phoenix",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.predef",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.preprocessor",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.program_options",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.property_map",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.property_tree",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.ptr_container",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.random",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.range",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.scope",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.serialization",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.signals2",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.smart_ptr",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.sort",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.spirit",
+    version = "1.89.0.bcr.3",
+)
+single_version_override(
+    module_name = "boost.static_assert",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.system",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.thread",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.tokenizer",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.tuple",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.type_traits",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.typeof",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.utility",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.uuid",
+    version = "1.89.0.bcr.2",
+)
+single_version_override(
+    module_name = "boost.winapi",
+    version = "1.89.0.bcr.2",
+)
 
 # thirdparty
 bazel_dep(name = "abseil-cpp", version = "20250127.1", repo_name = "com_google_absl")
@@ -84,6 +382,7 @@ single_version_override(
 
 bazel_dep(name = "cpplint", version = "2.0.2")
 bazel_dep(name = "eigen", version = "4.0.0-20241125.bcr.2")
+bazel_dep(name = "gtsam", version = "4.3.0-alpha.1")
 bazel_dep(name = "nlohmann_json", version = "3.12.0", repo_name = "com_github_nlohmann_json")
 bazel_dep(name = "gflags", version = "2.2.2", repo_name = "com_github_gflags_gflags")
 

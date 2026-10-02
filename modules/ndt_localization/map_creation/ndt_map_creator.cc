@@ -23,11 +23,11 @@
 
 #include "absl/strings/str_cat.h"
 
-#include "modules/localization/msf/common/io/velodyne_utility.h"
-#include "modules/localization/msf/common/util/extract_ground_plane.h"
-#include "modules/localization/msf/common/util/system_utility.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map_pool.h"
+#include "modules/localization/common/pointcloud_io/velodyne_utility.h"
+#include "modules/ndt_localization/map_support/util/extract_ground_plane.h"
+#include "modules/ndt_localization/map_support/util/system_utility.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map_pool.h"
 
 using ::apollo::common::EigenAffine3dVec;
 using ::apollo::common::EigenVector3dVec;

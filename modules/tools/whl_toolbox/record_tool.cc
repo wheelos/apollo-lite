@@ -39,7 +39,7 @@
 #include "cyber/record/record_reader.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
-#include "modules/localization/msf/common/io/pcl_point_types.h"
+#include "modules/localization/common/pointcloud_io/pcl_point_types.h"
 
 DEFINE_string(mode, "", "inspect | count | extract");
 DEFINE_string(input_path, "", "record file path, directory, or wildcard");

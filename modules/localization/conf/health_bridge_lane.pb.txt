@@ -1,0 +1,13 @@
+# Deployment template: enabling this profile intentionally fails without the
+# measured calibration, vehicle envelope and relative-motion error budgets below.
+enable_lane_evidence: true
+# lane_calibration_id: "<deployed camera calibration version>"
+# boundary_std: <qualified meters>
+# heading_std: <qualified radians>
+# vehicle_front: <meters from base_link>
+# vehicle_rear: <meters from base_link>
+# vehicle_half_width: <meters>
+# clearance: <meters>
+# lane_reference_distance: <observed forward station in meters>
+# relative_position_std_per_second: <qualified short-interval meters/second>
+# relative_heading_std_per_second: <qualified short-interval radians/second>

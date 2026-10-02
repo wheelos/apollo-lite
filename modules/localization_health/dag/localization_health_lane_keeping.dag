@@ -1,0 +1,13 @@
+# Define LANE_KEEPING LocalizationHealth in DAG streaming.
+module_config {
+    module_library : "/apollo/bazel-bin/modules/localization_health/liblocalization_health_component.so"
+
+    timer_components {
+      class_name : "LocalizationHealthComponent"
+      config {
+        name : "localization_health_lane_keeping"
+        config_file_path : "/apollo/modules/localization_health/conf/localization_health_lane_keeping.pb.txt"
+        interval : 50
+      }
+    }
+}

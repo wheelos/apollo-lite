@@ -1,38 +1,26 @@
-# 定位
+# 统一定位
 
-## 介绍
+定位运行时将连续局部运动与全局配准分离：
 
-该模块提供定位服务。默认情况下有两种方法。一种是结合GPS和IMU信息的RTK（Real Time Kinematic实时运动）方法，另一种是融合GPS、IMU和激光雷达信息的多传感器融合方法。
+- `LocalLocalizationComponent` 独占 `odom -> base_link`。IMU 和车轮传播在
+  室内、室外、隧道及 GNSS 不可用期间保持连续；全局观测不得重置或校正
+  局部状态。
+- `GlobalLocalizationComponent` 独占 `map -> odom`。GNSS、地图匹配和重定位
+  观测结合各自的时间、参考系和不确定度更新全局对齐，不发布竞争性的局部
+  位姿。
+- `LocalizationHealthComponent` 与健康桥发布独立的方向性评估。部分可观测
+  约束不会被提升为完整位姿或 TF 声明。
 
-## 输入
+运行时接口定义在 `proto/unified_localization.proto`，包括局部里程计、全局
+定位及方向性健康评估。默认 launch 启动局部、全局和健康进程；
+`localization_odom_only.launch` 与 `localization_lane_keeping.launch` 提供
+精简配置。无法安全推断的标定和测量预算必须由部署配置提供。
 
-在提供的RTK方法中，有两个输入：
+旧 MSF 定位器已退役。独立 NDT 地图结构与点云 IO 分别归属
+`modules/ndt_localization/map_support` 和
+`modules/localization/common/pointcloud_io`，不再作为另一套全局定位权威。
+历史 `/apollo/localization/msf_status` 通道名作为兼容接口保留，供现有 RTK、
+独立 NDT 和监控消费者使用。
 
-* GPS-全球定位系统。
-* IMU-惯性测量单元。
-
-在所提供的多传感器融合定位方法中，有三个输入：
-
-* GPS-全球定位系统。
-* IMU-惯性测量单元。
-* 激光雷达-光探测与测距传感器
-欲了解更多信息，请参阅多传感器融合定位。
-
-## 输出
-
-* 一个Protobuf message类型的`LocalizationEstimate`实例，它可以在`localization/proto/localization.proto`中找到。
-## 添加定位实现
-
-目前，RTK方案是在类`RTKLocalization`中实现的。如果一个新的定位方法需要用一个名字（例如`FooLocalization`）来实现，你可以遵循以下步骤：
-
-1. 在`proto/localization_config.proto`的`LocalizationType enum type`中添加Foo。
-
-1. 转到`modules/localization`目录，并创建一个Foo目录。在Foo目录中，根据rtk目录中的`RTKLocalization`类增加`FooLocalization`类。`FooLocalization`必须是`LocalizationBase`的子类。根据`rtk/BUILD`还需创建文件`foo/BUILD`。
-
-1. 您需要在函数`Localization::RegisterLocalizationMethods()`中注册`FooLocalization`，它位于CPP文件`localization.cc`中。您可以通过在函数的末尾插入以下代码来注册：
-```
-localization_factory_.Register(LocalizationConfig::FOO, []()->LocalizationBase* { return new FooLocalization(); });
-```
-请确保您的代码可以编译包含`FooLocalization`的头文件。
-
-1. 现在你可以回到apollo根目录，用命令`bash apollo.sh build`构建你的代码。
+实现和单元测试基线不等于车辆资格认证。剩余模型、回放和车辆验收门槛见
+`wheelos-service/context/modules/localization/knowledge/directional-localization-implementation-plan.md`。

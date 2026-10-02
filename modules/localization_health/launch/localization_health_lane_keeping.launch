@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>localization_health_lane_keeping</name>
+        <dag_conf>/apollo/modules/localization_health/dag/localization_health_lane_keeping.dag</dag_conf>
+        <process_name>localization_health_lane_keeping</process_name>
+    </module>
+</cyber>

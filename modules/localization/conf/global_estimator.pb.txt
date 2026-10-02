@@ -1,0 +1,19 @@
+# External-observation-only example. No map or georeference is invented.
+# Replace identities with the deployed map/calibration manifest.
+map {
+  map_id: "deployment-required"
+  version: "deployment-required"
+  frame_id: "map"
+  calibration_id: "deployment-required"
+  pcd_path: ""
+  georeferenced: false
+}
+max_position_std: 2.0
+max_attitude_std: 0.2
+enable_map_matching: false
+enable_gnss: false
+# Experimental source backend. Qualification is not implied by this template.
+enable_fixed_lag_graph: false
+motion_error_model_qualified: false
+# Opt-in asynchronous version switch; always re-verifies global alignment.
+enable_map_switching: false

@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("//tools/install:install.bzl", "install", "install_files")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -24,7 +24,7 @@ cc_library(
         "@wheelos_common//modules/common/util:util_tool",
         "//modules/localization/common:localization_gflags",
         "//modules/localization/common:rigid_transform_helper",
-        "//modules/localization/msf/common/util",
+        "//modules/ndt_localization/map_support/util",
         "//modules/ndt_localization/ndt_locator:ndt_lidar_locator",
         "//modules/transform:transform_broadcaster",
         "//modules/transform:transform_query",
@@ -102,6 +102,16 @@ install(
     targets = [
         ":libndt_localization_component.so",
     ],
+    deps = [
+        ":height_config",
+        "//modules/ndt_localization/map_creation:install",
+    ],
 )
 
 cpplint()
+
+install_files(
+    name = "height_config",
+    dest = "ndt_localization/conf",
+    files = ["conf/velodyne64_height.yaml"],
+)

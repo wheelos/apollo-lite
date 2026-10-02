@@ -52,13 +52,6 @@ function _determine_perception_disabled() {
   fi
 }
 
-function _determine_localization_disabled() {
-    if [ "${ARCH}" != "x86_64" ]; then
-      # Skip msf for non-x86_64 platforms
-      DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/localization/msf/..."
-    fi
-}
-
 function _determine_planning_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
     DISABLED_TARGETS="${DISABLED_TARGETS} \
@@ -76,7 +69,6 @@ function _determine_map_disabled() {
 function determine_disabled_targets() {
   if [ "$#" -eq 0 ]; then
     _determine_drivers_disabled
-    _determine_localization_disabled
     _determine_perception_disabled
     _determine_planning_disabled
     _determine_map_disabled
@@ -90,7 +82,6 @@ function determine_disabled_targets() {
         _determine_drivers_disabled
         ;;
       localization)
-        _determine_localization_disabled
         ;;
       perception)
         _determine_perception_disabled

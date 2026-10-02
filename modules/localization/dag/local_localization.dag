@@ -1,0 +1,14 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/localization/liblocal_localization_component.so"
+  components {
+    class_name: "LocalLocalizationComponent"
+    config {
+      name: "local_localization"
+      config_file_path: "/apollo/modules/localization/conf/local_estimator.pb.txt"
+      readers {
+        channel: "/apollo/sensor/gnss/imu"
+        pending_queue_size: 200
+      }
+    }
+  }
+}

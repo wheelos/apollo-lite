@@ -1,0 +1,22 @@
+# Example budgets, not a vehicle-qualified calibration or operating envelope.
+# Standard GPS seconds -> UNIX: 315964800 minus the GPS-UTC leap offset.
+imu_to_unix_offset: 315964782
+imu_rfu: false
+wheel_variance: 0.01
+signed_chassis_speed: false
+gyro_noise: 0.01
+accel_noise: 0.1
+gyro_bias_noise: 0.0001
+accel_bias_noise: 0.001
+max_position_std: 1.0
+max_velocity_std: 0.5
+max_attitude_std: 0.1
+use_nonholonomic_constraint: false
+
+# Local LiDAR is opt-in. Enabling it requires every field 101-124 in
+# LocalEstimatorConfig fields 101-133 plus a static base_frame -> lidar_frame
+# transform.
+# No frame, clock offset, noise, geometry or correction budget is inferred.
+# lidar_time_tolerance must be explicitly present and zero: non-frontier
+# corrections require replay and are rejected by this source implementation.
+enable_lidar: false

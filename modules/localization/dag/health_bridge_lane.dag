@@ -1,0 +1,14 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/localization/liblocalization_health_bridge.so"
+  components {
+    class_name: "LocalizationHealthBridge"
+    config {
+      name: "localization_health_bridge"
+      config_file_path: "/apollo/modules/localization/conf/health_bridge_lane.pb.txt"
+      readers {
+        channel: "/apollo/localization/odometry"
+        pending_queue_size: 200
+      }
+    }
+  }
+}

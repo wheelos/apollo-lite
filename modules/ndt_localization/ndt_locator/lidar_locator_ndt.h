@@ -24,11 +24,11 @@
 #include "pcl/point_cloud.h"
 #include "pcl/point_types.h"
 
-#include "modules/localization/msf/local_pyramid_map/base_map/base_map_node_index.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map_matrix.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map_node.h"
-#include "modules/localization/msf/local_pyramid_map/ndt_map/ndt_map_pool.h"
+#include "modules/ndt_localization/map_support/base_map/base_map_node_index.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map_matrix.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map_node.h"
+#include "modules/ndt_localization/map_support/ndt_map/ndt_map_pool.h"
 #include "modules/ndt_localization/ndt_locator/ndt_solver.h"
 
 #define USE_PRELOAD_MAP_NODE

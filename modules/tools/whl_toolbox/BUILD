@@ -7,7 +7,7 @@ cc_binary(
     name = "record_tool",
     srcs = ["record_tool.cc"],
     deps = [
-        "//modules/localization/msf/common/io:common_io",
+        "//modules/localization/common/pointcloud_io:common_io",
         "@boost.filesystem",
         "@core//cyber",
         "@local_config_pcl//:common",

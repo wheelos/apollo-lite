@@ -41,7 +41,6 @@ install(
             "//third_party/opengl:install",
             "//third_party/adolc:install",
             "//third_party/tf2:install",
-            "//third_party/localization_msf:install",
             "//third_party/rtklib:install",
         ],
     ),
