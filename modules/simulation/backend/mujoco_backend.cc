@@ -285,6 +285,25 @@ bool MujocoBackend::Reset(const InitialVehicleState& initial_state) {
     d->qvel[qvel_adr + 3] = 0.0;
     d->qvel[qvel_adr + 4] = 0.0;
     d->qvel[qvel_adr + 5] = initial_state.yaw_rate_radps;
+    if (model_wheel_radius_m_ > 0.0) {
+      const double half_track = 0.5 * model_track_width_m_;
+      const double left_wheel_speed =
+          initial_state.longitudinal_speed_mps -
+          initial_state.yaw_rate_radps * half_track;
+      const double right_wheel_speed =
+          initial_state.longitudinal_speed_mps +
+          initial_state.yaw_rate_radps * half_track;
+      const std::array<double, 4> wheel_speeds{
+          left_wheel_speed, right_wheel_speed, left_wheel_speed,
+          right_wheel_speed};
+      const std::array<int, 4> wheel_joint_ids{
+          wheel_fl_joint_id_, wheel_fr_joint_id_, wheel_rl_joint_id_,
+          wheel_rr_joint_id_};
+      for (int i = 0; i < 4; ++i) {
+        d->qvel[m->jnt_dofadr[wheel_joint_ids[i]]] =
+            -wheel_speeds[i] / model_wheel_radius_m_;
+      }
+    }
     mj_forward(m, d);
   }
 #endif

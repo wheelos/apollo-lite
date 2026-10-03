@@ -195,6 +195,28 @@ TEST(MujocoBackendTest, InitializesRearAxleVelocityAtConfiguredPose) {
               initial_state.yaw_rate_radps, 1e-6);
   EXPECT_NEAR(state.linear_velocity_world_mps[0], -1.0, 1e-6);
   EXPECT_NEAR(state.linear_velocity_world_mps[1], 4.0, 1e-6);
+  EXPECT_NEAR(state.wheel_speed_mps[0], 4.0 - 0.4 * 0.79, 1e-6);
+  EXPECT_NEAR(state.wheel_speed_mps[1], 4.0 + 0.4 * 0.79, 1e-6);
+  EXPECT_NEAR(state.wheel_speed_mps[2], 4.0 - 0.4 * 0.79, 1e-6);
+  EXPECT_NEAR(state.wheel_speed_mps[3], 4.0 + 0.4 * 0.79, 1e-6);
+}
+
+TEST(MujocoBackendTest, PreservesRollingVelocityOnFirstStepAfterReset) {
+  MujocoBackend backend;
+  ASSERT_TRUE(backend.Init(AckermannModelPath()));
+  InitialVehicleState initial_state;
+  initial_state.longitudinal_speed_mps = 4.0;
+  ASSERT_TRUE(backend.Reset(initial_state));
+
+  VehicleState state;
+  ASSERT_TRUE(backend.GetVehicleState(&state));
+  for (double wheel_speed : state.wheel_speed_mps) {
+    EXPECT_NEAR(wheel_speed, initial_state.longitudinal_speed_mps, 1e-6);
+  }
+  ASSERT_TRUE(backend.Step(0.002));
+  ASSERT_TRUE(backend.GetVehicleState(&state));
+  EXPECT_NEAR(state.linear_velocity_mps,
+              initial_state.longitudinal_speed_mps, 0.1);
 }
 
 TEST(MujocoBackendTest, ReportsFreeJointVelocityInVehicleAndWorldFrames) {
