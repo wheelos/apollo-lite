@@ -24,8 +24,8 @@
     <body name="ego_vehicle" pos="0 0 0.335">
       <freejoint name="vehicle_freejoint"/>
       
-      <!-- Main Chassis Body (Lincoln MKZ scale: L=4.9m, W=1.86m, H=1.4m) -->
-      <geom name="chassis_geom" type="box" size="2.2 0.6 0.25" pos="0 0 0.35" mass="1500" material="chassis_mat"/>
+      <!-- Main chassis footprint matches the Lincoln MKZ dimensions. -->
+      <geom name="chassis_geom" type="box" size="2.4665 0.93 0.25" pos="0.0011 0 0.35" mass="1500" material="chassis_mat"/>
       <geom name="cabin_geom" type="box" size="1.2 0.55 0.3" pos="-0.2 0 0.85" mass="100" material="chassis_mat"/>
 
       <!-- Front-Left Wheel Assembly (Steerable) -->

@@ -58,17 +58,35 @@ bool KinematicBackend::SetMaxRearSteerAngle(double max_rear_steer_angle_rad) {
 }
 
 void KinematicBackend::Reset(double x, double y, double yaw) {
+  InitialVehicleState initial_state;
+  initial_state.x = x;
+  initial_state.y = y;
+  initial_state.yaw = yaw;
+  Reset(initial_state);
+}
+
+bool KinematicBackend::Reset(const InitialVehicleState& initial_state) {
+  if (!std::isfinite(initial_state.x) || !std::isfinite(initial_state.y) ||
+      !std::isfinite(initial_state.yaw) ||
+      !std::isfinite(initial_state.longitudinal_speed_mps) ||
+      !std::isfinite(initial_state.lateral_speed_mps) ||
+      !std::isfinite(initial_state.yaw_rate_radps) ||
+      initial_state.lateral_speed_mps != 0.0 ||
+      initial_state.yaw_rate_radps != 0.0) {
+    return false;
+  }
   sim_time_sec_ = 0.0;
-  x_ = x;
-  y_ = y;
+  x_ = initial_state.x;
+  y_ = initial_state.y;
   z_ = wheel_radius_m_;
-  yaw_ = yaw;
-  speed_mps_ = 0.0;
+  yaw_ = initial_state.yaw;
+  speed_mps_ = initial_state.longitudinal_speed_mps;
   acceleration_mps2_ = 0.0;
   front_steering_rad_ = 0.0;
   rear_steering_rad_ = 0.0;
   current_actuation_ = VehicleActuation{};
   wheel_steer_rad_ = {0.0, 0.0, 0.0, 0.0};
+  return true;
 }
 
 bool KinematicBackend::ApplyActuation(const VehicleActuation& actuation) {

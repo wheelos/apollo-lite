@@ -38,6 +38,15 @@ class ISimulatorBackend {
   virtual bool Step(double dt_sec) = 0;
   virtual bool GetVehicleState(VehicleState* state) const = 0;
   virtual void Reset(double x, double y, double yaw) = 0;
+  virtual bool Reset(const InitialVehicleState& initial_state) {
+    if (initial_state.longitudinal_speed_mps != 0.0 ||
+        initial_state.lateral_speed_mps != 0.0 ||
+        initial_state.yaw_rate_radps != 0.0) {
+      return false;
+    }
+    Reset(initial_state.x, initial_state.y, initial_state.yaw);
+    return true;
+  }
   // Returns false when the backend cannot honor the configured vehicle model.
   virtual bool SetVehicleGeometry(double wheelbase_m, double track_width_m,
                                   double wheel_radius_m) = 0;

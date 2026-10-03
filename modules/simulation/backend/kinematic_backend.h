@@ -40,6 +40,7 @@ class KinematicBackend : public ISimulatorBackend {
   bool Step(double dt_sec) override;
   bool GetVehicleState(VehicleState* state) const override;
   void Reset(double x, double y, double yaw) override;
+  bool Reset(const InitialVehicleState& initial_state) override;
   bool SetVehicleGeometry(double wheelbase_m, double track_width_m,
                           double wheel_radius_m) override;
   bool SetMaxSteerAngle(double max_steer_angle_rad) override;

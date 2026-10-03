@@ -93,12 +93,34 @@ bool SimulationEngine::Init(const std::string& backend_type,
 }
 
 void SimulationEngine::Reset(double x, double y, double yaw) {
-  if (backend_) {
-    backend_->Reset(x, y, yaw);
-    if (!backend_->GetVehicleState(&current_state_)) {
-      AERROR << "Failed to read backend state after reset: "
-             << backend_->Name();
-    }
+  InitialVehicleState initial_state;
+  initial_state.x = x;
+  initial_state.y = y;
+  initial_state.yaw = yaw;
+  Reset(initial_state);
+}
+
+bool SimulationEngine::Reset(const InitialVehicleState& initial_state) {
+  if (!backend_ || !std::isfinite(initial_state.x) ||
+      !std::isfinite(initial_state.y) || !std::isfinite(initial_state.yaw) ||
+      !std::isfinite(initial_state.longitudinal_speed_mps) ||
+      !std::isfinite(initial_state.lateral_speed_mps) ||
+      !std::isfinite(initial_state.yaw_rate_radps) ||
+      std::abs(initial_state.longitudinal_speed_mps) > 100.0 ||
+      std::abs(initial_state.lateral_speed_mps) > 100.0 ||
+      std::abs(initial_state.yaw_rate_radps) > 20.0) {
+    AERROR << "Invalid initial simulation state.";
+    return false;
+  }
+  if (!backend_->Reset(initial_state)) {
+    AERROR << "Backend " << backend_->Name()
+           << " cannot apply the requested initial state.";
+    return false;
+  }
+  if (!backend_->GetVehicleState(&current_state_)) {
+    AERROR << "Failed to read backend state after reset: "
+           << backend_->Name();
+    return false;
   }
   last_cmd_time_sec_ = 0.0;
   has_received_command_ = false;
@@ -107,6 +129,7 @@ void SimulationEngine::Reset(double x, double y, double yaw) {
   last_position_x_ = current_state_.x;
   last_position_y_ = current_state_.y;
   current_state_.odometer_m = 0.0;
+  return true;
 }
 
 bool SimulationEngine::Step(const VehicleCommand& cmd, double control_dt_sec,

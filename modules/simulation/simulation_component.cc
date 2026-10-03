@@ -161,10 +161,23 @@ bool SimulationComponent::Init() {
     return false;
   }
 
-  engine_->Reset(FLAGS_sim_init_x, FLAGS_sim_init_y, FLAGS_sim_init_yaw);
+  const InitialVehicleState initial_state{
+      FLAGS_sim_init_x,
+      FLAGS_sim_init_y,
+      FLAGS_sim_init_yaw,
+      FLAGS_sim_init_speed_mps,
+      FLAGS_sim_init_lateral_speed_mps,
+      FLAGS_sim_init_yaw_rate_radps};
+  if (!engine_->Reset(initial_state)) {
+    AERROR << "Failed to apply configured initial vehicle state.";
+    return false;
+  }
   AINFO << "SimulationComponent initialized successfully. Backend: "
         << FLAGS_sim_backend_type << " at (" << FLAGS_sim_init_x << ", "
-        << FLAGS_sim_init_y << ", yaw=" << FLAGS_sim_init_yaw << ")";
+        << FLAGS_sim_init_y << ", yaw=" << FLAGS_sim_init_yaw
+        << ", speed=" << FLAGS_sim_init_speed_mps
+        << ", lateral_speed=" << FLAGS_sim_init_lateral_speed_mps
+        << ", yaw_rate=" << FLAGS_sim_init_yaw_rate_radps << ")";
   return true;
 }
 

@@ -65,6 +65,19 @@ struct VehicleActuation {
 };
 
 /**
+ * @brief Initial vehicle state at the rear axle center.
+ * Velocities are body-frame: x forward, y left; yaw rate is rad/s.
+ */
+struct InitialVehicleState {
+  double x{0.0};
+  double y{0.0};
+  double yaw{0.0};
+  double longitudinal_speed_mps{0.0};
+  double lateral_speed_mps{0.0};
+  double yaw_rate_radps{0.0};
+};
+
+/**
  * @brief Vehicle state ground truth produced by physics backend.
  * Position: ENU world frame (meters).
  * Velocities: Body frame (x forward, y left, z up).
