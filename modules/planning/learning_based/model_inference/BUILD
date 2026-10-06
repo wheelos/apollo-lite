@@ -45,6 +45,7 @@ cc_test(
         ":model_inference",
         ":trajectory_imitation_libtorch_inference",
         "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/map:map_selection",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/learning_based/img_feature_renderer:birdview_img_feature_renderer",
         "@com_google_googletest//:gtest",

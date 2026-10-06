@@ -371,7 +371,8 @@ int main(int argc, char *argv[]) {
     valid_arg = true;
   }
   if (!valid_arg) {
-    std::cout << "usage: --map_dir map/file/directory/" << std::endl;
+    std::cout << "Map bundle is selected by KVDB key runtime/selected_map."
+              << std::endl;
     std::cout << "usage: --base_map_filename map_file_name" << std::endl;
     std::cout << "usage: --dump_txt_map text_map_file" << std::endl;
     std::cout << "usage: --dump_bin_map bin_map_file" << std::endl;

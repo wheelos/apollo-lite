@@ -11,6 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/math",
         "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_map//modules/map/hdmap:hdmap",

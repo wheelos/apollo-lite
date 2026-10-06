@@ -25,6 +25,7 @@
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/common/configs/config_gflags.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/learning_based/img_feature_renderer/birdview_img_feature_renderer.h"
 #include "modules/planning/learning_based/model_inference/trajectory_imitation_libtorch_inference.h"
@@ -46,8 +47,13 @@ class ModelInferenceTest : public ::testing::Test {
  public:
   virtual ~ModelInferenceTest() = default;
   virtual void SetUp() {
-    FLAGS_map_dir = "/apollo/modules/map/data/sunnyvale_with_two_offices";
+    apollo::common::MapSelection::SetTestMapDirectory(
+        "/apollo/modules/map/data/sunnyvale_with_two_offices");
     FLAGS_base_map_filename = "base_map.bin";
+  }
+
+  void TearDown() override {
+    apollo::common::MapSelection::ClearTestMapDirectory();
   }
 };
 

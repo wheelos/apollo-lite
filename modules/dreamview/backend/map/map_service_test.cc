@@ -20,6 +20,7 @@
 #include "gtest/gtest.h"
 
 #include "modules/common/configs/config_gflags.h"
+#include "modules/common/map/map_selection.h"
 
 using apollo::common::PointENU;
 using apollo::hdmap::Map;
@@ -30,9 +31,15 @@ namespace dreamview {
 class MapServiceTest : public ::testing::Test {
  protected:
   MapServiceTest() {
-    FLAGS_map_dir = "modules/dreamview/backend/testdata";
+    apollo::common::MapSelection::SetTestMapDirectory(
+        "modules/dreamview/backend/testdata");
     FLAGS_base_map_filename = "garage.bin";
     map_service.reset(new MapService(false));
+  }
+
+  void TearDown() override {
+    map_service.reset();
+    apollo::common::MapSelection::ClearTestMapDirectory();
   }
 
   std::unique_ptr<MapService> map_service;

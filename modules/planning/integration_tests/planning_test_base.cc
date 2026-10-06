@@ -18,6 +18,7 @@
 
 #include <filesystem>
 
+#include "modules/common/map/map_selection.h"
 #include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
 #include "wheelos_msgs/perception_msgs/traffic_light_detection.pb.h"
@@ -59,7 +60,8 @@ void PlanningTestBase::SetUpTestCase() {
       "/apollo/modules/planning/conf/traffic_rule_config.pb.txt";
   FLAGS_smoother_config_filename =
       "/apollo/modules/planning/conf/qp_spline_smoother_config.pb.txt";
-  FLAGS_map_dir = "/apollo/modules/planning/testdata";
+  apollo::common::MapSelection::SetTestMapDirectory(
+      "/apollo/modules/planning/testdata");
   FLAGS_test_localization_file = "";
   FLAGS_test_chassis_file = "";
   FLAGS_test_routing_response_file = "";
@@ -73,6 +75,10 @@ void PlanningTestBase::SetUpTestCase() {
   // and LatticePlanner can't pass the unit test.
   FLAGS_enable_trajectory_check = false;
   FLAGS_planning_test_mode = true;
+}
+
+void PlanningTestBase::TearDownTestCase() {
+  apollo::common::MapSelection::ClearTestMapDirectory();
 }
 
 bool PlanningTestBase::FeedTestData() {

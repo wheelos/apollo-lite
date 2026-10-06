@@ -54,7 +54,10 @@ bool NDTLocalizationComponent::InitConfig() {
   odometry_status_topic_ = FLAGS_ins_stat_topic;
   localization_status_topic_ = FLAGS_localization_msf_status;
 
-  localization_->Init();
+  if (!localization_->Init()) {
+    AERROR << "NDT localization initialization failed.";
+    return false;
+  }
 
   return true;
 }

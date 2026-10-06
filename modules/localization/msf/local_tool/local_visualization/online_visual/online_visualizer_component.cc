@@ -72,7 +72,12 @@ bool OnlineVisualizerComponent::Init() {
 }
 
 bool OnlineVisualizerComponent::InitConfig() {
-  map_folder_ = FLAGS_map_dir + "/" + FLAGS_local_map_name;
+  apollo::common::SelectedMap selected_map;
+  if (!apollo::common::MapSelection::GetSelectedMap(&selected_map)) {
+    AERROR << "Failed to resolve persisted map selection.";
+    return false;
+  }
+  map_folder_ = selected_map.directory + "/" + FLAGS_local_map_name;
   map_visual_folder_ = FLAGS_map_visual_dir;
   lidar_extrinsic_file_ =
       ResolveLocalToolLidarExtrinsicFile(FLAGS_lidar_extrinsics_file);

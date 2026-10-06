@@ -63,7 +63,7 @@ class MSFLocalization {
   MSFLocalization();
 
   apollo::common::Status Init();
-  void InitParams();
+  bool InitParams();
   void OnPointCloud(const std::shared_ptr<drivers::PointCloud> &message);
   void OnRawImu(const std::shared_ptr<drivers::gnss::Imu> &imu_msg);
   void OnRawImuCache(const std::shared_ptr<drivers::gnss::Imu> &imu_msg);

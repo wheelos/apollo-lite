@@ -21,6 +21,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/perception/base/object_pool_types.h"
 #include "modules/perception/common/geometry/common.h"
@@ -86,8 +87,12 @@ bool HDMapInput::InitHDMap() {
   // hdmap_ = apollo::hdmap::HDMapUtil::BaseMapPtr();
 
   // Option2: Load own map with different hdmap_sample_step_
-  // Load hdmap path from global_flagfile.txt
-  hdmap_file_ = absl::StrCat(FLAGS_map_dir, "/base_map.bin");
+  apollo::common::SelectedMap selected_map;
+  if (!apollo::common::MapSelection::GetSelectedMap(&selected_map)) {
+    AERROR << "Failed to resolve persisted map selection.";
+    return false;
+  }
+  hdmap_file_ = absl::StrCat(selected_map.directory, "/base_map.bin");
   AINFO << "hdmap_file_: " << hdmap_file_;
   if (!apollo::cyber::common::PathExists(hdmap_file_)) {
     AERROR << "Failed to find hadmap file: " << hdmap_file_;

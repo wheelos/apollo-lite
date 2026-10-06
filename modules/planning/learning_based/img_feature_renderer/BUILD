@@ -10,6 +10,7 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
         "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/util",
         "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/planning/proto:learning_data_cc_proto",

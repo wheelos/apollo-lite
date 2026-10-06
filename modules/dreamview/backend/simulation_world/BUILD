@@ -51,6 +51,7 @@ cc_test(
     deps = [
         ":simulation_world_service",
         "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/map:map_selection",
         "@com_google_googletest//:gtest_main",
     ],
 )

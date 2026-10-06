@@ -91,7 +91,7 @@ class MapService {
 
   bool CheckRoutingPointLaneType(apollo::hdmap::LaneInfoConstPtr lane) const;
 
-  // Reload map from current FLAGS_map_dir.
+  // Reload map from the persisted selected map.
   bool ReloadMap(bool force_reload);
 
   size_t CalculateMapHash(const MapElementIds &ids) const;

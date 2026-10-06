@@ -11,6 +11,7 @@ cc_library(
     deps = [
         "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/status",
         "@wheelos_common//modules/common/util",
         "//modules/localization/common:localization_gflags",

@@ -18,6 +18,7 @@ cc_library(
     ],
     hdrs = ["map_service.h"],
     deps = [
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/util:util_tool",
         "//modules/dreamview/proto:simulation_world_cc_proto",
         "@wheelos_map//modules/map/hdmap:hdmap_util",
@@ -37,6 +38,7 @@ cc_test(
     ],
     deps = [
         ":map_service",
+        "@wheelos_common//modules/common/map:map_selection",
         "@com_google_googletest//:gtest_main",
     ],
 )

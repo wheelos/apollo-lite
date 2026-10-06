@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import subprocess
 import sys
 import select
 import termios
@@ -9,6 +10,7 @@ import argparse
 import logging
 import math
 import atexit
+import os
 from pathlib import Path
 from typing import List, Optional, Set
 from dataclasses import dataclass
@@ -288,7 +290,7 @@ def parse_args():
     Apollo Manual Traffic Light Mock
 
     Example usage:
-        python3 modules/tools/whl-mock/traffic_light.py --all_lights --map_file=modules/map/data/demo/base_map.bin
+        python3 modules/tools/whl-mock/traffic_light.py --all_lights
     """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -301,8 +303,11 @@ def parse_args():
     parser.add_argument(
         "--map_file",
         type=str,
-        default="/apollo/modules/map/data/borregas_ave/base_map.bin",
-        help="Path to the HDMap binary file",
+        default=None,
+        help=(
+            "Explicit path to an HDMap binary file "
+            "(default: persistent runtime map selection)"
+        ),
     )
     parser.add_argument(
         "--topic_localization", type=str, default="/apollo/localization/pose"
@@ -310,7 +315,54 @@ def parse_args():
     parser.add_argument(
         "--topic_detection", type=str, default="/apollo/perception/traffic_light"
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if args.map_file is None:
+        apollo_root = os.environ.get("APOLLO_ROOT_DIR")
+        if apollo_root:
+            apollo_root_path = Path(apollo_root)
+            if not apollo_root_path.is_absolute():
+                parser.error("APOLLO_ROOT_DIR must be an absolute path")
+        else:
+            apollo_root_path = Path(__file__).resolve().parents[3]
+        map_selection_tool = (
+            apollo_root_path / "modules/map/tools/map_selection_tool"
+        )
+        if not map_selection_tool.is_file():
+            parser.error(
+                "Map selection tool is not installed: "
+                f"{map_selection_tool}"
+            )
+        try:
+            result = subprocess.run(
+                [str(map_selection_tool), "--print-map-dir"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except OSError as exc:
+            parser.error(f"Cannot query persistent map selection: {exc}")
+        if result.returncode != 0:
+            detail = result.stderr.strip()
+            parser.error(
+                "Cannot query persistent map selection"
+                + (f": {detail}" if detail else "")
+            )
+        map_directory = result.stdout.strip()
+        if not map_directory or not Path(map_directory).is_absolute():
+            parser.error("Map selection tool returned an invalid map directory")
+        args.map_file = str(Path(map_directory) / "base_map.bin")
+
+    map_path = Path(args.map_file)
+    if not map_path.is_file():
+        parser.error(f"Map file does not exist or is not a regular file: {map_path}")
+    try:
+        with map_path.open("rb"):
+            pass
+    except OSError as exc:
+        parser.error(f"Map file is not readable: {map_path}: {exc}")
+
+    return args
 
 
 def main():

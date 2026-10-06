@@ -16,6 +16,7 @@
 #include "modules/localization/msf/msf_localization.h"
 
 #include "gtest/gtest.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/localization/common/localization_gflags.h"
 
 namespace apollo {
@@ -24,7 +25,15 @@ namespace msf {
 
 class MSFLocalizationTest : public ::testing::Test {
  public:
-  virtual void SetUp() { msf_localizatoin_.reset(new MSFLocalization()); }
+  virtual void SetUp() {
+    apollo::common::MapSelection::SetTestMapDirectory(
+        "assets/sites/map/borregas_ave");
+    msf_localizatoin_.reset(new MSFLocalization());
+  }
+
+  void TearDown() override {
+    apollo::common::MapSelection::ClearTestMapDirectory();
+  }
 
  protected:
   std::unique_ptr<MSFLocalization> msf_localizatoin_;

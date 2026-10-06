@@ -12,7 +12,7 @@ NDT map storage implementation.
 ## Input
   * Point cloud data from LiDAR sensor ( `/apollo/sensor/velodyne64/compensator/PointCloud2`)
   * Inspva message from integrated navigation sensor ( `/apollo/sensor/gnss/odometry`)
-  * Localization map (FLAGS_map_dir + "/" + FLAGS_ndt_map_dir + "/" + FLAGS_local_map_name)
+  * Localization map (selected map bundle + FLAGS_ndt_map_dir + "/" + FLAGS_local_map_name)
   * Rigid LiDAR extrinsics from the TF tree published by `modules/transform`
   * Parameter config files for LiDAR height (velodyne64_height.yaml, located in `modules/localization/msf/params/`)
 

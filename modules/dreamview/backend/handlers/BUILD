@@ -27,6 +27,8 @@ cc_library(
     deps = [
         "@civetweb",
         "@civetweb//:civetserver",
+        "@core//cyber/common:resource_manager",
+        "@core//cyber/common:log",
     ],
 )
 

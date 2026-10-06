@@ -23,6 +23,7 @@ install(
     deps = [
         ":map_testdata",
         ":pb_map",
+        "//assets/sites/map/borregas_ave:install",
         "//modules/map/pnc_map:install",
         "//modules/map/tools:install",
     ],

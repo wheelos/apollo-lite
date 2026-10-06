@@ -20,6 +20,7 @@ cc_library(
     deps = [
         "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/monitor_log",
         "@wheelos_common//modules/common/util:util_tool",
         "//modules/localization/common:localization_gflags",

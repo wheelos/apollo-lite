@@ -22,6 +22,7 @@
 
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/configs/vehicle_config_helper.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/common/math/quaternion.h"
 #include "modules/dreamview/backend/common/dreamview_gflags.h"
 
@@ -59,9 +60,16 @@ class SimulationWorldServiceTest : public ::testing::Test {
     sim_world_service_.reset(new SimulationWorldService(map_service_.get()));
   }
 
+  void TearDown() override {
+    sim_world_service_.reset();
+    map_service_.reset();
+    apollo::common::MapSelection::ClearTestMapDirectory();
+  }
+
  protected:
   SimulationWorldServiceTest() {
-    FLAGS_map_dir = "modules/dreamview/backend/testdata";
+    apollo::common::MapSelection::SetTestMapDirectory(
+        "modules/dreamview/backend/testdata");
     FLAGS_base_map_filename = "garage.bin";
     FLAGS_sim_world_with_routing_path = true;
     map_service_.reset(new MapService(false));

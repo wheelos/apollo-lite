@@ -29,7 +29,7 @@ namespace dreamview {
 class MapDataHandler : public CivetHandler {
  public:
   explicit MapDataHandler(
-      const std::string &map_dir = "/apollo/modules/map/data/");
+      const std::string &map_dir = "");
   bool handleGet(CivetServer *server, struct mg_connection *conn) override;
 
  private:

@@ -10,12 +10,21 @@ install(
     targets = [
         ":map_tool",
         ":map_xysl",
+        ":map_selection_tool",
         ":refresh_default_end_way_point",
         ":sim_map_generator",
         ":bin_map_generator",
         ":quaternion_euler",
     ],
     deps = [
+    ],
+)
+
+cc_binary(
+    name = "map_selection_tool",
+    srcs = ["map_selection_tool.cc"],
+    deps = [
+        "@wheelos_common//modules/common/map:map_selection",
     ],
 )
 

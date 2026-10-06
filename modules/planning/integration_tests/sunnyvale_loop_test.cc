@@ -33,7 +33,8 @@ class SunnyvaleLoopTest : public PlanningTestBase {
  public:
   virtual void SetUp() {
     FLAGS_use_navigation_mode = false;
-    FLAGS_map_dir = "modules/map/data/sunnyvale_loop";
+    apollo::common::MapSelection::SetTestMapDirectory(
+        "modules/map/data/sunnyvale_loop");
     FLAGS_test_base_map_filename = "base_map_test.bin";
     FLAGS_test_data_dir = "modules/planning/testdata/sunnyvale_loop_test";
     FLAGS_planning_upper_speed_limit = 12.5;

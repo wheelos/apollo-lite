@@ -22,6 +22,7 @@
 
 #include "cyber/common/file.h"
 #include "modules/common/configs/config_gflags.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/common/util/data_extraction.h"
 #include "modules/planning/common/feature_output.h"
 #include "modules/planning/common/message_process.h"
@@ -32,7 +33,13 @@ namespace apollo {
 namespace planning {
 
 void GenerateLearningData() {
-  AINFO << "map_dir: " << FLAGS_map_dir;
+  apollo::common::SelectedMap selected_map;
+  if (!apollo::common::MapSelection::GetSelectedMap(&selected_map)) {
+    AERROR << "Failed to resolve persisted map selection.";
+    return;
+  }
+  AINFO << "map_id: " << selected_map.id
+        << ", map_directory: " << selected_map.directory;
   if (FLAGS_planning_offline_bags.empty()) {
     return;
   }

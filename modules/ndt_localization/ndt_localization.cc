@@ -23,6 +23,7 @@
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
 #include "modules/common/configs/config_gflags.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/common/math/quaternion.h"
 #include "modules/localization/common/rigid_transform_helper.h"
 #include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
@@ -32,7 +33,7 @@ namespace apollo {
 namespace localization {
 namespace ndt {
 
-void NDTLocalization::Init() {
+bool NDTLocalization::Init() {
   resolution_id_ = 0;
   zone_id_ = FLAGS_local_utm_zone_id;
   online_resolution_ = FLAGS_online_resolution;
@@ -44,8 +45,13 @@ void NDTLocalization::Init() {
   warnning_ndt_score_ = FLAGS_ndt_warnning_ndt_score;
   error_ndt_score_ = FLAGS_ndt_error_ndt_score;
 
-  map_path_ =
-      FLAGS_map_dir + "/" + FLAGS_ndt_map_dir + "/" + FLAGS_local_map_name;
+  apollo::common::SelectedMap selected_map;
+  if (!apollo::common::MapSelection::GetSelectedMap(&selected_map)) {
+    AERROR << "Failed to resolve persisted map selection.";
+    return false;
+  }
+  map_path_ = selected_map.directory + "/" + FLAGS_ndt_map_dir + "/" +
+              FLAGS_local_map_name;
   AINFO << "map folder: " << map_path_;
   velodyne_extrinsic_ = Eigen::Affine3d::Identity();
   lidar_frame_id_.clear();
@@ -80,6 +86,7 @@ void NDTLocalization::Init() {
   odometry_buffer_size_ = 0;
 
   is_service_started_ = false;
+  return true;
 }
 // receive odometry message
 void NDTLocalization::OdometryCallback(

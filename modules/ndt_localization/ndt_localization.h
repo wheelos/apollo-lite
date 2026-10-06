@@ -52,7 +52,7 @@ class NDTLocalization {
   NDTLocalization() = default;
   ~NDTLocalization() = default;
   /**@brief init configuration */
-  void Init();
+  bool Init();
   /**@brief receive odometry message */
   void OdometryCallback(const std::shared_ptr<localization::Gps>& odometry_msg);
   /**@brief receive lidar pointcloud message */

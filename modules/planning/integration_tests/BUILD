@@ -16,6 +16,7 @@ cc_library(
     deps = [
         "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/util",
         "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/planning:planning_component_lib",

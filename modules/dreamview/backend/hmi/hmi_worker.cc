@@ -21,6 +21,8 @@
 
 #include <chrono>
 #include <cctype>
+#include <cstdlib>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <string>
@@ -35,9 +37,12 @@
 #include "modules/dreamview/proto/scenario.pb.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/kv_db/kv_db.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/common/util/future.h"
 #include "modules/common/util/map_util.h"
 #include "modules/common/util/message_util.h"
@@ -48,8 +53,6 @@
 
 DEFINE_string(hmi_modes_config_path, "/apollo/modules/dreamview/conf/hmi_modes",
               "HMI modes config path.");
-
-DEFINE_string(maps_data_path, "/apollo/modules/map/data", "Maps data path.");
 
 DEFINE_double(status_publish_interval, 5, "HMI Status publish interval.");
 
@@ -67,6 +70,8 @@ using apollo::audio::AudioEvent;
 using apollo::canbus::Chassis;
 using apollo::common::DriveEvent;
 using apollo::common::KVDB;
+using apollo::common::MapSelection;
+using apollo::common::SelectedMap;
 using apollo::common::util::ContainsKey;
 using apollo::common::util::FindOrNull;
 using apollo::control::DrivingAction;
@@ -126,20 +131,6 @@ Map<std::string, std::string> ListFilesAsDict(std::string_view dir,
   return result;
 }
 
-template <class FlagType, class ValueType>
-void SetGlobalFlag(std::string_view flag_name, const ValueType &value,
-                   FlagType *flag) {
-  constexpr char kGlobalFlagfile[] =
-      "/apollo/modules/global_config/global_flagfile.txt";
-  if (*flag != value) {
-    *flag = value;
-    // Overwrite global flagfile.
-    std::ofstream fout(kGlobalFlagfile, std::ios_base::app);
-    ACHECK(fout) << "Fail to open global flagfile " << kGlobalFlagfile;
-    fout << "\n--" << flag_name << "=" << value << std::endl;
-  }
-}
-
 void System(std::string_view cmd) {
   const int ret = std::system(cmd.data());
   if (ret == 0) {
@@ -189,7 +180,10 @@ HMIConfig HMIWorker::LoadConfig() {
   ACHECK(!config.modes().empty())
       << "No modes config loaded from " << FLAGS_hmi_modes_config_path;
 
-  *config.mutable_maps() = ListDirAsDict(FLAGS_maps_data_path);
+  std::string maps_data_path;
+  ACHECK(cyber::common::ResourceManager::ResolveAssetPath(
+      "sites/map", &maps_data_path));
+  *config.mutable_maps() = ListDirAsDict(maps_data_path);
   AINFO << "Loaded HMI config: " << config.DebugString();
   return config;
 }
@@ -212,11 +206,15 @@ void HMIWorker::InitStatus() {
   }
 
   // Populate maps and current_map.
+  SelectedMap selected_map;
+  ACHECK(MapSelection::GetSelectedMap(&selected_map));
   for (const auto &map_entry : config_.maps()) {
     status_.add_maps(map_entry.first);
 
-    // If current FLAG_map_dir is available, set it as current_map.
-    if (map_entry.second == FLAGS_map_dir) {
+    std::error_code error;
+    const std::filesystem::path configured_map =
+        std::filesystem::canonical(map_entry.second, error);
+    if (!error && configured_map.string() == selected_map.directory) {
       status_.set_current_map(map_entry.first);
     }
   }
@@ -329,8 +327,7 @@ bool HMIWorker::Trigger(const HMIAction action) {
     case HMIAction::DISENGAGE:
       return ChangeDrivingMode(Chassis::COMPLETE_MANUAL);
     case HMIAction::RESET_MODE:
-      ResetMode();
-      break;
+      return ResetMode();
     case HMIAction::LOAD_SCENARIOS:
       LoadScenarios();
       break;
@@ -513,18 +510,50 @@ bool HMIWorker::ChangeMap(const std::string &map_name) {
     return false;
   }
 
+  const size_t separator = map_dir->find_last_of('/');
+  const std::string map_id = separator == std::string::npos
+                                 ? *map_dir
+                                 : map_dir->substr(separator + 1);
+  std::string selected_map_dir;
+  if (!MapSelection::ResolveMap(map_id, &selected_map_dir)) {
+    AERROR << "Failed to resolve selected map ID: " << map_id;
+    return false;
+  }
+  std::error_code ec;
+  if (std::filesystem::canonical(*map_dir, ec) !=
+          std::filesystem::path(selected_map_dir) ||
+      ec) {
+    AERROR << "Selected HMI map is not the resolved asset bundle: "
+           << *map_dir;
+    return false;
+  }
+  bool map_changed = false;
   {
-    // Update current_map status.
+    RLock rlock(status_mutex_);
+    map_changed = status_.current_map() != map_name;
+  }
+  if (!map_changed) {
+    return MapSelection::SelectMap(map_id);
+  }
+  // Map consumers load map files and derived state at startup. Stop every
+  // managed module before changing the selected key so restarted modules
+  // cannot run against a different map than modules that kept the old map
+  // cached in memory.
+  if (!ResetMode()) {
+    AERROR << "Cannot change map while one or more modules are still running.";
+    return false;
+  }
+  if (!MapSelection::SelectMap(map_id)) {
+    AERROR << "Failed to persist selected map ID: " << map_id;
+    return false;
+  }
+
+  {
     WLock wlock(status_mutex_);
-    if (status_.current_map() == map_name) {
-      return true;
-    }
     status_.set_current_map(map_name);
     status_changed_ = true;
   }
 
-  SetGlobalFlag("map_dir", *map_dir, &FLAGS_map_dir);
-  ResetMode();
   return true;
 }
 
@@ -546,7 +575,10 @@ void HMIWorker::ChangeMode(const std::string &mode_name) {
     AERROR << "Cannot activate mode with invalid dependencies: " << mode_name;
     return;
   }
-  ResetMode();
+  if (!ResetMode()) {
+    AERROR << "Cannot change mode while one or more modules are still running.";
+    return;
+  }
   if (!process_manager_->SetMode(next_mode)) {
     AERROR << "Cannot activate mode with invalid dependencies: " << mode_name;
     return;
@@ -631,7 +663,8 @@ void HMIWorker::SetupMode() {
   }
 }
 
-void HMIWorker::ResetMode() {
+bool HMIWorker::ResetMode() {
+  bool success = true;
   for (const auto &module : process_manager_->GetStopOrder()) {
     const Module *module_conf = FindOrNull(current_mode_.modules(), module);
     if (module_conf == nullptr) {
@@ -639,6 +672,7 @@ void HMIWorker::ResetMode() {
     }
     if (!process_manager_->StopModule(module)) {
       AERROR << "Failed to reset module " << module;
+      success = false;
       continue;
     }
     {
@@ -648,6 +682,7 @@ void HMIWorker::ResetMode() {
       }
     }
   }
+  return success;
 }
 
 void HMIWorker::StatusUpdateThreadLoop() {
@@ -842,7 +877,10 @@ bool HMIWorker::ResetSimObstacle(const std::string &scenario_id) {
     callback_api_("MapServiceReloadMap", {});
   } else {
     // Change scenario under the same map requires reset mode
-    ResetMode();
+    if (!ResetMode()) {
+      AERROR << "Failed to reset modules before changing scenario.";
+      return false;
+    }
   }
   // After changing the map, reset the start point from the scenario by
   // sim_control
@@ -1057,7 +1095,7 @@ bool HMIWorker::UpdateScenarioSet(const std::string &scenario_set_id,
     scenario_info->set_scenario_id(scenario_id);
     scenario_info->set_scenario_name(scenario_name);
     // change scenario json map dir to map name
-    // format:modules/map/data/${map_name}
+    // format:assets/sites/map/${map_name}
     const std::string map_dir = new_sim_ticket.scenario().map_dir();
     size_t idx = map_dir.find_last_of('/');
     if (idx == map_dir.npos) {

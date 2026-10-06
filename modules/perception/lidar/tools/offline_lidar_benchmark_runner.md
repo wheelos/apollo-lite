@@ -47,7 +47,7 @@
 
 注意：脚本默认直接执行 `bazel-bin/...` 下的二进制，不会自动 build；请确保二进制已在你的环境里构建好，或用 `--offline_bin/--benchmark_bin` 指定它们的位置。
 
-补充：脚本现在默认会给离线推理二进制追加 `--flagfile=modules/global_config/global_flagfile.txt`。如果你开启了 `--use_hdmap=true`，高精地图目录默认就从这个 flagfile 里的 `--map_dir=...` 读取；也可以用 `--flagfile=/your/flagfile.txt` 覆盖。
+补充：脚本现在默认会给离线推理二进制追加 `--flagfile=modules/global_config/global_flagfile.txt`。如果开启 `--use_hdmap=true`，地图 ID 从共享 KVDB 的 `runtime/selected_map` 读取，再由 MapSelection 解析到 `assets/sites/map/<map-id>`；global flagfile 不设置地图路径。
 
 ### 2.1 只生成 result（不评估）
 

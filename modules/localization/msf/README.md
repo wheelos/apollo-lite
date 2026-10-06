@@ -13,7 +13,7 @@
   * GNSS observation and ephemeris data from GNSS sensor (ROS topic `/apollo/sensor/gnss/rtk_obs` and `/apollo/sensor/gnss/rtk_eph`)
   * GNSS best pose from GNSS sensor (ROS topic is `/apollo/sensor/gnss/best_pose`)
   * Imu data from IMU sensor (ROS topic `/apollo/sensor/gnss/imu`)
-  * Localization map (FLAGS_map_dir + "/" + FLAGS_local_map_name)
+  * Localization map (selected map bundle + FLAGS_local_map_name)
   * Rigid LiDAR and IMU extrinsics from the TF tree published by `modules/transform`
   * Parameter config files for LiDAR height and GNSS lever arm (velodyne64_height.yaml and ant_imu_leverarm.yaml, located in `modules/localization/msf/params/`)
 

@@ -20,6 +20,7 @@
 #include <fstream>
 #include <utility>
 
+#include "modules/common/map/map_selection.h"
 #include "modules/common/util/json_util.h"
 #include "modules/common/util/string_util.h"
 #include "modules/map/hdmap/hdmap_util.h"
@@ -102,7 +103,12 @@ bool MapService::ReloadMap(bool force_reload) {
 void MapService::UpdateOffsets() {
   x_offset_ = 0.0;
   y_offset_ = 0.0;
-  std::ifstream ifs(FLAGS_map_dir + kMetaFileName);
+  apollo::common::SelectedMap selected_map;
+  if (!apollo::common::MapSelection::GetSelectedMap(&selected_map)) {
+    AERROR << "Failed to resolve persisted map selection.";
+    return;
+  }
+  std::ifstream ifs(selected_map.directory + kMetaFileName);
   if (!ifs.is_open()) {
     AINFO << "Failed to open map meta file: " << kMetaFileName;
   } else {

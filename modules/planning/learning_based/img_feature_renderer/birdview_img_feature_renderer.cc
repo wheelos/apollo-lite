@@ -16,6 +16,8 @@
 
 #include "modules/planning/learning_based/img_feature_renderer/birdview_img_feature_renderer.h"
 
+#include "modules/common/map/map_selection.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -46,8 +48,12 @@ bool BirdviewImgFeatureRenderer::Init(const PlanningSemanticMapConfig& config) {
   // the basemap is not yet initialized in HDMapUtil
   apollo::hdmap::HDMapUtil::BaseMap();
 
-  const std::string map_name =
-      FLAGS_map_dir.substr(FLAGS_map_dir.find_last_of("/") + 1);
+  apollo::common::SelectedMap selected_map;
+  if (!apollo::common::MapSelection::GetSelectedMap(&selected_map)) {
+    AERROR << "Failed to resolve persisted map selection.";
+    return false;
+  }
+  const std::string& map_name = selected_map.id;
   if (map_name != "sunnyvale_with_two_offices" && map_name != "sunnyvale") {
     AERROR << "Map other than sunnyvale_with_two_offices are not supported";
   }

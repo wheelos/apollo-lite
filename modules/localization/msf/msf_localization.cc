@@ -21,6 +21,7 @@
 #include "cyber/common/file.h"
 #include "cyber/time/clock.h"
 #include "modules/common/configs/config_gflags.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/common/math/euler_angles_zxy.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/common/math/quaternion.h"
@@ -47,12 +48,15 @@ MSFLocalization::MSFLocalization()
       raw_imu_msg_(nullptr) {}
 
 Status MSFLocalization::Init() {
-  InitParams();
+  if (!InitParams()) {
+    return Status(apollo::common::LOCALIZATION_ERROR_LIDAR,
+                  "Failed to resolve selected map.");
+  }
 
   return localization_integ_.Init(localization_param_);
 }
 
-void MSFLocalization::InitParams() {
+bool MSFLocalization::InitParams() {
   // integration module
   localization_param_.is_ins_can_self_align = FLAGS_integ_ins_can_self_align;
   localization_param_.is_sins_align_with_vel = FLAGS_integ_sins_align_with_vel;
@@ -69,7 +73,13 @@ void MSFLocalization::InitParams() {
   localization_param_.enable_ins_aid_rtk = FLAGS_enable_ins_aid_rtk;
 
   // lidar module
-  localization_param_.map_path = FLAGS_map_dir + "/" + FLAGS_local_map_name;
+  apollo::common::SelectedMap selected_map;
+  if (!apollo::common::MapSelection::GetSelectedMap(&selected_map)) {
+    AERROR << "Failed to resolve persisted map selection.";
+    return false;
+  }
+  localization_param_.map_path =
+      selected_map.directory + "/" + FLAGS_local_map_name;
   localization_param_.lidar_height_file = FLAGS_lidar_height_file;
   localization_param_.lidar_height_default = FLAGS_lidar_height_default;
   localization_param_.localization_mode = FLAGS_lidar_localization_mode;
@@ -203,6 +213,7 @@ void MSFLocalization::InitParams() {
   localization_timer_.reset(new cyber::Timer(
       10, [this]() { this->OnLocalizationTimer(); }, false));
   localization_timer_->Start();
+  return true;
 }
 
 void MSFLocalization::OnPointCloud(

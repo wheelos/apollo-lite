@@ -26,6 +26,9 @@
 #include <fstream>
 #include <string>
 
+#include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
+
 namespace apollo {
 namespace dreamview {
 
@@ -68,6 +71,10 @@ static void SendHttpError(struct mg_connection *conn, int code,
 }
 
 MapDataHandler::MapDataHandler(const std::string &map_dir) : map_dir_(map_dir) {
+  if (map_dir_.empty()) {
+    ACHECK(cyber::common::ResourceManager::ResolveAssetPath("sites/map",
+                                                             &map_dir_));
+  }
   if (!map_dir_.empty() && map_dir_.back() != '/') {
     map_dir_.push_back('/');
   }

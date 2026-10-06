@@ -48,6 +48,7 @@ cc_binary(
         "//modules/planning/common:feature_output",
         "//modules/planning/common:message_process",
         "//modules/planning/common:planning_gflags",
+        "@wheelos_common//modules/common/map:map_selection",
         "@boost.filesystem",
     ],
 )

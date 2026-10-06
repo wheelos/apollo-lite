@@ -21,6 +21,7 @@
 #include "gtest/gtest.h"
 
 #include "modules/planning/proto/traffic_rule_config.pb.h"
+#include "modules/common/map/map_selection.h"
 
 #include "modules/planning/on_lane_planning.h"
 #include "modules/planning/planning_base.h"
@@ -72,6 +73,7 @@ class PlanningTestBase : public ::testing::Test {
   virtual ~PlanningTestBase() = default;
 
   static void SetUpTestCase();
+  static void TearDownTestCase();
   virtual void SetUp();
   void UpdateData();
 

@@ -24,9 +24,12 @@
 #include "wheelos_msgs/map_msgs/map_lane.pb.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "cyber/record/record_reader.h"
 #include "cyber/time/clock.h"
 #include "modules/common/adapters/adapter_gflags.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/common/util/point_factory.h"
 #include "modules/common/util/util.h"
 #include "modules/map/hdmap/hdmap_util.h"
@@ -68,8 +71,14 @@ bool MessageProcess::Init(const PlanningConfig& planning_config) {
   map_m_["Gomentum"] = "gomentum";
   map_m_["Sunnyvale Loop"] = "sunnyvale_loop";
   map_m_["San Mateo"] = "san_mateo";
+  map_m_["Borregas Ave"] = "borregas_ave";
 
-  map_name_ = FLAGS_map_dir.substr(FLAGS_map_dir.find_last_of("/") + 1);
+  apollo::common::SelectedMap selected_map;
+  if (!apollo::common::MapSelection::GetSelectedMap(&selected_map)) {
+    AERROR << "Failed to resolve persisted map selection.";
+    return false;
+  }
+  map_name_ = selected_map.id;
 
   obstacle_history_map_.clear();
 
@@ -121,8 +130,6 @@ void MessageProcess::OnHMIStatus(apollo::dreamview::HMIStatus hmi_status) {
   const std::string& current_map = hmi_status.current_map();
   if (map_m_.count(current_map) > 0) {
     map_name_ = map_m_[current_map];
-    const std::string& map_base_folder = "/apollo/modules/map/data/";
-    FLAGS_map_dir = map_base_folder + map_name_;
   }
 }
 

@@ -17,7 +17,8 @@
 // A tool to refresh default_end_way_point.txt file after the map is updated.
 //
 // Usage:
-//  bazel-bin/modules/map/tools/refresh_default_end_way_point --map_dir=</yours>
+//  bazel-bin/modules/map/tools/refresh_default_end_way_point
+// The selected map is read from KVDB key runtime/selected_map.
 //
 // How it works:
 //   Assuming that the lanes information is changed while our end point's

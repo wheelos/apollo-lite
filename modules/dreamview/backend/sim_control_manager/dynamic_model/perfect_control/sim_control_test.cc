@@ -25,6 +25,7 @@
 #include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/math/quaternion.h"
+#include "modules/common/map/map_selection.h"
 
 using apollo::canbus::Chassis;
 using apollo::common::math::HeadingToQuaternion;
@@ -45,11 +46,18 @@ class SimControlTest : public ::testing::Test {
   }
 
   virtual void SetUp() {
-    FLAGS_map_dir = "modules/dreamview/backend/testdata";
+    apollo::common::MapSelection::SetTestMapDirectory(
+        "modules/dreamview/backend/testdata");
     FLAGS_base_map_filename = "garage.bin";
 
     map_service_.reset(new MapService(false));
     sim_control_.reset(new SimPerfectControl(map_service_.get()));
+  }
+
+  void TearDown() override {
+    sim_control_.reset();
+    map_service_.reset();
+    apollo::common::MapSelection::ClearTestMapDirectory();
   }
 
  protected:
