@@ -110,24 +110,15 @@ cc_library(
 )
 
 cc_library(
-    name = "calibration_registry",
-    srcs = ["calibration_registry.cc"],
-    hdrs = ["calibration_registry.h"],
+    name = "static_transform_loader",
+    srcs = ["static_transform_loader.cc"],
+    hdrs = ["static_transform_loader.h"],
     deps = [
-        "//modules/transform/proto:static_transform_conf_cc_proto",
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
+        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@core//cyber/common:file",
         "@core//cyber/common:log",
-    ],
-)
-
-cc_test(
-    name = "calibration_registry_test",
-    size = "small",
-    srcs = ["calibration_registry_test.cc"],
-    deps = [
-        ":calibration_registry",
-        "//modules/transform/proto:static_transform_conf_cc_proto",
-        "@com_google_googletest//:gtest",
+        "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
 )
 
@@ -137,11 +128,10 @@ cc_library(
     hdrs = ["static_transform_component.h"],
     copts = ['-DMODULE_NAME=\\"static_transform\\"'],
     deps = [
-        ":calibration_registry",
+        ":static_transform_loader",
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
         "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/util:util_tool",
-        "//modules/transform/proto:static_transform_conf_cc_proto",
-        "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/transform_msgs:transform_cc_proto",
     ],
@@ -178,20 +168,15 @@ install(
     targets = [
         ":libstatic_transform_component.so",
         ":buffer",
-        ":calibration_registry",
         ":timed_transform_resolver",
         ":transform_query",
         ":transform_broadcaster",
-    ],
-    deps = [
     ],
 )
 
 filegroup(
     name = "runtime_data",
     srcs = glob([
-        "conf/*.txt",
-        "conf/*.yaml",
         "dag/*.dag",
         "launch/*.launch",
     ]),

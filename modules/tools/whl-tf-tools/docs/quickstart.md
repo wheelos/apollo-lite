@@ -20,18 +20,18 @@ This guide covers common use cases for all tools.
 ## whl-tf-query - Query Transforms
 
 ```bash
-# Query transform from Apollo config
+# Query transform from a vehicle calibration manifest
 ./modules/tools/whl-tf-tools/whl_tf_query.py query \
-    -c modules/transform/conf/static_transform_conf.pb.txt \
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt \
     imu rslidar_main_front
 
 # Interactive mode
 ./modules/tools/whl-tf-tools/whl_tf_query.py interactive \
-    -c modules/transform/conf/static_transform_conf.pb.txt
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 
 # Save and reuse graph
 ./modules/tools/whl-tf-tools/whl_tf_query.py load \
-    -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt -o graph.pkl
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu localization
 ```
 

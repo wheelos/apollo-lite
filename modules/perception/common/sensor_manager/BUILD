@@ -20,7 +20,8 @@ cc_library(
         "//modules/perception/lib/thread",
         "//modules/perception/proto:perception_config_schema_cc_proto",
         "//modules/perception/proto:sensor_meta_schema_cc_proto",
-        "//modules/transform:calibration_registry",
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
+        "@core//cyber/common:resource_manager",
         "@core//cyber",
     ],
 )

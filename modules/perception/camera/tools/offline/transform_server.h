@@ -16,13 +16,15 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "Eigen/Geometry"
+#include "tf2/buffer_core.h"
 
-#include "modules/common/util/eigen_defs.h"
+#include "modules/common/vehicle_calibration/registry.h"
 
 namespace apollo {
 namespace perception {
@@ -44,17 +46,19 @@ class TransformServer {
   TransformServer() {}
   ~TransformServer() {}
 
-  inline const std::set<std::string> &vertices() { return vertices_; }
+  inline const std::set<std::string> &vertices() const { return vertices_; }
 
-  bool Init(const std::vector<std::string> &camera_names,
-            const std::string &params_path);
-
-  bool AddTransform(const std::string &child_frame_id,
-                    const std::string &frame_id,
-                    const Eigen::Affine3d &transform);
+  bool Init(const std::map<std::string, std::string> &sensor_frame_ids,
+            const std::string &lidar_frame_id);
 
   bool QueryTransform(const std::string &child_frame_id,
                       const std::string &frame_id, Eigen::Affine3d *transform);
+
+  std::string FrameId(const std::string &sensor_name) const;
+  const std::string &LidarFrameId() const { return lidar_frame_id_; }
+  const std::string &CalibrationBundlePath() const {
+    return calibration_registry_.bundle_path();
+  }
 
   void print();
 
@@ -63,26 +67,15 @@ class TransformServer {
   bool QueryPos(double timestamp, Eigen::Affine3d *pose);
 
  private:
-  struct Edge {
-    std::string child_frame_id;
-    std::string frame_id;
-    Eigen::Affine3d transform;
-
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  };
-
   std::vector<Transform> tf_;
 
   double error_limit_ = 1.0;
-  // frame ids
   std::set<std::string> vertices_;
-
-  // multimap from child frame id to frame id
-  apollo::common::EigenMultiMap<std::string, Edge> edges_;
-
-  bool FindTransform(const std::string &child_frame_id,
-                     const std::string &frame_id, Eigen::Affine3d *transform,
-                     std::map<std::string, bool> *visited);
+  std::map<std::string, std::string> sensor_frame_ids_;
+  std::string lidar_frame_id_;
+  double lidar_height_m_ = 0.0;
+  apollo::common::vehicle_calibration::Registry calibration_registry_;
+  std::unique_ptr<tf2::BufferCore> static_buffer_;
 };
 
 }  // namespace camera

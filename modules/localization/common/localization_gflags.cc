@@ -54,13 +54,6 @@ DEFINE_string(local_map_name, "local_map", "The path of localization map.");
 DEFINE_string(lidar_extrinsics_file, "",
               "Deprecated legacy lidar extrinsics yaml used only by local "
               "tools.");
-DEFINE_string(lidar_height_file,
-              "/apollo/modules/localization/msf/params/velodyne_params/"
-              "velodyne64_height.yaml",
-              "Velodyne extrinsic path for the vehicle in use, "
-              "where <ros> is the placeholder of ROS root.");
-DEFINE_double(lidar_height_default, 1.80,
-              "The height from the center of velodyne to ground.");
 DEFINE_int32(
     lidar_localization_mode, 2,
     "Localization mode, 0 for intensity, 1 for altitude, 2 for fusion.");
@@ -89,15 +82,7 @@ DEFINE_double(vel_threshold_get_yaw, 5.0, "");
 // gnss module
 DEFINE_bool(enable_ins_aid_rtk, false, "");
 DEFINE_string(eph_buffer_path, "", "");
-DEFINE_string(
-    ant_imu_leverarm_file,
-    "/apollo/modules/localization/msf/params/gnss_params/ant_imu_leverarm.yaml",
-    "Ant to imu leferarm.");
 DEFINE_bool(gnss_debug_log_flag, false, "Gnss Debug switch.");
-DEFINE_bool(if_imuant_from_file, true, "Use imu ant from gnss configure file.");
-DEFINE_double(imu_to_ant_offset_x, 0.0, "Imu ant offset x");
-DEFINE_double(imu_to_ant_offset_y, 0.0, "Imu ant offset y");
-DEFINE_double(imu_to_ant_offset_z, 0.0, "Imu ant offset z");
 DEFINE_double(imu_to_ant_offset_ux, 0.0, "Imu ant offset x uncertainty");
 DEFINE_double(imu_to_ant_offset_uy, 0.0, "Imu ant offset y uncertainty");
 DEFINE_double(imu_to_ant_offset_uz, 0.0, "Imu ant offset z uncertainty");

@@ -1,0 +1,103 @@
+calibration_version: "mock-v1"
+sensor {
+  sensor_id: "imu"
+  sensor_type: IMU
+  parent_frame_id: "base_link"
+  frame_id: "imu_link"
+  extrinsic_file: "extrinsics/imu_link.yaml"
+}
+sensor {
+  sensor_id: "lidar_top"
+  sensor_type: LIDAR
+  parent_frame_id: "base_link"
+  frame_id: "lidar_top_link"
+  extrinsic_file: "extrinsics/lidar_top_link.yaml"
+}
+sensor {
+  sensor_id: "gnss_antenna"
+  sensor_type: GNSS
+  parent_frame_id: "base_link"
+  frame_id: "gnss_antenna_link"
+  extrinsic_file: "extrinsics/gnss_antenna_link.yaml"
+}
+sensor {
+  sensor_id: "camera_front"
+  sensor_type: CAMERA
+  parent_frame_id: "base_link"
+  frame_id: "camera_front_link"
+  optical_frame_id: "camera_front_optical_frame"
+  extrinsic_file: "extrinsics/camera_front_link.yaml"
+  optical_extrinsic_file: "extrinsics/camera_front_optical_frame.yaml"
+  intrinsic_file: "intrinsics/camera_front.yaml"
+}
+sensor {
+  sensor_id: "camera_front_left"
+  sensor_type: CAMERA
+  parent_frame_id: "base_link"
+  frame_id: "camera_front_left_link"
+  optical_frame_id: "camera_front_left_optical_frame"
+  extrinsic_file: "extrinsics/camera_front_left_link.yaml"
+  optical_extrinsic_file: "extrinsics/camera_front_left_optical_frame.yaml"
+  intrinsic_file: "intrinsics/camera_front_left.yaml"
+}
+sensor {
+  sensor_id: "camera_front_right"
+  sensor_type: CAMERA
+  parent_frame_id: "base_link"
+  frame_id: "camera_front_right_link"
+  optical_frame_id: "camera_front_right_optical_frame"
+  extrinsic_file: "extrinsics/camera_front_right_link.yaml"
+  optical_extrinsic_file: "extrinsics/camera_front_right_optical_frame.yaml"
+  intrinsic_file: "intrinsics/camera_front_right.yaml"
+}
+sensor {
+  sensor_id: "camera_left"
+  sensor_type: CAMERA
+  parent_frame_id: "base_link"
+  frame_id: "camera_left_link"
+  optical_frame_id: "camera_left_optical_frame"
+  extrinsic_file: "extrinsics/camera_left_link.yaml"
+  optical_extrinsic_file: "extrinsics/camera_left_optical_frame.yaml"
+  intrinsic_file: "intrinsics/camera_left.yaml"
+}
+sensor {
+  sensor_id: "camera_right"
+  sensor_type: CAMERA
+  parent_frame_id: "base_link"
+  frame_id: "camera_right_link"
+  optical_frame_id: "camera_right_optical_frame"
+  extrinsic_file: "extrinsics/camera_right_link.yaml"
+  optical_extrinsic_file: "extrinsics/camera_right_optical_frame.yaml"
+  intrinsic_file: "intrinsics/camera_right.yaml"
+}
+sensor {
+  sensor_id: "camera_rear_left"
+  sensor_type: CAMERA
+  parent_frame_id: "base_link"
+  frame_id: "camera_rear_left_link"
+  optical_frame_id: "camera_rear_left_optical_frame"
+  extrinsic_file: "extrinsics/camera_rear_left_link.yaml"
+  optical_extrinsic_file: "extrinsics/camera_rear_left_optical_frame.yaml"
+  intrinsic_file: "intrinsics/camera_rear_left.yaml"
+}
+sensor {
+  sensor_id: "camera_rear"
+  sensor_type: CAMERA
+  parent_frame_id: "base_link"
+  frame_id: "camera_rear_link"
+  optical_frame_id: "camera_rear_optical_frame"
+  extrinsic_file: "extrinsics/camera_rear_link.yaml"
+  optical_extrinsic_file: "extrinsics/camera_rear_optical_frame.yaml"
+  intrinsic_file: "intrinsics/camera_rear.yaml"
+}
+sensor {
+  sensor_id: "camera_rear_right"
+  sensor_type: CAMERA
+  parent_frame_id: "base_link"
+  frame_id: "camera_rear_right_link"
+  optical_frame_id: "camera_rear_right_optical_frame"
+  extrinsic_file: "extrinsics/camera_rear_right_link.yaml"
+  optical_extrinsic_file: "extrinsics/camera_rear_right_optical_frame.yaml"
+  intrinsic_file: "intrinsics/camera_rear_right.yaml"
+}
+lidar_height_file: "height/lidar_top.yaml"

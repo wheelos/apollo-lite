@@ -47,14 +47,10 @@ struct ImuToAntOffset {
   double uncertainty_x;
   double uncertainty_y;
   double uncertainty_z;
-};
-
-struct VehicleToImuQuatern {
-  VehicleToImuQuatern() : x(0.0), y(0.0), z(0.0), w(1.0) {}
-  double x;
-  double y;
-  double z;
-  double w;
+  int antenna_count = 1;
+  double secondary_offset_x = 0.0;
+  double secondary_offset_y = 0.0;
+  double secondary_offset_z = 0.0;
 };
 
 struct LocalizationIntegParam {
@@ -82,7 +78,6 @@ struct LocalizationIntegParam {
   // now come from TF using the incoming sensor frame id.
   std::string lidar_extrinsic_file = "";
   std::string lidar_height_file = "";
-  double lidar_height_default = 1.7;
   int localization_mode = 2;
   int lidar_yaw_align_mode = 2;
   int lidar_filter_size = 17;
@@ -94,8 +89,6 @@ struct LocalizationIntegParam {
   bool if_use_avx = false;
 
   bool is_using_novatel_heading = true;
-  std::string ant_imu_leverarm_file = "";
-  VehicleToImuQuatern vehicle_to_imu_quatern;
 
   // localization status param
   double imu_delay_time_threshold_1 = 0.1;

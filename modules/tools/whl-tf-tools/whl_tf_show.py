@@ -404,21 +404,16 @@ class _DynamicExtrinsicFile:
         return hasattr(self, name) and getattr(self, name) is not None
 
 
-def load_static_transform_conf_pbtxt(
-        filepath: pathlib.Path,
-        apollo_root: pathlib.Path = None
+def load_calibration_manifest_pbtxt(
+        filepath: pathlib.Path
 ) -> List[Tuple[str, str, pathlib.Path]]:
-    """Load transform configuration from a pb.txt file.
-
-    Parses the static_transform_conf.pb.txt format and returns a list of
-    (frame_id, child_frame_id, file_path) tuples.
+    """Load sensor extrinsics listed by a calibration manifest.
 
     Args:
-        filepath: Path to the pb.txt file
-        apollo_root: Apollo root directory for resolving relative paths
+        filepath: Path to the calibration_manifest.pb.txt file
 
     Returns:
-        List of (frame_id, child_frame_id, file_path) tuples
+        List of (parent_frame_id, frame_id, file_path) tuples
 
     Raises:
         ValueError: If file format is invalid or protobuf is not available
@@ -428,17 +423,16 @@ def load_static_transform_conf_pbtxt(
 
     results = []
 
-    # Find all extrinsic_file blocks
     lines = content.split('\n')
     i = 0
     while i < len(lines):
         line = lines[i].strip()
-        if line.startswith('extrinsic_file') and '{' in line:
-            # Start of a new block
+        if line.startswith('sensor') and '{' in line:
+            parent_frame_id = None
             frame_id = None
-            child_frame_id = None
+            optical_frame_id = None
             file_path = None
-            enable = True
+            optical_file_path = None
 
             i += 1
             brace_depth = 1
@@ -452,23 +446,48 @@ def load_static_transform_conf_pbtxt(
                         field = parts[0].strip()
                         value = parts[1].strip()
 
-                        if field == 'frame_id':
+                        if field == 'parent_frame_id':
+                            parent_frame_id = value.strip('"\'')
+                        elif field == 'frame_id':
                             frame_id = value.strip('"\'')
-                        elif field == 'child_frame_id':
-                            child_frame_id = value.strip('"\'')
-                        elif field == 'file_path':
+                        elif field == 'optical_frame_id':
+                            optical_frame_id = value.strip('"\'')
+                        elif field == 'extrinsic_file':
                             file_path = value.strip('"\'')
-                        elif field == 'enable':
-                            enable = value.lower() in ('true', '1')
+                        elif field == 'optical_extrinsic_file':
+                            optical_file_path = value.strip('"\'')
 
                 i += 1
 
-            if enable and frame_id and child_frame_id and file_path:
-                # Resolve file path relative to apollo_root if provided
-                full_path = pathlib.Path(file_path)
-                if not full_path.is_absolute() and apollo_root:
-                    full_path = apollo_root / full_path.relative_to('/apollo')
-                results.append((frame_id, child_frame_id, full_path))
+            if parent_frame_id and frame_id and file_path:
+                relative_path = pathlib.Path(file_path)
+                if relative_path.is_absolute() or '..' in relative_path.parts:
+                    raise ValueError(f"Unsafe calibration path: {file_path}")
+                bundle_root = filepath.parent.resolve()
+                full_path = (bundle_root / relative_path).resolve()
+                try:
+                    full_path.relative_to(bundle_root)
+                except ValueError as error:
+                    raise ValueError(
+                        f"Calibration path escapes bundle: {file_path}") from error
+                results.append(
+                    (parent_frame_id, frame_id, full_path))
+                if optical_frame_id and optical_file_path:
+                    optical_relative_path = pathlib.Path(optical_file_path)
+                    if (optical_relative_path.is_absolute() or
+                            '..' in optical_relative_path.parts):
+                        raise ValueError(
+                            f"Unsafe optical calibration path: {optical_file_path}")
+                    optical_full_path = (
+                        bundle_root / optical_relative_path).resolve()
+                    try:
+                        optical_full_path.relative_to(bundle_root)
+                    except ValueError as error:
+                        raise ValueError(
+                            "Optical calibration path escapes bundle: "
+                            f"{optical_file_path}") from error
+                    results.append(
+                        (frame_id, optical_frame_id, optical_full_path))
 
         i += 1
 
@@ -748,7 +767,7 @@ def main(tf_files, config_files, apollo_root, root, length, save):
     frame relationships in an interactive 3D plot.
 
     TF files can be specified either as individual YAML files (-t) or
-    through static transform config pb.txt files (-c) which reference
+    through vehicle calibration manifests (-c) which reference
     multiple extrinsic files.
 
     Examples:
@@ -758,20 +777,20 @@ def main(tf_files, config_files, apollo_root, root, length, save):
         whl_tf_show -t tf1.yaml -t tf2.yaml
 
         \b
-        # Visualize TF configs from a static transform config file
-        whl_tf_show -c modules/transform/conf/static_transform_conf.pb.txt
+        # Visualize TF from a vehicle calibration manifest
+        whl_tf_show -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 
         \b
         # Combine both sources
-        whl_tf_show -t custom.yaml -c static_transform_conf.pb.txt
+        whl_tf_show -t custom.yaml -c calibration_manifest.pb.txt
 
         \b
         # Specify Apollo root for resolving relative paths
-        whl_tf_show -c conf/static_transform_conf.pb.txt -a /path/to/apollo
+        whl_tf_show -c calibration_manifest.pb.txt
 
         \b
         # Visualize with custom root frame and save to file
-        whl_tf_show -c conf/static_transform_conf.pb.txt -r localization -s output.png
+        whl_tf_show -c calibration_manifest.pb.txt -r localization -s output.png
     """
     # Auto-detect Apollo root if not specified
     if apollo_root is None:
@@ -808,8 +827,7 @@ def main(tf_files, config_files, apollo_root, root, length, save):
     for config_path in config_files:
         try:
             click.echo(f"Loading config: {config_path}")
-            extrinsics = load_static_transform_conf_pbtxt(
-                config_path, apollo_root)
+            extrinsics = load_calibration_manifest_pbtxt(config_path)
             for frame_id, child_frame_id, file_path in extrinsics:
                 try:
                     transform = load_transform_file(file_path)

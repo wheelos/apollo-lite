@@ -54,6 +54,7 @@ class Visualizer {
       const Eigen::Matrix4d &ex_lidar2imu, const double pitch_adj,
       const double yaw_adj, const double roll_adj, const int image_height,
       const int image_width);
+  bool SetCalibrationOutputDirectory(const std::string &path);
   bool adjust_angles(const std::string &camera_name, const double pitch_adj,
                      const double yaw_adj, const double roll_adj);
   bool SetDirectory(const std::string &path);
@@ -100,7 +101,6 @@ class Visualizer {
                               const double yaw_radian,
                               const double roll_radian);
   double regularize_angle(const double angle);
-  bool copy_backup_file(const std::string &filename);
   bool key_handler(const std::string &camera_name, const int key);
   bool reset_key();
   void draw_range_circle();
@@ -118,6 +118,7 @@ class Visualizer {
   cv::Mat world_image_;
   TransformServer *tf_server_;
   std::string path_;
+  std::string calibration_output_dir_;
   double last_timestamp_ = 0.0;
   int image_width_ = 1920;
   int image_height_ = 1080;

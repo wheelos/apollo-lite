@@ -16,6 +16,8 @@
 
 #include "modules/ndt_localization/ndt_localization.h"
 
+#include <cmath>
+
 #include "Eigen/Geometry"
 #include "yaml-cpp/yaml.h"
 
@@ -28,6 +30,7 @@
 #include "modules/localization/common/rigid_transform_helper.h"
 #include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
 #include "modules/localization/common/localization_gflags.h"
+#include "modules/common/vehicle_calibration/registry.h"
 
 namespace apollo {
 namespace localization {
@@ -40,7 +43,14 @@ bool NDTLocalization::Init() {
   ndt_debug_log_flag_ = FLAGS_ndt_debug_log_flag;
   tf_source_frame_id_ = FLAGS_broadcast_tf_frame_id;
   tf_target_frame_id_ = FLAGS_broadcast_tf_child_frame_id;
-  std::string lidar_height_file = FLAGS_lidar_height_file;
+  apollo::common::vehicle_calibration::Registry calibration_registry;
+  if (!calibration_registry.LoadFromEnvironment() ||
+      calibration_registry.resolved_lidar_height_file().empty()) {
+    AERROR << "Selected vehicle profile has no valid LiDAR height asset.";
+    return false;
+  }
+  const std::string lidar_height_file =
+      calibration_registry.resolved_lidar_height_file();
   bad_score_count_threshold_ = FLAGS_ndt_bad_score_count_threshold;
   warnning_ndt_score_ = FLAGS_ndt_warnning_ndt_score;
   error_ndt_score_ = FLAGS_ndt_error_ndt_score;
@@ -61,10 +71,9 @@ bool NDTLocalization::Init() {
 
   bool success = LoadLidarHeight(lidar_height_file, &lidar_height_);
   if (!success) {
-    AWARN << "LocalizationLidar: Fail to load the lidar"
-             " height file: "
-          << lidar_height_file << " Will use default value!";
-    lidar_height_.height = FLAGS_lidar_height_default;
+    AERROR << "Failed to load selected LiDAR height file: "
+           << lidar_height_file;
+    return false;
   }
 
   // try load zone id from local_map folder
@@ -557,16 +566,22 @@ bool NDTLocalization::LoadLidarHeight(const std::string& file_path,
     return false;
   }
 
-  YAML::Node config = YAML::LoadFile(file_path);
-  if (config["vehicle"]) {
-    if (config["vehicle"]["parameters"]) {
-      height->height = config["vehicle"]["parameters"]["height"].as<double>();
-      height->height_var =
-          config["vehicle"]["parameters"]["height_var"].as<double>();
-      return true;
+  try {
+    const YAML::Node config = YAML::LoadFile(file_path);
+    height->height = config["height_m"].as<double>();
+    height->height_var = config["height_variance_m2"].as<double>();
+    if (!std::isfinite(height->height) || !std::isfinite(height->height_var) ||
+        height->height_var < 0.0) {
+      AERROR << "LiDAR height calibration has invalid numeric values: "
+             << file_path;
+      return false;
     }
+  } catch (const YAML::Exception& error) {
+    AERROR << "Failed to parse LiDAR height file " << file_path << ": "
+           << error.what();
+    return false;
   }
-  return false;
+  return true;
 }
 
 bool NDTLocalization::LoadZoneIdFromFolder(const std::string& folder_path,

@@ -20,6 +20,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
         "@core//cyber",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -37,6 +38,7 @@ cc_library(
     deps = [
         "//modules/perception/base:common",
         "@core//cyber",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
 )
@@ -97,6 +99,7 @@ cc_library(
         "//modules/perception/inference/tensorrt/plugins:perception_inference_tensorrt_plugins",
         "@com_google_protobuf//:protobuf",
         "@core//cyber",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
         "@opencv//:imgcodecs",
     ],
@@ -130,6 +133,7 @@ cc_library(
         ":rt_common",
         ":rt_utils",
         "@com_google_protobuf//:protobuf",
+        "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
         "@opencv//:imgcodecs",
     ],
@@ -163,6 +167,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
         "@core//cyber",
+        "@cuda//:cuda_runtime",
         "@opencv//:imgcodecs",
     ],
 )

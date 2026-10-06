@@ -19,7 +19,32 @@
 #include <boost/program_options.hpp>
 
 #include "cyber/common/file.h"
+#include "cyber/common/log.h"
+#include "modules/common/vehicle_calibration/registry.h"
 #include "modules/localization/msf/local_tool/local_visualization/offline_visual/offline_local_visualizer.h"
+
+namespace {
+
+std::string ResolveLidarExtrinsicFile(const std::string& configured) {
+  if (apollo::cyber::common::PathExists(configured)) {
+    return configured;
+  }
+
+  apollo::common::vehicle_calibration::Registry registry;
+  if (!registry.LoadFromEnvironment()) {
+    return "";
+  }
+  for (const auto& sensor : registry.sensors()) {
+    if (sensor.calibration.sensor_type() ==
+        apollo::common::vehicle_calibration::LIDAR) {
+      return sensor.resolved_extrinsic_file;
+    }
+  }
+  AERROR << "Selected vehicle profile has no LiDAR extrinsic.";
+  return "";
+}
+
+}  // namespace
 
 int main(int argc, char **argv) {
   boost::program_options::options_description boost_desc("Allowed options");
@@ -46,14 +71,12 @@ int main(int argc, char **argv) {
   std::string gnss_loc_file = pcd_folder + "/gnss_loc.txt";
   std::string lidar_loc_file = pcd_folder + "/lidar_loc.txt";
   std::string fusion_loc_file = pcd_folder + "/fusion_loc.txt";
-  std::string extrinsic_file = basedir + "/velodyne128_base_link_extrinsics.yaml";
-  if (!apollo::cyber::common::PathExists(extrinsic_file)) {
-    const std::string workspace_default =
-        "modules/transform/conf/velodyne128_base_link_extrinsics.yaml";
-    extrinsic_file = apollo::cyber::common::PathExists(workspace_default)
-                         ? workspace_default
-                         : "/apollo/modules/transform/conf/"
-                           "velodyne128_base_link_extrinsics.yaml";
+  const std::string extrinsic_file =
+      ResolveLidarExtrinsicFile(basedir +
+                                "/velodyne128_base_link_extrinsics.yaml");
+  if (extrinsic_file.empty()) {
+    AERROR << "Failed to resolve selected LiDAR calibration.";
+    return -1;
   }
 
   apollo::localization::msf::OfflineLocalVisualizer local_visualizer;

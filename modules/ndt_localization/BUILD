@@ -18,6 +18,7 @@ cc_library(
     ],
     copts = ["-DMODULE_NAME=\\\"NDTlocalization\\\""],
     deps = [
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
         "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/math",
         "@wheelos_common//modules/common/map:map_selection",

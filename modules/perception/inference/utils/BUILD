@@ -11,6 +11,7 @@ cuda_library(
     deps = [
         "@boost.thread",
         "@core//cyber",
+        "@cuda//:cublas",
         "@cuda//:cuda_runtime",
     ],
 )
@@ -23,6 +24,7 @@ cc_library(
     deps = [
         "@local_config_tensorrt//:tensorrt",
         "@opencv//:imgcodecs",
+        "@cuda//:cublas",
     ],
 )
 

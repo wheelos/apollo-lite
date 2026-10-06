@@ -11,6 +11,7 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
+        ":resource_path",
         "//modules/perception/base:camera",
         "//modules/perception/base:distortion_model",
         "//modules/perception/base:omnidirectional_model",
@@ -20,6 +21,18 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@core//cyber",
         "@eigen",
+    ],
+)
+
+cc_library(
+    name = "resource_path",
+    srcs = ["resource_path.cc"],
+    hdrs = ["resource_path.h"],
+    deps = [
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
+        "@core//cyber",
+        "@core//cyber/common:file",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

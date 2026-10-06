@@ -36,6 +36,7 @@ cc_library(
         "//modules/perception/proto:perception_config_schema_cc_proto",
         "@com_google_absl//absl/strings",
         "@core//cyber",
+        "@cuda//:cuda_runtime",
     ],
     alwayslink = True,
 )
@@ -63,6 +64,7 @@ cc_library(
         "//modules/perception/base",
         "//modules/perception/lidar/lib/detector/cnn_segmentation/proto:cnnseg_param_cc_proto",
         "@com_google_googletest//:gtest",
+        "@cuda//:cuda_runtime",
         "@eigen",
     ],
 )

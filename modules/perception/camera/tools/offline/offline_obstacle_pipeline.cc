@@ -73,6 +73,8 @@ DEFINE_string(undistortion_save_dir, "./undistortion_result",
               "Directory to save undistored images.");
 DEFINE_string(save_dir, "./result",
               "Directory to save result images with detections.");
+DEFINE_string(calibration_output_dir, "",
+              "Directory for candidate calibration YAML output.");
 
 namespace apollo {
 namespace perception {
@@ -158,7 +160,15 @@ int work() {
   // Init intrinsic
   apollo::common::EigenMap<std::string, Eigen::Matrix3f> intrinsic_map;
   auto manager = common::SensorManager::Instance();
+  std::map<std::string, std::string> sensor_frame_ids;
   for (const auto &camera_name : camera_names) {
+    const std::string frame_id = manager->GetFrameId(camera_name);
+    if (frame_id.empty()) {
+      AERROR << "No explicit TF frame is configured for camera "
+             << camera_name;
+      return -1;
+    }
+    sensor_frame_ids[camera_name] = frame_id;
     base::BaseCameraModelPtr model;
     model = manager->GetUndistortCameraModel(camera_name);
     auto pinhole = dynamic_cast<base::PinholeCameraModel *>(model.get());
@@ -169,8 +179,13 @@ int work() {
   }
 
   // Init extrinsic
+  const std::string lidar_frame_id = manager->GetFrameId("velodyne128");
+  if (lidar_frame_id.empty()) {
+    AERROR << "No explicit TF frame is configured for lidar velodyne128";
+    return -1;
+  }
   TransformServer transform_server;
-  ACHECK(transform_server.Init(camera_names, FLAGS_params_dir));
+  ACHECK(transform_server.Init(sensor_frame_ids, lidar_frame_id));
   transform_server.print();
 
   // Init transform
@@ -221,6 +236,10 @@ int work() {
                                      kDefaultPitchAngle);
   Visualizer visualize;
   ACHECK(visualize.Init(camera_names, &transform_server));
+  if (!FLAGS_calibration_output_dir.empty()) {
+    ACHECK(visualize.SetCalibrationOutputDirectory(
+        FLAGS_calibration_output_dir));
+  }
   visualize.SetDirectory(FLAGS_visualize_dir);
   std::string line;
   std::string image_name;
@@ -288,11 +307,11 @@ int work() {
       pose.setIdentity();
     }
 
-        Eigen::Affine3d c2vehicle;
-        if (!transform_server.QueryTransform(camera_name, "base_link",
+    Eigen::Affine3d c2vehicle;
+    if (!transform_server.QueryTransform(camera_name, "base_link",
                                          &c2vehicle)) {
       AINFO << "Failed to query transform from " << camera_name
-        << " to base_link";
+            << " to base_link";
       return -1;
     }
     frame.camera2world_pose = pose * c2vehicle;

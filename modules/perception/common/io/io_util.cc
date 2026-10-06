@@ -24,18 +24,13 @@
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/perception/base/camera.h"
+#include "modules/perception/common/io/resource_path.h"
 
 namespace apollo {
 namespace perception {
 namespace common {
 
 using cyber::common::PathExists;
-
-namespace {
-
-constexpr char kTransformConfDir[] = "/apollo/modules/transform/conf";
-
-}  // namespace
 
 bool ReadPoseFile(const std::string &filename, Eigen::Affine3d *pose,
                   int *frame_id, double *time_stamp) {
@@ -168,19 +163,11 @@ bool LoadOmnidirectionalCameraIntrinsics(
 }
 
 std::string GetTransformExtrinsicPath(const std::string &file_name) {
-  return std::string(kTransformConfDir) + "/" + file_name;
+  return PerceptionResourcePath::ResolveCalibrationPath(file_name);
 }
 
-std::string ResolveExtrinsicPath(const std::string &params_dir,
-                                 const std::string &file_name) {
-  const std::string canonical_path = GetTransformExtrinsicPath(file_name);
-  if (PathExists(canonical_path)) {
-    return canonical_path;
-  }
-  if (params_dir.empty()) {
-    return file_name;
-  }
-  return params_dir + "/" + file_name;
+std::string ResolveExtrinsicPath(const std::string &file_name) {
+  return PerceptionResourcePath::ResolveExtrinsicPath(file_name);
 }
 
 bool GetFileList(const std::string &path, const std::string &suffix,

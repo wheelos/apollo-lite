@@ -16,7 +16,7 @@
 
 #include "modules/localization/msf/msf_localization.h"
 
-#include "yaml-cpp/yaml.h"
+#include <cmath>
 
 #include "cyber/common/file.h"
 #include "cyber/time/clock.h"
@@ -28,6 +28,7 @@
 #include "modules/localization/common/rigid_transform_helper.h"
 #include "modules/localization/common/localization_gflags.h"
 #include "modules/localization/msf/msf_localization_component.h"
+#include "modules/common/vehicle_calibration/registry.h"
 
 namespace apollo {
 namespace localization {
@@ -50,13 +51,20 @@ MSFLocalization::MSFLocalization()
 Status MSFLocalization::Init() {
   if (!InitParams()) {
     return Status(apollo::common::LOCALIZATION_ERROR_LIDAR,
-                  "Failed to resolve selected map.");
+                  "Failed to resolve selected map or vehicle calibration.");
   }
 
   return localization_integ_.Init(localization_param_);
 }
 
 bool MSFLocalization::InitParams() {
+  apollo::common::vehicle_calibration::Registry calibration_registry;
+  if (!calibration_registry.LoadFromEnvironment() ||
+      calibration_registry.resolved_lidar_height_file().empty()) {
+    AERROR << "Selected vehicle profile has no valid LiDAR height asset.";
+    return false;
+  }
+
   // integration module
   localization_param_.is_ins_can_self_align = FLAGS_integ_ins_can_self_align;
   localization_param_.is_sins_align_with_vel = FLAGS_integ_sins_align_with_vel;
@@ -80,8 +88,8 @@ bool MSFLocalization::InitParams() {
   }
   localization_param_.map_path =
       selected_map.directory + "/" + FLAGS_local_map_name;
-  localization_param_.lidar_height_file = FLAGS_lidar_height_file;
-  localization_param_.lidar_height_default = FLAGS_lidar_height_default;
+  localization_param_.lidar_height_file =
+      calibration_registry.resolved_lidar_height_file();
   localization_param_.localization_mode = FLAGS_lidar_localization_mode;
   localization_param_.lidar_yaw_align_mode = FLAGS_lidar_yaw_align_mode;
   localization_param_.lidar_filter_size = FLAGS_lidar_filter_size;
@@ -126,10 +134,6 @@ bool MSFLocalization::InitParams() {
   imu_vehicle_quat_.z() = vehicle_to_imu_quat.z();
   imu_vehicle_quat_.w() = vehicle_to_imu_quat.w();
   imu_vehicle_translation_ = vehicle_to_imu.translation();
-  localization_param_.vehicle_to_imu_quatern.x = imu_vehicle_quat_.x();
-  localization_param_.vehicle_to_imu_quatern.y = imu_vehicle_quat_.y();
-  localization_param_.vehicle_to_imu_quatern.z = imu_vehicle_quat_.z();
-  localization_param_.vehicle_to_imu_quatern.w = imu_vehicle_quat_.w();
   AINFO << "vehicle-to-imu rigid TF: " << FLAGS_broadcast_tf_child_frame_id
         << " -> " << FLAGS_localization_tf_imu_frame_id;
   AINFO << "imu_vehicle_quat: " << imu_vehicle_quat_.x() << " "
@@ -143,43 +147,86 @@ bool MSFLocalization::InitParams() {
   localization_param_.enable_lidar_localization =
       FLAGS_enable_lidar_localization;
 
-  if (!FLAGS_if_imuant_from_file) {
-    localization_param_.imu_to_ant_offset.offset_x = FLAGS_imu_to_ant_offset_x;
-    localization_param_.imu_to_ant_offset.offset_y = FLAGS_imu_to_ant_offset_y;
-    localization_param_.imu_to_ant_offset.offset_z = FLAGS_imu_to_ant_offset_z;
-    localization_param_.imu_to_ant_offset.uncertainty_x =
-        FLAGS_imu_to_ant_offset_ux;
-    localization_param_.imu_to_ant_offset.uncertainty_y =
-        FLAGS_imu_to_ant_offset_uy;
-    localization_param_.imu_to_ant_offset.uncertainty_z =
-        FLAGS_imu_to_ant_offset_uz;
-  } else {
-    double offset_x = 0.0;
-    double offset_y = 0.0;
-    double offset_z = 0.0;
-    double uncertainty_x = 0.0;
-    double uncertainty_y = 0.0;
-    double uncertainty_z = 0.0;
-    AINFO << "Ant imu lever arm file: " << FLAGS_ant_imu_leverarm_file;
-    ACHECK(LoadGnssAntennaExtrinsic(FLAGS_ant_imu_leverarm_file, &offset_x,
-                                    &offset_y, &offset_z, &uncertainty_x,
-                                    &uncertainty_y, &uncertainty_z));
-    localization_param_.ant_imu_leverarm_file = FLAGS_ant_imu_leverarm_file;
-
-    localization_param_.imu_to_ant_offset.offset_x = offset_x;
-    localization_param_.imu_to_ant_offset.offset_y = offset_y;
-    localization_param_.imu_to_ant_offset.offset_z = offset_z;
-    localization_param_.imu_to_ant_offset.uncertainty_x = uncertainty_x;
-    localization_param_.imu_to_ant_offset.uncertainty_y = uncertainty_y;
-    localization_param_.imu_to_ant_offset.uncertainty_z = uncertainty_z;
-
-    AINFO << localization_param_.imu_to_ant_offset.offset_x << " "
-          << localization_param_.imu_to_ant_offset.offset_y << " "
-          << localization_param_.imu_to_ant_offset.offset_z << " "
-          << localization_param_.imu_to_ant_offset.uncertainty_x << " "
-          << localization_param_.imu_to_ant_offset.uncertainty_y << " "
-          << localization_param_.imu_to_ant_offset.uncertainty_z;
+  Eigen::Affine3d imu_to_gnss_antenna = Eigen::Affine3d::Identity();
+  constexpr char kGnssAntennaFrameId[] = "gnss_antenna_link";
+  constexpr char kGnssSecondaryAntennaFrameId[] =
+      "gnss_antenna_secondary_link";
+  bool has_primary_antenna = false;
+  bool has_secondary_antenna = false;
+  for (const auto& sensor : calibration_registry.sensors()) {
+    if (sensor.calibration.sensor_type() !=
+        apollo::common::vehicle_calibration::GNSS) {
+      continue;
+    }
+    has_primary_antenna =
+        has_primary_antenna ||
+        sensor.calibration.frame_id() == kGnssAntennaFrameId;
+    has_secondary_antenna =
+        has_secondary_antenna ||
+        sensor.calibration.frame_id() == kGnssSecondaryAntennaFrameId;
   }
+  if (!has_primary_antenna) {
+    AERROR << "Selected vehicle profile does not declare GNSS antenna frame "
+           << kGnssAntennaFrameId;
+    return false;
+  }
+  ACHECK(apollo::localization::common::LookupStaticTransform(
+      FLAGS_localization_tf_imu_frame_id, kGnssAntennaFrameId,
+      &imu_to_gnss_antenna, kStartupStaticTransformTimeoutSec))
+      << "Failed to load rigid IMU-to-GNSS-antenna TF. IMU frame: "
+      << FLAGS_localization_tf_imu_frame_id << ", antenna frame: "
+      << kGnssAntennaFrameId;
+  const Eigen::Vector3d imu_to_gnss_translation =
+      imu_to_gnss_antenna.translation();
+  localization_param_.imu_to_ant_offset.offset_x =
+      imu_to_gnss_translation.x();
+  localization_param_.imu_to_ant_offset.offset_y =
+      imu_to_gnss_translation.y();
+  localization_param_.imu_to_ant_offset.offset_z =
+      imu_to_gnss_translation.z();
+  localization_param_.imu_to_ant_offset.antenna_count =
+      has_secondary_antenna ? 2 : 1;
+  if (has_secondary_antenna) {
+    Eigen::Affine3d imu_to_secondary_antenna = Eigen::Affine3d::Identity();
+    ACHECK(apollo::localization::common::LookupStaticTransform(
+        FLAGS_localization_tf_imu_frame_id, kGnssSecondaryAntennaFrameId,
+        &imu_to_secondary_antenna, kStartupStaticTransformTimeoutSec))
+        << "Failed to load rigid IMU-to-secondary-GNSS-antenna TF. IMU frame: "
+        << FLAGS_localization_tf_imu_frame_id << ", antenna frame: "
+        << kGnssSecondaryAntennaFrameId;
+    const Eigen::Vector3d secondary_translation =
+        imu_to_secondary_antenna.translation();
+    localization_param_.imu_to_ant_offset.secondary_offset_x =
+        secondary_translation.x();
+    localization_param_.imu_to_ant_offset.secondary_offset_y =
+        secondary_translation.y();
+    localization_param_.imu_to_ant_offset.secondary_offset_z =
+        secondary_translation.z();
+    AINFO << "imu-to-secondary-GNSS antenna translation from static TF: "
+          << secondary_translation.transpose();
+  }
+  localization_param_.imu_to_ant_offset.uncertainty_x =
+      FLAGS_imu_to_ant_offset_ux;
+  localization_param_.imu_to_ant_offset.uncertainty_y =
+      FLAGS_imu_to_ant_offset_uy;
+  localization_param_.imu_to_ant_offset.uncertainty_z =
+      FLAGS_imu_to_ant_offset_uz;
+  if (!std::isfinite(FLAGS_imu_to_ant_offset_ux) ||
+      !std::isfinite(FLAGS_imu_to_ant_offset_uy) ||
+      !std::isfinite(FLAGS_imu_to_ant_offset_uz) ||
+      FLAGS_imu_to_ant_offset_ux < 0.0 ||
+      FLAGS_imu_to_ant_offset_uy < 0.0 ||
+      FLAGS_imu_to_ant_offset_uz < 0.0) {
+    AERROR << "GNSS antenna uncertainty values must be finite and "
+              "non-negative.";
+    return false;
+  }
+  AINFO << "imu-to-GNSS antenna translation from static TF: "
+        << imu_to_gnss_translation.transpose();
+  AINFO << "imu-to-GNSS antenna uncertainty: "
+        << FLAGS_imu_to_ant_offset_ux << " "
+        << FLAGS_imu_to_ant_offset_uy << " "
+        << FLAGS_imu_to_ant_offset_uz;
 
   localization_param_.imu_delay_time_threshold_1 =
       FLAGS_imu_delay_time_threshold_1;
@@ -377,31 +424,6 @@ void MSFLocalization::CompensateImuVehicleExtrinsic(
   position->set_x(position->x() + compensated_position[0]);
   position->set_y(position->y() + compensated_position[1]);
   position->set_z(position->z() + compensated_position[2]);
-}
-
-bool MSFLocalization::LoadGnssAntennaExtrinsic(
-    const std::string &file_path, double *offset_x, double *offset_y,
-    double *offset_z, double *uncertainty_x, double *uncertainty_y,
-    double *uncertainty_z) {
-  YAML::Node config = YAML::LoadFile(file_path);
-  if (config["leverarm"]) {
-    if (config["leverarm"]["primary"]["offset"]) {
-      *offset_x = config["leverarm"]["primary"]["offset"]["x"].as<double>();
-      *offset_y = config["leverarm"]["primary"]["offset"]["y"].as<double>();
-      *offset_z = config["leverarm"]["primary"]["offset"]["z"].as<double>();
-
-      if (config["leverarm"]["primary"]["uncertainty"]) {
-        *uncertainty_x =
-            config["leverarm"]["primary"]["uncertainty"]["x"].as<double>();
-        *uncertainty_y =
-            config["leverarm"]["primary"]["uncertainty"]["y"].as<double>();
-        *uncertainty_z =
-            config["leverarm"]["primary"]["uncertainty"]["z"].as<double>();
-      }
-      return true;
-    }
-  }
-  return false;
 }
 
 bool MSFLocalization::LoadZoneIdFromFolder(const std::string &folder_path,

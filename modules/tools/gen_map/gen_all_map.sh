@@ -2,8 +2,18 @@
 
 set -e
 
-# Define the root path for Apollo map data
-APOLLO_MAP_PATH="/apollo/modules/map/data"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+APOLLO_ROOT_DIR="${APOLLO_ROOT_DIR:-$(cd "${SCRIPT_DIR}/../../.." && pwd -P)}"
+if [[ "${APOLLO_ROOT_DIR}" != /* ]]; then
+  echo "Error: APOLLO_ROOT_DIR must be an absolute path."
+  exit 1
+fi
+WHEELOS_ASSET_ROOT="${WHEELOS_ASSET_ROOT:-${APOLLO_ROOT_DIR}/assets}"
+if [[ "${WHEELOS_ASSET_ROOT}" != /* ]]; then
+  echo "Error: WHEELOS_ASSET_ROOT must be an absolute path."
+  exit 1
+fi
+APOLLO_MAP_PATH="${WHEELOS_ASSET_ROOT}/sites/map"
 
 # Check if the map directory is provided as an argument
 if [ -z "$1" ]; then
@@ -24,6 +34,8 @@ MAP_NAME=$(basename "${YOUR_MAP_DIR}")
 
 # Construct the full path to your map directory
 NEW_MAP_PATH="${APOLLO_MAP_PATH}/${MAP_NAME}"
+
+mkdir -p "${APOLLO_MAP_PATH}"
 
 if [ -d "${NEW_MAP_PATH}" ]; then
   echo "Warning: The directory ${NEW_MAP_PATH} already exists. It will be removed."

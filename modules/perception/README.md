@@ -82,6 +82,11 @@ The perception module outputs are:
 
     See [How to Run Perception Module on Your Local Computer](https://github.com/ApolloAuto/apollo/blob/master/docs/howto/how_to_run_perception_module_on_your_local_computer.md).
 
+    GPU builds use the repository's `--config=gpu` Bazel configuration, which
+    supplies `USE_GPU` compiler options to C++ and CUDA targets. For a
+    target-specific build, use `bazel build --config=gpu //<target>` rather
+    than adding `-DUSE_GPU=1` to individual targets.
+
 3. This module contains a redistribution in binary form of a modified version of [caffe](https://github.com/BVLC/caffe).
 A copy of the caffe's original copyright statement is included below:
 

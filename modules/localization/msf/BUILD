@@ -29,6 +29,7 @@ cc_library(
         "@wheelos_common//modules/common/monitor_log",
         "@wheelos_common//modules/common/status",
         "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
         "//modules/localization/common:localization_gflags",
         "//modules/localization/common:rigid_transform_helper",
         "//modules/localization/msf/common/util",

@@ -1,0 +1,13 @@
+header:
+  frame_id: base_link
+child_frame_id: camera_front_left_link
+transform:
+  translation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  rotation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0

@@ -1,0 +1,13 @@
+header:
+  frame_id: camera_rear_link
+child_frame_id: camera_rear_optical_frame
+transform:
+  translation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  rotation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0

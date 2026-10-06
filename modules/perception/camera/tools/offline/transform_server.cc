@@ -15,93 +15,127 @@
  *****************************************************************************/
 #include "modules/perception/camera/tools/offline/transform_server.h"
 
+#include <cmath>
+#include <fstream>
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/perception/camera/common/util.h"
-#include "modules/perception/common/io/io_util.h"
+#include "modules/transform/static_transform_loader.h"
+#include "tf2/exceptions.h"
 #include "yaml-cpp/yaml.h"
 
 namespace apollo {
 namespace perception {
 namespace camera {
 
-bool TransformServer::Init(const std::vector<std::string> &camera_names,
-                           const std::string &params_path) {
-  const std::string params_dir = params_path;
-  // 1. Init lidar height
-  try {
-    YAML::Node lidar_height =
-        YAML::LoadFile(params_dir + "/" + "velodyne128_height.yaml");
-    Eigen::Affine3d trans;
-    trans.linear() = Eigen::Matrix3d::Identity();
-    AINFO << trans.translation() << " "
-          << lidar_height["vehicle"]["parameters"]["height"];
-    trans.translation() << 0.0, 0.0,
-        lidar_height["vehicle"]["parameters"]["height"].as<double>();
-    AddTransform("velodyne128", "ground", trans);
-  } catch (YAML::InvalidNode &in) {
-    AERROR << "load velodyne128 extrisic file error"
-           << " YAML::InvalidNode exception";
-    return false;
-  } catch (YAML::TypedBadConversion<float> &bc) {
-    AERROR << "load velodyne128 extrisic file error, "
-           << "YAML::TypedBadConversion exception";
-    return false;
-  } catch (YAML::Exception &e) {
-    AERROR << "load velodyne128 extrisic file "
-           << " error, YAML exception:" << e.what();
+bool TransformServer::Init(
+    const std::map<std::string, std::string> &sensor_frame_ids,
+    const std::string &lidar_frame_id) {
+  if (sensor_frame_ids.empty() || lidar_frame_id.empty()) {
+    AERROR << "Offline TF requires explicit sensor-to-frame mappings.";
     return false;
   }
-  // 2. Init lidar and camera extrinsic
-  std::vector<std::string> extrinsic_filelist;
-  extrinsic_filelist.push_back(
-      common::ResolveExtrinsicPath(params_dir,
-                     "base_link_imu_link_extrinsics.yaml"));
-  extrinsic_filelist.push_back(
-      common::ResolveExtrinsicPath(params_dir,
-                                   "velodyne128_base_link_extrinsics.yaml"));
-  for (const auto &camera_name : camera_names) {
-    extrinsic_filelist.push_back(common::ResolveExtrinsicPath(
-        params_dir, camera_name + "_extrinsics.yaml"));
+  if (!calibration_registry_.LoadFromEnvironment()) {
+    AERROR << "Failed to load selected vehicle calibration profile.";
+    return false;
   }
 
-  for (const auto &yaml_file : extrinsic_filelist) {
-    try {
-      YAML::Node node = YAML::LoadFile(yaml_file);
-      if (node.IsNull()) {
-        AINFO << "Load " << yaml_file << " failed! please check!";
-        return false;
-      }
-      std::string child_frame_id = node["child_frame_id"].as<std::string>();
-      std::string frame_id = node["header"]["frame_id"].as<std::string>();
-      double q[4] = {node["transform"]["rotation"]["w"].as<double>(),
-                     node["transform"]["rotation"]["x"].as<double>(),
-                     node["transform"]["rotation"]["y"].as<double>(),
-                     node["transform"]["rotation"]["z"].as<double>()};
-      double t[3] = {node["transform"]["translation"]["x"].as<double>(),
-                     node["transform"]["translation"]["y"].as<double>(),
-                     node["transform"]["translation"]["z"].as<double>()};
-      Eigen::Quaterniond qq(q[0], q[1], q[2], q[3]);
-      Eigen::Affine3d trans;
-      trans.linear() = qq.matrix();
-      trans.translation() << t[0], t[1], t[2];
-      if (!AddTransform(child_frame_id, frame_id, trans)) {
-        AINFO << "failed to add transform from " << child_frame_id << " to "
-              << frame_id << std::endl;
-      }
-    } catch (YAML::InvalidNode &in) {
-      AERROR << "load camera extrisic file " << yaml_file
-             << " with error, YAML::InvalidNode exception";
-      return false;
-    } catch (YAML::TypedBadConversion<double> &bc) {
-      AERROR << "load camera extrisic file " << yaml_file
-             << " with error, YAML::TypedBadConversion exception";
-      return false;
-    } catch (YAML::Exception &e) {
-      AERROR << "load camera extrisic file " << yaml_file
-             << " with error, YAML exception:" << e.what();
+  apollo::transform::TransformStampeds transforms;
+  if (!apollo::transform::LoadStaticTransforms(calibration_registry_,
+                                               &transforms)) {
+    AERROR << "Failed to load selected calibration static transforms.";
+    return false;
+  }
+
+  static_buffer_.reset(new tf2::BufferCore());
+  for (const auto &stamped : transforms.transforms()) {
+    geometry_msgs::TransformStamped transform;
+    transform.header.frame_id = stamped.header().frame_id();
+    transform.child_frame_id = stamped.child_frame_id();
+    const auto &translation = stamped.transform().translation();
+    transform.transform.translation.x = translation.x();
+    transform.transform.translation.y = translation.y();
+    transform.transform.translation.z = translation.z();
+    const auto &rotation = stamped.transform().rotation();
+    transform.transform.rotation.x = rotation.qx();
+    transform.transform.rotation.y = rotation.qy();
+    transform.transform.rotation.z = rotation.qz();
+    transform.transform.rotation.w = rotation.qw();
+    if (!static_buffer_->setTransform(transform, "vehicle calibration", true)) {
+      AERROR << "Failed to insert static TF edge "
+             << transform.header.frame_id << " -> "
+             << transform.child_frame_id;
       return false;
     }
+    vertices_.insert(transform.header.frame_id);
+    vertices_.insert(transform.child_frame_id);
+  }
+
+  auto has_calibration_frame =
+      [this](const std::string &frame_id,
+             apollo::common::vehicle_calibration::SensorType sensor_type) {
+    for (const auto &sensor : calibration_registry_.sensors()) {
+      if (sensor.calibration.frame_id() == frame_id &&
+          sensor.calibration.sensor_type() == sensor_type) {
+        return true;
+      }
+    }
+    return false;
+  };
+  sensor_frame_ids_ = sensor_frame_ids;
+  for (const auto &entry : sensor_frame_ids_) {
+    if (entry.first.empty() || entry.second.empty() ||
+        !has_calibration_frame(entry.second,
+                               apollo::common::vehicle_calibration::CAMERA)) {
+      AERROR << "Explicit camera frame is absent from selected calibration: "
+             << entry.first << " -> " << entry.second;
+      return false;
+    }
+  }
+  lidar_frame_id_ = lidar_frame_id;
+  if (!has_calibration_frame(
+          lidar_frame_id_, apollo::common::vehicle_calibration::LIDAR)) {
+    AERROR << "Explicit lidar frame is absent from selected calibration: "
+           << lidar_frame_id_;
+    return false;
+  }
+  for (const auto &entry : sensor_frame_ids_) {
+    if (vertices_.find(entry.second) == vertices_.end()) {
+      AERROR << "Sensor metadata frame is absent from selected calibration TF: "
+             << entry.first << " -> " << entry.second;
+      return false;
+    }
+  }
+  if (vertices_.find(lidar_frame_id_) == vertices_.end()) {
+    AERROR << "Selected lidar frame is absent from calibration TF: "
+           << lidar_frame_id_;
+    return false;
+  }
+
+  const std::string &height_file =
+      calibration_registry_.resolved_lidar_height_file();
+  if (height_file.empty() || !cyber::common::PathExists(height_file)) {
+    AERROR << "Selected calibration has no readable lidar height asset: "
+           << height_file;
+    return false;
+  }
+  try {
+    const YAML::Node height = YAML::LoadFile(height_file);
+    const std::string height_frame_id =
+        height["frame_id"].as<std::string>();
+    lidar_height_m_ = height["height_m"].as<double>();
+    if (height_frame_id != lidar_frame_id_ ||
+        !std::isfinite(lidar_height_m_)) {
+      AERROR << "Invalid lidar height calibration in " << height_file
+             << ": expected frame " << lidar_frame_id_ << ", found "
+             << height_frame_id;
+      return false;
+    }
+  } catch (const YAML::Exception &error) {
+    AERROR << "Failed to parse lidar height calibration " << height_file
+           << ": " << error.what();
+    return false;
   }
   return true;
 }
@@ -146,112 +180,70 @@ bool TransformServer::QueryPos(double timestamp, Eigen::Affine3d *pose) {
   return false;
 }
 
-bool TransformServer::AddTransform(const std::string &child_frame_id,
-                                   const std::string &frame_id,
-                                   const Eigen::Affine3d &transform) {
-  vertices_.insert(child_frame_id);
-  vertices_.insert(frame_id);
-
-  auto begin = edges_.lower_bound(child_frame_id);
-  auto end = edges_.upper_bound(child_frame_id);
-
-  for (auto iter = begin; iter != end; ++iter) {
-    if (iter->second.frame_id == frame_id) {
-      return false;
-    }
-  }
-
-  Edge e;
-  e.child_frame_id = child_frame_id;
-  e.frame_id = frame_id;
-  e.transform = transform;
-
-  Edge e_inv;
-  e_inv.child_frame_id = frame_id;
-  e_inv.frame_id = child_frame_id;
-  e_inv.transform = transform.inverse();
-  ADEBUG << "Add transform between " << frame_id << " and " << child_frame_id;
-  edges_.insert({child_frame_id, e});
-  edges_.insert({frame_id, e_inv});
-
-  return true;
-}
-
 bool TransformServer::QueryTransform(const std::string &child_frame_id,
                                      const std::string &frame_id,
                                      Eigen::Affine3d *transform) {
-  *transform = Eigen::Affine3d::Identity();
-
-  if (child_frame_id == frame_id) {
+  if (transform == nullptr || static_buffer_ == nullptr) {
+    AERROR << "Offline TF query has no output or initialized buffer.";
+    return false;
+  }
+  const std::string source_frame_id = FrameId(child_frame_id);
+  if (frame_id == "ground") {
+    const std::string base_frame_id = "base_link";
+    geometry_msgs::TransformStamped base_to_camera;
+    geometry_msgs::TransformStamped base_to_lidar;
+    try {
+      base_to_camera = static_buffer_->lookupTransform(
+          base_frame_id, source_frame_id, tf2::Time(0));
+      base_to_lidar = static_buffer_->lookupTransform(
+          base_frame_id, lidar_frame_id_, tf2::Time(0));
+    } catch (const tf2::TransformException &error) {
+      AERROR << "Failed to query camera/lidar transform for ground height: "
+             << error.what();
+      return false;
+    }
+    Eigen::Quaterniond rotation(
+        base_to_camera.transform.rotation.w,
+        base_to_camera.transform.rotation.x,
+        base_to_camera.transform.rotation.y,
+        base_to_camera.transform.rotation.z);
+    transform->linear() = rotation.toRotationMatrix();
+    transform->translation()
+        << base_to_camera.transform.translation.x,
+        base_to_camera.transform.translation.y,
+        base_to_camera.transform.translation.z -
+            base_to_lidar.transform.translation.z + lidar_height_m_;
     return true;
   }
 
-  // Vertices does not exist
-  if (vertices_.find(child_frame_id) == vertices_.end() ||
-      vertices_.find(frame_id) == vertices_.end()) {
+  const std::string target_frame_id = FrameId(frame_id);
+  try {
+    const auto result = static_buffer_->lookupTransform(
+        target_frame_id, source_frame_id, tf2::Time(0));
+    Eigen::Quaterniond rotation(result.transform.rotation.w,
+                                result.transform.rotation.x,
+                                result.transform.rotation.y,
+                                result.transform.rotation.z);
+    *transform = Eigen::Translation3d(result.transform.translation.x,
+                                       result.transform.translation.y,
+                                       result.transform.translation.z) *
+                 rotation;
+  } catch (const tf2::TransformException &error) {
+    AERROR << "Failed to query static TF from " << source_frame_id << " to "
+           << target_frame_id << ": " << error.what();
     return false;
   }
-
-  std::map<std::string, bool> visited;
-  for (const auto &item : vertices_) {
-    visited[item] = false;
-  }
-
-  return FindTransform(child_frame_id, frame_id, transform, &visited);
+  return true;
 }
 
-bool TransformServer::FindTransform(const std::string &child_frame_id,
-                                    const std::string &frame_id,
-                                    Eigen::Affine3d *transform,
-                                    std::map<std::string, bool> *visited) {
-  Eigen::Affine3d loc_transform = Eigen::Affine3d::Identity();
-
-  auto begin = edges_.lower_bound(child_frame_id);
-  auto end = edges_.upper_bound(child_frame_id);
-
-  (*visited)[child_frame_id] = true;
-  for (auto iter = begin; iter != end; ++iter) {
-    auto &edge = iter->second;
-    if ((*visited)[edge.frame_id]) {
-      continue;
-    }
-
-    ADEBUG << "from " << edge.child_frame_id << " to " << edge.frame_id
-           << std::endl;
-
-    loc_transform = edge.transform * loc_transform;
-
-    if (edge.frame_id == frame_id) {
-      *transform = loc_transform;
-      return true;
-    }
-
-    Eigen::Affine3d tr = Eigen::Affine3d::Identity();
-    if (FindTransform(edge.frame_id, frame_id, &tr, visited)) {
-      loc_transform = tr * loc_transform;
-      *transform = loc_transform;
-      return true;
-    }
-
-    loc_transform = edge.transform.inverse() * loc_transform;
-  }
-  return false;
+std::string TransformServer::FrameId(const std::string &sensor_name) const {
+  const auto entry = sensor_frame_ids_.find(sensor_name);
+  return entry == sensor_frame_ids_.end() ? sensor_name : entry->second;
 }
 
 void TransformServer::print() {
-  for (auto item : edges_) {
-    AINFO << "----------------" << std::endl;
-    AINFO << item.first << std::endl;
-    AINFO << "edge: " << std::endl;
-    AINFO << "from " << item.second.child_frame_id << " to "
-          << item.second.frame_id << std::endl;
-    Eigen::Affine3d trans = item.second.transform;
-    Eigen::Quaterniond quat(trans.linear());
-    AINFO << "rot: " << quat.x() << " " << quat.y() << " " << quat.z() << " "
-          << quat.w() << std::endl;
-    AINFO << "trans: " << trans.translation()[0] << " "
-          << trans.translation()[1] << " " << trans.translation()[2]
-          << std::endl;
+  for (const auto &vertex : vertices_) {
+    AINFO << "TF frame: " << vertex;
   }
 }
 

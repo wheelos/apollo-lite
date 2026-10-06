@@ -18,7 +18,6 @@ message LaneDetection {
   optional string output_lanes_channel_name = 10
       [default = "/perception/lanes"];
   optional double default_camera_pitch = 11 [default = 0.0];
-  optional double default_camera_height = 12 [default = 1.5];
   optional string lane_calibration_working_sensor_name = 13
       [default = "front_6mm"];
   optional string calibrator_method = 14 [default = "LaneLineCalibrator"];

@@ -19,7 +19,6 @@ install(
         ],
         [
             "//tools:install",
-            "//modules/calibration:install",
             "//modules/canbus:install",
             "//modules/global_config:install",
             "//modules/control:install",
@@ -62,10 +61,7 @@ install_src_files(
             "//modules/monitor:install_src",
             "//modules/planning:install_src",
             "//modules/routing:install_src",
-            # task_manager has no BUILD file in this checkout; restore this
-            # dependency when its source-install target is available again.
             "//modules/transform:install_src",
-            "//modules/calibration:install_src",
             # canbus has an install target but no source-install target.
             "//modules/drivers:install_src",
             "//modules/guardian:install_src",

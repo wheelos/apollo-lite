@@ -5,7 +5,7 @@ Interactive TF query tool - load TF configuration files and query transforms bet
 ## Features
 
 - Load multiple TF YAML files
-- Load from Apollo static transform config files (pb.txt format)
+- Load sensor extrinsics from versioned vehicle calibration manifests
 - Query transforms between any two frames in the TF tree
 - Automatic path finding through the transform graph
 - Interactive query mode for multiple queries
@@ -30,17 +30,17 @@ Load and display TF configuration files:
 # Load individual TF YAML files
 ./modules/tools/whl-tf-tools/whl_tf_query.py load tf1.yaml tf2.yaml
 
-# Load from Apollo static transform config
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt
+# Load from a vehicle calibration manifest
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 
 # Combine both sources
-./modules/tools/whl-tf-tools/whl_tf_query.py load custom.yaml -c modules/transform/conf/static_transform_conf.pb.txt
+./modules/tools/whl-tf-tools/whl_tf_query.py load custom.yaml -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 
 # List all loaded frames and transforms
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt --list
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt --list
 
 # Save loaded graph for later use
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt -o graph.pkl
 ```
 
 #### Load Options
@@ -48,8 +48,7 @@ Load and display TF configuration files:
 | Option | Description |
 |--------|-------------|
 | `-t TF_FILES` | Individual TF YAML files to load (can specify multiple) |
-| `-c, --config CONFIG_FILES` | Apollo static transform config files (pb.txt format) |
-| `-a, --apollo-root PATH` | Apollo root directory (auto-detected if not specified) |
+| `-c, --config CONFIG_FILES` | Calibration manifests; extrinsic paths are relative to the bundle |
 | `-o, --output PATH` | Save loaded graph to pickle file for later use |
 | `--list` | List all loaded frames and transforms |
 
@@ -61,8 +60,8 @@ Query transform between two frames:
 # Query transform with direct files
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -t tf1.yaml -t tf2.yaml imu rslidar_main_front
 
-# Query transform from config
-./modules/tools/whl-tf-tools/whl_tf_query.py query -c modules/transform/conf/static_transform_conf.pb.txt rslidar_main_front rslidar_main_rear
+# Query transform from a calibration manifest
+./modules/tools/whl-tf-tools/whl_tf_query.py query -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt base_link camera_front_link
 
 # Query with saved graph
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu localization
@@ -100,8 +99,8 @@ Interactive mode for querying multiple transforms:
 # Start with saved graph
 ./modules/tools/whl-tf-tools/whl_tf_query.py interactive -g graph.pkl
 
-# Start with Apollo config
-./modules/tools/whl-tf-tools/whl_tf_query.py interactive -c modules/transform/conf/static_transform_conf.pb.txt
+# Start with a vehicle calibration manifest
+./modules/tools/whl-tf-tools/whl_tf_query.py interactive -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 ```
 
 #### Interactive Commands
@@ -168,7 +167,7 @@ child_frame_id: child_frame
 
 ```bash
 ./modules/tools/whl-tf-tools/whl_tf_query.py query \
-    -c modules/transform/conf/static_transform_conf.pb.txt \
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt \
     rslidar_main_front imu
 ```
 
@@ -205,7 +204,7 @@ child_frame_id: imu
 ```bash
 # First, load and save the graph
 ./modules/tools/whl-tf-tools/whl_tf_query.py load \
-    -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt -o graph.pkl
 
 # Later, use the saved graph for queries
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu rslidar_main_rear

@@ -22,16 +22,16 @@
 ```bash
 # 从 Apollo 配置查询变换
 ./modules/tools/whl-tf-tools/whl_tf_query.py query \
-    -c modules/transform/conf/static_transform_conf.pb.txt \
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt \
     imu rslidar_main_front
 
 # 交互式模式
 ./modules/tools/whl-tf-tools/whl_tf_query.py interactive \
-    -c modules/transform/conf/static_transform_conf.pb.txt
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 
 # 保存并复用图
 ./modules/tools/whl-tf-tools/whl_tf_query.py load \
-    -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt -o graph.pkl
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu localization
 ```
 

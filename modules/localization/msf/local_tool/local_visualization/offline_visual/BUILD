@@ -33,6 +33,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":offline_local_visualizer_lib",
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
         "@boost.program_options",
     ],
 )

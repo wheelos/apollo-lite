@@ -38,6 +38,7 @@ cc_library(
         "//modules/perception/inference/utils:inference_util_lib",
         "//modules/perception/pipeline:stage",
         "//modules/perception/pipeline/proto/stage:tracking_feature_cc_proto",
+        "@cuda//:cuda_runtime",
         "@core//cyber",
     ],
 )

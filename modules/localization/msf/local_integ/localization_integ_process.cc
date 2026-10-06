@@ -16,8 +16,6 @@
 
 #include "modules/localization/msf/local_integ/localization_integ_process.h"
 
-#include "yaml-cpp/yaml.h"
-
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
 #include "modules/common/util/perf_util.h"
@@ -360,26 +358,6 @@ bool LocalizationIntegProcess::CheckIntegMeasureData(
          << "[measure type:" << int(measure_data.measure_type) << "]";
 
   return true;
-}
-
-bool LocalizationIntegProcess::LoadGnssAntennaExtrinsic(
-    const std::string &file_path, TransformD *extrinsic) const {
-  CHECK_NOTNULL(extrinsic);
-
-  YAML::Node confige = YAML::LoadFile(file_path);
-  if (confige["leverarm"]) {
-    if (confige["leverarm"]["primary"]["offset"]) {
-      extrinsic->translation()(0) =
-          confige["leverarm"]["primary"]["offset"]["x"].as<double>();
-      extrinsic->translation()(1) =
-          confige["leverarm"]["primary"]["offset"]["y"].as<double>();
-      extrinsic->translation()(2) =
-          confige["leverarm"]["primary"]["offset"]["z"].as<double>();
-      return true;
-    }
-  }
-
-  return false;
 }
 
 }  // namespace msf

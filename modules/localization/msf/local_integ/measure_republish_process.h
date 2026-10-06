@@ -97,9 +97,6 @@ class MeasureRepublishProcess {
   bool CalculateVelFromBestgnsspose(const GnssBestPose& bestgnsspos_msg,
                                     MeasureData* measure);
 
-  bool LoadImuGnssAntennaExtrinsic(std::string file_path,
-                                   VehicleGnssAntExtrinsic* extrinsic) const;
-
  private:
   MeasureData pre_bestgnsspose_;
   bool pre_bestgnsspose_valid_;

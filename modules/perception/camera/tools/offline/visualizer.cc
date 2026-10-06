@@ -23,6 +23,7 @@
 #include <sstream>
 
 #include "absl/strings/str_cat.h"
+#include "boost/filesystem.hpp"
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/perception/camera/tools/offline/colormap.h"
@@ -36,7 +37,6 @@ namespace camera {
 
 namespace {
 
-constexpr char kLidarFrameId[] = "velodyne128";
 constexpr char kVehicleFrameId[] = "base_link";
 
 struct PoseDebugInfo {
@@ -54,7 +54,8 @@ PoseDebugInfo QueryPoseDebugInfo(TransformServer* tf_server,
     pose_info.has_world_pose =
         tf_server->QueryPos(timestamp, &pose_info.world_pose);
     pose_info.has_lidar_to_vehicle = tf_server->QueryTransform(
-        kLidarFrameId, kVehicleFrameId, &pose_info.lidar_to_vehicle);
+        tf_server->LidarFrameId(), kVehicleFrameId,
+        &pose_info.lidar_to_vehicle);
   }
   if (!pose_info.has_world_pose) {
     pose_info.world_pose.setIdentity();
@@ -393,6 +394,40 @@ bool Visualizer::SetDirectory(const std::string &path) {
   return ret == 0;
 }
 
+bool Visualizer::SetCalibrationOutputDirectory(const std::string &path) {
+  if (path.empty() || tf_server_ == nullptr ||
+      tf_server_->CalibrationBundlePath().empty()) {
+    AERROR << "Calibration output directory must be explicitly configured.";
+    return false;
+  }
+  try {
+    if (!boost::filesystem::is_directory(path)) {
+      AERROR << "Calibration output directory must already exist: " << path;
+      return false;
+    }
+    const std::string output_path =
+        boost::filesystem::canonical(path).string();
+    const std::string bundle_path =
+        boost::filesystem::canonical(tf_server_->CalibrationBundlePath())
+            .string();
+    if (output_path == bundle_path ||
+        (output_path.compare(0, bundle_path.size(), bundle_path) == 0 &&
+         output_path.size() > bundle_path.size() &&
+         output_path[bundle_path.size()] == '/')) {
+      AERROR << "Calibration candidates must not be written into the selected "
+                "calibration bundle: "
+             << output_path;
+      return false;
+    }
+    calibration_output_dir_ = output_path;
+  } catch (const boost::filesystem::filesystem_error &error) {
+    AERROR << "Failed to resolve calibration output or selected bundle path: "
+           << error.what();
+    return false;
+  }
+  return true;
+}
+
 std::string Visualizer::type_to_string(const base::ObjectType type) {
   switch (type) {
     case base::ObjectType::UNKNOWN:
@@ -544,54 +579,46 @@ bool Visualizer::euler_to_quaternion(Eigen::Vector4d *quaternion,
   return true;
 }
 
-bool Visualizer::copy_backup_file(const std::string &filename) {
-  static int index = 0;
-  // int last_index = 0;
-  // std::string files = filename + "*";
-  // for (const auto &file : std::filesysfs::directory_iterator(files)) {
-  //     AINFO << file.path() << std::endl;
-  //     // Extract index
-  //     last_index = get_index(file.path());
-  // }
-  // index = last_index;
-
-  ++index;
-  std::string yaml_bak_file = absl::StrCat(filename, "__", index);
-  AINFO << "yaml_backup_file: " << yaml_bak_file;
-
-  if (!cyber::common::Copy(filename, yaml_bak_file)) {
-    AERROR << "Cannot backup the file: " << filename;
-  } else {
-    AINFO << "Backup file: " << filename << " saved successfully.";
-  }
-
-  return true;
-}
-
 bool Visualizer::save_extrinsic_in_yaml(const std::string &camera_name,
                                         const Eigen::Matrix4d &extrinsic,
                                         const Eigen::Vector4d &quaternion,
                                         const double pitch_radian,
                                         const double yaw_radian,
                                         const double roll_radian) {
-  std::string yaml_file = common::ResolveExtrinsicPath(
-      FLAGS_obs_sensor_intrinsic_path, camera_name + "_extrinsics.yaml");
-
-  copy_backup_file(yaml_file);
+  if (calibration_output_dir_.empty() || tf_server_ == nullptr) {
+    AERROR << "Calibration export requires an explicit output directory and "
+              "initialized TF server.";
+    return false;
+  }
+  const std::string camera_frame_id = tf_server_->FrameId(camera_name);
+  const std::string lidar_frame_id = tf_server_->LidarFrameId();
+  if (camera_frame_id.empty() || lidar_frame_id.empty() ||
+      camera_frame_id.find('/') != std::string::npos ||
+      lidar_frame_id.find('/') != std::string::npos ||
+      camera_frame_id.find("..") != std::string::npos ||
+      lidar_frame_id.find("..") != std::string::npos) {
+    AERROR << "Invalid frame ID for candidate calibration export.";
+    return false;
+  }
+  const std::string yaml_file =
+      calibration_output_dir_ + "/" + camera_frame_id + "_extrinsics.yaml";
 
   AINFO << "extrinsic: " << extrinsic;
 
-  // Save data
-  // Option 1. Save using streaming
   std::ofstream y_file(yaml_file);
+  if (!y_file.is_open()) {
+    AERROR << "Cannot open candidate calibration file for writing: "
+           << yaml_file;
+    return false;
+  }
 
   y_file << "header:\n";
   y_file << "  seq: 0\n";
   y_file << "  stamp:\n";
   y_file << "    secs: 0\n";
   y_file << "    nsecs: 0\n";
-  y_file << "  frame_id: velodyne128\n";
-  y_file << "child_frame_id: %s\n", camera_name.c_str();
+  y_file << "  frame_id: " << lidar_frame_id << "\n";
+  y_file << "child_frame_id: " << camera_frame_id << "\n";
   y_file << "transform:\n";
   y_file << "  translation:\n";
   y_file << "    x: " << extrinsic(0, 3) << "\n";
@@ -606,40 +633,12 @@ bool Visualizer::save_extrinsic_in_yaml(const std::string &camera_name,
   y_file << "     pitch: " << pitch_radian * radian_to_degree_factor_ << "\n";
   y_file << "     yaw: " << yaw_radian * radian_to_degree_factor_ << "\n";
   y_file << "     roll: " << roll_radian * radian_to_degree_factor_ << "\n";
-  // Option 2. Use YAML write function.
-  // Alert! Couldn't find a library to save YAML node.
-  // YAML::Node node = YAML::LoadFile(yaml_file);
-
-  // try{
-  //   if (node.IsNull()) {
-  //     AINFO << "Load " << yaml_file << " failed! please check!";
-  //     return false;
-  //   }
-  //   // Replace rotation only
-  //   node["transform"]["rotation"]["x"].as<double>() = quaternion(0);
-  //   node["transform"]["rotation"]["y"].as<double>() = quaternion(1);
-  //   node["transform"]["rotation"]["z"].as<double>() = quaternion(2);
-  //   node["transform"]["rotation"]["w"].as<double>() = quaternion(3);
-  //
-  //   node.SaveFile(yaml_file);
-  //   if (node.IsNull()) {
-  //     AINFO << "Save " << yaml_file << " failed! please check!";
-  //     return false;
-  //   }
-  // } catch (YAML::InvalidNode &in) {
-  //   AERROR << "load/save camera extrisic file " << yaml_file
-  //          << " with error, YAML::InvalidNode exception";
-  //   return false;
-  // } catch (YAML::TypedBadConversion<double> &bc) {
-  //   AERROR << "load camera extrisic file " << yaml_file
-  //          << " with error, YAML::TypedBadConversion exception";
-  //   return false;
-  // } catch (YAML::Exception &e) {
-  //   AERROR << "load camera extrisic file " << yaml_file
-  //          << " with error, YAML exception:" << e.what();
-  //   return false;
-  // }
-
+  y_file.flush();
+  if (!y_file.good()) {
+    AERROR << "Failed while writing candidate calibration file: " << yaml_file;
+    return false;
+  }
+  AINFO << "Wrote candidate calibration file: " << yaml_file;
   return true;
 }
 
@@ -679,16 +678,18 @@ bool Visualizer::save_manual_calibration_parameter(
   AINFO << "New roll: " << new_roll_radian * radian_to_degree_factor_;
 
   Eigen::Vector4d quaternion;
-  euler_to_quaternion(&quaternion, new_pitch_radian, new_yaw_radian,
-                      new_roll_radian);
+  if (!euler_to_quaternion(&quaternion, new_pitch_radian, new_yaw_radian,
+                           new_roll_radian)) {
+    AERROR << "Failed to convert adjusted calibration angles to quaternion.";
+    return false;
+  }
   AINFO << "Quaternion X: " << quaternion(0) << ", Y: " << quaternion(1)
         << ", Z: " << quaternion(2) << ", W: " << quaternion(3);
   // Save the file
   // Yaw and Roll are swapped.
-  save_extrinsic_in_yaml(camera_name, ex_camera2lidar_[camera_name], quaternion,
-                         new_pitch_radian, new_yaw_radian, new_roll_radian);
-
-  return true;
+  return save_extrinsic_in_yaml(camera_name, ex_camera2lidar_[camera_name],
+                                quaternion, new_pitch_radian, new_yaw_radian,
+                                new_roll_radian);
 }
 
 bool Visualizer::key_handler(const std::string &camera_name, const int key) {
@@ -825,13 +826,16 @@ bool Visualizer::key_handler(const std::string &camera_name, const int key) {
     case KEY_CTRL_S_NUM_LOCK_ON:
     case KEY_CTRL_S:
       if (manual_calibration_mode_) {
-        save_manual_calibration_parameter(
+        if (!save_manual_calibration_parameter(
             visual_camera_, pitch_adj_degree_[camera_name],
-            yaw_adj_degree_[camera_name], roll_adj_degree_[camera_name]);
-        AINFO << "Saved calibration parameters(pyr): ("
-              << pitch_adj_degree_[camera_name] << ", "
-              << yaw_adj_degree_[camera_name] << ", "
-              << roll_adj_degree_[camera_name] << ")";
+            yaw_adj_degree_[camera_name], roll_adj_degree_[camera_name])) {
+          AERROR << "Failed to save candidate calibration parameters.";
+        } else {
+          AINFO << "Saved calibration parameters(pyr): ("
+                << pitch_adj_degree_[camera_name] << ", "
+                << yaw_adj_degree_[camera_name] << ", "
+                << roll_adj_degree_[camera_name] << ")";
+        }
       }
       break;
     case KEY_ALT_C_NUM_LOCK_ON:

@@ -16,6 +16,7 @@
 #include "modules/perception/onboard/component/lane_detection_component.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -35,6 +36,7 @@
 #include "modules/common/math/math_utils.h"
 #include "modules/common/util/string_util.h"
 #include "modules/perception/common/perception_gflags.h"
+#include "modules/perception/common/io/resource_path.h"
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
 #include "modules/perception/onboard/common_flags/common_flags.h"
 #include "modules/perception/onboard/component/camera_perception_viz_message.h"
@@ -94,16 +96,28 @@ static bool QueryStaticTransform(TransformWrapper *transform_wrapper,
 static bool SetCameraHeight(TransformWrapper *transform_wrapper,
                             const std::string &lidar_frame_id,
                             const std::string &camera_frame_id,
-                            const std::string &params_dir,
-                            const std::string &lidar_sensor_name,
-                            float default_camera_height, float *camera_height) {
-  float base_h = default_camera_height;
+                            float *camera_height) {
+  const std::string height_file =
+      common::PerceptionResourcePath::ResolveLidarHeightPath();
+  if (height_file.empty()) {
+    return false;
+  }
   float camera_offset = 0.0f;
   try {
-    YAML::Node lidar_height =
-        YAML::LoadFile(params_dir + "/" + lidar_sensor_name + "_height.yaml");
-    base_h = lidar_height["vehicle"]["parameters"]["height"].as<float>();
-    AINFO << base_h;
+    const YAML::Node height = YAML::LoadFile(height_file);
+    const std::string height_frame_id =
+        height["frame_id"].as<std::string>();
+    if (height_frame_id != lidar_frame_id) {
+      AERROR << "LiDAR height frame mismatch in " << height_file
+             << ": expected " << lidar_frame_id << ", found "
+             << height_frame_id;
+      return false;
+    }
+    const float base_h = height["height_m"].as<float>();
+    if (!std::isfinite(base_h)) {
+      AERROR << "LiDAR height calibration is non-finite: " << height_file;
+      return false;
+    }
     Eigen::Matrix4d camera2lidar = Eigen::Matrix4d::Identity();
     if (!QueryStaticTransform(transform_wrapper, lidar_frame_id,
                               camera_frame_id, &camera2lidar)) {
@@ -112,19 +126,12 @@ static bool SetCameraHeight(TransformWrapper *transform_wrapper,
     camera_offset = static_cast<float>(camera2lidar(2, 3));
     AINFO << camera_offset;
     *camera_height = base_h + camera_offset;
-  } catch (YAML::InvalidNode &in) {
-    AERROR << "load camera extrisic file error, YAML::InvalidNode exception";
-    return false;
-  } catch (YAML::TypedBadConversion<float> &bc) {
-    AERROR << "load camera extrisic file error, "
-           << "YAML::TypedBadConversion exception";
-    return false;
-  } catch (YAML::Exception &e) {
-    AERROR << "load camera extrisic file "
-           << " error, YAML exception:" << e.what();
+    return std::isfinite(*camera_height);
+  } catch (const YAML::Exception &error) {
+    AERROR << "Failed to load LiDAR height calibration " << height_file
+           << ": " << error.what();
     return false;
   }
-  return true;
 }
 
 // @description: get project matrix
@@ -339,8 +346,6 @@ int LaneDetectionComponent::InitConfig() {
   output_lanes_channel_name_ = lane_detection_param.output_lanes_channel_name();
   default_camera_pitch_ =
       static_cast<float>(lane_detection_param.default_camera_pitch());
-  default_camera_height_ =
-      static_cast<float>(lane_detection_param.default_camera_height());
   ts_diff_ = lane_detection_param.ts_diff();
   write_visual_img_ = lane_detection_param.write_visual_img();
 
@@ -476,7 +481,8 @@ int LaneDetectionComponent::InitCameraFrames() {
     Eigen::Matrix4d extrinsic;
     ACHECK(QueryStaticTransform(
         camera2world_trans_wrapper_map_.at(camera_name).get(),
-        FLAGS_lidar_sensor_name, tf_camera_frame_id_map_.at(camera_name),
+        common::SensorManager::Instance()->GetFrameId(FLAGS_lidar_sensor_name),
+        tf_camera_frame_id_map_.at(camera_name),
         &extrinsic));
     extrinsic_map_[camera_name] = extrinsic;
   }
@@ -485,10 +491,9 @@ int LaneDetectionComponent::InitCameraFrames() {
   for (const auto &camera_name : camera_names_) {
     float height = 0.0f;
     ACHECK(SetCameraHeight(camera2world_trans_wrapper_map_.at(camera_name).get(),
-                           FLAGS_lidar_sensor_name,
+                           common::SensorManager::Instance()->GetFrameId(
+                               FLAGS_lidar_sensor_name),
                            tf_camera_frame_id_map_.at(camera_name),
-                           FLAGS_obs_sensor_intrinsic_path,
-                           FLAGS_lidar_sensor_name, default_camera_height_,
                            &height));
     camera_height_map_[camera_name] = height;
   }

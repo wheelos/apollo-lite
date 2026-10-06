@@ -14,8 +14,17 @@ if [[ "${APOLLO_RUNTIME_ENV_LOADED:-0}" == "1" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-APOLLO_ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
-
+APOLLO_ROOT_DIR="${APOLLO_ROOT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd -P)}"
+if [[ "${APOLLO_ROOT_DIR}" != /* ]]; then
+  echo "Error: APOLLO_ROOT_DIR must be an absolute path." >&2
+  return 1
+fi
+export APOLLO_ROOT_DIR
+export WHEELOS_ASSET_ROOT="${WHEELOS_ASSET_ROOT:-${APOLLO_ROOT_DIR}/assets}"
+if [[ "${WHEELOS_ASSET_ROOT}" != /* ]]; then
+  echo "Error: WHEELOS_ASSET_ROOT must be an absolute path." >&2
+  return 1
+fi
 _pathprepend() {
   local value="$1"
   local variable="${2:-PATH}"

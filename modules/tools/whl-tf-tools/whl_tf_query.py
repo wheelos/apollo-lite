@@ -165,11 +165,8 @@ def load_transform_file(filepath: pathlib.Path) -> Transform:
     return Transform(parent, child, translation, rotation)
 
 
-def load_static_transform_conf_pbtxt(
-        filepath: pathlib.Path,
-        apollo_root: pathlib.Path = None
-) -> list:
-    """Load transform configuration from a pb.txt file."""
+def load_calibration_manifest_pbtxt(filepath: pathlib.Path) -> list:
+    """Load sensor extrinsics listed by a calibration manifest."""
     with open(filepath, 'r') as f:
         content = f.read()
 
@@ -178,11 +175,12 @@ def load_static_transform_conf_pbtxt(
     i = 0
     while i < len(lines):
         line = lines[i].strip()
-        if line.startswith('extrinsic_file') and '{' in line:
+        if line.startswith('sensor') and '{' in line:
+            parent_frame_id = None
             frame_id = None
-            child_frame_id = None
+            optical_frame_id = None
             file_path = None
-            enable = True
+            optical_file_path = None
 
             i += 1
             brace_depth = 1
@@ -196,22 +194,48 @@ def load_static_transform_conf_pbtxt(
                         field = parts[0].strip()
                         value = parts[1].strip()
 
-                        if field == 'frame_id':
+                        if field == 'parent_frame_id':
+                            parent_frame_id = value.strip('"\'')
+                        elif field == 'frame_id':
                             frame_id = value.strip('"\'')
-                        elif field == 'child_frame_id':
-                            child_frame_id = value.strip('"\'')
-                        elif field == 'file_path':
+                        elif field == 'optical_frame_id':
+                            optical_frame_id = value.strip('"\'')
+                        elif field == 'extrinsic_file':
                             file_path = value.strip('"\'')
-                        elif field == 'enable':
-                            enable = value.lower() in ('true', '1')
+                        elif field == 'optical_extrinsic_file':
+                            optical_file_path = value.strip('"\'')
 
                 i += 1
 
-            if enable and frame_id and child_frame_id and file_path:
-                full_path = pathlib.Path(file_path)
-                if not full_path.is_absolute() and apollo_root:
-                    full_path = apollo_root / full_path.relative_to('/apollo')
-                results.append((frame_id, child_frame_id, full_path))
+            if parent_frame_id and frame_id and file_path:
+                relative_path = pathlib.Path(file_path)
+                if relative_path.is_absolute() or '..' in relative_path.parts:
+                    raise ValueError(f"Unsafe calibration path: {file_path}")
+                bundle_root = filepath.parent.resolve()
+                full_path = (bundle_root / relative_path).resolve()
+                try:
+                    full_path.relative_to(bundle_root)
+                except ValueError as error:
+                    raise ValueError(
+                        f"Calibration path escapes bundle: {file_path}") from error
+                results.append(
+                    (parent_frame_id, frame_id, full_path))
+                if optical_frame_id and optical_file_path:
+                    optical_relative_path = pathlib.Path(optical_file_path)
+                    if (optical_relative_path.is_absolute() or
+                            '..' in optical_relative_path.parts):
+                        raise ValueError(
+                            f"Unsafe optical calibration path: {optical_file_path}")
+                    optical_full_path = (
+                        bundle_root / optical_relative_path).resolve()
+                    try:
+                        optical_full_path.relative_to(bundle_root)
+                    except ValueError as error:
+                        raise ValueError(
+                            "Optical calibration path escapes bundle: "
+                            f"{optical_file_path}") from error
+                    results.append(
+                        (frame_id, optical_frame_id, optical_full_path))
 
         i += 1
 
@@ -288,11 +312,11 @@ def load_configs(tf_files, config_files, apollo_root, output, list_frames):
         # Load individual TF files
         whl_tf_query load -t tf1.yaml -t tf2.yaml
 
-        # Load from static transform config
-        whl_tf_query load -c modules/transform/conf/static_transform_conf.pb.txt
+        # Load from vehicle calibration manifest
+        whl_tf_query load -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 
         # Combine both
-        whl_tf_query load -t custom.yaml -c static_transform_conf.pb.txt
+        whl_tf_query load -t custom.yaml -c calibration_manifest.pb.txt
     """
     # Auto-detect Apollo root if not specified
     if apollo_root is None:
@@ -323,7 +347,7 @@ def load_configs(tf_files, config_files, apollo_root, output, list_frames):
     for config_path in config_files:
         try:
             click.echo(f"Loading config: {config_path}")
-            extrinsics = load_static_transform_conf_pbtxt(config_path, apollo_root)
+            extrinsics = load_calibration_manifest_pbtxt(config_path)
             for frame_id, child_frame_id, file_path in extrinsics:
                 try:
                     transform = load_transform_file(file_path)
@@ -386,7 +410,7 @@ def query_transform(tf_files, config_files, apollo_root, graph_file,
         whl_tf_query query -t tf1.yaml -t tf2.yaml imu rslidar_main_front
 
         # Query transform from config
-        whl_tf_query query -c static_transform_conf.pb.txt rslidar_main_front rslidar_main_rear
+        whl_tf_query query -c calibration_manifest.pb.txt base_link camera_front_link
 
         # Query with saved graph
         whl_tf_query query -g graph.pkl imu localization -o transform.yaml
@@ -431,7 +455,7 @@ def query_transform(tf_files, config_files, apollo_root, graph_file,
         # Load config pb.txt files
         for config_path in config_files:
             try:
-                extrinsics = load_static_transform_conf_pbtxt(config_path, apollo_root)
+                extrinsics = load_calibration_manifest_pbtxt(config_path)
                 for frame_id, child_frame_id, file_path in extrinsics:
                     try:
                         transform = load_transform_file(file_path)
@@ -545,7 +569,7 @@ def interactive_mode(tf_files, config_files, apollo_root, graph_file):
 
         for config_path in config_files:
             try:
-                extrinsics = load_static_transform_conf_pbtxt(config_path, apollo_root)
+                extrinsics = load_calibration_manifest_pbtxt(config_path)
                 for frame_id, child_frame_id, file_path in extrinsics:
                     try:
                         transform = load_transform_file(file_path)

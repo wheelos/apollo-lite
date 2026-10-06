@@ -22,6 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include "cuda_runtime.h"
+
 #include "modules/perception/base/blob.h"
 #include "modules/perception/base/box.h"
 #include "modules/perception/base/object.h"

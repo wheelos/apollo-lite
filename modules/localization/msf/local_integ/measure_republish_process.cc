@@ -16,13 +16,9 @@
 
 #include "modules/localization/msf/local_integ/measure_republish_process.h"
 
-#include <fstream>
 #include <iomanip>
 
-#include "yaml-cpp/yaml.h"
-
 #include "cyber/common/log.h"
-#include "modules/common/math/euler_angles_zxy.h"
 #include "modules/common/util/time_conversion.h"
 #include "modules/localization/msf/common/util/math_util.h"
 
@@ -59,62 +55,14 @@ Status MeasureRepublishProcess::Init(const LocalizationIntegParam& params) {
 
   novatel_heading_time_ = 0.0;
 
-  std::ifstream imu_ant_fin(params.ant_imu_leverarm_file.c_str());
-  AINFO << "the ant_imu_leverarm file: " << params.ant_imu_leverarm_file.c_str()
-        << std::endl;
-  if (imu_ant_fin) {
-    bool success = LoadImuGnssAntennaExtrinsic(params.ant_imu_leverarm_file,
-                                               &imu_gnssant_extrinsic_);
-    if (!success) {
-      AERROR << "IntegratedLocalization: Fail to access the lever arm "
-                "between imu and gnss extrinsic file: "
-             << params.ant_imu_leverarm_file;
-    }
-    AINFO << "gnss and imu lever arm in vehicle frame: "
-          << " " << imu_gnssant_extrinsic_.ant_num << " "
-          << imu_gnssant_extrinsic_.transform_1.translation()[0] << " "
-          << imu_gnssant_extrinsic_.transform_1.translation()[1] << " "
-          << imu_gnssant_extrinsic_.transform_1.translation()[2] << " "
-          << imu_gnssant_extrinsic_.transform_2.translation()[0] << " "
-          << imu_gnssant_extrinsic_.transform_2.translation()[1] << " "
-          << imu_gnssant_extrinsic_.transform_2.translation()[2];
-  } else {
-    AINFO << "the ant_imu_leverarm_file does not existence!";
-  }
-
-  double vehicle_to_imu_quatern[4] = {
-      params.vehicle_to_imu_quatern.w, params.vehicle_to_imu_quatern.x,
-      params.vehicle_to_imu_quatern.y, params.vehicle_to_imu_quatern.z};
-
-  double dcm[3][3] = {0.0};
-  math::QuaternionToDcm(&vehicle_to_imu_quatern[0], dcm);
-  double lever_arm_x = imu_gnssant_extrinsic_.transform_1.translation()[0];
-  double lever_arm_y = imu_gnssant_extrinsic_.transform_1.translation()[1];
-  double lever_arm_z = imu_gnssant_extrinsic_.transform_1.translation()[2];
-
-  imu_gnssant_extrinsic_.transform_1.translation()[0] =
-      dcm[0][0] * lever_arm_x + dcm[0][1] * lever_arm_y +
-      dcm[0][2] * lever_arm_z;
-  imu_gnssant_extrinsic_.transform_1.translation()[1] =
-      dcm[1][0] * lever_arm_x + dcm[1][1] * lever_arm_y +
-      dcm[1][2] * lever_arm_z;
-  imu_gnssant_extrinsic_.transform_1.translation()[2] =
-      dcm[2][0] * lever_arm_x + dcm[2][1] * lever_arm_y +
-      dcm[2][2] * lever_arm_z;
-
-  lever_arm_x = imu_gnssant_extrinsic_.transform_2.translation()[0];
-  lever_arm_y = imu_gnssant_extrinsic_.transform_2.translation()[1];
-  lever_arm_z = imu_gnssant_extrinsic_.transform_2.translation()[2];
-
-  imu_gnssant_extrinsic_.transform_2.translation()[0] =
-      dcm[0][0] * lever_arm_x + dcm[0][1] * lever_arm_y +
-      dcm[0][2] * lever_arm_z;
-  imu_gnssant_extrinsic_.transform_2.translation()[1] =
-      dcm[1][0] * lever_arm_x + dcm[1][1] * lever_arm_y +
-      dcm[1][2] * lever_arm_z;
-  imu_gnssant_extrinsic_.transform_2.translation()[2] =
-      dcm[2][0] * lever_arm_x + dcm[2][1] * lever_arm_y +
-      dcm[2][2] * lever_arm_z;
+  imu_gnssant_extrinsic_.ant_num = params.imu_to_ant_offset.antenna_count;
+  imu_gnssant_extrinsic_.transform_1.translation() <<
+      params.imu_to_ant_offset.offset_x, params.imu_to_ant_offset.offset_y,
+      params.imu_to_ant_offset.offset_z;
+  imu_gnssant_extrinsic_.transform_2.translation()
+      << params.imu_to_ant_offset.secondary_offset_x,
+      params.imu_to_ant_offset.secondary_offset_y,
+      params.imu_to_ant_offset.secondary_offset_z;
 
   AINFO << "gnss and imu lever arm in imu frame: "
         << " " << imu_gnssant_extrinsic_.ant_num << " "
@@ -633,60 +581,6 @@ bool MeasureRepublishProcess::GnssHeadingProcess(
         << measure_data->gnss_att.yaw;
 
   return true;
-}
-
-bool MeasureRepublishProcess::LoadImuGnssAntennaExtrinsic(
-    std::string file_path, VehicleGnssAntExtrinsic* extrinsic) const {
-  YAML::Node confige = YAML::LoadFile(file_path);
-  if (confige["leverarm"]) {
-    if (confige["leverarm"]["primary"]["offset"]) {
-      extrinsic->transform_1.translation()[0] =
-          confige["leverarm"]["primary"]["offset"]["x"].as<double>();
-      extrinsic->transform_1.translation()[1] =
-          confige["leverarm"]["primary"]["offset"]["y"].as<double>();
-      extrinsic->transform_1.translation()[2] =
-          confige["leverarm"]["primary"]["offset"]["z"].as<double>();
-    } else {
-      return false;
-    }
-    if (confige["leverarm"]["secondary"]["offset"]) {
-      extrinsic->transform_2.translation()[0] =
-          confige["leverarm"]["secondary"]["offset"]["x"].as<double>();
-      extrinsic->transform_2.translation()[1] =
-          confige["leverarm"]["secondary"]["offset"]["y"].as<double>();
-      extrinsic->transform_2.translation()[2] =
-          confige["leverarm"]["secondary"]["offset"]["z"].as<double>();
-      extrinsic->ant_num = 2;
-
-      if (confige["leverarm"]["secondary"]["rotation"]) {
-        double qx =
-            confige["leverarm"]["secondary"]["rotation"]["x"].as<double>();
-        double qy =
-            confige["leverarm"]["secondary"]["rotation"]["y"].as<double>();
-        double qz =
-            confige["leverarm"]["secondary"]["rotation"]["z"].as<double>();
-        double qw =
-            confige["leverarm"]["secondary"]["rotation"]["w"].as<double>();
-        extrinsic->transform_1.linear() =
-            Eigen::Quaterniond(qw, qx, qy, qz).toRotationMatrix();
-      } else {
-        double yaw = atan2(extrinsic->transform_2.translation()[0] -
-                               extrinsic->transform_1.translation()[0],
-                           extrinsic->transform_2.translation()[1] -
-                               extrinsic->transform_1.translation()[1]);
-        double quat[4] = {0.0};
-        math::EulerToQuaternion(0.0, 0.0, yaw, quat);
-        extrinsic->transform_1.linear() =
-            Eigen::Quaterniond(quat[0], quat[1], quat[2], quat[3])
-                .toRotationMatrix();
-      }
-      return true;
-    } else {
-      extrinsic->ant_num = 1;
-      return true;
-    }
-  }
-  return false;
 }
 
 bool MeasureRepublishProcess::CheckBestgnssPoseXYStd(

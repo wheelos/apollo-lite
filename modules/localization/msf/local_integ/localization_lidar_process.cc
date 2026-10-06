@@ -16,6 +16,8 @@
 
 #include "modules/localization/msf/local_integ/localization_lidar_process.h"
 
+#include <cmath>
+
 #include "yaml-cpp/yaml.h"
 
 #include "cyber/common/file.h"
@@ -113,10 +115,10 @@ Status LocalizationLidarProcess::Init(const LocalizationIntegParam& params) {
 
   bool success = LoadLidarHeight(lidar_height_file_, &lidar_height_);
   if (!success) {
-    AWARN << "LocalizationLidar: Fail to load the lidar"
-             " height file: "
-          << lidar_height_file_ << " Will use default value!";
-    lidar_height_.height = params.lidar_height_default;
+    AERROR << "LocalizationLidar: Failed to load selected lidar height file: "
+           << lidar_height_file_;
+    return Status(apollo::common::LOCALIZATION_ERROR_LIDAR,
+                  "Failed to load selected LiDAR height calibration.");
   }
 
   if (!locator_->Init(map_path_, lidar_filter_size_, lidar_filter_size_,
@@ -447,16 +449,22 @@ bool LocalizationLidarProcess::LoadLidarHeight(const std::string& file_path,
     return false;
   }
 
-  YAML::Node config = YAML::LoadFile(file_path);
-  if (config["vehicle"]) {
-    if (config["vehicle"]["parameters"]) {
-      height->height = config["vehicle"]["parameters"]["height"].as<double>();
-      height->height_var =
-          config["vehicle"]["parameters"]["height_var"].as<double>();
-      return true;
+  try {
+    const YAML::Node config = YAML::LoadFile(file_path);
+    height->height = config["height_m"].as<double>();
+    height->height_var = config["height_variance_m2"].as<double>();
+    if (!std::isfinite(height->height) || !std::isfinite(height->height_var) ||
+        height->height_var < 0.0) {
+      AERROR << "LiDAR height calibration has invalid numeric values: "
+             << file_path;
+      return false;
     }
+  } catch (const YAML::Exception& error) {
+    AERROR << "Failed to parse LiDAR height file " << file_path << ": "
+           << error.what();
+    return false;
   }
-  return false;
+  return true;
 }
 
 }  // namespace msf

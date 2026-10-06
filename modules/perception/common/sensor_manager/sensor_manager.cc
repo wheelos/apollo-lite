@@ -22,6 +22,7 @@
 #include "modules/perception/proto/sensor_meta_schema.pb.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "cyber/common/log.h"
 #include "modules/perception/common/io/io_util.h"
 #include "modules/perception/lib/config_manager/config_manager.h"
@@ -48,10 +49,19 @@ bool SensorManager::Init() {
   distort_model_map_.clear();
   undistort_model_map_.clear();
 
+  if (!calibration_registry_.LoadFromEnvironment()) {
+    AERROR << "Failed to load selected vehicle calibration profile.";
+    return false;
+  }
+
   const std::string raw_file_path = cyber::common::GetAbsolutePath(
       lib::ConfigManager::Instance()->work_root(), FLAGS_obs_sensor_meta_path);
-  const std::string file_path =
-      transform::CalibrationRegistry::ResolveFilePath(raw_file_path);
+  std::string file_path;
+  if (!cyber::common::ResourceManager::ResolveConfigPath(raw_file_path,
+                                                         &file_path)) {
+    AERROR << "Failed to resolve sensor metadata config: " << raw_file_path;
+    return false;
+  }
 
   MultiSensorMeta sensor_list_proto;
   if (!GetProtoFromASCIIFile(file_path, &sensor_list_proto)) {
@@ -103,6 +113,23 @@ bool SensorManager::Init() {
   inited_ = true;
   AINFO << "Init sensor_manager success.";
   return true;
+}
+
+std::string SensorManager::IntrinsicPath(const std::string& sensor_name) const {
+  const auto sensor_info = sensor_info_map_.find(sensor_name);
+  if (sensor_info == sensor_info_map_.end()) {
+    AERROR << "No sensor metadata for camera: " << sensor_name;
+    return "";
+  }
+  for (const auto& sensor : calibration_registry_.sensors()) {
+    if (sensor.calibration.frame_id() == sensor_info->second.frame_id &&
+        !sensor.resolved_intrinsic_file.empty()) {
+      return sensor.resolved_intrinsic_file;
+    }
+  }
+  AERROR << "No selected camera intrinsics for sensor " << sensor_name
+         << " with explicit TF frame " << sensor_info->second.frame_id;
+  return "";
 }
 
 bool SensorManager::IsSensorExist(const std::string& name) const {

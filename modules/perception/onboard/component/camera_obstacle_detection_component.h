@@ -171,7 +171,6 @@ class CameraObstacleDetectionComponent : public apollo::cyber::Component<> {
 
   // default camera pitch angle & height
   float default_camera_pitch_ = 0.f;
-  float default_camera_height_ = 1.6f;
 
   // options for DataProvider
   bool enable_undistortion_ = false;

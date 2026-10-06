@@ -5,7 +5,7 @@
 ## 功能特性
 
 - 加载多个 TF YAML 文件
-- 从 Apollo 静态变换配置文件加载（pb.txt 格式）
+- 从版本化车辆标定 manifest 加载传感器外参
 - 查询 TF 树中任意两个坐标系之间的变换
 - 自动通过变换图查找路径
 - 交互式查询模式支持多次查询
@@ -30,17 +30,17 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 # 加载单个 TF YAML 文件
 ./modules/tools/whl-tf-tools/whl_tf_query.py load tf1.yaml tf2.yaml
 
-# 从 Apollo 静态变换配置加载
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt
+# 从车辆标定 manifest 加载
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 
 # 同时加载两种来源
-./modules/tools/whl-tf-tools/whl_tf_query.py load custom.yaml -c modules/transform/conf/static_transform_conf.pb.txt
+./modules/tools/whl-tf-tools/whl_tf_query.py load custom.yaml -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 
 # 列出所有加载的坐标系和变换
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt --list
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt --list
 
 # 保存加载的图供后续使用
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt -o graph.pkl
 ```
 
 #### Load 选项
@@ -48,8 +48,7 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 | 选项 | 说明 |
 |------|------|
 | `-t TF_FILES` | 要加载的 TF YAML 文件（可指定多个） |
-| `-c, --config CONFIG_FILES` | Apollo 静态变换配置文件（pb.txt 格式） |
-| `-a, --apollo-root PATH` | Apollo 根目录（不指定则自动检测） |
+| `-c, --config CONFIG_FILES` | 标定 manifest；外参路径相对于 bundle 根目录解析 |
 | `-o, --output PATH` | 将加载的图保存到 pickle 文件供后续使用 |
 | `--list` | 列出所有加载的坐标系和变换 |
 
@@ -62,7 +61,7 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -t tf1.yaml -t tf2.yaml imu rslidar_main_front
 
 # 从配置文件查询变换
-./modules/tools/whl-tf-tools/whl_tf_query.py query -c modules/transform/conf/static_transform_conf.pb.txt rslidar_main_front rslidar_main_rear
+./modules/tools/whl-tf-tools/whl_tf_query.py query -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt base_link camera_front_link
 
 # 使用保存的图查询
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu localization
@@ -101,7 +100,7 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 ./modules/tools/whl-tf-tools/whl_tf_query.py interactive -g graph.pkl
 
 # 使用 Apollo 配置启动
-./modules/tools/whl-tf-tools/whl_tf_query.py interactive -c modules/transform/conf/static_transform_conf.pb.txt
+./modules/tools/whl-tf-tools/whl_tf_query.py interactive -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt
 ```
 
 #### 交互式命令
@@ -168,7 +167,7 @@ child_frame_id: child_frame
 
 ```bash
 ./modules/tools/whl-tf-tools/whl_tf_query.py query \
-    -c modules/transform/conf/static_transform_conf.pb.txt \
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt \
     rslidar_main_front imu
 ```
 
@@ -205,7 +204,7 @@ child_frame_id: imu
 ```bash
 # 首先加载并保存图
 ./modules/tools/whl-tf-tools/whl_tf_query.py load \
-    -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+    -c assets/vehicles/cargo/calibration/mock-v1/calibration_manifest.pb.txt -o graph.pkl
 
 # 之后使用保存的图进行查询
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu rslidar_main_rear

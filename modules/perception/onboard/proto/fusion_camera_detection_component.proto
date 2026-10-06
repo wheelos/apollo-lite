@@ -23,7 +23,6 @@ message FusionCameraDetection {
   optional string prefused_channel_name = 12
       [default = "/perception/inner/PrefusedObjects"];
   optional double default_camera_pitch = 13 [default = 0.0];
-  optional double default_camera_height = 14 [default = 1.5];
   optional string lane_calibration_working_sensor_name = 15
       [default = "front_6mm"];
   optional string calibrator_method = 16 [default = "LaneLineCalibrator"];

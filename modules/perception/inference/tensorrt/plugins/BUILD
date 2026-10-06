@@ -30,7 +30,6 @@ cuda_library(
         "nms_cuda.cu",
     ],
     hdrs = ["kernels.h"],
-    # copts = ["-DUSE_GPU=1"],
     deps = [
         "//modules/perception/base:common",
         "@cuda//:cuda_runtime",

@@ -18,10 +18,12 @@
 
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/configs/config_gflags.h"
+#include "modules/common/map/map_selection.h"
 
 #include "cyber/common/file.h"
 #include "cyber/time/clock.h"
 #include "modules/common/math/quaternion.h"
+#include "modules/common/vehicle_calibration/registry.h"
 #include "modules/localization/common/localization_gflags.h"
 #include "modules/localization/msf/common/io/pcl_point_types.h"
 #include "modules/localization/msf/common/io/velodyne_utility.h"
@@ -38,13 +40,18 @@ std::string ResolveLocalToolLidarExtrinsicFile(const std::string& configured) {
     return configured;
   }
 
-  const std::string workspace_relative =
-      "modules/transform/conf/velodyne128_base_link_extrinsics.yaml";
-  if (apollo::cyber::common::PathExists(workspace_relative)) {
-    return workspace_relative;
+  apollo::common::vehicle_calibration::Registry registry;
+  if (!registry.LoadFromEnvironment()) {
+    return "";
   }
-
-  return "/apollo/modules/transform/conf/velodyne128_base_link_extrinsics.yaml";
+  for (const auto& sensor : registry.sensors()) {
+    if (sensor.calibration.sensor_type() ==
+        apollo::common::vehicle_calibration::LIDAR) {
+      return sensor.resolved_extrinsic_file;
+    }
+  }
+  AERROR << "Selected vehicle profile has no LiDAR extrinsic.";
+  return "";
 }
 
 }  // namespace
@@ -81,6 +88,10 @@ bool OnlineVisualizerComponent::InitConfig() {
   map_visual_folder_ = FLAGS_map_visual_dir;
   lidar_extrinsic_file_ =
       ResolveLocalToolLidarExtrinsicFile(FLAGS_lidar_extrinsics_file);
+  if (lidar_extrinsic_file_.empty()) {
+    AERROR << "Failed to resolve lidar extrinsic asset.";
+    return false;
+  }
 
   lidar_local_topic_ = FLAGS_localization_lidar_topic;
   gnss_local_topic_ = FLAGS_localization_gnss_topic;

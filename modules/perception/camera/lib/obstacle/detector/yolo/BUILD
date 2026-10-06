@@ -30,6 +30,7 @@ cc_library(
         ":object_maintainer",
         ":region_output_cuda",
         "//modules/perception/camera/common:temporary_transition_types",
+        "@cuda//:cuda_runtime",
         "@core//cyber",
     ],
 )
