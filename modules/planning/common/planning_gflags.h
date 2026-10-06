@@ -97,6 +97,7 @@ DECLARE_double(longitudinal_jerk_upper_bound);
 DECLARE_double(lateral_jerk_bound);
 
 DECLARE_double(kappa_bound);
+DECLARE_double(motion_curvature_derivative_bound);
 
 // STBoundary
 DECLARE_double(st_max_s);

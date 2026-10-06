@@ -30,18 +30,86 @@ MissionAdmissionResult Accept(MissionAdmissionCode code,
 
 }  // namespace
 
+PlanningCommand MissionSessionManager::BuildPlanningCommand() const {
+  PlanningCommand command;
+  if (!guidance_.identity.has_revision()) {
+    return command;
+  }
+  command.set_mission_id(guidance_.identity.aggregate_id());
+  command.set_command_id(guidance_.identity.command_id());
+  command.set_action(guidance_.state == MISSION_SESSION_CANCELLING
+                         ? COMMAND_CANCEL
+                         : COMMAND_ACTIVATE);
+  switch (guidance_.plan.task_type()) {
+    case MISSION_TASK_A_TO_B:
+      command.set_requested_scene(SCENE_LANE_CRUISE);
+      break;
+    case MISSION_TASK_PARK_IN:
+      command.set_requested_scene(SCENE_PARK_IN);
+      break;
+    case MISSION_TASK_PULL_OVER:
+      command.set_requested_scene(SCENE_PULL_OVER);
+      break;
+    case MISSION_TASK_DOCK:
+      command.set_requested_scene(SCENE_DOCK);
+      break;
+    case MISSION_TASK_SUMMON:
+      command.set_requested_scene(SCENE_SUMMON);
+      break;
+    case MISSION_TASK_UNKNOWN:
+    default:
+      command.set_requested_scene(SCENE_UNKNOWN);
+      break;
+  }
+  const auto& plan = guidance_.plan;
+  if (plan.has_preferred_mode())
+    command.set_preferred_mode(plan.preferred_mode());
+  if (plan.has_goal()) command.mutable_goal()->CopyFrom(plan.goal());
+  if (plan.has_route_hint())
+    command.mutable_route_hint()->CopyFrom(plan.route_hint());
+  if (plan.has_priority()) command.set_priority(plan.priority());
+  command.set_preemptible(plan.preemptible());
+  if (plan.has_completion())
+    command.mutable_completion()->CopyFrom(plan.completion());
+  if (plan.has_fallback())
+    command.mutable_fallback()->CopyFrom(plan.fallback());
+  if (plan.has_recovery())
+    command.mutable_recovery()->CopyFrom(plan.recovery());
+  if (plan.has_domain_policy())
+    command.mutable_domain_policy()->CopyFrom(plan.domain_policy());
+  if (plan.has_open_space())
+    command.mutable_open_space()->CopyFrom(plan.open_space());
+  for (const auto& tag : plan.tags()) command.add_tags(tag);
+  return command;
+}
+
 MissionAdmissionResult MissionSessionManager::Apply(
     const MissionDirective& directive,
-    const localization::LocalizationEstimate& localization,
-    double now_sec) {
+    const localization::LocalizationEstimate& localization, double now_sec) {
   if (!IsFinite(now_sec) || !directive.has_identity()) {
     return Reject(MissionAdmissionCode::kInvalidDirective,
                   "mission directive requires identity and finite time");
   }
-  const auto identity_result =
-      ValidateDirectiveIdentity(directive.identity());
+  const auto identity_result = ValidateDirectiveIdentity(directive.identity());
   if (!identity_result.accepted) {
     return identity_result;
+  }
+  if (directive.has_replace() &&
+      (guidance_.cancellation_fenced ||
+       guidance_.state == MISSION_SESSION_CANCELLING)) {
+    return Reject(MissionAdmissionCode::kInvalidTransition,
+                  "a cancelling mission cannot be replaced");
+  }
+  if (last_accepted_directive_.has_identity() &&
+      IsExactIdentity(directive.identity(),
+                      last_accepted_directive_.identity())) {
+    if (directive.SerializeAsString() !=
+        last_accepted_directive_.SerializeAsString()) {
+      return Reject(MissionAdmissionCode::kInvalidDirective,
+                    "accepted directive identity cannot change its operation");
+    }
+    return Accept(MissionAdmissionCode::kDuplicate,
+                  "directive already accepted");
   }
   MissionAdmissionResult result;
   switch (directive.operation_case()) {
@@ -54,6 +122,11 @@ MissionAdmissionResult MissionSessionManager::Apply(
     case MissionDirective::kCancel:
       result = ApplyCancel(directive);
       break;
+    case MissionDirective::kSuspend:
+    case MissionDirective::kResume:
+      return Reject(MissionAdmissionCode::kUnsupportedOperation,
+                    "external suspend/resume requires a stop/hold and "
+                    "reauthorization implementation");
     case MissionDirective::OPERATION_NOT_SET:
     default:
       return Reject(MissionAdmissionCode::kInvalidDirective,
@@ -61,20 +134,25 @@ MissionAdmissionResult MissionSessionManager::Apply(
   }
   if (result.accepted) {
     last_accepted_directive_identity_.CopyFrom(directive.identity());
+    last_accepted_directive_.CopyFrom(directive);
   }
   return result;
 }
 
 MissionAdmissionResult MissionSessionManager::ApplyActivate(
     const MissionDirective& directive,
-    const localization::LocalizationEstimate& localization,
-    double now_sec) {
+    const localization::LocalizationEstimate& localization, double now_sec) {
   if (!directive.activate().has_plan()) {
     return Reject(MissionAdmissionCode::kInvalidPlan,
                   "activate requires a complete mission plan");
   }
   if (HasActiveSession()) {
     if (IsExactIdentity(directive.identity(), guidance_.identity)) {
+      if (directive.activate().plan().SerializeAsString() !=
+          guidance_.plan.SerializeAsString()) {
+        return Reject(MissionAdmissionCode::kInvalidDirective,
+                      "duplicate mission identity has different plan");
+      }
       return Accept(MissionAdmissionCode::kDuplicate,
                     "duplicate active mission directive");
     }
@@ -87,8 +165,7 @@ MissionAdmissionResult MissionSessionManager::ApplyActivate(
 
 MissionAdmissionResult MissionSessionManager::ApplyReplace(
     const MissionDirective& directive,
-    const localization::LocalizationEstimate& localization,
-    double now_sec) {
+    const localization::LocalizationEstimate& localization, double now_sec) {
   if (guidance_.cancellation_fenced ||
       guidance_.state == MISSION_SESSION_CANCELLING) {
     return Reject(MissionAdmissionCode::kInvalidTransition,
@@ -115,8 +192,9 @@ MissionAdmissionResult MissionSessionManager::ApplyReplace(
           guidance_.identity.aggregate_id() ||
       directive.identity().command_id() != guidance_.identity.command_id() ||
       directive.identity().revision() <= guidance_.identity.revision()) {
-    return Reject(MissionAdmissionCode::kReplay,
-                  "replace identity must be a newer revision of the active command");
+    return Reject(
+        MissionAdmissionCode::kReplay,
+        "replace identity must be a newer revision of the active command");
   }
   return AcceptPlan(directive.identity(), directive.replace().plan(),
                     localization, now_sec);
@@ -137,8 +215,9 @@ MissionAdmissionResult MissionSessionManager::ApplyCancel(
           guidance_.identity.aggregate_id() ||
       directive.identity().command_id() != guidance_.identity.command_id() ||
       directive.identity().revision() <= guidance_.identity.revision()) {
-    return Reject(MissionAdmissionCode::kReplay,
-                  "cancel identity must be a newer revision of the active command");
+    return Reject(
+        MissionAdmissionCode::kReplay,
+        "cancel identity must be a newer revision of the active command");
   }
   if (directive.cancel().postcondition() !=
       MISSION_CANCEL_CONTROLLED_STOP_THEN_HOLD) {
@@ -162,8 +241,7 @@ MissionAdmissionResult MissionSessionManager::ApplyCancel(
 
 MissionAdmissionResult MissionSessionManager::AcceptPlan(
     const MissionCommandIdentity& identity, const MissionPlan& plan,
-    const localization::LocalizationEstimate& localization,
-    double now_sec) {
+    const localization::LocalizationEstimate& localization, double now_sec) {
   const auto plan_result = ValidatePlan(plan);
   if (!plan_result.accepted) {
     return plan_result;
@@ -197,17 +275,31 @@ MissionAdmissionResult MissionSessionManager::AcceptPlan(
 
 MissionAdmissionResult MissionSessionManager::BuildStartSnapshot(
     const MissionStart& start,
-    const localization::LocalizationEstimate& localization,
-    double now_sec, MissionStartSnapshot* snapshot) const {
+    const localization::LocalizationEstimate& localization, double now_sec,
+    MissionStartSnapshot* snapshot) const {
   if (snapshot == nullptr || !localization.has_pose() ||
       !localization.pose().has_position() ||
       !HasFinitePoint(localization.pose().position()) ||
       !localization.pose().has_heading() ||
-      !IsFinite(localization.pose().heading()) ||
-      !localization.has_header() || !localization.header().has_frame_id() ||
+      !IsFinite(localization.pose().heading()) || !localization.has_header() ||
+      !localization.header().has_frame_id() ||
       localization.header().frame_id().empty()) {
+    return Reject(
+        MissionAdmissionCode::kInvalidStart,
+        "acceptance requires a timestamped localization pose and frame");
+  }
+
+  if (!localization.has_measurement_time() &&
+      !localization.header().has_timestamp_sec()) {
     return Reject(MissionAdmissionCode::kInvalidStart,
-                  "acceptance requires a timestamped localization pose and frame");
+                  "acceptance requires an explicit observation timestamp");
+  }
+  const double observed_at = localization.has_measurement_time()
+                                 ? localization.measurement_time()
+                                 : localization.header().timestamp_sec();
+  if (!IsFinite(observed_at) || observed_at > now_sec) {
+    return Reject(MissionAdmissionCode::kInvalidStart,
+                  "acceptance observation time must be finite and not future");
   }
 
   switch (start.source_case()) {
@@ -244,8 +336,9 @@ MissionAdmissionResult MissionSessionManager::BuildStartSnapshot(
           std::abs(NormalizeAngle(explicit_start.heading() -
                                   localization.pose().heading())) >
               explicit_start.max_heading_error_rad()) {
-        return Reject(MissionAdmissionCode::kInvalidStart,
-                      "vehicle state does not match the explicit mission start");
+        return Reject(
+            MissionAdmissionCode::kInvalidStart,
+            "vehicle state does not match the explicit mission start");
       }
       break;
     }
@@ -258,7 +351,7 @@ MissionAdmissionResult MissionSessionManager::BuildStartSnapshot(
   snapshot->mutable_position()->CopyFrom(localization.pose().position());
   snapshot->set_heading(localization.pose().heading());
   snapshot->set_reference_frame_id(localization.header().frame_id());
-  snapshot->set_snapshot_time_sec(now_sec);
+  snapshot->set_snapshot_time_sec(observed_at);
   return Accept(MissionAdmissionCode::kAccepted, "start snapshot accepted");
 }
 
@@ -276,12 +369,28 @@ MissionAdmissionResult MissionSessionManager::ValidateDirectiveIdentity(
 
 MissionAdmissionResult MissionSessionManager::ValidatePlan(
     const MissionPlan& plan) const {
-  if (!plan.has_task_type() ||
-      plan.task_type() == MISSION_TASK_UNKNOWN ||
+  if (plan.task_type() == MISSION_TASK_PARK_OUT ||
+      plan.task_type() == MISSION_TASK_ESCAPE ||
+      plan.task_type() == MISSION_TASK_ROTATE_IN_PLACE ||
+      plan.task_type() == MISSION_TASK_REACH_POSE ||
+      plan.task_type() == MISSION_TASK_STANDSTILL_WAIT ||
+      plan.has_travel_permission() || plan.has_budget_authorization_id() ||
+      plan.task_policy_case() != MissionPlan::TASK_POLICY_NOT_SET ||
+      plan.goal().has_reference_frame_id() ||
+      plan.goal().has_vehicle_reference_point_id() ||
+      plan.goal().has_resolver_version() ||
+      plan.goal().has_transform_version() ||
+      plan.completion().has_speed_tolerance_mps() ||
+      plan.completion().has_angular_speed_tolerance_radps() ||
+      plan.completion().has_settle_time_sec()) {
+    return Reject(MissionAdmissionCode::kUnsupportedOperation,
+                  "declared task type/policy requires an implemented "
+                  "capability-gated task dispatcher");
+  }
+  if (!plan.has_task_type() || plan.task_type() == MISSION_TASK_UNKNOWN ||
       !plan.has_start() || !plan.has_goal() ||
       plan.goal().target_case() == GoalSpec::TARGET_NOT_SET ||
-      !plan.has_completion() ||
-      !plan.completion().has_timeout_sec() ||
+      !plan.has_completion() || !plan.completion().has_timeout_sec() ||
       !IsFinite(plan.completion().timeout_sec()) ||
       plan.completion().timeout_sec() <= 0.0) {
     return Reject(MissionAdmissionCode::kInvalidPlan,
@@ -344,8 +453,7 @@ MissionAdmissionResult MissionSessionManager::AdvancePhase(
                   "mission phase transition is not allowed");
   }
   guidance_.phase = next_phase;
-  return Accept(MissionAdmissionCode::kAccepted,
-                "mission phase advanced");
+  return Accept(MissionAdmissionCode::kAccepted, "mission phase advanced");
 }
 
 MissionAdmissionResult MissionSessionManager::Suspend(
@@ -374,26 +482,94 @@ MissionAdmissionResult MissionSessionManager::BeginCompleting() {
                     "mission terminal conditions observed");
 }
 
-MissionAdmissionResult MissionSessionManager::Complete() {
+MissionAdmissionResult MissionSessionManager::Complete(
+    const MotionTerminalEvidence& terminal_evidence) {
   if (guidance_.state != MISSION_SESSION_COMPLETING) {
     return Reject(MissionAdmissionCode::kInvalidTransition,
                   "completion requires correlated terminal evidence");
+  }
+  std::string evidence_error;
+  if (!ValidateHoldEvidence(terminal_evidence, &evidence_error)) {
+    return Reject(MissionAdmissionCode::kInvalidTransition,
+                  "completion evidence rejected: " + evidence_error);
   }
   return Transition(MISSION_SESSION_COMPLETED, "mission completed");
 }
 
 MissionAdmissionResult MissionSessionManager::ConfirmCancellation(
-    bool terminal_motion_confirmed) {
-  if (guidance_.state != MISSION_SESSION_CANCELLING ||
-      !terminal_motion_confirmed) {
+    const MotionTerminalEvidence& terminal_evidence) {
+  if (guidance_.state != MISSION_SESSION_CANCELLING) {
+    return Reject(
+        MissionAdmissionCode::kInvalidTransition,
+        "cancellation requires terminal motion and idle-hold confirmation");
+  }
+  std::string evidence_error;
+  if (!ValidateHoldEvidence(terminal_evidence, &evidence_error)) {
     return Reject(MissionAdmissionCode::kInvalidTransition,
-                  "cancellation requires terminal motion and idle-hold confirmation");
+                  "cancellation evidence rejected: " + evidence_error);
   }
   return Transition(MISSION_SESSION_CANCELLED, "mission cancelled");
 }
 
-MissionAdmissionResult MissionSessionManager::Fail(
-    const std::string& reason) {
+bool MissionSessionManager::ValidateHoldEvidence(
+    const MotionTerminalEvidence& evidence, std::string* reason) const {
+  const auto reject = [reason](const std::string& message) {
+    if (reason != nullptr) {
+      *reason = message;
+    }
+    return false;
+  };
+  if (evidence.has_absolute_angular_speed_radps() ||
+      evidence.has_rotation_progress()) {
+    return reject("angular hold evidence contract is unavailable");
+  }
+  if (!evidence.has_contract_version() || evidence.contract_version() != 1 ||
+      !evidence.has_kind() ||
+      evidence.kind() != MOTION_TERMINAL_EVIDENCE_STANDSTILL_HOLD ||
+      !evidence.has_motion_identity() ||
+      !evidence.motion_identity().has_producer_epoch() ||
+      evidence.motion_identity().producer_epoch().empty() ||
+      !evidence.motion_identity().has_aggregate_id() ||
+      evidence.motion_identity().aggregate_id().empty() ||
+      !evidence.motion_identity().has_command_id() ||
+      evidence.motion_identity().command_id().empty() ||
+      !evidence.motion_identity().has_revision() ||
+      evidence.motion_identity().revision() == 0 ||
+      !evidence.has_parent_mission_identity() ||
+      !IsExactIdentity(evidence.parent_mission_identity(),
+                       guidance_.identity) ||
+      !evidence.has_authority_generation() ||
+      evidence.authority_generation() != guidance_.identity.revision() ||
+      !evidence.has_observed_at_sec() ||
+      !IsFinite(evidence.observed_at_sec()) ||
+      !evidence.has_reference_frame_id() ||
+      evidence.reference_frame_id().empty() ||
+      evidence.reference_frame_id() !=
+          guidance_.accepted_start.reference_frame_id() ||
+      !evidence.has_position_error_m() ||
+      !IsFinite(evidence.position_error_m()) ||
+      evidence.position_error_m() < 0.0 ||
+      !evidence.has_heading_error_rad() ||
+      !IsFinite(evidence.heading_error_rad()) ||
+      evidence.heading_error_rad() < 0.0 ||
+      !evidence.has_absolute_speed_mps() ||
+      !IsFinite(evidence.absolute_speed_mps()) ||
+      evidence.absolute_speed_mps() < 0.0 ||
+      !evidence.has_settled_duration_sec() ||
+      !IsFinite(evidence.settled_duration_sec()) ||
+      evidence.settled_duration_sec() <= 0.0 ||
+      !evidence.has_executor_ownership() ||
+      evidence.executor_ownership() != MOTION_EXECUTOR_OWNERSHIP_ACTIVE ||
+      !evidence.has_executor_type() ||
+      evidence.executor_type() == MOTION_EXECUTION_TYPE_UNKNOWN ||
+      !evidence.has_safety_state() ||
+      evidence.safety_state() != MOTION_EVIDENCE_SAFETY_NORMAL) {
+    return reject("evidence is incomplete, stale in identity, or unsafe");
+  }
+  return true;
+}
+
+MissionAdmissionResult MissionSessionManager::Fail(const std::string& reason) {
   if (!HasActiveSession()) {
     return Reject(MissionAdmissionCode::kInvalidTransition,
                   "there is no active mission to fail");
@@ -425,8 +601,7 @@ std::string MissionSessionManager::CommandKey(
 
 bool MissionSessionManager::IsTerminal(MissionSessionState state) const {
   return state == MISSION_SESSION_COMPLETED ||
-         state == MISSION_SESSION_CANCELLED ||
-         state == MISSION_SESSION_FAILED;
+         state == MISSION_SESSION_CANCELLED || state == MISSION_SESSION_FAILED;
 }
 
 bool MissionSessionManager::IsPhaseTransitionAllowed(
@@ -436,15 +611,13 @@ bool MissionSessionManager::IsPhaseTransitionAllowed(
   }
   switch (from) {
     case MISSION_PHASE_UNKNOWN:
-      return to == MISSION_PHASE_ROUTING ||
-             to == MISSION_PHASE_APPROACH;
+      return to == MISSION_PHASE_ROUTING || to == MISSION_PHASE_APPROACH;
     case MISSION_PHASE_ROUTING:
       return to == MISSION_PHASE_ENROUTE;
     case MISSION_PHASE_ENROUTE:
       return to == MISSION_PHASE_APPROACH;
     case MISSION_PHASE_APPROACH:
-      return to == MISSION_PHASE_HANDOFF ||
-             to == MISSION_PHASE_SETTLING;
+      return to == MISSION_PHASE_HANDOFF || to == MISSION_PHASE_SETTLING;
     case MISSION_PHASE_HANDOFF:
       return to == MISSION_PHASE_LOCAL_MANEUVER;
     case MISSION_PHASE_LOCAL_MANEUVER:

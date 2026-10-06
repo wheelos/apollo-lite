@@ -36,22 +36,6 @@ std::string BuildParkInCommandId(const std::string& parking_space_id) {
   return oss.str();
 }
 
-bool IsParkInCommandDone(
-    const std::shared_ptr<apollo::planning::PlanningRuntimeStatus>& status,
-    const std::string& command_id) {
-  if (status == nullptr || !status->has_command_id() ||
-      status->command_id() != command_id) {
-    return false;
-  }
-  if (status->has_completion() &&
-      status->completion().has_command_completed() &&
-      status->completion().command_completed()) {
-    return true;
-  }
-  return status->has_state() &&
-         status->state() == apollo::planning::RUNTIME_COMPLETED;
-}
-
 }  // namespace
 
 BT::NodeStatus ParkInNode::onStart() {
@@ -105,7 +89,11 @@ BT::NodeStatus ParkInNode::onStart() {
     *corner_polygon->add_point() = right_bottom_corner;
   }
 
-  MissionContext::Instance()->SendPlanningCommand(command);
+  if (!MissionContext::Instance()->SendPlanningCommand(command)) {
+    AERROR << "ParkInNode: Failed to submit task";
+    current_command_id_.clear();
+    return BT::NodeStatus::FAILURE;
+  }
   return BT::NodeStatus::RUNNING;
 }
 
@@ -133,11 +121,6 @@ BT::NodeStatus ParkInNode::onRunning() {
     return BT::NodeStatus::SUCCESS;
   }
 
-  auto runtime_status = MissionContext::Instance()->GetPlanningRuntimeStatus();
-  if (IsParkInCommandDone(runtime_status, current_command_id_)) {
-    return BT::NodeStatus::SUCCESS;
-  }
-
   return BT::NodeStatus::RUNNING;
 }
 
@@ -157,7 +140,9 @@ void ParkInNode::onHalted() {
   command.set_command_id(current_command_id_);
   command.set_action(planning::COMMAND_CANCEL);
   command.set_requested_scene(planning::SCENE_PARK_IN);
-  MissionContext::Instance()->SendPlanningCommand(command);
+  if (!MissionContext::Instance()->SendPlanningCommand(command)) {
+    AERROR << "ParkInNode: Failed to submit cancellation";
+  }
   current_command_id_.clear();
 }
 

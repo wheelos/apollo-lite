@@ -14,6 +14,12 @@ bool MotionCommandAdapter::ToLegacyControllerInput(
   }
   trajectory->Clear();
   trajectory->mutable_header()->CopyFrom(command.header());
+  if (command.has_control_intent()) {
+    trajectory->mutable_control_intent()->CopyFrom(command.control_intent());
+  }
+  if (command.has_execution()) {
+    trajectory->mutable_execution()->CopyFrom(command.execution());
+  }
 
   if (command.payload_case() ==
       planning::MotionExecutionCommand::kTrajectory) {

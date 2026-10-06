@@ -125,6 +125,12 @@ TerminalLateralControlAdjustment BuildTerminalLateralControlAdjustment(
     double current_heading, double steer_ratio,
     double steer_single_direction_max_degree) {
   TerminalLateralControlAdjustment adjustment;
+  if (control_intent.tracking_mode() == planning::TRACKING_MODE_PATH_SPEED &&
+      control_intent.execution_channel() ==
+          planning::EXECUTION_CHANNEL_PRIMITIVE &&
+      control_intent.primitive_type() == planning::CONTROL_PRIMITIVE_NONE) {
+    return adjustment;
+  }
   adjustment.primitive_active =
       control_intent.primitive_type() != apollo::planning::CONTROL_PRIMITIVE_NONE;
   adjustment.suppress_large_steer = control_intent.suppress_large_steer();
@@ -191,6 +197,12 @@ TerminalLongitudinalControlAdjustment BuildTerminalLongitudinalControlAdjustment
     const apollo::localization::LocalizationEstimate* localization,
     const apollo::canbus::Chassis* chassis) {
   TerminalLongitudinalControlAdjustment adjustment;
+  if (control_intent.tracking_mode() == planning::TRACKING_MODE_PATH_SPEED &&
+      control_intent.execution_channel() ==
+          planning::EXECUTION_CHANNEL_PRIMITIVE &&
+      control_intent.primitive_type() == planning::CONTROL_PRIMITIVE_NONE) {
+    return adjustment;
+  }
   adjustment.primitive_active =
       control_intent.primitive_type() != apollo::planning::CONTROL_PRIMITIVE_NONE;
   adjustment.pose_servo_active =

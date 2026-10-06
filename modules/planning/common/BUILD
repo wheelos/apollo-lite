@@ -255,12 +255,35 @@ cc_library(
     hdrs = ["motion_plan_builder.h"],
     copts = PLANNING_COPTS,
     deps = [
+        ":planning_gflags",
         ":planning_semantics",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "//modules/planning:planning_runtime_context",
+    ],
+)
+
+cc_library(
+    name = "motion_envelope",
+    srcs = ["motion_envelope.cc"],
+    hdrs = ["motion_envelope.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        ":frame",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "motion_envelope_test",
+    size = "small",
+    srcs = ["motion_envelope_test.cc"],
+    deps = [
+        ":frame",
+        ":gtest_exit_main",
+        ":motion_envelope",
     ],
 )
 

@@ -14,6 +14,12 @@ Apollo 5.5 Control has following new features:
   * Localization
   * Dreamview AUTO mode change request
 
+## Mission-aware controller configuration
+
+See the canonical [controller profile configuration and feedback
+contract](../../wheelos-service/context/modules/planning/knowledge/mission-planning-control-interface-design.md#control-controller-profiles)
+for local tuning, activation gates, switching and compatibility behavior.
+
 ## Output
   * Control commands (steering, throttle, brake) to the chassis.
 

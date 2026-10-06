@@ -179,6 +179,27 @@ cc_library(
 )
 
 cc_library(
+    name = "motion_execution_monitor",
+    srcs = ["motion_execution_monitor.cc"],
+    hdrs = ["motion_execution_monitor.h"],
+    copts = CONTROL_COPTS,
+    deps = [":motion_primitive_executor"],
+)
+
+cc_library(
+    name = "motion_primitive_executor",
+    srcs = ["motion_primitive_executor.cc"],
+    hdrs = ["motion_primitive_executor.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        ":motion_execution_validator",
+        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
     name = "motion_execution_manager",
     srcs = ["motion_execution_manager.cc"],
     hdrs = ["motion_execution_manager.h"],
@@ -195,6 +216,8 @@ cc_library(
     hdrs = ["strategy_orchestrator.h"],
     copts = CONTROL_COPTS,
     deps = [
+        "//modules/control/proto:control_conf_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
         ":control_command_goal",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
@@ -213,7 +236,9 @@ cc_library(
         ":executor_arbiter",
         ":motion_command_adapter",
         ":motion_execution_manager",
+        ":motion_execution_monitor",
         ":motion_execution_validator",
+        ":motion_primitive_executor",
         ":pid_controller",
         ":strategy_orchestrator",
         ":terminal_control_helper",
@@ -227,6 +252,18 @@ cc_test(
     srcs = ["executor_arbiter_test.cc"],
     deps = [
         ":executor_arbiter",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_primitive_executor_test",
+    size = "small",
+    srcs = ["motion_primitive_executor_test.cc"],
+    deps = [
+        ":motion_execution_monitor",
+        ":motion_primitive_executor",
+        ":strategy_orchestrator",
         "@com_google_googletest//:gtest_main",
     ],
 )

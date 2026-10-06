@@ -4,6 +4,50 @@ load("//tools:cpplint.bzl", "cpplint")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "mission_request_contract",
+    srcs = ["mission_request_contract.cc"],
+    hdrs = ["mission_request_contract.h"],
+    deps = [
+        "@wheelos_msgs//wheelos_msgs/mission_msgs:mission_request_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/mission_msgs:mission_request_result_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/mission_msgs:mission_runtime_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:mission_directive_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_command_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "mission_request_ledger",
+    srcs = ["mission_request_ledger.cc"],
+    hdrs = ["mission_request_ledger.h"],
+    deps = [
+        "@sqlite3//:sqlite3",
+        "@wheelos_msgs//wheelos_msgs/mission_msgs:mission_request_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/mission_msgs:mission_request_result_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "mission_request_ledger_test",
+    size = "small",
+    srcs = ["mission_request_ledger_test.cc"],
+    deps = [
+        ":mission_request_ledger",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "mission_request_contract_test",
+    size = "small",
+    srcs = ["mission_request_contract_test.cc"],
+    deps = [
+        ":mission_request_contract",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "mission_command_supervisor",
     srcs = ["mission_command_supervisor.cc"],
     hdrs = ["mission_command_supervisor.h"],
@@ -20,11 +64,15 @@ cc_library(
     hdrs = ["mission_context.h"],
     deps = [
         ":mission_command_supervisor",
+        ":mission_request_contract",
+        ":mission_request_ledger",
         "@core//cyber",
+        "//modules/execution_state_sync:client",
         "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_runtime_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:safety_stop_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",

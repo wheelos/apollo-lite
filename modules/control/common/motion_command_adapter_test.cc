@@ -29,5 +29,25 @@ TEST(MotionCommandAdapterTest, ConvertsHoldWithoutInferringFromEmptyPath) {
             planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD);
 }
 
+TEST(MotionCommandAdapterTest, PreservesExplicitSemanticContext) {
+  planning::MotionExecutionCommand command;
+  command.mutable_trajectory()->set_gear(canbus::Chassis::GEAR_DRIVE);
+  auto* intent = command.mutable_control_intent();
+  intent->set_longitudinal_intent(planning::LON_INTENT_PRECISE_STOP);
+  intent->mutable_target_stop_point()->set_x(5.0);
+  intent->set_terminal_position_tolerance_m(0.02);
+  command.mutable_execution()->set_active_scene(planning::SCENE_PARK_IN);
+  MotionCommandAdapter adapter;
+  planning::ADCTrajectory trajectory;
+  std::string reason;
+  ASSERT_TRUE(adapter.ToLegacyControllerInput(command, &trajectory, &reason));
+  EXPECT_EQ(trajectory.execution().active_scene(), planning::SCENE_PARK_IN);
+  EXPECT_EQ(trajectory.control_intent().longitudinal_intent(),
+            planning::LON_INTENT_PRECISE_STOP);
+  EXPECT_DOUBLE_EQ(trajectory.control_intent().target_stop_point().x(), 5.0);
+  EXPECT_DOUBLE_EQ(
+      trajectory.control_intent().terminal_position_tolerance_m(), 0.02);
+}
+
 }  // namespace control
 }  // namespace apollo

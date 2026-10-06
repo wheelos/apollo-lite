@@ -387,7 +387,14 @@ Status OpenSpacePlanning::EnsureStage(RecipeKind recipe_kind) {
 
 VehicleState OpenSpacePlanning::AlignTimeStamp(
     const VehicleState& vehicle_state, double curr_timestamp) const {
+  common::math::Vec2d future_xy;
+  const auto status =
+      injector_->vehicle_model().PredictPositionWithHeldCurvature(
+          curr_timestamp - vehicle_state.timestamp(), vehicle_state, &future_xy);
+  ACHECK(status.ok()) << status.error_message();
   VehicleState aligned_vehicle_state = vehicle_state;
+  aligned_vehicle_state.set_x(future_xy.x());
+  aligned_vehicle_state.set_y(future_xy.y());
   aligned_vehicle_state.set_timestamp(curr_timestamp);
   return aligned_vehicle_state;
 }

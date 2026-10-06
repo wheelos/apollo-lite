@@ -20,31 +20,44 @@
 #include <unordered_map>
 #include <vector>
 
+#include "wheelos_msgs/basic_msgs/geometry.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/control_msgs/control_runtime_status.pb.h"
+#include "wheelos_msgs/control_msgs/safety_stop.pb.h"
+#include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/planning_msgs/mission_directive.pb.h"
+#include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_command.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_runtime_status.pb.h"
+#include "wheelos_msgs/mission_msgs/mission_request.pb.h"
+#include "wheelos_msgs/mission_msgs/mission_request_result.pb.h"
+
 #include "cyber/common/log.h"
 #include "cyber/common/macros.h"
 #include "cyber/cyber.h"
 #include "modules/common/util/message_util.h"
-#include "wheelos_msgs/basic_msgs/geometry.pb.h"
-#include "wheelos_msgs/chassis_msgs/chassis.pb.h"
-#include "wheelos_msgs/control_msgs/control_runtime_status.pb.h"
-#include "wheelos_msgs/localization_msgs/localization.pb.h"
-#include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
-#include "wheelos_msgs/planning_msgs/planning_command.pb.h"
-#include "wheelos_msgs/planning_msgs/mission_directive.pb.h"
-#include "wheelos_msgs/planning_msgs/planning_runtime_status.pb.h"
+#include "modules/execution_state_sync/client.h"
 #include "modules/mission/common/mission_command_supervisor.h"
+#include "modules/mission/common/mission_request_ledger.h"
 
 namespace apollo {
 namespace mission {
 
 class MissionContext {
  public:
-  void SetPlanningPadWriter(
-      const std::shared_ptr<cyber::Writer<planning::PadMessage>>& writer);
   bool SendPlanningPad(planning::PadMessage::DrivingAction action);
   void SetMissionDirectiveWriter(
       const std::shared_ptr<cyber::Writer<planning::MissionDirective>>& writer);
-  void SetProducerEpoch(const std::string& producer_epoch);
+  bool InitExecutionState(const std::string& path,
+                          const std::string& producer_epoch,
+                          const std::string& request_ledger_path);
+  void ShutdownExecutionState();
+  bool PollExecutionState();
+  bool ExecutionStateHealthy() const;
+  bool SubmitTypedRequest(const MissionRequest& request,
+                          MissionRequestResult* result);
+  bool GetMissionRequestResult(const MissionRequestIdentity& identity,
+                               MissionRequestResult* result) const;
 
   void UpdateChassis(const std::shared_ptr<canbus::Chassis>& msg);
   void UpdateLocalization(
@@ -52,7 +65,8 @@ class MissionContext {
   void UpdatePlanningRuntimeStatus(
       const std::shared_ptr<planning::PlanningRuntimeStatus>& msg);
   void UpdateControlRuntimeStatus(
-      const std::shared_ptr<control::ControlRuntimeStatus>& msg);
+      const std::shared_ptr<control::ControlRuntimeStatus>& msg,
+      bool motion_result = false);
   void SaveWaypoint(const std::string& name, const common::PointENU& pose);
 
   std::shared_ptr<canbus::Chassis> GetChassis();
@@ -63,7 +77,7 @@ class MissionContext {
       const std::string& command_id) const;
   bool GetWaypoint(const std::string& name, common::PointENU* out_pose);
 
-  void SendPlanningCommand(const planning::PlanningCommand& command);
+  bool SendPlanningCommand(const planning::PlanningCommand& command);
   bool AcknowledgeRecovery();
   bool ResumeRecovery();
   bool RetryRecovery();
@@ -75,26 +89,37 @@ class MissionContext {
   MissionCommandSnapshot GetMissionCommandSnapshot() const;
 
  private:
-  void PublishPlanningCommands(
-      const std::shared_ptr<cyber::Writer<planning::MissionDirective>>& writer,
+  bool PublishPlanningCommands(
       const std::vector<planning::PlanningCommand>& commands);
+  bool ConsumeExecutionEvent(const execution_state_sync::Event& event);
   bool BuildMissionDirective(const planning::PlanningCommand& command,
                              planning::MissionDirective* directive);
+  bool BuildTypedMissionDirective(const MissionRequest& request,
+                                  planning::MissionDirective* directive,
+                                  std::string* reason);
   planning::MissionPlan BuildMissionPlan(
       const planning::PlanningCommand& command) const;
 
   mutable std::mutex mutex_;
 
   MissionCommandSupervisor command_supervisor_;
-  std::shared_ptr<cyber::Writer<planning::PadMessage>> planning_pad_writer_;
   std::shared_ptr<cyber::Writer<planning::MissionDirective>>
       mission_directive_writer_;
+  std::unique_ptr<execution_state_sync::Client> execution_state_client_;
+  std::unique_ptr<MissionRequestLedger> mission_request_ledger_;
+  std::unordered_map<uint64_t, MissionRequestRecord> pending_typed_requests_;
+  std::unordered_map<std::string, std::vector<MissionRequestIdentity>>
+      request_identity_by_command_;
   std::unordered_map<std::string, planning::MissionCommandIdentity>
       mission_identities_;
+  std::unordered_map<std::string, planning::MissionCommandIdentity>
+      accepted_mission_identities_;
   std::unordered_map<std::string, planning::MissionDirective>
       pending_mission_directives_;
   std::unordered_map<std::string, planning::MissionPlan> mission_plans_;
   std::string producer_epoch_;
+  bool execution_state_fault_ = false;
+  uint64_t last_safety_status_sequence_ = 0;
   std::shared_ptr<canbus::Chassis> chassis_;
   std::shared_ptr<localization::LocalizationEstimate> localization_;
   std::shared_ptr<planning::PlanningRuntimeStatus> planning_runtime_status_;

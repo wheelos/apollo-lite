@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -46,14 +47,24 @@ class PlanningCoordinator {
       const MissionDirective& directive,
       const localization::LocalizationEstimate& localization,
       double now_sec);
+  MissionAdmissionResult PrepareMissionDirective(
+      const MissionDirective& directive,
+      const localization::LocalizationEstimate& localization,
+      double now_sec);
+  const MissionSessionManager* prepared_mission_session_manager() const;
+  bool CommitPreparedMissionDirective(
+      const MissionCommandIdentity& directive_identity);
+  void DiscardPreparedMissionDirective();
   MissionAdmissionResult ConfirmMissionCancellation(
-      bool terminal_motion_confirmed);
+      const MotionTerminalEvidence& terminal_evidence);
   MissionAdmissionResult MarkMissionExecuting();
   MissionAdmissionResult UpdateMissionRoute(
       const MissionCommandIdentity& expected_identity,
       const MissionRouteContext& route);
   MissionAdmissionResult BeginMissionCompleting();
-  MissionAdmissionResult CompleteMission();
+  MissionAdmissionResult CompleteMission(
+      const MotionTerminalEvidence& terminal_evidence);
+  MissionAdmissionResult FailMission(const std::string& reason);
 
   PlanningCoordinatorState PreviewState(const LocalView& local_view) const;
 
@@ -80,6 +91,7 @@ class PlanningCoordinator {
   std::shared_ptr<DependencyInjector> injector_;
   PlanningShellRegistry shell_registry_;
   MissionSessionManager mission_session_manager_;
+  std::optional<MissionSessionManager> prepared_mission_session_manager_;
 };
 
 }  // namespace planning

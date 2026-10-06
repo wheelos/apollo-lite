@@ -35,6 +35,36 @@ bool ContainsAction(const std::vector<RecoveryAction>& actions,
 
 }  // namespace
 
+bool IsControlStatusForMission(
+    const control::ControlRuntimeStatus& status,
+    const planning::MissionCommandIdentity& accepted_identity) {
+  if (!status.has_motion_execution() ||
+      !accepted_identity.has_producer_epoch() ||
+      accepted_identity.producer_epoch().empty() ||
+      !accepted_identity.has_aggregate_id() ||
+      accepted_identity.aggregate_id().empty() ||
+      !accepted_identity.has_command_id() ||
+      accepted_identity.command_id().empty() ||
+      !accepted_identity.has_revision() || accepted_identity.revision() == 0 ||
+      (status.has_command_id() &&
+       status.command_id() != accepted_identity.command_id()) ||
+      (status.has_mission_id() &&
+       status.mission_id() != accepted_identity.aggregate_id())) {
+    return false;
+  }
+  const auto& motion = status.motion_execution();
+  if (!motion.has_authorized_mission_identity() ||
+      !motion.has_authority_generation() ||
+      motion.authority_generation() != accepted_identity.revision() ||
+      motion.authorized_mission_identity().SerializeAsString() !=
+          accepted_identity.SerializeAsString()) {
+    return false;
+  }
+  return !motion.has_parent_mission_identity() ||
+         motion.parent_mission_identity().SerializeAsString() ==
+             accepted_identity.SerializeAsString();
+}
+
 void MissionCommandSupervisor::SetCurrentMissionId(const std::string& id) {
   if (current_mission_id_ != id) {
     current_task_name_.clear();
@@ -50,7 +80,8 @@ void MissionCommandSupervisor::SetCurrentMissionId(const std::string& id) {
   current_mission_id_ = id;
 }
 
-void MissionCommandSupervisor::SetCurrentTaskName(const std::string& task_name) {
+void MissionCommandSupervisor::SetCurrentTaskName(
+    const std::string& task_name) {
   current_task_name_ = task_name;
 }
 
@@ -120,11 +151,11 @@ CommandLifecycleStatus* MissionCommandSupervisor::FindOrCreateCommandLifecycle(
   return &status;
 }
 
-void MissionCommandSupervisor::RemoveQueuedCommand(const std::string& command_id) {
-  queued_command_ids_.erase(
-      std::remove(queued_command_ids_.begin(), queued_command_ids_.end(),
-                  command_id),
-      queued_command_ids_.end());
+void MissionCommandSupervisor::RemoveQueuedCommand(
+    const std::string& command_id) {
+  queued_command_ids_.erase(std::remove(queued_command_ids_.begin(),
+                                        queued_command_ids_.end(), command_id),
+                            queued_command_ids_.end());
 }
 
 bool MissionCommandSupervisor::IsQueuedCommand(
@@ -174,7 +205,8 @@ uint32_t MissionCommandSupervisor::RemainingRetryBudget(
     return 0;
   }
   const uint32_t configured_budget = command.recovery().retry_budget();
-  const uint32_t retry_count = status.dispatch_count > 0 ? status.dispatch_count - 1 : 0;
+  const uint32_t retry_count =
+      status.dispatch_count > 0 ? status.dispatch_count - 1 : 0;
   return configured_budget > retry_count ? configured_budget - retry_count : 0;
 }
 
@@ -202,9 +234,11 @@ void MissionCommandSupervisor::EnterRecoveryState(
   if (spec_iter != command_specs_.end() && spec_iter->second.has_recovery() &&
       HasRecoveryPolicyValue(spec_iter->second.recovery())) {
     const auto& policy = spec_iter->second.recovery();
-    require_operator_ack =
-        policy.has_require_operator_ack() ? policy.require_operator_ack() : true;
-    allow_resume = policy.has_allow_resume() ? policy.allow_resume() : allow_resume;
+    require_operator_ack = policy.has_require_operator_ack()
+                               ? policy.require_operator_ack()
+                               : true;
+    allow_resume =
+        policy.has_allow_resume() ? policy.allow_resume() : allow_resume;
     allow_retry = policy.has_allow_retry() ? policy.allow_retry() : false;
     allow_abort = policy.has_allow_abort() ? policy.allow_abort() : true;
     allow_mrm = policy.has_allow_mrm() ? policy.allow_mrm() : true;
@@ -232,7 +266,8 @@ void MissionCommandSupervisor::EnterRecoveryState(
   }
 
   recovery.retry_budget_remaining = retry_budget_remaining;
-  recovery.retry_count = status.dispatch_count > 0 ? status.dispatch_count - 1 : 0;
+  recovery.retry_count =
+      status.dispatch_count > 0 ? status.dispatch_count - 1 : 0;
   if (timeout_sec > 0.0) {
     recovery.deadline_sec = NowSec() + timeout_sec;
   }
@@ -240,7 +275,8 @@ void MissionCommandSupervisor::EnterRecoveryState(
 
   if (ContainsAction(recovery.allowed_actions, RecoveryAction::kRetry)) {
     recovery.recommended_action = RecoveryAction::kRetry;
-  } else if (ContainsAction(recovery.allowed_actions, RecoveryAction::kResume)) {
+  } else if (ContainsAction(recovery.allowed_actions,
+                            RecoveryAction::kResume)) {
     recovery.recommended_action = RecoveryAction::kResume;
   } else if (ContainsAction(recovery.allowed_actions, RecoveryAction::kAbort)) {
     recovery.recommended_action = RecoveryAction::kAbort;
@@ -350,7 +386,8 @@ void MissionCommandSupervisor::EvaluateActivateOrUpdateCommand(
       RemoveQueuedCommand(command_id);
       queued_command_ids_.push_front(command_id);
       status->state = CommandLifecycleState::kQueued;
-      status->reason = "queued replacement command while active command cancels";
+      status->reason =
+          "queued replacement command while active command cancels";
       auto* active_status = FindOrCreateCommandLifecycle(active_command_id_);
       active_status->state = CommandLifecycleState::kCancelling;
       active_status->reason = "mission preempted active command by replacement";
@@ -465,7 +502,8 @@ bool MissionCommandSupervisor::ResumeRecovery(
 bool MissionCommandSupervisor::RetryRecovery(
     std::vector<planning::PlanningCommand>* commands_to_publish) {
   UpdateRecoveryTimeoutState();
-  if (!IsActionAllowed(RecoveryAction::kRetry) || commands_to_publish == nullptr ||
+  if (!IsActionAllowed(RecoveryAction::kRetry) ||
+      commands_to_publish == nullptr ||
       (recovery_state_.operator_ack_required &&
        !recovery_state_.operator_acknowledged)) {
     return false;
@@ -508,12 +546,51 @@ void MissionCommandSupervisor::UpdatePlanningRuntimeStatus(
     return;
   }
   auto* command_status = FindOrCreateCommandLifecycle(status.command_id());
+  if (status.has_mission_identity()) {
+    command_status->task_identity.CopyFrom(status.mission_identity());
+  }
   if (status.has_mission_id()) {
     command_status->mission_id = status.mission_id();
   }
-  if (status.has_state()) {
-    command_status->planning_state = status.state();
-    switch (status.state()) {
+  auto runtime_state = status.state();
+  const bool admission_rejected =
+      status.has_mission_admission_outcome() &&
+      status.mission_admission_outcome() == planning::MISSION_ADMISSION_REJECTED;
+  if (admission_rejected) {
+    runtime_state = planning::RUNTIME_REJECTED;
+  } else if (status.has_mission_session_state()) {
+    switch (status.mission_session_state()) {
+      case planning::MISSION_SESSION_ACCEPTED:
+        runtime_state = planning::RUNTIME_ACCEPTED;
+        break;
+      case planning::MISSION_SESSION_EXECUTING:
+      case planning::MISSION_SESSION_COMPLETING:
+        runtime_state = planning::RUNTIME_RUNNING;
+        break;
+      case planning::MISSION_SESSION_CANCELLING:
+        command_status->state = CommandLifecycleState::kCancelling;
+        runtime_state = planning::RUNTIME_UNKNOWN;
+        break;
+      case planning::MISSION_SESSION_SUSPENDED:
+        runtime_state = planning::RUNTIME_HOLDING;
+        break;
+      case planning::MISSION_SESSION_COMPLETED:
+        runtime_state = planning::RUNTIME_COMPLETED;
+        break;
+      case planning::MISSION_SESSION_CANCELLED:
+        runtime_state = planning::RUNTIME_CANCELLED;
+        break;
+      case planning::MISSION_SESSION_FAILED:
+        runtime_state = planning::RUNTIME_FAILED;
+        break;
+      default:
+        runtime_state = planning::RUNTIME_UNKNOWN;
+        break;
+    }
+  }
+  if (status.has_state() || status.has_mission_session_state()) {
+    command_status->planning_state = runtime_state;
+    switch (runtime_state) {
       case planning::RUNTIME_ACCEPTED:
         command_status->state = CommandLifecycleState::kAccepted;
         break;

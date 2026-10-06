@@ -15,7 +15,9 @@
  *****************************************************************************/
 #include "modules/planning/planning_component.h"
 
+#include <cmath>
 #include <sstream>
+#include <utility>
 
 #include "cyber/common/file.h"
 #include "cyber/time/clock.h"
@@ -23,9 +25,11 @@
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/util/message_util.h"
 #include "modules/common/util/util.h"
+#include "modules/execution_state_sync/execution_state_gflags.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/pnc_map.h"
 #include "modules/planning/common/history.h"
+#include "modules/planning/common/motion_envelope.h"
 #include "modules/planning/common/planning_context.h"
 
 namespace apollo {
@@ -42,10 +46,79 @@ using apollo::storytelling::Stories;
 
 namespace {
 
+constexpr double kMaxMotionEnvelopeFrameAgeSec = 0.2;
+
 bool ModeNeedsHdMap(PlanningMode mode) { return mode == MODE_LANE_GRAPH; }
 
 bool ModeNeedsRelativeMap(PlanningMode mode) {
   return mode == MODE_CORRIDOR || mode == MODE_FREE_SPACE;
+}
+
+const MotionExecutionCommand* DirectiveCommand(
+    const MotionDirective& directive) {
+  if (directive.has_execute()) {
+    return &directive.execute().command();
+  }
+  if (directive.has_replace()) {
+    return &directive.replace().command();
+  }
+  return nullptr;
+}
+
+bool HasNormalMotionConstraints(const MotionExecutionCommand& command) {
+  return command.has_constraints() &&
+         command.constraints().has_max_speed_mps() &&
+         std::isfinite(command.constraints().max_speed_mps()) &&
+         command.constraints().max_speed_mps() >= 0.0 &&
+         command.constraints().has_max_acceleration_mps2() &&
+         std::isfinite(command.constraints().max_acceleration_mps2()) &&
+         command.constraints().max_acceleration_mps2() > 0.0 &&
+         command.constraints().has_max_deceleration_mps2() &&
+         std::isfinite(command.constraints().max_deceleration_mps2()) &&
+         command.constraints().max_deceleration_mps2() > 0.0 &&
+         command.constraints().has_max_jerk_mps3() &&
+         std::isfinite(command.constraints().max_jerk_mps3()) &&
+         command.constraints().max_jerk_mps3() > 0.0;
+}
+
+bool IsFencedCleanupDirective(const MotionDirective& directive) {
+  if (directive.has_cancel()) {
+    return directive.scope() == MOTION_SCOPE_MISSION_DESCENDANT &&
+           directive.has_parent_mission_identity() &&
+           directive.parent_mission_identity().has_revision() &&
+           directive.cancel().has_target_identity() &&
+           directive.cancel().target_identity().has_revision() &&
+           directive.cancel().fence_parent_mission();
+  }
+  const auto* command = DirectiveCommand(directive);
+  if (command == nullptr || !command->has_identity() ||
+      !command->identity().has_revision() || !command->has_completion() ||
+      !command->has_spatial_envelope() ||
+      command->spatial_envelope().boundary_size() < 3 ||
+      !HasNormalMotionConstraints(*command)) {
+    return false;
+  }
+  if (command->identity().command_id() == "controlled-stop") {
+    if (!command->has_control_intent()) {
+      return false;
+    }
+    const auto& intent = command->control_intent();
+    return directive.scope() == MOTION_SCOPE_MISSION_DESCENDANT &&
+           directive.has_parent_mission_identity() &&
+           directive.parent_mission_identity().has_revision() &&
+           command->has_trajectory() &&
+           command->trajectory().point_size() >= 2 &&
+           intent.tracking_mode() == TRACKING_MODE_TRAJECTORY &&
+           intent.execution_channel() == EXECUTION_CHANNEL_TRAJECTORY &&
+           intent.primitive_type() == CONTROL_PRIMITIVE_NONE &&
+           intent.longitudinal_intent() == LON_INTENT_MRM_STOP &&
+           intent.require_full_stop();
+  }
+  return directive.scope() == MOTION_SCOPE_PLANNING_IDLE_HOLD &&
+         command->identity().command_id() == "idle-hold" &&
+         command->has_primitive() &&
+         command->primitive().type() == MOTION_PRIMITIVE_STANDSTILL_HOLD &&
+         command->constraints().max_speed_mps() == 0.0;
 }
 
 PlanningShellType ResolveShellForMode(PlanningMode mode) {
@@ -66,10 +139,9 @@ PlanningShellType ResolveShellForMode(PlanningMode mode) {
   }
 }
 
-bool BuildRoutingRequest(
-    const PlanningCommand& command,
-    const localization::LocalizationEstimate& localization,
-    RoutingRequest* request) {
+bool BuildRoutingRequest(const PlanningCommand& command,
+                         const localization::LocalizationEstimate& localization,
+                         RoutingRequest* request) {
   CHECK_NOTNULL(request);
   if (!command.has_goal() || !localization.has_pose() ||
       !localization.pose().has_position()) {
@@ -94,8 +166,7 @@ bool BuildRoutingRequest(
       destination->mutable_pose()->CopyFrom(command.goal().goal_pose());
       break;
     case GoalSpec::kParkingGoal:
-      request->mutable_parking_info()->CopyFrom(
-          command.goal().parking_goal());
+      request->mutable_parking_info()->CopyFrom(command.goal().parking_goal());
       if (!command.goal().parking_goal().has_parking_point()) {
         return false;
       }
@@ -147,14 +218,21 @@ ControlExecutionChannel ResolveExecutionChannel(
 
 bool PlanningComponent::Init() {
   injector_ = std::make_shared<DependencyInjector>();
-  motion_plan_builder_.SetProducerEpoch(
-      "planning-" +
-      std::to_string(cyber::Time::Now().ToNanosecond()));
+  const std::string producer_epoch =
+      "planning-" + std::to_string(cyber::Time::Now().ToNanosecond());
+  motion_plan_builder_.SetProducerEpoch(producer_epoch);
+  execution_state_client_ = std::make_unique<execution_state_sync::Client>();
+  const auto sync_result = execution_state_client_->Init(
+      FLAGS_execution_state_db_path, execution_state_sync::Role::kPlanning,
+      producer_epoch, 8, "v1",
+      {"mission-admission-v1", "motion-directive-v1",
+       "planning-runtime-status-v1"});
+  if (!sync_result.ok()) {
+    AERROR << "Planning requires execution-state database: "
+           << sync_result.message;
+    return false;
+  }
   planning_coordinator_ = std::make_unique<PlanningCoordinator>(injector_);
-
-  injector_ = std::make_shared<DependencyInjector>();
-
-  planning_base_ = std::make_unique<OnLanePlanning>(injector_);
 
   ACHECK(ComponentBase::GetProtoConfig(&config_))
       << "failed to load planning config file "
@@ -209,20 +287,6 @@ bool PlanningComponent::Init() {
         planning_command_.CopyFrom(*planning_command);
       });
 
-  mission_directive_reader_ = node_->CreateReader<MissionDirective>(
-      config_.topic_config().mission_directive_topic(),
-      [this](const std::shared_ptr<MissionDirective>& directive) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        mission_directive_.CopyFrom(*directive);
-      });
-  control_runtime_status_reader_ =
-      node_->CreateReader<control::ControlRuntimeStatus>(
-          config_.topic_config().control_runtime_status_topic(),
-          [this](const std::shared_ptr<control::ControlRuntimeStatus>& status) {
-            std::lock_guard<std::mutex> lock(mutex_);
-            control_runtime_status_.CopyFrom(*status);
-          });
-
   story_telling_reader_ = node_->CreateReader<Stories>(
       config_.topic_config().story_telling_topic(),
       [this](const std::shared_ptr<Stories>& stories) {
@@ -250,12 +314,32 @@ bool PlanningComponent::Init() {
 }
 
 void PlanningComponent::ApplyControlMotionStatus() {
+  if (control_status_kind_ !=
+      execution_state_sync::ControlStatusKind::kMotionResult) {
+    return;
+  }
   control::ControlRuntimeStatus status;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     status.CopyFrom(control_runtime_status_);
   }
-  if (!status.has_motion_execution() || !status.has_motion_scope()) {
+  const double now = cyber::Clock::NowInSeconds();
+  if (!status.has_motion_execution() || !status.has_motion_scope() ||
+      !status.has_header() || !status.header().has_timestamp_sec() ||
+      !std::isfinite(status.header().timestamp_sec()) ||
+      status.header().timestamp_sec() > now ||
+      now - status.header().timestamp_sec() > 1.0 ||
+      !motion_plan_builder_.IsCorrelatedStatus(status.motion_execution())) {
+    return;
+  }
+  if (status.motion_scope() == MOTION_SCOPE_MISSION_DESCENDANT &&
+      (!status.motion_execution().has_parent_mission_identity() ||
+       status.motion_execution()
+               .parent_mission_identity()
+               .SerializeAsString() !=
+           planning_coordinator_->mission_session_manager()
+               .guidance()
+               .identity.SerializeAsString())) {
     return;
   }
   const std::string fingerprint = status.SerializeAsString();
@@ -265,6 +349,37 @@ void PlanningComponent::ApplyControlMotionStatus() {
   applied_control_motion_status_fingerprint_ = fingerprint;
   motion_plan_builder_.ObserveControlStatus(status.motion_execution(),
                                             status.motion_scope());
+  const auto& guidance =
+      planning_coordinator_->mission_session_manager().guidance();
+  const auto& motion = status.motion_execution();
+  const bool mission_descendant =
+      status.motion_scope() == MOTION_SCOPE_MISSION_DESCENDANT &&
+      guidance.identity.has_revision() &&
+      motion.has_parent_mission_identity() &&
+      motion.parent_mission_identity().SerializeAsString() ==
+          guidance.identity.SerializeAsString();
+  const bool lifecycle_hold =
+      status.motion_scope() == MOTION_SCOPE_PLANNING_IDLE_HOLD &&
+      guidance.identity.has_revision() &&
+      (guidance.state == MISSION_SESSION_CANCELLING ||
+       guidance.state == MISSION_SESSION_COMPLETING) &&
+      motion.has_authorized_mission_identity() &&
+      motion.authorized_mission_identity().SerializeAsString() ==
+          guidance.identity.SerializeAsString();
+  if ((mission_descendant || lifecycle_hold) &&
+      (motion.state() == MOTION_EXECUTION_REJECTED ||
+       motion.state() == MOTION_EXECUTION_FAILED ||
+       motion.state() == MOTION_EXECUTION_TIMED_OUT)) {
+    const auto result = planning_coordinator_->FailMission(
+        motion.has_reason() && !motion.reason().empty()
+            ? motion.reason()
+            : "Control reported motion failure");
+    if (!result.accepted) {
+      AERROR << "Failed to propagate Control motion failure to Mission: "
+             << result.reason;
+    }
+    return;
+  }
   if (planning_coordinator_ != nullptr &&
       planning_coordinator_->state().mission_session_state ==
           MISSION_SESSION_ACCEPTED &&
@@ -279,16 +394,31 @@ void PlanningComponent::ApplyControlMotionStatus() {
       AERROR << "Failed to mark Mission executing: " << result.reason;
     }
   }
+  const auto* terminal_evidence =
+      status.motion_execution().has_terminal_evidence()
+          ? &status.motion_execution().terminal_evidence()
+          : nullptr;
+  const bool terminal_evidence_fresh =
+      terminal_evidence != nullptr &&
+      terminal_evidence->has_observed_at_sec() &&
+      std::isfinite(terminal_evidence->observed_at_sec()) &&
+      terminal_evidence->observed_at_sec() <=
+          status.header().timestamp_sec() &&
+      status.header().timestamp_sec() -
+              terminal_evidence->observed_at_sec() <=
+          1.0;
   if (planning_coordinator_ != nullptr &&
       planning_coordinator_->state().mission_session_state ==
           MISSION_SESSION_CANCELLING &&
       status.motion_scope() == MOTION_SCOPE_PLANNING_IDLE_HOLD &&
       status.executor_owner_active() &&
-      (status.motion_execution().state() ==
-           MOTION_EXECUTION_EXECUTING_PRIMITIVE ||
-       status.motion_execution().state() == MOTION_EXECUTION_HOLDING)) {
-    const auto result =
-        planning_coordinator_->ConfirmMissionCancellation(true);
+      status.motion_execution().state() == MOTION_EXECUTION_HOLDING) {
+    if (!terminal_evidence_fresh) {
+      AERROR << "Cancellation hold status lacks fresh terminal evidence";
+      return;
+    }
+    const auto result = planning_coordinator_->ConfirmMissionCancellation(
+        *terminal_evidence);
     if (!result.accepted) {
       AERROR << "Failed to confirm Mission cancellation: " << result.reason;
     }
@@ -298,10 +428,13 @@ void PlanningComponent::ApplyControlMotionStatus() {
           MISSION_SESSION_COMPLETING &&
       status.motion_scope() == MOTION_SCOPE_PLANNING_IDLE_HOLD &&
       status.executor_owner_active() &&
-      (status.motion_execution().state() ==
-           MOTION_EXECUTION_EXECUTING_PRIMITIVE ||
-       status.motion_execution().state() == MOTION_EXECUTION_HOLDING)) {
-    const auto result = planning_coordinator_->CompleteMission();
+      status.motion_execution().state() == MOTION_EXECUTION_HOLDING) {
+    if (!terminal_evidence_fresh) {
+      AERROR << "Completion hold status lacks fresh terminal evidence";
+      return;
+    }
+    const auto result = planning_coordinator_->CompleteMission(
+        *terminal_evidence);
     if (!result.accepted) {
       AERROR << "Failed to complete Mission: " << result.reason;
     }
@@ -314,29 +447,263 @@ void PlanningComponent::PublishMotionPlan(
     const canbus::Chassis& chassis,
     const localization::LocalizationEstimate& localization,
     const ADCTrajectory& trajectory) {
-  if (motion_directive_writer_ == nullptr) {
-    return;
-  }
   auto motion_state = coordinator_state;
   if (semantic_summary.command_completed &&
       semantic_summary.full_stop_reached &&
-      coordinator_state.mission_session_state ==
-          MISSION_SESSION_EXECUTING) {
-    const auto transition =
-        planning_coordinator_->BeginMissionCompleting();
+      coordinator_state.mission_session_state == MISSION_SESSION_EXECUTING) {
+    const auto transition = planning_coordinator_->BeginMissionCompleting();
     if (transition.accepted) {
       motion_state.mission_session_state = MISSION_SESSION_COMPLETING;
     }
   }
-  auto result = motion_plan_builder_.Build(
-      motion_state, semantic_summary, chassis, localization, trajectory,
-      cyber::Clock::NowInSeconds());
+  MotionSpatialEnvelope envelope;
+  std::string envelope_reason;
+  const auto* frame = injector_->frame_history()->Latest();
+  const double localization_time = localization.has_measurement_time()
+                                       ? localization.measurement_time()
+                                       : localization.header().timestamp_sec();
+  if (frame == nullptr) {
+    envelope_reason = "no current planning frame for motion authorization";
+  } else if (!std::isfinite(frame->vehicle_state().timestamp()) ||
+             !std::isfinite(localization_time) ||
+             std::abs(frame->vehicle_state().timestamp() - localization_time) >
+                 kMaxMotionEnvelopeFrameAgeSec) {
+    envelope_reason =
+        "planning frame is stale for current localization measurement";
+  } else if (!BuildMotionEnvelope(*frame, &envelope, &envelope_reason)) {
+    AERROR << "Motion envelope unavailable: " << envelope_reason;
+  }
+  if (!envelope_reason.empty()) {
+    AERROR_EVERY(10) << "Motion directive has no spatial authorization: "
+                     << envelope_reason;
+  }
+  motion_plan_builder_.SetSpatialEnvelope(envelope);
+  auto result = motion_plan_builder_.Build(motion_state, semantic_summary,
+                                           chassis, localization, trajectory,
+                                           cyber::Clock::NowInSeconds());
   if (!result.has_directive) {
     AWARN_EVERY(100) << "MotionPlanBuilder did not emit: " << result.reason;
     return;
   }
-  common::util::FillHeader(node_->Name(), &result.directive);
-  motion_directive_writer_->Write(result.directive);
+  const bool cleanup =
+      coordinator_state.mission_session_state == MISSION_SESSION_CANCELLING ||
+      coordinator_state.mission_session_state == MISSION_SESSION_COMPLETING;
+  if (cleanup && !IsFencedCleanupDirective(result.directive)) {
+    AERROR << "Refusing invalid fenced motion cleanup exemption";
+    execution_state_fault_ = true;
+    return;
+  }
+  if (!SubmitExecutionState(execution_state_sync::Channel::kMotion,
+                            result.directive.SerializeAsString(), cleanup)) {
+    execution_state_fault_ = true;
+  }
+}
+
+bool PlanningComponent::PollExecutionState(
+    const localization::LocalizationEstimate& localization) {
+  if (execution_state_client_ == nullptr) {
+    return false;
+  }
+  std::vector<execution_state_sync::Event> events;
+  const auto result = execution_state_client_->Poll(&events);
+  DrainExecutionStateSubmissions();
+  if (!result.ok()) {
+    if (result.code != execution_state_sync::Code::kBusy) {
+      AERROR << "Planning execution-state poll failed: " << result.message;
+      execution_state_fault_ = true;
+    }
+    return false;
+  }
+  if (execution_state_fault_) {
+    return false;
+  }
+  if (pending_mission_admissions_ != 0) {
+    return execution_state_client_->Healthy();
+  }
+  uint64_t latest_mission_sequence = 0;
+  for (const auto& event : events) {
+    if (event.operation.channel == execution_state_sync::Channel::kMission) {
+      latest_mission_sequence = event.sequence;
+    }
+  }
+  const auto view = execution_state_client_->Latest();
+  if (view && view->result.ok() && view->snapshot) {
+    const auto& latest_mission =
+        view->snapshot->latest[static_cast<size_t>(
+            execution_state_sync::Channel::kMission)];
+    if (latest_mission && latest_mission->sequence > latest_mission_sequence) {
+      latest_mission_sequence = latest_mission->sequence;
+    }
+  }
+  for (const auto& event : events) {
+    if (event.sequence <= deferred_mission_ack_sequence_) {
+      continue;
+    }
+    if (event.operation.channel ==
+            execution_state_sync::Channel::kMission &&
+        event.owner != execution_state_sync::Role::kMission) {
+      AERROR << "Mission lifecycle directive was not committed by Mission";
+      execution_state_fault_ = true;
+      return false;
+    }
+    switch (event.operation.channel) {
+      case execution_state_sync::Channel::kMission: {
+        MissionDirective directive;
+        if (!directive.ParseFromString(event.operation.payload)) {
+          AERROR << "Invalid MissionDirective execution-state payload";
+          execution_state_fault_ = true;
+          return false;
+        }
+        mission_directive_.CopyFrom(directive);
+        mission_event_sequence_ = event.sequence;
+        motion_event_sequence_ = 0;
+        ApplyPendingMissionDirective(
+            localization, event.sequence < latest_mission_sequence);
+        break;
+      }
+      case execution_state_sync::Channel::kControlStatus: {
+        control::ControlRuntimeStatus status;
+        if (!status.ParseFromString(event.operation.payload)) {
+          AERROR << "Invalid ControlRuntimeStatus execution-state payload";
+          execution_state_fault_ = true;
+          return false;
+        }
+        control_runtime_status_.CopyFrom(status);
+        control_status_kind_ = event.operation.control_status_kind;
+        ApplyControlMotionStatus();
+        break;
+      }
+      case execution_state_sync::Channel::kMotion:
+        motion_event_sequence_ = event.sequence;
+        break;
+      case execution_state_sync::Channel::kPlanningStatus:
+        break;
+      case execution_state_sync::Channel::kSafetyRequest:
+      case execution_state_sync::Channel::kSafetyStatus:
+        break;
+    }
+    if (execution_state_fault_) {
+      return false;
+    }
+    deferred_mission_ack_sequence_ = event.sequence;
+    if (pending_mission_admissions_ != 0) {
+      break;
+    }
+  }
+  if (pending_mission_admissions_ == 0 &&
+      !events.empty() &&
+      deferred_mission_ack_sequence_ == events.back().sequence) {
+    const auto ack = execution_state_client_->Acknowledge(
+        deferred_mission_ack_sequence_);
+    if (!ack.ok()) {
+      AERROR << "Planning Mission admission ack failed: " << ack.message;
+      execution_state_fault_ = true;
+      return false;
+    }
+    deferred_mission_ack_sequence_ = 0;
+  }
+  return execution_state_client_->Healthy() && !execution_state_fault_ &&
+         latest_mission_sequence <= mission_event_sequence_;
+}
+
+void PlanningComponent::DrainExecutionStateSubmissions() {
+  execution_state_sync::Submission submission;
+  while (execution_state_client_->TakeSubmission(&submission).ok()) {
+    const auto status_kind = submission.operation.planning_status_kind;
+    const bool admission =
+        status_kind != execution_state_sync::PlanningStatusKind::kRuntime;
+    if (!submission.result.ok()) {
+      AERROR << "Planning execution-state commit failed: "
+             << submission.result.message;
+      if (admission && pending_mission_admissions_ > 0) {
+        --pending_mission_admissions_;
+        planning_coordinator_->DiscardPreparedMissionDirective();
+      }
+      execution_state_fault_ = true;
+      continue;
+    }
+    if (submission.operation.channel ==
+        execution_state_sync::Channel::kMotion) {
+      motion_event_sequence_ = submission.commit.sequence;
+      MotionDirective directive;
+      if (!directive.ParseFromString(submission.operation.payload)) {
+        AERROR << "Committed motion payload cannot be parsed";
+        execution_state_fault_ = true;
+      } else if (motion_directive_writer_ != nullptr &&
+                 !motion_directive_writer_->Write(directive)) {
+        AERROR << "Failed to publish committed MotionDirective mirror";
+      }
+    } else if (submission.operation.channel ==
+               execution_state_sync::Channel::kPlanningStatus) {
+      PlanningRuntimeStatus status;
+      if (!status.ParseFromString(submission.operation.payload)) {
+        AERROR << "Committed planning status payload cannot be parsed";
+        execution_state_fault_ = true;
+      } else {
+        if (admission &&
+            status_kind !=
+                execution_state_sync::PlanningStatusKind::kAdmissionRejected) {
+          if (!planning_coordinator_->CommitPreparedMissionDirective(
+                  status.admission_directive_identity())) {
+            AERROR
+                << "Committed Mission admission has no matching staged session";
+            execution_state_fault_ = true;
+          }
+        }
+        if (admission && !execution_state_fault_) {
+          applied_mission_directive_fingerprint_ =
+              mission_directive_.SerializeAsString();
+        }
+        if (!execution_state_fault_ &&
+            planning_runtime_status_writer_ != nullptr &&
+            !planning_runtime_status_writer_->Write(status)) {
+          AERROR << "Failed to publish committed PlanningRuntimeStatus mirror";
+        }
+      }
+      if (admission && pending_mission_admissions_ > 0) {
+        --pending_mission_admissions_;
+      }
+    }
+  }
+}
+
+bool PlanningComponent::SubmitExecutionState(
+    execution_state_sync::Channel channel, const std::string& payload,
+    bool cleanup,
+    execution_state_sync::PlanningStatusKind planning_status_kind) {
+  const bool owner_runtime_observation =
+      channel == execution_state_sync::Channel::kPlanningStatus &&
+      planning_status_kind ==
+          execution_state_sync::PlanningStatusKind::kRuntime;
+  if (execution_state_client_ == nullptr) {
+    AERROR << "Cannot submit without an execution-state client";
+    return false;
+  }
+  if (mission_event_sequence_ == 0 && !owner_runtime_observation) {
+    AERROR << "Cannot submit lifecycle operation without a live Mission event";
+    return false;
+  }
+  std::vector<execution_state_sync::Guard> guards;
+  if (mission_event_sequence_ != 0) {
+    guards.push_back(
+        {execution_state_sync::Channel::kMission, mission_event_sequence_});
+  }
+  if (channel == execution_state_sync::Channel::kPlanningStatus &&
+      planning_status_kind ==
+          execution_state_sync::PlanningStatusKind::kRuntime &&
+      motion_event_sequence_ != 0) {
+    guards.push_back(
+        {execution_state_sync::Channel::kMotion, motion_event_sequence_});
+  }
+  uint64_t ticket = 0;
+  const auto result = execution_state_client_->Submit(
+      channel, payload, std::move(guards), false, cleanup, &ticket,
+      planning_status_kind);
+  if (!result.ok()) {
+    AERROR << "Planning execution-state admission failed: " << result.message;
+    return false;
+  }
+  return true;
 }
 
 void PlanningComponent::RefreshLocalView(
@@ -358,8 +725,8 @@ void PlanningComponent::RefreshLocalView(
       std::make_shared<TrafficLightDetection>(traffic_light_);
   local_view_.relative_map = std::make_shared<MapMsg>(relative_map_);
   local_view_.pad_msg = std::make_shared<PadMessage>(pad_msg_);
-  local_view_.planning_command =
-      std::make_shared<PlanningCommand>(planning_command_);
+  local_view_.planning_command = std::make_shared<PlanningCommand>(
+      planning_coordinator_->mission_session_manager().BuildPlanningCommand());
   local_view_.stories = std::make_shared<Stories>(stories_);
 }
 
@@ -371,26 +738,85 @@ void PlanningComponent::RefreshEnvironmentState() {
 }
 
 void PlanningComponent::ApplyPendingMissionDirective(
-    const localization::LocalizationEstimate& localization) {
+    const localization::LocalizationEstimate& localization, bool superseded) {
   MissionDirective directive;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     directive.CopyFrom(mission_directive_);
   }
   if (!directive.has_identity() || planning_coordinator_ == nullptr) {
+    AERROR << "Cannot admit Mission directive without identity/coordinator";
+    execution_state_fault_ = true;
     return;
   }
   const std::string fingerprint = directive.SerializeAsString();
   if (fingerprint == applied_mission_directive_fingerprint_) {
     return;
   }
-  const auto result = planning_coordinator_->ApplyMissionDirective(
-      directive, localization, cyber::Clock::NowInSeconds());
+  const auto result =
+      superseded
+          ? MissionAdmissionResult{
+                false, MissionAdmissionCode::kReplay,
+                "Mission directive superseded by a newer durable intent"}
+          : planning_coordinator_->PrepareMissionDirective(
+                directive, localization, cyber::Clock::NowInSeconds());
+  PlanningRuntimeStatus admission_status;
+  common::util::FillHeader(node_->Name(), &admission_status);
+  admission_status.set_command_id(directive.identity().command_id());
+  admission_status.set_mission_id(directive.identity().aggregate_id());
+  admission_status.mutable_admission_directive_identity()->CopyFrom(
+      directive.identity());
+  admission_status.set_state(result.accepted ? RUNTIME_ACCEPTED
+                                             : RUNTIME_REJECTED);
+  auto status_kind = execution_state_sync::PlanningStatusKind::
+      kAdmissionRejected;
+  if (result.code == MissionAdmissionCode::kDuplicate) {
+    admission_status.set_mission_admission_outcome(
+        MISSION_ADMISSION_DUPLICATE);
+    status_kind = execution_state_sync::PlanningStatusKind::
+        kAdmissionDuplicate;
+  } else if (result.accepted) {
+    admission_status.set_mission_admission_outcome(MISSION_ADMISSION_ACCEPTED);
+    status_kind = execution_state_sync::PlanningStatusKind::kAdmissionAccepted;
+  } else {
+    admission_status.set_mission_admission_outcome(MISSION_ADMISSION_REJECTED);
+  }
+  admission_status.set_reason(result.reason);
+  const auto* prepared =
+      planning_coordinator_->prepared_mission_session_manager();
+  if (result.accepted && prepared == nullptr) {
+    AERROR << "Accepted Mission admission has no staged session";
+    execution_state_fault_ = true;
+    return;
+  }
+  const auto& session =
+      result.accepted ? *prepared
+                      : planning_coordinator_->mission_session_manager();
+  const auto& guidance = session.guidance();
+  if (guidance.identity.has_revision()) {
+    admission_status.set_mission_id(guidance.identity.aggregate_id());
+    admission_status.mutable_mission_identity()->CopyFrom(guidance.identity);
+    admission_status.set_mission_session_state(guidance.state);
+    admission_status.mutable_accepted_start()->CopyFrom(
+        guidance.accepted_start);
+    admission_status.set_mission_phase(guidance.phase);
+    admission_status.mutable_mission_route()->CopyFrom(guidance.route);
+    admission_status.mutable_accepted_directive_identity()->CopyFrom(
+        session.last_accepted_directive_identity());
+  }
+  if (!SubmitExecutionState(
+          execution_state_sync::Channel::kPlanningStatus,
+          admission_status.SerializeAsString(), false, status_kind)) {
+    execution_state_fault_ = true;
+    planning_coordinator_->DiscardPreparedMissionDirective();
+    AERROR << "Failed to persist Mission admission result: " << result.reason;
+    return;
+  }
+  ++pending_mission_admissions_;
   if (!result.accepted) {
     AERROR << "Mission Directive V2 rejected: " << result.reason;
   } else {
-    applied_mission_directive_fingerprint_ = fingerprint;
-    AINFO << "Mission Directive V2 admitted: " << result.reason;
+    AINFO << "Mission Directive V2 prepared, awaiting commit: " << result.reason;
   }
 }
 
@@ -523,13 +949,39 @@ bool PlanningComponent::Proc(
   PlanningCycleState cycle_state;
 
   // Step 1: service latched planning side effects from previous cycles.
+  if (!PollExecutionState(*localization_estimate)) {
+    AERROR_EVERY(10) << "Planning execution-state synchronization unavailable";
+    return false;
+  }
+  if (mission_event_sequence_ == 0) {
+    PlanningRuntimeStatus status;
+    common::util::FillHeader(node_->Name(), &status);
+    status.set_state(RUNTIME_IDLE);
+    status.set_reason("awaiting a live Mission authorization");
+    auto fingerprint_status = status;
+    fingerprint_status.clear_header();
+    const std::string fingerprint = fingerprint_status.SerializeAsString();
+    const double now = cyber::Clock::NowInSeconds();
+    if (fingerprint != last_planning_status_fingerprint_ ||
+        now - last_planning_status_submit_sec_ >= 0.2) {
+      if (SubmitExecutionState(execution_state_sync::Channel::kPlanningStatus,
+                               status.SerializeAsString(), false)) {
+        last_planning_status_fingerprint_ = fingerprint;
+        last_planning_status_submit_sec_ = now;
+      }
+    }
+    AINFO_EVERY(100) << "Planning awaits a live Mission authorization";
+    return false;
+  }
+  if (pending_mission_admissions_ != 0 ||
+      deferred_mission_ack_sequence_ != 0) {
+    return false;
+  }
   CheckRerouting();
 
   // Step 2: build the cycle snapshot from fast inputs and latched inputs.
-  RefreshLocalView(prediction_obstacles, chassis, localization_estimate);
-  ApplyPendingMissionDirective(*localization_estimate);
   UpdateRoutingForMission(*localization_estimate);
-  ApplyControlMotionStatus();
+  RefreshLocalView(prediction_obstacles, chassis, localization_estimate);
   RefreshEnvironmentState();
   if (planning_coordinator_ != nullptr) {
     cycle_state.preview_state =
@@ -619,9 +1071,8 @@ bool PlanningComponent::Proc(
   PopulateTrajectoryExecutionContext(
       planning_coordinator_->state(), guarded_semantic_summary,
       cycle_state.hybrid_summary, &adc_trajectory_pb);
-  PublishMotionPlan(planning_coordinator_->state(),
-                    guarded_semantic_summary, *chassis,
-                    *localization_estimate, adc_trajectory_pb);
+  PublishMotionPlan(planning_coordinator_->state(), guarded_semantic_summary,
+                    *chassis, *localization_estimate, adc_trajectory_pb);
   planning_writer_->Write(adc_trajectory_pb);
   PublishRuntimeStatus(
       guarded_semantic_summary, cycle_state.hybrid_summary,
@@ -733,18 +1184,15 @@ void PlanningComponent::UpdateRoutingForMission(
     return;
   }
 
-  PlanningCommand command;
-  command.set_mission_id(guidance.identity.aggregate_id());
-  command.set_command_id(guidance.identity.command_id());
-  command.set_action(COMMAND_ACTIVATE);
-  if (guidance.plan.has_goal()) {
-    command.mutable_goal()->CopyFrom(guidance.plan.goal());
-  }
-  if (guidance.plan.has_route_hint()) {
-    command.mutable_route_hint()->CopyFrom(guidance.plan.route_hint());
-  }
+  const auto command =
+      planning_coordinator_->mission_session_manager().BuildPlanningCommand();
+  auto accepted_localization = localization;
+  accepted_localization.mutable_pose()->mutable_position()->CopyFrom(
+      guidance.accepted_start.position());
+  accepted_localization.mutable_pose()->set_heading(
+      guidance.accepted_start.heading());
   RoutingRequest request;
-  if (!BuildRoutingRequest(command, localization, &request)) {
+  if (!BuildRoutingRequest(command, accepted_localization, &request)) {
     return;
   }
   common::util::FillHeader(node_->Name(), &request);
@@ -862,10 +1310,6 @@ void PlanningComponent::PublishRuntimeStatus(
     const ValidationResult& validation_result,
     const PlanningCoordinatorState& coordinator_state,
     const PlanningExecutionContext& execution, const std::string& reason) {
-  if (planning_runtime_status_writer_ == nullptr) {
-    return;
-  }
-
   PlanningRuntimeStatus runtime_status;
   common::util::FillHeader(node_->Name(), &runtime_status);
   runtime_status.set_state(semantic_summary.runtime_state);
@@ -1055,7 +1499,22 @@ void PlanningComponent::PublishRuntimeStatus(
     validation->set_validation_reason(reason);
   }
 
-  planning_runtime_status_writer_->Write(runtime_status);
+  auto fingerprint_status = runtime_status;
+  fingerprint_status.clear_header();
+  const std::string fingerprint = fingerprint_status.SerializeAsString();
+  const double now = cyber::Clock::NowInSeconds();
+  const bool semantic_change = fingerprint != last_planning_status_fingerprint_;
+  if (semantic_change || now - last_planning_status_submit_sec_ >= 0.2) {
+    if (SubmitExecutionState(execution_state_sync::Channel::kPlanningStatus,
+                             runtime_status.SerializeAsString(), false)) {
+      last_planning_status_fingerprint_ = fingerprint;
+      last_planning_status_submit_sec_ = now;
+    } else if (semantic_change) {
+      execution_state_fault_ = true;
+    } else {
+      AWARN_EVERY(10) << "Planning status heartbeat deferred by backpressure";
+    }
+  }
 }
 
 void PlanningComponent::LogPlanningCycle(

@@ -27,15 +27,16 @@ bool MotionExecutionManager::IsTerminal(
 
 bool MotionExecutionManager::HasActiveCommand() const {
   return active_command_.has_identity() && status_.has_state() &&
-         !IsTerminal(status_.state()) &&
-         status_.state() != planning::MOTION_EXECUTION_HOLDING;
+         !IsTerminal(status_.state());
 }
 
 bool MotionExecutionManager::IsExecuting() const {
   return status_.state() ==
              planning::MOTION_EXECUTION_EXECUTING_TRAJECTORY ||
          status_.state() ==
-             planning::MOTION_EXECUTION_EXECUTING_PRIMITIVE;
+             planning::MOTION_EXECUTION_EXECUTING_PRIMITIVE ||
+         (status_.state() == planning::MOTION_EXECUTION_HOLDING &&
+          HasActiveCommand());
 }
 
 const planning::MotionExecutionCommand*
@@ -54,6 +55,13 @@ planning::MotionExecutionStatus MotionExecutionManager::Reject(
   }
   if (command.has_reference_frame_id()) {
     rejected.set_reference_frame_id(command.reference_frame_id());
+  }
+  if (command.has_authorized_mission_identity()) {
+    rejected.mutable_authorized_mission_identity()->CopyFrom(
+        command.authorized_mission_identity());
+  }
+  if (command.has_authority_generation()) {
+    rejected.set_authority_generation(command.authority_generation());
   }
   rejected.set_state(planning::MOTION_EXECUTION_REJECTED);
   rejected.set_reject_reason(reject_reason);
@@ -80,6 +88,9 @@ void MotionExecutionManager::InitializeStatus(
   status_.mutable_identity()->CopyFrom(command.identity());
   status_.set_reference_frame_id(command.reference_frame_id());
   status_.set_execution_type(execution_type);
+  status_.mutable_authorized_mission_identity()->CopyFrom(
+      command.authorized_mission_identity());
+  status_.set_authority_generation(command.authority_generation());
   if (parent != nullptr) {
     status_.mutable_parent_mission_identity()->CopyFrom(*parent);
   }
@@ -241,7 +252,32 @@ planning::MotionExecutionStatus MotionExecutionManager::Submit(
 }
 
 planning::MotionExecutionStatus MotionExecutionManager::Apply(
-    const planning::MotionDirective& directive, double now_sec) {
+    const planning::MotionDirective& directive, double now_sec,
+    bool authorized_stop_cleanup) {
+  auto result = ApplyDirective(directive, now_sec, authorized_stop_cleanup);
+  if (result.state() == planning::MOTION_EXECUTION_REJECTED &&
+      directive.has_parent_mission_identity() &&
+      IsValidParentIdentity(directive.parent_mission_identity())) {
+    result.mutable_parent_mission_identity()->CopyFrom(
+        directive.parent_mission_identity());
+  }
+  return result;
+}
+
+planning::MotionExecutionStatus MotionExecutionManager::ApplyDirective(
+    const planning::MotionDirective& directive, double now_sec,
+    bool authorized_stop_cleanup) {
+  const auto* cleanup = directive.has_execute() ? &directive.execute().command()
+      : directive.has_replace() ? &directive.replace().command() : nullptr;
+  authorized_stop_cleanup = authorized_stop_cleanup && cleanup &&
+      cleanup->has_trajectory() &&
+      cleanup->identity().command_id() == "controlled-stop" &&
+      directive.scope() == planning::MOTION_SCOPE_MISSION_DESCENDANT &&
+      cleanup->control_intent().tracking_mode() == planning::TRACKING_MODE_TRAJECTORY &&
+      cleanup->control_intent().execution_channel() == planning::EXECUTION_CHANNEL_TRAJECTORY &&
+      cleanup->control_intent().primitive_type() == planning::CONTROL_PRIMITIVE_NONE &&
+      cleanup->control_intent().longitudinal_intent() == planning::LON_INTENT_MRM_STOP &&
+      cleanup->control_intent().require_full_stop();
   if (!directive.has_scope() ||
       directive.scope() == planning::MOTION_SCOPE_UNKNOWN) {
     planning::MotionExecutionCommand empty;
@@ -265,6 +301,13 @@ planning::MotionExecutionStatus MotionExecutionManager::Apply(
   const auto* parent = mission_scoped
                            ? &directive.parent_mission_identity()
                            : nullptr;
+  if (cleanup != nullptr && parent != nullptr &&
+      (!cleanup->has_authorized_mission_identity() ||
+       !IsExactParentIdentity(*parent,
+                              cleanup->authorized_mission_identity()))) {
+    return Reject(*cleanup, now_sec, planning::MOTION_REJECT_MISSING_CONTEXT,
+                  "motion authority does not match its Mission parent");
+  }
   switch (directive.operation_case()) {
     case planning::MotionDirective::kExecute:
       if (!directive.execute().has_command()) {
@@ -278,7 +321,7 @@ planning::MotionExecutionStatus MotionExecutionManager::Apply(
                       planning::MOTION_REJECT_INVALID_PAYLOAD,
                       "Planning-owned scope permits only standstill hold");
       }
-      if (parent != nullptr && IsParentFenced(*parent)) {
+      if (parent != nullptr && IsParentFenced(*parent) && !authorized_stop_cleanup) {
         return Reject(directive.execute().command(), now_sec,
                       planning::MOTION_REJECT_PARENT_FENCED,
                       "parent Mission revision is cancelled");
@@ -313,7 +356,7 @@ planning::MotionExecutionStatus MotionExecutionManager::Apply(
                       planning::MOTION_REJECT_INVALID_PAYLOAD,
                       "Planning-owned replacement is limited to idle-hold renewal");
       }
-      if (parent != nullptr && IsParentFenced(*parent)) {
+      if (parent != nullptr && IsParentFenced(*parent) && !authorized_stop_cleanup) {
         return Reject(directive.replace().command(), now_sec,
                       planning::MOTION_REJECT_PARENT_FENCED,
                       "parent Mission revision is cancelled");
@@ -416,17 +459,26 @@ planning::MotionExecutionStatus MotionExecutionManager::Apply(
 
 planning::MotionExecutionStatus
 MotionExecutionManager::ConfirmExecutorRevoked(
-    double now_sec, const std::string& reason) {
+    const planning::MotionTerminalEvidence& evidence, double now_sec) {
   if (!AdvanceDeadlines(now_sec)) {
     return InvalidTransition(now_sec,
-                             "manager time must be finite and monotonic");
+                             "revocation evidence time is invalid");
   }
   if (status_.state() != planning::MOTION_EXECUTION_CANCELLING) {
     return InvalidTransition(
         now_sec, "executor revocation requires a cancelling command");
   }
+  std::string reason;
+  if (!ValidateTerminalEvidence(
+          evidence, planning::MOTION_TERMINAL_EVIDENCE_EXECUTOR_REVOCATION,
+          planning::MOTION_EXECUTOR_OWNERSHIP_REVOKED, now_sec, false,
+          &reason)) {
+    return InvalidTransition(now_sec, reason);
+  }
   SetState(planning::MOTION_EXECUTION_CANCELLED, now_sec,
-           reason.empty() ? "executor ownership revoked" : reason);
+           "executor ownership revoked with correlated evidence");
+  status_.mutable_terminal_evidence()->CopyFrom(evidence);
+  last_terminal_status_.mutable_terminal_evidence()->CopyFrom(evidence);
   if (!pending_replacement_.has_identity()) {
     return status_;
   }
@@ -566,20 +618,105 @@ bool MotionExecutionManager::StartConditionMatches(
   return true;
 }
 
+bool MotionExecutionManager::ValidateTerminalEvidence(
+    const planning::MotionTerminalEvidence& evidence,
+    planning::MotionTerminalEvidenceKind expected_kind,
+    planning::MotionExecutorOwnership expected_ownership,
+    double now_sec, bool require_settled_terminal,
+    std::string* reason) const {
+  const auto reject = [reason](const std::string& message) {
+    if (reason != nullptr) {
+      *reason = message;
+    }
+    return false;
+  };
+  if (evidence.has_absolute_angular_speed_radps() ||
+      evidence.has_rotation_progress()) {
+    return reject("angular terminal evidence contract is unavailable");
+  }
+  if (!HasActiveCommand() || !evidence.has_contract_version() ||
+      evidence.contract_version() != 1 || !evidence.has_kind() ||
+      evidence.kind() != expected_kind || !evidence.has_motion_identity() ||
+      !IsExactIdentity(evidence.motion_identity(), active_command_.identity()) ||
+      !evidence.has_parent_mission_identity() ||
+      !IsExactParentIdentity(evidence.parent_mission_identity(),
+                             active_command_.authorized_mission_identity()) ||
+      !evidence.has_authority_generation() ||
+      evidence.authority_generation() !=
+          active_command_.authority_generation() ||
+      !evidence.has_observed_at_sec() ||
+      !std::isfinite(evidence.observed_at_sec()) ||
+      evidence.observed_at_sec() > now_sec ||
+      now_sec - evidence.observed_at_sec() > kMaxVehicleStateAgeSec ||
+      (status_.has_execution_start_time_sec() &&
+       evidence.observed_at_sec() < status_.execution_start_time_sec()) ||
+      !evidence.has_reference_frame_id() ||
+      evidence.reference_frame_id() != active_command_.reference_frame_id() ||
+      !evidence.has_position_error_m() ||
+      !std::isfinite(evidence.position_error_m()) ||
+      evidence.position_error_m() < 0.0 ||
+      !evidence.has_heading_error_rad() ||
+      !std::isfinite(evidence.heading_error_rad()) ||
+      evidence.heading_error_rad() < 0.0 ||
+      !evidence.has_absolute_speed_mps() ||
+      !std::isfinite(evidence.absolute_speed_mps()) ||
+      evidence.absolute_speed_mps() < 0.0 ||
+      !evidence.has_settled_duration_sec() ||
+      !std::isfinite(evidence.settled_duration_sec()) ||
+      evidence.settled_duration_sec() < 0.0 ||
+      !evidence.has_executor_ownership() ||
+      evidence.executor_ownership() != expected_ownership ||
+      !evidence.has_executor_type() ||
+      evidence.executor_type() != status_.execution_type() ||
+      !evidence.has_safety_state() ||
+      evidence.safety_state() == planning::MOTION_EVIDENCE_SAFETY_UNKNOWN) {
+    return reject("terminal evidence is incomplete or mismatched");
+  }
+  if (require_settled_terminal) {
+    const auto& completion = active_command_.completion();
+    if (evidence.position_error_m() > completion.position_tolerance_m() ||
+        evidence.heading_error_rad() >
+            completion.heading_tolerance_rad() ||
+        evidence.absolute_speed_mps() >
+            completion.speed_tolerance_mps() ||
+        evidence.settled_duration_sec() < completion.settle_time_sec() ||
+        (expected_kind ==
+             planning::MOTION_TERMINAL_EVIDENCE_STANDSTILL_HOLD &&
+         evidence.safety_state() != planning::MOTION_EVIDENCE_SAFETY_NORMAL) ||
+        (expected_kind ==
+             planning::MOTION_TERMINAL_EVIDENCE_COMPLETION &&
+         evidence.safety_state() != planning::MOTION_EVIDENCE_SAFETY_NORMAL &&
+         evidence.safety_state() !=
+             planning::MOTION_EVIDENCE_SAFETY_WARNING)) {
+      return reject("terminal evidence does not satisfy the motion postcondition");
+    }
+  }
+  return true;
+}
+
 planning::MotionExecutionStatus MotionExecutionManager::Succeed(
-    double now_sec, const std::string& reason) {
+    const planning::MotionTerminalEvidence& evidence, double now_sec) {
   if (!AdvanceDeadlines(now_sec)) {
     return InvalidTransition(now_sec,
-                             "manager time must be finite and monotonic");
+                             "completion evidence time is invalid");
   }
   if (IsTerminal(status_.state())) {
     return status_;
   }
-  if (!IsExecuting()) {
+  if (!IsExecuting() || IsPlanningIdleHold(active_command_)) {
     return InvalidTransition(now_sec,
-                             "only an executing command can succeed");
+                             "only an executing non-hold command can succeed");
   }
-  SetState(planning::MOTION_EXECUTION_SUCCEEDED, now_sec, reason);
+  std::string reason;
+  if (!ValidateTerminalEvidence(
+          evidence, planning::MOTION_TERMINAL_EVIDENCE_COMPLETION,
+          planning::MOTION_EXECUTOR_OWNERSHIP_ACTIVE, now_sec, true, &reason)) {
+    return InvalidTransition(now_sec, reason);
+  }
+  SetState(planning::MOTION_EXECUTION_SUCCEEDED, now_sec,
+           "measured terminal completion evidence accepted");
+  status_.mutable_terminal_evidence()->CopyFrom(evidence);
+  last_terminal_status_.mutable_terminal_evidence()->CopyFrom(evidence);
   return status_;
 }
 
@@ -603,20 +740,30 @@ planning::MotionExecutionStatus MotionExecutionManager::Fail(
 }
 
 planning::MotionExecutionStatus MotionExecutionManager::EnterHolding(
-    double now_sec, const std::string& reason) {
+    const planning::MotionTerminalEvidence& evidence, double now_sec) {
   if (!AdvanceDeadlines(now_sec)) {
     return InvalidTransition(now_sec,
-                             "manager time must be finite and monotonic");
+                             "standstill evidence time is invalid");
   }
-  if (!IsTerminal(status_.state()) &&
-      status_.state() != planning::MOTION_EXECUTION_HOLDING) {
-    return InvalidTransition(
-        now_sec, "holding is allowed only after a terminal outcome");
+  if (HasActiveCommand()) {
+    if (!IsExecuting() || !IsPlanningIdleHold(active_command_)) {
+      return InvalidTransition(
+          now_sec, "only an executing standstill command can actively hold");
+    }
+    std::string reason;
+    if (!ValidateTerminalEvidence(
+            evidence, planning::MOTION_TERMINAL_EVIDENCE_STANDSTILL_HOLD,
+            planning::MOTION_EXECUTOR_OWNERSHIP_ACTIVE, now_sec, true,
+            &reason)) {
+      return InvalidTransition(now_sec, reason);
+    }
+    SetState(planning::MOTION_EXECUTION_HOLDING, now_sec,
+             "measured standstill hold evidence accepted");
+    status_.mutable_terminal_evidence()->CopyFrom(evidence);
+    return status_;
   }
-  SetState(planning::MOTION_EXECUTION_HOLDING, now_sec, reason);
-  active_command_.Clear();
-  active_parent_identity_.Clear();
-  return status_;
+  return InvalidTransition(
+      now_sec, "holding requires a validated active standstill command");
 }
 
 planning::MotionExecutionStatus MotionExecutionManager::Tick(double now_sec) {

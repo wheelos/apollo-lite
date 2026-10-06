@@ -8,6 +8,55 @@ import "modules/control/proto/lat_controller_conf.proto";
 import "modules/control/proto/lon_controller_conf.proto";
 import "modules/control/proto/mpc_controller_conf.proto";
 import "modules/control/proto/diff_drive_lat_controller_conf.proto";
+import "modules/control/proto/pid_conf.proto";
+
+enum ControllerParameterProfile {
+  CONTROL_PROFILE_ROAD_TRACKING = 0;
+  CONTROL_PROFILE_LOW_SPEED_PRECISION = 1;
+  CONTROL_PROFILE_STANDSTILL_HOLD = 2;
+}
+
+// Local tuning only. Vehicle models, actuator calibration and completion
+// conditions are inherited unchanged from the platform/execution contract.
+message ControllerTuningProfile {
+  optional bool inherit_base_tuning = 1 [default = false];
+  repeated ControlConf.ControllerType active_controllers = 2;
+  repeated double lateral_q = 3;
+  repeated double lateral_reverse_q = 4;
+  optional PidConf station_pid = 5;
+  optional PidConf low_speed_pid = 6;
+  optional PidConf high_speed_pid = 7;
+  optional PidConf reverse_station_pid = 8;
+  optional PidConf reverse_speed_pid = 9;
+  repeated double mpc_q = 10;
+  repeated double mpc_r = 11;
+  optional double max_entry_speed_mps = 12;
+}
+
+message ControllerProfiles {
+  optional string version = 1;
+  optional double max_switch_speed_mps = 2;
+  optional ControllerTuningProfile road_tracking = 3;
+  optional ControllerTuningProfile low_speed_precision = 4;
+  optional ControllerTuningProfile standstill_hold = 5;
+}
+
+// Explicit opt-in. Every field is required by runtime validation. Physical
+// acceleration/curvature and footprint bounds also come from VehicleParam.
+message PrimitiveExecutionConf {
+  optional double max_speed_mps = 1;
+  optional double max_acceleration_mps2 = 2;
+  optional double max_deceleration_mps2 = 3;
+  optional double max_jerk_mps3 = 4;
+  optional double max_curvature_per_m = 5;
+  optional double max_curvature_derivative_per_m2 = 6;
+  optional double max_lateral_acceleration_mps2 = 7;
+  optional double footprint_margin_m = 8;
+  optional double sample_period_sec = 9;
+  optional double spatial_step_m = 10;
+  optional double max_state_age_sec = 11;
+  optional double max_tracking_heading_error_rad = 12;
+}
 
 message ControlConf {
   enum ControllerType {
@@ -68,4 +117,8 @@ message ControlConf {
   optional double max_path_remain_when_stopped = 37 [default = 0.3];
   optional double low_speed_approach_distance = 38;
   optional double low_speed_approach_speed = 39;
+  optional PrimitiveExecutionConf primitive_execution = 41;
+  // Absent preserves the fixed legacy controller set. Precision tuning is
+  // opt-in, not inferred from a Mission task name or scene.
+  optional ControllerProfiles controller_profiles = 42;
 }

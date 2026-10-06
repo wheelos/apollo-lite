@@ -13,6 +13,7 @@ cc_library(
     deps = [
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:mission_directive_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
     ],
 )
 

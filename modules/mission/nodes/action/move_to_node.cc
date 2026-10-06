@@ -59,7 +59,11 @@ BT::NodeStatus MoveToNode::onStart() {
   command.set_preferred_mode(planning::MODE_LANE_GRAPH);
   command.set_preemptible(true);
   *command.mutable_goal()->mutable_goal_pose() = target_pose;
-  MissionContext::Instance()->SendPlanningCommand(command);
+  if (!MissionContext::Instance()->SendPlanningCommand(command)) {
+    AERROR << "MoveToNode: Failed to submit task";
+    current_command_id_.clear();
+    return BT::NodeStatus::FAILURE;
+  }
   return BT::NodeStatus::RUNNING;
 }
 
@@ -96,7 +100,9 @@ void MoveToNode::onHalted() {
   command.set_action(planning::COMMAND_CANCEL);
   command.set_requested_scene(planning::SCENE_LANE_CRUISE);
   command.set_preferred_mode(planning::MODE_LANE_GRAPH);
-  MissionContext::Instance()->SendPlanningCommand(command);
+  if (!MissionContext::Instance()->SendPlanningCommand(command)) {
+    AERROR << "MoveToNode: Failed to submit cancellation";
+  }
   current_command_id_.clear();
 }
 

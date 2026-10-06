@@ -104,6 +104,12 @@ bool HasValidSpatialEnvelope(
     if (!HasFinitePoint(point) || !IsInsideBoundary(point, envelope)) {
       return false;
     }
+    for (const auto& point : envelope.reference_path()) {
+      if (!point.has_x() || !point.has_y() || !IsFinite(point.x()) ||
+          !IsFinite(point.y()) || !IsInsideBoundary(point, envelope)) {
+        return false;
+      }
+    }
   }
   return true;
 }
@@ -137,6 +143,9 @@ planning::MotionCapability CapabilityForPrimitive(
   }
 }
 
+MotionValidationResult ValidateControlIntent(
+    const planning::MotionExecutionCommand& command);
+
 }  // namespace
 
 MotionExecutionValidator::MotionExecutionValidator(
@@ -166,9 +175,22 @@ MotionValidationResult MotionExecutionValidator::Validate(
       command.identity().aggregate_id().empty() ||
       !command.identity().has_command_id() ||
       command.identity().command_id().empty() ||
-      !command.identity().has_revision() || command.identity().revision() == 0) {
+      !command.identity().has_revision() || command.identity().revision() == 0 ||
+      !command.has_authority_generation() ||
+      command.authority_generation() == 0 ||
+      !command.has_authorized_mission_identity() ||
+      !command.authorized_mission_identity().has_producer_epoch() ||
+      command.authorized_mission_identity().producer_epoch().empty() ||
+      !command.authorized_mission_identity().has_aggregate_id() ||
+      command.authorized_mission_identity().aggregate_id().empty() ||
+      !command.authorized_mission_identity().has_command_id() ||
+      command.authorized_mission_identity().command_id().empty() ||
+      !command.authorized_mission_identity().has_revision() ||
+      command.authorized_mission_identity().revision() == 0 ||
+      command.authority_generation() !=
+          command.authorized_mission_identity().revision()) {
     return Reject(planning::MOTION_REJECT_MISSING_CONTEXT,
-                  "missing command identity, revision, or source timestamp");
+                 "missing motion or accepted Mission authority identity");
   }
   if (!command.has_reference_frame_id() ||
       command.reference_frame_id().empty() ||
@@ -176,6 +198,18 @@ MotionValidationResult MotionExecutionValidator::Validate(
        command.header().frame_id() != command.reference_frame_id())) {
     return Reject(planning::MOTION_REJECT_INVALID_FRAME,
                   "missing or conflicting command reference frame");
+  }
+  if (command.start_condition().has_max_abs_angular_speed_radps() ||
+      command.completion().has_angular_speed_tolerance_radps() ||
+      (command.has_primitive() &&
+       command.primitive().has_rotate_in_place() &&
+       (command.primitive().rotate_in_place().has_required_directed_angle_rad() ||
+        command.primitive().rotate_in_place()
+            .has_max_absolute_angular_travel_rad() ||
+        command.primitive().rotate_in_place()
+            .has_max_wrong_direction_excursion_rad()))) {
+    return Reject(planning::MOTION_REJECT_UNSUPPORTED_CAPABILITY,
+                  "angular start, settling and rotation accounting are unavailable");
   }
   const auto start_condition_result = ValidateStartCondition(command);
   if (!start_condition_result.accepted) {
@@ -232,10 +266,18 @@ MotionValidationResult MotionExecutionValidator::Validate(
 
   if (command.payload_case() ==
       planning::MotionExecutionCommand::kTrajectory) {
+    const auto control_intent_result = ValidateControlIntent(command);
+    if (!control_intent_result.accepted) {
+      return control_intent_result;
+    }
     return ValidateTrajectory(command);
   }
   if (command.payload_case() ==
       planning::MotionExecutionCommand::kPrimitive) {
+    const auto control_intent_result = ValidateControlIntent(command);
+    if (!control_intent_result.accepted) {
+      return control_intent_result;
+    }
     return ValidatePrimitive(command);
   }
   return Reject(planning::MOTION_REJECT_INVALID_PAYLOAD,
@@ -297,6 +339,176 @@ MotionValidationResult MotionExecutionValidator::ValidateConstraints(
   result.accepted = true;
   return result;
 }
+
+namespace {
+
+MotionValidationResult ValidateControlIntent(
+    const planning::MotionExecutionCommand& command) {
+  const auto reject = [](const std::string& reason) {
+    MotionValidationResult result;
+    result.reject_reason = planning::MOTION_REJECT_INVALID_PAYLOAD;
+    result.reason = reason;
+    return result;
+  };
+  if (!command.has_control_intent()) {
+    return reject("explicit Control execution semantics are required");
+  }
+  const auto& intent = command.control_intent();
+  if (!intent.has_tracking_mode() ||
+      !planning::TrackingMode_IsValid(intent.tracking_mode()) ||
+      intent.tracking_mode() == planning::TRACKING_MODE_UNKNOWN ||
+      !intent.has_longitudinal_intent() ||
+      !planning::LongitudinalIntent_IsValid(intent.longitudinal_intent()) ||
+      intent.longitudinal_intent() == planning::LON_INTENT_UNKNOWN ||
+      !intent.has_lateral_intent() ||
+      !planning::LateralIntent_IsValid(intent.lateral_intent()) ||
+      intent.lateral_intent() == planning::LAT_INTENT_UNKNOWN ||
+      !intent.has_execution_channel() ||
+      !planning::ControlExecutionChannel_IsValid(
+          intent.execution_channel()) ||
+      !intent.has_primitive_type() ||
+      !planning::ControlPrimitiveType_IsValid(intent.primitive_type())) {
+    return reject("Control execution semantics are incomplete or invalid");
+  }
+  if (intent.tracking_mode() == planning::TRACKING_MODE_STANDSTILL_HOLD &&
+      (intent.longitudinal_intent() != planning::LON_INTENT_HOLD_STOP ||
+       intent.execution_channel() != planning::EXECUTION_CHANNEL_PRIMITIVE ||
+       intent.primitive_type() !=
+           planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD ||
+       !intent.has_require_full_stop() || !intent.require_full_stop())) {
+    return reject("standstill tracking requires matching hold semantics");
+  }
+  if ((intent.longitudinal_intent() == planning::LON_INTENT_HOLD_STOP ||
+       intent.longitudinal_intent() == planning::LON_INTENT_MRM_STOP) &&
+      (!intent.has_require_full_stop() || !intent.require_full_stop())) {
+    return reject("stop intent requires an explicit full-stop requirement");
+  }
+  if (command.payload_case() ==
+      planning::MotionExecutionCommand::kTrajectory) {
+    switch (intent.tracking_mode()) {
+      case planning::TRACKING_MODE_TRAJECTORY:
+        if ((intent.primitive_type() ==
+                 planning::CONTROL_PRIMITIVE_NONE &&
+             intent.execution_channel() !=
+                 planning::EXECUTION_CHANNEL_TRAJECTORY) ||
+            (intent.primitive_type() !=
+                 planning::CONTROL_PRIMITIVE_NONE &&
+             intent.execution_channel() !=
+                 planning::EXECUTION_CHANNEL_PRIMITIVE) ||
+            intent.primitive_type() ==
+                planning::CONTROL_PRIMITIVE_POSE_SERVO) {
+          return reject(
+              "trajectory tracking conflicts with its primitive channel");
+        }
+        if ((intent.primitive_type() ==
+                 planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD &&
+             intent.longitudinal_intent() !=
+                 planning::LON_INTENT_HOLD_STOP &&
+             intent.longitudinal_intent() !=
+                 planning::LON_INTENT_MRM_STOP) ||
+            (intent.primitive_type() ==
+                 planning::CONTROL_PRIMITIVE_HEADING_HOLD &&
+             (intent.lateral_intent() !=
+                  planning::LAT_INTENT_ALIGN_GOAL_HEADING ||
+              intent.longitudinal_intent() ==
+                  planning::LON_INTENT_HOLD_STOP ||
+              intent.longitudinal_intent() ==
+                  planning::LON_INTENT_MRM_STOP)) ||
+            intent.primitive_type() ==
+                planning::CONTROL_PRIMITIVE_LATERAL_HOLD) {
+          return reject(
+              "trajectory primitive conflicts with its motion intent");
+        }
+        break;
+      case planning::TRACKING_MODE_PATH_SPEED:
+        if (intent.execution_channel() !=
+                planning::EXECUTION_CHANNEL_PRIMITIVE ||
+            intent.primitive_type() !=
+                planning::CONTROL_PRIMITIVE_NONE) {
+          return reject(
+              "path-speed tracking requires the primitive channel");
+        }
+        break;
+      case planning::TRACKING_MODE_STANDSTILL_HOLD:
+        break;
+      case planning::TRACKING_MODE_POSE_SERVO:
+        if (intent.execution_channel() !=
+                planning::EXECUTION_CHANNEL_PRIMITIVE ||
+            intent.primitive_type() !=
+                planning::CONTROL_PRIMITIVE_POSE_SERVO ||
+            intent.lateral_intent() !=
+                planning::LAT_INTENT_ALIGN_GOAL_HEADING ||
+            intent.longitudinal_intent() ==
+                planning::LON_INTENT_HOLD_STOP ||
+            intent.longitudinal_intent() ==
+                planning::LON_INTENT_MRM_STOP) {
+          return reject(
+              "pose-servo tracking requires matching pose semantics");
+        }
+        break;
+      case planning::TRACKING_MODE_UNKNOWN:
+      default:
+        return reject(
+            "trajectory payload conflicts with its tracking mode");
+    }
+  } else if (command.payload_case() ==
+             planning::MotionExecutionCommand::kPrimitive) {
+    const auto primitive_type = command.primitive().type();
+    if (primitive_type == planning::MOTION_PRIMITIVE_STANDSTILL_HOLD) {
+      if (intent.tracking_mode() !=
+              planning::TRACKING_MODE_STANDSTILL_HOLD ||
+          intent.execution_channel() !=
+              planning::EXECUTION_CHANNEL_PRIMITIVE ||
+          intent.primitive_type() !=
+              planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD) {
+        return reject(
+            "standstill payload conflicts with its declared semantics");
+      }
+    } else if (primitive_type == planning::MOTION_PRIMITIVE_POSE_SERVO) {
+      if (intent.tracking_mode() !=
+              planning::TRACKING_MODE_POSE_SERVO ||
+          intent.execution_channel() !=
+              planning::EXECUTION_CHANNEL_PRIMITIVE ||
+          intent.primitive_type() !=
+              planning::CONTROL_PRIMITIVE_POSE_SERVO ||
+          intent.longitudinal_intent() ==
+              planning::LON_INTENT_HOLD_STOP ||
+          intent.longitudinal_intent() ==
+              planning::LON_INTENT_MRM_STOP) {
+        return reject(
+            "pose-servo payload conflicts with its declared semantics");
+      }
+    } else if (intent.tracking_mode() !=
+                   planning::TRACKING_MODE_PATH_SPEED ||
+               intent.execution_channel() !=
+                   planning::EXECUTION_CHANNEL_PRIMITIVE ||
+               intent.primitive_type() !=
+                   planning::CONTROL_PRIMITIVE_NONE ||
+               intent.longitudinal_intent() ==
+                   planning::LON_INTENT_HOLD_STOP ||
+               intent.longitudinal_intent() ==
+                   planning::LON_INTENT_MRM_STOP) {
+      return reject(
+          "moving primitive conflicts with its declared semantics");
+    }
+  }
+  if (command.payload_case() ==
+          planning::MotionExecutionCommand::kPrimitive &&
+      command.primitive().type() ==
+          planning::MOTION_PRIMITIVE_STANDSTILL_HOLD &&
+      (intent.tracking_mode() != planning::TRACKING_MODE_STANDSTILL_HOLD ||
+       intent.longitudinal_intent() != planning::LON_INTENT_HOLD_STOP ||
+       intent.primitive_type() !=
+           planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD ||
+       !intent.has_require_full_stop() || !intent.require_full_stop())) {
+    return reject("standstill primitive requires matching hold semantics");
+  }
+  MotionValidationResult result;
+  result.accepted = true;
+  return result;
+}
+
+}  // namespace
 
 MotionValidationResult MotionExecutionValidator::ValidateTrajectory(
     const planning::MotionExecutionCommand& command) const {
@@ -470,18 +682,19 @@ MotionValidationResult MotionExecutionValidator::ValidatePrimitive(
           !primitive.corridor_servo().has_direction() ||
           primitive.corridor_servo().direction() ==
               planning::MOTION_DIRECTION_UNKNOWN ||
-          command.spatial_envelope().reference_centerline_size() < 2 ||
+          (command.spatial_envelope().reference_centerline_size() < 2 &&
+           command.spatial_envelope().reference_path_size() < 2) ||
           !command.spatial_envelope().has_max_lateral_deviation_m() ||
-          SquaredDistance(
+          (command.spatial_envelope().reference_path_size() == 0 &&
+           (SquaredDistance(
               command.spatial_envelope().reference_centerline(
                   command.spatial_envelope().reference_centerline_size() - 1),
               primitive.corridor_servo().target_position()) > 1e-4 ||
+            !IsPositiveFinite(CenterlineLength(command.spatial_envelope())) ||
+            CenterlineLength(command.spatial_envelope()) >
+                constraints.max_distance_m())) ||
           !constraints.has_max_distance_m() ||
           !IsPositiveFinite(constraints.max_distance_m()) ||
-          !IsPositiveFinite(
-              CenterlineLength(command.spatial_envelope())) ||
-          CenterlineLength(command.spatial_envelope()) >
-              constraints.max_distance_m() ||
           constraints.max_speed_mps() <= 0.0 ||
           !HasSettledPoseCompletion(completion)) {
         return Reject(planning::MOTION_REJECT_INVALID_PAYLOAD,

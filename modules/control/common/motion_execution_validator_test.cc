@@ -29,6 +29,13 @@ planning::MotionExecutionCommand BaseCommand() {
   command.mutable_identity()->set_aggregate_id("motion-stream");
   command.mutable_identity()->set_command_id("command");
   command.mutable_identity()->set_revision(1);
+  command.set_authority_generation(1);
+  command.mutable_authorized_mission_identity()->set_producer_epoch(
+      "mission-boot-1");
+  command.mutable_authorized_mission_identity()->set_aggregate_id("mission-1");
+  command.mutable_authorized_mission_identity()->set_command_id(
+      "mission-command");
+  command.mutable_authorized_mission_identity()->set_revision(1);
   command.set_reference_frame_id("map");
   command.set_effective_time_sec(10.0);
   command.set_expiry_time_sec(20.0);
@@ -64,6 +71,13 @@ planning::MotionExecutionCommand BaseCommand() {
   completion->set_speed_tolerance_mps(0.05);
   completion->set_settle_time_sec(0.2);
   completion->set_execution_timeout_sec(5.0);
+
+  auto* intent = command.mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_TRAJECTORY);
+  intent->set_longitudinal_intent(planning::LON_INTENT_CRUISE);
+  intent->set_lateral_intent(planning::LAT_INTENT_TRACK_PATH);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_TRAJECTORY);
+  intent->set_primitive_type(planning::CONTROL_PRIMITIVE_NONE);
 
   auto* envelope = command.mutable_spatial_envelope();
   envelope->set_max_lateral_deviation_m(0.5);
@@ -116,7 +130,21 @@ planning::MotionExecutionCommand ValidHoldCommand() {
   auto* primitive = command.mutable_primitive();
   primitive->set_type(planning::MOTION_PRIMITIVE_STANDSTILL_HOLD);
   primitive->mutable_standstill_hold()->set_reauthorization_period_sec(1.0);
+  auto* intent = command.mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_STANDSTILL_HOLD);
+  intent->set_longitudinal_intent(planning::LON_INTENT_HOLD_STOP);
+  intent->set_lateral_intent(planning::LAT_INTENT_MINIMIZE_STEER);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_PRIMITIVE);
+  intent->set_primitive_type(
+      planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD);
+  intent->set_require_full_stop(true);
   return command;
+}
+
+void SetPrimitiveChannel(planning::MotionExecutionCommand* command) {
+  auto* intent = command->mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_PATH_SPEED);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_PRIMITIVE);
 }
 
 TEST(MotionExecutionValidatorTest, AcceptsValidTrajectory) {
@@ -125,6 +153,80 @@ TEST(MotionExecutionValidatorTest, AcceptsValidTrajectory) {
   EXPECT_TRUE(result.accepted);
   EXPECT_EQ(result.execution_type,
             planning::MOTION_EXECUTION_TYPE_TRAJECTORY);
+}
+
+TEST(MotionExecutionValidatorTest, RequiresExplicitControlSemantics) {
+  MotionExecutionValidator validator(AllCapabilities());
+  auto command = ValidTrajectoryCommand();
+  command.clear_control_intent();
+
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_INVALID_PAYLOAD);
+
+  command = ValidTrajectoryCommand();
+  command.mutable_control_intent()->set_tracking_mode(
+      planning::TRACKING_MODE_STANDSTILL_HOLD);
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_INVALID_PAYLOAD);
+}
+
+TEST(MotionExecutionValidatorTest, RejectsContradictoryExecutionSemantics) {
+  MotionExecutionValidator validator(AllCapabilities());
+  auto command = ValidTrajectoryCommand();
+  command.mutable_control_intent()->set_execution_channel(
+      planning::EXECUTION_CHANNEL_PRIMITIVE);
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_INVALID_PAYLOAD);
+
+  command = ValidTrajectoryCommand();
+  command.mutable_control_intent()->set_tracking_mode(
+      planning::TRACKING_MODE_POSE_SERVO);
+  command.mutable_control_intent()->set_execution_channel(
+      planning::EXECUTION_CHANNEL_PRIMITIVE);
+  command.mutable_control_intent()->set_primitive_type(
+      planning::CONTROL_PRIMITIVE_POSE_SERVO);
+  command.mutable_control_intent()->set_lateral_intent(
+      planning::LAT_INTENT_ALIGN_GOAL_HEADING);
+  EXPECT_TRUE(validator.Validate(command, 11.0).accepted);
+
+  command.mutable_control_intent()->set_primitive_type(
+      planning::CONTROL_PRIMITIVE_LATERAL_HOLD);
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_INVALID_PAYLOAD);
+}
+
+TEST(MotionExecutionValidatorTest, AngularContractCannotUseLegacyValidation) {
+  MotionExecutionValidator validator(AllCapabilities());
+  auto command = ValidTrajectoryCommand();
+  command.mutable_completion()->set_angular_speed_tolerance_radps(0.0);
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_UNSUPPORTED_CAPABILITY);
+  command.mutable_completion()->clear_angular_speed_tolerance_radps();
+  command.mutable_start_condition()->set_max_abs_angular_speed_radps(0.0);
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_UNSUPPORTED_CAPABILITY);
+  command.mutable_start_condition()->clear_max_abs_angular_speed_radps();
+  EXPECT_TRUE(validator.Validate(command, 11.0).accepted);
+}
+
+TEST(MotionExecutionValidatorTest, RejectsDeclaredRotationAccounting) {
+  MotionExecutionValidator validator(AllCapabilities());
+  auto command = BaseCommand();
+  auto* primitive = command.mutable_primitive();
+  primitive->set_type(planning::MOTION_PRIMITIVE_ROTATE_IN_PLACE);
+  SetPrimitiveChannel(&command);
+  auto* rotation = primitive->mutable_rotate_in_place();
+  rotation->set_required_directed_angle_rad(0.0);
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_UNSUPPORTED_CAPABILITY);
+  rotation->clear_required_directed_angle_rad();
+  rotation->set_max_absolute_angular_travel_rad(1.0);
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_UNSUPPORTED_CAPABILITY);
+  rotation->clear_max_absolute_angular_travel_rad();
+  rotation->set_max_wrong_direction_excursion_rad(0.0);
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_UNSUPPORTED_CAPABILITY);
 }
 
 TEST(MotionExecutionValidatorTest, RejectsTrajectoryWithoutHardEnvelope) {
@@ -144,6 +246,15 @@ TEST(MotionExecutionValidatorTest, AcceptsBoundedHoldPrimitive) {
   EXPECT_TRUE(result.accepted);
   EXPECT_EQ(result.execution_type,
             planning::MOTION_EXECUTION_TYPE_PRIMITIVE);
+}
+
+TEST(MotionExecutionValidatorTest, RejectsStandstillWithoutFullStopIntent) {
+  MotionExecutionValidator validator(AllCapabilities());
+  auto command = ValidHoldCommand();
+  command.mutable_control_intent()->set_require_full_stop(false);
+
+  EXPECT_EQ(validator.Validate(command, 11.0).reject_reason,
+            planning::MOTION_REJECT_INVALID_PAYLOAD);
 }
 
 TEST(MotionExecutionValidatorTest, RejectsExpiredCommand) {
@@ -185,6 +296,7 @@ TEST(MotionExecutionValidatorTest, RejectsUnsupportedRotateInPlace) {
       planning::MOTION_CAPABILITY_ROTATE_IN_PLACE);
   auto* primitive = command.mutable_primitive();
   primitive->set_type(planning::MOTION_PRIMITIVE_ROTATE_IN_PLACE);
+  SetPrimitiveChannel(&command);
   primitive->mutable_rotate_in_place()->set_target_heading(1.0);
 
   const auto result = validator.Validate(command, 11.0);
@@ -201,6 +313,7 @@ TEST(MotionExecutionValidatorTest, RejectsMovingPrimitiveWithoutEnvelope) {
       planning::MOTION_CAPABILITY_CORRIDOR_SERVO);
   auto* primitive = command.mutable_primitive();
   primitive->set_type(planning::MOTION_PRIMITIVE_CORRIDOR_SERVO);
+  SetPrimitiveChannel(&command);
   auto* corridor = primitive->mutable_corridor_servo();
   corridor->mutable_target_position()->set_x(1.0);
   corridor->mutable_target_position()->set_y(0.0);
@@ -228,6 +341,7 @@ TEST(MotionExecutionValidatorTest, AcceptsExplicitStraightCorridorServo) {
   centerline->set_y(0.0);
   auto* primitive = command.mutable_primitive();
   primitive->set_type(planning::MOTION_PRIMITIVE_CORRIDOR_SERVO);
+  SetPrimitiveChannel(&command);
   auto* corridor = primitive->mutable_corridor_servo();
   corridor->mutable_target_position()->set_x(1.0);
   corridor->mutable_target_position()->set_y(0.0);
@@ -243,6 +357,7 @@ TEST(MotionExecutionValidatorTest, RejectsCorridorWithoutCenterline) {
   auto command = BaseCommand();
   auto* primitive = command.mutable_primitive();
   primitive->set_type(planning::MOTION_PRIMITIVE_CORRIDOR_SERVO);
+  SetPrimitiveChannel(&command);
   auto* corridor = primitive->mutable_corridor_servo();
   corridor->mutable_target_position()->set_x(1.0);
   corridor->mutable_target_position()->set_y(0.0);
@@ -268,6 +383,7 @@ TEST(MotionExecutionValidatorTest, RejectsCorridorWithoutSettledCompletion) {
   centerline->set_y(0.0);
   auto* primitive = command.mutable_primitive();
   primitive->set_type(planning::MOTION_PRIMITIVE_CORRIDOR_SERVO);
+  SetPrimitiveChannel(&command);
   auto* corridor = primitive->mutable_corridor_servo();
   corridor->mutable_target_position()->set_x(1.0);
   corridor->mutable_target_position()->set_y(0.0);
@@ -293,6 +409,7 @@ TEST(MotionExecutionValidatorTest, RejectsMovingPrimitiveWithoutHardBoundary) {
   centerline->set_y(0.0);
   auto* primitive = command.mutable_primitive();
   primitive->set_type(planning::MOTION_PRIMITIVE_CORRIDOR_SERVO);
+  SetPrimitiveChannel(&command);
   auto* corridor = primitive->mutable_corridor_servo();
   corridor->mutable_target_position()->set_x(1.0);
   corridor->mutable_target_position()->set_y(0.0);
@@ -312,6 +429,7 @@ TEST(MotionExecutionValidatorTest, AcceptsExplicitRotateInPlace) {
       planning::MOTION_CAPABILITY_ROTATE_IN_PLACE);
   auto* primitive = command.mutable_primitive();
   primitive->set_type(planning::MOTION_PRIMITIVE_ROTATE_IN_PLACE);
+  SetPrimitiveChannel(&command);
   auto* rotate = primitive->mutable_rotate_in_place();
   rotate->set_target_heading(1.0);
   rotate->mutable_pivot_position()->set_x(0.0);

@@ -16,28 +16,31 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <string>
+#include <vector>
 
+#include "modules/planning/proto/learning_data.pb.h"
+#include "modules/planning/proto/planning_config.pb.h"
 #include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 #include "wheelos_msgs/control_msgs/control_runtime_status.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
 #include "wheelos_msgs/perception_msgs/traffic_light_detection.pb.h"
-#include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
 #include "wheelos_msgs/planning_msgs/mission_directive.pb.h"
 #include "wheelos_msgs/planning_msgs/motion_execution.pb.h"
+#include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
 #include "wheelos_msgs/planning_msgs/planning.pb.h"
 #include "wheelos_msgs/planning_msgs/planning_command.pb.h"
 #include "wheelos_msgs/planning_msgs/planning_runtime_status.pb.h"
 #include "wheelos_msgs/prediction_msgs/prediction_obstacle.pb.h"
 #include "wheelos_msgs/routing_msgs/routing.pb.h"
 #include "wheelos_msgs/storytelling_msgs/story.pb.h"
-#include "modules/planning/proto/learning_data.pb.h"
-#include "modules/planning/proto/planning_config.pb.h"
 
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
 #include "cyber/message/raw_message.h"
+#include "modules/execution_state_sync/client.h"
 #include "modules/planning/common/hybrid_maneuver_supervisor.h"
 #include "modules/planning/common/message_process.h"
 #include "modules/planning/common/motion_plan_builder.h"
@@ -88,14 +91,23 @@ class PlanningComponent final
   void UpdateRoutingForMission(
       const localization::LocalizationEstimate& localization);
   void ApplyPendingMissionDirective(
-      const localization::LocalizationEstimate& localization);
-  void ApplyControlMotionStatus();
-  void PublishMotionPlan(
-      const PlanningCoordinatorState& coordinator_state,
-      const PlanningSemanticSummary& semantic_summary,
-      const canbus::Chassis& chassis,
       const localization::LocalizationEstimate& localization,
-      const ADCTrajectory& trajectory);
+      bool superseded = false);
+  void ApplyControlMotionStatus();
+  bool PollExecutionState(
+      const localization::LocalizationEstimate& localization);
+  void DrainExecutionStateSubmissions();
+  bool SubmitExecutionState(execution_state_sync::Channel channel,
+                            const std::string& payload, bool cleanup,
+                            execution_state_sync::PlanningStatusKind
+                                planning_status_kind =
+                                    execution_state_sync::PlanningStatusKind::
+                                        kRuntime);
+  void PublishMotionPlan(const PlanningCoordinatorState& coordinator_state,
+                         const PlanningSemanticSummary& semantic_summary,
+                         const canbus::Chassis& chassis,
+                         const localization::LocalizationEstimate& localization,
+                         const ADCTrajectory& trajectory);
   void RefreshLocalView(
       const std::shared_ptr<prediction::PredictionObstacles>&
           prediction_obstacles,
@@ -133,15 +145,13 @@ class PlanningComponent final
                         const std::string& reason);
 
  private:
+  friend class PlanningMissionSyncTestPeer;
+
   std::shared_ptr<cyber::Reader<perception::TrafficLightDetection>>
       traffic_light_reader_;
   std::shared_ptr<cyber::Reader<planning::PadMessage>> pad_msg_reader_;
   std::shared_ptr<cyber::Reader<planning::PlanningCommand>>
       planning_command_reader_;
-  std::shared_ptr<cyber::Reader<planning::MissionDirective>>
-      mission_directive_reader_;
-  std::shared_ptr<cyber::Reader<control::ControlRuntimeStatus>>
-      control_runtime_status_reader_;
   std::shared_ptr<cyber::Reader<relative_map::MapMsg>> relative_map_reader_;
   std::shared_ptr<cyber::Reader<storytelling::Stories>> story_telling_reader_;
 
@@ -159,6 +169,8 @@ class PlanningComponent final
   planning::PlanningCommand planning_command_;
   planning::MissionDirective mission_directive_;
   control::ControlRuntimeStatus control_runtime_status_;
+  execution_state_sync::ControlStatusKind control_status_kind_ =
+      execution_state_sync::ControlStatusKind::kOwnerRuntime;
   relative_map::MapMsg relative_map_;
   storytelling::Stories stories_;
 
@@ -176,6 +188,14 @@ class PlanningComponent final
   ValidationSupervisor validation_supervisor_;
   TerminalServoSessionState terminal_servo_session_state_;
   MotionPlanBuilder motion_plan_builder_{"planning-runtime-v2"};
+  std::unique_ptr<execution_state_sync::Client> execution_state_client_;
+  uint64_t mission_event_sequence_ = 0;
+  uint64_t motion_event_sequence_ = 0;
+  uint64_t deferred_mission_ack_sequence_ = 0;
+  size_t pending_mission_admissions_ = 0;
+  bool execution_state_fault_ = false;
+  std::string last_planning_status_fingerprint_;
+  double last_planning_status_submit_sec_ = 0.0;
   std::string applied_control_motion_status_fingerprint_;
   std::string last_logged_command_id_;
   std::string routed_command_fingerprint_;

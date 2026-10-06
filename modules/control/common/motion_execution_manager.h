@@ -23,20 +23,21 @@ class MotionExecutionManager {
   explicit MotionExecutionManager(MotionExecutionValidator validator);
 
   planning::MotionExecutionStatus Apply(
-      const planning::MotionDirective& directive, double now_sec);
+      const planning::MotionDirective& directive, double now_sec,
+      bool authorized_stop_cleanup = false);
   planning::MotionExecutionStatus Submit(
       const planning::MotionExecutionCommand& command, double now_sec);
   planning::MotionExecutionStatus Arm(double now_sec);
   planning::MotionExecutionStatus Start(
       const MotionExecutionVehicleState& vehicle_state, double now_sec);
   planning::MotionExecutionStatus ConfirmExecutorRevoked(
-      double now_sec, const std::string& reason);
-  planning::MotionExecutionStatus Succeed(double now_sec,
-                                          const std::string& reason);
+      const planning::MotionTerminalEvidence& evidence, double now_sec);
+  planning::MotionExecutionStatus Succeed(
+      const planning::MotionTerminalEvidence& evidence, double now_sec);
   planning::MotionExecutionStatus Fail(double now_sec,
                                        const std::string& reason);
-  planning::MotionExecutionStatus EnterHolding(double now_sec,
-                                               const std::string& reason);
+  planning::MotionExecutionStatus EnterHolding(
+      const planning::MotionTerminalEvidence& evidence, double now_sec);
   planning::MotionExecutionStatus Tick(double now_sec);
 
   const planning::MotionExecutionCommand* active_command() const;
@@ -46,6 +47,9 @@ class MotionExecutionManager {
   }
 
  private:
+  planning::MotionExecutionStatus ApplyDirective(
+      const planning::MotionDirective& directive, double now_sec,
+      bool authorized_stop_cleanup);
   bool HasActiveCommand() const;
   bool IsExecuting() const;
   bool IsTerminal(planning::MotionExecutionState state) const;
@@ -83,6 +87,12 @@ class MotionExecutionManager {
       const planning::MotionExecutionCommand& command,
       const MotionExecutionVehicleState& vehicle_state,
       double now_sec, std::string* reason) const;
+  bool ValidateTerminalEvidence(
+      const planning::MotionTerminalEvidence& evidence,
+      planning::MotionTerminalEvidenceKind expected_kind,
+      planning::MotionExecutorOwnership expected_ownership,
+      double now_sec, bool require_settled_terminal,
+      std::string* reason) const;
   void RecordRevision(const planning::MotionExecutionCommand& command);
   void RemoveExpiredRevisionRecords(double now_sec);
   bool AdvanceDeadlines(double now_sec);

@@ -43,6 +43,8 @@ cc_library(
     deps = [
         ":planning_coordinator",
         "@core//cyber",
+        "//modules/execution_state_sync:client",
+        "//modules/execution_state_sync:execution_state_gflags",
         "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
@@ -56,6 +58,7 @@ cc_library(
         "//modules/planning/common:history",
         "//modules/planning/common:hybrid_maneuver_supervisor",
         "//modules/planning/common:message_process",
+        "//modules/planning/common:motion_envelope",
         "//modules/planning/common:motion_plan_builder",
         "//modules/planning/common:planning_semantics",
         "//modules/planning/common:terminal_servo_guard",
@@ -80,6 +83,23 @@ cc_library(
     deps = [
         ":planning_base",
         "//modules/planning/mode:mode_resolution",
+    ],
+)
+
+cc_test(
+    name = "planning_mission_sync_test",
+    srcs = ["planning_mission_sync_test.cc"],
+    deps = [
+        ":planning_component_lib",
+        ":planning_coordinator",
+        "//modules/execution_state_sync:client",
+        "//modules/execution_state_sync:execution_state_sync",
+        "//modules/planning/mission_session:mission_session_manager",
+        "@com_google_googletest//:gtest_main",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:mission_directive_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_runtime_status_cc_proto",
     ],
 )
 
@@ -283,10 +303,7 @@ install(
     name = "install",
     data = [
         ":runtime_data",
-    ] + if_gpu(
-        ["planning-gpu.BUILD"],
-        ["planning.BUILD"],
-    ),
+    ],
     data_dest = if_gpu(
         "planning-gpu",
         "planning",

@@ -29,6 +29,11 @@ namespace control {
 bool SafetyManager::Init(const ControlConf& conf) {
   conf_ = conf;
   current_state_ = SafetyState::kNormal;
+  external_stop_active_ = false;
+  external_stop_request_identity_.Clear();
+  external_stop_identity_.Clear();
+  external_stop_policy_ = SAFETY_STOP_POLICY_UNKNOWN;
+  external_stop_generation_ = 0;
 
   {
     std::lock_guard<std::mutex> lk(mutex_);
@@ -235,7 +240,17 @@ void SafetyManager::ExecuteHardEstop(ControlCommand* cmd) {
 }
 
 void SafetyManager::ApplySafetyPolicy(ControlCommand* cmd) {
+  std::lock_guard<std::mutex> lk(mutex_);
   Arbitrate();
+  if (external_stop_active_) {
+    const auto external_state =
+        external_stop_policy_ == SAFETY_STOP_HARD_ESTOP
+            ? SafetyState::kHardEstop
+            : SafetyState::kSoftStop;
+    if (external_state > current_state_) {
+      current_state_ = external_state;
+    }
+  }
 
   if (current_state_ == SafetyState::kNormal) return;
 
@@ -256,6 +271,73 @@ void SafetyManager::ApplySafetyPolicy(ControlCommand* cmd) {
     default:
       break;
   }
+}
+
+SafetyExecutionIdentity SafetyManager::LatchExternalStop(
+    const SafetyOperationIdentity& request_identity, SafetyStopPolicy policy,
+    const std::string& control_epoch) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  if (request_identity.requester_epoch().empty() ||
+      request_identity.request_id().empty() || control_epoch.empty() ||
+      (policy != SAFETY_STOP_CONTROLLED &&
+       policy != SAFETY_STOP_HARD_ESTOP)) {
+    return {};
+  }
+  if (external_stop_active_ &&
+      external_stop_request_identity_.SerializeAsString() ==
+          request_identity.SerializeAsString()) {
+    return external_stop_policy_ == policy ? external_stop_identity_
+                                           : SafetyExecutionIdentity();
+  }
+  if (external_stop_generation_ == std::numeric_limits<uint64_t>::max()) {
+    return {};
+  }
+  external_stop_active_ = true;
+  external_stop_request_identity_.CopyFrom(request_identity);
+  external_stop_policy_ = policy;
+  ++external_stop_generation_;
+  external_stop_identity_.Clear();
+  external_stop_identity_.set_control_epoch(control_epoch);
+  external_stop_identity_.set_generation(external_stop_generation_);
+  return external_stop_identity_;
+}
+
+bool SafetyManager::ResetExternalStop(
+    const SafetyExecutionIdentity& expected_identity, bool stationary) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  if (!external_stop_active_ || !stationary ||
+      expected_identity.SerializeAsString() !=
+          external_stop_identity_.SerializeAsString() ||
+      !active_faults_.empty()) {
+    return false;
+  }
+  external_stop_active_ = false;
+  external_stop_request_identity_.Clear();
+  if (external_stop_policy_ == SAFETY_STOP_CONTROLLED &&
+      current_state_ == SafetyState::kSoftStop) {
+    current_state_ = SafetyState::kNormal;
+  }
+  external_stop_policy_ = SAFETY_STOP_POLICY_UNKNOWN;
+  return true;
+}
+
+bool SafetyManager::HasExternalStop() const {
+  std::lock_guard<std::mutex> lk(mutex_);
+  return external_stop_active_;
+}
+
+bool SafetyManager::GetExternalStopState(
+    SafetyExecutionIdentity* identity, SafetyStopPolicy* policy) const {
+  if (identity == nullptr || policy == nullptr) {
+    return false;
+  }
+  std::lock_guard<std::mutex> lk(mutex_);
+  if (!external_stop_active_) {
+    return false;
+  }
+  identity->CopyFrom(external_stop_identity_);
+  *policy = external_stop_policy_;
+  return true;
 }
 
 void SafetyManager::TryReset(const PadMessage& pad_msg) {

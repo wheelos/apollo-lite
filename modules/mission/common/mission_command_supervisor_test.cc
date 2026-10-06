@@ -22,8 +22,7 @@ namespace {
 
 planning::PlanningCommand BuildCommand(const std::string& mission_id,
                                        const std::string& command_id,
-                                       uint32_t priority,
-                                       bool preemptible) {
+                                       uint32_t priority, bool preemptible) {
   planning::PlanningCommand command;
   command.set_mission_id(mission_id);
   command.set_command_id(command_id);
@@ -47,6 +46,84 @@ planning::PlanningRuntimeStatus BuildPlanningStatus(
 }
 
 }  // namespace
+
+TEST(MissionCommandSupervisorTest,
+     HoldFeedbackRetainsAcceptedAttemptAssociation) {
+  planning::MissionCommandIdentity accepted;
+  accepted.set_producer_epoch("mission-boot");
+  accepted.set_aggregate_id("mission-A");
+  accepted.set_command_id("cmd-A");
+  accepted.set_revision(1);
+  control::ControlRuntimeStatus status;
+  auto* motion = status.mutable_motion_execution();
+  motion->set_state(planning::MOTION_EXECUTION_HOLDING);
+  motion->mutable_authorized_mission_identity()->CopyFrom(accepted);
+  motion->set_authority_generation(1);
+  EXPECT_TRUE(IsControlStatusForMission(status, accepted));
+  EXPECT_FALSE(motion->has_parent_mission_identity());
+  status.set_command_id("another-command");
+  EXPECT_FALSE(IsControlStatusForMission(status, accepted));
+  status.set_command_id(accepted.command_id());
+
+  auto cancelled_directive = accepted;
+  cancelled_directive.set_revision(2);
+  EXPECT_FALSE(IsControlStatusForMission(status, cancelled_directive));
+  motion->set_authority_generation(2);
+  EXPECT_FALSE(IsControlStatusForMission(status, accepted));
+  motion->set_authority_generation(1);
+  motion->mutable_parent_mission_identity()->CopyFrom(cancelled_directive);
+  EXPECT_FALSE(IsControlStatusForMission(status, accepted));
+  motion->clear_parent_mission_identity();
+  motion->clear_authorized_mission_identity();
+  EXPECT_FALSE(IsControlStatusForMission(status, accepted));
+  motion->mutable_authorized_mission_identity()->CopyFrom(accepted);
+  accepted.set_producer_epoch("other-boot");
+  EXPECT_FALSE(IsControlStatusForMission(status, accepted));
+}
+
+TEST(MissionCommandSupervisorTest, GeometricCompletionDoesNotFinishMission) {
+  MissionCommandSupervisor supervisor;
+  supervisor.SetCurrentMissionId("mission-A");
+  std::vector<planning::PlanningCommand> commands;
+  supervisor.EvaluatePlanningCommand(
+      BuildCommand("mission-A", "cmd-A", 1, true), &commands);
+  auto status = BuildPlanningStatus(
+      "mission-A", "cmd-A", planning::RUNTIME_COMPLETED, "pose reached");
+  status.set_mission_session_state(planning::MISSION_SESSION_COMPLETING);
+  supervisor.UpdatePlanningRuntimeStatus(status, &commands);
+  EXPECT_EQ(supervisor.GetCommandLifecycleStatus("cmd-A").state,
+            CommandLifecycleState::kRunning);
+  EXPECT_EQ(supervisor.GetSnapshot().active_command_id, "cmd-A");
+  status.set_mission_session_state(planning::MISSION_SESSION_COMPLETED);
+  supervisor.UpdatePlanningRuntimeStatus(status, &commands);
+  EXPECT_EQ(supervisor.GetCommandLifecycleStatus("cmd-A").state,
+            CommandLifecycleState::kCompleted);
+}
+
+TEST(MissionCommandSupervisorTest, TerminalSnapshotRetainsFullTaskIdentity) {
+  MissionCommandSupervisor supervisor;
+  supervisor.SetCurrentMissionId("mission-A");
+  std::vector<planning::PlanningCommand> commands;
+  supervisor.EvaluatePlanningCommand(
+      BuildCommand("mission-A", "cmd-A", 1, true), &commands);
+  auto status = BuildPlanningStatus(
+      "mission-A", "cmd-A", planning::RUNTIME_COMPLETED, "retired and held");
+  auto* identity = status.mutable_mission_identity();
+  identity->set_producer_epoch("mission-epoch");
+  identity->set_aggregate_id("mission-A");
+  identity->set_command_id("cmd-A");
+  identity->set_revision(1);
+  status.set_mission_session_state(planning::MISSION_SESSION_COMPLETED);
+  supervisor.UpdatePlanningRuntimeStatus(status, &commands);
+  const auto terminal = supervisor.GetSnapshot().last_terminal_command_status;
+  EXPECT_EQ(terminal.task_identity.SerializeAsString(),
+            identity->SerializeAsString());
+  supervisor.EvaluatePlanningCommand(
+      BuildCommand("mission-A", "cmd-B", 1, true), &commands);
+  EXPECT_EQ(supervisor.GetSnapshot().last_terminal_command_status
+                .task_identity.SerializeAsString(),
+            terminal.task_identity.SerializeAsString());
+}
 
 TEST(MissionCommandSupervisorTest, FailureKeepsQueueBlockedForRecovery) {
   MissionCommandSupervisor supervisor;
@@ -81,6 +158,29 @@ TEST(MissionCommandSupervisorTest, FailureKeepsQueueBlockedForRecovery) {
   EXPECT_FALSE(snapshot.recovery_state.allowed_actions.empty());
 }
 
+TEST(MissionCommandSupervisorTest,
+     RejectedAdmissionIsNotOverriddenByAcceptedSessionState) {
+  MissionCommandSupervisor supervisor;
+  supervisor.SetCurrentMissionId("mission-A");
+
+  std::vector<planning::PlanningCommand> commands_to_publish;
+  supervisor.EvaluatePlanningCommand(
+      BuildCommand("mission-A", "cmd-A", 1, false), &commands_to_publish);
+  ASSERT_EQ(commands_to_publish.size(), 1u);
+
+  auto rejected = BuildPlanningStatus(
+      "mission-A", "cmd-B", planning::RUNTIME_REJECTED,
+      "replacement rejected");
+  rejected.set_mission_admission_outcome(
+      planning::MISSION_ADMISSION_REJECTED);
+  rejected.set_mission_session_state(planning::MISSION_SESSION_EXECUTING);
+  supervisor.UpdatePlanningRuntimeStatus(rejected, &commands_to_publish);
+
+  EXPECT_EQ(supervisor.GetCommandLifecycleStatus("cmd-B").state,
+            CommandLifecycleState::kFailed);
+  EXPECT_EQ(supervisor.GetSnapshot().active_command_id, "cmd-A");
+}
+
 TEST(MissionCommandSupervisorTest, PriorityDoesNotImplicitlyPreempt) {
   MissionCommandSupervisor supervisor;
   supervisor.SetCurrentMissionId("mission-A");
@@ -110,7 +210,8 @@ TEST(MissionCommandSupervisorTest, PriorityDoesNotImplicitlyPreempt) {
   EXPECT_EQ(snapshot.active_command_status.dispatch_count, 1u);
 }
 
-TEST(MissionCommandSupervisorTest, CompletedCommandDispatchesNextQueuedCommand) {
+TEST(MissionCommandSupervisorTest,
+     CompletedCommandDispatchesNextQueuedCommand) {
   MissionCommandSupervisor supervisor;
   supervisor.SetCurrentMissionId("mission-A");
 
@@ -139,7 +240,8 @@ TEST(MissionCommandSupervisorTest, CompletedCommandDispatchesNextQueuedCommand) 
             CommandLifecycleState::kCompleted);
 }
 
-TEST(MissionCommandSupervisorTest, RecoveryAckAndRetryRedispatchesFailedCommand) {
+TEST(MissionCommandSupervisorTest,
+     RecoveryAckAndRetryRedispatchesFailedCommand) {
   MissionCommandSupervisor supervisor;
   supervisor.SetCurrentMissionId("mission-A");
 
@@ -176,7 +278,8 @@ TEST(MissionCommandSupervisorTest, RecoveryAckAndRetryRedispatchesFailedCommand)
   EXPECT_EQ(snapshot.active_command_status.dispatch_count, 2u);
 }
 
-TEST(MissionCommandSupervisorTest, RecoveryAckAndResumeDispatchesQueuedCommand) {
+TEST(MissionCommandSupervisorTest,
+     RecoveryAckAndResumeDispatchesQueuedCommand) {
   MissionCommandSupervisor supervisor;
   supervisor.SetCurrentMissionId("mission-A");
 

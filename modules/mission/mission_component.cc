@@ -19,13 +19,18 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <utility>
 
+#include "cyber/common/global_data.h"
+#include "cyber/timer/timing_wheel.h"
 #include "modules/common/adapters/adapter_gflags.h"
+#include "modules/execution_state_sync/execution_state_gflags.h"
 #include "modules/mission/common/mission_context.h"
+#include "modules/mission/common/mission_request_contract.h"
 #include "modules/mission/nodes/action/charge_node.h"
 #include "modules/mission/nodes/action/move_to_node.h"
-#include "modules/mission/nodes/action/send_pad_node.h"
 #include "modules/mission/nodes/action/park_in_node.h"
+#include "modules/mission/nodes/action/send_pad_node.h"
 #include "modules/mission/nodes/action/station_wait_node.h"
 #include "modules/mission/nodes/condition/check_battery.h"
 
@@ -33,12 +38,10 @@ namespace apollo {
 namespace mission {
 
 using apollo::canbus::Chassis;
-using apollo::control::ControlRuntimeStatus;
 using apollo::localization::LocalizationEstimate;
-using apollo::planning::PadMessage;
 using apollo::mission::MissionRuntimeStatus;
 using apollo::planning::MissionDirective;
-using apollo::planning::PlanningRuntimeStatus;
+using apollo::planning::PadMessage;
 
 namespace {
 
@@ -88,17 +91,42 @@ MissionRecoveryAction ToProtoRecoveryAction(RecoveryAction action) {
 
 }  // namespace
 
+MissionComponent::~MissionComponent() { Clear(); }
+
+void MissionComponent::Clear() {
+  if (tick_timer_) {
+    tick_timer_->Stop();
+  }
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (owns_execution_state_) {
+    MissionContext::Instance()->ShutdownExecutionState();
+    owns_execution_state_ = false;
+  }
+}
+
 bool MissionComponent::Init() {
   AINFO << "MissionComponent Init start...";
+  if (tick_timer_ || owns_execution_state_) {
+    AERROR << "Mission runtime is already initialized";
+    return false;
+  }
 
   if (!GetProtoConfig(&mission_config_)) {
     AERROR << "Unable to load mission conf file: " << ConfigFilePath();
     return false;
   }
   AINFO << "Mission config loaded from: " << ConfigFilePath();
-  MissionContext::Instance()->SetProducerEpoch(
-      "mission-" +
-      std::to_string(cyber::Time::Now().ToNanosecond()));
+  const int interval = mission_config_.tick_interval_ms();
+  if (interval <= 0 ||
+      static_cast<uint64_t>(interval) >= cyber::TIMER_MAX_INTERVAL_MS) {
+    AERROR << "Mission tick_interval_ms must be positive and less than "
+           << cyber::TIMER_MAX_INTERVAL_MS;
+    return false;
+  }
+  if (!cyber::common::GlobalData::Instance()->IsRealityMode()) {
+    AERROR << "Mission native periodic tick requires Cyber reality mode";
+    return false;
+  }
 
   // 2. Modular Initialization
   if (!RegisterBehaviorNodes()) {
@@ -106,15 +134,25 @@ bool MissionComponent::Init() {
     return false;
   }
 
+  const std::string producer_epoch =
+      "mission-" + std::to_string(cyber::Time::Now().ToNanosecond());
+  if (!MissionContext::Instance()->InitExecutionState(
+          FLAGS_execution_state_db_path, producer_epoch,
+          mission_config_.mission_request_ledger_path())) {
+    AERROR << "Failed to initialize Mission execution-state runtime";
+    return false;
+  }
+  owns_execution_state_ = true;
   if (!InitCyberCommunication()) {
     AERROR << "Failed to init cyber communication.";
+    Clear();
     return false;
   }
 
   // 3. Start the timer
-  int interval = mission_config_.tick_interval_ms();
   tick_timer_.reset(new cyber::Timer(
-      interval, [this]() { this->OnTimer(); }, false));
+      static_cast<uint32_t>(interval), [this]() { this->OnTimer(); }, false));
+  tick_timer_->Start();
   return true;
 }
 
@@ -183,40 +221,79 @@ bool MissionComponent::InitCyberCommunication() {
       [](const std::shared_ptr<LocalizationEstimate>& msg) {
         MissionContext::Instance()->UpdateLocalization(msg);
       });
+  if (!chassis_reader_ || !localization_reader_) {
+    AERROR << "Failed to create Mission chassis/localization readers";
+    return false;
+  }
 
   auto mission_directive_writer = node_->CreateWriter<MissionDirective>(
       mission_config_.mission_directive_topic());
+  if (!mission_directive_writer) {
+    AERROR << "Failed to create Mission directive mirror writer";
+    return false;
+  }
   MissionContext::Instance()->SetMissionDirectiveWriter(
       mission_directive_writer);
-  MissionContext::Instance()->SetPlanningPadWriter(
-      node_->CreateWriter<PadMessage>(FLAGS_planning_pad_topic));
-
-  planning_runtime_status_reader_ = node_->CreateReader<PlanningRuntimeStatus>(
-      mission_config_.planning_runtime_status_topic(),
-      [](const std::shared_ptr<PlanningRuntimeStatus>& msg) {
-        MissionContext::Instance()->UpdatePlanningRuntimeStatus(msg);
-      });
-
-  control_runtime_status_reader_ = node_->CreateReader<ControlRuntimeStatus>(
-      mission_config_.control_runtime_status_topic(),
-      [](const std::shared_ptr<ControlRuntimeStatus>& msg) {
-        MissionContext::Instance()->UpdateControlRuntimeStatus(msg);
-      });
 
   mission_runtime_status_writer_ = node_->CreateWriter<MissionRuntimeStatus>(
       mission_config_.mission_runtime_status_topic());
+  if (!mission_runtime_status_writer_) {
+    AERROR << "Failed to create Mission runtime status writer";
+    return false;
+  }
 
   return true;
 }
 
 bool MissionComponent::Proc(const std::shared_ptr<MissionRequest>& request) {
   std::lock_guard<std::mutex> lock(mutex_);
+  if (request == nullptr) {
+    AERROR << "Received null Mission request";
+    return false;
+  }
+  if (!owns_execution_state_) {
+    AERROR << "Mission runtime is not initialized or has shut down";
+    return false;
+  }
+  if (request->operation_case() != MissionRequest::OPERATION_NOT_SET ||
+      request->has_identity() || request->has_contract_version()) {
+    MissionRequestResult result;
+    if (!MissionContext::Instance()->SubmitTypedRequest(*request, &result)) {
+      AERROR << "Failed to process typed Mission request";
+      return false;
+    }
+    last_request_result_.CopyFrom(result);
+    if (result.outcome() == MISSION_REQUEST_REJECTED) {
+      AERROR << "Mission typed request rejected: " << result.reason();
+    }
+    PublishMissionRuntimeStatus(tree_.rootNode() != nullptr
+                                    ? tree_.rootNode()->status()
+                                    : BT::NodeStatus::IDLE);
+    return result.outcome() != MISSION_REQUEST_REJECTED;
+  }
+  if (auto rejected = RejectUnavailableTypedRequest(*request)) {
+    const auto snapshot =
+        MissionContext::Instance()->GetMissionCommandSnapshot();
+    if (snapshot.accepted_mission_identity.has_revision()) {
+      rejected->mutable_current_task_identity()->CopyFrom(
+          snapshot.accepted_mission_identity);
+    }
+    last_request_result_.CopyFrom(*rejected);
+    AERROR << "Mission typed request rejected: " << rejected->reason();
+    PublishMissionRuntimeStatus(tree_.rootNode() != nullptr
+                                    ? tree_.rootNode()->status()
+                                    : BT::NodeStatus::IDLE);
+    return false;
+  }
 
   std::string incoming_id = request->mission_id();
   if (incoming_id.empty()) {
     AERROR << "Received request with empty mission_id";
     return false;
   }
+  MissionRequest comparable_request = *request;
+  comparable_request.clear_header();
+  const std::string fingerprint = comparable_request.SerializeAsString();
 
   // 2. Check for duplicate requests
   std::string current_id = MissionContext::Instance()->GetCurrentMissionId();
@@ -226,21 +303,23 @@ bool MissionComponent::Proc(const std::shared_ptr<MissionRequest>& request) {
   }
 
   if (incoming_id == current_id && is_running) {
-    return true;
+    if (fingerprint == legacy_request_fingerprint_) {
+      return true;
+    }
+    AERROR << "Conflicting legacy request content for active mission_id";
+    return false;
+  }
+  const auto snapshot = MissionContext::Instance()->GetMissionCommandSnapshot();
+  if (is_running || !snapshot.active_command_id.empty() ||
+      !snapshot.queued_command_ids.empty() ||
+      snapshot.pending_directive_identity.has_revision() ||
+      snapshot.operator_recovery_required) {
+    AERROR << "Legacy task handoff requires retirement/recovery of current work";
+    return false;
   }
 
   AINFO << "New Mission Request. ID: " << incoming_id
         << ", Task: " << request->task_name();
-
-  // 3. Stop the previous tree (if any).
-  if (tree_.rootNode()) {
-    tree_.haltTree();
-    AINFO << "Previous tree halted.";
-  }
-
-  // Update the current Mission ID (for deduplication).
-  MissionContext::Instance()->SetCurrentMissionId(incoming_id);
-  MissionContext::Instance()->SetCurrentTaskName(request->task_name());
 
   // 4. Create a brand new Blackboard
   auto blackboard = BT::Blackboard::create();
@@ -276,19 +355,42 @@ bool MissionComponent::Proc(const std::shared_ptr<MissionRequest>& request) {
     return false;
   }
 
+  BT::Tree candidate;
   try {
-    tree_ = factory_.createTree(task_name, blackboard);
-    AINFO << "Instantiated tree: " << task_name;
+    candidate = factory_.createTree(task_name, blackboard);
   } catch (const std::exception& e) {
     AERROR << "Failed to create tree: " << e.what();
     return false;
   }
 
+  if (tree_.rootNode()) {
+    tree_.haltTree();
+    AINFO << "Previous tree halted.";
+  }
+  MissionContext::Instance()->SetCurrentMissionId(incoming_id);
+  MissionContext::Instance()->SetCurrentTaskName(request->task_name());
+  tree_ = std::move(candidate);
+  legacy_request_fingerprint_ = fingerprint;
+  AINFO << "Instantiated tree: " << task_name;
   return true;
 }
 
 void MissionComponent::OnTimer() {
   std::lock_guard<std::mutex> lock(mutex_);
+
+  if (!MissionContext::Instance()->PollExecutionState()) {
+    AERROR_EVERY(10) << "Mission execution-state synchronization unavailable; "
+                        "behavior tree is not ticked";
+    PublishMissionRuntimeStatus(BT::NodeStatus::IDLE);
+    return;
+  }
+  if (last_request_result_.has_identity()) {
+    MissionRequestResult current_result;
+    if (MissionContext::Instance()->GetMissionRequestResult(
+            last_request_result_.identity(), &current_result)) {
+      last_request_result_.CopyFrom(current_result);
+    }
+  }
 
   if (!tree_.rootNode()) {
     PublishMissionRuntimeStatus(BT::NodeStatus::IDLE);
@@ -325,6 +427,11 @@ void MissionComponent::PublishMissionRuntimeStatus(BT::NodeStatus tree_status) {
   const auto snapshot = MissionContext::Instance()->GetMissionCommandSnapshot();
   MissionRuntimeStatus runtime_status;
   common::util::FillHeader(node_->Name(), &runtime_status);
+  runtime_status.mutable_contract_capabilities()->CopyFrom(
+      CurrentMissionContractCapabilities());
+  if (last_request_result_.has_code()) {
+    runtime_status.mutable_last_request_result()->CopyFrom(last_request_result_);
+  }
   if (!snapshot.mission_id.empty()) {
     runtime_status.set_mission_id(snapshot.mission_id);
   }
@@ -333,6 +440,18 @@ void MissionComponent::PublishMissionRuntimeStatus(BT::NodeStatus tree_status) {
   }
   if (!snapshot.active_command_id.empty()) {
     runtime_status.set_active_command_id(snapshot.active_command_id);
+  }
+  if (snapshot.accepted_mission_identity.has_revision()) {
+    runtime_status.mutable_accepted_mission_identity()->CopyFrom(
+        snapshot.accepted_mission_identity);
+  }
+  if (snapshot.accepted_directive_identity.has_revision()) {
+    runtime_status.mutable_accepted_directive_identity()->CopyFrom(
+        snapshot.accepted_directive_identity);
+  }
+  if (snapshot.pending_directive_identity.has_revision()) {
+    runtime_status.mutable_pending_directive_identity()->CopyFrom(
+        snapshot.pending_directive_identity);
   }
   runtime_status.set_active_command_state(
       ToProtoCommandState(snapshot.active_command_status.state));
@@ -347,6 +466,10 @@ void MissionComponent::PublishMissionRuntimeStatus(BT::NodeStatus tree_status) {
         snapshot.last_terminal_command_status.command_id);
     runtime_status.set_last_terminal_command_state(
         ToProtoCommandState(snapshot.last_terminal_command_status.state));
+  }
+  if (snapshot.last_terminal_command_status.task_identity.has_revision()) {
+    runtime_status.mutable_last_terminal_task_identity()->CopyFrom(
+        snapshot.last_terminal_command_status.task_identity);
   }
   if (!snapshot.last_terminal_command_status.reason.empty()) {
     runtime_status.set_last_terminal_reason(
@@ -402,7 +525,9 @@ void MissionComponent::PublishMissionRuntimeStatus(BT::NodeStatus tree_status) {
     runtime_status.set_state(MISSION_RUNTIME_IDLE);
   }
 
-  mission_runtime_status_writer_->Write(runtime_status);
+  if (!mission_runtime_status_writer_->Write(runtime_status)) {
+    AERROR << "Failed to publish Mission runtime/request-result observation";
+  }
 }
 
 }  // namespace mission

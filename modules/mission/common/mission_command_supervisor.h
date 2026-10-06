@@ -27,6 +27,10 @@
 namespace apollo {
 namespace mission {
 
+bool IsControlStatusForMission(
+    const control::ControlRuntimeStatus& status,
+    const planning::MissionCommandIdentity& accepted_identity);
+
 enum class CommandLifecycleState {
   kUnknown = 0,
   kDispatched = 1,
@@ -58,6 +62,7 @@ struct CommandLifecycleStatus {
   control::ControlRuntimeState control_state =
       control::CONTROL_RUNTIME_UNKNOWN;
   uint32_t dispatch_count = 0;
+  planning::MissionCommandIdentity task_identity;
 };
 
 struct RecoveryState {
@@ -83,6 +88,9 @@ struct MissionCommandSnapshot {
   CommandLifecycleStatus last_terminal_command_status;
   bool operator_recovery_required = false;
   RecoveryState recovery_state;
+  planning::MissionCommandIdentity accepted_mission_identity;
+  planning::MissionCommandIdentity accepted_directive_identity;
+  planning::MissionCommandIdentity pending_directive_identity;
 };
 
 class MissionCommandSupervisor {

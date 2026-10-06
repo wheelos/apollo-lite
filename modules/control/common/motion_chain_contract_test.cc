@@ -80,6 +80,15 @@ TEST(MotionChainContractTest, CancelsMissionMotionThenOwnsIdleHold) {
   MotionExecutionManager manager{
       MotionExecutionValidator(std::move(capabilities))};
   planning::MotionPlanBuilder builder("planning-boot");
+  planning::MotionSpatialEnvelope envelope;
+  for (const auto& corner : {std::pair<double, double>{-2.0, -2.0},
+                             {3.0, -2.0}, {3.0, 2.0}, {-2.0, 2.0}}) {
+    auto* boundary = envelope.add_boundary();
+    boundary->set_x(corner.first);
+    boundary->set_y(corner.second);
+  }
+  envelope.set_max_lateral_deviation_m(1.0);
+  builder.SetSpatialEnvelope(envelope);
   planning::PlanningSemanticSummary semantics;
   ExecutorArbiter arbiter;
 
@@ -105,8 +114,28 @@ TEST(MotionChainContractTest, CancelsMissionMotionThenOwnsIdleHold) {
   ASSERT_EQ(manager.Apply(cancel.directive, 10.1).state(),
             planning::MOTION_EXECUTION_CANCELLING);
   arbiter.Release();
-  auto cancelled =
-      manager.ConfirmExecutorRevoked(10.11, "executor revoked");
+  planning::MotionTerminalEvidence revocation;
+  revocation.set_contract_version(1);
+  revocation.set_kind(
+      planning::MOTION_TERMINAL_EVIDENCE_EXECUTOR_REVOCATION);
+  revocation.mutable_motion_identity()->CopyFrom(
+      manager.active_command()->identity());
+  revocation.mutable_parent_mission_identity()->CopyFrom(
+      manager.active_command()->authorized_mission_identity());
+  revocation.set_authority_generation(
+      manager.active_command()->authority_generation());
+  revocation.set_observed_at_sec(10.11);
+  revocation.set_reference_frame_id("map");
+  revocation.set_position_error_m(0.0);
+  revocation.set_heading_error_rad(0.0);
+  revocation.set_absolute_speed_mps(0.0);
+  revocation.set_settled_duration_sec(0.0);
+  revocation.set_executor_ownership(
+      planning::MOTION_EXECUTOR_OWNERSHIP_REVOKED);
+  revocation.set_executor_type(
+      planning::MOTION_EXECUTION_TYPE_TRAJECTORY);
+  revocation.set_safety_state(planning::MOTION_EVIDENCE_SAFETY_NORMAL);
+  auto cancelled = manager.ConfirmExecutorRevoked(revocation, 10.11);
   ASSERT_EQ(cancelled.state(),
             planning::MOTION_EXECUTION_CANCELLED);
   builder.ObserveControlStatus(

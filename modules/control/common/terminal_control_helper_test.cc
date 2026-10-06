@@ -5,6 +5,26 @@
 namespace apollo {
 namespace control {
 
+TEST(TerminalControlHelperTest, SpatialReferencesBypassUnguidedPoseHelpers) {
+  planning::ADCTrajectory trajectory;
+  auto* intent = trajectory.mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_PATH_SPEED);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_PRIMITIVE);
+  intent->set_primitive_type(planning::CONTROL_PRIMITIVE_NONE);
+  intent->mutable_target_stop_point()->set_x(10.0);
+  intent->set_target_stop_heading(1.0);
+  EXPECT_FALSE(IsTrajectorylessControlPrimitive(trajectory));
+  EXPECT_FALSE(IsTrajectorylessPoseServo(trajectory));
+  const auto lateral =
+      BuildTerminalLateralControlAdjustment(*intent, nullptr, 0.0, 16.0, 470.0);
+  EXPECT_FALSE(lateral.terminal_align_active);
+  EXPECT_DOUBLE_EQ(lateral.heading_correction_pct, 0.0);
+  const auto longitudinal =
+      BuildTerminalLongitudinalControlAdjustment(*intent, nullptr, nullptr);
+  EXPECT_FALSE(longitudinal.pose_servo_active);
+  EXPECT_FALSE(longitudinal.trajectory_optional);
+}
+
 TEST(TerminalControlHelperTest, BuildsTerminalAlignCorrection) {
   planning::ControlIntent intent;
   intent.set_tracking_mode(planning::TRACKING_MODE_POSE_SERVO);
