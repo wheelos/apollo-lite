@@ -43,6 +43,12 @@ enum class ScenarioGrade {
   CRITICAL = 3   // L0: Emergency (Score > 300)
 };
 
+inline bool IsLocalScenarioGrade(ScenarioGrade grade) {
+  return grade == ScenarioGrade::CRUISE ||
+         grade == ScenarioGrade::MANEUVER ||
+         grade == ScenarioGrade::CRITICAL;
+}
+
 inline std::string ScenarioGrade_Name(ScenarioGrade grade) {
   switch (grade) {
     case ScenarioGrade::CRUISE:

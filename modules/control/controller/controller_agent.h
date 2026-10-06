@@ -22,6 +22,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "modules/common/util/factory.h"
@@ -72,6 +73,8 @@ class ControllerAgent {
    * @return Status reset status
    */
   common::Status Reset();
+  static common::Status ValidateControllerSet(const ControlConf& conf);
+  std::vector<std::string> ControllerNames() const;
 
  private:
   /**
@@ -88,6 +91,8 @@ class ControllerAgent {
       controller_factory_;
   std::vector<std::unique_ptr<Controller>> controller_list_;
   std::shared_ptr<DependencyInjector> injector_ = nullptr;
+  bool initialized_ = false;
+  bool reset_failed_ = false;
 };
 
 }  // namespace control

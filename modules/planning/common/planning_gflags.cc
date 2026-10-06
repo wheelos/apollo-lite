@@ -223,6 +223,8 @@ DEFINE_double(lateral_jerk_bound, 4.0,
               "Bound of lateral jerk; symmetric for left and right");
 
 DEFINE_double(kappa_bound, 0.1979, "The bound for trajectory curvature");
+DEFINE_double(motion_curvature_derivative_bound, 0.2,
+              "Maximum authorized spatial curvature derivative, 1/m^2");
 
 // ST Boundary
 DEFINE_double(st_max_s, 100, "the maximum s of st boundary");

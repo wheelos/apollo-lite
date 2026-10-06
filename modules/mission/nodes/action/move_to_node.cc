@@ -17,10 +17,29 @@
 
 #include "modules/mission/nodes/action/move_to_node.h"
 
+#include <sstream>
+
 #include "cyber/common/log.h"
+#include "cyber/time/time.h"
 
 namespace apollo {
 namespace mission {
+
+namespace {
+
+std::string BuildMoveToCommandId(const std::string& node_name) {
+  const std::string mission_id =
+      MissionContext::Instance()->GetCurrentMissionId();
+  std::ostringstream oss;
+  if (!mission_id.empty()) {
+    oss << mission_id << "/";
+  }
+  oss << "move_to/" << node_name << "/"
+      << apollo::cyber::Time::Now().ToNanosecond();
+  return oss.str();
+}
+
+}  // namespace
 
 BT::NodeStatus MoveToNode::onStart() {
   apollo::common::PointENU target_pose;
@@ -32,29 +51,39 @@ BT::NodeStatus MoveToNode::onStart() {
     throw BT::RuntimeError("missing required input [goal]");
   }
 
-  MissionContext::Instance()->SendRoutingRequest(target_pose);
+  planning::PlanningCommand command;
+  current_command_id_ = BuildMoveToCommandId(name());
+  command.set_command_id(current_command_id_);
+  command.set_action(planning::COMMAND_ACTIVATE);
+  command.set_requested_scene(planning::SCENE_LANE_CRUISE);
+  command.set_preferred_mode(planning::MODE_LANE_GRAPH);
+  command.set_preemptible(true);
+  *command.mutable_goal()->mutable_goal_pose() = target_pose;
+  if (!MissionContext::Instance()->SendPlanningCommand(command)) {
+    AERROR << "MoveToNode: Failed to submit task";
+    current_command_id_.clear();
+    return BT::NodeStatus::FAILURE;
+  }
   return BT::NodeStatus::RUNNING;
 }
 
 BT::NodeStatus MoveToNode::onRunning() {
-  auto loc = MissionContext::Instance()->GetLocalization();
-  if (!loc) {
-    return BT::NodeStatus::RUNNING;
-  }
-
-  apollo::common::PointENU target_pose;
-  if (!getInput("goal", target_pose)) {
-    AERROR << "MoveToNode: Failed to get 'goal' from input port";
+  if (current_command_id_.empty()) {
+    AERROR << "MoveToNode: Missing active command_id while running";
     return BT::NodeStatus::FAILURE;
   }
-
-  double dx = loc->pose().position().x() - target_pose.x();
-  double dy = loc->pose().position().y() - target_pose.y();
-  double dist = std::sqrt(dx * dx + dy * dy);
-
-  if (dist < 3.0) {
-    AINFO << "MoveToNode: Arrived";
+  const auto command_status =
+      MissionContext::Instance()->GetCommandLifecycleStatus(
+          current_command_id_);
+  if (command_status.state == CommandLifecycleState::kCompleted) {
+    AINFO << "MoveToNode: Completed by planning runtime status";
     return BT::NodeStatus::SUCCESS;
+  }
+
+  if (command_status.state == CommandLifecycleState::kFailed ||
+      command_status.state == CommandLifecycleState::kCancelled) {
+    AERROR << "MoveToNode: Command lifecycle failed: " << command_status.reason;
+    return BT::NodeStatus::FAILURE;
   }
 
   return BT::NodeStatus::RUNNING;
@@ -62,7 +91,19 @@ BT::NodeStatus MoveToNode::onRunning() {
 
 void MoveToNode::onHalted() {
   AINFO << "MoveToNode: Halted (Task Cancelled)";
-  // Clear Routing command here
+  if (current_command_id_.empty()) {
+    AERROR << "MoveToNode: Missing active command_id on halt";
+    return;
+  }
+  planning::PlanningCommand command;
+  command.set_command_id(current_command_id_);
+  command.set_action(planning::COMMAND_CANCEL);
+  command.set_requested_scene(planning::SCENE_LANE_CRUISE);
+  command.set_preferred_mode(planning::MODE_LANE_GRAPH);
+  if (!MissionContext::Instance()->SendPlanningCommand(command)) {
+    AERROR << "MoveToNode: Failed to submit cancellation";
+  }
+  current_command_id_.clear();
 }
 
 }  // namespace mission

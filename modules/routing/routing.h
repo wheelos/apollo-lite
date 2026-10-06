@@ -30,10 +30,9 @@
 namespace apollo {
 namespace routing {
 
-class Routing {
-  // friend class RoutingTestBase;
+class RoutingService {
  public:
-  Routing();
+  RoutingService();
 
   /**
    * @brief module name
@@ -55,10 +54,10 @@ class Routing {
   /**
    * @brief destructor
    */
-  virtual ~Routing() = default;
+  virtual ~RoutingService() = default;
 
-  bool Process(const std::shared_ptr<RoutingRequest> &routing_request,
-               RoutingResponse *const routing_response);
+  bool ComputeRoute(const RoutingRequest& routing_request,
+                    RoutingResponse* routing_response);
 
  private:
   std::vector<RoutingRequest> FillLaneInfoIfMissing(

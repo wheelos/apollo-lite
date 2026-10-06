@@ -96,6 +96,29 @@ filegroup(
 )
 
 cc_library(
+    name = "hybrid_maneuver_supervisor",
+    srcs = ["hybrid_maneuver_supervisor.cc"],
+    hdrs = ["hybrid_maneuver_supervisor.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_command_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_runtime_status_cc_proto",
+        "//modules/planning:planning_runtime_context",
+        "//modules/planning/proto:planning_status_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "hybrid_maneuver_supervisor_test",
+    size = "small",
+    srcs = ["hybrid_maneuver_supervisor_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":hybrid_maneuver_supervisor",
+    ],
+)
+
+cc_library(
     name = "obstacle_decider",
     srcs = ["obstacle_decider.cc"],
     hdrs = ["obstacle_decider.h"],
@@ -178,6 +201,27 @@ cc_library(
 )
 
 cc_library(
+    name = "published_trajectory_gear",
+    srcs = ["published_trajectory_gear.cc"],
+    hdrs = ["published_trajectory_gear.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_command_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "published_trajectory_gear_test",
+    size = "small",
+    srcs = ["published_trajectory_gear_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":published_trajectory_gear",
+    ],
+)
+
+cc_library(
     name = "planning_context",
     srcs = ["planning_context.cc"],
     hdrs = ["planning_context.h"],
@@ -187,6 +231,100 @@ cc_library(
         "//modules/planning/common/path:path_data",
         "//modules/planning/proto:planning_status_cc_proto",
         "@eigen",
+    ],
+)
+
+cc_library(
+    name = "planning_semantics",
+    srcs = ["planning_semantics.cc"],
+    hdrs = ["planning_semantics.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        "@wheelos_common//modules/common/math",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_runtime_status_cc_proto",
+        "//modules/planning:planning_runtime_context",
+    ],
+)
+
+cc_library(
+    name = "motion_plan_builder",
+    srcs = ["motion_plan_builder.cc"],
+    hdrs = ["motion_plan_builder.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        ":planning_gflags",
+        ":planning_semantics",
+        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+        "//modules/planning:planning_runtime_context",
+    ],
+)
+
+cc_library(
+    name = "motion_envelope",
+    srcs = ["motion_envelope.cc"],
+    hdrs = ["motion_envelope.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        ":frame",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "motion_envelope_test",
+    size = "small",
+    srcs = ["motion_envelope_test.cc"],
+    deps = [
+        ":frame",
+        ":gtest_exit_main",
+        ":motion_envelope",
+    ],
+)
+
+cc_test(
+    name = "motion_plan_builder_test",
+    size = "small",
+    srcs = ["motion_plan_builder_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":motion_plan_builder",
+    ],
+)
+
+cc_test(
+    name = "planning_semantics_test",
+    size = "small",
+    srcs = ["planning_semantics_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":planning_semantics",
+    ],
+)
+
+cc_library(
+    name = "terminal_servo_guard",
+    srcs = ["terminal_servo_guard.cc"],
+    hdrs = ["terminal_servo_guard.h"],
+    copts = PLANNING_COPTS,
+    deps = [
+        ":planning_semantics",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "terminal_servo_guard_test",
+    size = "small",
+    srcs = ["terminal_servo_guard_test.cc"],
+    deps = [
+        ":gtest_exit_main",
+        ":terminal_servo_guard",
     ],
 )
 
@@ -294,6 +432,7 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:navigation_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_command_cc_proto",
         "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "@wheelos_msgs//wheelos_msgs/storytelling_msgs:story_cc_proto",

@@ -81,9 +81,11 @@ class ControlComponentTest : public ::testing::Test {
   std::shared_ptr<Writer<ADCTrajectory>> planning_writer_;
   std::shared_ptr<Writer<PadMessage>> pad_writer_;
   std::shared_ptr<Reader<ControlCommand>> control_reader_;
+  std::shared_ptr<Reader<ControlRuntimeStatus>> control_runtime_status_reader_;
 
   std::shared_ptr<ControlComponent> control_component_ = nullptr;
   ControlCommand control_command_;
+  ControlRuntimeStatus control_runtime_status_;
   MonitorMessage monitor_message_;
   Chassis chassis_;
   ADCTrajectory trajectory_;
@@ -121,6 +123,12 @@ void ControlComponentTest::SetupCyber() {
         ADEBUG << "Received planning data: run planning callback.";
         std::lock_guard<std::mutex> lock(mutex_);
         control_command_.CopyFrom(*control_command);
+      });
+  control_runtime_status_reader_ = node->CreateReader<ControlRuntimeStatus>(
+      FLAGS_control_runtime_status_topic,
+      [this](const std::shared_ptr<ControlRuntimeStatus>& runtime_status) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        control_runtime_status_.CopyFrom(*runtime_status);
       });
 
   is_cyber_initialized_ = true;
@@ -249,6 +257,19 @@ TEST_F(ControlComponentTest, simple_test) {
   FLAGS_test_chassis_file = "1_chassis.pb.txt";
   bool run_control_success = RunControl("simple_test_0");
   EXPECT_TRUE(run_control_success);
+}
+
+TEST_F(ControlComponentTest, publishes_runtime_status) {
+  FLAGS_test_data_dir = "/apollo/modules/control/testdata/simple_control_test/";
+  FLAGS_test_localization_file = "1_localization.pb.txt";
+  FLAGS_test_pad_file = "1_pad.pb.txt";
+  FLAGS_test_planning_file = "1_planning.pb.txt";
+  FLAGS_test_chassis_file = "1_chassis.pb.txt";
+  ASSERT_TRUE(RunControl("simple_test_0"));
+  EXPECT_TRUE(control_runtime_status_.has_state());
+  EXPECT_NE(control_runtime_status_.state(), CONTROL_RUNTIME_UNKNOWN);
+  EXPECT_TRUE(control_runtime_status_.has_safety_state());
+  EXPECT_TRUE(control_runtime_status_.has_driving_mode());
 }
 
 }  // namespace control

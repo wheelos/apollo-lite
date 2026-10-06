@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -58,8 +58,9 @@ cc_library(
         ":scenario",
         ":transition_guard",
         "@wheelos_common//modules/common/status",
-        "//modules/planning/common:dependency_injector",
+        "//modules/planning:planning_runtime_context",
         "//modules/planning/common:frame",
+        "//modules/planning/common:dependency_injector",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/scenarios/cruise/lane_follow:lane_follow_scenario",
         "//modules/planning/scenarios/cruise/lane_keeping:lane_keeping_scenario",
@@ -81,6 +82,17 @@ cc_library(
         "//modules/planning/scenarios/park/park_and_go:park_and_go_scenario",
         "//modules/planning/scenarios/park/pull_over:pull_over_scenario",
         "//modules/planning/scenarios/park/valet_parking",
+    ],
+)
+
+cc_test(
+    name = "scenario_grade_test",
+    size = "small",
+    srcs = ["scenario_grade_test.cc"],
+    linkopts = ["-fopenmp"],
+    deps = [
+        ":scenario",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 

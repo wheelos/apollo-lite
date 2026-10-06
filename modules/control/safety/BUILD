@@ -26,6 +26,7 @@ cc_library(
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:safety_stop_cc_proto",
     ],
 )
 
@@ -35,7 +36,7 @@ cc_test(
     srcs = ["safety_manager_test.cc"],
     deps = [
         ":safety_manager",
-        "@com_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest",
     ],
 )
 

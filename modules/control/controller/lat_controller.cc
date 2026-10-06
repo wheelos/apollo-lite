@@ -266,6 +266,19 @@ void LatController::LoadLatGainScheduler(
       << "Fail to load heading error gain scheduler";
 }
 
+TerminalLateralControlAdjustment LatController::BuildTerminalLateralAdjustment(
+    const localization::LocalizationEstimate* localization,
+    const planning::ADCTrajectory& planning_published_trajectory,
+    double current_heading) const {
+  if (!planning_published_trajectory.has_control_intent()) {
+    return TerminalLateralControlAdjustment();
+  }
+  return BuildTerminalLateralControlAdjustment(
+      planning_published_trajectory.control_intent(), localization,
+      current_heading,
+      steer_ratio_, steer_single_direction_max_degree_);
+}
+
 void LatController::Stop() {}
 
 std::string LatController::Name() const { return name_; }
@@ -277,6 +290,8 @@ Status LatController::ComputeControlCommand(
     ControlCommand* cmd) {
   CaptureVehicleState(injector_);
   auto vehicle_state = captured_vehicle_state();
+  SimpleLateralDebug* debug = cmd->mutable_debug()->mutable_simple_lat_debug();
+  debug->Clear();
 
   auto target_tracking_trajectory = *planning_published_trajectory;
 
@@ -345,8 +360,60 @@ Status LatController::ComputeControlCommand(
     }
   }
 
-  trajectory_analyzer_ =
-      std::move(TrajectoryAnalyzer(&target_tracking_trajectory));
+  if (IsTrajectorylessControlPrimitive(*planning_published_trajectory)) {
+    UpdateDrivingOrientation(vehicle_state);
+    const auto terminal_adjustment = BuildTerminalLateralAdjustment(
+        localization, *planning_published_trajectory, driving_orientation_);
+    double steer_limit =
+        terminal_adjustment.suppress_large_steer ||
+                terminal_adjustment.terminal_align_active
+            ? terminal_adjustment.max_abs_steer_pct
+            : 100.0;
+    double steer_diff_with_max_rate =
+        FLAGS_enable_maximum_steer_rate_limit
+            ? vehicle_param_.max_steer_angle_rate() * ts_ * 180 / M_PI /
+                  steer_single_direction_max_degree_ * 100
+            : 100.0;
+    if (terminal_adjustment.suppress_large_steer ||
+        terminal_adjustment.terminal_align_active) {
+      steer_diff_with_max_rate = std::min(steer_diff_with_max_rate,
+                                          terminal_adjustment.max_steer_rate_pct);
+    }
+    double steer_angle =
+        common::math::Clamp(terminal_adjustment.heading_correction_pct,
+                            -steer_limit, steer_limit);
+    steer_angle = digital_filter_.Filter(steer_angle);
+    steer_angle = common::math::Clamp(steer_angle, -100.0, 100.0);
+    if (std::abs(vehicle_state.linear_velocity()) < FLAGS_lock_steer_speed &&
+        (vehicle_state.gear() == canbus::Chassis::GEAR_DRIVE ||
+         vehicle_state.gear() == canbus::Chassis::GEAR_REVERSE) &&
+        chassis->driving_mode() == canbus::Chassis::COMPLETE_AUTO_DRIVE) {
+      steer_angle = pre_steer_angle_;
+    }
+    cmd->set_steering_target(common::math::Clamp(
+        steer_angle, pre_steer_angle_ - steer_diff_with_max_rate,
+        pre_steer_angle_ + steer_diff_with_max_rate));
+    cmd->set_steering_rate(FLAGS_steer_angle_rate);
+    pre_steer_angle_ = cmd->steering_target();
+    pre_steering_position_ = chassis->steering_percentage();
+
+    debug->set_heading(driving_orientation_);
+    if (planning_published_trajectory->control_intent().has_target_stop_heading()) {
+      debug->set_ref_heading(
+          planning_published_trajectory->control_intent().target_stop_heading());
+      debug->set_heading_error(common::math::NormalizeAngle(
+          planning_published_trajectory->control_intent().target_stop_heading() -
+          driving_orientation_));
+    }
+    debug->set_steering_position(chassis->steering_percentage());
+    debug->set_steer_angle(steer_angle);
+    debug->set_steer_angle_feedback(terminal_adjustment.heading_correction_pct);
+    debug->set_ref_speed(vehicle_state.linear_velocity());
+    ProcessLogs(debug, vehicle_state);
+    return Status::OK();
+  }
+
+  trajectory_analyzer_ = std::move(TrajectoryAnalyzer(&target_tracking_trajectory));
 
   // Re-build the vehicle dynamic models at reverse driving (in particular,
   // replace the lateral translational motion dynamics with the corresponding
@@ -395,8 +462,7 @@ Status LatController::ComputeControlCommand(
   matrix_b_(3, 0) = lf_ * cf_ / iz_;
   matrix_bd_ = matrix_b_ * ts_;
 
-  SimpleLateralDebug* debug = cmd->mutable_debug()->mutable_simple_lat_debug();
-  debug->Clear();
+  UpdateDrivingOrientation(vehicle_state);
 
   // Update state = [Lateral Error, Lateral Error Rate, Heading Error, Heading
   // Error Rate, preview lateral error1 , preview lateral error2, ...]
@@ -470,21 +536,37 @@ Status LatController::ComputeControlCommand(
   steer_angle = steer_angle_feedback + steer_angle_feedforward +
                 steer_angle_feedback_augment;
 
+  const auto terminal_adjustment = BuildTerminalLateralAdjustment(
+      localization, *planning_published_trajectory, driving_orientation_);
+  if (terminal_adjustment.terminal_align_active) {
+    steer_angle += terminal_adjustment.heading_correction_pct;
+  }
+
   // Compute the steering command limit with the given maximum lateral
   // acceleration
-  const double steer_limit =
+  double steer_limit =
       FLAGS_set_steer_limit ? std::atan(max_lat_acc_ * wheelbase_ /
                                         (vehicle_state.linear_velocity() *
                                          vehicle_state.linear_velocity())) *
                                   steer_ratio_ * 180 / M_PI /
                                   steer_single_direction_max_degree_ * 100
                             : 100.0;
+  if (terminal_adjustment.suppress_large_steer ||
+      terminal_adjustment.terminal_align_active) {
+    steer_limit =
+        std::min(steer_limit, terminal_adjustment.max_abs_steer_pct);
+  }
 
-  const double steer_diff_with_max_rate =
+  double steer_diff_with_max_rate =
       FLAGS_enable_maximum_steer_rate_limit
           ? vehicle_param_.max_steer_angle_rate() * ts_ * 180 / M_PI /
                 steer_single_direction_max_degree_ * 100
           : 100.0;
+  if (terminal_adjustment.suppress_large_steer ||
+      terminal_adjustment.terminal_align_active) {
+    steer_diff_with_max_rate = std::min(steer_diff_with_max_rate,
+                                        terminal_adjustment.max_steer_rate_pct);
+  }
 
   const double steering_position =
       captured_vehicle_state().steering_percentage();

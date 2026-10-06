@@ -12,114 +12,118 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//  Created Date: 2025-12-13
-//  Author: daohu527
-
 #pragma once
 
 #include <memory>
 #include <mutex>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "wheelos_msgs/basic_msgs/geometry.pb.h"
 #include "wheelos_msgs/chassis_msgs/chassis.pb.h"
+#include "wheelos_msgs/control_msgs/control_runtime_status.pb.h"
+#include "wheelos_msgs/control_msgs/safety_stop.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/planning_msgs/mission_directive.pb.h"
 #include "wheelos_msgs/planning_msgs/pad_msg.pb.h"
-#include "wheelos_msgs/routing_msgs/routing.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_command.pb.h"
+#include "wheelos_msgs/planning_msgs/planning_runtime_status.pb.h"
+#include "wheelos_msgs/mission_msgs/mission_request.pb.h"
+#include "wheelos_msgs/mission_msgs/mission_request_result.pb.h"
 
+#include "cyber/common/log.h"
 #include "cyber/common/macros.h"
 #include "cyber/cyber.h"
+#include "modules/common/util/message_util.h"
+#include "modules/execution_state_sync/client.h"
+#include "modules/mission/common/mission_command_supervisor.h"
+#include "modules/mission/common/mission_request_ledger.h"
 
 namespace apollo {
 namespace mission {
 
 class MissionContext {
  public:
-  void SetRoutingWriter(
-      const std::shared_ptr<cyber::Writer<routing::RoutingRequest>>& writer) {
-    routing_writer_ = writer;
-  }
+  bool SendPlanningPad(planning::PadMessage::DrivingAction action);
+  void SetMissionDirectiveWriter(
+      const std::shared_ptr<cyber::Writer<planning::MissionDirective>>& writer);
+  bool InitExecutionState(const std::string& path,
+                          const std::string& producer_epoch,
+                          const std::string& request_ledger_path);
+  void ShutdownExecutionState();
+  bool PollExecutionState();
+  bool ExecutionStateHealthy() const;
+  bool SubmitTypedRequest(const MissionRequest& request,
+                          MissionRequestResult* result);
+  bool GetMissionRequestResult(const MissionRequestIdentity& identity,
+                               MissionRequestResult* result) const;
 
-  void SetPlanningPadWriter(
-      const std::shared_ptr<cyber::Writer<planning::PadMessage>>& writer) {
-    planning_pad_writer_ = writer;
-  }
-
-  // Data storage (written by Component)
-  void UpdateChassis(const std::shared_ptr<canbus::Chassis>& msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    chassis_ = msg;
-  }
-
+  void UpdateChassis(const std::shared_ptr<canbus::Chassis>& msg);
   void UpdateLocalization(
-      const std::shared_ptr<localization::LocalizationEstimate>& msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    localization_ = msg;
-  }
+      const std::shared_ptr<localization::LocalizationEstimate>& msg);
+  void UpdatePlanningRuntimeStatus(
+      const std::shared_ptr<planning::PlanningRuntimeStatus>& msg);
+  void UpdateControlRuntimeStatus(
+      const std::shared_ptr<control::ControlRuntimeStatus>& msg,
+      bool motion_result = false);
+  void SaveWaypoint(const std::string& name, const common::PointENU& pose);
 
-  void SaveWaypoint(const std::string& name, const common::PointENU& pose) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    waypoints_[name] = pose;
-  }
+  std::shared_ptr<canbus::Chassis> GetChassis();
+  std::shared_ptr<localization::LocalizationEstimate> GetLocalization();
+  std::shared_ptr<planning::PlanningRuntimeStatus> GetPlanningRuntimeStatus();
+  std::shared_ptr<control::ControlRuntimeStatus> GetControlRuntimeStatus();
+  CommandLifecycleStatus GetCommandLifecycleStatus(
+      const std::string& command_id) const;
+  bool GetWaypoint(const std::string& name, common::PointENU* out_pose);
 
-  // Data read (read by BT Nodes)
-  std::shared_ptr<canbus::Chassis> GetChassis() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return chassis_;
-  }
+  bool SendPlanningCommand(const planning::PlanningCommand& command);
+  bool AcknowledgeRecovery();
+  bool ResumeRecovery();
+  bool RetryRecovery();
+  bool AbortRecovery();
 
-  std::shared_ptr<localization::LocalizationEstimate> GetLocalization() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return localization_;
-  }
-
-  bool GetWaypoint(const std::string& name, common::PointENU* out_pose) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (waypoints_.find(name) == waypoints_.end()) {
-      return false;
-    }
-    *out_pose = waypoints_[name];
-    return true;
-  }
-
-  void SendRoutingRequest(const common::PointENU& end_pose) {
-    if (routing_writer_ == nullptr) {
-      return;
-    }
-    routing::RoutingRequest request;
-    auto* waypoint = request.add_waypoint();
-    *waypoint->mutable_pose() = end_pose;
-    routing_writer_->Write(request);
-  }
-
-  bool SendPlanningPad(planning::PadMessage::DrivingAction action) {
-    if (planning_pad_writer_ == nullptr) {
-      return false;
-    }
-    planning::PadMessage message;
-    message.set_action(action);
-    return planning_pad_writer_->Write(message);
-  }
-
-  void SetCurrentMissionId(const std::string& id) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    current_mission_id_ = id;
-  }
-
-  std::string GetCurrentMissionId() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return current_mission_id_;
-  }
+  void SetCurrentMissionId(const std::string& id);
+  void SetCurrentTaskName(const std::string& task_name);
+  std::string GetCurrentMissionId() const;
+  MissionCommandSnapshot GetMissionCommandSnapshot() const;
 
  private:
+  bool PublishPlanningCommands(
+      const std::vector<planning::PlanningCommand>& commands);
+  bool ConsumeExecutionEvent(const execution_state_sync::Event& event);
+  bool BuildMissionDirective(const planning::PlanningCommand& command,
+                             planning::MissionDirective* directive);
+  bool BuildTypedMissionDirective(const MissionRequest& request,
+                                  planning::MissionDirective* directive,
+                                  std::string* reason);
+  planning::MissionPlan BuildMissionPlan(
+      const planning::PlanningCommand& command) const;
+
   mutable std::mutex mutex_;
 
-  std::string current_mission_id_;
-
-  std::shared_ptr<cyber::Writer<routing::RoutingRequest>> routing_writer_;
-  std::shared_ptr<cyber::Writer<planning::PadMessage>> planning_pad_writer_;
+  MissionCommandSupervisor command_supervisor_;
+  std::shared_ptr<cyber::Writer<planning::MissionDirective>>
+      mission_directive_writer_;
+  std::unique_ptr<execution_state_sync::Client> execution_state_client_;
+  std::unique_ptr<MissionRequestLedger> mission_request_ledger_;
+  std::unordered_map<uint64_t, MissionRequestRecord> pending_typed_requests_;
+  std::unordered_map<std::string, std::vector<MissionRequestIdentity>>
+      request_identity_by_command_;
+  std::unordered_map<std::string, planning::MissionCommandIdentity>
+      mission_identities_;
+  std::unordered_map<std::string, planning::MissionCommandIdentity>
+      accepted_mission_identities_;
+  std::unordered_map<std::string, planning::MissionDirective>
+      pending_mission_directives_;
+  std::unordered_map<std::string, planning::MissionPlan> mission_plans_;
+  std::string producer_epoch_;
+  bool execution_state_fault_ = false;
+  uint64_t last_safety_status_sequence_ = 0;
   std::shared_ptr<canbus::Chassis> chassis_;
   std::shared_ptr<localization::LocalizationEstimate> localization_;
+  std::shared_ptr<planning::PlanningRuntimeStatus> planning_runtime_status_;
+  std::shared_ptr<control::ControlRuntimeStatus> control_runtime_status_;
   std::unordered_map<std::string, common::PointENU> waypoints_;
 
   DECLARE_SINGLETON(MissionContext)
