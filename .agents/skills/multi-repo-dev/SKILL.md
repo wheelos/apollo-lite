@@ -1,140 +1,92 @@
 ---
 name: multi-repo-dev
-description: Apollo-Lite multi-repository checkout, local override validation, and versioned registry publication workflow.
+description: Manage vcs source checkouts, local Bzlmod overrides, and versioned registry publication for multi-repository development.
 ---
 
 # Multi-Repository Development
 
 ## When
 
-Use when checking out or developing WheelOS dependency modules together with
-the Apollo-Lite consumer, reviewing `.bazelrc.dev`, or preparing registry
-publication after local validation.
+Use for coordinated development across Bazel modules, consumer integration,
+or promotion from local source validation to registry-based consumption.
 
 ## Prerequisites
 
-- Host `vcs`, the root `wheelos.repos`, and the managed development container.
-- Preserve dirty checkouts and existing dependency declarations.
-- Run Bazel in `/apollo` as the current mapped non-root user; reuse existing
-  toolchains, dependencies, and caches.
+Read the consumer's agent rules, repository manifest, MODULE declarations,
+rc files, and relevant build/test entrypoints. Identify the checkout directory,
+module names, repository aliases, registry order, and approved build environment.
+Preserve dirty worktrees and reuse existing toolchains and caches.
 
 ## Steps
 
-### 1. Checkout sources
+### 1. Checkout and inspect
 
-Run on the host from the Apollo-Lite root:
+Use the project's vcs manifest to validate and import repositories into its
+designated source directory. Inspect existing work before importing/updating.
+Verify URLs, revisions, `MODULE.bazel` identities, and exported BUILD targets.
+Checkout confirms source availability and identity, not correctness.
 
-```bash
-vcs validate < wheelos.repos
-mkdir -p pkgs
-vcs import pkgs < wheelos.repos
-vcs status pkgs
-```
+### 2. Integrate and validate locally
 
-Preserve existing local changes. Verify repository URLs, revisions, module
-names, and BUILD targets. Checkout confirms source identity, not correctness.
-`pkgs/` is ignored by the consumer; each repository has its own Git history.
+Declare `bazel_dep` in each direct consumer before integration. A root need
+not repeat a transitive declaration unless it uses the module's labels directly.
+Independent module development can precede consumer integration.
 
-### 2. Develop and validate locally
-
-- Keep each module's `MODULE.bazel` and exported BUILD targets.
-- Declare `bazel_dep` in the direct consumer before integration. A transitive
-  dependency needs no redundant root declaration unless the root uses its
-  labels directly. Independent module development can precede integration.
-- `--override_module` replaces an existing dependency-graph module; it does
-  not add a dependency. Registration is not required for local overrides.
-- Use module names, not BUILD aliases: `wheelos_core` is the override key,
-  while `@core` is its consumer label prefix.
-
-The root `.bazelrc` imports `.bazelrc.dev`. Keep overrides opt-in:
+Keep local overrides opt-in in the consumer's `.bazelrc.dev`, imported by its
+root `.bazelrc`. The following is a template; substitute verified module names
+and workspace-relative paths:
 
 ```text
-common:dev --registry=file://%workspace%/pkgs/bazel-central-registry
-common:dev --override_module=wheelos_common=%workspace%/pkgs/common
-common:dev --override_module=wheelos_map=%workspace%/pkgs/map
-common:dev --override_module=wheelos_core=%workspace%/pkgs/core
-common:dev --override_module=wheelos_msgs=%workspace%/pkgs/wheelos_msgs
+common:dev --override_module=<module>=%workspace%/<checkout-path>
 ```
 
-Enter the managed container as the current mapped non-root user:
+Use module names, not repository aliases, as override keys. An override replaces
+a module in the dependency graph; it does not declare a dependency. Registration
+is not required for the overridden module, but other dependencies must resolve.
 
-```bash
-bash docker/scripts/whl.sh enter dev
-```
+In the approved environment, use `--config=dev` consistently for graph
+inspection, repository mapping, builds, and tests. Verify mappings point to the
+intended checkouts, then run the smallest consumer targets and focused tests
+covering the coordinated changes. Follow the project's lockfile policy.
 
-From `/apollo`, resolve and verify the four `/apollo/pkgs/...` mappings,
-then build the cross-module smoke target:
+### 3. Publish source and register versions
 
-```bash
-bazel mod graph --config=dev --lockfile_mode=off
-bazel mod show_repo --config=dev --lockfile_mode=off \
-  @core @wheelos_common @wheelos_map @wheelos_msgs
-bazel build --config=dev --lockfile_mode=off \
-  @wheelos_map//modules/map/hdmap:hdmap
-```
+After local validation, publish tested source as immutable revisions or release
+archives, dependencies before consumers. Publishing requires authorization.
 
-Run focused tests for changed behavior. For wrapper builds, use
-`bash apollo.sh build <module> --config=dev`. Reuse existing dependencies,
-toolchains, and caches; do not run Bazel as root or hide cache ownership errors.
-Stop at the first actionable failure; do not retry or expand scope blindly.
-
-### 3. Publish source and register the version
-
-After local validation, publish the tested source as an immutable revision or
-release archive, dependencies before consumers. Commit/push/release actions
-require explicit authorization.
-
-If the exact module version is absent, add it in
-`pkgs/bazel-central-registry` following that repository's `docs/README.md`:
-
-- `modules/<name>/metadata.json`, listing the version.
-- `modules/<name>/<version>/MODULE.bazel`, `source.json`, and `presubmit.yml`,
-  plus referenced patches or overlays.
-
-Match metadata to the released source and use retrievable immutable sources
-with integrity hashes. Do not publish machine-specific `local_path` sources.
-New source changes need a new version; never rewrite a published version.
-Bzlmod resolves versions; it does not upload or release Git repositories.
-
-For reproducible releases or handoffs, save an exact revision manifest:
-
-```bash
-vcs export --exact pkgs > wheelos.exact.repos
-```
-
-The export excludes uncommitted changes. Generate the final handoff manifest
-after all included source and registry changes have been committed and published.
+If the exact version is absent, add its entry following the registry's policy:
+version metadata, matching MODULE declarations, retrievable source references,
+required integrity hashes, and applicable patches or presubmit checks.
+Never publish host-only source paths or rewrite a published version.
+Bzlmod resolves dependencies; it does not upload or release Git repositories.
 
 ### 4. Validate registration and promote
 
-Disable overrides for all modules in the release dependency set, retain the
-local registry, and select the intended release versions in the validation
-consumer's `bazel_dep` declarations before resolving/building/testing. Ensure
-Bazel actually selects the edited registry: the local registry in
-`.bazelrc.dev` follows the remote registries and is only a fallback.
+Select intended release versions in the validation consumer. Disable local
+overrides for the entire release dependency set and use the edited registry.
+Inspect registry precedence so an earlier registry does not shadow the entry.
+Resolve, build, and test through registry-fetched source before submitting it.
 
-Only after registry validation, submit its changes to the remote repository.
-Confirm the configured remote registry serves the new version, update consumer
-versions, and validate normal consumption without `--config=dev` or any other
-local override. Local override success is not publication-path validation.
+After authorized registry publication, confirm the configured remote registry
+serves the versions and validate normal consumer operation without local
+overrides or the local registry. Restore temporary validation configuration
+without reverting pre-existing work; retain intended release version updates.
 
-Restore any temporary validation edits to `.bazelrc.dev` and dependency
-declarations without reverting pre-existing work. Retain only intended release
-version updates; development mode remains opt-in.
+For reproducible handoffs, export exact vcs revisions after source and registry
+commits are published. The export does not capture uncommitted changes.
 
 ## Acceptance
 
-- Local validation: all four mappings point to `/apollo/pkgs/...`, the smoke
-  target builds, and focused tests for changed behavior pass.
-- Registry validation: exact release versions resolve, build, and pass relevant
-  tests without overrides for the release dependency set.
-- Publication: the configured remote registry serves those versions and normal
-  consumer validation succeeds without local overrides or the local registry.
-- Reproducible handoff: published revisions are recorded in the exact manifest.
-  A successful Git push alone does not satisfy publication acceptance.
+- Local: mappings use intended checkouts; relevant builds and tests pass.
+- Registry: exact versions pass without source overrides masking dependencies.
+- Publication: remote registry consumption passes without development sources.
+- Handoff: exact published revisions are recorded.
+
+Report the achieved phase. Local override success or a Git push alone does
+not establish release acceptance.
 
 ## Failure handling
 
-Stop at the first actionable error and report the failing phase. Do not change
-versions, lockfiles, registry sources, cache ownership, or install packages to
-hide a failure. Request approval before expanding scope; preserve unrelated work.
+Stop at the first actionable error. Do not change versions, lockfiles, sources,
+cache ownership, or install packages to hide it. Obtain approval before
+expanding scope, and preserve unrelated work.
