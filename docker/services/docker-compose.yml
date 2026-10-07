@@ -26,7 +26,6 @@ services:
       - TZ=${TZ}
       - DISPLAY=${DISPLAY}
       - AUTO_BOOTSTRAP=${AUTO_BOOTSTRAP}
-      - HISTFILE=/apollo/.bash_history
 
     volumes:
       - ${APOLLO_ROOT}:/apollo
