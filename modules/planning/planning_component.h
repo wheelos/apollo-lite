@@ -40,7 +40,6 @@
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
 #include "cyber/message/raw_message.h"
-#include "modules/execution_state_sync/client.h"
 #include "modules/planning/common/hybrid_maneuver_supervisor.h"
 #include "modules/planning/common/message_process.h"
 #include "modules/planning/common/motion_plan_builder.h"
@@ -50,6 +49,9 @@
 #include "modules/planning/environment/capability_extractor.h"
 #include "modules/planning/environment/environment_model_builder.h"
 #include "modules/planning/planning_coordinator.h"
+#include "modules/planning/planning_cycle_diagnostics.h"
+#include "modules/planning/planning_cycle_result.h"
+#include "modules/planning/planning_execution_state_transport.h"
 #include "modules/planning/validation/validation_supervisor.h"
 #include "modules/routing/routing.h"
 
@@ -74,16 +76,27 @@ class PlanningComponent final
                 localization_estimate) override;
 
  private:
-  // PlanningCycleState owns single-cycle orchestration data only. It must not
-  // persist across Proc() calls.
-  struct PlanningCycleState {
-    PlanningCoordinatorState preview_state;
-    ValidationResult validation_result;
-    PlanningSemanticSummary semantic_summary;
-    HybridManeuverSummary hybrid_summary;
-    RuntimeState runtime_state = RUNTIME_UNKNOWN;
-    std::string publish_reason;
+  enum class PlanningCyclePreparation {
+    kReady,
+    kInputHold,
   };
+
+  bool ServiceExecutionState(
+      const localization::LocalizationEstimate& localization);
+  PlanningCyclePreparation PreparePlanningCycle(
+      const std::shared_ptr<prediction::PredictionObstacles>&
+          prediction_obstacles,
+      const std::shared_ptr<canbus::Chassis>& chassis,
+      const std::shared_ptr<localization::LocalizationEstimate>&
+          localization_estimate,
+      PlanningCycleResult* result);
+  bool ProcessLearningCycle(PlanningCycleResult* result);
+  void RunPlanningCycle(PlanningCycleResult* result);
+  void PrepareInputHoldResult(const std::string& reason,
+                              PlanningCycleResult* result);
+  bool CompletePlanningCycle(
+      PlanningCycleResult* result, const canbus::Chassis* chassis,
+      const localization::LocalizationEstimate* localization);
 
   void CheckRerouting();
   void UpdateRoutingForCommand(
@@ -97,12 +110,11 @@ class PlanningComponent final
   bool PollExecutionState(
       const localization::LocalizationEstimate& localization);
   void DrainExecutionStateSubmissions();
-  bool SubmitExecutionState(execution_state_sync::Channel channel,
-                            const std::string& payload, bool cleanup,
-                            execution_state_sync::PlanningStatusKind
-                                planning_status_kind =
-                                    execution_state_sync::PlanningStatusKind::
-                                        kRuntime);
+  bool SubmitExecutionState(
+      execution_state_sync::Channel channel, const std::string& payload,
+      bool cleanup,
+      execution_state_sync::PlanningStatusKind planning_status_kind =
+          execution_state_sync::PlanningStatusKind::kRuntime);
   void PublishMotionPlan(const PlanningCoordinatorState& coordinator_state,
                          const PlanningSemanticSummary& semantic_summary,
                          const canbus::Chassis& chassis,
@@ -126,11 +138,12 @@ class PlanningComponent final
   PlanningExecutionContext ResolvePublishedExecutionContext(
       const PlanningCoordinatorState& coordinator_state,
       const ADCTrajectory& trajectory) const;
-  bool CheckInput(const PlanningCoordinatorState& preview_state,
-                  ValidationResult* validation_result);
+  std::string CheckInput(const PlanningCoordinatorState& preview_state) const;
+  void FinalizePlanningResult(
+      PlanningCycleResult* result, const canbus::Chassis* chassis,
+      const localization::LocalizationEstimate* localization);
   void PopulateTrajectoryExecutionContext(
       const PlanningCoordinatorState& coordinator_state,
-      const PlanningSemanticSummary& semantic_summary,
       const HybridManeuverSummary& hybrid_summary,
       ADCTrajectory* trajectory) const;
   void PublishRuntimeStatus(const PlanningSemanticSummary& semantic_summary,
@@ -138,11 +151,10 @@ class PlanningComponent final
                             const ValidationResult& validation_result,
                             const PlanningCoordinatorState& coordinator_state,
                             const PlanningExecutionContext& execution,
+                            const MissionCommandIdentity&
+                                accepted_directive_identity,
+                            const CapabilitySet* capability_set,
                             const std::string& reason = "");
-  void LogPlanningCycle(const PlanningCoordinatorState& coordinator_state,
-                        const PlanningSemanticSummary& semantic_summary,
-                        const HybridManeuverSummary& hybrid_summary,
-                        const std::string& reason);
 
  private:
   friend class PlanningMissionSyncTestPeer;
@@ -188,7 +200,8 @@ class PlanningComponent final
   ValidationSupervisor validation_supervisor_;
   TerminalServoSessionState terminal_servo_session_state_;
   MotionPlanBuilder motion_plan_builder_{"planning-runtime-v2"};
-  std::unique_ptr<execution_state_sync::Client> execution_state_client_;
+  PlanningCycleDiagnostics diagnostics_;
+  std::unique_ptr<PlanningExecutionStateTransport> execution_state_transport_;
   uint64_t mission_event_sequence_ = 0;
   uint64_t motion_event_sequence_ = 0;
   uint64_t deferred_mission_ack_sequence_ = 0;
@@ -197,11 +210,8 @@ class PlanningComponent final
   std::string last_planning_status_fingerprint_;
   double last_planning_status_submit_sec_ = 0.0;
   std::string applied_control_motion_status_fingerprint_;
-  std::string last_logged_command_id_;
   std::string routed_command_fingerprint_;
   std::string applied_mission_directive_fingerprint_;
-  PlanningMode last_logged_mode_ = MODE_UNKNOWN;
-  PlanningShellType last_logged_shell_ = PLANNING_SHELL_UNKNOWN;
 };
 
 CYBER_REGISTER_COMPONENT(PlanningComponent)

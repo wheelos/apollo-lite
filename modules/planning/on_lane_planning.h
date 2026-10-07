@@ -107,12 +107,6 @@ class OnLanePlanning : public PlanningBase {
                                   const common::Status& plan_status,
                                   ADCTrajectory* ptr_trajectory_pb);
   void FinalizeFrameHistory(ADCTrajectory* ptr_trajectory_pb);
-  void LogPlanningCycle(const PlanningCycleState& cycle_state,
-                        const common::Status& plan_status,
-                        const ADCTrajectory& trajectory_pb);
-  void InitializePlannerDebug(
-      const std::vector<common::TrajectoryPoint>& stitching_trajectory,
-      ADCTrajectory* ptr_trajectory_pb);
   void PopulateOpenSpacePlanResult(ADCTrajectory* ptr_trajectory_pb);
   common::Status PopulateOnLanePlanResult(
       const double current_time_stamp,
@@ -121,8 +115,6 @@ class OnLanePlanning : public PlanningBase {
   void BuildFallbackPathForNextCycle(
       const ReferenceLineInfo& best_ref_info,
       const std::vector<common::TrajectoryPoint>& stitching_trajectory);
-  void ExportOnLanePlanDebug(const ReferenceLineInfo& best_ref_info,
-                             planning_internal::Debug* ptr_debug);
   bool CheckPlanningConfig(const PlanningConfig& config);
   void GenerateStopTrajectory(ADCTrajectory* ptr_trajectory_pb);
 

@@ -27,6 +27,24 @@ inline PlanningOperatingDomain ResolveOperatingDomainForMode(
   }
 }
 
+inline PlanningShellType ResolveShellForMode(PlanningMode mode) {
+  switch (mode) {
+    case MODE_LANE_GRAPH:
+      return PLANNING_SHELL_ON_LANE;
+    case MODE_CORRIDOR:
+      return PLANNING_SHELL_CORRIDOR;
+    case MODE_FREE_SPACE:
+      return PLANNING_SHELL_STRUCTURED_MAPLESS;
+    case MODE_OPEN_SPACE:
+      return PLANNING_SHELL_OPEN_SPACE;
+    case MODE_SAFETY_HOLD:
+      return PLANNING_SHELL_SAFETY_HOLD;
+    case MODE_UNKNOWN:
+    default:
+      return PLANNING_SHELL_UNKNOWN;
+  }
+}
+
 struct PlanningCoordinatorState {
   std::string mission_id;
   std::string command_id;

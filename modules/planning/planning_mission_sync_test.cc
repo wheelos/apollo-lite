@@ -19,16 +19,31 @@ namespace planning {
 
 class PlanningMissionSyncTestPeer {
  public:
+  static std::string CheckInput(const PlanningComponent& component,
+                                const PlanningCoordinatorState& preview_state) {
+    return component.CheckInput(preview_state);
+  }
+
+  static void SetReadinessInputs(PlanningComponent* component,
+                                 bool localization_ready, bool chassis_ready) {
+    if (localization_ready) {
+      component->local_view_.localization_estimate =
+          std::make_shared<localization::LocalizationEstimate>();
+    }
+    if (chassis_ready) {
+      component->local_view_.chassis = std::make_shared<canbus::Chassis>();
+    }
+  }
+
   static execution_state_sync::Result Init(PlanningComponent* component,
                                            const std::string& path,
                                            const std::string& node_name) {
     component->node_ = cyber::CreateNode(node_name);
     component->planning_coordinator_ =
         std::make_unique<PlanningCoordinator>(nullptr);
-    component->execution_state_client_ =
-        std::make_unique<execution_state_sync::Client>();
-    return component->execution_state_client_->Init(
-        path, execution_state_sync::Role::kPlanning, node_name);
+    component->execution_state_transport_ =
+        std::make_unique<PlanningExecutionStateTransport>();
+    return component->execution_state_transport_->Init(path, node_name);
   }
 
   static bool Poll(PlanningComponent* component,
@@ -128,7 +143,7 @@ class PlanningMissionSyncTestPeer {
   }
 
   static bool Ready(const PlanningComponent& component) {
-    return component.execution_state_client_->Ready();
+    return component.execution_state_transport_->Ready();
   }
 
   static bool Faulted(const PlanningComponent& component) {
@@ -140,7 +155,7 @@ class PlanningMissionSyncTestPeer {
   }
 
   static uint64_t Cursor(const PlanningComponent& component) {
-    return component.execution_state_client_->cursor();
+    return component.execution_state_transport_->cursor();
   }
 
   static uint64_t MotionSequence(const PlanningComponent& component) {
@@ -149,7 +164,7 @@ class PlanningMissionSyncTestPeer {
 
   static std::shared_ptr<const execution_state_sync::WorkerView> Latest(
       const PlanningComponent& component) {
-    return component.execution_state_client_->Latest();
+    return component.execution_state_transport_->Latest();
   }
 };
 
@@ -254,6 +269,40 @@ TEST(PlanningMissionAdmissionTest,
   EXPECT_FALSE(guidance.cancellation_fenced);
   EXPECT_EQ(guidance.identity.SerializeAsString(),
             directive.identity().SerializeAsString());
+}
+
+TEST(PlanningComponentReadinessTest, ReportsMissingLocalization) {
+  PlanningComponent component;
+  PlanningCoordinatorState preview_state;
+  EXPECT_EQ(PlanningMissionSyncTestPeer::CheckInput(component, preview_state),
+            "localization not ready");
+}
+
+TEST(PlanningComponentReadinessTest, ReportsMissingChassis) {
+  PlanningComponent component;
+  PlanningMissionSyncTestPeer::SetReadinessInputs(&component, true, false);
+  PlanningCoordinatorState preview_state;
+  EXPECT_EQ(PlanningMissionSyncTestPeer::CheckInput(component, preview_state),
+            "chassis not ready");
+}
+
+TEST(PlanningComponentReadinessTest, PreservesCoordinatorModeFailureReason) {
+  PlanningComponent component;
+  PlanningMissionSyncTestPeer::SetReadinessInputs(&component, true, true);
+  PlanningCoordinatorState preview_state;
+  preview_state.resolved_mode = MODE_UNKNOWN;
+  preview_state.reason = "no executable shell";
+  EXPECT_EQ(PlanningMissionSyncTestPeer::CheckInput(component, preview_state),
+            "no executable shell");
+}
+
+TEST(PlanningComponentReadinessTest, RequiresRelativeMapForCorridorMode) {
+  PlanningComponent component;
+  PlanningMissionSyncTestPeer::SetReadinessInputs(&component, true, true);
+  PlanningCoordinatorState preview_state;
+  preview_state.resolved_mode = MODE_CORRIDOR;
+  EXPECT_EQ(PlanningMissionSyncTestPeer::CheckInput(component, preview_state),
+            "relative map not ready for mapless planning");
 }
 
 class PlanningMissionSyncTest : public ::testing::Test {

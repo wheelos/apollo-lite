@@ -17,6 +17,7 @@
 #include "modules/planning/on_lane_debug_exporter.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 
@@ -24,8 +25,10 @@
 
 #include "wheelos_msgs/dreamview_msgs/chart.pb.h"
 
+#include "cyber/common/log.h"
 #include "cyber/time/clock.h"
 #include "modules/common/configs/vehicle_config_helper.h"
+#include "modules/common/status/status.h"
 #include "modules/planning/common/dependency_injector.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_gflags.h"
@@ -41,6 +44,18 @@ using apollo::planning_internal::SpeedPlan;
 using apollo::planning_internal::STGraphDebug;
 
 namespace {
+
+using DiagnosticsClock = std::chrono::steady_clock;
+
+void RecordDiagnosticsTime(const char* name, DiagnosticsClock::time_point start,
+                           LatencyStats* latency_stats) {
+  CHECK_NOTNULL(latency_stats);
+  auto* task = latency_stats->add_task_stats();
+  task->set_name(name);
+  task->set_time_ms(
+      std::chrono::duration<double, std::milli>(DiagnosticsClock::now() - start)
+          .count());
+}
 
 void SetChartMinMax(apollo::dreamview::Chart* chart,
                     const std::string& label_name_x,
@@ -181,6 +196,87 @@ void AddSpeedPlan(
 OnLaneDebugExporter::OnLaneDebugExporter(
     const std::shared_ptr<DependencyInjector>& injector)
     : injector_(injector) {}
+
+void OnLaneDebugExporter::RecordInputDebug(Frame* frame,
+                                           planning_internal::Debug* debug,
+                                           LatencyStats* latency_stats) const {
+  if (!FLAGS_enable_record_debug || frame == nullptr || debug == nullptr) {
+    return;
+  }
+  const auto start = DiagnosticsClock::now();
+  frame->RecordInputDebug(debug);
+  RecordDiagnosticsTime("OnLaneInputDebug", start, latency_stats);
+}
+
+void OnLaneDebugExporter::InitializePlannerDebug(
+    const common::TrajectoryPoint& stitching_point, Frame* frame,
+    planning_internal::Debug* debug, LatencyStats* latency_stats) const {
+  if (!FLAGS_enable_record_debug || frame == nullptr || debug == nullptr) {
+    return;
+  }
+  const auto start = DiagnosticsClock::now();
+  debug->mutable_planning_data()->mutable_init_point()->CopyFrom(
+      stitching_point);
+  frame->mutable_open_space_info()->set_debug(debug);
+  frame->mutable_open_space_info()->sync_debug_instance();
+  RecordDiagnosticsTime("OnLaneDebugInitialization", start, latency_stats);
+}
+
+void OnLaneDebugExporter::LogPlanningCycle(uint32_t frame_num,
+                                           const common::Status& plan_status,
+                                           const ADCTrajectory& trajectory,
+                                           const Frame* frame) const {
+  const bool open_space_trajectory =
+      frame != nullptr &&
+      frame->open_space_info().is_on_open_space_trajectory();
+  const std::string summary = absl::StrCat(
+      "On-lane cycle frame=", frame_num,
+      " status=", plan_status.ok() ? "OK" : plan_status.error_message(),
+      " replan=", trajectory.is_replan() ? "true" : "false",
+      " open_space=", open_space_trajectory ? "true" : "false",
+      " points=", trajectory.trajectory_point_size(),
+      " total_time_ms=", trajectory.latency_stats().total_time_ms());
+  const bool should_log_info = !plan_status.ok() || trajectory.is_replan() ||
+                               open_space_trajectory || frame_num % 200 == 0;
+  if (should_log_info) {
+    AINFO << summary;
+    return;
+  }
+  ADEBUG << summary;
+}
+
+void OnLaneDebugExporter::ExportOnLanePlanDebug(
+    Frame* frame, const ReferenceLineInfo& best_ref_info,
+    planning_internal::Debug* debug, LatencyStats* latency_stats) const {
+  CHECK_NOTNULL(frame);
+  CHECK_NOTNULL(debug);
+  const auto start = DiagnosticsClock::now();
+  debug->MergeFrom(best_ref_info.debug());
+  if (FLAGS_export_chart) {
+    ExportOnLaneChart(best_ref_info.debug(), debug);
+  } else {
+    ExportReferenceLineDebug(frame, debug);
+    const auto* failed_ref_info = frame->FindFailedReferenceLineInfo();
+    if (failed_ref_info != nullptr) {
+      ExportFailedLaneChangeSTChart(failed_ref_info->debug(), debug);
+    }
+  }
+  ExportPlanningReferenceLinePath(best_ref_info, debug);
+  RecordDiagnosticsTime("OnLaneDebugExport", start, latency_stats);
+}
+
+void OnLaneDebugExporter::ExportOpenSpacePlanDebug(
+    Frame* frame, ADCTrajectory* trajectory) const {
+  if (!FLAGS_enable_record_debug || frame == nullptr || trajectory == nullptr) {
+    return;
+  }
+  const auto start = DiagnosticsClock::now();
+  auto* debug = trajectory->mutable_debug();
+  frame->mutable_open_space_info()->RecordDebug(debug);
+  ExportOpenSpaceChart(frame, trajectory->debug(), *trajectory, debug);
+  RecordDiagnosticsTime("OpenSpaceDebugExport", start,
+                        trajectory->mutable_latency_stats());
+}
 
 void OnLaneDebugExporter::ExportReferenceLineDebug(
     Frame* frame, planning_internal::Debug* debug) const {

@@ -15,8 +15,8 @@
  *****************************************************************************/
 #include "modules/planning/planning_component.h"
 
+#include <chrono>
 #include <cmath>
-#include <sstream>
 #include <utility>
 
 #include "cyber/common/file.h"
@@ -31,6 +31,7 @@
 #include "modules/planning/common/history.h"
 #include "modules/planning/common/motion_envelope.h"
 #include "modules/planning/common/planning_context.h"
+#include "modules/planning/planning_runtime_status_builder.h"
 
 namespace apollo {
 namespace planning {
@@ -47,6 +48,16 @@ using apollo::storytelling::Stories;
 namespace {
 
 constexpr double kMaxMotionEnvelopeFrameAgeSec = 0.2;
+
+using PlanningClock = std::chrono::steady_clock;
+
+void RecordPhaseTiming(const std::string& name, PlanningClock::time_point start,
+                       std::vector<PlanningPhaseTiming>* timings) {
+  CHECK_NOTNULL(timings);
+  timings->push_back({name, std::chrono::duration<double, std::milli>(
+                                PlanningClock::now() - start)
+                                .count()});
+}
 
 bool ModeNeedsHdMap(PlanningMode mode) { return mode == MODE_LANE_GRAPH; }
 
@@ -119,24 +130,6 @@ bool IsFencedCleanupDirective(const MotionDirective& directive) {
          command->has_primitive() &&
          command->primitive().type() == MOTION_PRIMITIVE_STANDSTILL_HOLD &&
          command->constraints().max_speed_mps() == 0.0;
-}
-
-PlanningShellType ResolveShellForMode(PlanningMode mode) {
-  switch (mode) {
-    case MODE_LANE_GRAPH:
-      return PLANNING_SHELL_ON_LANE;
-    case MODE_CORRIDOR:
-      return PLANNING_SHELL_CORRIDOR;
-    case MODE_FREE_SPACE:
-      return PLANNING_SHELL_STRUCTURED_MAPLESS;
-    case MODE_OPEN_SPACE:
-      return PLANNING_SHELL_OPEN_SPACE;
-    case MODE_SAFETY_HOLD:
-      return PLANNING_SHELL_SAFETY_HOLD;
-    case MODE_UNKNOWN:
-    default:
-      return PLANNING_SHELL_UNKNOWN;
-  }
 }
 
 bool BuildRoutingRequest(const PlanningCommand& command,
@@ -221,12 +214,10 @@ bool PlanningComponent::Init() {
   const std::string producer_epoch =
       "planning-" + std::to_string(cyber::Time::Now().ToNanosecond());
   motion_plan_builder_.SetProducerEpoch(producer_epoch);
-  execution_state_client_ = std::make_unique<execution_state_sync::Client>();
-  const auto sync_result = execution_state_client_->Init(
-      FLAGS_execution_state_db_path, execution_state_sync::Role::kPlanning,
-      producer_epoch, 8, "v1",
-      {"mission-admission-v1", "motion-directive-v1",
-       "planning-runtime-status-v1"});
+  execution_state_transport_ =
+      std::make_unique<PlanningExecutionStateTransport>();
+  const auto sync_result = execution_state_transport_->Init(
+      FLAGS_execution_state_db_path, producer_epoch);
   if (!sync_result.ok()) {
     AERROR << "Planning requires execution-state database: "
            << sync_result.message;
@@ -501,11 +492,11 @@ void PlanningComponent::PublishMotionPlan(
 
 bool PlanningComponent::PollExecutionState(
     const localization::LocalizationEstimate& localization) {
-  if (execution_state_client_ == nullptr) {
+  if (execution_state_transport_ == nullptr) {
     return false;
   }
   std::vector<execution_state_sync::Event> events;
-  const auto result = execution_state_client_->Poll(&events);
+  const auto result = execution_state_transport_->Poll(&events);
   DrainExecutionStateSubmissions();
   if (!result.ok()) {
     if (result.code != execution_state_sync::Code::kBusy) {
@@ -518,7 +509,7 @@ bool PlanningComponent::PollExecutionState(
     return false;
   }
   if (pending_mission_admissions_ != 0) {
-    return execution_state_client_->Healthy();
+    return execution_state_transport_->Healthy();
   }
   uint64_t latest_mission_sequence = 0;
   for (const auto& event : events) {
@@ -526,7 +517,7 @@ bool PlanningComponent::PollExecutionState(
       latest_mission_sequence = event.sequence;
     }
   }
-  const auto view = execution_state_client_->Latest();
+  const auto view = execution_state_transport_->Latest();
   if (view && view->result.ok() && view->snapshot) {
     const auto& latest_mission =
         view->snapshot->latest[static_cast<size_t>(
@@ -593,8 +584,8 @@ bool PlanningComponent::PollExecutionState(
   if (pending_mission_admissions_ == 0 &&
       !events.empty() &&
       deferred_mission_ack_sequence_ == events.back().sequence) {
-    const auto ack = execution_state_client_->Acknowledge(
-        deferred_mission_ack_sequence_);
+    const auto ack =
+        execution_state_transport_->Acknowledge(deferred_mission_ack_sequence_);
     if (!ack.ok()) {
       AERROR << "Planning Mission admission ack failed: " << ack.message;
       execution_state_fault_ = true;
@@ -602,13 +593,13 @@ bool PlanningComponent::PollExecutionState(
     }
     deferred_mission_ack_sequence_ = 0;
   }
-  return execution_state_client_->Healthy() && !execution_state_fault_ &&
+  return execution_state_transport_->Healthy() && !execution_state_fault_ &&
          latest_mission_sequence <= mission_event_sequence_;
 }
 
 void PlanningComponent::DrainExecutionStateSubmissions() {
-  execution_state_sync::Submission submission;
-  while (execution_state_client_->TakeSubmission(&submission).ok()) {
+  for (const auto& submission :
+       execution_state_transport_->DrainSubmissions()) {
     const auto status_kind = submission.operation.planning_status_kind;
     const bool admission =
         status_kind != execution_state_sync::PlanningStatusKind::kRuntime;
@@ -675,7 +666,7 @@ bool PlanningComponent::SubmitExecutionState(
       channel == execution_state_sync::Channel::kPlanningStatus &&
       planning_status_kind ==
           execution_state_sync::PlanningStatusKind::kRuntime;
-  if (execution_state_client_ == nullptr) {
+  if (execution_state_transport_ == nullptr) {
     AERROR << "Cannot submit without an execution-state client";
     return false;
   }
@@ -695,10 +686,8 @@ bool PlanningComponent::SubmitExecutionState(
     guards.push_back(
         {execution_state_sync::Channel::kMotion, motion_event_sequence_});
   }
-  uint64_t ticket = 0;
-  const auto result = execution_state_client_->Submit(
-      channel, payload, std::move(guards), false, cleanup, &ticket,
-      planning_status_kind);
+  const auto result = execution_state_transport_->Submit(
+      channel, payload, std::move(guards), cleanup, planning_status_kind);
   if (!result.ok()) {
     AERROR << "Planning execution-state admission failed: " << result.message;
     return false;
@@ -938,18 +927,9 @@ PlanningExecutionContext PlanningComponent::ResolvePublishedExecutionContext(
   return execution;
 }
 
-bool PlanningComponent::Proc(
-    const std::shared_ptr<prediction::PredictionObstacles>&
-        prediction_obstacles,
-    const std::shared_ptr<canbus::Chassis>& chassis,
-    const std::shared_ptr<localization::LocalizationEstimate>&
-        localization_estimate) {
-  ACHECK(prediction_obstacles != nullptr);
-
-  PlanningCycleState cycle_state;
-
-  // Step 1: service latched planning side effects from previous cycles.
-  if (!PollExecutionState(*localization_estimate)) {
+bool PlanningComponent::ServiceExecutionState(
+    const localization::LocalizationEstimate& localization) {
+  if (!PollExecutionState(localization)) {
     AERROR_EVERY(10) << "Planning execution-state synchronization unavailable";
     return false;
   }
@@ -973,119 +953,149 @@ bool PlanningComponent::Proc(
     AINFO_EVERY(100) << "Planning awaits a live Mission authorization";
     return false;
   }
-  if (pending_mission_admissions_ != 0 ||
-      deferred_mission_ack_sequence_ != 0) {
-    return false;
-  }
-  CheckRerouting();
+  return pending_mission_admissions_ == 0 &&
+         deferred_mission_ack_sequence_ == 0;
+}
 
-  // Step 2: build the cycle snapshot from fast inputs and latched inputs.
+PlanningComponent::PlanningCyclePreparation
+PlanningComponent::PreparePlanningCycle(
+    const std::shared_ptr<prediction::PredictionObstacles>&
+        prediction_obstacles,
+    const std::shared_ptr<canbus::Chassis>& chassis,
+    const std::shared_ptr<localization::LocalizationEstimate>&
+        localization_estimate,
+    PlanningCycleResult* result) {
+  CHECK_NOTNULL(result);
+  auto phase_start = PlanningClock::now();
   UpdateRoutingForMission(*localization_estimate);
   RefreshLocalView(prediction_obstacles, chassis, localization_estimate);
   RefreshEnvironmentState();
+  RecordPhaseTiming("InputAndEnvironment", phase_start, &result->phase_timings);
   if (planning_coordinator_ != nullptr) {
-    cycle_state.preview_state =
-        planning_coordinator_->PreviewState(local_view_);
+    phase_start = PlanningClock::now();
+    result->coordinator_state = planning_coordinator_->PreviewState(local_view_);
+    RecordPhaseTiming("CoordinatorPreview", phase_start,
+                      &result->phase_timings);
   }
 
-  // Step 3: reject or hold early if the selected shell cannot legally execute.
-  if (!CheckInput(cycle_state.preview_state, &cycle_state.validation_result)) {
-    return false;
+  const auto reason = CheckInput(result->coordinator_state);
+  if (!reason.empty()) {
+    PrepareInputHoldResult(reason, result);
+    return PlanningCyclePreparation::kInputHold;
   }
+  return PlanningCyclePreparation::kReady;
+}
 
-  // Step 4: feed the learning path before any planner execution side effects.
+bool PlanningComponent::ProcessLearningCycle(PlanningCycleResult* result) {
+  CHECK_NOTNULL(result);
   if (config_.learning_mode() != PlanningConfig::NO_LEARNING) {
     ProcessLearningInputs();
   }
-
-  // Step 5: publish learning-only data when the component is in RL test mode.
-  if (config_.learning_mode() == PlanningConfig::RL_TEST) {
-    return PublishLearningDataFrame();
+  if (config_.learning_mode() != PlanningConfig::RL_TEST) {
+    return false;
   }
+  result->outcome = PlanningCycleOutcome::kLearningOnly;
+  return true;
+}
 
-  // Step 6: execute the selected shell once and normalize the trajectory
-  // header.
+void PlanningComponent::RunPlanningCycle(PlanningCycleResult* result) {
+  CHECK_NOTNULL(result);
   ADCTrajectory adc_trajectory_pb;
+  auto phase_start = PlanningClock::now();
   planning_coordinator_->RunOnce(local_view_, &adc_trajectory_pb);
+  RecordPhaseTiming("PlannerExecution", phase_start,
+                    &result->phase_timings);
   auto start_time = adc_trajectory_pb.header().timestamp_sec();
   FinalizeTrajectoryTiming(start_time, &adc_trajectory_pb);
 
-  // Step 7: validate the raw planning output before applying semantics.
-  cycle_state.validation_result =
-      validation_supervisor_.Validate(ValidationInput{
-          &local_view_, &planning_coordinator_->state(), &adc_trajectory_pb});
-  if (cycle_state.validation_result.should_hold) {
+  result->coordinator_state = planning_coordinator_->state();
+  phase_start = PlanningClock::now();
+  result->validation = validation_supervisor_.Validate(ValidationInput{
+      &local_view_, &planning_coordinator_->state(), &adc_trajectory_pb});
+  RecordPhaseTiming("TrajectoryValidation", phase_start, &result->phase_timings);
+  result->trajectory.Swap(&adc_trajectory_pb);
+  if (result->validation.should_hold) {
+    result->outcome = PlanningCycleOutcome::kValidationHold;
     terminal_servo_session_state_ = TerminalServoSessionState();
-    auto* not_ready = adc_trajectory_pb.mutable_decision()
+    auto* not_ready = result->trajectory.mutable_decision()
                           ->mutable_main_decision()
                           ->mutable_not_ready();
-    if (!not_ready->has_reason() &&
-        !cycle_state.validation_result.reason.empty()) {
-      not_ready->set_reason(cycle_state.validation_result.reason);
+    if (!not_ready->has_reason() && !result->validation.reason.empty()) {
+      not_ready->set_reason(result->validation.reason);
     }
-    cycle_state.semantic_summary = InferPlanningSemantics(
+    result->semantics = InferPlanningSemantics(
         BuildSemanticInput(local_view_, planning_coordinator_.get(),
-                           &adc_trajectory_pb, cycle_state.validation_result),
-        cycle_state.validation_result.command_admissible ? RUNTIME_HOLDING
-                                                         : RUNTIME_REJECTED);
-    cycle_state.hybrid_summary =
-        EvaluateHybridManeuver(planning_coordinator_->state(),
-                               cycle_state.semantic_summary.runtime_state);
-    ApplyPlanningSemanticsToTrajectory(cycle_state.semantic_summary,
-                                       &adc_trajectory_pb);
-    PopulateTrajectoryExecutionContext(
-        planning_coordinator_->state(), cycle_state.semantic_summary,
-        cycle_state.hybrid_summary, &adc_trajectory_pb);
-    PublishMotionPlan(planning_coordinator_->state(),
-                      cycle_state.semantic_summary, *chassis,
-                      *localization_estimate, adc_trajectory_pb);
-    planning_writer_->Write(adc_trajectory_pb);
-    PublishRuntimeStatus(
-        cycle_state.semantic_summary, cycle_state.hybrid_summary,
-        cycle_state.validation_result, planning_coordinator_->state(),
-        adc_trajectory_pb.execution(), cycle_state.validation_result.reason);
-    LogPlanningCycle(planning_coordinator_->state(),
-                     cycle_state.semantic_summary, cycle_state.hybrid_summary,
-                     cycle_state.validation_result.reason);
-    return false;
+                           &result->trajectory, result->validation),
+        result->validation.command_admissible ? RUNTIME_HOLDING
+                                              : RUNTIME_REJECTED);
+    result->hybrid_maneuver = EvaluateHybridManeuver(
+        result->coordinator_state, result->semantics.runtime_state);
+    result->reason = result->validation.reason;
+    phase_start = PlanningClock::now();
+    ApplyPlanningSemanticsToTrajectory(result->semantics, &result->trajectory);
+    RecordPhaseTiming("HoldResultPreparation", phase_start,
+                      &result->phase_timings);
+    return;
   }
 
-  // Step 8: infer the runtime contract, guard terminal servo behavior, and
-  // publish the execution/runtime summaries.
-  cycle_state.runtime_state = InferCoordinatorRuntimeState();
-  cycle_state.semantic_summary = InferPlanningSemantics(
+  result->outcome = PlanningCycleOutcome::kPlanned;
+  const auto runtime_state = InferCoordinatorRuntimeState();
+  phase_start = PlanningClock::now();
+  result->semantics = InferPlanningSemantics(
       BuildSemanticInput(local_view_, planning_coordinator_.get(),
-                         &adc_trajectory_pb, cycle_state.validation_result),
-      cycle_state.runtime_state);
-  auto guarded_semantic_summary = cycle_state.semantic_summary;
-  ApplyPlanningSemanticsToTrajectory(guarded_semantic_summary,
-                                     &adc_trajectory_pb);
-  cycle_state.publish_reason = ApplyTerminalServoGuardrails(
+                         &result->trajectory, result->validation),
+      runtime_state);
+  ApplyPlanningSemanticsToTrajectory(result->semantics, &result->trajectory);
+  result->reason = ApplyTerminalServoGuardrails(
       planning_coordinator_ != nullptr
           ? planning_coordinator_->state().command_id
           : "",
       cyber::Clock::NowInSeconds(), &terminal_servo_session_state_,
-      &guarded_semantic_summary, &adc_trajectory_pb);
-  cycle_state.hybrid_summary = EvaluateHybridManeuver(
-      planning_coordinator_->state(), guarded_semantic_summary.runtime_state);
-  PopulateTrajectoryExecutionContext(
-      planning_coordinator_->state(), guarded_semantic_summary,
-      cycle_state.hybrid_summary, &adc_trajectory_pb);
-  PublishMotionPlan(planning_coordinator_->state(), guarded_semantic_summary,
-                    *chassis, *localization_estimate, adc_trajectory_pb);
-  planning_writer_->Write(adc_trajectory_pb);
-  PublishRuntimeStatus(
-      guarded_semantic_summary, cycle_state.hybrid_summary,
-      cycle_state.validation_result, planning_coordinator_->state(),
-      adc_trajectory_pb.execution(), cycle_state.publish_reason);
-  LogPlanningCycle(planning_coordinator_->state(), guarded_semantic_summary,
-                   cycle_state.hybrid_summary, cycle_state.publish_reason);
+      &result->semantics, &result->trajectory);
+  result->hybrid_maneuver = EvaluateHybridManeuver(
+      result->coordinator_state, result->semantics.runtime_state);
+  RecordPhaseTiming("SemanticAnalysisAndGuardrails", phase_start,
+                    &result->phase_timings);
+}
 
-  // Step 9: persist the published trajectory for history/debug consumers.
-  auto* history = injector_->history();
-  history->Add(adc_trajectory_pb);
+bool PlanningComponent::CompletePlanningCycle(
+    PlanningCycleResult* result, const canbus::Chassis* chassis,
+    const localization::LocalizationEstimate* localization) {
+  CHECK_NOTNULL(result);
+  FinalizePlanningResult(result, chassis, localization);
+  if (result->ShouldRecordHistory()) {
+    injector_->history()->Add(result->trajectory);
+  }
+  return result->outcome == PlanningCycleOutcome::kPlanned;
+}
 
-  return true;
+bool PlanningComponent::Proc(
+    const std::shared_ptr<prediction::PredictionObstacles>&
+        prediction_obstacles,
+    const std::shared_ptr<canbus::Chassis>& chassis,
+    const std::shared_ptr<localization::LocalizationEstimate>&
+        localization_estimate) {
+  ACHECK(prediction_obstacles != nullptr);
+
+  if (!ServiceExecutionState(*localization_estimate)) {
+    return false;
+  }
+  CheckRerouting();
+
+  PlanningCycleResult result;
+  const auto preparation = PreparePlanningCycle(
+      prediction_obstacles, chassis, localization_estimate, &result);
+  if (preparation == PlanningCyclePreparation::kInputHold) {
+    return CompletePlanningCycle(&result, chassis.get(),
+                                 localization_estimate.get());
+  }
+  if (ProcessLearningCycle(&result)) {
+    return PublishLearningDataFrame();
+  }
+
+  RunPlanningCycle(&result);
+  return CompletePlanningCycle(&result, chassis.get(),
+                               localization_estimate.get());
 }
 
 void PlanningComponent::CheckRerouting() {
@@ -1225,73 +1235,103 @@ void PlanningComponent::UpdateRoutingForMission(
   routed_command_fingerprint_ = fingerprint;
 }
 
-bool PlanningComponent::CheckInput(
-    const PlanningCoordinatorState& preview_state,
-    ValidationResult* validation_result) {
-  ADCTrajectory trajectory_pb;
-  auto* not_ready = trajectory_pb.mutable_decision()
-                        ->mutable_main_decision()
-                        ->mutable_not_ready();
-
+std::string PlanningComponent::CheckInput(
+    const PlanningCoordinatorState& preview_state) const {
   if (local_view_.localization_estimate == nullptr) {
-    not_ready->set_reason("localization not ready");
-  } else if (local_view_.chassis == nullptr) {
-    not_ready->set_reason("chassis not ready");
-  } else if (preview_state.resolved_mode == MODE_UNKNOWN) {
-    not_ready->set_reason(preview_state.reason.empty()
-                              ? "planning mode unavailable"
-                              : preview_state.reason);
-  } else if (ModeNeedsHdMap(preview_state.resolved_mode) &&
-             HDMapUtil::BaseMapPtr() == nullptr) {
-    not_ready->set_reason("hdmap not ready for routed planning");
-  } else if (ModeNeedsRelativeMap(preview_state.resolved_mode) &&
-             (local_view_.relative_map == nullptr ||
-              !local_view_.relative_map->has_header())) {
-    not_ready->set_reason("relative map not ready for mapless planning");
-  } else {
-    // nothing
+    return "localization not ready";
   }
+  if (local_view_.chassis == nullptr) {
+    return "chassis not ready";
+  }
+  if (preview_state.resolved_mode == MODE_UNKNOWN) {
+    return preview_state.reason.empty() ? "planning mode unavailable"
+                                        : preview_state.reason;
+  }
+  if (ModeNeedsHdMap(preview_state.resolved_mode) &&
+      HDMapUtil::BaseMapPtr() == nullptr) {
+    return "hdmap not ready for routed planning";
+  }
+  if (ModeNeedsRelativeMap(preview_state.resolved_mode) &&
+      (local_view_.relative_map == nullptr ||
+       !local_view_.relative_map->has_header())) {
+    return "relative map not ready for mapless planning";
+  }
+  return "";
+}
 
-  if (not_ready->has_reason()) {
-    terminal_servo_session_state_ = TerminalServoSessionState();
-    AWARN_EVERY(100) << not_ready->reason() << "; skip the planning cycle.";
-    common::util::FillHeader(node_->Name(), &trajectory_pb);
-    if (validation_result != nullptr) {
-      validation_result->command_admissible = true;
-      validation_result->trajectory_valid = false;
-      validation_result->should_publish = false;
-      validation_result->should_hold = true;
-      validation_result->fallback_active = true;
-      validation_result->reason = not_ready->reason();
-    }
-    const auto semantic_summary = InferPlanningSemantics(
-        BuildSemanticInput(local_view_, nullptr, &trajectory_pb,
-                           validation_result != nullptr ? *validation_result
-                                                        : ValidationResult()),
-        RUNTIME_HOLDING);
-    const auto hybrid_summary =
-        EvaluateHybridManeuver(preview_state, semantic_summary.runtime_state);
-    ApplyPlanningSemanticsToTrajectory(semantic_summary, &trajectory_pb);
-    PopulateTrajectoryExecutionContext(preview_state, semantic_summary,
-                                       hybrid_summary, &trajectory_pb);
-    planning_writer_->Write(trajectory_pb);
-    PublishRuntimeStatus(
-        semantic_summary, hybrid_summary,
-        validation_result != nullptr ? *validation_result : ValidationResult(),
-        preview_state, trajectory_pb.execution(), not_ready->reason());
-    LogPlanningCycle(preview_state, semantic_summary, hybrid_summary,
-                     not_ready->reason());
-    return false;
+void PlanningComponent::PrepareInputHoldResult(
+    const std::string& reason, PlanningCycleResult* result) {
+  CHECK_NOTNULL(result);
+  terminal_servo_session_state_ = TerminalServoSessionState();
+  AWARN_EVERY(100) << reason << "; skip the planning cycle.";
+
+  result->outcome = PlanningCycleOutcome::kInputHold;
+  result->validation.command_admissible = true;
+  result->validation.trajectory_valid = false;
+  result->validation.should_publish = false;
+  result->validation.should_hold = true;
+  result->validation.fallback_active = true;
+  result->validation.reason = reason;
+  result->reason = reason;
+  result->trajectory.mutable_decision()
+      ->mutable_main_decision()
+      ->mutable_not_ready()
+      ->set_reason(reason);
+  common::util::FillHeader(node_->Name(), &result->trajectory);
+
+  result->semantics = InferPlanningSemantics(
+      BuildSemanticInput(local_view_, nullptr, &result->trajectory,
+                         result->validation),
+      RUNTIME_HOLDING);
+  result->hybrid_maneuver = EvaluateHybridManeuver(
+      result->coordinator_state, result->semantics.runtime_state);
+  ApplyPlanningSemanticsToTrajectory(result->semantics, &result->trajectory);
+}
+
+void PlanningComponent::FinalizePlanningResult(
+    PlanningCycleResult* result, const canbus::Chassis* chassis,
+    const localization::LocalizationEstimate* localization) {
+  CHECK_NOTNULL(result);
+  if (!result->ShouldPublishTrajectory()) {
+    return;
   }
-  return true;
+  const auto output_preparation_start = PlanningClock::now();
+  PopulateTrajectoryExecutionContext(
+      result->coordinator_state, result->hybrid_maneuver, &result->trajectory);
+  if (result->ShouldPublishMotion()) {
+    CHECK_NOTNULL(chassis);
+    CHECK_NOTNULL(localization);
+    PublishMotionPlan(result->coordinator_state, result->semantics, *chassis,
+                      *localization, result->trajectory);
+  }
+  RecordPhaseTiming("ExecutionContextAndMotionSubmission",
+                    output_preparation_start,
+                    &result->phase_timings);
+  for (const auto& timing : result->phase_timings) {
+    auto* task = result->trajectory.mutable_latency_stats()->add_task_stats();
+    task->set_name(timing.name);
+    task->set_time_ms(timing.time_ms);
+  }
+  planning_writer_->Write(result->trajectory);
+  MissionCommandIdentity accepted_directive_identity;
+  if (planning_coordinator_ != nullptr) {
+    accepted_directive_identity =
+        planning_coordinator_->mission_session_manager()
+            .last_accepted_directive_identity();
+  }
+  PublishRuntimeStatus(result->semantics, result->hybrid_maneuver,
+                       result->validation, result->coordinator_state,
+                       result->trajectory.execution(),
+                       accepted_directive_identity,
+                       local_view_.capability_set.get(), result->reason);
+  diagnostics_.LogCycle(result->coordinator_state, result->semantics,
+                        result->hybrid_maneuver, result->reason);
 }
 
 void PlanningComponent::PopulateTrajectoryExecutionContext(
     const PlanningCoordinatorState& coordinator_state,
-    const PlanningSemanticSummary& semantic_summary,
     const HybridManeuverSummary& hybrid_summary,
     ADCTrajectory* trajectory) const {
-  (void)semantic_summary;
   if (trajectory == nullptr) {
     return;
   }
@@ -1309,196 +1349,13 @@ void PlanningComponent::PublishRuntimeStatus(
     const HybridManeuverSummary& hybrid_summary,
     const ValidationResult& validation_result,
     const PlanningCoordinatorState& coordinator_state,
-    const PlanningExecutionContext& execution, const std::string& reason) {
-  PlanningRuntimeStatus runtime_status;
-  common::util::FillHeader(node_->Name(), &runtime_status);
-  runtime_status.set_state(semantic_summary.runtime_state);
-  runtime_status.set_active_scene(execution.has_active_scene()
-                                      ? execution.active_scene()
-                                      : coordinator_state.active_scene);
-  runtime_status.set_active_mode(execution.has_active_mode()
-                                     ? execution.active_mode()
-                                     : coordinator_state.resolved_mode);
-  runtime_status.set_requested_mode(execution.has_requested_mode()
-                                        ? execution.requested_mode()
-                                        : coordinator_state.requested_mode);
-  runtime_status.set_active_shell(execution.has_active_shell()
-                                      ? execution.active_shell()
-                                      : coordinator_state.active_shell);
-  runtime_status.set_active_domain(execution.has_active_domain()
-                                       ? execution.active_domain()
-                                       : coordinator_state.active_domain);
-  if (execution.has_execution_channel()) {
-    runtime_status.set_execution_channel(execution.execution_channel());
-  }
-  if (coordinator_state.transition_pending) {
-    auto* transition = runtime_status.mutable_transition();
-    transition->set_from_mode(coordinator_state.resolved_mode);
-    transition->set_to_mode(coordinator_state.desired_mode);
-    transition->set_from_shell(coordinator_state.active_shell);
-    transition->set_to_shell(coordinator_state.desired_shell);
-    transition->set_approved(false);
-    transition->set_continuity_hold(coordinator_state.continuity_hold);
-    if (!reason.empty()) {
-      transition->set_trigger(reason);
-    } else if (!coordinator_state.reason.empty()) {
-      transition->set_trigger(coordinator_state.reason);
-    } else {
-      transition->set_trigger("planner shell transition pending");
-    }
-  } else if (coordinator_state.previous_mode != MODE_UNKNOWN &&
-             (coordinator_state.previous_mode !=
-                  coordinator_state.resolved_mode ||
-              coordinator_state.previous_shell !=
-                  coordinator_state.active_shell)) {
-    auto* transition = runtime_status.mutable_transition();
-    transition->set_from_mode(coordinator_state.previous_mode);
-    transition->set_to_mode(coordinator_state.resolved_mode);
-    transition->set_from_shell(coordinator_state.previous_shell);
-    transition->set_to_shell(coordinator_state.active_shell);
-    transition->set_approved(coordinator_state.resolved_mode != MODE_UNKNOWN);
-    transition->set_continuity_hold(false);
-    if (reason.empty() && !coordinator_state.reason.empty()) {
-      transition->set_trigger(coordinator_state.reason);
-    } else if (!reason.empty()) {
-      transition->set_trigger(reason);
-    } else {
-      transition->set_trigger("planner shell switched");
-    }
-  } else if (coordinator_state.requested_mode !=
-             coordinator_state.resolved_mode) {
-    auto* transition = runtime_status.mutable_transition();
-    transition->set_from_mode(coordinator_state.requested_mode);
-    transition->set_to_mode(coordinator_state.resolved_mode);
-    transition->set_from_shell(
-        ResolveShellForMode(coordinator_state.requested_mode));
-    transition->set_to_shell(coordinator_state.active_shell);
-    if (reason.empty() && !coordinator_state.reason.empty()) {
-      transition->set_trigger(coordinator_state.reason);
-    }
-    transition->set_approved(semantic_summary.runtime_state !=
-                                 RUNTIME_REJECTED &&
-                             coordinator_state.resolved_mode != MODE_UNKNOWN);
-    transition->set_continuity_hold(false);
-  }
-  if (execution.has_mission_id()) {
-    runtime_status.set_mission_id(execution.mission_id());
-  } else if (!coordinator_state.mission_id.empty()) {
-    runtime_status.set_mission_id(coordinator_state.mission_id);
-  }
-  if (execution.has_command_id()) {
-    runtime_status.set_command_id(execution.command_id());
-  } else if (!coordinator_state.command_id.empty()) {
-    runtime_status.set_command_id(coordinator_state.command_id);
-  }
-  if (coordinator_state.mission_identity.has_revision()) {
-    runtime_status.mutable_mission_identity()->CopyFrom(
-        coordinator_state.mission_identity);
-    runtime_status.set_mission_session_state(
-        coordinator_state.mission_session_state);
-    runtime_status.set_mission_phase(coordinator_state.mission_phase);
-    if (coordinator_state.accepted_start.has_snapshot_time_sec()) {
-      runtime_status.mutable_accepted_start()->CopyFrom(
-          coordinator_state.accepted_start);
-    }
-    const auto& accepted_directive =
-        planning_coordinator_->mission_session_manager()
-            .last_accepted_directive_identity();
-    if (accepted_directive.has_revision()) {
-      runtime_status.mutable_accepted_directive_identity()->CopyFrom(
-          accepted_directive);
-    }
-    if (coordinator_state.mission_route.has_state()) {
-      runtime_status.mutable_mission_route()->CopyFrom(
-          coordinator_state.mission_route);
-    }
-  }
-  if (execution.blockers_size() > 0) {
-    for (const auto& blocker : execution.blockers()) {
-      runtime_status.add_blockers(blocker);
-    }
-  } else {
-    for (const auto& blocker : coordinator_state.blockers) {
-      runtime_status.add_blockers(blocker);
-    }
-  }
-  if (reason.empty() && execution.has_reason()) {
-    runtime_status.set_reason(execution.reason());
-  } else if (reason.empty() && !coordinator_state.reason.empty()) {
-    runtime_status.set_reason(coordinator_state.reason);
-  }
-
-  if (!reason.empty()) {
-    bool has_same_blocker = false;
-    for (const auto& blocker : runtime_status.blockers()) {
-      if (blocker == reason) {
-        has_same_blocker = true;
-        break;
-      }
-    }
-    if (!has_same_blocker) {
-      runtime_status.add_blockers(reason);
-    }
-    runtime_status.set_reason(reason);
-    if (runtime_status.has_transition() &&
-        !runtime_status.transition().has_trigger()) {
-      runtime_status.mutable_transition()->set_trigger(reason);
-    }
-  }
-
-  ApplyPlanningSemanticsToRuntimeStatus(semantic_summary, &runtime_status);
-  hybrid_maneuver_supervisor_.Apply(hybrid_summary, &runtime_status);
-
-  if (local_view_.capability_set != nullptr) {
-    auto* capability = runtime_status.mutable_capability();
-    capability->set_has_lane_graph(local_view_.capability_set->has_lane_graph);
-    capability->set_has_route_semantics(
-        local_view_.capability_set->has_route_semantics);
-    capability->set_has_local_corridor(
-        local_view_.capability_set->has_local_corridor);
-    capability->set_has_drivable_area(
-        local_view_.capability_set->has_drivable_area);
-    capability->set_has_parking_roi(
-        local_view_.capability_set->has_parking_roi);
-    capability->set_has_goal_pose(local_view_.capability_set->has_goal_pose);
-    capability->set_has_stop_target(
-        local_view_.capability_set->has_stop_target);
-    capability->set_has_regulatory_context(
-        local_view_.capability_set->has_regulatory_context);
-    capability->set_can_run_on_lane_shell(
-        local_view_.capability_set->can_run_on_lane_shell);
-    capability->set_can_run_corridor_shell(
-        local_view_.capability_set->can_run_corridor_shell);
-    capability->set_can_run_safety_hold_shell(
-        local_view_.capability_set->can_run_safety_hold_shell);
-    capability->set_has_structured_mapless_context(
-        local_view_.capability_set->has_structured_mapless_context);
-    capability->set_can_run_structured_mapless_shell(
-        local_view_.capability_set->can_run_structured_mapless_shell);
-    capability->set_can_run_open_space_shell(
-        local_view_.capability_set->can_run_open_space_shell);
-    capability->set_has_known_open_space_environment(
-        local_view_.capability_set->has_known_open_space_environment);
-    capability->set_supports_open_space_exploration(
-        local_view_.capability_set->supports_open_space_exploration);
-    capability->set_topology_confidence(
-        local_view_.capability_set->topology_confidence);
-    capability->set_drivable_area_confidence(
-        local_view_.capability_set->drivable_area_confidence);
-    capability->set_target_geometry_confidence(
-        local_view_.capability_set->target_geometry_confidence);
-  }
-
-  auto* validation = runtime_status.mutable_validation();
-  validation->set_trajectory_valid(validation_result.trajectory_valid);
-  validation->set_command_admissible(validation_result.command_admissible);
-  validation->set_fallback_active(validation_result.fallback_active);
-  if (!validation_result.reason.empty()) {
-    validation->set_validation_reason(validation_result.reason);
-  } else if (!reason.empty()) {
-    validation->set_validation_reason(reason);
-  }
-
+    const PlanningExecutionContext& execution,
+    const MissionCommandIdentity& accepted_directive_identity,
+    const CapabilitySet* capability_set, const std::string& reason) {
+  auto runtime_status = PlanningRuntimeStatusBuilder().Build(
+      node_->Name(), semantic_summary, hybrid_summary, validation_result,
+      coordinator_state, execution, accepted_directive_identity,
+      capability_set, reason);
   auto fingerprint_status = runtime_status;
   fingerprint_status.clear_header();
   const std::string fingerprint = fingerprint_status.SerializeAsString();
@@ -1515,44 +1372,6 @@ void PlanningComponent::PublishRuntimeStatus(
       AWARN_EVERY(10) << "Planning status heartbeat deferred by backpressure";
     }
   }
-}
-
-void PlanningComponent::LogPlanningCycle(
-    const PlanningCoordinatorState& coordinator_state,
-    const PlanningSemanticSummary& semantic_summary,
-    const HybridManeuverSummary& hybrid_summary, const std::string& reason) {
-  const bool should_log_info =
-      coordinator_state.command_id != last_logged_command_id_ ||
-      coordinator_state.resolved_mode != last_logged_mode_ ||
-      coordinator_state.active_shell != last_logged_shell_ ||
-      coordinator_state.transition_pending ||
-      semantic_summary.runtime_state != RUNTIME_RUNNING ||
-      hybrid_summary.handoff_state != HANDOFF_STATE_NONE;
-
-  std::ostringstream stream;
-  stream << "planning cycle: cmd=" << coordinator_state.command_id
-         << " scene=" << PlanningSceneType_Name(coordinator_state.active_scene)
-         << " mode=" << PlanningMode_Name(coordinator_state.resolved_mode)
-         << " shell=" << PlanningShellType_Name(coordinator_state.active_shell)
-         << " runtime=" << RuntimeState_Name(semantic_summary.runtime_state);
-  if (hybrid_summary.active_maneuver != HYBRID_MANEUVER_NONE) {
-    stream << " hybrid="
-           << HybridManeuverType_Name(hybrid_summary.active_maneuver) << "/"
-           << ManeuverSegmentType_Name(hybrid_summary.active_segment) << "/"
-           << HandoffState_Name(hybrid_summary.handoff_state);
-  }
-  if (!reason.empty()) {
-    stream << " reason=" << reason;
-  }
-
-  if (should_log_info) {
-    AINFO << stream.str();
-    last_logged_command_id_ = coordinator_state.command_id;
-    last_logged_mode_ = coordinator_state.resolved_mode;
-    last_logged_shell_ = coordinator_state.active_shell;
-    return;
-  }
-  ADEBUG << stream.str();
 }
 
 }  // namespace planning

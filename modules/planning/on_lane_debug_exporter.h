@@ -16,12 +16,18 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 #include "wheelos_msgs/planning_msgs/planning.pb.h"
 #include "wheelos_msgs/planning_msgs/planning_internal.pb.h"
 
 namespace apollo {
+namespace common {
+class Status;
+class TrajectoryPoint;
+}  // namespace common
+
 namespace planning {
 
 class DependencyInjector;
@@ -35,8 +41,21 @@ class OnLaneDebugExporter {
   explicit OnLaneDebugExporter(
       const std::shared_ptr<DependencyInjector>& injector);
 
+  void RecordInputDebug(Frame* frame, planning_internal::Debug* debug,
+                        LatencyStats* latency_stats) const;
+  void InitializePlannerDebug(const common::TrajectoryPoint& stitching_point,
+                              Frame* frame, planning_internal::Debug* debug,
+                              LatencyStats* latency_stats) const;
+  void LogPlanningCycle(uint32_t frame_num, const common::Status& plan_status,
+                        const ADCTrajectory& trajectory,
+                        const Frame* frame) const;
   void ExportReferenceLineDebug(Frame* frame,
                                 planning_internal::Debug* debug) const;
+  void ExportOnLanePlanDebug(Frame* frame,
+                             const ReferenceLineInfo& best_ref_info,
+                             planning_internal::Debug* debug,
+                             LatencyStats* latency_stats) const;
+  void ExportOpenSpacePlanDebug(Frame* frame, ADCTrajectory* trajectory) const;
   void ExportFailedLaneChangeSTChart(
       const planning_internal::Debug& debug_info,
       planning_internal::Debug* debug_chart) const;

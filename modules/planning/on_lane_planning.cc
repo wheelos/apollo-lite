@@ -20,10 +20,8 @@
 #include <list>
 #include <utility>
 
-#include "absl/strings/str_cat.h"
-
-#include "wheelos_msgs/routing_msgs/routing.pb.h"
 #include "modules/planning/proto/planning_semantic_map_config.pb.h"
+#include "wheelos_msgs/routing_msgs/routing.pb.h"
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
@@ -304,8 +302,8 @@ bool OnLanePlanning::UpdateVehicleStateForCycle(
   const double vehicle_state_timestamp = cycle_state->vehicle_state.timestamp();
   if (!status.ok() || !util::IsVehicleStateValid(cycle_state->vehicle_state) ||
       !util::IsVehicleStateFresh(cycle_state->vehicle_state,
-                                cycle_state->start_timestamp,
-                                FLAGS_message_latency_threshold)) {
+                                 cycle_state->start_timestamp,
+                                 FLAGS_message_latency_threshold)) {
     const std::string msg =
         "Update VehicleStateProvider failed or the vehicle state is out dated.";
     AERROR << msg;
@@ -399,9 +397,9 @@ bool OnLanePlanning::PrepareFrameForCycle(PlanningCycleState* cycle_state,
         frame_->obstacles());
   }
 
-  if (FLAGS_enable_record_debug && frame_ != nullptr) {
-    frame_->RecordInputDebug(ptr_trajectory_pb->mutable_debug());
-  }
+  debug_exporter_.RecordInputDebug(frame_.get(),
+                                   ptr_trajectory_pb->mutable_debug(),
+                                   ptr_trajectory_pb->mutable_latency_stats());
   ptr_trajectory_pb->mutable_latency_stats()->set_init_frame_time_ms(
       Clock::NowInSeconds() - cycle_state->start_timestamp);
 
@@ -454,29 +452,6 @@ void OnLanePlanning::FinalizeFrameHistory(ADCTrajectory* ptr_trajectory_pb) {
   injector_->frame_history()->Add(frame_->SequenceNum(), std::move(frame_));
 }
 
-void OnLanePlanning::LogPlanningCycle(const PlanningCycleState& cycle_state,
-                                      const Status& plan_status,
-                                      const ADCTrajectory& trajectory_pb) {
-  const bool open_space_trajectory =
-      frame_ != nullptr &&
-      frame_->open_space_info().is_on_open_space_trajectory();
-  const std::string summary = absl::StrCat(
-      "On-lane cycle frame=", cycle_state.frame_num,
-      " status=", plan_status.ok() ? "OK" : plan_status.error_message(),
-      " replan=", trajectory_pb.is_replan() ? "true" : "false",
-      " open_space=", open_space_trajectory ? "true" : "false",
-      " points=", trajectory_pb.trajectory_point_size(),
-      " total_time_ms=", trajectory_pb.latency_stats().total_time_ms());
-  const bool should_log_info = !plan_status.ok() || trajectory_pb.is_replan() ||
-                               open_space_trajectory ||
-                               cycle_state.frame_num % 200 == 0;
-  if (should_log_info) {
-    AINFO << summary;
-    return;
-  }
-  ADEBUG << summary;
-}
-
 void OnLanePlanning::FinalizeTrajectoryForCycle(
     const PlanningCycleState& cycle_state, const Status& plan_status,
     ADCTrajectory* ptr_trajectory_pb) {
@@ -527,21 +502,9 @@ void OnLanePlanning::FinalizeTrajectoryForCycle(
     }
   }
 
-  LogPlanningCycle(cycle_state, plan_status, *ptr_trajectory_pb);
+  debug_exporter_.LogPlanningCycle(cycle_state.frame_num, plan_status,
+                                   *ptr_trajectory_pb, frame_.get());
   FinalizeFrameHistory(ptr_trajectory_pb);
-}
-
-void OnLanePlanning::InitializePlannerDebug(
-    const std::vector<TrajectoryPoint>& stitching_trajectory,
-    ADCTrajectory* ptr_trajectory_pb) {
-  if (!FLAGS_enable_record_debug) {
-    return;
-  }
-  auto* ptr_debug = ptr_trajectory_pb->mutable_debug();
-  ptr_debug->mutable_planning_data()->mutable_init_point()->CopyFrom(
-      stitching_trajectory.back());
-  frame_->mutable_open_space_info()->set_debug(ptr_debug);
-  frame_->mutable_open_space_info()->sync_debug_instance();
 }
 
 void OnLanePlanning::PopulateOpenSpacePlanResult(
@@ -571,13 +534,7 @@ void OnLanePlanning::PopulateOpenSpacePlanResult(
       ->mutable_parking()
       ->set_status(MainParking::IN_PARKING);
 
-  if (FLAGS_enable_record_debug) {
-    auto* ptr_debug = ptr_trajectory_pb->mutable_debug();
-    frame_->mutable_open_space_info()->RecordDebug(ptr_debug);
-    debug_exporter_.ExportOpenSpaceChart(frame_.get(),
-                                         ptr_trajectory_pb->debug(),
-                                         *ptr_trajectory_pb, ptr_debug);
-  }
+  debug_exporter_.ExportOpenSpacePlanDebug(frame_.get(), ptr_trajectory_pb);
 }
 
 void OnLanePlanning::BuildFallbackPathForNextCycle(
@@ -591,23 +548,6 @@ void OnLanePlanning::BuildFallbackPathForNextCycle(
   std::copy(best_ref_path.begin() + 1, best_ref_path.end(),
             std::back_inserter(current_frame_planned_path));
   frame_->set_current_frame_planned_path(current_frame_planned_path);
-}
-
-void OnLanePlanning::ExportOnLanePlanDebug(
-    const ReferenceLineInfo& best_ref_info,
-    planning_internal::Debug* ptr_debug) {
-  ptr_debug->MergeFrom(best_ref_info.debug());
-  if (FLAGS_export_chart) {
-    debug_exporter_.ExportOnLaneChart(best_ref_info.debug(), ptr_debug);
-  } else {
-    debug_exporter_.ExportReferenceLineDebug(frame_.get(), ptr_debug);
-    const auto* failed_ref_info = frame_->FindFailedReferenceLineInfo();
-    if (failed_ref_info != nullptr) {
-      debug_exporter_.ExportFailedLaneChangeSTChart(failed_ref_info->debug(),
-                                                    ptr_debug);
-    }
-  }
-  debug_exporter_.ExportPlanningReferenceLinePath(best_ref_info, ptr_debug);
 }
 
 Status OnLanePlanning::PopulateOnLanePlanResult(
@@ -627,8 +567,9 @@ Status OnLanePlanning::PopulateOnLanePlanResult(
 
   BuildFallbackPathForNextCycle(*best_ref_info, stitching_trajectory);
 
-  auto* ptr_debug = ptr_trajectory_pb->mutable_debug();
-  ExportOnLanePlanDebug(*best_ref_info, ptr_debug);
+  debug_exporter_.ExportOnLanePlanDebug(
+      frame_.get(), *best_ref_info, ptr_trajectory_pb->mutable_debug(),
+      ptr_trajectory_pb->mutable_latency_stats());
   ptr_trajectory_pb->mutable_latency_stats()->MergeFrom(
       best_ref_info->latency_stats());
   ptr_trajectory_pb->set_right_of_way_status(
@@ -699,7 +640,10 @@ Status OnLanePlanning::Plan(
     const double current_time_stamp,
     const std::vector<TrajectoryPoint>& stitching_trajectory,
     ADCTrajectory* const ptr_trajectory_pb) {
-  InitializePlannerDebug(stitching_trajectory, ptr_trajectory_pb);
+  debug_exporter_.InitializePlannerDebug(
+      stitching_trajectory.back(), frame_.get(),
+      ptr_trajectory_pb->mutable_debug(),
+      ptr_trajectory_pb->mutable_latency_stats());
 
   auto status = planner_->Plan(stitching_trajectory.back(), frame_.get(),
                                ptr_trajectory_pb);

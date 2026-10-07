@@ -36,14 +36,21 @@ cc_library(
 cc_library(
     name = "planning_component_lib",
     srcs = ["planning_component.cc"],
-    hdrs = ["planning_component.h"],
+    hdrs = [
+        "planning_component.h",
+        "planning_cycle_diagnostics.h",
+        "planning_execution_state_transport.h",
+    ],
     copts = [
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
         ":planning_coordinator",
+        ":planning_cycle_diagnostics",
+        ":planning_cycle_result",
+        ":planning_execution_state_transport",
+        ":planning_runtime_status_builder",
         "@core//cyber",
-        "//modules/execution_state_sync:client",
         "//modules/execution_state_sync:execution_state_gflags",
         "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/util:util_tool",
@@ -71,6 +78,77 @@ cc_library(
         "//modules/routing:routing_service",
     ],
     alwayslink = True,
+)
+
+cc_library(
+    name = "planning_cycle_diagnostics",
+    srcs = ["planning_cycle_diagnostics.cc"],
+    hdrs = ["planning_cycle_diagnostics.h"],
+    copts = [
+        "-DMODULE_NAME=\\\"planning\\\"",
+    ],
+    deps = [
+        "//modules/planning/common:hybrid_maneuver_supervisor",
+        "//modules/planning/common:planning_semantics",
+        ":planning_runtime_context",
+    ],
+)
+
+cc_library(
+    name = "planning_cycle_result",
+    hdrs = ["planning_cycle_result.h"],
+    deps = [
+        "//modules/planning/common:hybrid_maneuver_supervisor",
+        "//modules/planning/common:planning_semantics",
+        ":planning_runtime_context",
+        "//modules/planning/validation:validation_supervisor",
+    ],
+)
+
+cc_library(
+    name = "planning_execution_state_transport",
+    srcs = ["planning_execution_state_transport.cc"],
+    hdrs = ["planning_execution_state_transport.h"],
+    copts = [
+        "-DMODULE_NAME=\\\"planning\\\"",
+    ],
+    deps = [
+        "//modules/execution_state_sync:client",
+    ],
+)
+
+cc_library(
+    name = "planning_runtime_status_builder",
+    srcs = ["planning_runtime_status_builder.cc"],
+    hdrs = ["planning_runtime_status_builder.h"],
+    deps = [
+        "@wheelos_common//modules/common/util:message_util",
+        "//modules/planning/common:hybrid_maneuver_supervisor",
+        "//modules/planning/common:planning_semantics",
+        "//modules/planning/environment:capability_extractor",
+        "//modules/planning/validation:validation_supervisor",
+        ":planning_runtime_context",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:mission_directive_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_runtime_status_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "planning_cycle_result_test",
+    srcs = ["planning_cycle_result_test.cc"],
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        ":planning_cycle_result",
+    ],
+)
+
+cc_test(
+    name = "planning_runtime_status_builder_test",
+    srcs = ["planning_runtime_status_builder_test.cc"],
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        ":planning_runtime_status_builder",
+    ],
 )
 
 cc_library(
@@ -195,7 +273,7 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
         "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
-        "//modules/map/hdmap:hdmap_util",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/planning/common:ego_info",
         "//modules/planning/common:history",
         "//modules/planning/common:planning_context",
@@ -227,6 +305,7 @@ cc_library(
     ],
     deps = [
         ":planning_base",
+        "@wheelos_common//modules/common/status",
         "@wheelos_common//modules/common/math",
         "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "@wheelos_map//modules/map/hdmap:hdmap_util",
