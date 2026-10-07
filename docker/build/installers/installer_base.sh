@@ -48,7 +48,7 @@ function py3_version() {
 }
 
 function pip3_install() {
-    python3 -m pip install --timeout 30 --no-cache-dir $@
+    python3 -m pip install --timeout 30 "$@"
 }
 
 function apt_get_update_and_install() {

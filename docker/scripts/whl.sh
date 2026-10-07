@@ -27,7 +27,7 @@ function show_help() {
   echo ""
   echo "Options:"
   echo "  -i, --image IMAGE  Specify Docker image for the selected mode"
-  echo "  --os VERSION       Specify OS version (default: auto-detect, fallback: 22.04)"
+  echo "  --os VERSION       Container Ubuntu version (default: 22.04)"
   echo "  -h, --help         Show this help message"
   echo "                     (Prod env file: docker/.env.prod; template: docker/.env.prod.template)"
   echo ""
@@ -197,7 +197,7 @@ function prepare_mode_context() {
     return 0
   fi
 
-  OS="${OS:-$(detect_os_version)}"
+  OS="${OS:-${DEFAULT_CONTAINER_OS}}"
   select_container "${ARCH}" "${OS}" "${USE_GPU}" "${ensure_local_image}"
   export APOLLO_IMAGE
 }
