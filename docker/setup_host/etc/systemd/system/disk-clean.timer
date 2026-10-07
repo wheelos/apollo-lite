@@ -1,0 +1,18 @@
+[Unit]
+Description=Timer for WheelOS Disk Cleanup
+After=local-fs.target
+
+[Timer]
+# Wait 5 minutes after boot before running
+OnBootSec=5min
+# Run every day at 03:00 AM
+# OnCalendar=*-*-* 03:00:00
+
+OnUnitActiveSec=2h
+# Run immediately if a scheduled run was missed
+Persistent=true
+# Randomize execution time slightly to avoid I/O spikes
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target
