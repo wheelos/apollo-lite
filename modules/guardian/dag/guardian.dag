@@ -1,10 +1,10 @@
 module_config {
-    module_library : "/apollo/bazel-bin/modules/guardian/libguardian_component.so"
+    module_library : "bazel-bin/modules/guardian/libguardian_component.so"
     timer_components {
         class_name : "GuardianComponent"
         config {
             name: "guardian"
-            config_file_path: "/apollo/modules/guardian/conf/guardian_conf.pb.txt"
+            config_file_path: "modules/guardian/conf/guardian_conf.pb.txt"
             interval: 10
         }
     }

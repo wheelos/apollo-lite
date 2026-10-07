@@ -13,6 +13,7 @@ cc_binary(
         "//modules/planning/open_space/coarse_trajectory_generator:hybrid_a_star",
         "//modules/planning/open_space/trajectory_smoother:distance_approach_problem",
         "//modules/planning/open_space/trajectory_smoother:dual_variable_warm_start_problem",
+        "@core//cyber/common:resource_manager",
     ],
 )
 
@@ -30,6 +31,7 @@ cc_binary(
         "//modules/planning/common:planning_gflags",
         "//modules/planning/proto:planner_open_space_config_cc_proto",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
         "@eigen",
     ],
 )

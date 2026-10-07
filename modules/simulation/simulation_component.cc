@@ -21,10 +21,10 @@
 #include <cmath>
 #include <cstdlib>
 #include <string>
-#include <vector>
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/common/configs/config_gflags.h"
 #include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
 
@@ -32,30 +32,42 @@ namespace apollo {
 namespace simulation {
 namespace {
 
-constexpr char kDefaultVehicleConfigPath[] =
-    "/apollo/modules/global_config/vehicle_param.pb.txt";
 constexpr char kWorkspaceVehicleConfigPath[] =
     "modules/global_config/vehicle_param.pb.txt";
 
 bool LoadVehicleConfig(common::VehicleConfig* config) {
-  std::vector<std::string> candidate_paths{FLAGS_vehicle_config_path};
-  if (FLAGS_vehicle_config_path == kDefaultVehicleConfigPath) {
-    candidate_paths.emplace_back(kWorkspaceVehicleConfigPath);
+  if (!cyber::common::ResourceManager::InitializeConfigRoot()) {
+    AERROR << "Unable to initialize config root for vehicle configuration";
+    return false;
+  }
+
+  std::string selected_config_path;
+  if (cyber::common::ResourceManager::ResolveConfigPath(
+          FLAGS_vehicle_config_path, &selected_config_path)) {
+    if (cyber::common::GetProtoFromFile(selected_config_path, config)) {
+      return true;
+    }
+    AERROR << "Unable to parse simulation vehicle configuration from "
+           << selected_config_path;
+    return false;
+  }
+
+  if (FLAGS_vehicle_config_path == kWorkspaceVehicleConfigPath &&
+      std::getenv("WHEELOS_CONFIG_ROOT") == nullptr) {
     const char* test_srcdir = std::getenv("TEST_SRCDIR");
     const char* test_workspace = std::getenv("TEST_WORKSPACE");
     if (test_srcdir != nullptr && test_workspace != nullptr) {
-      candidate_paths.emplace_back(std::string(test_srcdir) + "/" +
-                                   test_workspace + "/" +
-                                   kWorkspaceVehicleConfigPath);
+      const std::string test_path =
+          std::string(test_srcdir) + "/" + test_workspace + "/" +
+          kWorkspaceVehicleConfigPath;
+      if (cyber::common::PathExists(test_path) &&
+          cyber::common::GetProtoFromFile(test_path, config)) {
+        AINFO << "Loaded simulation vehicle configuration from " << test_path;
+        return true;
+      }
     }
   }
-  for (const auto& path : candidate_paths) {
-    if (cyber::common::PathExists(path) &&
-        cyber::common::GetProtoFromFile(path, config)) {
-      AINFO << "Loaded simulation vehicle configuration from " << path;
-      return true;
-    }
-  }
+
   AERROR << "Unable to load simulation vehicle configuration from "
          << FLAGS_vehicle_config_path;
   return false;

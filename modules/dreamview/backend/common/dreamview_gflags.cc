@@ -90,14 +90,14 @@ DEFINE_int32(monitor_msg_pending_queue_size, 10,
              "Max monitor message pending queue size");
 
 DEFINE_string(default_data_collection_config_path,
-              "/apollo/modules/dreamview/conf/data_collection_table.pb.txt",
+              "modules/dreamview/conf/data_collection_table.pb.txt",
               "Data collection table config path.");
 
 DEFINE_int32(loop_routing_end_to_start_distance_threshold, 10,
              "Loop routing distance threshold: start to end");
 
 DEFINE_string(default_preprocess_config_path,
-              "/apollo/modules/dreamview/conf/preprocess_table.pb.txt",
+              "modules/dreamview/conf/preprocess_table.pb.txt",
               "Sensor calibration preprocess table config path.");
 
 DEFINE_double(parking_routing_distance_threshold, 20.0,
@@ -134,7 +134,7 @@ DEFINE_string(sim_obstacle_path,
               "sim obstacle binary placement.");
 
 DEFINE_string(gflag_command_arg,
-              " --flagfile=/apollo/modules/global_config/global_flagfile.txt",
+              " --flagfile=modules/global_config/global_flagfile.txt",
               "sim obstacle need use gflag!");
 
 DEFINE_string(sim_perfect_control, "Simulation Perfect Control",

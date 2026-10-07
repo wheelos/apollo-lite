@@ -33,7 +33,9 @@ namespace apollo {
 namespace hdmap {
 
 Client::Client() {
-  YAML::Node node = YAML::LoadFile(FLAGS_client_conf_yaml);
+  std::string selected_config_path;
+  ACHECK(ResolveClientConfigPath(&selected_config_path));
+  YAML::Node node = YAML::LoadFile(selected_config_path);
   std::string bin_path = boost::filesystem::current_path().string();
   data_collect_time_flag_file_ =
       bin_path + "/" + node["time_flag_file"].as<std::string>();

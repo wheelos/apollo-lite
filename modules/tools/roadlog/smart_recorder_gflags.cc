@@ -19,6 +19,6 @@
 DEFINE_string(roadlog_root_dir, "",
               "Root directory for roadlog runtime artifacts.");
 DEFINE_string(smart_recorder_config_filename,
-              "/apollo/modules/tools/roadlog/conf/"
+              "modules/tools/roadlog/conf/"
               "smart_recorder_config.pb.txt",
               "The config file.");

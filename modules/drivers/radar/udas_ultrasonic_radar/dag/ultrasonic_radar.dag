@@ -1,10 +1,10 @@
 module_config {
-    module_library: "/apollo/bazel-bin/modules/drivers/radar/udas_ultrasonic_radar/libudas_ultrasonic_radar_component.so"
+    module_library: "bazel-bin/modules/drivers/radar/udas_ultrasonic_radar/libudas_ultrasonic_radar_component.so"
     timer_components {
         class_name: "UdasUltrasonicRadarComponent"
         config {
             name: "ultrasonic_radar"
-            config_file_path: "/apollo/modules/drivers/radar/udas_ultrasonic_radar/conf/ultrasonic_radar_config.pb.txt"
+            config_file_path: "modules/drivers/radar/udas_ultrasonic_radar/conf/ultrasonic_radar_config.pb.txt"
             interval: 10
         }
     }

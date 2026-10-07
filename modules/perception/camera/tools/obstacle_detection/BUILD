@@ -13,6 +13,7 @@ cc_binary(
         "//modules/perception/pipeline/proto:pipeline_config_cc_proto",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

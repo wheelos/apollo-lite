@@ -1,38 +1,38 @@
 cyber_modules {
   key: "Canbus"
   value: {
-    dag_files: "/apollo/modules/canbus/dag/canbus.dag"
+    dag_files: "modules/canbus/dag/canbus.dag"
   }
 }
 cyber_modules {
   key: "GPS"
   value: {
-    dag_files: "/apollo/modules/drivers/gnss/dag/gnss.dag"
+    dag_files: "modules/drivers/gnss/dag/gnss.dag"
   }
 }
 cyber_modules {
   key: "Localization"
   value: {
-    dag_files: "/apollo/modules/rtk_localization/dag/dag_streaming_rtk_localization.dag"
+    dag_files: "modules/rtk_localization/dag/dag_streaming_rtk_localization.dag"
   }
 }
 cyber_modules {
   key: "Lidar"
   value: {
-    dag_files: "/apollo/modules/drivers/lidar/dag/velodyne_lidar.dag"
+    dag_files: "modules/drivers/lidar/dag/velodyne_lidar.dag"
   }
 }
 cyber_modules {
   key: "Camera"
   value: {
-    dag_files: "/apollo/modules/drivers/camera/dag/camera.dag"
+    dag_files: "modules/drivers/camera/dag/camera.dag"
     required_for_safety: false
   }
 }
 modules {
   key: "Recorder"
   value: {
-    start_command: "python3 /apollo/scripts/recording_launcher.py --config /apollo/modules/dreamview/conf/recording/sensor_calibration.yaml"
+    start_command: "python3 /apollo/scripts/recording_launcher.py --config modules/dreamview/conf/recording/sensor_calibration.yaml"
     process_monitor_config {
       command_keywords: "cyber_recorder record"
     }
@@ -63,7 +63,7 @@ monitored_components {
   value: {
     process {
       command_keywords: "mainboard"
-      command_keywords: "/apollo/modules/canbus/dag/canbus.dag"
+      command_keywords: "modules/canbus/dag/canbus.dag"
     }
     channel {
       name: "/apollo/canbus/chassis_detail"
@@ -75,7 +75,7 @@ monitored_components {
   value: {
     process {
       command_keywords: "mainboard"
-      command_keywords: "/apollo/modules/drivers/gnss/dag/gnss.dag"
+      command_keywords: "modules/drivers/gnss/dag/gnss.dag"
     }
   }
 }
@@ -84,7 +84,7 @@ monitored_components {
   value: {
     process {
       command_keywords: "mainboard"
-      command_keywords: "/apollo/modules/rtk_localization/dag/dag_streaming_rtk_localization.dag"
+      command_keywords: "modules/rtk_localization/dag/dag_streaming_rtk_localization.dag"
     }
     channel {
       name: "/apollo/localization/pose"
@@ -96,7 +96,7 @@ monitored_components {
   value: {
     process {
       command_keywords: "mainboard"
-      command_keywords: "/apollo/modules/drivers/lidar/dag/velodyne_lidar.dag"
+      command_keywords: "modules/drivers/lidar/dag/velodyne_lidar.dag"
     }
     channel {
       name: "/apollo/sensor/lidar16/PointCloud2"

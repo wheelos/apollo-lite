@@ -22,7 +22,7 @@ DEFINE_string(canbus_module_name, "canbus_component", "Module name");
 
 // data file
 DEFINE_string(canbus_conf_file,
-              "/apollo/modules/canbus/conf/canbus_conf.pb.txt",
+              "modules/canbus/conf/canbus_conf.pb.txt",
               "Default canbus conf file");
 
 // Canbus gflags

@@ -28,83 +28,83 @@ DEFINE_int32(max_frame_history_num, 1, "The maximum history frame number");
 
 // scenario related
 DEFINE_string(scenario_bare_intersection_unprotected_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/bare_intersection_unprotected_config.pb.txt",
               "The bare_intersection_unprotected scenario configuration file");
 DEFINE_string(scenario_lane_follow_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/lane_follow_config.pb.txt",
               "The lane_follow scenario configuration file");
 DEFINE_string(scenario_lane_follow_hybrid_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/lane_follow_hybrid_config.pb.txt",
               "The lane_follow scenario configuration file for HYBRID");
 DEFINE_string(scenario_learning_model_sample_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/learning_model_sample_config.pb.txt",
               "learning_model_sample scenario config file");
 DEFINE_string(scenario_narrow_street_u_turn_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/narrow_street_u_turn_config.pb.txt",
               "narrow_street_u_turn scenario config file");
 DEFINE_string(scenario_park_and_go_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/park_and_go_config.pb.txt",
               "park_and_go scenario config file");
 DEFINE_string(scenario_pull_over_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/pull_over_config.pb.txt",
               "The pull_over scenario configuration file");
 DEFINE_string(scenario_emergency_pull_over_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/emergency_pull_over_config.pb.txt",
               "The emergency_pull_over scenario configuration file");
 DEFINE_string(scenario_emergency_stop_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/emergency_stop_config.pb.txt",
               "The emergency_stop scenario configuration file");
 DEFINE_string(scenario_stop_sign_unprotected_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/stop_sign_unprotected_config.pb.txt",
               "stop_sign_unprotected scenario configuration file");
 DEFINE_string(scenario_traffic_light_protected_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/traffic_light_protected_config.pb.txt",
               "traffic_light_protected scenario config file");
 DEFINE_string(scenario_traffic_light_unprotected_left_turn_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/traffic_light_unprotected_left_turn_config.pb.txt",
               "traffic_light_unprotected_left_turn scenario config file");
 DEFINE_string(scenario_traffic_light_unprotected_right_turn_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/traffic_light_unprotected_right_turn_config.pb.txt",
               "traffic_light_unprotected_right_turn scenario config file");
 DEFINE_string(scenario_valet_parking_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/valet_parking_config.pb.txt",
               "valet_parking scenario config file");
 DEFINE_string(scenario_yield_sign_config_file,
-              "/apollo/modules/planning/conf/"
+              "modules/planning/conf/"
               "scenario/yield_sign_config.pb.txt",
               "yield_sign scenario config file");
 
 DEFINE_string(scenario_mission_idle_config_file,
-              "/apollo/modules/planning/conf/scenario/"
+              "modules/planning/conf/scenario/"
               "mission_idle_config.pb.txt",
               "mission_idle scenario config file");
 
 DEFINE_string(scenario_escape_config_file,
-              "/apollo/modules/planning/conf/scenario/"
+              "modules/planning/conf/scenario/"
               "escape_config.pb.txt",
               "escape scenario config file");
 
 DEFINE_string(scenario_narrow_street_maneuver_config_file,
-              "/apollo/modules/planning/conf/scenario/"
+              "modules/planning/conf/scenario/"
               "narrow_street_maneuver_config.pb.txt",
               "narrow_street_maneuver scenario config file");
 
 DEFINE_string(scenario_deadend_turnaround_config_file,
-              "/apollo/modules/planning/conf/scenario/"
+              "modules/planning/conf/scenario/"
               "deadend_turnaround_config.pb.txt",
               "deadend_turnaround scenario config file");
 
@@ -140,11 +140,11 @@ DEFINE_bool(enable_force_pull_over_open_space_parking_test, false,
             "enable force_pull_over_open_space_parking_test");
 
 DEFINE_string(traffic_rule_config_filename,
-              "/apollo/modules/planning/conf/traffic_rule_config.pb.txt",
+              "modules/planning/conf/traffic_rule_config.pb.txt",
               "Traffic rule config filename");
 
 DEFINE_string(smoother_config_filename,
-              "/apollo/modules/planning/conf/qp_spline_smoother_config.pb.txt",
+              "modules/planning/conf/qp_spline_smoother_config.pb.txt",
               "The configuration file for qp_spline smoother");
 
 DEFINE_bool(publish_estop, false, "publish estop decision in planning");
@@ -438,7 +438,7 @@ DEFINE_bool(enable_planning_pad_msg, false,
 
 // TODO(all): open space planner, merge with planning conf
 DEFINE_string(planner_open_space_config_filename,
-              "/apollo/modules/planning/conf/planner_open_space_config.pb.txt",
+              "modules/planning/conf/planner_open_space_config.pb.txt",
               "The open space planner configuration file");
 
 DEFINE_double(open_space_planning_period, 4.0,
@@ -562,7 +562,7 @@ DEFINE_int32(learning_data_frame_num_per_file, 100,
              "number of learning_data_frame to write out in one data file.");
 DEFINE_string(
     planning_birdview_img_feature_renderer_config_file,
-    "/apollo/modules/planning/conf/planning_semantic_map_config.pb.txt",
+    "modules/planning/conf/planning_semantic_map_config.pb.txt",
     "config file for renderer singleton");
 
 DEFINE_bool(

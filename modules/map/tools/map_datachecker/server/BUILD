@@ -166,6 +166,7 @@ cc_library(
         "//modules/map/tools/map_datachecker/proto:collection_error_code_cc_proto",
         "//modules/map/tools/map_datachecker/proto:collection_service_cc_grpc",
         "@com_github_grpc_grpc//:grpc++",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

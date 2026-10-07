@@ -15,6 +15,8 @@
  *****************************************************************************/
 #pragma once
 
+#include <string>
+
 #include "gflags/gflags.h"
 
 namespace apollo {
@@ -23,5 +25,6 @@ DECLARE_string(stage);
 DECLARE_string(cmd);
 DECLARE_string(record_path);
 DECLARE_string(client_conf_yaml);
+bool ResolveClientConfigPath(std::string* selected_path);
 }  // namespace hdmap
 }  // namespace apollo

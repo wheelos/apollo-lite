@@ -50,6 +50,7 @@ cc_binary(
         "//modules/planning/common:planning_gflags",
         "@wheelos_common//modules/common/map:map_selection",
         "@boost.filesystem",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

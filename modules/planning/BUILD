@@ -111,6 +111,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
     ],

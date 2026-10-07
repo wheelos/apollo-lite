@@ -26,6 +26,7 @@
 #include <utility>
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "cyber/task/task.h"
 #include "cyber/time/clock.h"
 #include "modules/common/configs/vehicle_config_helper.h"
@@ -66,7 +67,11 @@ ReferenceLineProvider::ReferenceLineProvider(
     relative_map_ = relative_map;
   }
 
-  ACHECK(cyber::common::GetProtoFromFile(FLAGS_smoother_config_filename,
+  std::string smoother_config_path;
+  ACHECK(cyber::common::ResourceManager::InitializeConfigRoot() &&
+         cyber::common::ResourceManager::ResolveConfigPath(
+             FLAGS_smoother_config_filename, &smoother_config_path) &&
+         cyber::common::GetProtoFromFile(smoother_config_path,
                                          &smoother_config_))
       << "Failed to load smoother config file "
       << FLAGS_smoother_config_filename;

@@ -1,10 +1,10 @@
 module_config {
-    module_library : "/apollo/bazel-bin/modules/drivers/radar/yg_radar/libyg_radar_component.so"
+    module_library : "bazel-bin/modules/drivers/radar/yg_radar/libyg_radar_component.so"
     timer_components {
         class_name : "YgRadarComponent"
         config {
             name: "yg_radar_left_rear"
-            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_left_rear.pb.txt"
+            config_file_path: "modules/drivers/radar/yg_radar/conf/yg_radar_left_rear.pb.txt"
             interval: 100
         }
     }
@@ -12,7 +12,7 @@ module_config {
         class_name : "YgRadarComponent"
         config {
             name: "yg_radar_right_rear"
-            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_right_rear.pb.txt"
+            config_file_path: "modules/drivers/radar/yg_radar/conf/yg_radar_right_rear.pb.txt"
             interval: 100
         }
     }
@@ -20,7 +20,7 @@ module_config {
         class_name : "YgRadarComponent"
         config {
             name: "yg_radar_left_front"
-            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_left_front.pb.txt"
+            config_file_path: "modules/drivers/radar/yg_radar/conf/yg_radar_left_front.pb.txt"
             interval: 100
         }
     }
@@ -28,7 +28,7 @@ module_config {
         class_name : "YgRadarComponent"
         config {
             name: "yg_radar_right_front"
-            config_file_path: "/apollo/modules/drivers/radar/yg_radar/conf/yg_radar_right_front.pb.txt"
+            config_file_path: "modules/drivers/radar/yg_radar/conf/yg_radar_right_front.pb.txt"
             interval: 100
         }
     }

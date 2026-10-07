@@ -25,6 +25,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "cyber/time/clock.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/common/util/string_util.h"
@@ -58,7 +59,12 @@ static int GetGpuId(const camera::CameraPerceptionInitOptions &options) {
   std::string config_file =
       GetAbsolutePath(options.root_dir, options.conf_file);
   config_file = GetAbsolutePath(work_root, config_file);
-  if (!cyber::common::GetProtoFromFile(config_file, &perception_param)) {
+  std::string resolved_config_file;
+  if (!cyber::common::ResourceManager::InitializeConfigRoot() ||
+      !cyber::common::ResourceManager::ResolveConfigPath(
+          config_file, &resolved_config_file) ||
+      !cyber::common::GetProtoFromFile(resolved_config_file,
+                                       &perception_param)) {
     AERROR << "Read config failed: " << config_file;
     return -1;
   }

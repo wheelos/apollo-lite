@@ -1,12 +1,12 @@
 # Define all coms in DAG streaming.
 module_config {
-    module_library : "/apollo/bazel-bin/modules/routing/librouting_component.so"
+    module_library : "bazel-bin/modules/routing/librouting_component.so"
     components {
         class_name : "RoutingComponent"
         config {
             name : "routing"
-            config_file_path: "/apollo/modules/routing/conf/routing_config.pb.txt"
-            flag_file_path: "/apollo/modules/routing/conf/routing.conf"
+            config_file_path: "modules/routing/conf/routing_config.pb.txt"
+            flag_file_path: "modules/routing/conf/routing.conf"
             readers: [
                 {
                     channel: "/apollo/routing_request"

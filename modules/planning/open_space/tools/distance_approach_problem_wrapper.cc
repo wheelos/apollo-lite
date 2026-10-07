@@ -20,6 +20,7 @@
 #include <future>
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/open_space/coarse_trajectory_generator/hybrid_a_star.h"
 #include "modules/planning/open_space/trajectory_smoother/distance_approach_problem.h"
@@ -213,8 +214,12 @@ class ResultContainer {
 extern "C" {
 HybridAStar* CreateHybridAPtr() {
   apollo::planning::PlannerOpenSpaceConfig planner_open_space_config_;
-  ACHECK(apollo::cyber::common::GetProtoFromFile(
-      FLAGS_planner_open_space_config_filename, &planner_open_space_config_))
+  std::string config_path;
+  ACHECK(apollo::cyber::common::ResourceManager::InitializeConfigRoot() &&
+         apollo::cyber::common::ResourceManager::ResolveConfigPath(
+             FLAGS_planner_open_space_config_filename, &config_path) &&
+         apollo::cyber::common::GetProtoFromFile(config_path,
+                                                 &planner_open_space_config_))
       << "Failed to load open space config file "
       << FLAGS_planner_open_space_config_filename;
   const apollo::common::VehicleGeometryModel vehicle_geometry_model;
@@ -423,8 +428,12 @@ bool DistancePlan(HybridAStar* hybridA_ptr, ObstacleContainer* obstacles_ptr,
                   double sphi, double ex, double ey, double ephi,
                   double* XYbounds) {
   apollo::planning::PlannerOpenSpaceConfig planner_open_space_config_;
-  ACHECK(apollo::cyber::common::GetProtoFromFile(
-      FLAGS_planner_open_space_config_filename, &planner_open_space_config_))
+  std::string config_path;
+  ACHECK(apollo::cyber::common::ResourceManager::InitializeConfigRoot() &&
+         apollo::cyber::common::ResourceManager::ResolveConfigPath(
+             FLAGS_planner_open_space_config_filename, &config_path) &&
+         apollo::cyber::common::GetProtoFromFile(config_path,
+                                                 &planner_open_space_config_))
       << "Failed to load open space config file "
       << FLAGS_planner_open_space_config_filename;
   AINFO << "FLAGS_planner_open_space_config_filename: "
@@ -434,8 +443,14 @@ bool DistancePlan(HybridAStar* hybridA_ptr, ObstacleContainer* obstacles_ptr,
   double dual_total = 0.0;
   double ipopt_total = 0.0;
 
-  std::string flag_file_path = "/apollo/modules/planning/conf/planning.conf";
-  google::SetCommandLineOption("flagfile", flag_file_path.c_str());
+  std::string flag_file_path;
+  ACHECK(apollo::cyber::common::ResourceManager::InitializeConfigRoot() &&
+         apollo::cyber::common::ResourceManager::ResolveConfigPath(
+             "modules/planning/conf/planning.conf", &flag_file_path) &&
+         !google::SetCommandLineOption("flagfile", flag_file_path.c_str())
+              .empty())
+      << "Failed to load planning flagfile "
+      << "modules/planning/conf/planning.conf";
 
   HybridAStartResult hybrid_astar_result;
   std::vector<double> XYbounds_(XYbounds, XYbounds + 4);

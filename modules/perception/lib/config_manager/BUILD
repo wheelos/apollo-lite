@@ -15,7 +15,10 @@ cc_library(
         "//modules/perception/common/io:io_util",
         "//modules/perception/lib/thread",
         "//modules/perception/proto:perception_config_schema_cc_proto",
-        "@core//cyber",
+        "@core//cyber/common:environment",
+        "@core//cyber/common:file",
+        "@core//cyber/common:log",
+        "@core//cyber/common:resource_manager",
         "@eigen",
     ],
 )

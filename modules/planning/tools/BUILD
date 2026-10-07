@@ -14,6 +14,7 @@ cc_binary(
         "//modules/planning/proto:planning_config_cc_proto",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:pad_msg_cc_proto",
     ],
 )

@@ -23,6 +23,7 @@
 #include "modules/planning/proto/planner_open_space_config.pb.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/common/math/box2d.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/map/hdmap/hdmap_util.h"
@@ -364,8 +365,12 @@ class OpenSpaceROITest {
       return false;
     }
 
-    ACHECK(cyber::common::GetProtoFromFile(
-        FLAGS_planner_open_space_config_filename, &planner_open_space_config_))
+    std::string config_path;
+    ACHECK(cyber::common::ResourceManager::InitializeConfigRoot() &&
+           cyber::common::ResourceManager::ResolveConfigPath(
+               FLAGS_planner_open_space_config_filename, &config_path) &&
+           cyber::common::GetProtoFromFile(config_path,
+                                           &planner_open_space_config_))
         << "Failed to load open space config file "
         << FLAGS_planner_open_space_config_filename;
 

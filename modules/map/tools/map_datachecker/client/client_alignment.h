@@ -35,7 +35,9 @@ template <typename REQUEST_TYPE, typename RESPONSE_TYPE>
 class Alignment {
  public:
   Alignment() {
-    YAML::Node node = YAML::LoadFile(FLAGS_client_conf_yaml);
+    std::string selected_config_path;
+    ACHECK(ResolveClientConfigPath(&selected_config_path));
+    YAML::Node node = YAML::LoadFile(selected_config_path);
     std::string server_addr =
         node["grpc_host_port"]["grpc_host"].as<std::string>() + ":" +
         node["grpc_host_port"]["grpc_port"].as<std::string>();

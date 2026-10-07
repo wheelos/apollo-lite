@@ -36,6 +36,7 @@
 #include "absl/strings/str_cat.h"
 
 #include "cyber/common/log.h"
+#include "modules/perception/base/common.h"
 #include "modules/perception/inference/tensorrt/plugins/argmax_plugin.h"
 #include "modules/perception/inference/tensorrt/plugins/dfmb_psroi_align_plugin.h"
 #include "modules/perception/inference/tensorrt/plugins/leakyReLU_plugin.h"

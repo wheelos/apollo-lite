@@ -21,8 +21,9 @@ cc_library(
         "//modules/perception/proto:perception_config_schema_cc_proto",
         "//modules/perception/proto:sensor_meta_schema_cc_proto",
         "@wheelos_common//modules/common/vehicle_calibration:registry",
+        "@core//cyber/common:file",
+        "@core//cyber/common:log",
         "@core//cyber/common:resource_manager",
-        "@core//cyber",
     ],
 )
 

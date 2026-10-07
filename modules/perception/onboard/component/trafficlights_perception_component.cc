@@ -67,28 +67,6 @@ std::map<base::TLColor, TLInfo> s_tl_infos = {
     {base::TLColor::TL_YELLOW,
      {cv::Scalar(0, 255, 255), "YELLOW", "YELLOW traffic light"}}};
 
-static int GetGpuId(
-    const apollo::perception::camera::CameraPerceptionInitOptions& options) {
-  apollo::perception::camera::app::TrafficLightParam trafficlight_param;
-  std::string work_root = apollo::perception::camera::GetCyberWorkRoot();
-  std::string config_file =
-      GetAbsolutePath(options.root_dir, options.conf_file);
-  config_file = GetAbsolutePath(work_root, config_file);
-  if (!cyber::common::GetProtoFromFile(config_file, &trafficlight_param)) {
-    AERROR << "Read config failed: " << config_file;
-    return -1;
-  }
-  if (trafficlight_param.detector_param().empty()) {
-    AERROR << "get gpu id failed. detector_param().empty()";
-    return -1;
-  }
-  if (!trafficlight_param.has_gpu_id()) {
-    AINFO << "gpu id not found.";
-    return -1;
-  }
-  return trafficlight_param.gpu_id();
-}
-
 static int GetTrafficGpuId(const pipeline::PipelineConfig& pipeline_config) {
   if (!pipeline_config.traffic_light_config()
            .trafficlights_perception_config()
@@ -229,8 +207,8 @@ int TrafficLightsPerceptionComponent::InitConfig() {
   trafficlight_config_file =
       GetAbsolutePath(work_root, trafficlight_config_file);
 
-  ACHECK(cyber::common::GetProtoFromFile(trafficlight_config_file,
-                                         &trafficlight_config))
+  ACHECK(GetProtoConfigFromPath(trafficlight_config_file,
+                                &trafficlight_config))
       << "failed to load trafficlight config file " << trafficlight_config_file;
   return cyber::SUCC;
 }

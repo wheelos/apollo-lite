@@ -20,6 +20,7 @@
 #include <memory>
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "cyber/record/record_reader.h"
 #include "cyber/record/record_writer.h"
 #include "modules/common/adapters/adapter_gflags.h"
@@ -70,8 +71,11 @@ bool MessageProcess::Init(ContainerManager* container_manager,
 
 bool MessageProcess::InitContainers(ContainerManager* container_manager) {
   common::adapter::AdapterManagerConfig adapter_conf;
-  if (!cyber::common::GetProtoFromFile(FLAGS_prediction_adapter_config_filename,
-                                       &adapter_conf)) {
+  std::string adapter_config_file;
+  if (!cyber::common::ResourceManager::InitializeConfigRoot() ||
+      !cyber::common::ResourceManager::ResolveConfigPath(
+          FLAGS_prediction_adapter_config_filename, &adapter_config_file) ||
+      !cyber::common::GetProtoFromFile(adapter_config_file, &adapter_conf)) {
     AERROR << "Unable to load adapter conf file: "
            << FLAGS_prediction_adapter_config_filename;
     return false;

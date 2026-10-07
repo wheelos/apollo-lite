@@ -19,6 +19,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 
 namespace apollo {
 namespace planning {
@@ -34,7 +35,13 @@ Scenario::Scenario(const ScenarioConfig& config, const ScenarioContext* context,
 
 bool Scenario::LoadConfig(const std::string& config_file,
                           ScenarioConfig* config) {
-  return GetProtoFromFile(config_file, config);
+  std::string selected_config_file;
+  if (!cyber::common::ResourceManager::InitializeConfigRoot() ||
+      !cyber::common::ResourceManager::ResolveConfigPath(config_file,
+                                                         &selected_config_file)) {
+    return false;
+  }
+  return GetProtoFromFile(selected_config_file, config);
 }
 
 void Scenario::Init() {

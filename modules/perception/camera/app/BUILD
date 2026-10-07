@@ -51,6 +51,7 @@ cc_library(
         "//modules/perception/pipeline",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
     ],
 )
 
@@ -64,6 +65,7 @@ cc_library(
     deps = [
         ":debug_info",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
         "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app/proto:perception_cc_proto",
@@ -109,6 +111,7 @@ cc_library(
         "//modules/perception/camera/lib/traffic_light/detector/recognition",
         "//modules/perception/pipeline",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
     ],
     alwayslink = True,
 )
@@ -139,6 +142,7 @@ cc_library(
         "//modules/perception/pipeline",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

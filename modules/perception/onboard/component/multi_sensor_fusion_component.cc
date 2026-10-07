@@ -54,8 +54,8 @@ bool MultiSensorFusionComponent::Init() {
   sensor_fusion_config_path =
       GetAbsolutePath(work_root, sensor_fusion_config_path);
 
-  if (!cyber::common::GetProtoFromFile(
-          sensor_fusion_config_path, &multi_sensor_fusion_config_)) {
+  if (!GetProtoConfigFromPath(sensor_fusion_config_path,
+                              &multi_sensor_fusion_config_)) {
     AERROR << "Read config failed: " << sensor_fusion_config_path;
     return false;
   }

@@ -22,6 +22,7 @@
 #include "modules/perception/pipeline/proto/pipeline_config.pb.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/perception/camera/app/obstacle_detection_camera.h"
 #include "modules/perception/camera/tools/common/ground_truth.h"
 #include "modules/perception/camera/tools/common/util.h"
@@ -38,7 +39,7 @@ DEFINE_string(kitti_dir, "", "pre-detected obstacles (skip Detect)");
 DEFINE_string(root_dir, "/apollo/modules/perception/camera/tools/obstacle_detection", "image root dir"); // NOLINT
 DEFINE_string(image_ext, ".jpg", "extension of image name");
 DEFINE_string(test_list, "/apollo/modules/perception/camera/tools/obstacle_detection/images/image_test_list.txt", "test image list"); // NOLINT
-DEFINE_string(obstacle_detection_conf_file, "/apollo/modules/perception/camera/tools/obstacle_detection/conf/camera_detection_pipeline.pb.txt", "Camera perception config file"); // NOLINT
+DEFINE_string(obstacle_detection_conf_file, "modules/perception/camera/tools/obstacle_detection/conf/camera_detection_pipeline.pb.txt", "Camera perception config file"); // NOLINT
 DEFINE_string(camera_intrinsics, "/apollo/modules/perception/camera/tools/obstacle_detection/params/onsemi_obstacle_intrinsics.yaml", "Camera intrinsic file"); // NOLINT
 
 namespace apollo {
@@ -72,7 +73,11 @@ void TestDetection() {
   // Init detection pipeline
   ObstacleDetectionCamera detection_pipeline;
   pipeline::PipelineConfig camera_obstacle_detection_config;
-  ACHECK(cyber::common::GetProtoFromFile(FLAGS_obstacle_detection_conf_file,
+  std::string selected_config_path;
+  ACHECK(cyber::common::ResourceManager::InitializeConfigRoot() &&
+         cyber::common::ResourceManager::ResolveConfigPath(
+             FLAGS_obstacle_detection_conf_file, &selected_config_path) &&
+         cyber::common::GetProtoFromFile(selected_config_path,
                                          &camera_obstacle_detection_config));
   ACHECK(detection_pipeline.Init(camera_obstacle_detection_config));
 

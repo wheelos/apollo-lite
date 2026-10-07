@@ -1,7 +1,7 @@
 ###########################################################################
 # Flags from sensor_manager
 
---flagfile=/apollo/modules/global_config/global_flagfile.txt
+--flagfile=modules/global_config/global_flagfile.txt
 # config file work root
 # type: string
 # default:

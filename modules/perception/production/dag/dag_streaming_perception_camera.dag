@@ -1,11 +1,11 @@
 module_config {
-  module_library : "/apollo/bazel-bin/modules/perception/onboard/component/libperception_component_camera.so"
+  module_library : "bazel-bin/modules/perception/onboard/component/libperception_component_camera.so"
   components {
     class_name : "CameraObstacleDetectionComponent"
     config {
       name: "Camera6mmObstacleDetectionComponent"
-      config_file_path: "/apollo/modules/perception/production/conf/perception/camera/fusion_camera_detection_component.pb.txt"
-      flag_file_path: "/apollo/modules/perception/production/conf/perception/perception_common.flag"
+      config_file_path: "modules/perception/production/conf/perception/camera/fusion_camera_detection_component.pb.txt"
+      flag_file_path: "modules/perception/production/conf/perception/perception_common.flag"
     }
   }
   
@@ -13,8 +13,8 @@ module_config {
     class_name : "CameraObstacleDetectionComponent"
     config {
       name: "Camera12mmObstacleDetectionComponent"
-      config_file_path: "/apollo/modules/perception/production/conf/perception/camera/fusion_camera_detection_component.pb.txt"
-      flag_file_path: "/apollo/modules/perception/production/conf/perception/perception_common.flag"
+      config_file_path: "modules/perception/production/conf/perception/camera/fusion_camera_detection_component.pb.txt"
+      flag_file_path: "modules/perception/production/conf/perception/perception_common.flag"
     }
   }
 }

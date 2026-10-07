@@ -77,6 +77,7 @@ cc_library(
         "@boost.circular_buffer",
         "@boost.format",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
         "@eigen",
         "@opencv//:highgui",
         "@opencv//:imgcodecs",

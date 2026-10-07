@@ -19,6 +19,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@core//cyber/common:file",
         "@core//cyber/common:log",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

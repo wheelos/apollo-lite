@@ -50,8 +50,8 @@ bool LidarTrackingComponent::Init() {
   lidar_tracking_config_path =
       GetAbsolutePath(work_root, lidar_tracking_config_path);
 
-  if (!cyber::common::GetProtoFromFile(
-          lidar_tracking_config_path, &lidar_tracking_config_)) {
+  if (!GetProtoConfigFromPath(lidar_tracking_config_path,
+                              &lidar_tracking_config_)) {
     AERROR << "Read config failed: " << lidar_tracking_config_path;
     return false;
   }

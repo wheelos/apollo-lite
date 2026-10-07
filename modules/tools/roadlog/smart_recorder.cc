@@ -15,9 +15,11 @@
  *****************************************************************************/
 
 #include <memory>
+#include <string>
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/tools/roadlog/processor/roadlog_runtime.h"
 #include "modules/tools/roadlog/smart_recorder_gflags.h"
 
@@ -38,9 +40,15 @@ int main(int argc, char** argv) {
   RoadlogRuntime runtime(FLAGS_roadlog_root_dir);
 
   SmartRecordTrigger trigger_conf;
-  ACHECK(GetProtoFromFile(FLAGS_smart_recorder_config_filename, &trigger_conf))
+  std::string selected_config_path;
+  ACHECK(apollo::cyber::common::ResourceManager::InitializeConfigRoot() &&
+         apollo::cyber::common::ResourceManager::ResolveConfigPath(
+             FLAGS_smart_recorder_config_filename, &selected_config_path))
       << "Failed to load triggers config file "
       << FLAGS_smart_recorder_config_filename;
+  ACHECK(GetProtoFromFile(selected_config_path, &trigger_conf))
+      << "Failed to load triggers config file " << selected_config_path;
+  AINFO << "[CONFIG] roadlog: " << selected_config_path;
 
   if (!runtime.Init(trigger_conf)) {
     AERROR << "failed to init roadlog runtime";

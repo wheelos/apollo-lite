@@ -24,6 +24,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 
 namespace apollo {
 namespace dreamview {
@@ -156,6 +157,21 @@ std::string ModeRegistry::ResolveBaseModePath(const std::string& base_mode,
     const std::string relative_pbtxt = absl::StrCat(relative_path, ".pb.txt");
     if (cyber::common::PathExists(relative_pbtxt)) {
       return relative_pbtxt;
+    }
+  }
+
+  const std::string mode_prefix = "/modules/dreamview/conf/hmi_modes/";
+  if (mode_config_path.find(mode_prefix) != std::string::npos) {
+    std::string base_mode_key =
+        "modules/dreamview/conf/hmi_modes/" + base_mode;
+    if (!absl::EndsWith(base_mode_key, ".pb.txt")) {
+      base_mode_key += ".pb.txt";
+    }
+    std::string selected_path;
+    if (cyber::common::ResourceManager::InitializeConfigRoot() &&
+        cyber::common::ResourceManager::ResolveConfigPath(base_mode_key,
+                                                         &selected_path)) {
+      return selected_path;
     }
   }
   return "";

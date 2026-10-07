@@ -58,7 +58,7 @@ DEFINE_string(image_root,
 DEFINE_string(image_ext, ".jpg", "extension of image name");
 DEFINE_string(image_color, "bgr", "color space of image");
 DEFINE_string(config_root,
-              "/apollo/modules/perception/production/conf/perception/camera/",
+              "modules/perception/production/conf/perception/camera/",
               "config_root");
 DEFINE_string(tf_file, "", "tf file");
 DEFINE_string(config_file, "obstacle.pt", "config_file");

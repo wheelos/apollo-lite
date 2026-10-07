@@ -24,6 +24,7 @@ cc_binary(
         "//modules/prediction/common:message_process",
         "@boost.filesystem",
         "@com_google_absl//absl/strings",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

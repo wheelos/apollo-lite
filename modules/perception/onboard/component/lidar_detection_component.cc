@@ -60,8 +60,8 @@ bool LidarDetectionComponent::Init() {
   lidardetection_config_file =
       GetAbsolutePath(work_root, lidardetection_config_file);
 
-  ACHECK(cyber::common::GetProtoFromFile(lidardetection_config_file,
-                                         &lidar_detection_config_))
+  ACHECK(GetProtoConfigFromPath(lidardetection_config_file,
+                                &lidar_detection_config_))
       << "failed to load lidar detection file " << lidardetection_config_file;
 
   if (!InitAlgorithmPlugin()) {

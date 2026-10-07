@@ -24,7 +24,7 @@ capture directory, and replaces itself with ``cyber_recorder record``.
 Run only inside an Apollo container:
 
     python3 /apollo/scripts/recording_launcher.py \
-        --config /apollo/modules/dreamview/conf/recording/runtime.yaml
+        --config modules/dreamview/conf/recording/runtime.yaml
 
 The configuration is passed unchanged to ``cyber_recorder`` and owns channel
 selection and policy, including regex exclusions. The launcher creates:
@@ -43,6 +43,71 @@ import argparse
 import datetime
 import json
 import os
+import pathlib
+
+
+def resolve_config_path(config_key):
+    """Resolve a module config key using the WheelOS whole-file override."""
+    key = pathlib.PurePosixPath(config_key)
+    if key.is_absolute() or not key.parts or '..' in key.parts:
+        raise ValueError('Config path must be a relative key: {}'.format(
+            config_key))
+
+    software_root = os.environ.get('APOLLO_ROOT_DIR', '/apollo')
+    if not os.path.isabs(software_root) or not os.path.isdir(software_root):
+        raise ValueError('Software root must be an accessible absolute '
+                         'directory: {}'.format(software_root))
+    software_root = os.path.realpath(software_root)
+    default_path = os.path.join(software_root, *key.parts)
+
+    config_root = os.environ.get('WHEELOS_CONFIG_ROOT')
+    if config_root is not None:
+        if not config_root or not os.path.isabs(config_root) or \
+                not os.path.isdir(config_root):
+            raise ValueError('WHEELOS_CONFIG_ROOT must be an accessible '
+                             'absolute directory: {}'.format(config_root))
+        config_root = os.path.realpath(config_root)
+        override_path = os.path.join(config_root, *key.parts)
+        current_path = config_root
+        for part in key.parts:
+            current_path = os.path.join(current_path, part)
+            if os.path.islink(current_path):
+                canonical_path = os.path.realpath(current_path)
+                if os.path.commonpath((config_root, canonical_path)) != \
+                        config_root or not os.path.exists(current_path):
+                    raise ValueError('Config override contains a broken or '
+                                     'escaping symlink: {}'.format(
+                                         current_path))
+            if not os.path.lexists(current_path):
+                break
+        if os.path.lexists(override_path):
+            selected_path = os.path.realpath(override_path)
+            if os.path.commonpath((config_root, selected_path)) != config_root:
+                raise ValueError('Config override escapes WHEELOS_CONFIG_ROOT: '
+                                 '{}'.format(override_path))
+            if not os.path.isfile(selected_path) or \
+                    not os.access(selected_path, os.R_OK):
+                raise ValueError('Config override is not a readable file: '
+                                 '{}'.format(override_path))
+            source = 'override'
+        else:
+            selected_path = default_path
+            source = 'default'
+    else:
+        selected_path = default_path
+        source = 'default'
+
+    if not os.path.isfile(selected_path) or \
+            not os.access(selected_path, os.R_OK):
+        raise ValueError('Config file is not a readable file: {}'.format(
+            selected_path))
+    selected_path = os.path.realpath(selected_path)
+    if os.path.commonpath((software_root, selected_path)) != software_root \
+            and source == 'default':
+        raise ValueError('Default config escapes software root: {}'.format(
+            selected_path))
+    print('[CONFIG] {}: {} {}'.format(key.as_posix(), source, selected_path))
+    return selected_path
 
 
 class RecordingStorageResolver(object):
@@ -115,12 +180,10 @@ def create_session(output_root, config_path):
 def main():
     """Create a session and replace this process with cyber_recorder."""
     args = parse_args()
-    if not os.path.isfile(args.config):
-        raise ValueError('Recorder configuration does not exist: {}'.format(
-            args.config))
+    config_path = resolve_config_path(args.config)
 
     output_root = RecordingStorageResolver().resolve(args.output_root)
-    session_dir = create_session(output_root, args.config)
+    session_dir = create_session(output_root, config_path)
     output_path = os.path.join(session_dir, 'record')
     print('Recording to {}'.format(session_dir))
 
@@ -129,7 +192,7 @@ def main():
         'source /apollo/scripts/apollo_base.sh && '
         'source /apollo/scripts/runtime_env.sh && '
         'exec cyber_recorder record --config "$1" --output "$2"',
-        'recording_launcher', args.config, output_path,
+        'recording_launcher', config_path, output_path,
     ])
 
 

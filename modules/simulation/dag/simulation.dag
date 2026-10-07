@@ -1,11 +1,11 @@
 module_config {
-    module_library : "/apollo/bazel-bin/modules/simulation/libsimulation_component.so"
+    module_library : "bazel-bin/modules/simulation/libsimulation_component.so"
 
     timer_components {
         class_name : "SimulationComponent"
         config {
             name: "simulation"
-            flag_file_path: "/apollo/modules/simulation/conf/simulation.conf"
+            flag_file_path: "modules/simulation/conf/simulation.conf"
             interval: 20
         }
     }

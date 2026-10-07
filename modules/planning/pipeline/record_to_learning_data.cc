@@ -21,6 +21,7 @@
 #include "modules/planning/proto/planning_config.pb.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/map/map_selection.h"
 #include "modules/common/util/data_extraction.h"
@@ -50,10 +51,14 @@ void GenerateLearningData() {
   }
 
   const std::string planning_config_file =
-      "/apollo/modules/planning/conf/planning_config.pb.txt";
+      "modules/planning/conf/planning_config.pb.txt";
+  std::string selected_config_file;
   PlanningConfig planning_config;
-  ACHECK(
-      cyber::common::GetProtoFromFile(planning_config_file, &planning_config))
+  ACHECK(cyber::common::ResourceManager::InitializeConfigRoot() &&
+         cyber::common::ResourceManager::ResolveConfigPath(
+             planning_config_file, &selected_config_file) &&
+         cyber::common::GetProtoFromFile(selected_config_file,
+                                         &planning_config))
       << "failed to load planning config file " << planning_config_file;
 
   MessageProcess message_process;

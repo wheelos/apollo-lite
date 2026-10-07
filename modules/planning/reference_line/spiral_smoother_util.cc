@@ -24,6 +24,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/common/util/util.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/reference_line/spiral_reference_line_smoother.h"
@@ -101,8 +102,12 @@ class SpiralSmootherUtil {
                   [&start_point](Eigen::Vector2d& p) { p = p - start_point; });
 
     ReferenceLineSmootherConfig config;
-    ACHECK(cyber::common::GetProtoFromFile(
-        "modules/planning/conf/spiral_smoother_config.pb.txt", &config));
+    std::string config_path;
+    ACHECK(cyber::common::ResourceManager::InitializeConfigRoot() &&
+           cyber::common::ResourceManager::ResolveConfigPath(
+               "modules/planning/conf/spiral_smoother_config.pb.txt",
+               &config_path) &&
+           cyber::common::GetProtoFromFile(config_path, &config));
 
     std::vector<double> opt_theta;
     std::vector<double> opt_kappa;

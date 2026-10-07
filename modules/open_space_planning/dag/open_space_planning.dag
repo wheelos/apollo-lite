@@ -1,5 +1,5 @@
 module_config {
-  module_library : "/apollo/bazel-bin/modules/open_space_planning/libopen_space_planning_component.so"
+  module_library : "bazel-bin/modules/open_space_planning/libopen_space_planning_component.so"
   components {
     class_name : "OpenSpacePlanningComponent"
     config {

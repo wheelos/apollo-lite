@@ -19,6 +19,7 @@ cc_binary(
     deps = [
         ":smart_recorder_gflags",
         "//modules/tools/roadlog/processor:roadlog_runtime",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

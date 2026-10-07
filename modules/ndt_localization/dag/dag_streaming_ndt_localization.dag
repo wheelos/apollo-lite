@@ -1,12 +1,12 @@
 # Define all coms in DAG streaming.
 module_config {
-  module_library : "/apollo/bazel-bin/modules/ndt_localization/libndt_localization_component.so"
+  module_library : "bazel-bin/modules/ndt_localization/libndt_localization_component.so"
 
   components {
     class_name : "NDTLocalizationComponent"
     config {
       name : "ndt_localization"
-      flag_file_path : "/apollo/modules/ndt_localization/conf/ndt_localization.conf"
+      flag_file_path : "modules/ndt_localization/conf/ndt_localization.conf"
       readers: [
         {
           channel: "/apollo/sensor/gnss/odometry"

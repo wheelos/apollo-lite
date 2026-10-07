@@ -18,6 +18,7 @@
 #include "cyber/common/environment.h"
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/perception/common/io/io_util.h"
 #include "modules/perception/common/perception_gflags.h"
 
@@ -49,6 +50,10 @@ bool ConfigManager::InitInternal() {
   if (inited_) {
     return true;
   }
+  if (!cyber::common::ResourceManager::InitializeConfigRoot()) {
+    AERROR << "Failed to initialize config root.";
+    return false;
+  }
   for (auto iter = model_config_map_.begin(); iter != model_config_map_.end();
        ++iter) {
     delete iter->second;
@@ -69,9 +74,18 @@ bool ConfigManager::InitInternal() {
   }
 
   for (const auto &model_config_file : model_config_files) {
+    std::string resolved_model_config_file;
+    if (!cyber::common::ResourceManager::ResolveConfigPath(
+            model_config_file, &resolved_model_config_file)) {
+      AERROR << "Failed to resolve ModelConfigFileListProto file: "
+             << model_config_file;
+      return false;
+    }
+
     ModelConfigFileListProto file_list_proto;
-    if (!GetProtoFromASCIIFile(model_config_file, &file_list_proto)) {
-      AERROR << "Invalid ModelConfigFileListProto file: " << model_config_file;
+    if (!GetProtoFromASCIIFile(resolved_model_config_file, &file_list_proto)) {
+      AERROR << "Invalid ModelConfigFileListProto file: "
+             << resolved_model_config_file;
       return false;
     }
 
@@ -79,9 +93,18 @@ bool ConfigManager::InitInternal() {
          file_list_proto.model_config_path()) {
       const std::string abs_path =
           GetAbsolutePath(work_root_, model_config_path);
+      std::string resolved_model_config_path;
+      if (!cyber::common::ResourceManager::ResolveConfigPath(
+              abs_path, &resolved_model_config_path)) {
+        AERROR << "Failed to resolve MultiModelConfigProto file: " << abs_path;
+        return false;
+      }
+
       MultiModelConfigProto multi_model_config_proto;
-      if (!GetProtoFromASCIIFile(abs_path, &multi_model_config_proto)) {
-        AERROR << "Invalid MultiModelConfigProto file: " << abs_path;
+      if (!GetProtoFromASCIIFile(resolved_model_config_path,
+                                 &multi_model_config_proto)) {
+        AERROR << "Invalid MultiModelConfigProto file: "
+               << resolved_model_config_path;
         return false;
       }
 

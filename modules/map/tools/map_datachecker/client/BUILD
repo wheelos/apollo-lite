@@ -66,6 +66,7 @@ cc_library(
     hdrs = ["client_gflags.h"],
     deps = [
         "@com_github_gflags_gflags//:gflags",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

@@ -20,6 +20,7 @@
 #include "modules/perception/pipeline/proto/pipeline_config.pb.h"
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/perception/camera/app/traffic_light_camera_perception.h"
 #include "modules/perception/camera/tools/common/util.h"
 #include "modules/perception/camera/tools/common/visualizer.h"
@@ -33,7 +34,7 @@ DEFINE_string(dest_dir, "./data", "output dir");
 DEFINE_string(root_dir, "/apollo/modules/perception/camera/tools/traffic_light_detection", "image root dir"); // NOLINT
 DEFINE_string(image_ext, ".jpg", "extension of image name");
 DEFINE_string(test_list, "/apollo/modules/perception/camera/tools/traffic_light_detection/images/image_test_list.txt", "test image list"); // NOLINT
-DEFINE_string(tf_conf_file, "/apollo/modules/perception/camera/tools/traffic_light_detection/conf/trafficlights_perception.pb.txt", "Traffic light perception config file"); // NOLINT
+DEFINE_string(tf_conf_file, "modules/perception/camera/tools/traffic_light_detection/conf/trafficlights_perception.pb.txt", "Traffic light perception config file"); // NOLINT
 DEFINE_string(camera_intrinsics, "/apollo/modules/perception/camera/tools/obstacle_detection/params/onsemi_obstacle_intrinsics.yaml", "Camera intrinsic file"); // NOLINT
 
 namespace apollo {
@@ -92,7 +93,11 @@ bool TestDetection() {
   // Init tf pipeline
   TrafficLightCameraPerception tf_pipeline;
   pipeline::PipelineConfig tf_pipeline_config;
-  ACHECK(cyber::common::GetProtoFromFile(FLAGS_tf_conf_file,
+  std::string selected_config_path;
+  ACHECK(cyber::common::ResourceManager::InitializeConfigRoot() &&
+         cyber::common::ResourceManager::ResolveConfigPath(
+             FLAGS_tf_conf_file, &selected_config_path) &&
+         cyber::common::GetProtoFromFile(selected_config_path,
                                          &tf_pipeline_config));
   ACHECK(tf_pipeline.Init(tf_pipeline_config));
 

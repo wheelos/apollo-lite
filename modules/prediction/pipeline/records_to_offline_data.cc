@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 
 #include "absl/strings/str_split.h"
 #include "modules/prediction/common/feature_output.h"
@@ -38,10 +39,14 @@ void GenerateDataForLearning() {
   }
 
   PredictionConf prediction_conf;
-  if (!cyber::common::GetProtoFromFile(FLAGS_prediction_conf_file,
+  std::string prediction_config_file;
+  if (!cyber::common::ResourceManager::InitializeConfigRoot() ||
+      !cyber::common::ResourceManager::ResolveConfigPath(
+          FLAGS_prediction_conf_file, &prediction_config_file) ||
+      !cyber::common::GetProtoFromFile(prediction_config_file,
                                        &prediction_conf)) {
-    AERROR << "Unable to load adapter conf file: "
-           << FLAGS_prediction_adapter_config_filename;
+    AERROR << "Unable to load prediction conf file: "
+           << FLAGS_prediction_conf_file;
     return;
   }
   ADEBUG << "Adapter config file is loaded into: "

@@ -161,6 +161,7 @@ cc_library(
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/proto:planning_status_cc_proto",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
         "@eigen",
     ],
 )
@@ -174,6 +175,7 @@ cc_binary(
         ":reference_line",
         ":spiral_reference_line_smoother",
         "//modules/planning/proto:planning_config_cc_proto",
+        "@core//cyber/common:resource_manager",
     ],
 )
 
@@ -183,6 +185,7 @@ cc_binary(
     deps = [
         ":spiral_reference_line_smoother",
         "//modules/planning/proto:planning_config_cc_proto",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

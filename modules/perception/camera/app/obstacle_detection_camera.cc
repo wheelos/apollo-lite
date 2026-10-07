@@ -25,6 +25,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/common/util/perf_util.h"
 #include "modules/perception/base/object.h"
 #include "modules/perception/camera/app/debug_info.h"
@@ -48,6 +49,12 @@ bool ObstacleDetectionCamera::Init(const CameraPerceptionInitOptions &options) {
   std::string config_file =
       GetAbsolutePath(options.root_dir, options.conf_file);
   config_file = GetAbsolutePath(work_root, config_file);
+  std::string selected_config_file;
+  ACHECK(cyber::common::ResourceManager::InitializeConfigRoot() &&
+         cyber::common::ResourceManager::ResolveConfigPath(
+             config_file, &selected_config_file))
+      << "Resolve config failed: " << config_file;
+  config_file = selected_config_file;
   ACHECK(cyber::common::GetProtoFromFile(config_file, &perception_param_))
       << "Read config failed: " << config_file;
   ACHECK(inference::CudaUtil::set_device_id(perception_param_.gpu_id()));

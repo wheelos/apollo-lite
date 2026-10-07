@@ -26,6 +26,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/perception/base/traffic_light.h"
 #include "modules/perception/camera/common/camera_frame.h"
 #include "modules/perception/camera/common/data_provider.h"
@@ -35,7 +36,7 @@ DEFINE_string(image_path, "", "Input JPG/PNG path. Example: /tmp/frame.jpg");
 DEFINE_string(output_path, "/tmp/yolo_single_stage_dector_result.jpg",
               "Output annotated JPG path.");
 DEFINE_string(config_path,
-              "/apollo/modules/perception/pipeline/config/"
+              "modules/perception/pipeline/config/"
               "trafficlights_perception_ultralytics_efficientnet.pb.txt",
               "Pipeline config path containing TRAFFIC_LIGHT_DETECTION stage.");
 DEFINE_int32(num_dummy_lights, 32,
@@ -55,9 +56,18 @@ bool LoadDetectionConfig(const std::string& config_path,
     return false;
   }
 
+  std::string selected_config_path;
+  if (!cyber::common::ResourceManager::InitializeConfigRoot() ||
+      !cyber::common::ResourceManager::ResolveConfigPath(
+          config_path, &selected_config_path)) {
+    AERROR << "Failed to resolve pipeline config: " << config_path;
+    return false;
+  }
+
   pipeline::PipelineConfig pipeline_config;
-  if (!cyber::common::GetProtoFromFile(config_path, &pipeline_config)) {
-    AERROR << "Failed to load pipeline config: " << config_path;
+  if (!cyber::common::GetProtoFromFile(selected_config_path,
+                                       &pipeline_config)) {
+    AERROR << "Failed to load pipeline config: " << selected_config_path;
     return false;
   }
 

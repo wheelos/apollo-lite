@@ -17,13 +17,18 @@
 
 #include <memory>
 
+#include "cyber/common/resource_manager.h"
 #include "grpc++/grpc++.h"
 
 namespace apollo {
 namespace hdmap {
 
 MapDataCheckerAgent::MapDataCheckerAgent() {
-  sp_conf_ = ParseJson(FLAGS_conf_json);
+  std::string selected_config_path;
+  ACHECK(apollo::cyber::common::ResourceManager::InitializeConfigRoot() &&
+         apollo::cyber::common::ResourceManager::ResolveConfigPath(
+             FLAGS_conf_json, &selected_config_path));
+  sp_conf_ = ParseJson(selected_config_path);
   assert(sp_conf_ != nullptr);
   sp_pose_collection_agent_ = std::make_shared<PoseCollectionAgent>(sp_conf_);
   sp_channel_checker_agent_ = std::make_shared<ChannelVerifyAgent>(sp_conf_);

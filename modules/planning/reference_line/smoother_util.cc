@@ -24,6 +24,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/common/math/vec2d.h"
 #include "modules/common/util/future.h"
 #include "modules/common/util/util.h"
@@ -59,8 +60,11 @@ class SmootherUtil {
       auto y_str = point_str.substr(idx + 1);
       raw_points_.emplace_back(std::stod(x_str), std::stod(y_str));
     }
-    ACHECK(cyber::common::GetProtoFromFile(FLAGS_smoother_config_filename,
-                                           &config_))
+    std::string smoother_config_path;
+    ACHECK(cyber::common::ResourceManager::InitializeConfigRoot() &&
+           cyber::common::ResourceManager::ResolveConfigPath(
+               FLAGS_smoother_config_filename, &smoother_config_path) &&
+           cyber::common::GetProtoFromFile(smoother_config_path, &config_))
         << "Failed to read smoother config file: "
         << FLAGS_smoother_config_filename;
   }

@@ -111,6 +111,7 @@ cc_library(
         ":vehicle_model",
         "@wheelos_common//modules/common/configs:config_gflags",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
         "@wheelos_msgs//wheelos_msgs/config_msgs:vehicle_config_cc_proto",
     ],
     alwayslink = True,

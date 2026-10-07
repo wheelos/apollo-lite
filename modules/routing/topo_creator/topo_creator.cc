@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/routing/common/routing_gflags.h"
 #include "modules/routing/topo_creator/graph_creator.h"
@@ -25,7 +26,11 @@ int main(int argc, char **argv) {
 
   apollo::routing::RoutingConfig routing_conf;
 
-  ACHECK(apollo::cyber::common::GetProtoFromFile(FLAGS_routing_conf_file,
+  std::string routing_config_path;
+  ACHECK(apollo::cyber::common::ResourceManager::InitializeConfigRoot() &&
+         apollo::cyber::common::ResourceManager::ResolveConfigPath(
+             FLAGS_routing_conf_file, &routing_config_path) &&
+         apollo::cyber::common::GetProtoFromFile(routing_config_path,
                                                  &routing_conf))
       << "Unable to load routing conf file: " + FLAGS_routing_conf_file;
 

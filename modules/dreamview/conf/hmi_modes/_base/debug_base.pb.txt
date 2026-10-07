@@ -27,7 +27,7 @@ modules {
 modules {
   key: "Data Recorder"
   value: {
-    start_command: "python3 /apollo/scripts/recording_launcher.py --config /apollo/modules/dreamview/conf/recording/runtime.yaml"
+    start_command: "python3 /apollo/scripts/recording_launcher.py --config modules/dreamview/conf/recording/runtime.yaml"
     process_monitor_config {
       command_keywords: "cyber_recorder record"
     }

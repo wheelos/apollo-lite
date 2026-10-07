@@ -17,6 +17,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/common/util/perf_util.h"
 #include "modules/perception/camera/common/util.h"
 #include "modules/perception/camera/lib/traffic_light/detector/detection/detection.h"
@@ -38,6 +39,14 @@ bool TrafficLightCameraPerception::Init(
   }
   std::string proto_path = GetAbsolutePath(options.root_dir, options.conf_file);
   proto_path = GetAbsolutePath(work_root, proto_path);
+  std::string selected_proto_path;
+  if (!cyber::common::ResourceManager::InitializeConfigRoot() ||
+      !cyber::common::ResourceManager::ResolveConfigPath(
+          proto_path, &selected_proto_path)) {
+    AERROR << "Resolve config failed: " << proto_path;
+    return false;
+  }
+  proto_path = selected_proto_path;
   AINFO << "proto_path " << proto_path;
   if (!cyber::common::GetProtoFromFile(proto_path, &tl_param_)) {
     AINFO << "load proto param failed, root dir: " << options.root_dir;

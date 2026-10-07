@@ -72,7 +72,7 @@ four-wheel-steering vehicle model and the 4WS vehicle parameters:
   -d /apollo/modules/simulation/dag/simulation.dag \
   -p simulation_4ws \
   -s CYBER_DEFAULT \
-  --flagfile=/apollo/modules/simulation/conf/simulation_4ws.conf
+  --flagfile=modules/simulation/conf/simulation_4ws.conf
 ```
 
 The 4WS configuration requires a positive rear-steering limit and uses

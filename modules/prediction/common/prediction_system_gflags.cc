@@ -22,10 +22,10 @@
 DEFINE_string(prediction_module_name, "prediction",
               "Default prediction module name");
 DEFINE_string(prediction_conf_file,
-              "/apollo/modules/prediction/conf/prediction_conf.pb.txt",
+              "modules/prediction/conf/prediction_conf.pb.txt",
               "Default conf file for prediction");
 DEFINE_string(prediction_adapter_config_filename,
-              "/apollo/modules/prediction/conf/adapter.conf",
+              "modules/prediction/conf/adapter.conf",
               "Default conf file for prediction");
 DEFINE_string(prediction_data_dir,
               "/apollo/modules/prediction/data/prediction/",

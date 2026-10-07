@@ -19,6 +19,7 @@
 
 #include "cyber/common/log.h"
 #include "cyber/common/macros.h"
+#include "cyber/common/resource_manager.h"
 #include "cyber/cyber.h"
 #include "cyber/init.h"
 #include "cyber/time/time.h"
@@ -40,9 +41,13 @@ class PadTerminal {
   PadTerminal() : node_(CreateNode("planning_pad_terminal")) {}
   void init() {
     const std::string planning_config_file =
-        "/apollo/modules/planning/conf/planning_config.pb.txt";
+        "modules/planning/conf/planning_config.pb.txt";
+    std::string selected_config_file;
     PlanningConfig planning_config;
-    ACHECK(GetProtoFromFile(planning_config_file, &planning_config))
+    ACHECK(apollo::cyber::common::ResourceManager::InitializeConfigRoot() &&
+           apollo::cyber::common::ResourceManager::ResolveConfigPath(
+               planning_config_file, &selected_config_file) &&
+           GetProtoFromFile(selected_config_file, &planning_config))
         << "failed to load planning config file " << planning_config_file;
 
     pad_writer_ = node_->CreateWriter<PadMessage>(

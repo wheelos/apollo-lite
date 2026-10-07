@@ -19,6 +19,7 @@
  */
 
 #include "cyber/common/file.h"
+#include "cyber/common/resource_manager.h"
 #include "modules/planning/common/planning_geometry_adapter.h"
 #include "modules/planning/open_space/coarse_trajectory_generator/hybrid_a_star.h"
 
@@ -82,8 +83,12 @@ HybridAStar* CreatePlannerPtr() {
   const apollo::planning::PlanningGeometryAdapter geometry_adapter(
       vehicle_geometry_model, apollo::common::VehicleReferencePoint::REAR_AXLE_CENTER);
 
-  ACHECK(apollo::cyber::common::GetProtoFromFile(
-      FLAGS_planner_open_space_config_filename, &planner_open_space_config_))
+  std::string config_path;
+  ACHECK(apollo::cyber::common::ResourceManager::InitializeConfigRoot() &&
+         apollo::cyber::common::ResourceManager::ResolveConfigPath(
+             FLAGS_planner_open_space_config_filename, &config_path) &&
+         apollo::cyber::common::GetProtoFromFile(config_path,
+                                                 &planner_open_space_config_))
       << "Failed to load open space config file "
       << FLAGS_planner_open_space_config_filename;
   return new HybridAStar(planner_open_space_config_, geometry_adapter);

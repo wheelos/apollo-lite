@@ -57,6 +57,10 @@ bool SensorManager::Init() {
   const std::string raw_file_path = cyber::common::GetAbsolutePath(
       lib::ConfigManager::Instance()->work_root(), FLAGS_obs_sensor_meta_path);
   std::string file_path;
+  if (!cyber::common::ResourceManager::InitializeConfigRoot()) {
+    AERROR << "Failed to initialize config root.";
+    return false;
+  }
   if (!cyber::common::ResourceManager::ResolveConfigPath(raw_file_path,
                                                          &file_path)) {
     AERROR << "Failed to resolve sensor metadata config: " << raw_file_path;

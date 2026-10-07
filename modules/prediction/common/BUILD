@@ -238,6 +238,7 @@ cc_library(
         "//modules/prediction/proto:offline_features_cc_proto",
         "//modules/prediction/scenario:scenario_manager",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

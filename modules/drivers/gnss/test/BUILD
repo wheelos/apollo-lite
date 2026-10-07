@@ -21,6 +21,7 @@ cc_binary(
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/hal/stream",
         "@core//cyber",
+        "@core//cyber/common:resource_manager",
     ],
 )
 

@@ -23,6 +23,7 @@
 #include <memory>
 
 #include "cyber/cyber.h"
+#include "cyber/common/resource_manager.h"
 #include "cyber/init.h"
 #include "cyber/record/record_reader.h"
 
@@ -64,11 +65,14 @@ void Parse(const char* filename, const char* file_type,
            const std::shared_ptr<::apollo::cyber::Node>& node) {
   std::string type = std::string(file_type);
   config::Config config;
-  if (!apollo::cyber::common::GetProtoFromFile(
-          std::string("/apollo/modules/drivers/gnss/conf/gnss_conf.pb.txt"),
-          &config)) {
-    std::cout << "Unable to load gnss conf file";
-  }
+  const std::string config_key = "modules/drivers/gnss/conf/gnss_conf.pb.txt";
+  std::string selected_config_path;
+  ACHECK(apollo::cyber::common::ResourceManager::InitializeConfigRoot() &&
+         apollo::cyber::common::ResourceManager::ResolveConfigPath(
+             config_key, &selected_config_path) &&
+         apollo::cyber::common::GetProtoFromFile(selected_config_path,
+                                                 &config))
+      << "Unable to load gnss config file " << config_key;
   DataParser* parser = new DataParser(config, node);
   parser->Init();
   if (type == "bin") {

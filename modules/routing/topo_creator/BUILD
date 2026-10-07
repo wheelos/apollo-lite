@@ -71,6 +71,7 @@ cc_binary(
     copts = ['-DMODULE_NAME=\\"routing\\"'],
     deps = [
         ":graph_creator",
+        "@core//cyber/common:resource_manager",
         "@wheelos_map//modules/map/hdmap:hdmap_util",
     ],
 )

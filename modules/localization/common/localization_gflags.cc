@@ -23,7 +23,7 @@ DEFINE_double(localization_publish_freq, 100,
               "localization publishing frequency.");
 
 DEFINE_string(localization_config_file,
-              "/apollo/modules/localization/conf/localization_config.pb.txt",
+              "modules/localization/conf/localization_config.pb.txt",
               "localization config file");
 
 // features

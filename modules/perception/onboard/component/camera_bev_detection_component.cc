@@ -52,23 +52,6 @@ static void fill_lane_msg(const base::LaneLineCubicCurve &curve_coord,
   lane_marker->set_longitude_end(curve_coord.x_end);
 }
 
-static int GetGpuId(const camera::CameraPerceptionInitOptions &options) {
-  camera::app::PerceptionParam perception_param;
-  std::string work_root = camera::GetCyberWorkRoot();
-  std::string config_file =
-      GetAbsolutePath(options.root_dir, options.conf_file);
-  config_file = GetAbsolutePath(work_root, config_file);
-  if (!cyber::common::GetProtoFromFile(config_file, &perception_param)) {
-    AERROR << "Read config failed: " << config_file;
-    return -1;
-  }
-  if (!perception_param.has_gpu_id()) {
-    AINFO << "gpu id not found.";
-    return -1;
-  }
-  return perception_param.gpu_id();
-}
-
 static int GetGpuId(
     const apollo::perception::pipeline::PipelineConfig &pipeline_config) {
   if (!pipeline_config.camera_detection_config().has_gpu_id()) {
@@ -539,8 +522,8 @@ int CameraBevDetectionComponent::InitConfig() {
   camera_obstacle_perception_conf_file =
       GetAbsolutePath(work_root, camera_obstacle_perception_conf_file);
 
-  ACHECK(cyber::common::GetProtoFromFile(camera_obstacle_perception_conf_file,
-                                         &camera_obstacle_detection_config_))
+  ACHECK(GetProtoConfigFromPath(camera_obstacle_perception_conf_file,
+                                &camera_obstacle_detection_config_))
       << "failed to load camera obstacle perception config file "
       << camera_obstacle_perception_conf_file;
   return cyber::SUCC;

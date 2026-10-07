@@ -31,6 +31,7 @@
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
+#include "cyber/common/resource_manager.h"
 #include "cyber/time/clock.h"
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/math/quaternion.h"
@@ -114,6 +115,14 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
                   "planning config error: " + config_.DebugString());
   }
 
+  const auto load_config = [](const std::string& path, auto* config) {
+    std::string selected_path;
+    return cyber::common::ResourceManager::InitializeConfigRoot() &&
+           cyber::common::ResourceManager::ResolveConfigPath(path,
+                                                              &selected_path) &&
+           cyber::common::GetProtoFromFile(selected_path, config);
+  };
+
   PlanningBase::Init(config_);
 
   const auto vehicle_model_status =
@@ -124,8 +133,8 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
 
   planner_dispatcher_->Init();
 
-  ACHECK(apollo::cyber::common::GetProtoFromFile(
-      FLAGS_traffic_rule_config_filename, &traffic_rule_configs_))
+  ACHECK(load_config(FLAGS_traffic_rule_config_filename,
+                     &traffic_rule_configs_))
       << "Failed to load traffic rule config file "
       << FLAGS_traffic_rule_config_filename;
 
@@ -145,8 +154,8 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
   reference_line_provider_->Start();
 
   ScenarioConfig valet_parking_config;
-  ACHECK(apollo::cyber::common::GetProtoFromFile(
-      FLAGS_scenario_valet_parking_config_file, &valet_parking_config))
+  ACHECK(load_config(FLAGS_scenario_valet_parking_config_file,
+                     &valet_parking_config))
       << "Failed to load valet parking config file "
       << FLAGS_scenario_valet_parking_config_file;
   direct_valet_parking_stage_only_ =
@@ -163,7 +172,7 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
 
   if (config_.learning_mode() != PlanningConfig::NO_LEARNING) {
     PlanningSemanticMapConfig renderer_config;
-    ACHECK(apollo::cyber::common::GetProtoFromFile(
+    ACHECK(load_config(
         FLAGS_planning_birdview_img_feature_renderer_config_file,
         &renderer_config))
         << "Failed to load renderer config"

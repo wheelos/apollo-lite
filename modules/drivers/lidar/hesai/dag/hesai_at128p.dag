@@ -1,10 +1,10 @@
 module_config {
-    module_library : "/apollo/bazel-bin/modules/drivers/lidar/hesai/libhesai_component.so"
+    module_library : "bazel-bin/modules/drivers/lidar/hesai/libhesai_component.so"
     components {
         class_name : "HesaiComponent"
         config {
           name : "at128_driver"
-          config_file_path : "/apollo/modules/drivers/lidar/hesai/conf/hesai_at128p.pb.txt"
+          config_file_path : "modules/drivers/lidar/hesai/conf/hesai_at128p.pb.txt"
         }
     }
 }

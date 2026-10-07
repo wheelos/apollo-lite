@@ -51,7 +51,7 @@
 #include "modules/dreamview/backend/hmi/mode_registry.h"
 #include "modules/dreamview/backend/hmi/process_manager.h"
 
-DEFINE_string(hmi_modes_config_path, "/apollo/modules/dreamview/conf/hmi_modes",
+DEFINE_string(hmi_modes_config_path, "modules/dreamview/conf/hmi_modes",
               "HMI modes config path.");
 
 DEFINE_double(status_publish_interval, 5, "HMI Status publish interval.");
@@ -174,9 +174,26 @@ void HMIWorker::Stop() {
 
 HMIConfig HMIWorker::LoadConfig() {
   HMIConfig config;
+  Map<std::string, std::string> modes;
+  const std::string config_dir = FLAGS_hmi_modes_config_path;
+  if (config_dir.rfind("modules/", 0) == 0) {
+    ACHECK(cyber::common::ResourceManager::InitializeConfigRoot());
+    const std::string default_dir =
+        cyber::common::GetAbsolutePath(cyber::common::WorkRoot(), config_dir);
+    const auto default_modes = ListFilesAsDict(default_dir, ".pb.txt");
+    for (const auto& mode : default_modes) {
+      const std::string filename = cyber::common::GetFileName(mode.second);
+      std::string selected_path;
+      ACHECK(cyber::common::ResourceManager::ResolveConfigPath(
+          config_dir + "/" + filename, &selected_path));
+      modes.insert({mode.first, selected_path});
+    }
+  } else {
+    modes = ListFilesAsDict(config_dir, ".pb.txt");
+  }
+
   // Get available modes, maps and vehicles by listing data directory.
-  *config.mutable_modes() =
-      ListFilesAsDict(FLAGS_hmi_modes_config_path, ".pb.txt");
+  *config.mutable_modes() = std::move(modes);
   ACHECK(!config.modes().empty())
       << "No modes config loaded from " << FLAGS_hmi_modes_config_path;
 
