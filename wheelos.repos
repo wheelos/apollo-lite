@@ -1,21 +1,21 @@
 repositories:
   bazel-central-registry:
     type: git
-    url: https://github.com/wheelos/bazel-central-registry.git
+    url: git@github.com:wheelos/bazel-central-registry.git
     version: main
   core:
     type: git
-    url: https://github.com/wheelos/core.git
+    url: git@github.com:wheelos/core.git
     version: main
   wheelos_msgs:
     type: git
-    url: https://github.com/wheelos/wheelos_msgs.git
+    url: git@github.com:wheelos/wheelos_msgs.git
     version: main
   common:
     type: git
-    url: https://github.com/wheelos/common.git
+    url: git@github.com:wheelos/common.git
     version: main
   map:
     type: git
-    url: https://github.com/wheelos/map.git
+    url: git@github.com:wheelos/map.git
     version: main
