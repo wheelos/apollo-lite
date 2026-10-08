@@ -47,13 +47,18 @@ cc_test(
     size = "small",
     srcs = ["rtk_localization_test.cc"],
     linkstatic = True,
-    data = ["//modules/localization:localization_testdata"],
+    data = ["//modules/rtk_localization:testdata"],
     deps = [
         "@wheelos_common//modules/common/util",
         ":rtk_localization_component_lib",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
     ],
+)
+
+filegroup(
+    name = "testdata",
+    srcs = glob(["testdata/*"]),
 )
 
 filegroup(

@@ -35,11 +35,12 @@
 #include "gflags/gflags.h"
 #include "pcl/io/pcd_io.h"
 
-#include "cyber/record/record_message.h"
-#include "cyber/record/record_reader.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
-#include "modules/localization/msf/common/io/pcl_point_types.h"
+
+#include "cyber/record/record_message.h"
+#include "cyber/record/record_reader.h"
+#include "modules/ndt_localization/common/io/pcl_point_types.h"
 
 DEFINE_string(mode, "", "inspect | count | extract");
 DEFINE_string(input_path, "", "record file path, directory, or wildcard");
@@ -122,7 +123,7 @@ std::vector<std::string> ExpandRecordPaths(const std::string& raw_path) {
     return results;
   }
 
-  glob_t glob_result {};
+  glob_t glob_result{};
   if (glob(raw_path.c_str(), 0, nullptr, &glob_result) == 0) {
     for (size_t i = 0; i < glob_result.gl_pathc; ++i) {
       bfs::path path(glob_result.gl_pathv[i]);
@@ -151,7 +152,8 @@ std::vector<std::string> ExpandRecordPaths(const std::string& raw_path) {
       if (!bfs::is_regular_file(it->path())) {
         continue;
       }
-      if (it->path().filename().string().find(".record.") == std::string::npos) {
+      if (it->path().filename().string().find(".record.") ==
+          std::string::npos) {
         continue;
       }
       results.push_back(bfs::absolute(it->path()).string());
@@ -201,8 +203,7 @@ void WriteProgress(const std::string& stage, size_t current, size_t total,
        << "\"stage\":\"" << JsonEscape(stage) << "\","
        << "\"current\":" << current << ","
        << "\"total\":" << total << ","
-       << "\"percent\":" << std::fixed << std::setprecision(2) << percent
-       << ","
+       << "\"percent\":" << std::fixed << std::setprecision(2) << percent << ","
        << "\"done\":" << (done ? "true" : "false") << ","
        << "\"message\":\"" << JsonEscape(message) << "\""
        << "}\n";
@@ -247,8 +248,7 @@ std::string ChannelsToJson(const std::map<std::string, ChannelInfo>& channels) {
         << "\"topic\":\"" << JsonEscape(item.second.topic) << "\","
         << "\"message_type\":\"" << JsonEscape(item.second.message_type)
         << "\","
-        << "\"message_count\":" << item.second.message_count
-        << "}";
+        << "\"message_count\":" << item.second.message_count << "}";
   }
   out << "]";
   return out.str();
@@ -301,20 +301,19 @@ const LocalizationSample* MatchLocalization(
   if (samples.empty()) {
     return nullptr;
   }
-  auto it = std::lower_bound(
-      samples.begin(), samples.end(), timestamp_sec,
-      [](const LocalizationSample& sample, double value) {
-        return sample.timestamp_sec < value;
-      });
+  auto it =
+      std::lower_bound(samples.begin(), samples.end(), timestamp_sec,
+                       [](const LocalizationSample& sample, double value) {
+                         return sample.timestamp_sec < value;
+                       });
   const LocalizationSample* best = nullptr;
   if (it != samples.end()) {
     best = &(*it);
   }
   if (it != samples.begin()) {
     const LocalizationSample* previous = &(*(it - 1));
-    if (best == nullptr ||
-        std::abs(previous->timestamp_sec - timestamp_sec) <
-            std::abs(best->timestamp_sec - timestamp_sec)) {
+    if (best == nullptr || std::abs(previous->timestamp_sec - timestamp_sec) <
+                               std::abs(best->timestamp_sec - timestamp_sec)) {
       best = previous;
     }
   }
@@ -391,8 +390,7 @@ int RunCount() {
 
 int RunExtract() {
   if (FLAGS_pointcloud_topic.empty()) {
-    std::cerr << "--pointcloud_topic is required for extract mode"
-              << std::endl;
+    std::cerr << "--pointcloud_topic is required for extract mode" << std::endl;
     return 1;
   }
   if (FLAGS_output_dir.empty()) {
@@ -444,8 +442,8 @@ int RunExtract() {
         continue;
       }
       char frame_name_buffer[64];
-      std::snprintf(frame_name_buffer, sizeof(frame_name_buffer),
-                    "frame_%06zu", exported);
+      std::snprintf(frame_name_buffer, sizeof(frame_name_buffer), "frame_%06zu",
+                    exported);
       const std::string frame_name(frame_name_buffer);
       const bfs::path pcd_path = pcd_dir / (frame_name + ".pcd");
 
@@ -475,9 +473,9 @@ int RunExtract() {
       const double timestamp_sec =
           ResolvePointCloudTimestampSec(cloud_message, message.time);
       if (!FLAGS_pose_topic.empty()) {
-        const auto* matched = MatchLocalization(
-            localization_samples, timestamp_sec,
-            FLAGS_pose_match_threshold_sec);
+        const auto* matched =
+            MatchLocalization(localization_samples, timestamp_sec,
+                              FLAGS_pose_match_threshold_sec);
         if (matched != nullptr) {
           const bfs::path pose_path = pose_dir / (frame_name + ".pose");
           std::ofstream pose_out(pose_path.string());
@@ -513,9 +511,8 @@ int RunExtract() {
           << "\"total_frames\":" << exported << ","
           << "\"frames_with_pose\":" << exported_with_pose << ","
           << "\"pcd_dir\":\"" << JsonEscape(pcd_dir.string()) << "\","
-          << "\"pose_dir\":\"" << JsonEscape(FLAGS_pose_topic.empty()
-                                                 ? ""
-                                                 : pose_dir.string())
+          << "\"pose_dir\":\""
+          << JsonEscape(FLAGS_pose_topic.empty() ? "" : pose_dir.string())
           << "\""
           << "}";
   std::ofstream summary_out((output_dir / "extract_summary.json").string());

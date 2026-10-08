@@ -1,0 +1,151 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("//tools:cpplint.bzl", "cpplint")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "compression",
+    srcs = ["compression.cc"],
+    hdrs = ["compression.h"],
+    deps = [
+        "@core//cyber",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "md5",
+    srcs = ["md5.cc"],
+    hdrs = ["md5.h"],
+)
+
+cc_library(
+    name = "file_utility",
+    srcs = ["file_utility.cc"],
+    hdrs = ["file_utility.h"],
+    deps = [
+        ":md5",
+        "@boost.filesystem",
+        "@com_github_google_glog//:glog",
+        "@core//cyber",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "system_utility",
+    srcs = ["system_utility.cc"],
+    hdrs = ["system_utility.h"],
+    deps = [
+        "@boost.filesystem",
+        "@core//cyber",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "frame_transform",
+    srcs = ["frame_transform.cc"],
+    hdrs = ["frame_transform.h"],
+    deps = [
+        "@wheelos_common//modules/common/util:proj_helper",
+        "@com_google_absl//absl/strings",
+        "@core//cyber",
+        "@eigen",
+        "@proj",
+    ],
+)
+
+cc_library(
+    name = "util",
+    hdrs = [
+        "extract_ground_plane.h",
+        "math_util.h",
+        "rect2d.h",
+        "voxel_grid_covariance_hdmap.h",
+    ],
+    deps = [
+        "@boost.mpl",
+        "@core//cyber",
+        "@eigen",
+        "@local_config_pcl//:filters",
+        "@local_config_pcl//:kdtree",
+        "@local_config_pcl//:sample_consensus",
+    ],
+)
+
+cc_library(
+    name = "base_map_cache",
+    hdrs = [
+        "base_map_cache.h",
+    ],
+    deps = [
+        "@wheelos_common//modules/common/util:util_tool",
+    ],
+)
+
+cc_test(
+    name = "compression_test",
+    size = "small",
+    timeout = "short",
+    srcs = ["compression_test.cc"],
+    linkstatic = True,
+    deps = [
+        "//modules/ndt_localization/common/util:compression",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "rect2d_test",
+    size = "small",
+    timeout = "short",
+    srcs = ["rect2d_test.cc"],
+    linkstatic = True,
+    deps = [
+        "//modules/ndt_localization/common/util",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+filegroup(
+    name = "test_data",
+    srcs = glob(["test_data/**"]),
+)
+
+cc_test(
+    name = "system_utility_test",
+    size = "medium",
+    timeout = "short",
+    srcs = ["system_utility_test.cc"],
+    data = [":test_data"],
+    linkstatic = True,
+    deps = [
+        "//modules/ndt_localization/common/util:system_utility",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "frame_transform_test",
+    size = "medium",
+    timeout = "short",
+    srcs = ["frame_transform_test.cc"],
+    deps = [
+        "//modules/ndt_localization/common/util:frame_transform",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "base_map_cache_test",
+    srcs = ["base_map_cache_test.cc"],
+    linkstatic = True,
+    deps = [
+        ":base_map_cache",
+        "@com_google_googletest//:gtest_main",
+        "@core//cyber",
+    ],
+)
+
+cpplint()

@@ -19,20 +19,22 @@
 #include "Eigen/Geometry"
 #include "yaml-cpp/yaml.h"
 
+#include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
+
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "cyber/time/clock.h"
 #include "modules/common/configs/config_gflags.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/common/math/quaternion.h"
-#include "modules/localization/common/rigid_transform_helper.h"
-#include "wheelos_msgs/sensor_msgs/gnss_best_pose.pb.h"
-#include "modules/localization/common/localization_gflags.h"
+#include "modules/ndt_localization/common/localization_gflags.h"
+#include "modules/ndt_localization/common/rigid_transform_helper.h"
 
 namespace apollo {
 namespace localization {
 namespace ndt {
 
-void NDTLocalization::Init() {
+bool NDTLocalization::Init() {
   resolution_id_ = 0;
   zone_id_ = FLAGS_local_utm_zone_id;
   online_resolution_ = FLAGS_online_resolution;
@@ -44,8 +46,13 @@ void NDTLocalization::Init() {
   warnning_ndt_score_ = FLAGS_ndt_warnning_ndt_score;
   error_ndt_score_ = FLAGS_ndt_error_ndt_score;
 
-  map_path_ =
-      FLAGS_map_dir + "/" + FLAGS_ndt_map_dir + "/" + FLAGS_local_map_name;
+  apollo::common::SelectedMap selected_map;
+  if (!apollo::common::MapSelection::GetSelectedMap(&selected_map)) {
+    AERROR << "Failed to resolve selected map directory.";
+    return false;
+  }
+  map_path_ = selected_map.directory + "/" + FLAGS_ndt_map_dir + "/" +
+              FLAGS_local_map_name;
   AINFO << "map folder: " << map_path_;
   velodyne_extrinsic_ = Eigen::Affine3d::Identity();
   lidar_frame_id_.clear();
@@ -80,6 +87,7 @@ void NDTLocalization::Init() {
   odometry_buffer_size_ = 0;
 
   is_service_started_ = false;
+  return true;
 }
 // receive odometry message
 void NDTLocalization::OdometryCallback(
@@ -273,13 +281,12 @@ void NDTLocalization::ComposeLocalizationEstimate(
   mutable_pose->mutable_orientation()->set_qx(quat.x());
   mutable_pose->mutable_orientation()->set_qy(quat.y());
   mutable_pose->mutable_orientation()->set_qz(quat.z());
-  double heading =
-      apollo::common::math::QuaternionToHeading(quat.w(), quat.x(), quat.y(),
-                          quat.z());
+  double heading = apollo::common::math::QuaternionToHeading(
+      quat.w(), quat.x(), quat.y(), quat.z());
   mutable_pose->set_heading(heading);
 
-    apollo::common::math::EulerAnglesZXYd euler(quat.w(), quat.x(), quat.y(),
-                          quat.z());
+  apollo::common::math::EulerAnglesZXYd euler(quat.w(), quat.x(), quat.y(),
+                                              quat.z());
   mutable_pose->mutable_euler_angles()->set_x(euler.pitch());
   mutable_pose->mutable_euler_angles()->set_y(euler.roll());
   mutable_pose->mutable_euler_angles()->set_z(euler.yaw());
@@ -324,13 +331,12 @@ void NDTLocalization::ComposeLidarResult(double time_stamp,
   mutable_pose->mutable_orientation()->set_qx(quat.x());
   mutable_pose->mutable_orientation()->set_qy(quat.y());
   mutable_pose->mutable_orientation()->set_qz(quat.z());
-  double heading =
-      apollo::common::math::QuaternionToHeading(quat.w(), quat.x(), quat.y(),
-                          quat.z());
+  double heading = apollo::common::math::QuaternionToHeading(
+      quat.w(), quat.x(), quat.y(), quat.z());
   mutable_pose->set_heading(heading);
 
-    apollo::common::math::EulerAnglesZXYd euler(quat.w(), quat.x(), quat.y(),
-                          quat.z());
+  apollo::common::math::EulerAnglesZXYd euler(quat.w(), quat.x(), quat.y(),
+                                              quat.z());
   mutable_pose->mutable_euler_angles()->set_x(euler.pitch());
   mutable_pose->mutable_euler_angles()->set_y(euler.roll());
   mutable_pose->mutable_euler_angles()->set_z(euler.yaw());
@@ -340,9 +346,9 @@ bool NDTLocalization::QueryPoseFromTF(double time, Eigen::Affine3d* pose) {
   cyber::Time query_time(time);
   const float time_out = 0.01f;
   std::string err_msg;
-  if (!transform_query_.LookupTransformToAffine(
-          tf_target_frame_id_, tf_source_frame_id_, query_time, pose,
-          time_out, &err_msg)) {
+  if (!transform_query_.LookupTransformToAffine(tf_target_frame_id_,
+                                                tf_source_frame_id_, query_time,
+                                                pose, time_out, &err_msg)) {
     AERROR << "Can not transform: " << err_msg;
     return false;
   }
@@ -421,11 +427,11 @@ bool NDTLocalization::QueryPoseFromBuffer(double time, Eigen::Affine3d* pose) {
 
   Eigen::Quaterniond pre_quat(pre_pose.pose.linear());
 
-    apollo::common::math::EulerAnglesZXYd pre_euler(
-      pre_quat.w(), pre_quat.x(), pre_quat.y(), pre_quat.z());
+  apollo::common::math::EulerAnglesZXYd pre_euler(pre_quat.w(), pre_quat.x(),
+                                                  pre_quat.y(), pre_quat.z());
 
   Eigen::Quaterniond next_quat(next_pose.pose.linear());
-    apollo::common::math::EulerAnglesZXYd next_euler(
+  apollo::common::math::EulerAnglesZXYd next_euler(
       next_quat.w(), next_quat.x(), next_quat.y(), next_quat.z());
 
   double tmp_euler[3] = {};
@@ -530,12 +536,10 @@ bool NDTLocalization::UpdateLidarExtrinsic(const std::string& lidar_frame_id) {
 
   const Eigen::Quaterniond ext_quat(velodyne_extrinsic_.linear());
   AINFO << "NDT lidar rigid TF: " << tf_target_frame_id_ << " -> "
-        << lidar_frame_id << " trans: "
-        << velodyne_extrinsic_.translation().x() << ", "
-        << velodyne_extrinsic_.translation().y() << ", "
-        << velodyne_extrinsic_.translation().z() << " quat: "
-        << ext_quat.x() << ", " << ext_quat.y() << ", " << ext_quat.z()
-        << ", " << ext_quat.w();
+        << lidar_frame_id << " trans: " << velodyne_extrinsic_.translation().x()
+        << ", " << velodyne_extrinsic_.translation().y() << ", "
+        << velodyne_extrinsic_.translation().z() << " quat: " << ext_quat.x()
+        << ", " << ext_quat.y() << ", " << ext_quat.z() << ", " << ext_quat.w();
   lidar_locator_.SetVelodyneExtrinsic(velodyne_extrinsic_);
   lidar_frame_id_ = lidar_frame_id;
   has_lidar_extrinsic_ = true;

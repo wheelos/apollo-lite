@@ -25,7 +25,7 @@ try:
         from modules.common_msgs.perception_msgs import traffic_light_detection_pb2
         from modules.common_msgs.map_msgs.map_pb2 import Map
     except ImportError:
-        from modules.localization.proto import localization_pb2
+        import wheelos_msgs.localization_msgs.localization_pb2 as localization_pb2
         from modules.perception.proto import traffic_light_detection_pb2
         from modules.map.proto.map_pb2 import Map
 except ImportError:

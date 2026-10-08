@@ -27,7 +27,7 @@
 
 #include "cyber/common/log.h"
 #include "modules/common/util/perf_util.h"
-#include "modules/localization/common/localization_gflags.h"
+#include "modules/ndt_localization/common/localization_gflags.h"
 
 namespace apollo {
 namespace localization {

@@ -20,12 +20,14 @@
 #include <string>
 
 #include "Eigen/Geometry"
-#include "wheelos_msgs/sensor_msgs/ins.pb.h"
-#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
-#include "modules/ndt_localization/localization_pose_buffer.h"
-#include "modules/ndt_localization/ndt_locator/lidar_locator_ndt.h"
+
 #include "wheelos_msgs/localization_msgs/gps.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
+#include "wheelos_msgs/sensor_msgs/ins.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+
+#include "modules/ndt_localization/localization_pose_buffer.h"
+#include "modules/ndt_localization/ndt_locator/lidar_locator_ndt.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -52,7 +54,7 @@ class NDTLocalization {
   NDTLocalization() = default;
   ~NDTLocalization() = default;
   /**@brief init configuration */
-  void Init();
+  bool Init();
   /**@brief receive odometry message */
   void OdometryCallback(const std::shared_ptr<localization::Gps>& odometry_msg);
   /**@brief receive lidar pointcloud message */
@@ -134,7 +136,7 @@ class NDTLocalization {
   bool is_service_started_ = false;
 
   std::list<TimeStampPose, Eigen::aligned_allocator<TimeStampPose>>
-    odometry_buffer_;
+      odometry_buffer_;
   std::mutex odometry_buffer_mutex_;
   unsigned int odometry_buffer_size_ = 0;
   const unsigned int max_odometry_buffer_size_ = 100;

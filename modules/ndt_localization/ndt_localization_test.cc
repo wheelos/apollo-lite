@@ -15,11 +15,14 @@
  *****************************************************************************/
 
 #include "modules/ndt_localization/ndt_localization.h"
+
 #include <memory>
-#include "cyber/init.h"
+
 #include "gtest/gtest.h"
+
+#include "cyber/init.h"
 #include "modules/common/configs/config_gflags.h"
-#include "modules/localization/common/localization_gflags.h"
+#include "modules/ndt_localization/common/localization_gflags.h"
 
 namespace apollo {
 namespace localization {

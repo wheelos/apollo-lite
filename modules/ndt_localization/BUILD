@@ -19,12 +19,13 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"NDTlocalization\\\""],
     deps = [
         "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/math",
         "@wheelos_common//modules/common/monitor_log",
         "@wheelos_common//modules/common/util:util_tool",
-        "//modules/localization/common:localization_gflags",
-        "//modules/localization/common:rigid_transform_helper",
-        "//modules/localization/msf/common/util",
+        "//modules/ndt_localization/common:localization_gflags",
+        "//modules/ndt_localization/common:rigid_transform_helper",
+        "//modules/ndt_localization/common/util",
         "//modules/ndt_localization/ndt_locator:ndt_lidar_locator",
         "//modules/transform:transform_broadcaster",
         "//modules/transform:transform_query",
@@ -83,6 +84,7 @@ filegroup(
         "dag/dag_streaming_ndt_localization.dag",
         "conf/ndt_localization.conf",
         "launch/ndt_localization.launch",
+        "params/velodyne64_height.yaml",
     ],
 )
 
@@ -101,6 +103,10 @@ install(
     library_dest = "ndt_localization/lib",
     targets = [
         ":libndt_localization_component.so",
+    ],
+    deps = [
+        "//modules/ndt_localization/common:install",
+        "//modules/ndt_localization/map_creation:install",
     ],
 )
 

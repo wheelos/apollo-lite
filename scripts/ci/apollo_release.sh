@@ -220,9 +220,6 @@ function run_install() {
     bazel run ${BAZEL_OPTS} ${CMDLINE_OPTIONS} ${install_targets} \
         -- ${install_opts} ${INSTALL_OPTIONS} "${PREFIX_DIR}"
 
-    # install files copy from source code.
-    bazel run ${BAZEL_OPTS} ${CMDLINE_OPTIONS} //:install_src \
-        -- ${install_opts} ${INSTALL_OPTIONS} "${PREFIX_DIR}"
 }
 
 function export_python_path() {

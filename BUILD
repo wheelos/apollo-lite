@@ -1,4 +1,4 @@
-load("//tools/install:install.bzl", "install", "install_src_files")
+load("//tools/install:install.bzl", "install")
 load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(
@@ -27,11 +27,12 @@ install(
             "//modules/dreamview:install",
             "//modules/drivers:install",
             "//modules/guardian:install",
-            "//modules/localization:install",
+            "//modules/ndt_localization:install",
             "//modules/map:install",
             "//modules/monitor:install",
             "//modules/prediction:install",
             "//modules/routing:install",
+            "//modules/rtk_localization:install",
             "//modules/storytelling:install",
             "//modules/task_manager:install",
             "//modules/transform:install",
@@ -41,44 +42,7 @@ install(
             "//third_party/opengl:install",
             "//third_party/adolc:install",
             "//third_party/tf2:install",
-            "//third_party/localization_msf:install",
             "//third_party/rtklib:install",
-        ],
-    ),
-)
-
-install_src_files(
-    name = "install_src",
-    deps = if_gpu(
-        [
-            "//modules/perception:install_src",
-            "//modules/planning:install_src",
-        ],
-        [
-            "//tools:install_src",
-            "//modules/control:install_src",
-            "//modules/dreamview:install_src",
-            "//modules/map:install_src",
-            "//modules/monitor:install_src",
-            "//modules/planning:install_src",
-            "//modules/routing:install_src",
-            # task_manager has no BUILD file in this checkout; restore this
-            # dependency when its source-install target is available again.
-            "//modules/transform:install_src",
-            "//modules/calibration:install_src",
-            # canbus has an install target but no source-install target.
-            "//modules/drivers:install_src",
-            "//modules/guardian:install_src",
-            "//modules/localization:install_src",
-            "//modules/prediction:install_src",
-            "//modules/storytelling:install_src",
-            "//third_party/ipopt:install_src",
-            "//third_party/opengl:install_src",
-            "//third_party/adolc:install_src",
-            "//third_party/tf2:install_src",
-            # The bundled MSF library was removed pending the localization
-            # refactor; keep it out of source-artifact installation meanwhile.
-            "//third_party/rtklib:install_src",
         ],
     ),
 )

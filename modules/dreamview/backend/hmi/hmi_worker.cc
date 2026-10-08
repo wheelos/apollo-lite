@@ -19,8 +19,8 @@
 #include <dirent.h>
 #include <sys/wait.h>
 
-#include <chrono>
 #include <cctype>
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
@@ -31,13 +31,14 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 
-#include "wheelos_msgs/monitor_msgs/system_status.pb.h"
 #include "modules/dreamview/proto/scenario.pb.h"
+#include "wheelos_msgs/monitor_msgs/system_status.pb.h"
 
 #include "cyber/common/file.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/kv_db/kv_db.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/common/util/future.h"
 #include "modules/common/util/map_util.h"
 #include "modules/common/util/message_util.h"
@@ -126,20 +127,6 @@ Map<std::string, std::string> ListFilesAsDict(std::string_view dir,
   return result;
 }
 
-template <class FlagType, class ValueType>
-void SetGlobalFlag(std::string_view flag_name, const ValueType &value,
-                   FlagType *flag) {
-  constexpr char kGlobalFlagfile[] =
-      "/apollo/modules/global_config/global_flagfile.txt";
-  if (*flag != value) {
-    *flag = value;
-    // Overwrite global flagfile.
-    std::ofstream fout(kGlobalFlagfile, std::ios_base::app);
-    ACHECK(fout) << "Fail to open global flagfile " << kGlobalFlagfile;
-    fout << "\n--" << flag_name << "=" << value << std::endl;
-  }
-}
-
 void System(std::string_view cmd) {
   const int ret = std::system(cmd.data());
   if (ret == 0) {
@@ -212,11 +199,13 @@ void HMIWorker::InitStatus() {
   }
 
   // Populate maps and current_map.
+  apollo::common::SelectedMap selected_map;
+  const bool has_selected_map =
+      apollo::common::MapSelection::GetSelectedMap(&selected_map);
   for (const auto &map_entry : config_.maps()) {
     status_.add_maps(map_entry.first);
 
-    // If current FLAG_map_dir is available, set it as current_map.
-    if (map_entry.second == FLAGS_map_dir) {
+    if (has_selected_map && map_entry.first == selected_map.id) {
       status_.set_current_map(map_entry.first);
     }
   }
@@ -512,6 +501,10 @@ bool HMIWorker::ChangeMap(const std::string &map_name) {
     AERROR << "Unknown map " << map_name;
     return false;
   }
+  if (!apollo::common::MapSelection::SelectMap(map_name)) {
+    AERROR << "Failed to select map " << map_name;
+    return false;
+  }
 
   {
     // Update current_map status.
@@ -523,7 +516,6 @@ bool HMIWorker::ChangeMap(const std::string &map_name) {
     status_changed_ = true;
   }
 
-  SetGlobalFlag("map_dir", *map_dir, &FLAGS_map_dir);
   ResetMode();
   return true;
 }
@@ -581,7 +573,6 @@ void HMIWorker::StartModule(const std::string &module) {
       status_changed_ = true;
     }
   }
-
 }
 
 void HMIWorker::StopModule(const std::string &module) {
