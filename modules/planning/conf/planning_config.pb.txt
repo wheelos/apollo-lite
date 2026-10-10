@@ -8,15 +8,12 @@ topic_config {
   relative_map_topic: "/apollo/relative_map"
   story_telling_topic: "/apollo/storytelling"
   traffic_light_detection_topic: "/apollo/perception/traffic_light"
-  planning_learning_data_topic: "/apollo/planning/learning_data"
   planning_command_topic: "/apollo/planning/command"
   mission_directive_topic: "/apollo/mission/directive"
   planning_runtime_status_topic: "/apollo/planning/runtime_status"
   motion_directive_topic: "/apollo/planning/motion_directive"
   control_runtime_status_topic: "/apollo/control/runtime_status"
 }
-# NO_LEARNING / E2E / HYBRID / RL_TEST / E2E_TEST / HYBRID_TEST
-learning_mode: NO_LEARNING
 standard_planning_config {
   planner_type: PUBLIC_ROAD
   planner_public_road_config {
@@ -408,12 +405,6 @@ default_task_config: {
   task_type: PATH_DECIDER
   path_decider_config{
     static_obstacle_buffer: 0.3
-  }
-}
-default_task_config {
-  task_type: PATH_REFERENCE_DECIDER
-  path_reference_decider_config {
-    min_path_reference_length: 20
   }
 }
 scenario_transition_config {

@@ -92,25 +92,6 @@ class PathData {
     return blocking_obstacle_id_;
   }
 
-  const bool is_valid_path_reference() const {
-    return is_valid_path_reference_;
-  }
-  void set_is_valid_path_reference(bool is_valid_path_reference) {
-    is_valid_path_reference_ = is_valid_path_reference;
-  }
-
-  const bool is_optimized_towards_trajectory_reference() const {
-    return is_optimized_towards_trajectory_reference_;
-  }
-  void set_is_optimized_towards_trajectory_reference(
-      bool is_optimized_towards_trajectory_reference) {
-    is_optimized_towards_trajectory_reference_ =
-        is_optimized_towards_trajectory_reference;
-  }
-
-  const std::vector<common::PathPoint> &path_reference() const;
-  void set_path_reference(const std::vector<common::PathPoint> &path_reference);
-
  private:
   /*
    * convert frenet path to cartesian path by reference line
@@ -134,24 +115,6 @@ class PathData {
   std::string path_label_ = "";
   std::string blocking_obstacle_id_;
 
-  /**
-   * @brief parameters for using the learning model output as a path reference
-   *
-   */
-  // wheter this PathData is a path reference serving as an optimization target
-  // for later modules
-  bool is_valid_path_reference_ = false;
-
-  /**
-   * @brief Given a trajectory reference, whether this PathData is optimized
-   * according to the "path" part of the trajectory so that "speed" part of the
-   * trajectory could be used in later modules accordingly
-   *
-   */
-  bool is_optimized_towards_trajectory_reference_ = false;
-
-  // path reference
-  std::vector<common::PathPoint> path_reference_;
 };
 
 }  // namespace planning

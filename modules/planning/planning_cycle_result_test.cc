@@ -57,14 +57,5 @@ TEST(PlanningCycleResultTest, PlannedCyclePublishesAndRecordsHistory) {
   EXPECT_TRUE(result.ShouldRecordHistory());
 }
 
-TEST(PlanningCycleResultTest, LearningOnlyDoesNotPublishPlanningOutputs) {
-  PlanningCycleResult result;
-  result.outcome = PlanningCycleOutcome::kLearningOnly;
-
-  EXPECT_FALSE(result.ShouldPublishMotion());
-  EXPECT_FALSE(result.ShouldPublishTrajectory());
-  EXPECT_FALSE(result.ShouldRecordHistory());
-}
-
 }  // namespace planning
 }  // namespace apollo

@@ -229,14 +229,6 @@ bool PlanningComponent::Init() {
       << "failed to load planning config file "
       << ComponentBase::ConfigFilePath();
 
-  if (FLAGS_planning_offline_learning ||
-      config_.learning_mode() != PlanningConfig::NO_LEARNING) {
-    if (!message_process_.Init(config_, injector_)) {
-      AERROR << "failed to init MessageProcess";
-      return false;
-    }
-  }
-
   auto init_status =
       planning_coordinator_->Init(config_, FLAGS_use_navigation_mode);
   if (!init_status.ok()) {
@@ -297,9 +289,6 @@ bool PlanningComponent::Init() {
       config_.topic_config().planning_runtime_status_topic());
   motion_directive_writer_ = node_->CreateWriter<MotionDirective>(
       config_.topic_config().motion_directive_topic());
-
-  planning_learning_data_writer_ = node_->CreateWriter<PlanningLearningData>(
-      config_.topic_config().planning_learning_data_topic());
 
   return true;
 }
@@ -809,30 +798,6 @@ void PlanningComponent::ApplyPendingMissionDirective(
   }
 }
 
-void PlanningComponent::ProcessLearningInputs() {
-  message_process_.OnChassis(*local_view_.chassis);
-  message_process_.OnPrediction(*local_view_.prediction_obstacles);
-  message_process_.OnRoutingResponse(*local_view_.routing);
-  message_process_.OnStoryTelling(*local_view_.stories);
-  message_process_.OnTrafficLightDetection(*local_view_.traffic_light);
-  message_process_.OnLocalization(*local_view_.localization_estimate);
-}
-
-bool PlanningComponent::PublishLearningDataFrame() {
-  PlanningLearningData planning_learning_data;
-  LearningDataFrame* learning_data_frame =
-      injector_->learning_based_data()->GetLatestLearningDataFrame();
-  if (learning_data_frame == nullptr) {
-    AERROR << "failed to generate planning learning data frame";
-    return false;
-  }
-  planning_learning_data.mutable_learning_data_frame()->CopyFrom(
-      *learning_data_frame);
-  common::util::FillHeader(node_->Name(), &planning_learning_data);
-  planning_learning_data_writer_->Write(planning_learning_data);
-  return true;
-}
-
 void PlanningComponent::FinalizeTrajectoryTiming(
     double original_start_time_sec, ADCTrajectory* trajectory) const {
   CHECK_NOTNULL(trajectory);
@@ -986,18 +951,6 @@ PlanningComponent::PreparePlanningCycle(
   return PlanningCyclePreparation::kReady;
 }
 
-bool PlanningComponent::ProcessLearningCycle(PlanningCycleResult* result) {
-  CHECK_NOTNULL(result);
-  if (config_.learning_mode() != PlanningConfig::NO_LEARNING) {
-    ProcessLearningInputs();
-  }
-  if (config_.learning_mode() != PlanningConfig::RL_TEST) {
-    return false;
-  }
-  result->outcome = PlanningCycleOutcome::kLearningOnly;
-  return true;
-}
-
 void PlanningComponent::RunPlanningCycle(PlanningCycleResult* result) {
   CHECK_NOTNULL(result);
   ADCTrajectory adc_trajectory_pb;
@@ -1089,10 +1042,6 @@ bool PlanningComponent::Proc(
     return CompletePlanningCycle(&result, chassis.get(),
                                  localization_estimate.get());
   }
-  if (ProcessLearningCycle(&result)) {
-    return PublishLearningDataFrame();
-  }
-
   RunPlanningCycle(&result);
   return CompletePlanningCycle(&result, chassis.get(),
                                localization_estimate.get());

@@ -445,7 +445,6 @@ cc_library(
     hdrs = ["frame.h"],
     copts = PLANNING_COPTS,
     deps = [
-        ":feature_output",
         ":local_view",
         ":obstacle",
         ":open_space_info",
@@ -649,60 +648,6 @@ cc_test(
 )
 
 cc_library(
-    name = "feature_output",
-    srcs = ["feature_output.cc"],
-    hdrs = ["feature_output.h"],
-    copts = PLANNING_COPTS,
-    deps = [
-        "@core//cyber",
-        "@wheelos_common//modules/common/util",
-        "//modules/planning/common:planning_gflags",
-        "//modules/planning/proto:learning_data_cc_proto",
-    ],
-)
-
-cc_library(
-    name = "message_process",
-    srcs = ["message_process.cc"],
-    hdrs = ["message_process.h"],
-    copts = PLANNING_COPTS,
-    deps = [
-        ":dependency_injector",
-        ":feature_output",
-        "@core//cyber",
-        "@wheelos_common//modules/common/adapters:adapter_gflags",
-        "@wheelos_common//modules/common/configs:config_gflags",
-        "@wheelos_common//modules/common/util:util_tool",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/dreamview_msgs:hmi_status_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/storytelling_msgs:story_cc_proto",
-        "//modules/planning/common/util:math_util_lib",
-        "//modules/planning/common/util:util_lib",
-        "//modules/planning/proto:learning_data_cc_proto",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "trajectory_evaluator",
-    srcs = ["trajectory_evaluator.cc"],
-    hdrs = ["trajectory_evaluator.h"],
-    copts = PLANNING_COPTS,
-    deps = [
-        "@core//cyber",
-        "//modules/planning/common:planning_gflags",
-        "//modules/planning/common/util:util_lib",
-        "//modules/planning/pipeline:evaluator_logger",
-        "//modules/planning/proto:learning_data_cc_proto",
-    ],
-)
-
-cc_library(
     name = "dependency_injector",
     hdrs = ["dependency_injector.h"],
     copts = PLANNING_COPTS,
@@ -710,22 +655,10 @@ cc_library(
         ":ego_info",
         ":frame",
         ":history",
-        ":learning_based_data",
         ":planning_context",
         "@wheelos_common//modules/common/vehicle_model",
         "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "@wheelos_common//modules/common/vehicle_state:vehicle_reference",
-    ],
-)
-
-cc_library(
-    name = "learning_based_data",
-    srcs = ["learning_based_data.cc"],
-    hdrs = ["learning_based_data.h"],
-    copts = PLANNING_COPTS,
-    deps = [
-        "@core//cyber",
-        "//modules/planning/proto:learning_data_cc_proto",
     ],
 )
 

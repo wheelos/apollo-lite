@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#include "modules/planning/proto/learning_data.pb.h"
 #include "modules/planning/proto/planning_config.pb.h"
 #include "wheelos_msgs/chassis_msgs/chassis.pb.h"
 #include "wheelos_msgs/control_msgs/control_runtime_status.pb.h"
@@ -41,7 +40,6 @@
 #include "cyber/component/component.h"
 #include "cyber/message/raw_message.h"
 #include "modules/planning/common/hybrid_maneuver_supervisor.h"
-#include "modules/planning/common/message_process.h"
 #include "modules/planning/common/motion_plan_builder.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/common/planning_semantics.h"
@@ -90,7 +88,6 @@ class PlanningComponent final
       const std::shared_ptr<localization::LocalizationEstimate>&
           localization_estimate,
       PlanningCycleResult* result);
-  bool ProcessLearningCycle(PlanningCycleResult* result);
   void RunPlanningCycle(PlanningCycleResult* result);
   void PrepareInputHoldResult(const std::string& reason,
                               PlanningCycleResult* result);
@@ -127,8 +124,6 @@ class PlanningComponent final
       const std::shared_ptr<localization::LocalizationEstimate>&
           localization_estimate);
   void RefreshEnvironmentState();
-  void ProcessLearningInputs();
-  bool PublishLearningDataFrame();
   void FinalizeTrajectoryTiming(double original_start_time_sec,
                                 ADCTrajectory* trajectory) const;
   RuntimeState InferCoordinatorRuntimeState() const;
@@ -171,9 +166,6 @@ class PlanningComponent final
   std::shared_ptr<cyber::Writer<PlanningRuntimeStatus>>
       planning_runtime_status_writer_;
   std::shared_ptr<cyber::Writer<MotionDirective>> motion_directive_writer_;
-  std::shared_ptr<cyber::Writer<PlanningLearningData>>
-      planning_learning_data_writer_;
-
   std::mutex mutex_;
   perception::TrafficLightDetection traffic_light_;
   routing::RoutingResponse routing_;
@@ -193,7 +185,6 @@ class PlanningComponent final
   std::shared_ptr<DependencyInjector> injector_;
 
   PlanningConfig config_;
-  MessageProcess message_process_;
   CapabilityExtractor capability_extractor_;
   EnvironmentModelBuilder environment_model_builder_;
   HybridManeuverSupervisor hybrid_maneuver_supervisor_;

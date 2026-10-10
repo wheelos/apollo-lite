@@ -32,15 +32,12 @@
 #include "modules/planning/tasks/deciders/path_bounds_decider/path_bounds_decider.h"
 #include "modules/planning/tasks/deciders/path_decider/path_decider.h"
 #include "modules/planning/tasks/deciders/path_lane_borrow_decider/path_lane_borrow_decider.h"
-#include "modules/planning/tasks/deciders/path_reference_decider/path_reference_decider.h"
 #include "modules/planning/tasks/deciders/path_reuse_decider/path_reuse_decider.h"
 #include "modules/planning/tasks/deciders/rss_decider/rss_decider.h"
 #include "modules/planning/tasks/deciders/rule_based_stop_decider/rule_based_stop_decider.h"
 #include "modules/planning/tasks/deciders/speed_bounds_decider/speed_bounds_decider.h"
 #include "modules/planning/tasks/deciders/speed_decider/speed_decider.h"
 #include "modules/planning/tasks/deciders/st_bounds_decider/st_bounds_decider.h"
-#include "modules/planning/tasks/learning_model/learning_model_inference_task.h"
-#include "modules/planning/tasks/learning_model/learning_model_inference_trajectory_task.h"
 #include "modules/planning/tasks/optimizers/open_space_trajectory_generation/open_space_trajectory_provider.h"
 #include "modules/planning/tasks/optimizers/open_space_trajectory_partition/open_space_trajectory_partition.h"
 #include "modules/planning/tasks/optimizers/path_time_heuristic/path_time_heuristic_optimizer.h"
@@ -125,12 +122,6 @@ void TaskFactory::Init(const PlanningConfig& config,
         return new PathLaneBorrowDecider(config, injector);
       });
   task_factory_.Register(
-      TaskConfig::PATH_REFERENCE_DECIDER,
-      [](const TaskConfig& config,
-         const std::shared_ptr<DependencyInjector>& injector) -> Task* {
-        return new PathReferenceDecider(config, injector);
-      });
-  task_factory_.Register(
       TaskConfig::PATH_REUSE_DECIDER,
       [](const TaskConfig& config,
          const std::shared_ptr<DependencyInjector>& injector) -> Task* {
@@ -212,18 +203,6 @@ void TaskFactory::Init(const PlanningConfig& config,
       });
   ///////////////////////////
   // other tasks
-  task_factory_.Register(
-      TaskConfig::LEARNING_MODEL_INFERENCE_TASK,
-      [](const TaskConfig& config,
-         const std::shared_ptr<DependencyInjector>& injector) -> Task* {
-        return new LearningModelInferenceTask(config, injector);
-      });
-  task_factory_.Register(
-      TaskConfig::LEARNING_MODEL_INFERENCE_TRAJECTORY_TASK,
-      [](const TaskConfig& config,
-         const std::shared_ptr<DependencyInjector>& injector) -> Task* {
-        return new LearningModelInferenceTrajectoryTask(config, injector);
-      });
 
   for (const auto& default_task_config : config.default_task_config()) {
     default_task_configs_[default_task_config.task_type()] =

@@ -37,8 +37,6 @@ namespace planning {
 using apollo::common::ErrorCode;
 using apollo::common::Status;
 using apollo::common::VehicleConfigHelper;
-using apollo::common::math::Gaussian;
-
 PiecewiseJerkPathOptimizer::PiecewiseJerkPathOptimizer(
     const TaskConfig& config,
     const std::shared_ptr<DependencyInjector>& injector)
@@ -83,8 +81,6 @@ common::Status PiecewiseJerkPathOptimizer::Process(
   const auto& path_boundaries =
       reference_line_info_->GetCandidatePathBoundaries();
   ADEBUG << "There are " << path_boundaries.size() << " path boundaries.";
-  const auto& reference_path_data = reference_line_info_->path_data();
-
   std::vector<PathData> candidate_path_data;
   for (const auto& path_boundary : path_boundaries) {
     size_t path_boundary_size = path_boundary.boundary().size();
@@ -129,29 +125,6 @@ common::Status PiecewiseJerkPathOptimizer::Process(
     // final_path_data might carry info from upper stream
     PathData path_data = *final_path_data;
 
-    // updated cost function for path reference
-    std::vector<double> path_reference_l(path_boundary_size, 0.0);
-    bool is_valid_path_reference = false;
-    size_t path_reference_size = reference_path_data.path_reference().size();
-
-    if (path_boundary.label().find("regular") != std::string::npos &&
-        reference_path_data.is_valid_path_reference()) {
-      ADEBUG << "path label is: " << path_boundary.label();
-      // when path reference is ready
-      for (size_t i = 0; i < path_reference_size; ++i) {
-        common::SLPoint path_reference_sl;
-        reference_line.XYToSL(
-            common::util::PointFactory::ToPointENU(
-                reference_path_data.path_reference().at(i).x(),
-                reference_path_data.path_reference().at(i).y()),
-            &path_reference_sl);
-        path_reference_l[i] = path_reference_sl.l();
-      }
-      end_state[0] = path_reference_l.back();
-      path_data.set_is_optimized_towards_trajectory_reference(true);
-      is_valid_path_reference = true;
-    }
-
     double kappa_max = 0.0;
     std::vector<std::pair<double, double>> ddl_bounds;
     auto& vehicle_params = VehicleConfigHelper::GetConfig().vehicle_param();
@@ -180,10 +153,9 @@ common::Status PiecewiseJerkPathOptimizer::Process(
     }
 
     bool res_opt =
-        OptimizePath(init_frenet_state, end_state, std::move(path_reference_l),
-                     path_reference_size, path_boundary.delta_s(),
-                     is_valid_path_reference, path_boundary.boundary(),
-                     ddl_bounds, w, max_iter, &opt_l, &opt_dl, &opt_ddl);
+        OptimizePath(init_frenet_state, end_state, path_boundary.delta_s(),
+                     path_boundary.boundary(), ddl_bounds, w, max_iter, &opt_l,
+                     &opt_dl, &opt_ddl);
 
     if (res_opt) {
       for (size_t i = 0; i < path_boundary_size; i += 4) {
@@ -249,8 +221,7 @@ PiecewiseJerkPathOptimizer::ConvertPathPointRefFromFrontAxeToRearAxe(
 bool PiecewiseJerkPathOptimizer::OptimizePath(
     const std::pair<std::array<double, 3>, std::array<double, 3>>& init_state,
     const std::array<double, 3>& end_state,
-    std::vector<double> path_reference_l_ref, const size_t path_reference_size,
-    const double delta_s, const bool is_valid_path_reference,
+    const double delta_s,
     const std::vector<std::pair<double, double>>& lat_boundaries,
     const std::vector<std::pair<double, double>>& ddl_bounds,
     const std::array<double, 5>& w, const int max_iter, std::vector<double>* x,
@@ -263,9 +234,7 @@ bool PiecewiseJerkPathOptimizer::OptimizePath(
   // TODO(Hongyi): update end_state settings
   piecewise_jerk_problem.set_end_state_ref({1000.0, 0.0, 0.0}, end_state);
   // pull over scenarios
-  // Because path reference might also make the end_state != 0
-  // we have to exclude this condition here
-  if (end_state[0] != 0 && !is_valid_path_reference) {
+  if (end_state[0] != 0) {
     std::vector<double> x_ref(kNumKnots, end_state[0]);
     const auto& pull_over_type = injector_->planning_context()
                                      ->planning_status()
@@ -274,27 +243,6 @@ bool PiecewiseJerkPathOptimizer::OptimizePath(
     const double weight_x_ref =
         pull_over_type == PullOverStatus::EMERGENCY_PULL_OVER ? 200.0 : 10.0;
     piecewise_jerk_problem.set_x_ref(weight_x_ref, std::move(x_ref));
-  }
-  // use path reference as a optimization cost function
-  if (is_valid_path_reference) {
-    // for non-path-reference part
-    // weight_x_ref is set to default value, where
-    // l weight = weight_x_ + weight_x_ref_ = (1.0 + 0.0)
-    std::vector<double> weight_x_ref_vec(kNumKnots, 0.0);
-    // increase l weight for path reference part only
-
-    const double peak_value = config_.piecewise_jerk_path_optimizer_config()
-                                  .path_reference_l_weight();
-    const double peak_value_x =
-        0.5 * static_cast<double>(path_reference_size) * delta_s;
-    for (size_t i = 0; i < path_reference_size; ++i) {
-      // Gaussian weighting
-      const double x = static_cast<double>(i) * delta_s;
-      weight_x_ref_vec.at(i) = GaussianWeighting(x, peak_value, peak_value_x);
-      ADEBUG << "i: " << i << ", weight: " << weight_x_ref_vec.at(i);
-    }
-    piecewise_jerk_problem.set_x_ref(std::move(weight_x_ref_vec),
-                                     path_reference_l_ref);
   }
   // for debug:here should use std::move
   piecewise_jerk_problem.set_weight_x(w[0]);
@@ -334,11 +282,9 @@ bool PiecewiseJerkPathOptimizer::OptimizePath(
            << " jerk bound" << jerk_bound;
     for (size_t i = 0; i < lat_boundaries.size(); i++) {
       ssm << lat_boundaries[i].first << " " << lat_boundaries[i].second << ","
-          << ddl_bounds[i].first << " " << ddl_bounds[i].second << ","
-          << path_reference_l_ref[i] << std::endl;
+          << ddl_bounds[i].first << " " << ddl_bounds[i].second << std::endl;
     }
-    AERROR << "lat boundary, ddl boundary , path reference" << std::endl
-           << ssm.str();
+    AERROR << "lat boundary, ddl boundary" << std::endl << ssm.str();
     return false;
   }
 
@@ -389,18 +335,6 @@ double PiecewiseJerkPathOptimizer::EstimateJerkBoundary(
     const double vehicle_speed, const double axis_distance,
     const double max_yaw_rate) const {
   return max_yaw_rate / axis_distance / vehicle_speed;
-}
-
-double PiecewiseJerkPathOptimizer::GaussianWeighting(
-    const double x, const double peak_weighting,
-    const double peak_weighting_x) const {
-  double std = 1 / (std::sqrt(2 * M_PI) * peak_weighting);
-  double u = peak_weighting_x * std;
-  double x_updated = x * std;
-  ADEBUG << peak_weighting *
-                exp(-0.5 * (x - peak_weighting_x) * (x - peak_weighting_x));
-  ADEBUG << Gaussian(u, std, x_updated);
-  return Gaussian(u, std, x_updated);
 }
 
 }  // namespace planning

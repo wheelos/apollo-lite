@@ -70,8 +70,6 @@ class ScenarioManager final {
    */
   void ScenarioDispatch(const Frame& frame);
 
-  ScenarioType ScenarioDispatchLearning(const Frame& frame);
-
   /**
    * @brief Helper: Handle scenario switching life-cycle
    *        (OnExit Old -> Create New -> OnEnter New).

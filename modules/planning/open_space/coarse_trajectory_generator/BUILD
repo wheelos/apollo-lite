@@ -114,7 +114,7 @@ cc_test(
     linkopts = ["-lgomp"],
     deps = [
         ":hybrid_a_star",
-        "//modules/planning/testing:gtest_exit_main",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 

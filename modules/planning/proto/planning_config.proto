@@ -25,7 +25,9 @@ message TaskConfig {
     PATH_BOUNDS_DECIDER = 10;
     PATH_DECIDER = 11;
     PATH_LANE_BORROW_DECIDER = 12;
-    PATH_REFERENCE_DECIDER = 13;
+    reserved 13, 27, 28;
+    reserved "PATH_REFERENCE_DECIDER", "LEARNING_MODEL_INFERENCE_TASK",
+        "LEARNING_MODEL_INFERENCE_TRAJECTORY_TASK";
     PATH_REUSE_DECIDER = 14;
     RSS_DECIDER = 15;
     RULE_BASED_STOP_DECIDER = 16;
@@ -40,10 +42,12 @@ message TaskConfig {
     PIECEWISE_JERK_PATH_OPTIMIZER = 24;
     PIECEWISE_JERK_SPEED_OPTIMIZER = 25;
     SPEED_HEURISTIC_OPTIMIZER = 26;
-    // other tasks
-    LEARNING_MODEL_INFERENCE_TASK = 27;
-    LEARNING_MODEL_INFERENCE_TRAJECTORY_TASK = 28;
   };
+
+  reserved 11, 22, 23;
+  reserved "path_reference_decider_config",
+      "learning_model_inference_task_config",
+      "learning_model_inference_trajectory_task_config";
 
   optional TaskType task_type = 1;
   oneof task_config {
@@ -57,7 +61,6 @@ message TaskConfig {
     PathBoundsDeciderConfig path_bounds_decider_config = 8;
     PathDeciderConfig path_decider_config = 9;
     PathLaneBorrowDeciderConfig path_lane_borrow_decider_config = 10;
-    PathReferenceDeciderConfig path_reference_decider_config = 11;
     PathReuseDeciderConfig path_reuse_decider_config = 12;
     RuleBasedStopDeciderConfig rule_based_stop_decider_config = 13;
     SpeedBoundsDeciderConfig speed_bounds_decider_config = 14;
@@ -73,10 +76,6 @@ message TaskConfig {
     PiecewiseJerkSpeedOptimizerConfig piecewise_jerk_speed_optimizer_config =
         20;
     SpeedHeuristicOptimizerConfig speed_heuristic_optimizer_config = 21;
-    // other tasks
-    LearningModelInferenceTaskConfig learning_model_inference_task_config = 22;
-    LearningModelInferenceTrajectoryTaskConfig
-        learning_model_inference_trajectory_task_config = 23;
   }
 }
 
@@ -109,10 +108,6 @@ message ScenarioEmergencyStopConfig {
 
 message ScenarioLaneFollowConfig {
     optional uint32 scenario_entry_score = 1 [default = 10];
-}
-
-message ScenarioLearningModelSampleConfig {
-  optional uint32 scenario_entry_score = 1 [default = 10];
 }
 
 message ScenarioNarrowStreetUTurnConfig {
@@ -215,6 +210,8 @@ message ScenarioYieldSignConfig {
 
 // scenario configs
 message ScenarioConfig {
+  reserved 6;
+  reserved "learning_model_sample_config";
 
   message StageConfig {
     optional StageType stage_type = 1;
@@ -233,7 +230,6 @@ message ScenarioConfig {
         bare_intersection_unprotected_config = 3;
     ScenarioEmergencyPullOverConfig emergency_pull_over_config = 4;
     ScenarioEmergencyStopConfig emergency_stop_config = 5;
-    ScenarioLearningModelSampleConfig learning_model_sample_config = 6;
     ScenarioNarrowStreetUTurnConfig narrow_street_u_turn_config = 7;
     ScenarioParkAndGoConfig park_and_go_config = 8;
     ScenarioPullOverConfig pull_over_config = 9;
@@ -296,7 +292,8 @@ message TopicConfig {
   reserved "routing_response_topic";
   optional string story_telling_topic = 10;
   optional string traffic_light_detection_topic = 11;
-  optional string planning_learning_data_topic = 12;
+  reserved 12;
+  reserved "planning_learning_data_topic";
   optional string planning_command_topic = 13
       [default = "/apollo/planning/command"];
   optional string planning_runtime_status_topic = 14
@@ -310,17 +307,9 @@ message TopicConfig {
 }
 
 message PlanningConfig {
-  enum PlanningLearningMode {
-    NO_LEARNING = 0;
-    E2E = 1;
-    HYBRID = 2;
-    RL_TEST = 3;
-    E2E_TEST = 4;
-    HYBRID_TEST = 5;
-  }
-
+  reserved 2;
+  reserved "learning_mode";
   optional TopicConfig topic_config = 1;
-  optional PlanningLearningMode learning_mode = 2;
   oneof planning_config {
     RtkPlanningConfig rtk_planning_config = 3;
     StandardPlanningConfig standard_planning_config = 4;

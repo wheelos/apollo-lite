@@ -73,7 +73,6 @@ cc_library(
         "//modules/planning/scenarios/intersection/traffic_light/unprotected_left_turn:traffic_light_unprotected_left_turn_scenario",
         "//modules/planning/scenarios/intersection/traffic_light/unprotected_right_turn:traffic_light_unprotected_right_turn_scenario",
         "//modules/planning/scenarios/intersection/yield_sign:yield_sign_scenario",
-        "//modules/planning/scenarios/learning_model:learning_model_sample_scenario",
         "//modules/planning/scenarios/maneuver/deadend_turnaround:deadend_turnaround_scenario",
         "//modules/planning/scenarios/maneuver/escape:escape_scenario",
         "//modules/planning/scenarios/maneuver/narrow_street:narrow_street_scenario",

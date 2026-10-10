@@ -30,7 +30,7 @@ cc_test(
     copts = PLANNING_COPTS,
     deps = [
         ":util_lib",
-        "//modules/planning/testing:gtest_exit_main",
+        "//modules/planning/common:gtest_exit_main",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
     ],
 )

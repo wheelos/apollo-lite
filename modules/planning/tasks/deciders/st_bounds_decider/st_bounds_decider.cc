@@ -119,16 +119,7 @@ Status STBoundsDecider::InitSTBoundsDecider(
 
   // Initialize Guide-Line and Driving-Limits.
   static constexpr double desired_speed = 15.0;
-  // If the path_data optimization is guided from a reference path of a
-  // reference trajectory, use its reference speed profile to select the st
-  // bounds in LaneFollow Hybrid Mode
-  if (path_data.is_optimized_towards_trajectory_reference()) {
-    st_guide_line_.Init(desired_speed,
-                        injector_->learning_based_data()
-                            ->learning_data_adc_future_trajectory_points());
-  } else {
-    st_guide_line_.Init(desired_speed);
-  }
+  st_guide_line_.Init(desired_speed);
   static constexpr double max_acc = 2.5;
   static constexpr double max_dec = 5.0;
   static constexpr double max_v = desired_speed * 1.5;

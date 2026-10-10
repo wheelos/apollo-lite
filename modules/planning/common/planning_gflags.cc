@@ -35,14 +35,6 @@ DEFINE_string(scenario_lane_follow_config_file,
               "/apollo/modules/planning/conf/"
               "scenario/lane_follow_config.pb.txt",
               "The lane_follow scenario configuration file");
-DEFINE_string(scenario_lane_follow_hybrid_config_file,
-              "/apollo/modules/planning/conf/"
-              "scenario/lane_follow_hybrid_config.pb.txt",
-              "The lane_follow scenario configuration file for HYBRID");
-DEFINE_string(scenario_learning_model_sample_config_file,
-              "/apollo/modules/planning/conf/"
-              "scenario/learning_model_sample_config.pb.txt",
-              "learning_model_sample scenario config file");
 DEFINE_string(scenario_narrow_street_u_turn_config_file,
               "/apollo/modules/planning/conf/"
               "scenario/narrow_street_u_turn_config.pb.txt",
@@ -550,30 +542,3 @@ DEFINE_bool(use_center_mass_in_path_planning, false,
             "model when computing ddl bounds.");
 
 DEFINE_bool(use_road_boundary_from_map, false, "get road boundary from HD map");
-
-DEFINE_bool(planning_offline_learning, false,
-            "offline learning. read record files and dump learning_data");
-DEFINE_string(planning_data_dir, "/apollo/modules/planning/data/",
-              "Prefix of files to store feature data");
-DEFINE_string(planning_offline_bags, "",
-              "a list of source files or directories for offline mode. "
-              "The items need to be separated by colon ':'. ");
-DEFINE_int32(learning_data_obstacle_history_time_sec, 3.0,
-             "time sec (second) of history trajectory points for a obstacle");
-DEFINE_int32(learning_data_frame_num_per_file, 100,
-             "number of learning_data_frame to write out in one data file.");
-DEFINE_string(
-    planning_birdview_img_feature_renderer_config_file,
-    "/apollo/modules/planning/conf/planning_semantic_map_config.pb.txt",
-    "config file for renderer singleton");
-
-DEFINE_bool(
-    skip_path_reference_in_side_pass, false,
-    "skipping using learning model output as path reference in side pass");
-DEFINE_bool(
-    skip_path_reference_in_change_lane, true,
-    "skipping using learning model output as path reference in change lane");
-
-DEFINE_int32(min_past_history_points_len, 0,
-             "minimun past history points length for trainsition from "
-             "rule-based planning to learning-based planning");

@@ -45,7 +45,6 @@
 #include "modules/planning/scenarios/intersection/traffic_light/unprotected_left_turn/traffic_light_unprotected_left_turn_scenario.h"
 #include "modules/planning/scenarios/intersection/traffic_light/unprotected_right_turn/traffic_light_unprotected_right_turn_scenario.h"
 #include "modules/planning/scenarios/intersection/yield_sign/yield_sign_scenario.h"
-#include "modules/planning/scenarios/learning_model/learning_model_sample_scenario.h"
 #include "modules/planning/scenarios/maneuver/deadend_turnaround/deadend_turnaround_scenario.h"
 #include "modules/planning/scenarios/maneuver/escape/escape_scenario.h"
 #include "modules/planning/scenarios/maneuver/narrow_street/narrow_street_scenario.h"
@@ -123,14 +122,7 @@ void ScenarioManager::RegisterScenarios() {
     ACHECK(Scenario::LoadConfig(file, &config_map_[type]));
   };
 
-  if (planning_config_.learning_mode() == PlanningConfig::HYBRID ||
-      planning_config_.learning_mode() == PlanningConfig::HYBRID_TEST) {
-    load_conf(ScenarioType::LANE_FOLLOW,
-              FLAGS_scenario_lane_follow_hybrid_config_file);
-  } else {
-    load_conf(ScenarioType::LANE_FOLLOW,
-              FLAGS_scenario_lane_follow_config_file);
-  }
+  load_conf(ScenarioType::LANE_FOLLOW, FLAGS_scenario_lane_follow_config_file);
 
   // --- Basic and intersection categories ---
   load_conf(ScenarioType::BARE_INTERSECTION_UNPROTECTED,
@@ -168,9 +160,6 @@ void ScenarioManager::RegisterScenarios() {
   // --- Line following and starting classes ---
   load_conf(ScenarioType::PARK_AND_GO, FLAGS_scenario_park_and_go_config_file);
 
-  // --- learning ---
-  load_conf(ScenarioType::LEARNING_MODEL_SAMPLE,
-            FLAGS_scenario_learning_model_sample_config_file);
 }
 
 void ScenarioManager::RegisterDeciders() {
@@ -249,17 +238,6 @@ void ScenarioManager::Observe(const Frame& frame) {
 
 void ScenarioManager::ScenarioDispatch(const Frame& frame) {
   CHECK_NOTNULL(current_scenario_.get());
-
-  // E2E / Learning Mode Handling
-  if (planning_config_.learning_mode() == PlanningConfig::E2E ||
-      planning_config_.learning_mode() == PlanningConfig::E2E_TEST) {
-    // Assuming ScenarioDispatchLearning is also updated to take const Frame&
-    ScenarioType learning_type = ScenarioDispatchLearning(frame);
-    if (learning_type != current_scenario_->Type()) {
-      SwitchToScenario(learning_type, frame);
-    }
-    return;
-  }
 
   const auto current_type = current_scenario_->Type();
   const auto current_status = current_scenario_->GetStatus();
@@ -421,11 +399,6 @@ std::unique_ptr<Scenario> ScenarioManager::CreateScenario(
     // --- Path Follow & Mission ---
     case ScenarioType::MISSION_IDLE:
       return std::make_unique<mission_idle::MissionIdleScenario>(
-          config, nullptr, injector_);
-
-    // --- Learning Model ---
-    case ScenarioType::LEARNING_MODEL_SAMPLE:
-      return std::make_unique<learning_model::LearningModelSampleScenario>(
           config, nullptr, injector_);
 
     default:
@@ -647,11 +620,6 @@ void ScenarioManager::UpdateContextEmergencyStop(const ScenarioType& type) {
         ->mutable_emergency_stop()
         ->Clear();
   }
-}
-
-ScenarioType ScenarioManager::ScenarioDispatchLearning(const Frame& frame) {
-  ScenarioType scenario_type = ScenarioType::LEARNING_MODEL_SAMPLE;
-  return scenario_type;
 }
 
 }  // namespace scenario

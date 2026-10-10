@@ -32,7 +32,6 @@ enum class PlanningCycleOutcome {
   kInputHold,
   kValidationHold,
   kPlanned,
-  kLearningOnly,
 };
 
 struct PlanningPhaseTiming {
@@ -56,8 +55,7 @@ struct PlanningCycleResult {
   }
 
   bool ShouldPublishTrajectory() const {
-    return outcome != PlanningCycleOutcome::kNotStarted &&
-           outcome != PlanningCycleOutcome::kLearningOnly;
+    return outcome != PlanningCycleOutcome::kNotStarted;
   }
 
   bool ShouldRecordHistory() const {

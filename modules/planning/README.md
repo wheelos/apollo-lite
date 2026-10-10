@@ -16,86 +16,12 @@ use cases as they were all treated as a single driving scenario.
 Apollo 5.5, which focuses on curb-to-curb autonomous driving on urban roads,
 introduced 2 new planning scenarios.
 
-Apollo 6.0 extended the technology to incorporate data-driven mothedologies to
-tackle trajectory planning problems with learning-based models, and introduced
-two new planning modes: E2E mode and Hybrid mode, by which the new capability of
-dynamically nudginng moving obstacles are demonstrated. In these two modes, a
-series of APIs is also defined where developers can generate their own training
-data and integrate their own models.
-
-**Note:** The current development of E2E mode is in an early stage where the
-model is trained for the dynamic nudge scenario as a research demonstration
-purpose. The capability of the model is limited, and suboptimality is expected
-when it is tested with a wider selection of scenarios. E2E mode and Hybrid mode
-are not tested on real roads yet, but rather serve as a baseline to promote and
-encourage extensive research on learning based planning. All developers are
-welcome to collaborate with us by any means including algorithms, models and
-data.
-
-## E2E Mode
-
-![](images/e2e_mode.png)
-
-### How to Enable
-
-- Change the configuration "learning_mode" in
-  apollo/modules/planning/conf/planning_config.pb.txt to be "E2E_TEST" if Apollo
-  is run in simulation or "E2E" on real vehicle
-- Change the configuration "model_type" in
-  apollo/modules/planning/conf/scenario/learning_model_sample_config.pb.txt to
-  be either "CNN_LSTM" or "CNN" and adapt the following "cpu_model_file" and
-  "gpu_model_file" file paths. "CNN_LSTM" is the preferred model for now.
-
-### Model Inputs and Outputs
-
-- Model input consists of a birdview image centered by vehicle pose and vehicle
-  current velocity.
-- Model output is planning trajectory
-
-## Hybrid Mode
-
-![](images/hybrid_mode.png)
-
-### How to Enable
-
-In configuration file,
-
-```
-./modules/planning/conf/planning_config.pb.txt
-```
-
-set learning_mode: `learning_mode: ` as `HYBRID` for road test or `HYBRID_TEST`
-for simulation.
-
-### Parameters
-
-The configurable parameters in hybrid model are listed in the configuration file
-
-```
-modules/planning/conf/scenario/lane_follow_hybrid_config.pb.txt
-```
-
-The parameter `path_reference_l_weight` is for adjusting hybrid model path
-output. A larger value of `path_reference_l_weight` means higher penalty of the
-difference between hybrid model path and learning model path in lateral
-direction.
-
-## Apollo 5.5 vs E2E Mode vs Hybrid Mode
-
-We demonstrate simulation results on a dynamic nudge scenario with Apollo 5.5,
-E2E mode, and Hybrid mode.
-
-- Apollo 5.5
-
-![](images/sim_rule.gif)
-
-- E2E Mode
-
-![](images/sim_e2e.gif)
-
-- Hybrid Mode
-
-![](images/sim_hybrid.gif)
+Learning-based E2E/Hybrid planning, offline planning-data generation, and
+experimental planning autotuning are currently removed. Their implementation
+history and redesign notes are archived in
+[wheelos-service planning context](../../wheelos-service/context/modules/planning/knowledge/archive/planning-learning-tuning-feature.md).
+This does not remove the separate Hybrid maneuver supervisor used by the
+current planner.
 
 ## Driving Scenarios
 

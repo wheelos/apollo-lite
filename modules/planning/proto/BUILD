@@ -7,26 +7,6 @@ load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 package(default_visibility = ["//visibility:public"])
 
 cc_proto_library(
-    name = "auto_tuning_raw_feature_cc_proto",
-    deps = [
-        ":auto_tuning_raw_feature_proto",
-    ],
-)
-
-proto_library(
-    name = "auto_tuning_raw_feature_proto",
-    srcs = ["auto_tuning_raw_feature.proto"],
-    deps = [
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_proto",
-    ],
-)
-
-py_proto_library(
-    name = "auto_tuning_raw_feature_py_pb2",
-    deps = [":auto_tuning_raw_feature_proto"],
-)
-
-cc_proto_library(
     name = "planning_status_cc_proto",
     deps = [
         ":planning_status_proto",
@@ -64,23 +44,6 @@ proto_library(
 py_proto_library(
     name = "st_drivable_boundary_py_pb2",
     deps = [":st_drivable_boundary_proto"],
-)
-
-cc_proto_library(
-    name = "planning_semantic_map_config_cc_proto",
-    deps = [
-        ":planning_semantic_map_config_proto",
-    ],
-)
-
-proto_library(
-    name = "planning_semantic_map_config_proto",
-    srcs = ["planning_semantic_map_config.proto"],
-)
-
-py_proto_library(
-    name = "planning_semantic_map_config_py_pb2",
-    deps = [":planning_semantic_map_config_proto"],
 )
 
 cc_proto_library(
@@ -173,52 +136,6 @@ proto_library(
 py_proto_library(
     name = "traffic_rule_config_py_pb2",
     deps = [":traffic_rule_config_proto"],
-)
-
-cc_proto_library(
-    name = "learning_data_cc_proto",
-    deps = [
-        ":learning_data_proto",
-    ],
-)
-
-proto_library(
-    name = "learning_data_proto",
-    srcs = ["learning_data.proto"],
-    deps = [
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:header_proto",
-        "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_proto",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_proto",
-        "@wheelos_msgs//wheelos_msgs/map_msgs:map_lane_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_obstacle_proto",
-        "@wheelos_msgs//wheelos_msgs/perception_msgs:traffic_light_detection_proto",
-        "@wheelos_msgs//wheelos_msgs/prediction_msgs:feature_proto",
-        "@wheelos_msgs//wheelos_msgs/prediction_msgs:prediction_obstacle_proto",
-        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_proto",
-    ],
-)
-
-py_proto_library(
-    name = "learning_data_py_pb2",
-    deps = [":learning_data_proto"],
-)
-
-cc_proto_library(
-    name = "auto_tuning_model_input_cc_proto",
-    deps = [
-        ":auto_tuning_model_input_proto",
-    ],
-)
-
-proto_library(
-    name = "auto_tuning_model_input_proto",
-    srcs = ["auto_tuning_model_input.proto"],
-)
-
-py_proto_library(
-    name = "auto_tuning_model_input_py_pb2",
-    deps = [":auto_tuning_model_input_proto"],
 )
 
 cc_proto_library(

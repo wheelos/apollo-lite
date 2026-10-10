@@ -80,15 +80,6 @@ Status PathReuseDecider::Process(Frame* const frame,
     return Status::OK();
   }
 
-  // for hybrid model: skip reuse path for valid path reference
-  const bool valid_model_output =
-      reference_line_info->path_data().is_valid_path_reference();
-  if (valid_model_output) {
-    ADEBUG << "skipping reusing path: path reference is valid";
-    reference_line_info->set_path_reusable(false);
-    return Status::OK();
-  }
-
   /*count total_path_ when in_change_lane && reuse_path*/
   ++total_path_counter_;
 

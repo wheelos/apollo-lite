@@ -50,31 +50,10 @@ class PiecewiseJerkPathOptimizer : public PathOptimizer {
   std::vector<common::PathPoint> ConvertPathPointRefFromFrontAxeToRearAxe(
       const PathData& path_data);
 
-  /**
-   * @brief
-   *
-   * @param init_state path start point
-   * @param end_state path end point
-   * @param path_reference_l_ref: a vector with default value 0.0
-   * @param path_reference_size: length of learning model output
-   * @param delta_s: path point spatial distance
-   * @param is_valid_path_reference: whether using learning model output or not
-   * @param lat_boundaries: path boundaries
-   * @param ddl_bounds: constains
-   * @param w: weighting scales
-   * @param max_iter: optimization max interations
-   * @param ptr_x: optimization result of x
-   * @param ptr_dx: optimization result of dx
-   * @param ptr_ddx: optimization result of ddx
-   * @return true
-   * @return false
-   */
   bool OptimizePath(
       const std::pair<std::array<double, 3>, std::array<double, 3>>& init_state,
       const std::array<double, 3>& end_state,
-      std::vector<double> path_reference_l_ref,
-      const size_t path_reference_size, const double delta_s,
-      const bool is_valid_path_reference,
+      const double delta_s,
       const std::vector<std::pair<double, double>>& lat_boundaries,
       const std::vector<std::pair<double, double>>& ddl_bounds,
       const std::array<double, 5>& w, const int max_iter,
@@ -91,8 +70,6 @@ class PiecewiseJerkPathOptimizer : public PathOptimizer {
                               const double axis_distance,
                               const double max_steering_rate) const;
 
-  double GaussianWeighting(const double x, const double peak_weighting,
-                           const double peak_weighting_x) const;
 };
 
 }  // namespace planning

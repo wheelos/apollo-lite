@@ -58,7 +58,7 @@ cc_test(
     tags = ["exclude"],
     deps = [
         ":open_space_roi_decider",
-        "//modules/planning/testing:gtest_exit_main",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 

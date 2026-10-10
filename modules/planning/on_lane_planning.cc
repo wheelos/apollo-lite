@@ -20,7 +20,6 @@
 #include <list>
 #include <utility>
 
-#include "modules/planning/proto/planning_semantic_map_config.pb.h"
 #include "wheelos_msgs/routing_msgs/routing.pb.h"
 
 #include "cyber/common/file.h"
@@ -38,7 +37,6 @@
 #include "modules/planning/common/published_trajectory_gear.h"
 #include "modules/planning/common/trajectory_stitcher.h"
 #include "modules/planning/common/util/util.h"
-#include "modules/planning/learning_based/img_feature_renderer/birdview_img_feature_renderer.h"
 #include "modules/planning/reference_line/reference_line_provider.h"
 #include "modules/planning/scenarios/park/valet_parking/valet_parking_scenario.h"
 #include "modules/planning/tasks/task_factory.h"
@@ -140,17 +138,6 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
                ? Status(ErrorCode::PLANNING_ERROR,
                         "failed to create planner for standard shell")
                : planner_status;
-  }
-
-  if (config_.learning_mode() != PlanningConfig::NO_LEARNING) {
-    PlanningSemanticMapConfig renderer_config;
-    ACHECK(apollo::cyber::common::GetProtoFromFile(
-        FLAGS_planning_birdview_img_feature_renderer_config_file,
-        &renderer_config))
-        << "Failed to load renderer config"
-        << FLAGS_planning_birdview_img_feature_renderer_config_file;
-
-    BirdviewImgFeatureRenderer::Instance()->Init(renderer_config);
   }
 
   start_time_ = Clock::NowInSeconds();
