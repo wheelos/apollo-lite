@@ -7,6 +7,7 @@
 - `camera_semantic_segmentation_visualizer.py` — strictly pair camera images and camera semantic segmentation results by timestamp, then save colorized PPM overlays.
 - `straight_eval.py` — run straight-line evaluation tests (drive/record analysis utilities).
 - `save_lidar_semantic_pcd.py` — pair lidar input and save labeled points as PCD.
+- `pandaset_pointcloud_publisher.py` — convert PandaSet lidar frames to ego-frame binaries (needs pandas) and publish them as `PointCloud` Cyber messages.
 
 **How to get help**
 
