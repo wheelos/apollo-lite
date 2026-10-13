@@ -51,7 +51,7 @@ cc_library(
         ":planning_execution_state_transport",
         ":planning_runtime_status_builder",
         "@core//cyber",
-        "//modules/execution_state_sync:execution_state_gflags",
+        "@wheelos_common//execution_state:flags",
         "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
@@ -112,7 +112,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        "//modules/execution_state_sync:client",
+        "@wheelos_common//execution_state:client",
     ],
 )
 
@@ -169,8 +169,8 @@ cc_test(
     deps = [
         ":planning_component_lib",
         ":planning_coordinator",
-        "//modules/execution_state_sync:client",
-        "//modules/execution_state_sync:execution_state_sync",
+        "@wheelos_common//execution_state:client",
+        "@wheelos_common//execution_state:store",
         "//modules/planning/mission_session:mission_session_manager",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",

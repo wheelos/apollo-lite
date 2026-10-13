@@ -108,10 +108,10 @@ class PlanningComponent final
       const localization::LocalizationEstimate& localization);
   void DrainExecutionStateSubmissions();
   bool SubmitExecutionState(
-      execution_state_sync::Channel channel, const std::string& payload,
+      execution_state::Channel channel, const std::string& payload,
       bool cleanup,
-      execution_state_sync::PlanningStatusKind planning_status_kind =
-          execution_state_sync::PlanningStatusKind::kRuntime);
+      execution_state::PlanningStatusKind planning_status_kind =
+          execution_state::PlanningStatusKind::kRuntime);
   void PublishMotionPlan(const PlanningCoordinatorState& coordinator_state,
                          const PlanningSemanticSummary& semantic_summary,
                          const canbus::Chassis& chassis,
@@ -173,8 +173,8 @@ class PlanningComponent final
   planning::PlanningCommand planning_command_;
   planning::MissionDirective mission_directive_;
   control::ControlRuntimeStatus control_runtime_status_;
-  execution_state_sync::ControlStatusKind control_status_kind_ =
-      execution_state_sync::ControlStatusKind::kOwnerRuntime;
+  execution_state::ControlStatusKind control_status_kind_ =
+      execution_state::ControlStatusKind::kOwnerRuntime;
   relative_map::MapMsg relative_map_;
   storytelling::Stories stories_;
 

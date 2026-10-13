@@ -36,7 +36,7 @@
 #include "cyber/common/macros.h"
 #include "cyber/cyber.h"
 #include "modules/common/util/message_util.h"
-#include "modules/execution_state_sync/client.h"
+#include "execution_state/client.h"
 #include "modules/mission/common/mission_command_supervisor.h"
 #include "modules/mission/common/mission_request_ledger.h"
 
@@ -91,7 +91,7 @@ class MissionContext {
  private:
   bool PublishPlanningCommands(
       const std::vector<planning::PlanningCommand>& commands);
-  bool ConsumeExecutionEvent(const execution_state_sync::Event& event);
+  bool ConsumeExecutionEvent(const execution_state::Event& event);
   bool BuildMissionDirective(const planning::PlanningCommand& command,
                              planning::MissionDirective* directive);
   bool BuildTypedMissionDirective(const MissionRequest& request,
@@ -105,7 +105,7 @@ class MissionContext {
   MissionCommandSupervisor command_supervisor_;
   std::shared_ptr<cyber::Writer<planning::MissionDirective>>
       mission_directive_writer_;
-  std::unique_ptr<execution_state_sync::Client> execution_state_client_;
+  std::unique_ptr<execution_state::Client> execution_state_client_;
   std::unique_ptr<MissionRequestLedger> mission_request_ledger_;
   std::unordered_map<uint64_t, MissionRequestRecord> pending_typed_requests_;
   std::unordered_map<std::string, std::vector<MissionRequestIdentity>>

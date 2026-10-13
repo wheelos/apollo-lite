@@ -35,7 +35,7 @@ class PlanningMissionSyncTestPeer {
     }
   }
 
-  static execution_state_sync::Result Init(PlanningComponent* component,
+  static execution_state::Result Init(PlanningComponent* component,
                                            const std::string& path,
                                            const std::string& node_name) {
     component->node_ = cyber::CreateNode(node_name);
@@ -118,7 +118,7 @@ class PlanningMissionSyncTestPeer {
   static bool SubmitMotion(PlanningComponent* component,
                            const MotionDirective& directive) {
     return component->SubmitExecutionState(
-        execution_state_sync::Channel::kMotion, directive.SerializeAsString(),
+        execution_state::Channel::kMotion, directive.SerializeAsString(),
         false);
   }
 
@@ -127,7 +127,7 @@ class PlanningMissionSyncTestPeer {
     status.set_state(RUNTIME_IDLE);
     status.set_reason("awaiting a live Mission authorization");
     return component->SubmitExecutionState(
-        execution_state_sync::Channel::kPlanningStatus,
+        execution_state::Channel::kPlanningStatus,
         status.SerializeAsString(), false);
   }
 
@@ -162,7 +162,7 @@ class PlanningMissionSyncTestPeer {
     return component.motion_event_sequence_;
   }
 
-  static std::shared_ptr<const execution_state_sync::WorkerView> Latest(
+  static std::shared_ptr<const execution_state::WorkerView> Latest(
       const PlanningComponent& component) {
     return component.execution_state_transport_->Latest();
   }
@@ -329,11 +329,11 @@ class PlanningMissionSyncTest : public ::testing::Test {
       Poll();
       return PlanningMissionSyncTestPeer::Ready(*component_);
     }));
-    execution_state_sync::Result opened;
+    execution_state::Result opened;
     const bool open_completed = Await([this, &opened] {
-      opened = execution_state_sync::Store::Open(
-          {path_, execution_state_sync::Role::kMission}, &mission_);
-      return opened.code != execution_state_sync::Code::kBusy ||
+      opened = execution_state::Store::Open(
+          {path_, execution_state::Role::kMission}, &mission_);
+      return opened.code != execution_state::Code::kBusy ||
              opened.sqlite_code == 0;
     });
     ASSERT_TRUE(open_completed && opened.ok())
@@ -367,9 +367,9 @@ class PlanningMissionSyncTest : public ::testing::Test {
     PlanningMissionSyncTestPeer::Poll(component_.get(), Localization());
   }
 
-  execution_state_sync::Result Submit(const MissionDirective& directive,
-                                      execution_state_sync::Commit* commit) {
-    execution_state_sync::Operation operation;
+  execution_state::Result Submit(const MissionDirective& directive,
+                                      execution_state::Commit* commit) {
+    execution_state::Operation operation;
     operation.operation_id =
         "mission-request-" + std::to_string(transport_revision_ + 1);
     operation.identity = {"mission-sync-test", "mission", "move",
@@ -377,10 +377,10 @@ class PlanningMissionSyncTest : public ::testing::Test {
     operation.expected_revision = transport_revision_;
     operation.payload = directive.SerializeAsString();
     operation.mission_fenced = directive.has_cancel();
-    execution_state_sync::Result result;
+    execution_state::Result result;
     Await([&] {
       result = mission_->Submit(operation, commit);
-      return result.code != execution_state_sync::Code::kBusy ||
+      return result.code != execution_state::Code::kBusy ||
              result.sqlite_code == 0;
     });
     if (result.ok()) {
@@ -389,7 +389,7 @@ class PlanningMissionSyncTest : public ::testing::Test {
     return result;
   }
 
-  execution_state_sync::Result SubmitControlMotionStatus(
+  execution_state::Result SubmitControlMotionStatus(
       const MotionDirective& directive, uint64_t mission_sequence,
       uint64_t motion_sequence, uint64_t revision,
       bool unrelated_parent, uint64_t* commit_sequence,
@@ -410,26 +410,26 @@ class PlanningMissionSyncTest : public ::testing::Test {
     motion->set_state(state);
     motion->set_reason("Control reported execution failure");
 
-    execution_state_sync::Operation operation;
-    operation.channel = execution_state_sync::Channel::kControlStatus;
+    execution_state::Operation operation;
+    operation.channel = execution_state::Channel::kControlStatus;
     operation.operation_id = "control-status-" + std::to_string(revision);
     operation.identity = {"control-peer", "mission", "motion-status",
                           revision};
     operation.expected_revision = revision - 1;
     if (owner_runtime) {
       operation.control_status_kind =
-          execution_state_sync::ControlStatusKind::kOwnerRuntime;
+          execution_state::ControlStatusKind::kOwnerRuntime;
     } else {
       operation.guards = {
-          {execution_state_sync::Channel::kMission, mission_sequence},
-          {execution_state_sync::Channel::kMotion, motion_sequence}};
+          {execution_state::Channel::kMission, mission_sequence},
+          {execution_state::Channel::kMotion, motion_sequence}};
     }
     operation.payload = status.SerializeAsString();
-    execution_state_sync::Commit commit;
-    execution_state_sync::Result result;
+    execution_state::Commit commit;
+    execution_state::Result result;
     Await([&]() {
       result = control_->Submit(operation, &commit);
-      return result.code != execution_state_sync::Code::kBusy ||
+      return result.code != execution_state::Code::kBusy ||
              result.sqlite_code == 0;
     });
     if (result.ok() && commit_sequence != nullptr) {
@@ -439,7 +439,7 @@ class PlanningMissionSyncTest : public ::testing::Test {
   }
 
   void AcceptFirstMission() {
-    execution_state_sync::Commit commit;
+    execution_state::Commit commit;
     const auto submitted = Submit(Activate(1), &commit);
     ASSERT_TRUE(submitted.ok()) << submitted.message;
     ASSERT_TRUE(Await([this] {
@@ -454,8 +454,8 @@ class PlanningMissionSyncTest : public ::testing::Test {
   std::filesystem::path directory_;
   std::string path_;
   std::unique_ptr<PlanningComponent> component_;
-  std::unique_ptr<execution_state_sync::Store> mission_;
-  std::unique_ptr<execution_state_sync::Store> control_;
+  std::unique_ptr<execution_state::Store> mission_;
+  std::unique_ptr<execution_state::Store> control_;
   uint64_t transport_revision_ = 0;
 };
 
@@ -464,7 +464,7 @@ TEST_F(PlanningMissionSyncTest,
   auto directive = Activate(1);
   directive.mutable_activate()->mutable_plan()->set_preferred_mode(
       MODE_CORRIDOR);
-  execution_state_sync::Commit commit;
+  execution_state::Commit commit;
   const auto submitted = Submit(directive, &commit);
   ASSERT_TRUE(submitted.ok()) << submitted.message;
   PlanningMissionSyncTestPeer::Prepare(component_.get(), directive,
@@ -504,14 +504,14 @@ TEST_F(PlanningMissionSyncTest,
     return view && view->result.ok() && view->snapshot &&
            view->snapshot
                ->latest[static_cast<size_t>(
-                   execution_state_sync::Channel::kPlanningStatus)]
+                   execution_state::Channel::kPlanningStatus)]
                .has_value();
   }));
   const auto view = PlanningMissionSyncTestPeer::Latest(*component_);
   ASSERT_TRUE(view->snapshot->latest[static_cast<size_t>(
-      execution_state_sync::Channel::kPlanningStatus)]);
+      execution_state::Channel::kPlanningStatus)]);
   const auto& status_event = *view->snapshot->latest[static_cast<size_t>(
-      execution_state_sync::Channel::kPlanningStatus)];
+      execution_state::Channel::kPlanningStatus)];
   EXPECT_TRUE(status_event.operation.guards.empty());
   EXPECT_FALSE(view->snapshot->accepted_authority);
   EXPECT_FALSE(PlanningMissionSyncTestPeer::Faulted(*component_));
@@ -532,10 +532,10 @@ TEST_F(PlanningMissionSyncTest, FailedAdmissionCommitPreservesAcceptedSession) {
       ->mutable_goal()
       ->mutable_goal_pose()
       ->set_x(100.0);
-  execution_state_sync::Commit replacement_commit;
+  execution_state::Commit replacement_commit;
   auto submitted = Submit(replacement, &replacement_commit);
   ASSERT_TRUE(submitted.ok()) << submitted.message;
-  execution_state_sync::Commit newer_commit;
+  execution_state::Commit newer_commit;
   submitted = Submit(Activate(3), &newer_commit);
   ASSERT_TRUE(submitted.ok()) << submitted.message;
   PlanningMissionSyncTestPeer::Prepare(component_.get(), replacement,
@@ -560,10 +560,10 @@ TEST_F(PlanningMissionSyncTest, FailedAdmissionCommitPreservesAcceptedSession) {
 }
 
 TEST_F(PlanningMissionSyncTest, ProcessesQueuedIntentsWithoutSkippingReceipts) {
-  execution_state_sync::Commit first_commit;
+  execution_state::Commit first_commit;
   auto submitted = Submit(Activate(1), &first_commit);
   ASSERT_TRUE(submitted.ok()) << submitted.message;
-  execution_state_sync::Commit second_commit;
+  execution_state::Commit second_commit;
   submitted = Submit(Activate(2), &second_commit);
   ASSERT_TRUE(submitted.ok()) << submitted.message;
   ASSERT_TRUE(Await([this, &second_commit] {
@@ -580,13 +580,13 @@ TEST_F(PlanningMissionSyncTest, ProcessesQueuedIntentsWithoutSkippingReceipts) {
                    .identity.revision() == 2;
   }));
   EXPECT_FALSE(PlanningMissionSyncTestPeer::Faulted(*component_));
-  execution_state_sync::EventBatch batch;
+  execution_state::EventBatch batch;
   const auto read = mission_->ReadEvents(0, 64, &batch);
   ASSERT_TRUE(read.ok()) << read.message;
   size_t receipts = 0;
   for (const auto& event : batch.events) {
     if (event.operation.channel !=
-        execution_state_sync::Channel::kPlanningStatus) {
+        execution_state::Channel::kPlanningStatus) {
       continue;
     }
     PlanningRuntimeStatus status;
@@ -619,7 +619,7 @@ TEST_F(PlanningMissionSyncTest,
       identity);
   cancel.mutable_cancel()->set_postcondition(
       MISSION_CANCEL_CONTROLLED_STOP_THEN_HOLD);
-  execution_state_sync::Commit commit;
+  execution_state::Commit commit;
   const auto submitted = Submit(cancel, &commit);
   ASSERT_TRUE(submitted.ok()) << submitted.message;
   ASSERT_TRUE(Await([this] {
@@ -655,22 +655,22 @@ TEST_F(PlanningMissionSyncTest,
     return PlanningMissionSyncTestPeer::MotionSequence(*component_) != 0;
   }));
 
-  execution_state_sync::Options options;
+  execution_state::Options options;
   options.path = path_;
-  options.role = execution_state_sync::Role::kControl;
+  options.role = execution_state::Role::kControl;
   options.writer_epoch = "control-peer";
-  execution_state_sync::Result opened;
+  execution_state::Result opened;
   ASSERT_TRUE(Await([&]() {
-    opened = execution_state_sync::Store::Open(options, &control_);
-    return opened.code != execution_state_sync::Code::kBusy ||
+    opened = execution_state::Store::Open(options, &control_);
+    return opened.code != execution_state::Code::kBusy ||
            opened.sqlite_code == 0;
   })) << opened.message;
   ASSERT_TRUE(opened.ok()) << opened.message;
 
-  execution_state_sync::Snapshot snapshot;
+  execution_state::Snapshot snapshot;
   ASSERT_TRUE(mission_->ReadSnapshot(&snapshot).ok());
   const auto& mission_event = *snapshot.latest[static_cast<size_t>(
-      execution_state_sync::Channel::kMission)];
+      execution_state::Channel::kMission)];
   const auto motion_sequence =
       PlanningMissionSyncTestPeer::MotionSequence(*component_);
   uint64_t control_sequence = 0;
@@ -731,22 +731,22 @@ TEST_F(PlanningMissionSyncTest,
     return PlanningMissionSyncTestPeer::MotionSequence(*component_) != 0;
   }));
 
-  execution_state_sync::Options options;
+  execution_state::Options options;
   options.path = path_;
-  options.role = execution_state_sync::Role::kControl;
+  options.role = execution_state::Role::kControl;
   options.writer_epoch = "control-rejection-peer";
-  execution_state_sync::Result opened;
+  execution_state::Result opened;
   ASSERT_TRUE(Await([&]() {
-    opened = execution_state_sync::Store::Open(options, &control_);
-    return opened.code != execution_state_sync::Code::kBusy ||
+    opened = execution_state::Store::Open(options, &control_);
+    return opened.code != execution_state::Code::kBusy ||
            opened.sqlite_code == 0;
   })) << opened.message;
   ASSERT_TRUE(opened.ok()) << opened.message;
 
-  execution_state_sync::Snapshot snapshot;
+  execution_state::Snapshot snapshot;
   ASSERT_TRUE(mission_->ReadSnapshot(&snapshot).ok());
   const auto& mission_event = *snapshot.latest[static_cast<size_t>(
-      execution_state_sync::Channel::kMission)];
+      execution_state::Channel::kMission)];
   const auto motion_sequence =
       PlanningMissionSyncTestPeer::MotionSequence(*component_);
   uint64_t control_sequence = 0;

@@ -12,7 +12,7 @@ cc_library(
     copts = MISSION_COPTS,
     deps = [
         "@wheelos_common//modules/common/adapters:adapter_gflags",
-        "//modules/execution_state_sync:execution_state_gflags",
+        "@wheelos_common//execution_state:flags",
         "//modules/mission/common:mission_context",
         "//modules/mission/common:mission_request_contract",
         "//modules/mission/nodes/action",
@@ -46,8 +46,8 @@ cc_test(
     srcs = ["mission_lifecycle_test.cc"],
     deps = [
         ":mission_component_lib",
-        "//modules/execution_state_sync:execution_state_sync",
-        "//modules/execution_state_sync:execution_state_gflags",
+        "@wheelos_common//execution_state:store",
+        "@wheelos_common//execution_state:flags",
         "//modules/mission/common:mission_context",
         "//modules/mission/nodes/action:move_to_node",
         "//modules/mission/nodes/action:park_in_node",

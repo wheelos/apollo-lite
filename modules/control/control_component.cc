@@ -30,7 +30,7 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/control/common/control_gflags.h"
 #include "modules/control/common/terminal_control_helper.h"
-#include "modules/execution_state_sync/execution_state_gflags.h"
+#include "execution_state/flags.h"
 
 namespace apollo {
 namespace control {
@@ -234,13 +234,13 @@ bool ControlComponent::Init() {
   if (!InitMotionExecutors()) {
     return false;
   }
-  execution_state_client_ = std::make_unique<execution_state_sync::Client>();
+  execution_state_client_ = std::make_unique<execution_state::Client>();
   control_epoch_ = "control-" + std::to_string(init_time_.ToNanosecond());
   safety_latch_reconciled_ = false;
   safety_status_ticket_ = 0;
   pending_safety_status_.clear();
   const auto sync_result = execution_state_client_->Init(
-      FLAGS_execution_state_db_path, execution_state_sync::Role::kControl,
+      FLAGS_execution_state_db_path, execution_state::Role::kControl,
       control_epoch_, 8, "v1",
       {"motion-execution-v1", "control-runtime-status-v1",
        "controlled-safety-stop-v1"});
@@ -492,12 +492,12 @@ void ControlComponent::FailMotionExecution(double now_sec,
 }
 
 bool ControlComponent::CheckMotionAuthorization(
-    const execution_state_sync::Event& event,
+    const execution_state::Event& event,
     const planning::MotionDirective& directive) const {
-  using execution_state_sync::Channel;
+  using execution_state::Channel;
   const auto view = execution_state_client_->Latest();
   if (!view || !view->result.ok() || !view->snapshot ||
-      event.owner != execution_state_sync::Role::kPlanning) {
+      event.owner != execution_state::Role::kPlanning) {
     return false;
   }
   const auto& mission = view->snapshot->latest[static_cast<size_t>(Channel::kMission)];
@@ -566,19 +566,19 @@ bool ControlComponent::CheckMotionAuthorization(
 }
 
 bool ControlComponent::PollExecutionState(double now_sec) {
-  using execution_state_sync::Channel;
-  using execution_state_sync::Code;
+  using execution_state::Channel;
+  using execution_state::Code;
   if (!execution_state_client_ || execution_state_fault_) {
     return false;
   }
-  std::vector<execution_state_sync::Event> events;
+  std::vector<execution_state::Event> events;
   const auto poll = execution_state_client_->Poll(&events);
   if (!poll.ok() && poll.code != Code::kBusy) {
     AERROR << "Control execution-state poll failed: " << poll.message;
     execution_state_fault_ = true;
     return false;
   }
-  execution_state_sync::Submission submission;
+  execution_state::Submission submission;
   while (execution_state_client_->TakeSubmission(&submission).ok()) {
     if (!submission.result.ok()) {
       AERROR << "Control execution-state commit failed: " << submission.result.message;
@@ -657,7 +657,7 @@ bool ControlComponent::PollExecutionState(double now_sec) {
         }
         restored.set_reason("Control restored the durable safety latch");
         if (pending_safety_status_.size() >=
-            execution_state_sync::Client::kEventBatchSize * 2) {
+            execution_state::Client::kEventBatchSize * 2) {
           execution_state_fault_ = true;
           AERROR << "Safety restoration observation backlog exceeded capacity";
           return false;
@@ -762,8 +762,8 @@ bool ControlComponent::PollExecutionState(double now_sec) {
 }
 
 bool ControlComponent::ProcessSafetyOperation(
-    const execution_state_sync::Event& event, double now_sec) {
-  if (event.owner != execution_state_sync::Role::kMission) {
+    const execution_state::Event& event, double now_sec) {
+  if (event.owner != execution_state::Role::kMission) {
     AERROR << "Safety request was not committed by Mission";
     return false;
   }
@@ -847,7 +847,7 @@ bool ControlComponent::ProcessSafetyOperation(
   }
   observation.set_safety_latched(safety_manager_->HasExternalStop());
   if (pending_safety_status_.size() >=
-      execution_state_sync::Client::kEventBatchSize * 2) {
+      execution_state::Client::kEventBatchSize * 2) {
     AERROR << "Safety observation backlog exceeded capacity";
     return false;
   }
@@ -862,27 +862,27 @@ void ControlComponent::FlushSafetyStatus() {
     return;
   }
   const auto result = execution_state_client_->Submit(
-      execution_state_sync::Channel::kSafetyStatus,
+      execution_state::Channel::kSafetyStatus,
       pending_safety_status_.front().SerializeAsString(), {}, false, false,
       &safety_status_ticket_);
   if (result.ok()) {
     pending_safety_status_.pop_front();
-  } else if (result.code != execution_state_sync::Code::kBusy &&
-             result.code != execution_state_sync::Code::kQueueFull) {
+  } else if (result.code != execution_state::Code::kBusy &&
+             result.code != execution_state::Code::kQueueFull) {
     execution_state_fault_ = true;
     AERROR << "Safety observation persistence failed: " << result.message;
   }
 }
 
 void ControlComponent::FlushExecutionStatus() {
-  using execution_state_sync::Channel;
+  using execution_state::Channel;
   if (status_ticket_ != 0 || pending_runtime_status_.empty() ||
       !execution_state_client_ || !execution_state_client_->Ready() ||
       execution_state_fault_) {
     return;
   }
   const auto& pending = pending_runtime_status_.front();
-  std::vector<execution_state_sync::Guard> guards;
+  std::vector<execution_state::Guard> guards;
   if (pending.mission_sequence != 0 && pending.motion_sequence != 0) {
     guards = {{Channel::kMission, pending.mission_sequence},
               {Channel::kMotion, pending.motion_sequence}};
@@ -890,14 +890,14 @@ void ControlComponent::FlushExecutionStatus() {
   const auto result = execution_state_client_->Submit(
       Channel::kControlStatus, pending.status.SerializeAsString(),
       std::move(guards), false, false, &status_ticket_,
-      execution_state_sync::PlanningStatusKind::kRuntime,
+      execution_state::PlanningStatusKind::kRuntime,
       pending.mission_sequence != 0 && pending.motion_sequence != 0
-          ? execution_state_sync::ControlStatusKind::kMotionResult
-          : execution_state_sync::ControlStatusKind::kOwnerRuntime);
+          ? execution_state::ControlStatusKind::kMotionResult
+          : execution_state::ControlStatusKind::kOwnerRuntime);
   if (result.ok()) {
     pending_runtime_status_.pop_front();
-  } else if (result.code != execution_state_sync::Code::kBusy &&
-             result.code != execution_state_sync::Code::kQueueFull) {
+  } else if (result.code != execution_state::Code::kBusy &&
+             result.code != execution_state::Code::kQueueFull) {
     execution_state_fault_ = true;
     FailMotionExecution(Clock::NowInSeconds(),
                         "control status persistence admission failed: " + result.message);
@@ -1355,7 +1355,7 @@ void ControlComponent::PublishRuntimeStatus(
       pending_runtime_status_.back().status.motion_execution().state() ==
           runtime_status.motion_execution().state()) {
     pending_runtime_status_.back().status = runtime_status;
-  } else if (pending_runtime_status_.size() < execution_state_sync::Client::kEventBatchSize) {
+  } else if (pending_runtime_status_.size() < execution_state::Client::kEventBatchSize) {
     pending_runtime_status_.push_back(
         {runtime_status, mission_event_sequence_, motion_event_sequence_});
   } else {

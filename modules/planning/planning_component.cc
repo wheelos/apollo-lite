@@ -25,7 +25,7 @@
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/util/message_util.h"
 #include "modules/common/util/util.h"
-#include "modules/execution_state_sync/execution_state_gflags.h"
+#include "execution_state/flags.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/pnc_map.h"
 #include "modules/planning/common/history.h"
@@ -295,7 +295,7 @@ bool PlanningComponent::Init() {
 
 void PlanningComponent::ApplyControlMotionStatus() {
   if (control_status_kind_ !=
-      execution_state_sync::ControlStatusKind::kMotionResult) {
+      execution_state::ControlStatusKind::kMotionResult) {
     return;
   }
   control::ControlRuntimeStatus status;
@@ -473,7 +473,7 @@ void PlanningComponent::PublishMotionPlan(
     execution_state_fault_ = true;
     return;
   }
-  if (!SubmitExecutionState(execution_state_sync::Channel::kMotion,
+  if (!SubmitExecutionState(execution_state::Channel::kMotion,
                             result.directive.SerializeAsString(), cleanup)) {
     execution_state_fault_ = true;
   }
@@ -484,11 +484,11 @@ bool PlanningComponent::PollExecutionState(
   if (execution_state_transport_ == nullptr) {
     return false;
   }
-  std::vector<execution_state_sync::Event> events;
+  std::vector<execution_state::Event> events;
   const auto result = execution_state_transport_->Poll(&events);
   DrainExecutionStateSubmissions();
   if (!result.ok()) {
-    if (result.code != execution_state_sync::Code::kBusy) {
+    if (result.code != execution_state::Code::kBusy) {
       AERROR << "Planning execution-state poll failed: " << result.message;
       execution_state_fault_ = true;
     }
@@ -502,7 +502,7 @@ bool PlanningComponent::PollExecutionState(
   }
   uint64_t latest_mission_sequence = 0;
   for (const auto& event : events) {
-    if (event.operation.channel == execution_state_sync::Channel::kMission) {
+    if (event.operation.channel == execution_state::Channel::kMission) {
       latest_mission_sequence = event.sequence;
     }
   }
@@ -510,7 +510,7 @@ bool PlanningComponent::PollExecutionState(
   if (view && view->result.ok() && view->snapshot) {
     const auto& latest_mission =
         view->snapshot->latest[static_cast<size_t>(
-            execution_state_sync::Channel::kMission)];
+            execution_state::Channel::kMission)];
     if (latest_mission && latest_mission->sequence > latest_mission_sequence) {
       latest_mission_sequence = latest_mission->sequence;
     }
@@ -520,14 +520,14 @@ bool PlanningComponent::PollExecutionState(
       continue;
     }
     if (event.operation.channel ==
-            execution_state_sync::Channel::kMission &&
-        event.owner != execution_state_sync::Role::kMission) {
+            execution_state::Channel::kMission &&
+        event.owner != execution_state::Role::kMission) {
       AERROR << "Mission lifecycle directive was not committed by Mission";
       execution_state_fault_ = true;
       return false;
     }
     switch (event.operation.channel) {
-      case execution_state_sync::Channel::kMission: {
+      case execution_state::Channel::kMission: {
         MissionDirective directive;
         if (!directive.ParseFromString(event.operation.payload)) {
           AERROR << "Invalid MissionDirective execution-state payload";
@@ -541,7 +541,7 @@ bool PlanningComponent::PollExecutionState(
             localization, event.sequence < latest_mission_sequence);
         break;
       }
-      case execution_state_sync::Channel::kControlStatus: {
+      case execution_state::Channel::kControlStatus: {
         control::ControlRuntimeStatus status;
         if (!status.ParseFromString(event.operation.payload)) {
           AERROR << "Invalid ControlRuntimeStatus execution-state payload";
@@ -553,13 +553,13 @@ bool PlanningComponent::PollExecutionState(
         ApplyControlMotionStatus();
         break;
       }
-      case execution_state_sync::Channel::kMotion:
+      case execution_state::Channel::kMotion:
         motion_event_sequence_ = event.sequence;
         break;
-      case execution_state_sync::Channel::kPlanningStatus:
+      case execution_state::Channel::kPlanningStatus:
         break;
-      case execution_state_sync::Channel::kSafetyRequest:
-      case execution_state_sync::Channel::kSafetyStatus:
+      case execution_state::Channel::kSafetyRequest:
+      case execution_state::Channel::kSafetyStatus:
         break;
     }
     if (execution_state_fault_) {
@@ -591,7 +591,7 @@ void PlanningComponent::DrainExecutionStateSubmissions() {
        execution_state_transport_->DrainSubmissions()) {
     const auto status_kind = submission.operation.planning_status_kind;
     const bool admission =
-        status_kind != execution_state_sync::PlanningStatusKind::kRuntime;
+        status_kind != execution_state::PlanningStatusKind::kRuntime;
     if (!submission.result.ok()) {
       AERROR << "Planning execution-state commit failed: "
              << submission.result.message;
@@ -603,7 +603,7 @@ void PlanningComponent::DrainExecutionStateSubmissions() {
       continue;
     }
     if (submission.operation.channel ==
-        execution_state_sync::Channel::kMotion) {
+        execution_state::Channel::kMotion) {
       motion_event_sequence_ = submission.commit.sequence;
       MotionDirective directive;
       if (!directive.ParseFromString(submission.operation.payload)) {
@@ -614,7 +614,7 @@ void PlanningComponent::DrainExecutionStateSubmissions() {
         AERROR << "Failed to publish committed MotionDirective mirror";
       }
     } else if (submission.operation.channel ==
-               execution_state_sync::Channel::kPlanningStatus) {
+               execution_state::Channel::kPlanningStatus) {
       PlanningRuntimeStatus status;
       if (!status.ParseFromString(submission.operation.payload)) {
         AERROR << "Committed planning status payload cannot be parsed";
@@ -622,7 +622,7 @@ void PlanningComponent::DrainExecutionStateSubmissions() {
       } else {
         if (admission &&
             status_kind !=
-                execution_state_sync::PlanningStatusKind::kAdmissionRejected) {
+                execution_state::PlanningStatusKind::kAdmissionRejected) {
           if (!planning_coordinator_->CommitPreparedMissionDirective(
                   status.admission_directive_identity())) {
             AERROR
@@ -648,13 +648,13 @@ void PlanningComponent::DrainExecutionStateSubmissions() {
 }
 
 bool PlanningComponent::SubmitExecutionState(
-    execution_state_sync::Channel channel, const std::string& payload,
+    execution_state::Channel channel, const std::string& payload,
     bool cleanup,
-    execution_state_sync::PlanningStatusKind planning_status_kind) {
+    execution_state::PlanningStatusKind planning_status_kind) {
   const bool owner_runtime_observation =
-      channel == execution_state_sync::Channel::kPlanningStatus &&
+      channel == execution_state::Channel::kPlanningStatus &&
       planning_status_kind ==
-          execution_state_sync::PlanningStatusKind::kRuntime;
+          execution_state::PlanningStatusKind::kRuntime;
   if (execution_state_transport_ == nullptr) {
     AERROR << "Cannot submit without an execution-state client";
     return false;
@@ -663,17 +663,17 @@ bool PlanningComponent::SubmitExecutionState(
     AERROR << "Cannot submit lifecycle operation without a live Mission event";
     return false;
   }
-  std::vector<execution_state_sync::Guard> guards;
+  std::vector<execution_state::Guard> guards;
   if (mission_event_sequence_ != 0) {
     guards.push_back(
-        {execution_state_sync::Channel::kMission, mission_event_sequence_});
+        {execution_state::Channel::kMission, mission_event_sequence_});
   }
-  if (channel == execution_state_sync::Channel::kPlanningStatus &&
+  if (channel == execution_state::Channel::kPlanningStatus &&
       planning_status_kind ==
-          execution_state_sync::PlanningStatusKind::kRuntime &&
+          execution_state::PlanningStatusKind::kRuntime &&
       motion_event_sequence_ != 0) {
     guards.push_back(
-        {execution_state_sync::Channel::kMotion, motion_event_sequence_});
+        {execution_state::Channel::kMotion, motion_event_sequence_});
   }
   const auto result = execution_state_transport_->Submit(
       channel, payload, std::move(guards), cleanup, planning_status_kind);
@@ -746,16 +746,16 @@ void PlanningComponent::ApplyPendingMissionDirective(
       directive.identity());
   admission_status.set_state(result.accepted ? RUNTIME_ACCEPTED
                                              : RUNTIME_REJECTED);
-  auto status_kind = execution_state_sync::PlanningStatusKind::
+  auto status_kind = execution_state::PlanningStatusKind::
       kAdmissionRejected;
   if (result.code == MissionAdmissionCode::kDuplicate) {
     admission_status.set_mission_admission_outcome(
         MISSION_ADMISSION_DUPLICATE);
-    status_kind = execution_state_sync::PlanningStatusKind::
+    status_kind = execution_state::PlanningStatusKind::
         kAdmissionDuplicate;
   } else if (result.accepted) {
     admission_status.set_mission_admission_outcome(MISSION_ADMISSION_ACCEPTED);
-    status_kind = execution_state_sync::PlanningStatusKind::kAdmissionAccepted;
+    status_kind = execution_state::PlanningStatusKind::kAdmissionAccepted;
   } else {
     admission_status.set_mission_admission_outcome(MISSION_ADMISSION_REJECTED);
   }
@@ -783,7 +783,7 @@ void PlanningComponent::ApplyPendingMissionDirective(
         session.last_accepted_directive_identity());
   }
   if (!SubmitExecutionState(
-          execution_state_sync::Channel::kPlanningStatus,
+          execution_state::Channel::kPlanningStatus,
           admission_status.SerializeAsString(), false, status_kind)) {
     execution_state_fault_ = true;
     planning_coordinator_->DiscardPreparedMissionDirective();
@@ -909,7 +909,7 @@ bool PlanningComponent::ServiceExecutionState(
     const double now = cyber::Clock::NowInSeconds();
     if (fingerprint != last_planning_status_fingerprint_ ||
         now - last_planning_status_submit_sec_ >= 0.2) {
-      if (SubmitExecutionState(execution_state_sync::Channel::kPlanningStatus,
+      if (SubmitExecutionState(execution_state::Channel::kPlanningStatus,
                                status.SerializeAsString(), false)) {
         last_planning_status_fingerprint_ = fingerprint;
         last_planning_status_submit_sec_ = now;
@@ -1311,7 +1311,7 @@ void PlanningComponent::PublishRuntimeStatus(
   const double now = cyber::Clock::NowInSeconds();
   const bool semantic_change = fingerprint != last_planning_status_fingerprint_;
   if (semantic_change || now - last_planning_status_submit_sec_ >= 0.2) {
-    if (SubmitExecutionState(execution_state_sync::Channel::kPlanningStatus,
+    if (SubmitExecutionState(execution_state::Channel::kPlanningStatus,
                              runtime_status.SerializeAsString(), false)) {
       last_planning_status_fingerprint_ = fingerprint;
       last_planning_status_submit_sec_ = now;

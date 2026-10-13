@@ -45,7 +45,7 @@
 #include "modules/control/controller/controller_agent.h"
 #include "modules/control/controller/controller_profile_manager.h"
 #include "modules/control/safety/safety_manager.h"
-#include "modules/execution_state_sync/client.h"
+#include "execution_state/client.h"
 
 namespace apollo {
 namespace control {
@@ -81,11 +81,11 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
   void FailMotionExecution(double now_sec, const std::string& reason);
   void ProduceSafeStop(ControlCommand* command);
   bool PollExecutionState(double now_sec);
-  bool CheckMotionAuthorization(const execution_state_sync::Event& event,
+  bool CheckMotionAuthorization(const execution_state::Event& event,
                                 const planning::MotionDirective& directive) const;
   void FlushExecutionStatus();
   void FlushSafetyStatus();
-  bool ProcessSafetyOperation(const execution_state_sync::Event& event,
+  bool ProcessSafetyOperation(const execution_state::Event& event,
                               double now_sec);
   MotionExecutionVehicleState BuildMotionVehicleState() const;
 
@@ -131,7 +131,7 @@ class ControlComponent final : public apollo::cyber::TimerComponent {
       planning::MOTION_SCOPE_UNKNOWN;
   planning::MotionDirectiveScope reported_motion_scope_ =
       planning::MOTION_SCOPE_UNKNOWN;
-  std::unique_ptr<execution_state_sync::Client> execution_state_client_;
+  std::unique_ptr<execution_state::Client> execution_state_client_;
   uint64_t motion_event_sequence_ = 0;
   uint64_t mission_event_sequence_ = 0;
   uint64_t status_ticket_ = 0;

@@ -67,7 +67,7 @@ cc_library(
         ":mission_request_contract",
         ":mission_request_ledger",
         "@core//cyber",
-        "//modules/execution_state_sync:client",
+        "@wheelos_common//execution_state:client",
         "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",

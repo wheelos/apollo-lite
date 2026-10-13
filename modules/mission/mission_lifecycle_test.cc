@@ -17,8 +17,8 @@
 
 #include "cyber/timer/timing_wheel.h"
 #include "modules/common/adapters/adapter_gflags.h"
-#include "modules/execution_state_sync/execution_state_gflags.h"
-#include "modules/execution_state_sync/store.h"
+#include "execution_state/flags.h"
+#include "execution_state/store.h"
 #include "modules/mission/common/mission_context.h"
 #include "modules/mission/common/mission_request_contract.h"
 #include "modules/mission/nodes/action/move_to_node.h"
@@ -59,8 +59,8 @@ bool Await(Predicate predicate) {
   return false;
 }
 
-bool SqlBusy(const execution_state_sync::Result& result) {
-  return result.code == execution_state_sync::Code::kBusy &&
+bool SqlBusy(const execution_state::Result& result) {
+  return result.code == execution_state::Code::kBusy &&
          result.sqlite_code != 0;
 }
 
@@ -145,7 +145,7 @@ class MissionLifecycleTest : public ::testing::Test {
     return request;
   }
 
-  execution_state_sync::Result PublishPlanning(
+  execution_state::Result PublishPlanning(
       const planning::MissionDirective& directive, uint64_t parent_sequence,
       uint64_t revision, planning::MissionSessionState session,
       bool admission) {
@@ -162,20 +162,20 @@ class MissionLifecycleTest : public ::testing::Test {
           directive.identity());
       status.set_mission_admission_outcome(planning::MISSION_ADMISSION_ACCEPTED);
     }
-    execution_state_sync::Operation operation;
-    operation.channel = execution_state_sync::Channel::kPlanningStatus;
+    execution_state::Operation operation;
+    operation.channel = execution_state::Channel::kPlanningStatus;
     operation.operation_id = "planning-" + std::to_string(revision);
     operation.identity = {"planning-peer", "statuses", operation.operation_id,
                           revision};
     operation.expected_revision = revision - 1;
     operation.guards = {
-        {execution_state_sync::Channel::kMission, parent_sequence}};
+        {execution_state::Channel::kMission, parent_sequence}};
     operation.payload = status.SerializeAsString();
     operation.planning_status_kind =
-        admission ? execution_state_sync::PlanningStatusKind::kAdmissionAccepted
-                  : execution_state_sync::PlanningStatusKind::kRuntime;
-    execution_state_sync::Commit commit;
-    execution_state_sync::Result result;
+        admission ? execution_state::PlanningStatusKind::kAdmissionAccepted
+                  : execution_state::PlanningStatusKind::kRuntime;
+    execution_state::Commit commit;
+    execution_state::Result result;
     Await([&]() {
       result = peer_->Submit(operation, &commit);
       return !SqlBusy(result);
@@ -191,7 +191,7 @@ class MissionLifecycleTest : public ::testing::Test {
   std::unique_ptr<MissionHarness> component_;
   std::shared_ptr<cyber::Node> observer_;
   std::shared_ptr<cyber::Reader<MissionRuntimeStatus>> status_reader_;
-  std::unique_ptr<execution_state_sync::Store> peer_;
+  std::unique_ptr<execution_state::Store> peer_;
 };
 
 TEST_F(MissionLifecycleTest, StartupWaitsForReadyAndDoesNotRestoreAuthority) {
@@ -277,26 +277,26 @@ TEST_F(MissionLifecycleTest, TypedSubmitIsDurableAndIdempotent) {
   EXPECT_EQ(result.affected_task_identity().aggregate_id(),
             request.mission_id());
 
-  execution_state_sync::Options options;
+  execution_state::Options options;
   options.path = FLAGS_execution_state_db_path;
-  options.role = execution_state_sync::Role::kPlanning;
+  options.role = execution_state::Role::kPlanning;
   options.writer_epoch = "typed-planning-peer";
-  execution_state_sync::Result opened;
+  execution_state::Result opened;
   ASSERT_TRUE(Await([&]() {
-    opened = execution_state_sync::Store::Open(options, &peer_);
+    opened = execution_state::Store::Open(options, &peer_);
     return !SqlBusy(opened);
   })) << opened.message;
   ASSERT_TRUE(opened.ok()) << opened.message;
-  execution_state_sync::Snapshot snapshot;
+  execution_state::Snapshot snapshot;
   ASSERT_TRUE(Await([this, &snapshot]() {
     const auto read = peer_->ReadSnapshot(&snapshot);
     return read.ok() &&
            snapshot.latest[static_cast<size_t>(
-               execution_state_sync::Channel::kMission)]
+               execution_state::Channel::kMission)]
                .has_value();
   }));
   const auto& mission_event = *snapshot.latest[static_cast<size_t>(
-      execution_state_sync::Channel::kMission)];
+      execution_state::Channel::kMission)];
   planning::MissionDirective directive;
   ASSERT_TRUE(directive.ParseFromString(mission_event.operation.payload));
   ASSERT_TRUE(directive.has_activate());
@@ -358,22 +358,22 @@ TEST_F(MissionLifecycleTest, ControlSafetyOutcomeIsCorrelatedAndDurable) {
   stop->set_reason("operator-requested controlled safety stop");
   ASSERT_TRUE(component_->Proc(std::make_shared<MissionRequest>(request)));
 
-  execution_state_sync::Options options;
+  execution_state::Options options;
   options.path = FLAGS_execution_state_db_path;
-  options.role = execution_state_sync::Role::kControl;
+  options.role = execution_state::Role::kControl;
   options.writer_epoch = "safety-control-peer";
-  execution_state_sync::Result opened;
+  execution_state::Result opened;
   ASSERT_TRUE(Await([&]() {
-    opened = execution_state_sync::Store::Open(options, &peer_);
+    opened = execution_state::Store::Open(options, &peer_);
     return !SqlBusy(opened);
   })) << opened.message;
   ASSERT_TRUE(opened.ok()) << opened.message;
-  execution_state_sync::Snapshot snapshot;
+  execution_state::Snapshot snapshot;
   ASSERT_TRUE(Await([this, &snapshot]() {
     const auto read = peer_->ReadSnapshot(&snapshot);
     return read.ok() &&
            snapshot.latest[static_cast<size_t>(
-               execution_state_sync::Channel::kSafetyRequest)]
+               execution_state::Channel::kSafetyRequest)]
                .has_value();
   }));
 
@@ -390,16 +390,16 @@ TEST_F(MissionLifecycleTest, ControlSafetyOutcomeIsCorrelatedAndDurable) {
   observation.set_safety_latched(true);
   observation.set_effective_policy(control::SAFETY_STOP_CONTROLLED);
   observation.set_reason("controlled stop latched in Control");
-  execution_state_sync::Operation operation;
+  execution_state::Operation operation;
   operation.operation_id = "safety-observation-" + suffix_;
-  operation.channel = execution_state_sync::Channel::kSafetyStatus;
+  operation.channel = execution_state::Channel::kSafetyStatus;
   operation.identity.epoch = "safety-control-peer";
   operation.identity.aggregate_id = request.mission_id();
   operation.identity.command_id = request.identity().request_id();
   operation.identity.revision = 1;
   operation.expected_revision = 0;
   operation.payload = observation.SerializeAsString();
-  execution_state_sync::Commit commit;
+  execution_state::Commit commit;
   ASSERT_TRUE(peer_->Submit(operation, &commit).ok());
   ASSERT_GT(commit.sequence, 0u);
 
@@ -429,25 +429,25 @@ TEST_F(MissionLifecycleTest, PeriodicTickCommitsTaskAndConsumesTerminalFeedback)
   ASSERT_TRUE(component_->InitializeRuntime(
       "mission_runtime_" + suffix_, (directory_ / "config.pb.txt").string()));
   ASSERT_TRUE(component_->Proc(std::make_shared<MissionRequest>(Request())));
-  execution_state_sync::Options options;
+  execution_state::Options options;
   options.path = FLAGS_execution_state_db_path;
-  options.role = execution_state_sync::Role::kPlanning;
+  options.role = execution_state::Role::kPlanning;
   options.writer_epoch = "planning-peer";
-  execution_state_sync::Result opened;
+  execution_state::Result opened;
   ASSERT_TRUE(Await([&]() {
-    opened = execution_state_sync::Store::Open(options, &peer_);
+    opened = execution_state::Store::Open(options, &peer_);
     return !SqlBusy(opened);
   })) << opened.message;
   ASSERT_TRUE(opened.ok()) << opened.message;
-  execution_state_sync::Snapshot snapshot;
+  execution_state::Snapshot snapshot;
   ASSERT_TRUE(Await([this, &snapshot]() {
     const auto read = peer_->ReadSnapshot(&snapshot);
     return read.ok() &&
            snapshot.latest[static_cast<size_t>(
-               execution_state_sync::Channel::kMission)].has_value();
+               execution_state::Channel::kMission)].has_value();
   }));
   const auto& event = *snapshot.latest[static_cast<size_t>(
-      execution_state_sync::Channel::kMission)];
+      execution_state::Channel::kMission)];
   planning::MissionDirective directive;
   ASSERT_TRUE(directive.ParseFromString(event.operation.payload));
   ASSERT_TRUE(directive.has_activate());
@@ -505,10 +505,10 @@ TEST_F(MissionLifecycleTest, PeriodicTickCommitsTaskAndConsumesTerminalFeedback)
   }
   component_->StopRuntime();
   EXPECT_FALSE(MissionContext::Instance()->ExecutionStateHealthy());
-  std::vector<execution_state_sync::Participant> participants;
+  std::vector<execution_state::Participant> participants;
   ASSERT_TRUE(peer_->ReadParticipants(&participants).ok());
   for (const auto& participant : participants) {
-    if (participant.role == execution_state_sync::Role::kMission) {
+    if (participant.role == execution_state::Role::kMission) {
       EXPECT_FALSE(participant.ready);
     }
   }

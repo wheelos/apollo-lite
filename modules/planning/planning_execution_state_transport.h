@@ -20,31 +20,31 @@
 #include <string>
 #include <vector>
 
-#include "modules/execution_state_sync/client.h"
+#include "execution_state/client.h"
 
 namespace apollo {
 namespace planning {
 
 class PlanningExecutionStateTransport {
  public:
-  execution_state_sync::Result Init(const std::string& path,
+  execution_state::Result Init(const std::string& path,
                                     const std::string& producer_epoch);
-  execution_state_sync::Result Poll(
-      std::vector<execution_state_sync::Event>* events);
-  execution_state_sync::Result Acknowledge(uint64_t through_sequence);
-  std::vector<execution_state_sync::Submission> DrainSubmissions();
-  execution_state_sync::Result Submit(
-      execution_state_sync::Channel channel, std::string payload,
-      std::vector<execution_state_sync::Guard> guards, bool cleanup,
-      execution_state_sync::PlanningStatusKind planning_status_kind);
+  execution_state::Result Poll(
+      std::vector<execution_state::Event>* events);
+  execution_state::Result Acknowledge(uint64_t through_sequence);
+  std::vector<execution_state::Submission> DrainSubmissions();
+  execution_state::Result Submit(
+      execution_state::Channel channel, std::string payload,
+      std::vector<execution_state::Guard> guards, bool cleanup,
+      execution_state::PlanningStatusKind planning_status_kind);
 
-  std::shared_ptr<const execution_state_sync::WorkerView> Latest() const;
+  std::shared_ptr<const execution_state::WorkerView> Latest() const;
   bool Healthy() const;
   bool Ready() const;
   uint64_t cursor() const;
 
  private:
-  std::unique_ptr<execution_state_sync::Client> client_;
+  std::unique_ptr<execution_state::Client> client_;
 };
 
 }  // namespace planning

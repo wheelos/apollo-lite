@@ -24,7 +24,7 @@
 #include "cyber/common/global_data.h"
 #include "cyber/timer/timing_wheel.h"
 #include "modules/common/adapters/adapter_gflags.h"
-#include "modules/execution_state_sync/execution_state_gflags.h"
+#include "execution_state/flags.h"
 #include "modules/mission/common/mission_context.h"
 #include "modules/mission/common/mission_request_contract.h"
 #include "modules/mission/nodes/action/charge_node.h"

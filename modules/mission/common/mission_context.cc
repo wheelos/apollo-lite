@@ -103,9 +103,9 @@ bool MissionContext::InitExecutionState(const std::string& path,
     mission_request_ledger_.reset();
     return false;
   }
-  execution_state_client_ = std::make_unique<execution_state_sync::Client>();
+  execution_state_client_ = std::make_unique<execution_state::Client>();
   const auto result = execution_state_client_->Init(
-      path, execution_state_sync::Role::kMission, producer_epoch_, 8, "v1",
+      path, execution_state::Role::kMission, producer_epoch_, 8, "v1",
       {"mission-directive-v1", "mission-business-status-v1"});
   if (!result.ok()) {
     AERROR << "Failed to initialize execution-state client: " << result.message;
@@ -295,8 +295,8 @@ bool MissionContext::SubmitTypedRequest(const MissionRequest& request,
   }
 
   const auto channel = is_safety_operation
-                           ? execution_state_sync::Channel::kSafetyRequest
-                           : execution_state_sync::Channel::kMission;
+                           ? execution_state::Channel::kSafetyRequest
+                           : execution_state::Channel::kMission;
   const std::string payload = is_safety_operation
                                   ? safety_request.SerializeAsString()
                                   : directive.SerializeAsString();
@@ -694,7 +694,7 @@ bool MissionContext::PublishPlanningCommands(
     const std::vector<planning::PlanningCommand>& commands) {
   for (const auto& command : commands) {
     planning::MissionDirective directive;
-    execution_state_sync::Client* client = nullptr;
+    execution_state::Client* client = nullptr;
     {
       std::lock_guard<std::mutex> lock(mutex_);
       if (!BuildMissionDirective(command, &directive)) {
@@ -712,7 +712,7 @@ bool MissionContext::PublishPlanningCommands(
     const bool fenced = directive.has_cancel() &&
                         directive.cancel().postcondition() ==
                             planning::MISSION_CANCEL_CONTROLLED_STOP_THEN_HOLD;
-    const auto result = client->Submit(execution_state_sync::Channel::kMission,
+    const auto result = client->Submit(execution_state::Channel::kMission,
                                        directive.SerializeAsString(), {},
                                        fenced, false, &ticket);
     if (!result.ok()) {
@@ -728,7 +728,7 @@ bool MissionContext::PublishPlanningCommands(
 }
 
 bool MissionContext::PollExecutionState() {
-  execution_state_sync::Client* client = nullptr;
+  execution_state::Client* client = nullptr;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     client = execution_state_client_.get();
@@ -737,9 +737,9 @@ bool MissionContext::PollExecutionState() {
     AERROR << "Execution-state client is not initialized";
     return false;
   }
-  std::vector<execution_state_sync::Event> events;
+  std::vector<execution_state::Event> events;
   const auto poll = client->Poll(&events);
-  if (!poll.ok() && poll.code != execution_state_sync::Code::kBusy) {
+  if (!poll.ok() && poll.code != execution_state::Code::kBusy) {
     AERROR << "Execution-state polling failed: " << poll.message;
     return false;
   }
@@ -754,7 +754,7 @@ bool MissionContext::PollExecutionState() {
   if (view && view->snapshot) {
     const auto& latest_safety =
         view->snapshot->latest[static_cast<size_t>(
-            execution_state_sync::Channel::kSafetyStatus)];
+            execution_state::Channel::kSafetyStatus)];
     if (latest_safety &&
         latest_safety->sequence > last_safety_status_sequence_ &&
         !ConsumeExecutionEvent(*latest_safety)) {
@@ -771,7 +771,7 @@ bool MissionContext::PollExecutionState() {
       return false;
     }
   }
-  execution_state_sync::Submission submission;
+  execution_state::Submission submission;
   while (client->TakeSubmission(&submission).ok()) {
     if (!submission.result.ok()) {
       AERROR << "Mission directive commit failed: "
@@ -787,7 +787,7 @@ bool MissionContext::PollExecutionState() {
       }
     }
     if (submission.operation.channel ==
-        execution_state_sync::Channel::kMission) {
+        execution_state::Channel::kMission) {
       planning::MissionDirective directive;
       if (!directive.ParseFromString(submission.operation.payload)) {
         AERROR << "Committed mission payload cannot be parsed";
@@ -802,7 +802,7 @@ bool MissionContext::PollExecutionState() {
         AERROR << "Failed to publish committed MissionDirective mirror";
       }
     } else if (submission.operation.channel ==
-               execution_state_sync::Channel::kSafetyRequest) {
+               execution_state::Channel::kSafetyRequest) {
       control::SafetyControlRequest safety_request;
       if (!safety_request.ParseFromString(submission.operation.payload)) {
         AERROR << "Committed safety request payload cannot be parsed";
@@ -952,9 +952,9 @@ bool MissionContext::BuildTypedMissionDirective(
 }
 
 bool MissionContext::ConsumeExecutionEvent(
-    const execution_state_sync::Event& event) {
+    const execution_state::Event& event) {
   if (event.operation.channel ==
-      execution_state_sync::Channel::kPlanningStatus) {
+      execution_state::Channel::kPlanningStatus) {
     auto status = std::make_shared<planning::PlanningRuntimeStatus>();
     if (!status->ParseFromString(event.operation.payload)) {
       AERROR << "Invalid PlanningRuntimeStatus execution-state payload";
@@ -962,7 +962,7 @@ bool MissionContext::ConsumeExecutionEvent(
     }
     UpdatePlanningRuntimeStatus(status);
   } else if (event.operation.channel ==
-             execution_state_sync::Channel::kControlStatus) {
+             execution_state::Channel::kControlStatus) {
     auto status = std::make_shared<control::ControlRuntimeStatus>();
     if (!status->ParseFromString(event.operation.payload)) {
       AERROR << "Invalid ControlRuntimeStatus execution-state payload";
@@ -970,13 +970,13 @@ bool MissionContext::ConsumeExecutionEvent(
     }
     UpdateControlRuntimeStatus(
         status, event.operation.control_status_kind ==
-                    execution_state_sync::ControlStatusKind::kMotionResult);
+                    execution_state::ControlStatusKind::kMotionResult);
   } else if (event.operation.channel ==
-             execution_state_sync::Channel::kSafetyStatus) {
+             execution_state::Channel::kSafetyStatus) {
     if (event.sequence <= last_safety_status_sequence_) {
       return true;
     }
-    if (event.owner != execution_state_sync::Role::kControl) {
+    if (event.owner != execution_state::Role::kControl) {
       AERROR << "Safety observation was not committed by Control";
       return false;
     }

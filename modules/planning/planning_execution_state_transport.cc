@@ -21,45 +21,45 @@
 namespace apollo {
 namespace planning {
 
-execution_state_sync::Result PlanningExecutionStateTransport::Init(
+execution_state::Result PlanningExecutionStateTransport::Init(
     const std::string& path, const std::string& producer_epoch) {
-  client_ = std::make_unique<execution_state_sync::Client>();
-  return client_->Init(path, execution_state_sync::Role::kPlanning,
+  client_ = std::make_unique<execution_state::Client>();
+  return client_->Init(path, execution_state::Role::kPlanning,
                        producer_epoch, 8, "v1",
                        {"mission-admission-v1", "motion-directive-v1",
                         "planning-runtime-status-v1"});
 }
 
-execution_state_sync::Result PlanningExecutionStateTransport::Poll(
-    std::vector<execution_state_sync::Event>* events) {
+execution_state::Result PlanningExecutionStateTransport::Poll(
+    std::vector<execution_state::Event>* events) {
   return client_->Poll(events);
 }
 
-execution_state_sync::Result PlanningExecutionStateTransport::Acknowledge(
+execution_state::Result PlanningExecutionStateTransport::Acknowledge(
     uint64_t through_sequence) {
   return client_->Acknowledge(through_sequence);
 }
 
-std::vector<execution_state_sync::Submission>
+std::vector<execution_state::Submission>
 PlanningExecutionStateTransport::DrainSubmissions() {
-  std::vector<execution_state_sync::Submission> submissions;
-  execution_state_sync::Submission submission;
+  std::vector<execution_state::Submission> submissions;
+  execution_state::Submission submission;
   while (client_->TakeSubmission(&submission).ok()) {
     submissions.push_back(std::move(submission));
   }
   return submissions;
 }
 
-execution_state_sync::Result PlanningExecutionStateTransport::Submit(
-    execution_state_sync::Channel channel, std::string payload,
-    std::vector<execution_state_sync::Guard> guards, bool cleanup,
-    execution_state_sync::PlanningStatusKind planning_status_kind) {
+execution_state::Result PlanningExecutionStateTransport::Submit(
+    execution_state::Channel channel, std::string payload,
+    std::vector<execution_state::Guard> guards, bool cleanup,
+    execution_state::PlanningStatusKind planning_status_kind) {
   uint64_t ticket = 0;
   return client_->Submit(channel, std::move(payload), std::move(guards), false,
                          cleanup, &ticket, planning_status_kind);
 }
 
-std::shared_ptr<const execution_state_sync::WorkerView>
+std::shared_ptr<const execution_state::WorkerView>
 PlanningExecutionStateTransport::Latest() const {
   return client_ == nullptr ? nullptr : client_->Latest();
 }
