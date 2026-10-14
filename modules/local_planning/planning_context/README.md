@@ -51,4 +51,4 @@ use the direct entrypoint as a substitute for this builder when consuming
 `LocalScene`.
 
 Canonical architecture and extension status:
-[`independent-local-planning-plan.md`](../../../wheelos-service/context/modules/local_planning/knowledge/independent-local-planning-plan.md).
+[`independent-local-planning-plan.md`](../../../ad_agents/context/modules/local_planning/knowledge/independent-local-planning-plan.md).

@@ -102,7 +102,7 @@ The source-side adapter supplying paired base-link lane evidence and measured
 environment objects, real ODOM/uncertainty estimation, unpaired boundary
 association, persistent curb/obstacle tracking and multi-lane graph construction
 are not implemented here. See the
-[core audit](../../../wheelos-service/context/modules/world_model/knowledge/core-framework-completeness-review.md#source-backed-architecture-audit-2026-09-30)
+[core audit](../../../ad_agents/context/modules/world_model/knowledge/core-framework-completeness-review.md#source-backed-architecture-audit-2026-09-30)
 for acceptance evidence and remaining integration gates.
 
 The former `modules/world_model/relative_map` package was removed. Shared

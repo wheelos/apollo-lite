@@ -24,7 +24,7 @@ PlanningProblem
 
 ## Documentation
 
-Comprehensive design specifications, algorithmic formulas, and validation strategies are maintained under `wheelos-service/context/modules/planning/knowledge/`.
+Comprehensive design specifications, algorithmic formulas, and validation strategies are maintained under `ad_agents/context/modules/planning/knowledge/`.
 
    tied to `ReferenceLineInfo`, `Frame`, or HDMap routing.
 4. Keep `modules/planning` as a temporary dependency only for generic geometry,

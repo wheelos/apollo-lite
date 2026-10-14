@@ -7,7 +7,7 @@
 - Run builds and lint in the managed container as the mapped non-root user.
   Reuse caches; do not hardcode usernames.
 - Stop at the first actionable failure; do not retry blindly.
-- Durable repository knowledge lives in `wheelos-service/context/`.
+- Durable repository knowledge lives in `ad_agents/context/`.
 - Each `pkgs/` checkout is independent: read its own `AGENTS.md` and skills.
 
 ## Skills
@@ -26,4 +26,4 @@ read its `SKILL.md`. Select by `name`/`description`; load only what is needed.
 Enter the development environment: `bash docker/scripts/whl.sh enter dev`.
 Build and lint commands belong to their matching skills; host setup and
 container lifecycle commands are in
-`wheelos-service/context/framework/build/build-and-test-command-registry.md`.
+`ad_agents/context/framework/build/build-and-test-command-registry.md`.

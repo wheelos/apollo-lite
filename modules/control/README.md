@@ -17,7 +17,7 @@ Apollo 5.5 Control has following new features:
 ## Mission-aware controller configuration
 
 See the canonical [controller profile configuration and feedback
-contract](../../wheelos-service/context/modules/planning/knowledge/mission-planning-control-interface-design.md#control-controller-profiles)
+contract](../../ad_agents/context/modules/planning/knowledge/mission-planning-control-interface-design.md#control-controller-profiles)
 for local tuning, activation gates, switching and compatibility behavior.
 
 ## Output

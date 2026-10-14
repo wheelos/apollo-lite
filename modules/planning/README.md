@@ -19,7 +19,7 @@ introduced 2 new planning scenarios.
 Learning-based E2E/Hybrid planning, offline planning-data generation, and
 experimental planning autotuning are currently removed. Their implementation
 history and redesign notes are archived in
-[wheelos-service planning context](../../wheelos-service/context/modules/planning/knowledge/archive/planning-learning-tuning-feature.md).
+[Apollo planning context](../../ad_agents/context/modules/planning/knowledge/archive/planning-learning-tuning-feature.md).
 This does not remove the separate Hybrid maneuver supervisor used by the
 current planner.
 
