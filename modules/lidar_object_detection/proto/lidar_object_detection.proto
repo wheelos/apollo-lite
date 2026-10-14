@@ -1,0 +1,56 @@
+syntax = "proto2";
+
+package apollo.lidar_object_detection;
+
+import "wheelos_msgs/basic_msgs/header.proto";
+
+enum PointFeatureSource {
+  POINT_FEATURE_UNSPECIFIED = 0;
+  POINT_FEATURE_X = 1;
+  POINT_FEATURE_Y = 2;
+  POINT_FEATURE_Z = 3;
+  POINT_FEATURE_INTENSITY = 4;
+  POINT_FEATURE_TIME_OFFSET_SECONDS = 5;
+}
+
+message PointFeature {
+  optional PointFeatureSource source = 1;
+  optional float scale = 2 [default = 1.0];
+}
+
+message NvidiaCenterPointConfig {
+  optional int32 gpu_device_id = 1 [default = 0];
+  optional string scn_onnx_path = 2;
+  optional string rpn_centerhead_engine_path = 3;
+  optional string model_revision = 4;
+  repeated PointFeature input_feature = 5;
+}
+
+message CenterPointDetection {
+  optional float center_x = 1;
+  optional float center_y = 2;
+  optional float center_z = 3;
+  optional float width = 4;
+  optional float length = 5;
+  optional float height = 6;
+  optional float velocity_x = 7;
+  optional float velocity_y = 8;
+  optional float yaw = 9;
+  optional int32 class_id = 10;
+  optional float score = 11;
+}
+
+message CenterPointFrameResult {
+  optional apollo.common.Header header = 1;
+  optional string source_path = 2;
+  optional string sensor_name = 3;
+  optional string model_revision = 4;
+  optional uint32 input_point_count = 5;
+  repeated CenterPointDetection detection = 6;
+  optional double preprocess_ms = 7;
+  optional double voxelization_ms = 8;
+  optional double sparse_backbone_ms = 9;
+  optional double rpn_centerhead_ms = 10;
+  optional double decode_nms_ms = 11;
+  optional double total_inference_ms = 12;
+}
