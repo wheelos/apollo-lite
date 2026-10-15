@@ -16,6 +16,7 @@ Before executing a matching task, load the full skill through the runtime or
 read its `SKILL.md`. Select by `name`/`description`; load only what is needed.
 
 - [Build](.agents/skills/build/SKILL.md)
+- [Container image build](.agents/skills/container-build/SKILL.md)
 - [Lint](.agents/skills/lint/SKILL.md)
 - [Offline vendor delivery](.agents/skills/vendor/SKILL.md)
 - [Multi-repository development](.agents/skills/multi-repo-dev/SKILL.md)

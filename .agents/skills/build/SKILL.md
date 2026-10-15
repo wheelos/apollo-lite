@@ -1,13 +1,15 @@
 ---
 name: "build"
-description: "Apollo-Lite build workflow. Use when building Apollo modules in the managed dev container or diagnosing a Bazel build failure."
+description: "Apollo-Lite compile workflow. Use when building Apollo modules in the managed dev container or diagnosing a Bazel build failure."
 ---
 
 # Build and Compile
 
 ## When
 
-Use this when building one or all Apollo modules or diagnosing a compile failure.
+Use this only for compiling Apollo source and diagnosing compile failures.
+For building or publishing WheelOS container images, use the separate
+[Container Image Build](../container-build/SKILL.md) skill.
 
 ## Prerequisites
 
