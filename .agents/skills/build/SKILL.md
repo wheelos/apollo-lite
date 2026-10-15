@@ -43,10 +43,8 @@ Use this when building one or all Apollo modules or diagnosing a compile failure
   specifically required.
 - Use `bazel build //<target>` only when a precise target is required.
 - Module tests use `./apollo.sh test <module>`.
-- Do not rely on `./apollo.sh check` as the full pre-submit path until its lint
-  argument is aligned: `apollo.sh` currently passes `--cpp`, which
-  `scripts/ci/apollo_lint.sh` does not accept. Run build, tests, and lint as
-  separate commands when each is needed.
+- `./apollo.sh check` runs the full build, unit-test, and lint path. Use the
+  separate commands when only one validation stage is needed.
 
 ## Acceptance
 

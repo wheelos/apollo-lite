@@ -22,21 +22,7 @@ set -e
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
-# Dependency:
-# openmpi <- boost <- vtk <- pcl
-# bash ${CURR_DIR}/install_mpi.sh
-# bash ${CURR_DIR}/install_boost.sh
-
 bash ${CURR_DIR}/install_ffmpeg.sh
-
-# Proj was required to install VTK
-bash ${CURR_DIR}/install_proj.sh
-
-# PCL is required by [ Perception Localization Dreamview ]
-# bash ${CURR_DIR}/install_pcl.sh
-
-# OpenCV depends on ffmpeg and vtk
-# bash ${CURR_DIR}/install_opencv.sh
 
 # Clean up cache to reduce layer size.
 apt-get clean &&

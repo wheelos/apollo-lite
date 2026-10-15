@@ -1,124 +1,107 @@
-# Apollo Docker Image Build Guide
+# WheelOS Developer Images
 
-## Overview
+Docker Buildx Bake builds the final WheelOS development images directly from
+their platform bases. It does not compile Apollo sources; Apollo builds run
+inside the started development container with `apollo.sh`.
 
-Apollo runs within Docker containers, with images tailored for development and
-deployment. We currently support `x86_64` and `aarch64` architectures.
+## Supported targets
 
-**Image Types:**
+| Bake target | Platform | Base | Image tag |
+| --- | --- | --- | --- |
+| `dev-amd64-cpu-u22` | x86_64 | Ubuntu 22.04 | `dev-x86_64-22.04-cpu` |
+| `dev-amd64-cuda-u22` | x86_64 | CUDA 12.8 / Ubuntu 22.04 | `dev-x86_64-22.04-gpu` |
+| `dev-orin-jp621-l4t3643` | Orin | JetPack 6.2.1 / L4T 36.4.3 | `dev-orin-jp6.2.1` |
 
-- **Cyber (Base/Cyber)**: Core CyberRT framework, ideal for CyberRT-focused
-  development.
-- **Dev**: Full Apollo project with development toolchain, for building and
-  running the entire Apollo stack.
+The default Bake group builds the two x86 images. Build Orin as a separate
+target on a native Orin/JetPack 6.2.1 builder. QEMU can execute ARM64 userland,
+but cannot satisfy Jetson L4T's real device-tree and GPU runtime requirements.
 
-## Quick Start
+## Build
 
-Use the `./build_docker.sh` script to build images.
-
-### 1. Build CyberRT Image
-
-Builds the base development environment including CUDA/CuDNN/TensorRT and the
-CyberRT framework.
-
-```bash
-cd docker/build
-
-# Build x86_64 CUDA CyberRT image (default: download pre-built dependencies)
-./build_docker.sh -f cyber.x86_64.cuda.dockerfile
-
-# For users in mainland China (accelerated mirrors)
-./build_docker.sh -f cyber.x86_64.cuda.dockerfile -g cn
-
-# Build all dependencies from source (takes longer)
-./build_docker.sh -f dev.x86_64.cpu.dockerfile -m build
-```
-
-### 2. Build Apollo Dev Image
-
-Builds the full Apollo development image, based on a CyberRT image.
+Run from the repository root. First inspect the selected build graph:
 
 ```bash
-# Build x86_64 CUDA Dev image
-./build_docker.sh -f dev.x86_64.cuda.dockerfile
-
-# Build aarch64 Dev image (ensure qemu-user-static is configured for cross-arch builds)
-./build_docker.sh -f dev.aarch64.cuda.dockerfile -m download
+docker buildx bake -f docker/build/docker-bake.hcl --print
 ```
 
----
-
-## Script Arguments
-
-Run `./build_docker.sh --help` for full options:
-
-```
-Usage:
-    build_docker.sh -f <Dockerfile> [Options]
-
-Options:
-    -f, --dockerfile   Path to the Dockerfile (e.g., 'cyber.x86_64.cuda.dockerfile').
-    -c, --clean        Disable Docker build cache (--no-cache=true).
-    -m, --mode         Installation mode: 'download' (default, use pre-built), 'build' (build from source).
-    -g, --geo          Enable geo-specific mirrors ('cn' or 'us', default 'us').
-    -t, --timestamp    Timestamp of the previous stage image (YYYYMMDD_HHMM).
-    --dry              Dry run (print commands without execution).
-    -h, --help         Show help message and exit.
-```
-
----
-
-## Advanced Tips
-
-### Cross-Architecture Builds
-
-For cross-architecture builds (e.g., building `aarch64` on `x86_64`), ensure
-`qemu-user-static` is configured:
+Build one target or the default x86 group:
 
 ```bash
-docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+GEOLOC=cn docker buildx bake -f docker/build/docker-bake.hcl dev-amd64-cpu-u22
+GEOLOC=cn docker buildx bake -f docker/build/docker-bake.hcl dev-amd64-cuda-u22
+GEOLOC=cn docker buildx bake -f docker/build/docker-bake.hcl dev-orin-jp621-l4t3643
 ```
 
-**Recommendation:** Utilize `docker buildx` for a more robust and efficient
-multi-platform build experience.
+Local builds load into the Docker image store and use the mutable `dev-*` tags.
+The compatibility wrapper selects exactly one exporter: Docker for local builds
+or the registry for pushes. Set `GEOLOC=cn` for the Hangzhou registry
+(`registry.cn-hangzhou.aliyuncs.com/wheelos/apollo`) and China package mirrors;
+set `GEOLOC=us` for Docker Hub (`wheelos/apollo`) and public package sources.
+`APOLLO_REPO` overrides the image repository for either region.
 
-### Optimize Build Speed
+For production validation, provide a release version. The generated tag keeps
+the OS, architecture, accelerator, and Jetson runtime distinct:
 
-- **Local HTTP Cache:** Setting up a local HTTP server to cache downloaded
-  packages can significantly speed up repeated builds without affecting final
-  image size.
+| Target | Example tag for version `v1.2.3` |
+| --- | --- |
+| x86 CPU | `v1.2.3-amd64-u22-cpu` |
+| x86 GPU | `v1.2.3-amd64-u22-cuda12.8` |
+| Orin | `v1.2.3-orin-jp6.2.1-l4t36.4.3` |
 
-  **Steps:**
+Use the wrapper to push a versioned image; without `--push`, the same versioned
+tag is built locally for validation:
 
-  1.  **Download prerequisites:** Identify and download all necessary
-      prerequisite packages to a local directory (e.g., `$HOME/apollo_cache`).
-      URLs are typically listed in the build log (`/opt/apollo/build.log`). Pay
-      attention to checksums for integrity.
-  2.  **Start local HTTP server:** Navigate to your cache directory and start a
-      simple HTTP server on port **8388**:
-      ```bash
-      mkdir -p "$HOME/apollo_cache" && cd "$_"
-      nohup python3 -m http.server 8388 &
-      ```
-  3.  **Rerun build:** Execute `build_docker.sh` as usual. The Docker build
-      process will attempt to fetch packages from
-      `http://host.docker.internal:8388` (or directly from
-      `http://<your_host_ip>:8388` if `host.docker.internal` is not available),
-      greatly reducing download times.
+```bash
+bash docker/build/build_docker.sh -f dev.x86_64.cpu.dockerfile \
+  --geo cn --release-version v1.2.3
+bash docker/build/build_docker.sh -f dev.x86_64.cuda.dockerfile \
+  --geo cn --release-version v1.2.3 --push
+```
 
-  - **Benefit:** Even if a cached package is missing or broken, the build
-    process will fall back to downloading from the original URL.
+Do not overwrite a published version tag. Configure registry-side tag
+immutability where supported, and promote the exact validated image digest
+rather than rebuilding separately for each environment. Keep the mutable
+`dev-*` tags for development only.
 
-- **Avoid `--no-cache` (`-c`):** Only use when strictly necessary, as it forces
-  re-downloading and re-building all layers, significantly increasing build
-  time.
+Check a Dockerfile through the wrapper so Buildx does not export a check-only
+image over a local tag:
 
-### Debugging Builds
+```bash
+bash docker/build/build_docker.sh -f dev.x86_64.cpu.dockerfile --check
+bash docker/build/build_docker.sh -f dev.x86_64.cuda.dockerfile --check
+```
 
-Build logs are located at `/opt/apollo/build.log` inside the container,
-providing detailed information on downloads and installation steps.
+The compatibility wrapper accepts the supported legacy Dockerfile names:
 
----
+```bash
+bash docker/build/build_docker.sh -f dev.x86_64.cpu.dockerfile --dry
+bash docker/build/build_docker.sh -f dev.x86_64.cuda.dockerfile
+bash docker/build/build_docker.sh -f dev.aarch64.orin.dockerfile --geo cn
+```
 
-Standalone and runtime release packaging have been removed. Use the staged
-`base`, `cyber`, and `dev` targets above.
+For direct Bake checks, override the target output with
+`--set '<target>.output=type=cacheonly'`. For direct pushes, use
+`--set '<target>.output=type=image,push=true'`; do not combine the configured
+Docker exporter with `--push`, which adds a second exporter. Prefer the wrapper
+for both operations so output behavior stays explicit.
+
+Use `--cache-server URL` for the checksum-verified HTTP artifact cache,
+`CACHE_REGISTRY=...` for a shared BuildKit registry cache, and `--set
+key=value` to pass a Bake override. Keep the default BuildKit cache enabled;
+`--clean` is for cache diagnosis, not routine builds. HTTP artifact cache,
+BuildKit layer cache, and Bazel caches are separate mechanisms.
+
+## Build and runtime boundaries
+
+Image construction installs the development toolchain and platform/module
+dependencies. It does not run `apollo.sh build`. Start the matching image with
+`whl`, then compile in `/apollo` as the mapped non-root user. Buildx cache
+reuses image layers; Bazel repository and disk caches persist separately under
+the workspace `.cache` directory.
+`DEV_BAZEL_CACHE_DIR` can override the Bazel cache root; the build wrapper
+uses its `repo_cache` and `disk_cache` subdirectories and fails explicitly if
+they are not writable instead of silently falling back to `/tmp`.
+
+`GEOLOC` selects the registry and package mirrors consistently. NVIDIA CUDA
+and Jetson package endpoints remain vendor-controlled; only Ubuntu sources
+switch between China and public mirrors.
