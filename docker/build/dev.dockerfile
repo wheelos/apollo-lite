@@ -124,7 +124,6 @@ COPY docker/build/installers/install_modules_base.sh \
      docker/build/installers/install_patchelf.sh \
      docker/build/installers/install_python_modules.sh \
      docker/build/installers/install_perception_deps.sh \
-     docker/build/installers/install_adolc.sh \
      docker/build/installers/install_ipopt.sh \
      docker/build/installers/install_libtorch.sh \
      /opt/apollo/installers/
