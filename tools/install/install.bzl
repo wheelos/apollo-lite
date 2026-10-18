@@ -1,5 +1,7 @@
 # -*- python -*-
 # Adapted from RobotLocomotion/drake:tools/install/install.bzl
+load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("@rules_python//python:defs.bzl", "PyInfo")
 load("//tools:common.bzl", "dirname", "join_paths", "output_path", "remove_prefix")
 
 InstallInfo = provider()

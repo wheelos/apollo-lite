@@ -1,13 +1,15 @@
 ---
 name: "build"
-description: "Apollo-Lite build workflow. Use when building Apollo modules in the managed dev container or diagnosing a Bazel build failure."
+description: "Apollo-Lite compile workflow. Use when building Apollo modules in the managed dev container or diagnosing a Bazel build failure."
 ---
 
 # Build and Compile
 
 ## When
 
-Use this when building one or all Apollo modules or diagnosing a compile failure.
+Use this only for compiling Apollo source and diagnosing compile failures.
+For building or publishing WheelOS container images, use the separate
+[Container Image Build](../container-build/SKILL.md) skill.
 
 ## Prerequisites
 
@@ -43,10 +45,8 @@ Use this when building one or all Apollo modules or diagnosing a compile failure
   specifically required.
 - Use `bazel build //<target>` only when a precise target is required.
 - Module tests use `./apollo.sh test <module>`.
-- Do not rely on `./apollo.sh check` as the full pre-submit path until its lint
-  argument is aligned: `apollo.sh` currently passes `--cpp`, which
-  `scripts/ci/apollo_lint.sh` does not accept. Run build, tests, and lint as
-  separate commands when each is needed.
+- `./apollo.sh check` runs the full build, unit-test, and lint path. Use the
+  separate commands when only one validation stage is needed.
 
 ## Acceptance
 

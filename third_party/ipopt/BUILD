@@ -1,21 +1,14 @@
-load("//tools/install:install.bzl", "install", "install_src_files")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
-package(
-    default_visibility = ["//visibility:public"],
-)
+package(default_visibility = ["//visibility:public"])
 
-install(
-    name = "install",
-    data = [
-        ":3rd-ipopt.BUILD",
-        ":cyberfile.xml",
+licenses(["notice"])
+
+cc_library(
+    name = "ipopt",
+    hdrs = glob(["include/coin/**/*.hpp", "include/coin/**/*.h"]),
+    includes = ["include"],
+    linkopts = [
+        "-lipopt",
     ],
-    data_dest = "3rd-ipopt",
-)
-
-install_src_files(
-    name = "install_src",
-    dest = "3rd-ipopt/src",
-    filter = "*",
-    src_dir = ["."],
 )
