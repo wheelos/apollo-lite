@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "modules/lidar_object_detection/proto/lidar_object_detection.pb.h"
+
 #include "modules/lidar_object_detection/types/model_input.h"
 
 namespace apollo {
@@ -35,7 +36,7 @@ class CenterPointBackend {
  public:
   virtual ~CenterPointBackend() = default;
 
-  virtual bool Init(const NvidiaCenterPointConfig& config,
+  virtual bool Init(const CenterPointModelConfig& config,
                     std::string* error) = 0;
   virtual bool Infer(const ModelInput& input,
                      std::vector<CenterPointDetection>* detections,

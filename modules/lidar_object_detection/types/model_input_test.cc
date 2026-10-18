@@ -25,8 +25,8 @@ namespace lidar_object_detection {
 
 namespace {
 
-NvidiaCenterPointConfig TestConfig() {
-  NvidiaCenterPointConfig config;
+CenterPointModelConfig TestConfig() {
+  CenterPointModelConfig config;
   config.add_input_feature()->set_source(POINT_FEATURE_X);
   config.add_input_feature()->set_source(POINT_FEATURE_Y);
   config.add_input_feature()->set_source(POINT_FEATURE_Z);
@@ -69,7 +69,7 @@ TEST(ModelInputBuilderTest, BuildsFiveFeatureRowsAndPreservesPointIndices) {
   EXPECT_NEAR(input.points[9], -0.1F, 1e-6F);
 }
 
-TEST(ModelInputBuilderTest, RequiresNvidiaXYZFeatureOrder) {
+TEST(ModelInputBuilderTest, RequiresCenterPointXYZFeatureOrder) {
   auto config = TestConfig();
   config.mutable_input_feature(0)->set_source(POINT_FEATURE_Y);
   ModelInputBuilder builder;
@@ -85,8 +85,7 @@ TEST(ModelInputBuilderTest, SkipsPointsWithNonFiniteCoordinates) {
 
   apollo::drivers::PointCloud cloud;
   AddPoint(1.0F, 2.0F, 3.0F, 64U, 0U, &cloud);
-  AddPoint(std::numeric_limits<float>::quiet_NaN(), 0.0F, 0.0F, 0U, 0U,
-           &cloud);
+  AddPoint(std::numeric_limits<float>::quiet_NaN(), 0.0F, 0.0F, 0U, 0U, &cloud);
 
   ModelInput input;
   ASSERT_TRUE(builder.Build(cloud, &input, &error)) << error;

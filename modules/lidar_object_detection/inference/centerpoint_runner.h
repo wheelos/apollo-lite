@@ -24,10 +24,9 @@ namespace lidar_object_detection {
 
 class CenterPointRunner {
  public:
-  explicit CenterPointRunner(CenterPointBackend* backend)
-      : backend_(backend) {}
+  explicit CenterPointRunner(CenterPointBackend* backend) : backend_(backend) {}
 
-  bool Init(const NvidiaCenterPointConfig& config, std::string* error);
+  bool Init(const CenterPointModelConfig& config, std::string* error);
 
   bool Run(const apollo::drivers::PointCloud& cloud,
            const std::string& source_path, const std::string& sensor_name,
@@ -36,7 +35,7 @@ class CenterPointRunner {
  private:
   CenterPointBackend* backend_ = nullptr;
   ModelInputBuilder input_builder_;
-  NvidiaCenterPointConfig config_;
+  CenterPointModelConfig config_;
   bool initialized_ = false;
 };
 

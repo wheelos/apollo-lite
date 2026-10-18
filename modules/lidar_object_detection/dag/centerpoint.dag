@@ -1,0 +1,13 @@
+module_config {
+  module_library: "/apollo/modules/lidar_object_detection-dev/local/lib/libcenterpoint_component.so"
+  components {
+    class_name: "CenterPointComponent"
+    config {
+      name: "CenterPoint"
+      config_file_path: "/apollo/modules/lidar_object_detection-dev/local/conf/centerpoint_component.pb.txt"
+      readers {
+        channel: "/apollo/sensor/velodyne128/compensator/PointCloud2"
+      }
+    }
+  }
+}

@@ -40,8 +40,7 @@ bool IsFiniteDetection(const CenterPointDetection& detection) {
          std::isfinite(detection.height()) && detection.height() > 0.0F &&
          std::isfinite(detection.velocity_x()) &&
          std::isfinite(detection.velocity_y()) &&
-         std::isfinite(detection.yaw()) &&
-         std::isfinite(detection.score());
+         std::isfinite(detection.yaw()) && std::isfinite(detection.score());
 }
 
 bool IsValidTimings(const InferenceTimings& timings) {
@@ -51,18 +50,17 @@ bool IsValidTimings(const InferenceTimings& timings) {
          timings.sparse_backbone_ms >= 0.0 &&
          std::isfinite(timings.rpn_centerhead_ms) &&
          timings.rpn_centerhead_ms >= 0.0 &&
-         std::isfinite(timings.decode_nms_ms) &&
-         timings.decode_nms_ms >= 0.0 &&
+         std::isfinite(timings.decode_nms_ms) && timings.decode_nms_ms >= 0.0 &&
          std::isfinite(timings.total_inference_ms) &&
          timings.total_inference_ms >= 0.0;
 }
 
 }  // namespace
 
-bool CenterPointRunner::Init(const NvidiaCenterPointConfig& config,
+bool CenterPointRunner::Init(const CenterPointModelConfig& config,
                              std::string* error) {
   if (backend_ == nullptr) {
-    SetError("NVIDIA CenterPoint backend is null", error);
+    SetError("CenterPoint backend is null", error);
     return false;
   }
   if (config.scn_onnx_path().empty() ||
@@ -76,7 +74,7 @@ bool CenterPointRunner::Init(const NvidiaCenterPointConfig& config,
   }
   if (!backend_->Init(config, error)) {
     if (error != nullptr && error->empty()) {
-      SetError("NVIDIA CenterPoint backend initialization failed", error);
+      SetError("CenterPoint backend initialization failed", error);
     }
     return false;
   }
@@ -91,11 +89,11 @@ bool CenterPointRunner::Run(const apollo::drivers::PointCloud& cloud,
                             CenterPointFrameResult* result,
                             std::string* error) const {
   if (!initialized_) {
-    SetError("NVIDIA CenterPoint runner is not initialized", error);
+    SetError("CenterPoint runner is not initialized", error);
     return false;
   }
   if (result == nullptr) {
-    SetError("NVIDIA CenterPoint result output is null", error);
+    SetError("CenterPoint result output is null", error);
     return false;
   }
 
@@ -113,20 +111,18 @@ bool CenterPointRunner::Run(const apollo::drivers::PointCloud& cloud,
   InferenceTimings timings;
   if (!backend_->Infer(input, &detections, &timings, error)) {
     if (error != nullptr && error->empty()) {
-      SetError("NVIDIA CenterPoint backend inference failed", error);
+      SetError("CenterPoint backend inference failed", error);
     }
     return false;
   }
   if (!IsValidTimings(timings)) {
-    SetError("NVIDIA CenterPoint backend returned invalid stage timings",
-             error);
+    SetError("CenterPoint backend returned invalid stage timings", error);
     return false;
   }
   for (const auto& detection : detections) {
     if (!IsFiniteDetection(detection) || detection.class_id() < 0 ||
         detection.score() < 0.0F || detection.score() > 1.0F) {
-      SetError("NVIDIA CenterPoint backend returned an invalid detection",
-               error);
+      SetError("CenterPoint backend returned an invalid detection", error);
       return false;
     }
   }

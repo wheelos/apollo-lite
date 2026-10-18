@@ -17,6 +17,7 @@ import argparse
 import csv
 import json
 import math
+import os
 import pathlib
 import re
 import shutil
@@ -36,9 +37,11 @@ BASELINE_REVISION = "7c1623f234d5a9794fd862c9456f68f87ae7b900"
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run NVIDIA CUDA-CenterPoint on a directory of PCD files."
+        description="Run NVIDIA CUDA-CenterPoint on PCD files or a nuScenes manifest."
     )
-    parser.add_argument("--pcd_dir", required=True, type=pathlib.Path)
+    source_group = parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--pcd_dir", type=pathlib.Path)
+    source_group.add_argument("--nuscenes_manifest", type=pathlib.Path)
     parser.add_argument("--output_dir", required=True, type=pathlib.Path)
     parser.add_argument("--config", required=True, type=pathlib.Path)
     parser.add_argument("--converter_bin", required=True, type=pathlib.Path)
@@ -46,6 +49,77 @@ def parse_args():
     parser.add_argument("--scn_onnx", required=True, type=pathlib.Path)
     parser.add_argument("--rpn_centerhead_engine", required=True, type=pathlib.Path)
     return parser.parse_args()
+
+
+def read_nuscenes_manifest(path):
+    records = []
+    frame_ids = set()
+    sample_tokens = set()
+    with path.open(encoding="utf-8") as manifest_file:
+        for line_number, line in enumerate(manifest_file, 1):
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    "{}:{}: invalid manifest JSON: {}".format(
+                        path, line_number, exc
+                    )
+                ) from exc
+            frame_id = record.get("frame_id")
+            sample_token = record.get("sample_token")
+            source_path = record.get("source_path")
+            if not all(
+                isinstance(value, str) and value
+                for value in (frame_id, sample_token, source_path)
+            ):
+                raise ValueError(
+                    "{}:{}: expected non-empty frame_id, sample_token, "
+                    "and source_path".format(path, line_number)
+                )
+            if frame_id in frame_ids or sample_token in sample_tokens:
+                raise ValueError(
+                    "{}:{}: duplicate frame_id or sample_token".format(
+                        path, line_number
+                    )
+                )
+            source = pathlib.Path(source_path).resolve(strict=True)
+            if source.name != frame_id + ".pcd.bin":
+                raise ValueError(
+                    "{}:{}: frame_id does not match source filename".format(
+                        path, line_number
+                    )
+                )
+            if not source.name.endswith(".pcd.bin"):
+                raise ValueError(
+                    "{}:{}: nuScenes source must be a .pcd.bin file".format(
+                        path, line_number
+                    )
+                )
+            sweeps = record.get("sweeps")
+            if sweeps is not None:
+                if not isinstance(sweeps, list) or len(sweeps) != 9:
+                    raise ValueError(
+                        "{}:{}: expected exactly nine historical sweeps".format(
+                            path, line_number
+                        )
+                    )
+                for sweep in sweeps:
+                    sweep_path = pathlib.Path(
+                        sweep.get("source_path", "")
+                    ).resolve(strict=True)
+                    if sweep_path.suffix != ".bin":
+                        raise ValueError(
+                            "{}:{}: sweep source must be a binary point file".format(
+                                path, line_number
+                            )
+                        )
+                    sweep["source_path"] = str(sweep_path)
+            frame_ids.add(frame_id)
+            sample_tokens.add(sample_token)
+            records.append((frame_id, source, sample_token, sweeps))
+    if not records:
+        raise ValueError("No frames found in nuScenes manifest {}".format(path))
+    return records
 
 
 def run_checked(command, **kwargs):
@@ -93,7 +167,7 @@ def read_detections(path):
             values = line.split()
             if len(values) != 11:
                 raise ValueError(
-                    "{}:{}: expected 11 NVIDIA detection fields, got {}".format(
+                    "{}:{}: expected 11 CenterPoint detection fields, got {}".format(
                         path, line_number, len(values)
                     )
                 )
@@ -138,7 +212,6 @@ def read_detections(path):
 
 def main():
     args = parse_args()
-    pcd_dir = args.pcd_dir.resolve(strict=True)
     output_dir = args.output_dir.resolve()
     config = args.config.resolve(strict=True)
     converter_bin = args.converter_bin.resolve(strict=True)
@@ -146,13 +219,29 @@ def main():
     scn_onnx = args.scn_onnx.resolve(strict=True)
     engine = args.rpn_centerhead_engine.resolve(strict=True)
 
-    pcd_files = sorted(pcd_dir.glob("*.pcd"))
-    if not pcd_files:
-        raise ValueError("No .pcd files found in {}".format(pcd_dir))
+    if args.pcd_dir:
+        if not args.pcd_dir.is_dir():
+            raise ValueError("PCD input directory does not exist")
+        source_dir = args.pcd_dir.resolve(strict=True)
+        frame_items = [
+            (path.stem, path, None, None)
+            for path in sorted(source_dir.glob("*.pcd"))
+        ]
+        if not frame_items:
+            raise ValueError("No .pcd files found in {}".format(source_dir))
+        input_is_nuscenes_bin = False
+    else:
+        manifest = args.nuscenes_manifest.resolve(strict=True)
+        frame_items = read_nuscenes_manifest(manifest)
+        input_is_nuscenes_bin = True
+
     output_dir.mkdir(parents=True, exist_ok=True)
     predictions_dir = output_dir / "predictions"
     predictions_dir.mkdir(exist_ok=True)
-    if any((predictions_dir / (pcd.stem + ".txt")).exists() for pcd in pcd_files):
+    if any(
+        (predictions_dir / (frame_id + ".txt")).exists()
+        for frame_id, _, _, _ in frame_items
+    ):
         raise FileExistsError(
             "Prediction output already exists; choose a fresh output directory"
         )
@@ -163,22 +252,46 @@ def main():
         model_dir = run_root / "model"
         prediction_dir = run_root / "data" / "prediction"
         build_dir = run_root / "build"
+        model_input_dir = run_root / "model_input"
         input_dir.mkdir()
         model_dir.mkdir()
         prediction_dir.mkdir(parents=True)
         build_dir.mkdir()
+        model_input_dir.mkdir()
         (model_dir / "centerpoint.scn.onnx").symlink_to(scn_onnx)
         (model_dir / "rpn_centerhead_sim.plan").symlink_to(engine)
 
         point_counts = {}
-        for pcd in pcd_files:
-            output_bin = input_dir / (pcd.stem + ".bin")
+        for frame_id, source_path, _, sweeps in frame_items:
+            output_bin = input_dir / (frame_id + ".bin")
+            if input_is_nuscenes_bin and sweeps is not None:
+                from nuscenes_sweeps import build_model_input
+
+                model_source = model_input_dir / (frame_id + ".bin")
+                build_model_input(
+                    {
+                        "source_path": str(source_path),
+                        "sweeps": sweeps,
+                    },
+                    model_source,
+                )
+                input_flag = "--input_nuscenes_model_bin"
+                converter_source = model_source
+            else:
+                input_flag = (
+                    "--input_nuscenes_bin"
+                    if input_is_nuscenes_bin
+                    else "--input_pcd"
+                )
+                converter_source = source_path
             converter_log = run_checked(
                 [
                     converter_bin,
                     "--config={}".format(config),
-                    "--input_pcd={}".format(pcd),
+                    "{}={}".format(input_flag, converter_source),
                     "--output_bin={}".format(output_bin),
+                    "--scn_onnx={}".format(scn_onnx),
+                    "--rpn_centerhead_engine={}".format(engine),
                 ]
             )
             count_match = re.search(r"Wrote\s+(\d+)\s+points", converter_log)
@@ -187,12 +300,17 @@ def main():
                     "Could not read point count from converter output:\n"
                     + converter_log
                 )
-            point_counts[pcd.stem] = int(count_match.group(1))
+            point_counts[frame_id] = int(count_match.group(1))
 
         inference_log = run_checked(
-            [centerpoint_bin, input_dir, "--verbose"], cwd=build_dir
+            [
+                centerpoint_bin,
+                str(input_dir) + os.sep,
+                "--verbose",
+            ],
+            cwd=build_dir,
         )
-        (output_dir / "nvidia_centerpoint.log").write_text(
+        (output_dir / "centerpoint.log").write_text(
             inference_log, encoding="utf-8"
         )
         timings = parse_frame_timings(inference_log)
@@ -214,12 +332,11 @@ def main():
                 ]
                 writer = csv.DictWriter(timing_file, fieldnames=fields)
                 writer.writeheader()
-                for pcd in pcd_files:
-                    stem = pcd.stem
+                for stem, source_path, sample_token, _ in frame_items:
                     result_path = prediction_dir / (stem + ".txt")
                     if not result_path.is_file():
                         raise FileNotFoundError(
-                            "NVIDIA CenterPoint produced no result for {}".format(
+                            "CenterPoint produced no result for {}".format(
                                 stem
                             )
                         )
@@ -236,12 +353,14 @@ def main():
                     shutil.copyfile(result_path, output_txt)
                     frame = {
                         "frame_id": stem,
-                        "source_path": str(pcd),
+                        "source_path": str(source_path),
                         "model_revision": BASELINE_REVISION,
                         "point_count": point_counts[stem],
                         "detections": read_detections(result_path),
                         "timings_ms": frame_timings,
                     }
+                    if sample_token is not None:
+                        frame["sample_token"] = sample_token
                     jsonl.write(json.dumps(frame, separators=(",", ":")) + "\n")
                     writer.writerow(
                         {

@@ -29,14 +29,12 @@ struct ModelInput {
   std::vector<float> points;
   std::vector<uint32_t> source_point_indices;
 
-  std::size_t point_count() const {
-    return source_point_indices.size();
-  }
+  std::size_t point_count() const { return source_point_indices.size(); }
 };
 
 class ModelInputBuilder {
  public:
-  bool Init(const NvidiaCenterPointConfig& config, std::string* error);
+  bool Init(const CenterPointModelConfig& config, std::string* error);
 
   bool Build(const apollo::drivers::PointCloud& cloud, ModelInput* input,
              std::string* error) const;

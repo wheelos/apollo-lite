@@ -25,7 +25,7 @@ namespace lidar_object_detection {
 
 namespace {
 
-constexpr std::size_t kNvidiaPointFeatureCount = 5U;
+constexpr std::size_t kCenterPointFeatureCount = 5U;
 constexpr double kNanosecondsToSeconds = 1.0e-9;
 
 void SetError(const std::string& message, std::string* error) {
@@ -55,9 +55,9 @@ float ReadFeature(const apollo::drivers::PointXYZIT& point,
       if (point.timestamp() == 0U) {
         return 0.0F;
       }
-      return static_cast<float>(
-          static_cast<double>(point.timestamp()) * kNanosecondsToSeconds -
-          measurement_time);
+      return static_cast<float>(static_cast<double>(point.timestamp()) *
+                                    kNanosecondsToSeconds -
+                                measurement_time);
     default:
       return std::numeric_limits<float>::quiet_NaN();
   }
@@ -65,28 +65,29 @@ float ReadFeature(const apollo::drivers::PointXYZIT& point,
 
 }  // namespace
 
-bool ModelInputBuilder::Init(const NvidiaCenterPointConfig& config,
+bool ModelInputBuilder::Init(const CenterPointModelConfig& config,
                              std::string* error) {
   if (config.input_feature_size() !=
-      static_cast<int>(kNvidiaPointFeatureCount)) {
-    SetError("NVIDIA CenterPoint input requires exactly five configured "
-             "point features",
-             error);
+      static_cast<int>(kCenterPointFeatureCount)) {
+    SetError(
+        "CenterPoint input requires exactly five configured "
+        "point features",
+        error);
     return false;
   }
   if (config.input_feature(0).source() != POINT_FEATURE_X ||
       config.input_feature(1).source() != POINT_FEATURE_Y ||
       config.input_feature(2).source() != POINT_FEATURE_Z) {
-    SetError("The first three NVIDIA CenterPoint input features must be "
-             "x, y, and z",
-             error);
+    SetError(
+        "The first three CenterPoint input features must be "
+        "x, y, and z",
+        error);
     return false;
   }
   for (const auto& feature : config.input_feature()) {
     if (!IsPointFeatureSource(feature.source()) ||
         !std::isfinite(feature.scale())) {
-      SetError("NVIDIA CenterPoint input feature source or scale is invalid",
-               error);
+      SetError("CenterPoint input feature source or scale is invalid", error);
       return false;
     }
   }
@@ -99,18 +100,17 @@ bool ModelInputBuilder::Init(const NvidiaCenterPointConfig& config,
 bool ModelInputBuilder::Build(const apollo::drivers::PointCloud& cloud,
                               ModelInput* input, std::string* error) const {
   if (!initialized_) {
-    SetError("NVIDIA CenterPoint model input builder is not initialized",
-             error);
+    SetError("CenterPoint model input builder is not initialized", error);
     return false;
   }
   if (input == nullptr) {
-    SetError("NVIDIA CenterPoint model input output is null", error);
+    SetError("CenterPoint model input output is null", error);
     return false;
   }
 
   ModelInput result;
   result.points.reserve(static_cast<std::size_t>(cloud.point_size()) *
-                        kNvidiaPointFeatureCount);
+                        kCenterPointFeatureCount);
   result.source_point_indices.reserve(
       static_cast<std::size_t>(cloud.point_size()));
   const double measurement_time = cloud.measurement_time();
@@ -125,10 +125,10 @@ bool ModelInputBuilder::Build(const apollo::drivers::PointCloud& cloud,
         !std::isfinite(point.z())) {
       continue;
     }
-    float point_features[kNvidiaPointFeatureCount];
+    float point_features[kCenterPointFeatureCount];
     bool valid_point = true;
     for (std::size_t feature_index = 0;
-         feature_index < kNvidiaPointFeatureCount; ++feature_index) {
+         feature_index < kCenterPointFeatureCount; ++feature_index) {
       const auto& feature = features_[feature_index];
       const float value =
           ReadFeature(point, feature.source(), measurement_time) *
@@ -143,9 +143,8 @@ bool ModelInputBuilder::Build(const apollo::drivers::PointCloud& cloud,
       continue;
     }
     result.points.insert(result.points.end(), point_features,
-                         point_features + kNvidiaPointFeatureCount);
-    result.source_point_indices.push_back(
-        static_cast<uint32_t>(point_index));
+                         point_features + kCenterPointFeatureCount);
+    result.source_point_indices.push_back(static_cast<uint32_t>(point_index));
   }
 
   *input = std::move(result);

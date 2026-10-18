@@ -24,28 +24,27 @@ bool WriteFrameResult(const CenterPointFrameResult& result,
                       const std::string& output_path, std::string* error) {
   if (output_path.empty()) {
     if (error != nullptr) {
-      *error = "NVIDIA CenterPoint result output path is empty";
+      *error = "CenterPoint result output path is empty";
     }
     return false;
   }
   std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
   if (!output.is_open()) {
     if (error != nullptr) {
-      *error = "Unable to open NVIDIA CenterPoint result output: " +
-               output_path;
+      *error = "Unable to open CenterPoint result output: " + output_path;
     }
     return false;
   }
   if (!result.SerializeToOstream(&output)) {
     if (error != nullptr) {
-      *error = "Unable to serialize NVIDIA CenterPoint result: " + output_path;
+      *error = "Unable to serialize CenterPoint result: " + output_path;
     }
     return false;
   }
   output.flush();
   if (!output.good()) {
     if (error != nullptr) {
-      *error = "Unable to flush NVIDIA CenterPoint result: " + output_path;
+      *error = "Unable to flush CenterPoint result: " + output_path;
     }
     return false;
   }
