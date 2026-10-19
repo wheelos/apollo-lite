@@ -1,18 +1,25 @@
 # LiDAR Object Detection
 
-This is an isolated NVIDIA CenterPoint offline detection path for A/B
-experiments. It does not modify the existing perception pipeline and does not
-implement tracking or sensor fusion.
+This is an experimental CenterPoint LiDAR detection module with an offline
+inference/evaluation path and an optional Cyber component. It does not replace
+the existing perception pipeline and does not implement tracking or
+cross-sensor/object-level fusion. The Cyber component does perform temporal
+single-LiDAR sweep accumulation.
 
 ## Pipeline
 
 ```text
 PCD directory
   -> PCL loader and configured five-feature adapter
-  -> NVIDIA CUDA-CenterPoint executable
+  -> NVIDIA CUDA-CenterPoint executable (offline)
        CUDA voxelization -> NV spconv SCN -> TensorRT RPN/CenterHead
        -> CUDA decode/NMS
   -> predictions.jsonl + per-frame timings.csv + raw NVIDIA text results
+
+Cyber PointCloud
+  -> pose-aligned temporal sweep fusion -> configured five-feature adapter
+  -> Apollo C ABI adapter -> CenterPoint CUDA/TensorRT runtime
+  -> CenterPointFrameResult
 ```
 
 `types/model_input.*` adapts each Apollo point cloud to packed five-float rows.
@@ -136,9 +143,24 @@ limited manifest for official validation metrics.
 
 ## Apollo runtime build and release status
 
-The NVIDIA runtime is a Bazel target. It compiles the pinned CenterPoint
-sources and CUDA kernels, and links against Apollo's CUDA, TensorRT, and
-Protobuf repositories. NV spconv is a local shared-library dependency; set
+The Apollo runtime adapter is maintained under `inference/`; the pinned
+upstream CenterPoint implementation is isolated under
+`third_party/centerpoint/` with its license and provenance record. The adapter
+exposes a versioned C ABI from the runtime DSO and checks its ABI version and
+struct sizes before inference. It compiles the upstream CenterPoint sources
+and CUDA kernels, and links against Apollo's CUDA, TensorRT, and Protobuf
+repositories. The dependency boundary is:
+
+| Dependency | Source / management | Runtime requirement |
+| --- | --- | --- |
+| CenterPoint CUDA/TensorRT implementation | Pinned, MIT-licensed source snapshot in `third_party/centerpoint/` | CUDA toolkit/driver and a compatible TensorRT installation |
+| spconv headers, ONNX parser and schemas | Shared repository source in `third_party/spconv/` | No second module-local copy |
+| spconv implementation | Compatible prebuilt `libspconv.so`, selected through `APOLLO_NVIDIA_SPCONV_LIBRARY` | Installed beside the runtime DSO or available to the dynamic loader |
+| Model artifacts | Supplied by the deployment; not checked in | Matching SCN ONNX and TensorRT engine |
+
+The spconv source and binary are intentionally separate: this repository
+contains headers/parser/schema, not the implementation used to build the
+prebuilt library. Set
 `APOLLO_NVIDIA_SPCONV_LIBRARY` to the compatible `libspconv.so` and forward it
 to Bazel with `--repo_env`:
 
@@ -162,10 +184,11 @@ CUDA driver support must be available in the target NVIDIA software image.
 The ONNX model and TensorRT engine are separate deployment artifacts; the
 component config must point to the exact model files used to build the engine.
 
-The pinned Lidar_AI_Solution checkout supplies spconv headers and a prebuilt
-`libspconv.so`, but not the library implementation sources or a build system.
-This integration therefore requires a compatible prebuilt spconv library; it
-cannot rebuild spconv itself from that checkout.
+The CenterPoint runtime consumes the single shared spconv integration under
+the repository-root `third_party/spconv`: its vendored headers, ONNX parser and
+schemas are compiled from source, while `libspconv.so` remains a compatible
+prebuilt dependency provided through `APOLLO_NVIDIA_SPCONV_LIBRARY`. No spconv
+source copy is nested in the CenterPoint module.
 
 The nuScenes Python dependencies remain evaluation-only. The validated
 experiment used RTX 4060 (SM89), CUDA 12.8, and TensorRT 10.9 with local NVIDIA

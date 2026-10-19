@@ -65,6 +65,16 @@ struct Runtime {
 
 }  // namespace
 
+extern "C" std::uint32_t centerpoint_runtime_abi_version() { return 1U; }
+
+extern "C" std::size_t centerpoint_runtime_detection_size() {
+  return sizeof(CenterPointRuntimeDetection);
+}
+
+extern "C" std::size_t centerpoint_runtime_timings_size() {
+  return sizeof(CenterPointRuntimeTimings);
+}
+
 extern "C" void* centerpoint_runtime_create(
     const char* rpn_centerhead_engine_path, const char* scn_onnx_path,
     int gpu_device_id, char* error, std::size_t error_capacity) {
@@ -142,8 +152,7 @@ extern "C" bool centerpoint_runtime_infer(
   }
   if (runtime->centerpoint->doinfer(runtime->device_points, point_count,
                                     runtime->stream) != 0) {
-    SetError("CenterPoint inference execution failed", error,
-             error_capacity);
+    SetError("CenterPoint inference execution failed", error, error_capacity);
     return false;
   }
   const auto& output = runtime->centerpoint->nms_pred_;

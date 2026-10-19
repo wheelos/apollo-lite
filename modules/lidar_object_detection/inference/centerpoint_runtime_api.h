@@ -40,6 +40,12 @@ struct CenterPointRuntimeTimings {
   double decode_nms_ms;
 };
 
+std::uint32_t centerpoint_runtime_abi_version();
+
+std::size_t centerpoint_runtime_detection_size();
+
+std::size_t centerpoint_runtime_timings_size();
+
 void* centerpoint_runtime_create(const char* rpn_centerhead_engine_path,
                                  const char* scn_onnx_path, int gpu_device_id,
                                  char* error, std::size_t error_capacity);

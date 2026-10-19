@@ -27,7 +27,7 @@
 
 #include "modules/lidar_object_detection/proto/lidar_object_detection.pb.h"
 
-#include "modules/lidar_object_detection/third_party/centerpoint_runtime/include/centerpoint_runtime_api.h"
+#include "modules/lidar_object_detection/inference/centerpoint_runtime_api.h"
 
 namespace apollo {
 namespace lidar_object_detection {
@@ -35,7 +35,10 @@ namespace lidar_object_detection {
 namespace {
 
 constexpr std::size_t kMaxOutputDetections = 1000U;
+constexpr std::uint32_t kCenterPointRuntimeAbiVersion = 1U;
 
+using AbiVersionFunction = std::uint32_t (*)();
+using StructSizeFunction = std::size_t (*)();
 using CreateRuntimeFunction = void* (*)(const char*, const char*, int, char*,
                                         std::size_t);
 using DestroyRuntimeFunction = void (*)(void*);
@@ -80,12 +83,23 @@ class CenterPointRuntimeBackend final : public CenterPointBackend {
         dlsym(library_, "centerpoint_runtime_destroy"));
     infer_ = reinterpret_cast<InferFunction>(
         dlsym(library_, "centerpoint_runtime_infer"));
+    abi_version_ = reinterpret_cast<AbiVersionFunction>(
+        dlsym(library_, "centerpoint_runtime_abi_version"));
+    detection_size_ = reinterpret_cast<StructSizeFunction>(
+        dlsym(library_, "centerpoint_runtime_detection_size"));
+    timings_size_ = reinterpret_cast<StructSizeFunction>(
+        dlsym(library_, "centerpoint_runtime_timings_size"));
     if (create_runtime_ == nullptr || destroy_runtime_ == nullptr ||
-        infer_ == nullptr) {
-      SetError(
-          "CenterPoint runtime library is missing required C ABI "
-          "symbols",
-          error);
+        infer_ == nullptr || abi_version_ == nullptr ||
+        detection_size_ == nullptr || timings_size_ == nullptr) {
+      SetError("CenterPoint runtime library is missing required C ABI symbols",
+               error);
+      return false;
+    }
+    if (abi_version_() != kCenterPointRuntimeAbiVersion ||
+        detection_size_() != sizeof(CenterPointRuntimeDetection) ||
+        timings_size_() != sizeof(CenterPointRuntimeTimings)) {
+      SetError("CenterPoint runtime library has an incompatible C ABI", error);
       return false;
     }
 
@@ -181,6 +195,9 @@ class CenterPointRuntimeBackend final : public CenterPointBackend {
   CreateRuntimeFunction create_runtime_ = nullptr;
   DestroyRuntimeFunction destroy_runtime_ = nullptr;
   InferFunction infer_ = nullptr;
+  AbiVersionFunction abi_version_ = nullptr;
+  StructSizeFunction detection_size_ = nullptr;
+  StructSizeFunction timings_size_ = nullptr;
 };
 
 }  // namespace

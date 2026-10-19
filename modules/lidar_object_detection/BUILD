@@ -46,7 +46,16 @@ cc_library(
     deps = [
         ":centerpoint_runner",
         "//modules/lidar_object_detection/proto:lidar_object_detection_cc_proto",
-        "//modules/lidar_object_detection/third_party/centerpoint_runtime:runtime_api",
+        ":centerpoint_runtime_api",
+    ],
+)
+
+cc_library(
+    name = "centerpoint_runtime_api",
+    srcs = ["inference/centerpoint_runtime_api.cc"],
+    hdrs = ["inference/centerpoint_runtime_api.h"],
+    deps = [
+        "//modules/lidar_object_detection/third_party/centerpoint:centerpoint",
     ],
 )
 
@@ -80,9 +89,7 @@ cc_binary(
     linkshared = True,
     linkstatic = True,
     linkopts = ["-Wl,-rpath,$$ORIGIN"],
-    deps = [
-        "//modules/lidar_object_detection/third_party/centerpoint_runtime:runtime_core",
-    ],
+    deps = [":centerpoint_runtime_api"],
 )
 
 cc_library(
