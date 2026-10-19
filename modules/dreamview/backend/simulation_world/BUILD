@@ -46,10 +46,12 @@ cc_test(
     srcs = ["simulation_world_service_test.cc"],
     data = [
         "//modules/dreamview/backend/testdata",
+        "//modules/global_config:vehicle_config_data",
     ],
-    linkstatic = True,
     deps = [
         ":simulation_world_service",
+        "@wheelos_common//modules/common/map:map_selection",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "@wheelos_common//modules/common/math",
         "@com_google_googletest//:gtest_main",
     ],

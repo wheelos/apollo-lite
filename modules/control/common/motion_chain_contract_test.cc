@@ -42,6 +42,12 @@ planning::ADCTrajectory Trajectory() {
   planning::ADCTrajectory trajectory;
   trajectory.set_gear(canbus::Chassis::GEAR_DRIVE);
   trajectory.set_total_path_time(1.0);
+  auto* intent = trajectory.mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_TRAJECTORY);
+  intent->set_longitudinal_intent(planning::LON_INTENT_CRUISE);
+  intent->set_lateral_intent(planning::LAT_INTENT_TRACK_PATH);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_TRAJECTORY);
+  intent->set_primitive_type(planning::CONTROL_PRIMITIVE_NONE);
   for (int i = 0; i < 2; ++i) {
     auto* point = trajectory.add_trajectory_point();
     point->mutable_path_point()->set_x(i);

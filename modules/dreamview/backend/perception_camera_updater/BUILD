@@ -27,7 +27,6 @@ cc_test(
     name = "perception_camera_updater_test",
     size = "small",
     srcs = ["perception_camera_updater_test.cc"],
-    linkstatic = True,
     deps = [
         ":perception_camera_updater",
         "@com_google_googletest//:gtest_main",

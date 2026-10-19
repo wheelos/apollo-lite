@@ -930,7 +930,6 @@ OpenSpaceRoiDecider::OpenSpaceRoiDecider(
     const std::shared_ptr<DependencyInjector> &injector)
     : Decider(config, injector) {
   hdmap_ = hdmap::HDMapUtil::BaseMapPtr();
-  CHECK_NOTNULL(hdmap_);
   vehicle_params_ =
       apollo::common::VehicleConfigHelper::GetConfig().vehicle_param();
   AINFO << config_.DebugString();
@@ -940,6 +939,16 @@ Status OpenSpaceRoiDecider::Process(Frame *frame) {
   if (frame == nullptr) {
     const std::string msg =
         "Invalid frame, fail to process the OpenSpaceRoiDecider.";
+    AERROR << msg;
+    return Status(ErrorCode::PLANNING_ERROR, msg);
+  }
+
+  if (hdmap_ == nullptr) {
+    hdmap_ = hdmap::HDMapUtil::BaseMapPtr();
+  }
+  if (hdmap_ == nullptr) {
+    const std::string msg =
+        "HD map is unavailable for OpenSpaceRoiDecider processing.";
     AERROR << msg;
     return Status(ErrorCode::PLANNING_ERROR, msg);
   }

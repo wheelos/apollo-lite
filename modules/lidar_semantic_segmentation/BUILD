@@ -37,6 +37,10 @@ cc_library(
     name = "tensorrt_executor",
     srcs = ["inference/tensorrt_executor.cc"],
     hdrs = ["inference/tensorrt_executor.h"],
+    target_compatible_with = select({
+        "//tools/platform:use_gpu": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
     deps = [
         ":rangeret",
         "@core//cyber",

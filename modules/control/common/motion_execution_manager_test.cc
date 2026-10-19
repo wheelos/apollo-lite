@@ -97,6 +97,12 @@ planning::MotionExecutionCommand TrajectoryCommand(
   auto* trajectory = command.mutable_trajectory();
   trajectory->set_trajectory_id("trajectory-" + command_id);
   trajectory->set_gear(canbus::Chassis::GEAR_DRIVE);
+  auto* intent = command.mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_TRAJECTORY);
+  intent->set_longitudinal_intent(planning::LON_INTENT_CRUISE);
+  intent->set_lateral_intent(planning::LAT_INTENT_TRACK_PATH);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_TRAJECTORY);
+  intent->set_primitive_type(planning::CONTROL_PRIMITIVE_NONE);
   auto* point = trajectory->add_point();
   point->mutable_path_point()->set_x(0.0);
   point->mutable_path_point()->set_y(0.0);
@@ -182,6 +188,13 @@ planning::MotionExecutionCommand HoldCommand(uint64_t revision) {
   auto* primitive = command.mutable_primitive();
   primitive->set_type(planning::MOTION_PRIMITIVE_STANDSTILL_HOLD);
   primitive->mutable_standstill_hold()->set_reauthorization_period_sec(1.0);
+  auto* intent = command.mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_STANDSTILL_HOLD);
+  intent->set_longitudinal_intent(planning::LON_INTENT_HOLD_STOP);
+  intent->set_lateral_intent(planning::LAT_INTENT_MINIMIZE_STEER);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_PRIMITIVE);
+  intent->set_primitive_type(planning::CONTROL_PRIMITIVE_STANDSTILL_HOLD);
+  intent->set_require_full_stop(true);
   return command;
 }
 

@@ -4,6 +4,13 @@ The `camera` package is based on V4L USB camera devices, providing image
 acquisition and publishing functions. This driver uses one telephoto camera and
 one wide-angle camera.
 
+The driver reads V4L2 frames, converts supported packed YUV422 or MJPEG input,
+and publishes Cyber `Image` messages as `yuyv` or `rgb8`. The compression
+component accepts `yuyv`, `rgb8`, or `bgr8` images and publishes JPEG output.
+Unit tests cover packed YUV format normalization and RGB conversion; the
+camera-device test injects a fake capture device to verify frame metadata,
+payload, and buffer requeue behavior without physical hardware.
+
 ### Output channels
 
 - /apollo/sensor/camera/front_12mm/image

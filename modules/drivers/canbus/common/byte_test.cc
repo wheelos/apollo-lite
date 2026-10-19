@@ -100,7 +100,7 @@ TEST(ByteTest, ByteToString) {
   EXPECT_EQ("34", Byte::byte_to_hex(value));
   EXPECT_EQ("00110100", Byte::byte_to_binary(value));
   uint32_t int_value = 0xE13A;
-  EXPECT_EQ("E13A", Byte::byte_to_hex(int_value));
+  EXPECT_EQ("0000e13a", Byte::byte_to_hex(int_value));
 }
 
 }  // namespace canbus

@@ -6,6 +6,20 @@ package(default_visibility = ["//visibility:public"])
 
 CAMERA_GST_COPTS = ['-DMODULE_NAME=\\"camera_gst\\"']
 
+cc_library(
+    name = "camera_gst_frame_extractor",
+    srcs = ["frame_extractor.cc"],
+    hdrs = [
+        "frame_extractor.h",
+        "frame_types.h",
+    ],
+    copts = CAMERA_GST_COPTS,
+    deps = [
+        "@core//cyber",
+        "@gstreamer",
+    ],
+)
+
 filegroup(
     name = "runtime_data",
     srcs = glob([
@@ -31,13 +45,11 @@ cc_library(
     name = "camera_gst_core",
     srcs = [
         "camera_gst_driver.cc",
-        "frame_extractor.cc",
         "pipeline_builder.cc",
         "streamer.cc",
     ],
     hdrs = [
         "camera_gst_driver.h",
-        "frame_extractor.h",
         "frame_types.h",
         "pipeline_builder.h",
         "streamer.h",
@@ -45,6 +57,7 @@ cc_library(
     copts = CAMERA_GST_COPTS,
     target_compatible_with = ["//tools/platform:jetson_orin"],
     deps = [
+        ":camera_gst_frame_extractor",
         "//modules/drivers/camera_gst/proto:config_cc_proto",
         "@core//cyber",
         "@gstreamer",
@@ -83,6 +96,20 @@ cc_test(
         ":camera_gst_core",
         "@core//cyber",
         "@com_google_googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "frame_extractor_test",
+    size = "small",
+    srcs = ["frame_extractor_test.cc"],
+    copts = CAMERA_GST_COPTS,
+    deps = [
+        ":camera_gst_frame_extractor",
+        "@core//cyber",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+        "@gstreamer",
     ],
 )
 

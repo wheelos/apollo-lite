@@ -102,6 +102,12 @@ planning::MotionExecutionCommand Command(bool reverse = false) {
   pose->set_target_heading(0.0);
   pose->set_direction(reverse ? planning::MOTION_DIRECTION_REVERSE
                              : planning::MOTION_DIRECTION_FORWARD);
+  auto* intent = command.mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_POSE_SERVO);
+  intent->set_longitudinal_intent(planning::LON_INTENT_CRUISE);
+  intent->set_lateral_intent(planning::LAT_INTENT_ALIGN_GOAL_HEADING);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_PRIMITIVE);
+  intent->set_primitive_type(planning::CONTROL_PRIMITIVE_POSE_SERVO);
   return command;
 }
 
@@ -221,6 +227,10 @@ TEST(MotionPrimitiveExecutorTest, CorridorUsesExplicitSpatialGuidance) {
   corridor->mutable_target_position()->CopyFrom(pose.target_position());
   corridor->set_target_heading(pose.target_heading());
   corridor->set_direction(pose.direction());
+  auto* intent = command.mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_PATH_SPEED);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_PRIMITIVE);
+  intent->set_primitive_type(planning::CONTROL_PRIMITIVE_NONE);
   MotionPrimitiveExecutor executor(Model());
   const auto result = executor.Update(command, State(), "map", 10.0);
   ASSERT_TRUE(result.accepted) << result.reason;
@@ -235,6 +245,10 @@ TEST(MotionPrimitiveExecutorTest, StraightLegacyCorridorIsNotCornerCutting) {
   corridor->mutable_target_position()->CopyFrom(pose.target_position());
   corridor->set_target_heading(pose.target_heading());
   corridor->set_direction(pose.direction());
+  auto* intent = command.mutable_control_intent();
+  intent->set_tracking_mode(planning::TRACKING_MODE_PATH_SPEED);
+  intent->set_execution_channel(planning::EXECUTION_CHANNEL_PRIMITIVE);
+  intent->set_primitive_type(planning::CONTROL_PRIMITIVE_NONE);
   for (double x : {0.0, 2.0, 4.0}) {
     auto* point = command.mutable_spatial_envelope()->add_reference_centerline();
     point->set_x(x);
@@ -253,8 +267,14 @@ TEST(MotionPrimitiveExecutorTest, RejectsArbitraryUnguidedPoseAndRotation) {
   command.mutable_primitive()->mutable_pose_servo()->set_target_heading(0.5);
   MotionPrimitiveExecutor executor(Model());
   EXPECT_FALSE(executor.Update(command, State(), "map", 10.0).accepted);
+  command.mutable_identity()->set_command_id("rotation");
   command.mutable_primitive()->set_type(planning::MOTION_PRIMITIVE_ROTATE_IN_PLACE);
-  EXPECT_EQ(executor.Update(command, State(), "map", 10.0).reject_reason,
+  command.mutable_control_intent()->set_tracking_mode(
+      planning::TRACKING_MODE_PATH_SPEED);
+  command.mutable_control_intent()->set_primitive_type(
+      planning::CONTROL_PRIMITIVE_NONE);
+  MotionPrimitiveExecutor rotation_executor(Model());
+  EXPECT_EQ(rotation_executor.Update(command, State(), "map", 10.0).reject_reason,
             planning::MOTION_REJECT_UNSUPPORTED_CAPABILITY);
 }
 

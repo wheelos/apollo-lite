@@ -133,7 +133,7 @@ double Ecustatus3517::ultrasound_dist_6(const std::uint8_t* bytes,
   Byte t0(bytes + 5);
   int32_t x = t0.get_byte(0, 8);
 
-  int ret = x;
+  double ret = x * 2.000000;
   return ret;
 }
 

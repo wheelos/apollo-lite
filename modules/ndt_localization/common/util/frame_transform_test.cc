@@ -16,13 +16,47 @@
 
 #include "modules/ndt_localization/common/util/frame_transform.h"
 
+#include <cstdlib>
+#include <filesystem>
+#include <string>
+
 #include "gtest/gtest.h"
 
 namespace apollo {
 namespace localization {
 namespace msf {
 
-TEST(FrameTransformTestSuite, LatlonToUtmXYTest) {
+namespace {
+
+bool ConfigureProjData() {
+  const char* test_srcdir = std::getenv("TEST_SRCDIR");
+  if (test_srcdir == nullptr) {
+    return false;
+  }
+
+  const std::filesystem::path runfiles(test_srcdir);
+  const std::filesystem::path candidates[] = {
+      runfiles / "_main/external/proj~/data",
+      runfiles / "external/proj~/data",
+      runfiles / "_main/proj~/data",
+      runfiles / "proj~/data",
+  };
+  for (const auto& candidate : candidates) {
+    if (std::filesystem::is_regular_file(candidate / "proj.db")) {
+      return setenv("PROJ_DATA", candidate.c_str(), 1) == 0;
+    }
+  }
+  return false;
+}
+
+class FrameTransformTestSuite : public ::testing::Test {
+ protected:
+  void SetUp() override { ASSERT_TRUE(ConfigureProjData()); }
+};
+
+}  // namespace
+
+TEST_F(FrameTransformTestSuite, LatlonToUtmXYTest) {
   double lon_rad = -2.129343746458001;
   double lat_rad = 0.6530018835651807;
   UTMCoor utm_xy;
@@ -31,7 +65,7 @@ TEST(FrameTransformTestSuite, LatlonToUtmXYTest) {
   EXPECT_LT(std::fabs(utm_xy.y - 4141295.255870659), 1e-5);
 }
 
-TEST(FrameTransformTestSuite, UtmXYToLatlonTest) {
+TEST_F(FrameTransformTestSuite, UtmXYToLatlonTest) {
   double x = 588278.9834174265;
   double y = 4141295.255870659;
   int zone = 10;

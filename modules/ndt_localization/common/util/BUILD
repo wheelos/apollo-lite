@@ -131,6 +131,7 @@ cc_test(
     size = "medium",
     timeout = "short",
     srcs = ["frame_transform_test.cc"],
+    data = ["@proj//:proj_runtime_data"],
     deps = [
         "//modules/ndt_localization/common/util:frame_transform",
         "@com_google_googletest//:gtest_main",

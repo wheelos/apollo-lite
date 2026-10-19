@@ -90,9 +90,7 @@ cc_test(
 
 filegroup(
     name = "common_testdata",
-    srcs = glob([
-        "testdata/**",
-    ]),
+    srcs = ["//modules/planning:planning_testdata"],
 )
 
 cc_library(

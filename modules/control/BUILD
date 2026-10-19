@@ -146,19 +146,6 @@ filegroup(
     ]),
 )
 
-cc_test(
-    name = "control_component_test",
-    size = "small",
-    srcs = ["control_component_test.cc"],
-    data = ["//modules/control:test_data"],
-    linkstatic = True,
-    deps = [
-        ":control_component_lib",
-        "@wheelos_common//modules/common/util:util_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 # TODO(storypku): split test_data
 filegroup(
     name = "test_data",

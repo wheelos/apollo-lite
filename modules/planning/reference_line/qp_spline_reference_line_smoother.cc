@@ -67,6 +67,7 @@ bool QpSplineReferenceLineSmoother::Smooth(
 
   if (!Solve()) {
     AERROR << "Solve spline smoother problem failed";
+    return false;
   }
 
   // mapping spline to reference line point

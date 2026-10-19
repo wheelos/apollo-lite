@@ -2,12 +2,13 @@
 
 #include <sys/time.h>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/drivers/camera/proto/config.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 
 #include "modules/drivers/camera/backend/image_processor.h"
 #include "modules/drivers/camera/backend/v4l2_device.h"
@@ -23,6 +24,8 @@ namespace camera {
 class CameraDevice {
  public:
   using ConfPtr = std::shared_ptr<apollo::drivers::camera::config::Config>;
+  using DeviceFactory =
+      std::function<std::unique_ptr<CameraCaptureDevice>(ConfPtr)>;
   /**
    * @brief Enumeration for camera device states.
    */
@@ -37,7 +40,8 @@ class CameraDevice {
    * Attempts to initialize the camera upon construction.
    * @param config Shared pointer to the camera configuration Protobuf message.
    */
-  explicit CameraDevice(const ConfPtr& config);
+  explicit CameraDevice(const ConfPtr& config,
+                        DeviceFactory device_factory = DeviceFactory());
 
   /**
    * @brief Destroys the CameraDevice instance.
@@ -98,8 +102,10 @@ class CameraDevice {
   uint64_t GetMonotonicTimestamp(const V4L2Buffer& v4l2_buf);
 
  private:
-  ConfPtr config_;                             // Camera configuration
-  std::unique_ptr<V4L2Device> device_;         // V4L2 device handler
+  ConfPtr config_;  // Camera configuration
+  DeviceFactory device_factory_;
+  std::unique_ptr<CameraCaptureDevice> device_;
+  // V4L2 device handler
   std::unique_ptr<ImageProcessor> processor_;  // Image data processor
 
   State state_ = State::UNINITIALIZED;
