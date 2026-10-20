@@ -130,7 +130,7 @@ filegroup(
         "data/*.engine",
         "data/*.pt",
         "data/*.bin",
-    ]),
+    ], allow_empty = True),
 )
 
 filegroup(

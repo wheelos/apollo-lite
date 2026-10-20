@@ -1,7 +1,7 @@
 """Bzlmod extension for the host IPOPT installation."""
 
 def _ipopt_repository_impl(repository_ctx):
-    include_dir = repository_ctx.os.environ.get(
+    include_dir = repository_ctx.getenv(
         "IPOPT_INCLUDE_DIR",
         repository_ctx.attr.include_dir,
     )
@@ -23,6 +23,8 @@ ipopt_repository = repository_rule(
         "include_dir": attr.string(default = "/usr/include"),
     },
     environ = ["IPOPT_INCLUDE_DIR"],
+    local = True,
+    configure = True,
 )
 
 def _ipopt_extension_impl(_ctx):

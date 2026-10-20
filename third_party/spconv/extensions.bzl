@@ -1,5 +1,7 @@
+"""Configuration of the explicitly supplied NVIDIA spconv shared library."""
+
 def _spconv_repository_impl(repository_ctx):
-    library = repository_ctx.os.environ.get("APOLLO_NVIDIA_SPCONV_LIBRARY", "")
+    library = repository_ctx.getenv("APOLLO_NVIDIA_SPCONV_LIBRARY", "")
     if not library:
         fail("Set APOLLO_NVIDIA_SPCONV_LIBRARY to the compatible libspconv.so path and pass it with --repo_env.")
 
@@ -10,7 +12,9 @@ def _spconv_repository_impl(repository_ctx):
     repository_ctx.symlink(library_path, "libspconv.so")
     repository_ctx.file(
         "BUILD",
-        """package(default_visibility = ["//visibility:public"])
+        """load("@rules_cc//cc:defs.bzl", "cc_import")
+
+package(default_visibility = ["//visibility:public"])
 
 cc_import(
     name = "spconv",
@@ -28,4 +32,5 @@ spconv_repository = repository_rule(
     implementation = _spconv_repository_impl,
     environ = ["APOLLO_NVIDIA_SPCONV_LIBRARY"],
     local = True,
+    configure = True,
 )

@@ -1,3 +1,5 @@
+load("@rules_cc//cc:defs.bzl", "cc_import", "cc_library")
+
 package(default_visibility = ["//visibility:private"])
 
 # cudnn_headers simply serve as a dummy target by adding
@@ -128,7 +130,7 @@ cc_import(
 
 cc_import(
     name = "cudnn_heuristic_so",
-    shared_library = "cudnn/lib/libheuristic.so",
+    shared_library = "cudnn/lib/libcudnn_heuristic.so",
     target_compatible_with = ["@platforms//os:linux"],
 )
 

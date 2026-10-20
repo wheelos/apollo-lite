@@ -91,6 +91,7 @@ COPY docker/build/installers/installer_base.sh \
      docker/build/installers/install_geo_adjustment.sh \
      docker/build/installers/install_minimal_environment.sh \
      docker/build/installers/install_bazel.sh \
+     docker/build/installers/install_buildifier.sh \
      docker/build/installers/install_cmake.sh \
      docker/build/installers/install_llvm_clang.sh \
      docker/build/installers/install_protobuf_release.sh \
@@ -108,6 +109,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     bash /opt/apollo/installers/install_minimal_environment.sh; \
     BAZEL_VERSION="$(cat /opt/apollo/bazelversion)" \
       bash /opt/apollo/installers/install_bazel.sh; \
+    bash /opt/apollo/installers/install_buildifier.sh; \
     bash /opt/apollo/installers/install_cmake.sh; \
     bash /opt/apollo/installers/install_llvm_clang.sh; \
     bash /opt/apollo/installers/install_protobuf_release.sh; \
@@ -116,11 +118,9 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
 COPY docker/build/installers/install_modules_base.sh \
      docker/build/installers/install_ordinary_modules.sh \
      docker/build/installers/install_drivers_deps.sh \
-     docker/build/installers/install_dreamview_deps.sh \
      docker/build/installers/install_gpu_support.sh \
      docker/build/installers/install_release_deps.sh \
      docker/build/installers/install_ffmpeg.sh \
-     docker/build/installers/install_openh264.sh \
      docker/build/installers/install_patchelf.sh \
      docker/build/installers/install_python_modules.sh \
      docker/build/installers/install_perception_deps.sh \

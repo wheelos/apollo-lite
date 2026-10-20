@@ -1,11 +1,7 @@
 """Bzlmod extension for local Qt5 installation."""
 
 def _get_cpu_arch(repository_ctx):
-    """Get CPU architecture using uname -m."""
-    result = repository_ctx.execute(["uname", "-m"])
-    if result.return_code == 0:
-        return result.stdout.strip()
-    return "unknown"
+    return repository_ctx.os.arch
 
 def _is_arm64(repository_ctx):
     arch = _get_cpu_arch(repository_ctx)
@@ -13,7 +9,7 @@ def _is_arm64(repository_ctx):
 
 def _qt_repository_impl(repository_ctx):
     default_qt_root = repository_ctx.attr.qt_root
-    qt_root = repository_ctx.os.environ.get("APOLLO_QT5_ROOT", default_qt_root)
+    qt_root = repository_ctx.getenv("APOLLO_QT5_ROOT", default_qt_root)
 
     include_dir = repository_ctx.path(qt_root + "/include")
     lib_dir = repository_ctx.path(qt_root + "/lib")
@@ -21,17 +17,26 @@ def _qt_repository_impl(repository_ctx):
     if not include_dir.exists:
         fail("Qt include directory not found: {}".format(include_dir))
 
-    # For aarch64, Qt5 libs are in /usr/lib/aarch64-linux-gnu (system path)
-    # and /usr/local/qt5/lib may not exist. Skip lib_dir check for aarch64.
-    # qt.BUILD handles the correct library path via select().
-    if not _is_arm64(repository_ctx):
-        if not lib_dir.exists:
-            fail("Qt lib directory not found: {}".format(lib_dir))
+    bin_dir = repository_ctx.path(qt_root + "/bin")
 
-    repository_ctx.symlink(str(include_dir) + "/QtCore", "QtCore")
-    repository_ctx.symlink(str(include_dir) + "/QtGui", "QtGui")
-    repository_ctx.symlink(str(include_dir) + "/QtWidgets", "QtWidgets")
-    repository_ctx.symlink(str(include_dir) + "/QtOpenGL", "QtOpenGL")
+    # The Orin installer supplies system Qt with only an include-prefix symlink.
+    if _is_arm64(repository_ctx) and not lib_dir.exists:
+        lib_dir = repository_ctx.path("/usr/lib/aarch64-linux-gnu")
+    if _is_arm64(repository_ctx) and not bin_dir.exists:
+        bin_dir = repository_ctx.path("/usr/lib/qt5/bin")
+
+    for component in ["QtCore", "QtGui", "QtWidgets", "QtOpenGL"]:
+        headers = repository_ctx.path(str(include_dir) + "/" + component)
+        library = repository_ctx.path(str(lib_dir) + "/lib" + component.replace("Qt", "Qt5", 1) + ".so")
+        if not headers.exists or not library.exists:
+            fail("Qt SDK component missing: {} or {}".format(headers, library))
+        repository_ctx.symlink(headers, component)
+        repository_ctx.symlink(library, "lib/" + library.basename)
+    for tool in ["moc", "uic", "rcc"]:
+        executable = repository_ctx.path(str(bin_dir) + "/" + tool)
+        if not executable.exists:
+            fail("Qt SDK tool not found: {}".format(executable))
+        repository_ctx.symlink(executable, "bin/" + tool)
     repository_ctx.symlink(Label("//third_party/qt5:qt.BUILD"), "BUILD.bazel")
 
 qt_repository = repository_rule(
@@ -40,6 +45,8 @@ qt_repository = repository_rule(
         "qt_root": attr.string(default = "/usr/local/qt5"),
     },
     environ = ["APOLLO_QT5_ROOT"],
+    local = True,
+    configure = True,
 )
 
 def _qt_extension_impl(_ctx):

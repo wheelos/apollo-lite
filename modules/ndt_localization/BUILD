@@ -5,20 +5,17 @@ load("//tools/install:install.bzl", "install")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "ndt_localization_component_lib",
+    name = "ndt_localization_lib",
     srcs = [
         "localization_pose_buffer.cc",
         "ndt_localization.cc",
-        "ndt_localization_component.cc",
     ],
     hdrs = [
         "localization_pose_buffer.h",
         "ndt_localization.h",
-        "ndt_localization_component.h",
     ],
     copts = ["-DMODULE_NAME=\\\"NDTlocalization\\\""],
     deps = [
-        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/math",
         "@wheelos_common//modules/common/monitor_log",
@@ -27,7 +24,6 @@ cc_library(
         "//modules/ndt_localization/common:rigid_transform_helper",
         "//modules/ndt_localization/common/util",
         "//modules/ndt_localization/ndt_locator:ndt_lidar_locator",
-        "//modules/transform:transform_broadcaster",
         "//modules/transform:transform_query",
         "@com_github_google_glog//:glog",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
@@ -40,6 +36,21 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:ins_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "ndt_localization_component_lib",
+    srcs = ["ndt_localization_component.cc"],
+    hdrs = ["ndt_localization_component.h"],
+    copts = ["-DMODULE_NAME=\\\"NDTlocalization\\\""],
+    deps = [
+        ":ndt_localization_lib",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/math",
+        "//modules/ndt_localization/common:localization_gflags",
+        "//modules/transform:transform_broadcaster",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -56,9 +67,8 @@ cc_test(
     size = "small",
     timeout = "short",
     srcs = ["ndt_localization_test.cc"],
-    linkstatic = True,
     deps = [
-        ":ndt_localization_component_lib",
+        ":ndt_localization_lib",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
     ],
@@ -69,9 +79,8 @@ cc_test(
     size = "small",
     timeout = "short",
     srcs = ["localization_pose_buffer_test.cc"],
-    linkstatic = True,
     deps = [
-        ":ndt_localization_component_lib",
+        ":ndt_localization_lib",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
         "@eigen",

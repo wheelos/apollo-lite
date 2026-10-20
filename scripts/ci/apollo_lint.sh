@@ -250,7 +250,7 @@ function run_buildifier_check() {
 
   local files_to_check=()
   if [[ "${DIFF_MODE}" -eq 1 ]]; then
-    mapfile -t files_to_check < <(get_changed_files_by_pattern '.*(BUILD|bzl|bazelrc)')
+    mapfile -t files_to_check < <(get_changed_files_by_pattern '.*(BUILD|BUILD\.bazel|BUILD\.cudnn[89]|MODULE\.bazel|\.bzl|\.BUILD)$')
     if [[ ${#files_to_check[@]} -eq 0 ]]; then
       info "No Bazel file changes detected for format check."
       info "::endgroup::"
@@ -261,7 +261,7 @@ function run_buildifier_check() {
     info "Running full Buildifier format check..."
     local find_exclude_args=()
     read -r -a find_exclude_args < <(get_find_exclude_args)
-    mapfile -t files_to_check < <(find . -type f \( -name "BUILD" -o -name "*.bzl" -o -name "*.bazelrc" \) "${find_exclude_args[@]}")
+    mapfile -t files_to_check < <(find . -type f \( -name "BUILD" -o -name "BUILD.bazel" -o -name "MODULE.bazel" -o -name "*.bzl" -o -name "*.BUILD" -o -name "BUILD.cudnn[89]" \) "${find_exclude_args[@]}")
     if [[ ${#files_to_check[@]} -eq 0 ]]; then
       info "No Bazel files found for full format check."
       info "::endgroup::"

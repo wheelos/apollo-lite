@@ -22,8 +22,6 @@ set -e
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
-bash ${CURR_DIR}/install_openh264.sh
-
 # Required by Python audio driver
 # apt_get_update_and_install \
 #     python3-pyaudio \
@@ -32,7 +30,7 @@ bash ${CURR_DIR}/install_openh264.sh
 # Required by LiDAR drivers for packets captured via pcap
 apt_get_update_and_install \
     libpcap-dev \
-    pkg-config \
+    libssl-dev \
     libgstreamer1.0-dev \
     libgstreamer-plugins-base1.0-dev \
     gstreamer1.0-tools \

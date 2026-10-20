@@ -148,7 +148,7 @@ install_files(
     name = "install_centerpoint_spconv",
     files = ["@local_config_spconv//:spconv_shared_library"],
     dest = "lidar_object_detection/lib",
-    strip_prefix = ["third_party/_main~_repo_rules~local_config_spconv"],
+    strip_prefix = ["third_party/**"],
 )
 
 install(

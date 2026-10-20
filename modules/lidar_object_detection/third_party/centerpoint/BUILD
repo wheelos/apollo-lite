@@ -1,4 +1,6 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@rules_cuda//cuda:defs.bzl", "cuda_library")
+
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
@@ -30,10 +32,15 @@ cc_library(
         "src/tensorrt.cpp",
         ":centerpoint_cuda_kernels",
     ],
-    hdrs = glob([
-        "include/*.h",
-        "include/*.hpp",
-    ]),
+    hdrs = [
+        "include/centerpoint.h",
+        "include/common.h",
+        "include/kernel.h",
+        "include/postprocess.h",
+        "include/preprocess.h",
+        "include/tensorrt.hpp",
+        "include/timer.hpp",
+    ],
     copts = ["-std=c++17"],
     includes = [
         "include",

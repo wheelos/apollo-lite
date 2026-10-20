@@ -5,22 +5,15 @@ load("//tools/install:install.bzl", "install")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "rtk_localization_component_lib",
-    srcs = [
-        "rtk_localization.cc",
-        "rtk_localization_component.cc",
-    ],
-    hdrs = [
-        "rtk_localization.h",
-        "rtk_localization_component.h",
-    ],
+    name = "rtk_localization_lib",
+    srcs = ["rtk_localization.cc"],
+    hdrs = ["rtk_localization.h"],
     copts = ["-DMODULE_NAME=\\\"localization\\\""],
     deps = [
         "@wheelos_common//modules/common/math",
         "@wheelos_common//modules/common/monitor_log",
         "@wheelos_common//modules/common/util:util_tool",
         "//modules/rtk_localization/proto:rtk_config_cc_proto",
-        "//modules/transform:transform_broadcaster",
         "@com_google_googletest//:gtest",
         "@core//cyber",
         "@eigen",
@@ -31,6 +24,18 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:ins_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "rtk_localization_component_lib",
+    srcs = ["rtk_localization_component.cc"],
+    hdrs = ["rtk_localization_component.h"],
+    copts = ["-DMODULE_NAME=\\\"localization\\\""],
+    deps = [
+        ":rtk_localization_lib",
+        "//modules/transform:transform_broadcaster",
+        "@core//cyber",
     ],
     alwayslink = True,
 )
@@ -46,11 +51,10 @@ cc_test(
     name = "rtk_localization_test",
     size = "small",
     srcs = ["rtk_localization_test.cc"],
-    linkstatic = True,
     data = ["//modules/rtk_localization:testdata"],
     deps = [
         "@wheelos_common//modules/common/util",
-        ":rtk_localization_component_lib",
+        ":rtk_localization_lib",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
     ],

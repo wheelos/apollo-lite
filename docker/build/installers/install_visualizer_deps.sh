@@ -28,8 +28,12 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # libgles2-mesa-dev
 apt_get_update_and_install \
     mesa-common-dev \
+    libgl1-mesa-dri \
     libglvnd-dev \
-    libxcb1-dev
+    libxcb1-dev \
+    mesa-utils \
+    xauth \
+    xvfb
 
 # See Ref:
 # https://hub.docker.com/r/nvidia/cudagl

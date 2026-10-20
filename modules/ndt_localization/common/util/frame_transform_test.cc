@@ -17,7 +17,7 @@
 #include "modules/ndt_localization/common/util/frame_transform.h"
 
 #include <cstdlib>
-#include <filesystem>
+#include <fstream>
 #include <string>
 
 #include "gtest/gtest.h"
@@ -34,15 +34,16 @@ bool ConfigureProjData() {
     return false;
   }
 
-  const std::filesystem::path runfiles(test_srcdir);
-  const std::filesystem::path candidates[] = {
-      runfiles / "_main/external/proj~/data",
-      runfiles / "external/proj~/data",
-      runfiles / "_main/proj~/data",
-      runfiles / "proj~/data",
+  const std::string runfiles(test_srcdir);
+  const std::string candidates[] = {
+      runfiles + "/_main/external/proj+/data",
+      runfiles + "/external/proj+/data",
+      runfiles + "/_main/proj+/data",
+      runfiles + "/proj+/data",
   };
   for (const auto& candidate : candidates) {
-    if (std::filesystem::is_regular_file(candidate / "proj.db")) {
+    std::ifstream proj_db(candidate + "/proj.db");
+    if (proj_db.good()) {
       return setenv("PROJ_DATA", candidate.c_str(), 1) == 0;
     }
   }

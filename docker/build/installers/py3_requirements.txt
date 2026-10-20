@@ -5,6 +5,11 @@
 supervisor
 psutil
 
+# Match the lint-format workflow.
+black==24.4.2
+flake8==7.0.0
+isort==5.13.2
+
 # Note(infra): Use protobuf installed from source
 # protobuf
 
