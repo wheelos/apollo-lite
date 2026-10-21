@@ -21,6 +21,7 @@
 
 #include "cyber/common/log.h"
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
+#include "modules/transform/ground_reference.h"
 
 namespace apollo {
 namespace perception {
@@ -66,7 +67,8 @@ void TransformWrapper::Init(
       FLAGS_obs_vehicle2world_tf2_child_frame_id;
   timed_transform_resolver_.ConfigureFrames(vehicle2world_tf2_frame_id_,
                                             vehicle2world_tf2_child_frame_id_);
-  timed_transform_resolver_.SetOptions(BuildTimedTransformResolverOptions());
+  CHECK(timed_transform_resolver_.SetOptions(
+      BuildTimedTransformResolverOptions()));
   inited_ = true;
 }
 
@@ -81,7 +83,8 @@ void TransformWrapper::Init(
   vehicle2world_tf2_child_frame_id_ = vehicle2world_tf2_child_frame_id;
   timed_transform_resolver_.ConfigureFrames(vehicle2world_tf2_frame_id_,
                                             vehicle2world_tf2_child_frame_id_);
-  timed_transform_resolver_.SetOptions(BuildTimedTransformResolverOptions());
+  CHECK(timed_transform_resolver_.SetOptions(
+      BuildTimedTransformResolverOptions()));
   inited_ = true;
 }
 
@@ -162,13 +165,23 @@ bool TransformWrapper::QueryStaticTrans(const std::string& frame_id,
   }
 
   if (!transform_query_.GetLatestStaticTransformToAffine(
-          frame_id, child_frame_id, trans)) {
+          frame_id, child_frame_id, trans,
+          static_cast<float>(FLAGS_obs_tf2_buff_size))) {
     AERROR << "Failed to query static transform from " << child_frame_id
            << " to " << frame_id;
     return false;
   }
 
   return true;
+}
+
+bool TransformWrapper::QueryGroundTrans(const std::string& reference_frame,
+                                        double reference_height,
+                                        const std::string& source_frame,
+                                        Eigen::Affine3d* trans) {
+  return apollo::transform::QueryGroundTransform(
+      transform_query_, reference_frame, reference_height, source_frame, trans,
+      static_cast<float>(FLAGS_obs_tf2_buff_size));
 }
 
 bool TransformWrapper::EnsureSensor2VehicleExtrinsics() {

@@ -92,13 +92,15 @@ class NonQueryingBuffer final : public apollo::transform::BufferInterface {
   apollo::transform::TransformStamped lookupTransform(
       const std::string&, const std::string&, const cyber::Time&,
       const float) const override {
-    throw std::runtime_error("baseline mock TF does not support lookup");
+    throw apollo::transform::TransformException(
+        "baseline mock TF does not support lookup");
   }
 
   apollo::transform::TransformStamped lookupTransform(
       const std::string&, const cyber::Time&, const std::string&,
       const cyber::Time&, const std::string&, const float) const override {
-    throw std::runtime_error("baseline mock TF does not support lookup");
+    throw apollo::transform::TransformException(
+        "baseline mock TF does not support lookup");
   }
 
   bool canTransform(const std::string&, const std::string&, const cyber::Time&,
@@ -355,7 +357,8 @@ bool LoadFrames(const Options& options,
       continue;
     }
     auto point_cloud = std::make_shared<const PointCloudView>(
-        std::make_shared<const ::apollo::drivers::PointCloud>(std::move(proto)));
+        std::make_shared<const ::apollo::drivers::PointCloud>(
+            std::move(proto)));
     if (!NormalizePointCloudTime(*point_cloud, time_settings, &time_contract)) {
       continue;
     }
@@ -447,10 +450,10 @@ bool PrepareFrame(const InputFrame& input, size_t sensor_index,
                                           static_cast<double>(bins - 1U);
     const double timestamp = begin_sec + ratio * (end_sec - begin_sec);
     context->motion_sample_times[index] = timestamp;
-    context->motion_poses[index] = MockMapFromBase(timestamp, origin_sec,
-                                                   options.speed_mps,
-                                                   options.yaw_rate_rps) *
-                                   base_from_sensor;
+    context->motion_poses[index] =
+        MockMapFromBase(timestamp, origin_sec, options.speed_mps,
+                        options.yaw_rate_rps) *
+        base_from_sensor;
   }
   return true;
 }
@@ -646,8 +649,7 @@ void PrintResult(const Options& options,
     if (index != 0U) {
       std::cout << ",";
     }
-    std::cout << "\"" << TimeAnchorName(TimeAnchorFor(options, index))
-              << "\"";
+    std::cout << "\"" << TimeAnchorName(TimeAnchorFor(options, index)) << "\"";
   }
   std::cout << "],"
             << "\"loaded_frames\":[";

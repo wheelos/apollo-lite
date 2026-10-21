@@ -16,8 +16,12 @@
 
 #include "modules/perception/fusion/lib/data_fusion/shape_fusion/pbf_shape_fusion/pbf_shape_fusion.h"
 
+#include <memory>
+#include <vector>
+
 #include "gtest/gtest.h"
 
+#include "modules/common/vehicle_calibration/test_bundle.h"
 #include "modules/perception/base/sensor_meta.h"
 #include "modules/perception/common/perception_gflags.h"
 #include "modules/perception/fusion/base/sensor_frame.h"
@@ -30,12 +34,25 @@ const double SHAPE_FUSION_PI = 3.1415926;
 using SensorInfoPtr = std::shared_ptr<perception::base::SensorInfo>;
 using FramePtr = std::shared_ptr<perception::base::Frame>;
 
-TEST(PbfShapeFusion, lidar_track) {
-  FLAGS_work_root =
-      "/apollo/modules/perception/testdata/fusion/pbf_shape_fusion";
-  FLAGS_obs_sensor_meta_path = "./data/sensor_meta.pt";
-  FLAGS_obs_sensor_intrinsic_path =
-      "/apollo/modules/perception/testdata/fusion/pbf_shape_fusion/params";
+class PbfShapeFusionTest : public ::testing::Test {
+ protected:
+  static void SetUpTestSuite() {
+    namespace vc = apollo::common::vehicle_calibration;
+    calibration_ = std::make_unique<vc::TestBundle>();
+    calibration_->AddSensor(vc::LIDAR, "VELODYNE_64", "VELODYNE_64");
+    calibration_->AddSensor(vc::RADAR, "LONG_RANGE_RADAR", "LONG_RANGE_RADAR");
+    calibration_->AddSensor(vc::CAMERA, "MONOCULAR_CAMERA", "MONOCULAR_CAMERA");
+    ASSERT_TRUE(calibration_->Publish());
+  }
+
+  static void TearDownTestSuite() { calibration_.reset(); }
+
+ private:
+  inline static std::unique_ptr<apollo::common::vehicle_calibration::TestBundle>
+      calibration_;
+};
+
+TEST_F(PbfShapeFusionTest, lidar_track) {
   Eigen::Matrix4d pose;
   pose << 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
 
@@ -164,12 +181,7 @@ TEST(PbfShapeFusion, lidar_track) {
       shape_fusion.GetTrack()->GetFusedObject()->GetBaseObject()->theta, 0.0);
 }
 
-TEST(PbfShapeFusion, radar_track) {
-  FLAGS_work_root =
-      "/apollo/modules/perception/testdata/fusion/pbf_shape_fusion";
-  FLAGS_obs_sensor_meta_path = "./conf/sensor_meta.config";
-  FLAGS_obs_sensor_intrinsic_path =
-      "/apollo/modules/perception/testdata/fusion/pbf_shape_fusion/params";
+TEST_F(PbfShapeFusionTest, radar_track) {
   Eigen::Matrix4d pose;
   pose << 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
 
@@ -340,12 +352,7 @@ TEST(PbfShapeFusion, radar_track) {
   EXPECT_EQ(shape_fusion.Name(), "PbfShapeFusion");
 }
 
-TEST(PbfShapeFusion, camera_track) {
-  FLAGS_work_root =
-      "/apollo/modules/perception/testdata/fusion/pbf_shape_fusion";
-  FLAGS_obs_sensor_meta_path = "./conf/sensor_meta.config";
-  FLAGS_obs_sensor_intrinsic_path =
-      "/apollo/modules/perception/testdata/fusion/pbf_shape_fusion/params";
+TEST_F(PbfShapeFusionTest, camera_track) {
   Eigen::Matrix4d pose;
   pose << 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
 

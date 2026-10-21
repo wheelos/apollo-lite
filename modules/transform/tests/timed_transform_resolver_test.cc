@@ -16,18 +16,19 @@
 
 #include "modules/transform/timed_transform_resolver.h"
 
-#include <cstdlib>
-#include <memory>
+#include <limits>
 #include <string>
 
 #include "gtest/gtest.h"
-#include "tools/cpp/runfiles/runfiles.h"
 
 #include "modules/transform/buffer_interface.h"
+#include "modules/transform/internal/transform_cache.h"
 
 namespace apollo {
 namespace transform {
 namespace {
+
+using internal::TransformCache;
 
 StampedTransform MakeStampedTransform(double timestamp_sec, double x, double y,
                                       double z) {
@@ -65,6 +66,9 @@ class FakeBuffer : public BufferInterface {
     last_query_time_ = time;
     last_timeout_sec_ = timeout_second;
     ++lookup_call_count_;
+    if (reset_during_lookup_) {
+      ++epoch_;
+    }
     return lookup_transform_;
   }
 
@@ -86,8 +90,7 @@ class FakeBuffer : public BufferInterface {
 
   bool canTransform(const std::string& target_frame,
                     const std::string& source_frame, const cyber::Time& time,
-                    float timeout_second,
-                    std::string* errstr) const override {
+                    float timeout_second, std::string* errstr) const override {
     last_target_frame_ = target_frame;
     last_source_frame_ = source_frame;
     last_query_time_ = time;
@@ -127,6 +130,9 @@ class FakeBuffer : public BufferInterface {
     return true;
   }
 
+  uint64_t GetTimeEpoch() override { return epoch_; }
+  mutable uint64_t epoch_ = 0;
+  bool reset_during_lookup_ = false;
   mutable std::string last_target_frame_;
   mutable std::string last_source_frame_;
   mutable std::string last_fixed_frame_;
@@ -193,25 +199,12 @@ TEST(TimedTransformResolverTest, ResolveUsesInjectedTransformQueryOnce) {
 }
 
 TEST(TimedTransformResolverTest, DiagnosticsTrackLatestFallback) {
-  std::string runfiles_error;
-  std::unique_ptr<bazel::tools::cpp::runfiles::Runfiles> runfiles(
-      bazel::tools::cpp::runfiles::Runfiles::CreateForTest(
-          BAZEL_CURRENT_REPOSITORY, &runfiles_error));
-  ASSERT_NE(runfiles, nullptr) << runfiles_error;
-  const std::string cyber_config = runfiles->Rlocation(
-      "core/cyber/conf/cyber.pb.conf", BAZEL_CURRENT_REPOSITORY);
-  ASSERT_FALSE(cyber_config.empty());
-  const std::string cyber_path =
-      cyber_config.substr(0, cyber_config.size() - std::string(
-          "/conf/cyber.pb.conf").size());
-  setenv("CYBER_PATH", cyber_path.c_str(), 1);
-
   FakeBuffer buffer;
   TransformQuery query(&buffer);
   TimedTransformResolver resolver(&query);
   TimedTransformResolverOptions options;
   options.enable_extrapolation = true;
-  options.max_extrapolation_latency_sec = 1.0;
+  options.max_extrapolation_sec = 1.0;
   options.hardware_trigger = false;
   options.latest_lookup_fallback_tolerance_sec = 1.0;
   resolver.SetOptions(options);
@@ -235,6 +228,57 @@ TEST(TimedTransformResolverTest, DiagnosticsTrackLatestFallback) {
             TimedTransformResolveStatus::kLatestFallback);
 }
 
+TEST(TimedTransformResolverTest, LatestFallbackIsBoundedWithoutExtrapolation) {
+  for (const double requested : {9.0, 10.0, 10.5, 10.5001, 20.0}) {
+    FakeBuffer buffer;
+    buffer.can_transform_result_ = false;
+    buffer.lookup_transform_ = MakeTransformMessage(10.0, 3.0, 0.0, 0.0);
+    TransformQuery query(&buffer);
+    TimedTransformResolver resolver(&query);
+    TimedTransformResolverOptions options;
+    options.enable_extrapolation = false;
+    options.hardware_trigger = false;
+    options.latest_lookup_fallback_tolerance_sec = 0.5;
+    resolver.SetOptions(options);
+    auto resolved = MakeStampedTransform(1.0, 9.0, 0.0, 0.0);
+    const bool accepted = requested >= 10.0 && requested <= 10.5;
+    EXPECT_EQ(resolver.Resolve(requested, "map", "base_link", &resolved),
+              accepted)
+        << requested;
+    EXPECT_EQ(buffer.lookup_call_count_, 1);
+    if (accepted) {
+      EXPECT_DOUBLE_EQ(resolved.timestamp, 10.0);
+      EXPECT_DOUBLE_EQ(resolved.translation.x(), 3.0);
+      EXPECT_EQ(resolver.GetDiagnosticsSnapshot().latest_fallback_success, 1);
+    } else {
+      EXPECT_DOUBLE_EQ(resolved.timestamp, 1.0);
+      EXPECT_DOUBLE_EQ(resolved.translation.x(), 9.0);
+      EXPECT_EQ(resolver.GetDiagnosticsSnapshot().failed_tf2_lookup, 1);
+    }
+  }
+}
+
+TEST(TimedTransformResolverTest, LatestFallbackRequiresExplicitFiniteBudget) {
+  for (int variant = 0; variant < 3; ++variant) {
+    FakeBuffer buffer;
+    buffer.can_transform_result_ = false;
+    buffer.lookup_transform_ = MakeTransformMessage(10.0, 3.0, 0.0, 0.0);
+    TransformQuery query(&buffer);
+    TimedTransformResolver resolver(&query);
+    TimedTransformResolverOptions options;
+    options.enable_extrapolation = false;
+    options.hardware_trigger = variant == 0;
+    options.latest_lookup_fallback_tolerance_sec =
+        variant == 0   ? 0.5
+        : variant == 1 ? 0.0
+                       : std::numeric_limits<double>::infinity();
+    resolver.SetOptions(options);
+    StampedTransform resolved;
+    EXPECT_FALSE(resolver.Resolve(10.001, "map", "base_link", &resolved));
+    EXPECT_EQ(buffer.lookup_call_count_, 0);
+  }
+}
+
 TEST(TimedTransformResolverTest, ResolveDirectToAffine) {
   FakeBuffer buffer;
   buffer.lookup_transform_ = MakeTransformMessage(30.0, 4.0, 5.0, 6.0);
@@ -250,6 +294,81 @@ TEST(TimedTransformResolverTest, ResolveDirectToAffine) {
   EXPECT_NEAR(affine.translation().x(), 4.0, 1e-9);
   EXPECT_NEAR(affine.translation().y(), 5.0, 1e-9);
   EXPECT_NEAR(affine.translation().z(), 6.0, 1e-9);
+}
+
+TEST(TimedTransformResolverTest, DropsCacheAcrossEpochAndQueryReplacement) {
+  FakeBuffer buffer;
+  TransformQuery query(&buffer);
+  TimedTransformResolver resolver(&query);
+  TimedTransformResolverOptions options;
+  options.cache_duration_sec = 10;
+  options.max_extrapolation_sec = 1;
+  ASSERT_TRUE(resolver.SetOptions(options));
+  StampedTransform resolved;
+  buffer.lookup_transform_ = MakeTransformMessage(10, 10, 0, 0);
+  ASSERT_TRUE(resolver.Resolve(10, "map", "base_link", &resolved));
+  buffer.lookup_transform_ = MakeTransformMessage(12, 12, 0, 0);
+  ASSERT_TRUE(resolver.Resolve(12, "map", "base_link", &resolved));
+  buffer.can_transform_result_ = false;
+  ASSERT_TRUE(resolver.Resolve(11, "map", "base_link", &resolved));
+  EXPECT_DOUBLE_EQ(resolved.translation.x(), 11);
+  ++buffer.epoch_;
+  EXPECT_FALSE(resolver.Resolve(11, "map", "base_link", &resolved));
+  buffer.can_transform_result_ = true;
+  buffer.lookup_transform_ = MakeTransformMessage(2, 200, 0, 0);
+  ASSERT_TRUE(resolver.Resolve(2, "map", "base_link", &resolved));
+  buffer.can_transform_result_ = false;
+  ASSERT_TRUE(resolver.Resolve(2.1, "map", "base_link", &resolved));
+  EXPECT_DOUBLE_EQ(resolved.translation.x(), 200);
+  FakeBuffer replacement;
+  replacement.can_transform_result_ = false;
+  TransformQuery replacement_query(&replacement);
+  resolver.SetTransformQuery(&replacement_query);
+  EXPECT_FALSE(resolver.Resolve(2.1, "map", "base_link", &resolved));
+}
+
+TEST(TimedTransformResolverTest, RejectsEpochChangeDuringQuery) {
+  FakeBuffer buffer;
+  buffer.lookup_transform_ = MakeTransformMessage(10, 5, 0, 0);
+  buffer.reset_during_lookup_ = true;
+  TransformQuery query(&buffer);
+  TimedTransformResolver resolver(&query);
+  auto resolved = MakeStampedTransform(1, 99, 0, 0);
+  EXPECT_FALSE(resolver.Resolve(10, "map", "base_link", &resolved));
+  EXPECT_DOUBLE_EQ(resolved.translation.x(), 99);
+}
+
+TEST(TimedTransformResolverTest, ZeroBudgetsAreNotReplacedByDefaults) {
+  FakeBuffer buffer;
+  buffer.lookup_transform_ = MakeTransformMessage(10, 5, 0, 0);
+  TransformQuery query(&buffer);
+  TimedTransformResolver resolver(&query);
+  TimedTransformResolverOptions options;
+  options.query_timeout_sec = 0;
+  options.max_extrapolation_sec = 0;
+  ASSERT_TRUE(resolver.SetOptions(options));
+  StampedTransform resolved;
+  ASSERT_TRUE(resolver.Resolve(10, "map", "base_link", &resolved));
+  EXPECT_FLOAT_EQ(buffer.last_timeout_sec_, 0);
+  buffer.can_transform_result_ = false;
+  EXPECT_FALSE(resolver.Resolve(10.001, "map", "base_link", &resolved));
+}
+
+TEST(TimedTransformResolverTest, RejectsInvalidOptionsAndTimes) {
+  FakeBuffer buffer;
+  TransformQuery query(&buffer);
+  TimedTransformResolver resolver(&query);
+  TimedTransformResolverOptions options;
+  options.max_extrapolation_sec = std::numeric_limits<double>::infinity();
+  EXPECT_FALSE(resolver.SetOptions(options));
+  StampedTransform resolved;
+  EXPECT_FALSE(resolver.Resolve(10, "map", "base_link", &resolved));
+  ASSERT_TRUE(resolver.SetOptions(TimedTransformResolverOptions{}));
+  for (double time : {0.0, -1.0, std::numeric_limits<double>::quiet_NaN(),
+                      std::numeric_limits<double>::infinity()}) {
+    EXPECT_FALSE(resolver.Resolve(time, "map", "base_link", &resolved));
+  }
+  EXPECT_EQ(buffer.lookup_call_count_, 0);
 }
 
 }  // namespace

@@ -16,11 +16,14 @@
 
 #include "modules/transform/transform_query.h"
 
+#include <chrono>
+#include <limits>
 #include <string>
 
-#include "Eigen/Geometry"
 #include "gtest/gtest.h"
-#include "tf2/exceptions.h"
+
+#include "Eigen/Geometry"
+#include "nlohmann/json.hpp"
 
 #include "modules/transform/buffer_interface.h"
 
@@ -56,7 +59,7 @@ class FakeBuffer : public BufferInterface {
     last_query_time_ = time;
     last_timeout_sec_ = timeout_second;
     if (throw_lookup_) {
-      throw tf2::LookupException("lookup failed");
+      throw TransformException("lookup failed");
     }
     return lookup_transform_;
   }
@@ -74,15 +77,14 @@ class FakeBuffer : public BufferInterface {
     last_fixed_frame_ = fixed_frame;
     last_timeout_sec_ = timeout_second;
     if (throw_lookup_) {
-      throw tf2::LookupException("lookup failed");
+      throw TransformException("lookup failed");
     }
     return lookup_transform_;
   }
 
   bool canTransform(const std::string& target_frame,
                     const std::string& source_frame, const cyber::Time& time,
-                    float timeout_second,
-                    std::string* errstr) const override {
+                    float timeout_second, std::string* errstr) const override {
     last_target_frame_ = target_frame;
     last_source_frame_ = source_frame;
     last_query_time_ = time;
@@ -116,7 +118,12 @@ class FakeBuffer : public BufferInterface {
                                 TransformStamped* transform) const override {
     last_target_frame_ = target_frame;
     last_source_frame_ = source_frame;
-    if (!has_static_transform_) {
+    ++static_attempts_;
+    if (static_attempts_ == 1) {
+      static_ready_at_ = std::chrono::steady_clock::now() + static_delay_;
+    }
+    if (!has_static_transform_ ||
+        std::chrono::steady_clock::now() < static_ready_at_) {
       return false;
     }
     *transform = static_transform_;
@@ -130,6 +137,9 @@ class FakeBuffer : public BufferInterface {
   mutable cyber::Time last_target_time_;
   mutable cyber::Time last_source_time_;
   mutable float last_timeout_sec_ = 0.0f;
+  mutable int static_attempts_ = 0;
+  mutable std::chrono::steady_clock::time_point static_ready_at_;
+  std::chrono::milliseconds static_delay_{0};
 
   bool can_transform_result_ = true;
   bool throw_lookup_ = false;
@@ -179,14 +189,13 @@ TEST(TransformQueryTest, LookupTransformReturnsErrorWhenBufferThrows) {
 
 TEST(TransformQueryTest, StaticLookupUsesStaticInterface) {
   FakeBuffer buffer;
-  buffer.static_transform_ = MakeTransformStamped(
-      0.0, 4.0, 5.0, 6.0, Eigen::Quaterniond::Identity());
+  buffer.static_transform_ =
+      MakeTransformStamped(0.0, 4.0, 5.0, 6.0, Eigen::Quaterniond::Identity());
 
   TransformQuery query(&buffer);
   Eigen::Affine3d transform = Eigen::Affine3d::Identity();
-  EXPECT_TRUE(
-      query.GetLatestStaticTransformToAffine("base_link", "velodyne128",
-                                             &transform));
+  EXPECT_TRUE(query.GetLatestStaticTransformToAffine("base_link", "velodyne128",
+                                                     &transform));
   EXPECT_EQ(buffer.last_target_frame_, "base_link");
   EXPECT_EQ(buffer.last_source_frame_, "velodyne128");
   EXPECT_NEAR(transform.translation().x(), 4.0, 1e-9);
@@ -197,11 +206,9 @@ TEST(TransformQueryTest, StaticLookupUsesStaticInterface) {
 TEST(TransformQueryTest, DiagnosticsTrackCanLookupAffineAndStaticQueries) {
   FakeBuffer buffer;
   buffer.lookup_transform_ =
-      MakeTransformStamped(12.0, 1.0, 2.0, 3.0,
-                           Eigen::Quaterniond::Identity());
+      MakeTransformStamped(12.0, 1.0, 2.0, 3.0, Eigen::Quaterniond::Identity());
   buffer.static_transform_ =
-      MakeTransformStamped(0.0, 4.0, 5.0, 6.0,
-                           Eigen::Quaterniond::Identity());
+      MakeTransformStamped(0.0, 4.0, 5.0, 6.0, Eigen::Quaterniond::Identity());
 
   TransformQuery query(&buffer);
   EXPECT_TRUE(query.CanTransform("map", "lidar", cyber::Time(12.0)));
@@ -211,11 +218,10 @@ TEST(TransformQueryTest, DiagnosticsTrackCanLookupAffineAndStaticQueries) {
                                     &stamped_transform));
 
   Eigen::Affine3d affine_transform = Eigen::Affine3d::Identity();
-  EXPECT_TRUE(query.LookupTransformToAffine("map", "lidar",
-                                            cyber::Time(12.0),
+  EXPECT_TRUE(query.LookupTransformToAffine("map", "lidar", cyber::Time(12.0),
                                             &affine_transform));
-  EXPECT_TRUE(query.GetLatestStaticTransformToAffine(
-      "base_link", "velodyne128", &affine_transform));
+  EXPECT_TRUE(query.GetLatestStaticTransformToAffine("base_link", "velodyne128",
+                                                     &affine_transform));
 
   const auto diagnostics = query.GetDiagnosticsSnapshot();
   EXPECT_EQ(diagnostics.can_transform_calls, 1);
@@ -227,6 +233,62 @@ TEST(TransformQueryTest, DiagnosticsTrackCanLookupAffineAndStaticQueries) {
   EXPECT_EQ(diagnostics.static_lookup_calls, 1);
   EXPECT_EQ(diagnostics.static_lookup_success, 1);
   EXPECT_TRUE(diagnostics.last_error.empty());
+}
+
+TEST(TransformQueryTest, WaitsForDelayedStaticArrivalWithoutDynamicLookup) {
+  FakeBuffer buffer;
+  buffer.static_transform_ =
+      MakeTransformStamped(0.0, 1.0, 2.0, 3.0, Eigen::Quaterniond::Identity());
+  buffer.static_delay_ = std::chrono::milliseconds(5);
+  TransformQuery query(&buffer);
+  Eigen::Affine3d transform;
+  ASSERT_TRUE(query.GetLatestStaticTransformToAffine("base_link", "camera",
+                                                     &transform, 0.1f));
+  EXPECT_GT(buffer.static_attempts_, 1);
+  EXPECT_DOUBLE_EQ(transform.translation().z(), 3.0);
+  const auto diagnostics = query.GetDiagnosticsSnapshot();
+  EXPECT_EQ(diagnostics.static_lookup_calls, 1);
+  EXPECT_EQ(diagnostics.static_lookup_success, 1);
+  EXPECT_EQ(diagnostics.lookup_transform_calls, 0);
+}
+
+TEST(TransformQueryTest, StaticTimeoutIsBoundedAndPreservesOutput) {
+  FakeBuffer buffer;
+  buffer.has_static_transform_ = false;
+  TransformQuery query(&buffer);
+  Eigen::Affine3d transform = Eigen::Affine3d::Identity();
+  const auto start = std::chrono::steady_clock::now();
+  EXPECT_FALSE(query.GetLatestStaticTransformToAffine("base_link", "camera",
+                                                      &transform, 0.005f));
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  EXPECT_GE(elapsed, std::chrono::milliseconds(5));
+  EXPECT_LT(elapsed, std::chrono::seconds(1));
+  EXPECT_TRUE(transform.matrix().isIdentity());
+  const auto diagnostics = query.GetDiagnosticsSnapshot();
+  EXPECT_EQ(diagnostics.static_lookup_calls, 1);
+  EXPECT_EQ(diagnostics.static_lookup_success, 0);
+  EXPECT_EQ(diagnostics.lookup_transform_calls, 0);
+  EXPECT_FALSE(query.GetLatestStaticTransformToAffine("base_link", "camera",
+                                                      &transform, -1.0f));
+  EXPECT_FALSE(query.GetLatestStaticTransformToAffine(
+      "base_link", "camera", &transform,
+      std::numeric_limits<float>::quiet_NaN()));
+}
+
+TEST(TransformQueryTest, DiagnosticsEscapeJsonStrings) {
+  const std::string text = "frame\"\\\n\t\r";
+  TransformQueryDiagnostics query;
+  query.last_error = text;
+  EXPECT_EQ(nlohmann::json::parse(query.ToJsonString())["last_error"], text);
+  TimedTransformResolverDiagnostics timed;
+  timed.last_error = text;
+  EXPECT_EQ(nlohmann::json::parse(timed.ToJsonString())["last_error"], text);
+  TransformEdgeDiagnostics edge;
+  edge.frame_id = text;
+  edge.child_frame_id = text;
+  const auto parsed = nlohmann::json::parse(edge.ToJsonString());
+  EXPECT_EQ(parsed["frame_id"], text);
+  EXPECT_EQ(parsed["child_frame_id"], text);
 }
 
 }  // namespace

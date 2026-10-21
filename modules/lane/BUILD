@@ -55,6 +55,7 @@ cc_library(
     srcs = ["component/lane_transform_adapter.cc"],
     hdrs = ["component/lane_transform_adapter.h"],
     deps = [
+        "//modules/transform:buffer",
         "//modules/transform:transform_query",
         "@core//cyber/time",
         "@eigen",

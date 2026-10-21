@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <chrono>
-#include <condition_variable>
 #include <cmath>
+#include <condition_variable>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -14,24 +14,28 @@
 #include <vector>
 
 #include "CivetServer.h"
+#include "Eigen/Geometry"
 #include "gflags/gflags.h"
 #include "nlohmann/json.hpp"
 
-#include "Eigen/Geometry"
-#include "cyber/cyber.h"
-#include "cyber/common/log.h"
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+
+#include "cyber/common/log.h"
+#include "cyber/cyber.h"
 #include "modules/dreamview/backend/handlers/websocket_handler.h"
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 
 DEFINE_string(channel, "", "PointCloud channel to subscribe to.");
 DEFINE_int32(port, 8891, "CivetWeb listening port for live pointcloud viewer.");
 DEFINE_int32(max_points, 30000, "Maximum points to send per frame.");
 DEFINE_string(bind_address, "0.0.0.0", "Bind address for the CivetWeb server.");
-DEFINE_string(ready_file, "", "Optional JSON file written when the server is ready.");
-DEFINE_string(imu_frame_id, "",
-              "Optional target IMU frame. When set, point clouds are transformed"
-              " into this frame using static transforms from tf buffer.");
+DEFINE_string(ready_file, "",
+              "Optional JSON file written when the server is ready.");
+DEFINE_string(
+    imu_frame_id, "",
+    "Optional target IMU frame. When set, point clouds are transformed"
+    " into this frame using static transforms from tf buffer.");
 
 namespace apollo {
 namespace whl_toolbox {
@@ -72,16 +76,17 @@ class LivePointCloudViewer {
         target_frame_(FLAGS_imu_frame_id) {}
 
   bool Start() {
-    const std::string listening_ports = FLAGS_bind_address.empty()
-                                            ? std::to_string(port_)
-                                            : FLAGS_bind_address + ":" + std::to_string(port_);
+    const std::string listening_ports =
+        FLAGS_bind_address.empty()
+            ? std::to_string(port_)
+            : FLAGS_bind_address + ":" + std::to_string(port_);
     std::vector<std::string> options = {
-        "listening_ports", listening_ports,
+        "listening_ports",      listening_ports,
         "websocket_timeout_ms", "10000",
-        "request_timeout_ms", "10000",
-        "enable_keep_alive", "yes",
-        "tcp_nodelay", "1",
-        "num_threads", "4",
+        "request_timeout_ms",   "10000",
+        "enable_keep_alive",    "yes",
+        "tcp_nodelay",          "1",
+        "num_threads",          "4",
     };
     server_.reset(new CivetServer(options));
     websocket_.reset(new WebSocketHandler("LivePointCloud"));
@@ -222,9 +227,9 @@ class LivePointCloudViewer {
     }
 
     const int max_points = std::max(1, max_points_);
-    const int stride =
-        std::max(1, static_cast<int>(std::ceil(static_cast<double>(total_points) /
-                                               static_cast<double>(max_points))));
+    const int stride = std::max(
+        1, static_cast<int>(std::ceil(static_cast<double>(total_points) /
+                                      static_cast<double>(max_points))));
     uint32_t selected_points = 0;
     for (int index = 0; index < total_points; index += stride) {
       ++selected_points;
@@ -256,10 +261,9 @@ class LivePointCloudViewer {
       float xyz[3] = {point.x(), point.y(), point.z()};
       if (use_transform) {
         const Eigen::Vector3d transformed =
-            source_to_target *
-            Eigen::Vector3d(static_cast<double>(point.x()),
-                            static_cast<double>(point.y()),
-                            static_cast<double>(point.z()));
+            source_to_target * Eigen::Vector3d(static_cast<double>(point.x()),
+                                               static_cast<double>(point.y()),
+                                               static_cast<double>(point.z()));
         xyz[0] = static_cast<float>(transformed.x());
         xyz[1] = static_cast<float>(transformed.y());
         xyz[2] = static_cast<float>(transformed.z());
@@ -295,14 +299,12 @@ class LivePointCloudViewer {
       }
     }
 
-    std::string err;
     Eigen::Affine3d pose = Eigen::Affine3d::Identity();
-    if (!transform_query_.LookupTransformToAffine(
-            target_frame_, source_frame, apollo::cyber::Time(0), &pose, 1.0f,
-            &err)) {
+    if (!transform_query_.GetLatestStaticTransformToAffine(
+            target_frame_, source_frame, &pose, 1.0f)) {
       if (error != nullptr) {
         *error = std::string("failed to resolve transform from ") +
-                 source_frame + " to " + target_frame_ + ": " + err;
+                 source_frame + " to " + target_frame_;
       }
       return false;
     }
@@ -333,7 +335,8 @@ class LivePointCloudViewer {
   const int port_ = 0;
   const int max_points_ = 0;
   const std::string target_frame_;
-  apollo::transform::TransformQuery transform_query_;
+  apollo::transform::TransformQuery transform_query_{
+      apollo::transform::Buffer::Instance()};
 
   mutable std::mutex status_mutex_;
   std::uint64_t frame_count_ = 0;

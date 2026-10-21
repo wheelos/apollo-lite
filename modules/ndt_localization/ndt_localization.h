@@ -28,6 +28,7 @@
 
 #include "modules/ndt_localization/localization_pose_buffer.h"
 #include "modules/ndt_localization/ndt_locator/lidar_locator_ndt.h"
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -51,7 +52,9 @@ class NDTLocalization {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
  public:
-  NDTLocalization() = default;
+  NDTLocalization() : NDTLocalization(transform::Buffer::Instance()) {}
+  explicit NDTLocalization(transform::BufferInterface* buffer)
+      : transform_query_(buffer) {}
   ~NDTLocalization() = default;
   /**@brief init configuration */
   bool Init();
@@ -81,7 +84,6 @@ class NDTLocalization {
                         LidarFrame* lidar_frame);
   bool UpdateLidarExtrinsic(const std::string& lidar_frame_id);
   /**@brief load lidar height from file */
-  bool LoadLidarHeight(const std::string& file_path, LidarHeight* height);
   /**@brief load zone id from map folder */
   bool LoadZoneIdFromFolder(const std::string& folder_path, int* zone_id);
   /**@brief query forecast pose from tf2 according to timestamp*/
@@ -123,6 +125,7 @@ class NDTLocalization {
   double online_resolution_ = 2.0;
   std::string map_path_ = "";
   LidarHeight lidar_height_;
+  std::string calibration_lidar_frame_;
   Eigen::Affine3d lidar_pose_;
   Eigen::Affine3d velodyne_extrinsic_;
   std::string lidar_frame_id_ = "";

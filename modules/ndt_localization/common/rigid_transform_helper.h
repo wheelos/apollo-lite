@@ -23,10 +23,14 @@
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
 namespace apollo {
+namespace transform {
+class TransformQuery;
+}  // namespace transform
 namespace localization {
 namespace common {
 
-bool LookupStaticTransform(const std::string& target_frame_id,
+bool LookupStaticTransform(const transform::TransformQuery& query,
+                           const std::string& target_frame_id,
                            const std::string& source_frame_id,
                            Eigen::Affine3d* transform,
                            float timeout_sec = 1.0f);

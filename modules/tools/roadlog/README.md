@@ -71,6 +71,23 @@ and creates:
 
 ## Recorder-plane filtering
 
+### Calibration identity
+
+Roadlog uses the same `WHEELOS_VEHICLE_PROFILE_KEY` and optional
+`WHEELOS_CALIBRATION_MANIFEST_SHA256` as calibration consumers. Every record
+segment carries `Header.metadata` keys under `wheelos.calibration.`:
+`status`, `vehicle_id`, `version`, `manifest_sha256`, `schema_version`, and
+`test_only`. Selected but invalid calibration prevents recorder startup.
+
+Without either selection variable, capture remains available with a warning
+and `status=not_selected`; it must not be treated as calibrated evidence.
+`status=selected` records the recorder's selected bundle, not confirmation
+that every producing process used that bundle or that measurements are
+physically accurate. Schema-1 selections can have an empty vehicle ID.
+Exported retained segments preserve these headers through link/copy.
+
+### Channel policy
+
 `smart_recorder_config.pb.txt` can now reduce recorder pressure without changing
 trigger semantics:
 

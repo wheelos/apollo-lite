@@ -47,8 +47,6 @@ cc_library(
     copts = PERCEPTION_COPTS,
     linkopts = ["-lleveldb"],
     deps = [
-        "@wheelos_common//modules/common/math",
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app:cipv_camera",
         "//modules/perception/camera/app:lane_camera_perception",
@@ -71,7 +69,9 @@ cc_library(
         "//modules/perception/onboard/proto:lane_perception_component_cc_proto",
         "//modules/perception/onboard/proto:trafficlights_perception_component_cc_proto",
         "//modules/perception/onboard/transform_wrapper",
+        "//modules/perception/onboard/transform_wrapper:sensor_calibration",
         "//modules/perception/pipeline/proto:traffic_light_config_cc_proto",
+        "//modules/transform:buffer",
         "//modules/transform:transform_query",
         "@boost.algorithm",
         "@boost.circular_buffer",
@@ -81,6 +81,8 @@ cc_library(
         "@opencv//:highgui",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
@@ -128,7 +130,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/app:lidar_obstacle_detection",
@@ -149,6 +150,7 @@ cc_library(
         "//modules/perception/onboard/transform_wrapper",
         "@core//cyber",
         "@eigen",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
     alwayslink = True,
 )
@@ -195,7 +197,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
@@ -224,6 +225,7 @@ cc_library(
         "//modules/perception/radar/lib/tracker/filter:adaptive_kalman_filter",
         "//modules/perception/radar/lib/tracker/matcher:hm_matcher",
         "@core//cyber",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
     alwayslink = True,
 )
@@ -240,7 +242,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
@@ -253,6 +254,7 @@ cc_library(
         "//modules/perception/onboard/inner_component_messages:lidar_inner_component_messages",
         "//modules/perception/onboard/proto:lidar_component_config_cc_proto",
         "@core//cyber",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
     alwayslink = True,
 )

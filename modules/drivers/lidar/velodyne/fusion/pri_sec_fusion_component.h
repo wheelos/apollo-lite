@@ -32,6 +32,7 @@
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
 #include "cyber/cyber.h"
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -45,6 +46,11 @@ using apollo::drivers::PointCloud;
 
 class PriSecFusionComponent : public Component<PointCloud> {
  public:
+  PriSecFusionComponent()
+      : PriSecFusionComponent(apollo::transform::Buffer::Instance()) {}
+  explicit PriSecFusionComponent(apollo::transform::BufferInterface* buffer)
+      : transform_query_(buffer) {}
+
   bool Init() override;
   bool Proc(const std::shared_ptr<PointCloud>& point_cloud) override;
 
@@ -64,9 +70,9 @@ class PriSecFusionComponent : public Component<PointCloud> {
    * @brief Get lidar point real timestamp.
    * if not use system clock, return raw timestamp directly,
    * else return the result of adding raw timestamp and offset time.
-   * 
+   *
    * @param timestamp The point raw timestamp.
-   * 
+   *
    * @return The new timestamp in nanoseconds.
    */
   uint64_t GetPointTimestamp(const uint64_t& timestamp);

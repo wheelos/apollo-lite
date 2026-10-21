@@ -20,23 +20,26 @@
 #include <string>
 #include <vector>
 
-#include "cyber/component/component.h"
+#include "modules/perception/onboard/proto/trafficlights_perception_component.pb.h"
 #include "wheelos_msgs/map_msgs/map_geometry.pb.h"
 #include "wheelos_msgs/map_msgs/map_signal.pb.h"
 #include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "wheelos_msgs/perception_msgs/traffic_light_detection.pb.h"
 #include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "wheelos_msgs/v2x_msgs/v2x_traffic_light.pb.h"
+
+#include "cyber/component/component.h"
 #include "modules/perception/camera/app/traffic_light_camera_perception.h"
 #include "modules/perception/camera/common/util.h"
 #include "modules/perception/camera/lib/traffic_light/preprocessor/tl_preprocessor.h"
 #include "modules/perception/map/hdmap/hdmap_input.h"
-#include "modules/perception/onboard/proto/trafficlights_perception_component.pb.h"
 #include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 // #include "modules/v2x/common/v2x_proxy_gflags.h"
 // #include "modules/perception/pipeline/proto/traffic_light_config.pb.h"
 #include "modules/perception/pipeline/proto/pipeline_config.pb.h"
+
 #include "modules/perception/pipeline/data_frame.h"
 
 namespace apollo {
@@ -67,8 +70,7 @@ class TrafficLightsPerceptionComponent : public apollo::cyber::Component<> {
                       const std::string& camera_name);
 
   void OnReceiveV2XMsg(
-      const std::shared_ptr<apollo::v2x::IntersectionTrafficLightData>
-      v2x_msg);
+      const std::shared_ptr<apollo::v2x::IntersectionTrafficLightData> v2x_msg);
   bool CreateDir();
 
   bool QueryPoseAndSignals(const double ts, camera::CarPose* pose,
@@ -127,7 +129,8 @@ class TrafficLightsPerceptionComponent : public apollo::cyber::Component<> {
   std::string tf2_child_frame_id_;
   double tf2_timeout_second_ = 0.01;
 
-    apollo::transform::TransformQuery transform_query_;
+  apollo::transform::TransformQuery transform_query_{
+      apollo::transform::Buffer::Instance()};
 
   std::vector<std::string> camera_names_;
   std::vector<std::string> input_camera_channel_names_;

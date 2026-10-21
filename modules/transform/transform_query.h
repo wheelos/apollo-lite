@@ -35,7 +35,6 @@ class BufferInterface;
 
 class TransformQuery {
  public:
-  TransformQuery();
   explicit TransformQuery(BufferInterface* buffer);
 
   bool CanTransform(const std::string& target_frame_id,
@@ -80,13 +79,16 @@ class TransformQuery {
 
   bool GetLatestStaticTransform(const std::string& target_frame_id,
                                 const std::string& source_frame_id,
-                                TransformStamped* transform) const;
+                                TransformStamped* transform,
+                                float timeout_sec = 0.0f) const;
 
   bool GetLatestStaticTransformToAffine(const std::string& target_frame_id,
                                         const std::string& source_frame_id,
-                                        Eigen::Affine3d* transform) const;
+                                        Eigen::Affine3d* transform,
+                                        float timeout_sec = 0.0f) const;
 
   TransformQueryDiagnostics GetDiagnosticsSnapshot() const;
+  uint64_t GetTimeEpoch() const;
 
  private:
   void RecordCanTransform(bool success, const std::string& error) const;

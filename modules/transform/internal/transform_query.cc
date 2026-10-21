@@ -17,21 +17,24 @@
 
 #include "modules/transform/transform_query.h"
 
+#include <algorithm>
+#include <chrono>
+#include <cmath>
 #include <string>
-
-#include "tf2/exceptions.h"
+#include <thread>
 
 #include "cyber/common/log.h"
-#include "modules/transform/buffer.h"
 #include "modules/transform/buffer_interface.h"
 
 namespace apollo {
 namespace transform {
 
-TransformQuery::TransformQuery() : buffer_(Buffer::Instance()) {}
-
 TransformQuery::TransformQuery(BufferInterface* buffer)
-  : buffer_(buffer) {}
+    : buffer_(CHECK_NOTNULL(buffer)) {}
+
+uint64_t TransformQuery::GetTimeEpoch() const {
+  return buffer_->GetTimeEpoch();
+}
 
 void TransformQuery::RecordCanTransform(bool success,
                                         const std::string& error) const {
@@ -85,8 +88,8 @@ bool TransformQuery::CanTransform(const std::string& target_frame_id,
   CHECK_NOTNULL(buffer_);
   std::string local_error;
   std::string* error = err_msg != nullptr ? err_msg : &local_error;
-  const bool success = buffer_->canTransform(
-      target_frame_id, source_frame_id, query_time, timeout_sec, error);
+  const bool success = buffer_->canTransform(target_frame_id, source_frame_id,
+                                             query_time, timeout_sec, error);
   RecordCanTransform(success, *error);
   return success;
 }
@@ -101,9 +104,9 @@ bool TransformQuery::CanTransform(const std::string& target_frame_id,
   CHECK_NOTNULL(buffer_);
   std::string local_error;
   std::string* error = err_msg != nullptr ? err_msg : &local_error;
-  const bool success = buffer_->canTransform(
-      target_frame_id, target_time, source_frame_id, source_time,
-      fixed_frame_id, timeout_sec, error);
+  const bool success =
+      buffer_->canTransform(target_frame_id, target_time, source_frame_id,
+                            source_time, fixed_frame_id, timeout_sec, error);
   RecordCanTransform(success, *error);
   return success;
 }
@@ -120,7 +123,7 @@ bool TransformQuery::LookupTransform(const std::string& target_frame_id,
   try {
     *transform = buffer_->lookupTransform(target_frame_id, source_frame_id,
                                           query_time, timeout_sec);
-  } catch (const tf2::TransformException& ex) {
+  } catch (const TransformException& ex) {
     if (err_msg != nullptr) {
       *err_msg = ex.what();
     }
@@ -144,7 +147,7 @@ bool TransformQuery::LookupTransform(
     *transform =
         buffer_->lookupTransform(target_frame_id, target_time, source_frame_id,
                                  source_time, fixed_frame_id, timeout_sec);
-  } catch (const tf2::TransformException& ex) {
+  } catch (const TransformException& ex) {
     if (err_msg != nullptr) {
       *err_msg = ex.what();
     }
@@ -198,23 +201,46 @@ bool TransformQuery::LookupTransformToAffine(
 
 bool TransformQuery::GetLatestStaticTransform(
     const std::string& target_frame_id, const std::string& source_frame_id,
-    TransformStamped* transform) const {
+    TransformStamped* transform, float timeout_sec) const {
   CHECK_NOTNULL(transform);
   CHECK_NOTNULL(buffer_);
-  const bool success = buffer_->GetLatestStaticTransform(
-      target_frame_id, source_frame_id, transform);
-  RecordStaticLookup(success, success ? "" : "static transform not found");
-  return success;
+  if (!std::isfinite(timeout_sec) || timeout_sec < 0.0f ||
+      timeout_sec > std::chrono::duration<double>(
+                        std::chrono::steady_clock::duration::max() / 2)
+                        .count()) {
+    AERROR << "Invalid static transform timeout: " << timeout_sec;
+    RecordStaticLookup(false, "invalid static transform timeout");
+    return false;
+  }
+  using Clock = std::chrono::steady_clock;
+  const auto deadline =
+      Clock::now() + std::chrono::duration_cast<Clock::duration>(
+                         std::chrono::duration<double>(timeout_sec));
+  do {
+    if (buffer_->GetLatestStaticTransform(target_frame_id, source_frame_id,
+                                          transform)) {
+      RecordStaticLookup(true, "");
+      return true;
+    }
+    const auto now = Clock::now();
+    if (now >= deadline) {
+      break;
+    }
+    std::this_thread::sleep_until(
+        std::min(deadline, now + std::chrono::milliseconds(1)));
+  } while (true);
+  RecordStaticLookup(false, "static transform not found before timeout");
+  return false;
 }
 
 bool TransformQuery::GetLatestStaticTransformToAffine(
     const std::string& target_frame_id, const std::string& source_frame_id,
-    Eigen::Affine3d* transform) const {
+    Eigen::Affine3d* transform, float timeout_sec) const {
   CHECK_NOTNULL(transform);
 
   TransformStamped stamped_transform;
   if (!GetLatestStaticTransform(target_frame_id, source_frame_id,
-                                &stamped_transform)) {
+                                &stamped_transform, timeout_sec)) {
     RecordAffineLookup(false, "static transform not found");
     return false;
   }

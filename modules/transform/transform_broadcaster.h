@@ -19,8 +19,9 @@
 #include <memory>
 #include <vector>
 
-#include "cyber/cyber.h"
 #include "wheelos_msgs/transform_msgs/transform.pb.h"
+
+#include "cyber/cyber.h"
 
 namespace apollo {
 namespace transform {

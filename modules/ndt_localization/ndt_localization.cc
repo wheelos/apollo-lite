@@ -16,6 +16,9 @@
 
 #include "modules/ndt_localization/ndt_localization.h"
 
+#include <memory>
+#include <string>
+
 #include "Eigen/Geometry"
 #include "yaml-cpp/yaml.h"
 
@@ -27,6 +30,7 @@
 #include "modules/common/configs/config_gflags.h"
 #include "modules/common/map/map_selection.h"
 #include "modules/common/math/quaternion.h"
+#include "modules/common/vehicle_calibration/lidar_height.h"
 #include "modules/ndt_localization/common/localization_gflags.h"
 #include "modules/ndt_localization/common/rigid_transform_helper.h"
 
@@ -41,7 +45,6 @@ bool NDTLocalization::Init() {
   ndt_debug_log_flag_ = FLAGS_ndt_debug_log_flag;
   tf_source_frame_id_ = FLAGS_broadcast_tf_frame_id;
   tf_target_frame_id_ = FLAGS_broadcast_tf_child_frame_id;
-  std::string lidar_height_file = FLAGS_lidar_height_file;
   bad_score_count_threshold_ = FLAGS_ndt_bad_score_count_threshold;
   warnning_ndt_score_ = FLAGS_ndt_warnning_ndt_score;
   error_ndt_score_ = FLAGS_ndt_error_ndt_score;
@@ -60,13 +63,17 @@ bool NDTLocalization::Init() {
   AINFO << "lidar rigid extrinsics: runtime TF using incoming point cloud "
         << "frame_id";
 
-  bool success = LoadLidarHeight(lidar_height_file, &lidar_height_);
-  if (!success) {
-    AWARN << "LocalizationLidar: Fail to load the lidar"
-             " height file: "
-          << lidar_height_file << " Will use default value!";
-    lidar_height_.height = FLAGS_lidar_height_default;
+  apollo::common::vehicle_calibration::Registry calibration;
+  apollo::common::vehicle_calibration::LidarHeight height;
+  if (!calibration.LoadFromEnvironment() ||
+      !apollo::common::vehicle_calibration::LoadLidarHeight(
+          calibration, FLAGS_ndt_calibration_sensor, &height)) {
+    AERROR << "NDT requires selected vehicle LiDAR calibration.";
+    return false;
   }
+  lidar_height_.height = height.height;
+  lidar_height_.height_var = height.variance;
+  calibration_lidar_frame_ = height.frame_id;
 
   // try load zone id from local_map folder
   if (FLAGS_if_utm_zone_id_from_folder) {
@@ -521,6 +528,12 @@ void NDTLocalization::LidarMsgTransfer(
 }
 
 bool NDTLocalization::UpdateLidarExtrinsic(const std::string& lidar_frame_id) {
+  if (!calibration_lidar_frame_.empty() &&
+      calibration_lidar_frame_ != lidar_frame_id) {
+    AERROR << "Point cloud does not match selected NDT calibration: "
+           << lidar_frame_id;
+    return false;
+  }
   if (lidar_frame_id.empty()) {
     AERROR << "NDTLocalization: incoming point cloud is missing frame_id.";
     return false;
@@ -530,40 +543,22 @@ bool NDTLocalization::UpdateLidarExtrinsic(const std::string& lidar_frame_id) {
   }
 
   if (!apollo::localization::common::LookupStaticTransform(
-          lidar_frame_id, tf_target_frame_id_, &velodyne_extrinsic_)) {
+          transform_query_, tf_target_frame_id_, lidar_frame_id,
+          &velodyne_extrinsic_)) {
     return false;
   }
 
   const Eigen::Quaterniond ext_quat(velodyne_extrinsic_.linear());
-  AINFO << "NDT lidar rigid TF: " << tf_target_frame_id_ << " -> "
-        << lidar_frame_id << " trans: " << velodyne_extrinsic_.translation().x()
-        << ", " << velodyne_extrinsic_.translation().y() << ", "
+  AINFO << "NDT lidar rigid TF from " << lidar_frame_id << " to "
+        << tf_target_frame_id_
+        << " trans: " << velodyne_extrinsic_.translation().x() << ", "
+        << velodyne_extrinsic_.translation().y() << ", "
         << velodyne_extrinsic_.translation().z() << " quat: " << ext_quat.x()
         << ", " << ext_quat.y() << ", " << ext_quat.z() << ", " << ext_quat.w();
   lidar_locator_.SetVelodyneExtrinsic(velodyne_extrinsic_);
   lidar_frame_id_ = lidar_frame_id;
   has_lidar_extrinsic_ = true;
   return true;
-}
-
-bool NDTLocalization::LoadLidarHeight(const std::string& file_path,
-                                      LidarHeight* height) {
-  CHECK_NOTNULL(height);
-
-  if (!cyber::common::PathExists(file_path)) {
-    return false;
-  }
-
-  YAML::Node config = YAML::LoadFile(file_path);
-  if (config["vehicle"]) {
-    if (config["vehicle"]["parameters"]) {
-      height->height = config["vehicle"]["parameters"]["height"].as<double>();
-      height->height_var =
-          config["vehicle"]["parameters"]["height_var"].as<double>();
-      return true;
-    }
-  }
-  return false;
 }
 
 bool NDTLocalization::LoadZoneIdFromFolder(const std::string& folder_path,

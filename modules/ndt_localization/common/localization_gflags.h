@@ -19,8 +19,7 @@
 #include "gflags/gflags.h"
 
 DECLARE_string(local_map_name);
-DECLARE_string(lidar_height_file);
-DECLARE_double(lidar_height_default);
+DECLARE_string(ndt_calibration_sensor);
 DECLARE_bool(if_utm_zone_id_from_folder);
 DECLARE_string(lidar_topic);
 DECLARE_string(broadcast_tf_frame_id);

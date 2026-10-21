@@ -20,13 +20,14 @@
 
 #include "Eigen/Eigen"
 
-#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/drivers/lidar/fusion/proto/lidar_fusion_config.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
 #include "cyber/component/component.h"
 #include "cyber/cyber.h"
 #include "cyber/node/reader.h"
 #include "cyber/node/writer.h"
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -36,6 +37,11 @@ namespace lidar {
 class LidarFusionComponent
     : public apollo::cyber::Component<apollo::drivers::PointCloud> {
  public:
+  LidarFusionComponent()
+      : LidarFusionComponent(apollo::transform::Buffer::Instance()) {}
+  explicit LidarFusionComponent(apollo::transform::BufferInterface* buffer)
+      : transform_query_(buffer) {}
+
   bool Init() override;
 
   bool Proc(
@@ -81,7 +87,7 @@ class LidarFusionComponent
               int* target_size);
 
   LidarFusionConfig config_;
-    apollo::transform::TransformQuery transform_query_;
+  apollo::transform::TransformQuery transform_query_;
   std::shared_ptr<apollo::cyber::Writer<apollo::drivers::PointCloud>> writer_;
   std::vector<
       std::shared_ptr<apollo::cyber::Reader<apollo::drivers::PointCloud>>>

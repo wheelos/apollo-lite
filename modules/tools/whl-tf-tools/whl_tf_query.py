@@ -289,7 +289,7 @@ def load_configs(tf_files, config_files, apollo_root, output, list_frames):
         whl_tf_query load -t tf1.yaml -t tf2.yaml
 
         # Load from static transform config
-        whl_tf_query load -c modules/transform/conf/static_transform_conf.pb.txt
+        whl_tf_query load -c /path/to/offline/static_transform_conf.pb.txt
 
         # Combine both
         whl_tf_query load -t custom.yaml -c static_transform_conf.pb.txt

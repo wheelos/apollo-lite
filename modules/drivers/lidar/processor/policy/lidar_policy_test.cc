@@ -14,9 +14,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <cstdint>
 #include <limits>
 #include <map>
 #include <memory>
@@ -49,6 +49,8 @@ constexpr uint64_t kTestSecondToNano = 1000000000ULL;
 
 class MockBuffer : public apollo::transform::BufferInterface {
  public:
+  bool static_available_ = true;
+  mutable int dynamic_lookup_count_ = 0;
   using Key = std::tuple<std::string, std::string, uint64_t>;
 
   void AddTransform(const std::string& target_frame,
@@ -62,6 +64,7 @@ class MockBuffer : public apollo::transform::BufferInterface {
       const std::string& target_frame, const std::string& source_frame,
       const cyber::Time& time, const float timeout_second) const override {
     (void)timeout_second;
+    ++dynamic_lookup_count_;
     return Get(target_frame, source_frame, time);
   }
 
@@ -99,7 +102,7 @@ class MockBuffer : public apollo::transform::BufferInterface {
   bool GetLatestStaticTransform(
       const std::string& target_frame, const std::string& source_frame,
       apollo::transform::TransformStamped* transform) const override {
-    if (transform == nullptr) {
+    if (transform == nullptr || !static_available_) {
       return false;
     }
     const auto it =
@@ -221,10 +224,8 @@ LidarUnifiedComponentConfig MakeConfig() {
 }  // namespace
 
 TEST(PointCloudViewTest, CopiesProtobufPointsToContiguousPodStorage) {
-  const auto cloud =
-      MakePointCloud("lidar", 10.0,
-                     {{1.0f, 2.0f, 3.0f, 100U},
-                      {-1.0f, -2.0f, -3.0f, 200U}});
+  const auto cloud = MakePointCloud(
+      "lidar", 10.0, {{1.0f, 2.0f, 3.0f, 100U}, {-1.0f, -2.0f, -3.0f, 200U}});
 
   ASSERT_NE(cloud, nullptr);
   ASSERT_TRUE(cloud->valid());
@@ -468,13 +469,12 @@ TEST(CpuLidarFusionPolicyTest, FusesPodPointsWithScalarTailAndInvalidPoints) {
   SensorFrameContext frame_context;
   frame_context.sensor_id = "lidar";
   frame_context.all_points_have_timestamps = true;
-  frame_context.point_cloud = MakePointCloud(
-      "lidar", 12.0,
-      {{1.0f, 2.0f, 3.0f, 10U},
-       {2.0f, 3.0f, 4.0f, 20U},
-       {3.0f, 4.0f, 5.0f, 30U},
-       {4.0f, 5.0f, 6.0f, 40U},
-       {5.0f, 6.0f, 7.0f, 50U}});
+  frame_context.point_cloud = MakePointCloud("lidar", 12.0,
+                                             {{1.0f, 2.0f, 3.0f, 10U},
+                                              {2.0f, 3.0f, 4.0f, 20U},
+                                              {3.0f, 4.0f, 5.0f, 30U},
+                                              {4.0f, 5.0f, 6.0f, 40U},
+                                              {5.0f, 6.0f, 7.0f, 50U}});
   frame_context.motion_sample_times = {12.0};
   frame_context.motion_poses = {Eigen::Affine3d::Identity()};
 
@@ -485,7 +485,7 @@ TEST(CpuLidarFusionPolicyTest, FusesPodPointsWithScalarTailAndInvalidPoints) {
   buffer.item_size = sizeof(PointXYZIT);
 
   ASSERT_TRUE(policy.FuseToBaseLink(12.0, Eigen::Affine3d::Identity(),
-                                   {frame_context}, &buffer));
+                                    {frame_context}, &buffer));
   ASSERT_EQ(buffer.valid_count, 5U);
   for (size_t index = 0; index < storage.size(); ++index) {
     EXPECT_FLOAT_EQ(storage[index].x(), static_cast<float>(index + 1));
@@ -1186,6 +1186,18 @@ TEST(LidarUnifiedComponentTest, OffCompensationUsesStaticExtrinsicOnly) {
   EXPECT_NEAR(output->point(0).x(), 3.0, 1e-6);
   EXPECT_DOUBLE_EQ(output->measurement_time(), 10.00000025);
   EXPECT_EQ(output->point(0).timestamp(), 10000000250ULL);
+
+  component.static_extrinsics_.clear();
+  tf_buffer.static_available_ = false;
+  // A latest dynamic sample must not rescue the missing rigid calibration.
+  tf_buffer.AddTransform("base_link", "lidar", cyber::Time(0),
+                         Eigen::Affine3d::Identity());
+  const int dynamic_lookups = tf_buffer.dynamic_lookup_count_;
+  output.reset();
+  EXPECT_FALSE(
+      component.BuildUnifiedPointCloud(cloud, {handle}, &metrics, &output));
+  EXPECT_EQ(tf_buffer.dynamic_lookup_count_, dynamic_lookups);
+  EXPECT_TRUE(component.static_extrinsics_.empty());
 }
 
 TEST(LidarUnifiedComponentTest, DoesNotPublishEmptyFusedPointCloud) {
@@ -1205,8 +1217,8 @@ TEST(LidarUnifiedComponentTest, DoesNotPublishEmptyFusedPointCloud) {
   ASSERT_TRUE(component.filter_policy_->Init(component.config_));
   component.full_pointcloud_buffer_.resize(8);
 
-  auto cloud = MakePointCloud(
-      "lidar", 10.0, {{0.0f, 0.0f, 0.0f, 10000000000ULL}});
+  auto cloud =
+      MakePointCloud("lidar", 10.0, {{0.0f, 0.0f, 0.0f, 10000000000ULL}});
   auto buffered = MakeBufferedFrame("lidar", 9.9, 10.0, 1);
   buffered->point_cloud = cloud;
   buffered->motion_sample_times = {10.0};

@@ -99,7 +99,10 @@ bool LidarUnifiedComponent::Init() {
     base_link_pose_resolver_ =
         std::make_unique<apollo::transform::TimedTransformResolver>(
             base_link_transform_query_.get());
-    base_link_pose_resolver_->SetOptions(BuildTransformResolverOptions());
+    if (!base_link_pose_resolver_->SetOptions(
+            BuildTransformResolverOptions())) {
+      return false;
+    }
   }
 
   for (const auto& input_cfg : config_.auxiliary_lidar_inputs()) {
@@ -751,9 +754,6 @@ bool LidarUnifiedComponent::BuildUnifiedPointCloud(
 #else
         if (!transform_query.GetLatestStaticTransformToAffine(
                 config_.base_link_frame_id(), handle.sensor_id,
-                &base_from_sensor) &&
-            !transform_query.LookupTransformToAffine(
-                config_.base_link_frame_id(), handle.sensor_id, cyber::Time(0),
                 &base_from_sensor, 0.1f)) {
           if (handle.is_primary) {
             AERROR << "Static extrinsic unavailable from " << handle.sensor_id

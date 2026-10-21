@@ -46,13 +46,14 @@ bool PriSecFusionComponent::Proc(
   // set measure timestamp
   lidar_system_offset_ns_ = 0;
   if (conf_.has_use_system_clock() && conf_.use_system_clock()) {
-    lidar_system_offset_ns_ = target->header().lidar_timestamp() -
-      static_cast<uint64_t>(target->header().timestamp_sec() * 1000000000);
+    lidar_system_offset_ns_ =
+        target->header().lidar_timestamp() -
+        static_cast<uint64_t>(target->header().timestamp_sec() * 1000000000);
     target->set_measurement_time(target->header().timestamp_sec());
   }
 
-  if (conf_.has_target_frame_id()
-      && conf_.target_frame_id() != target->header().frame_id()) {
+  if (conf_.has_target_frame_id() &&
+      conf_.target_frame_id() != target->header().frame_id()) {
     target->mutable_header()->set_frame_id(conf_.target_frame_id());
     target->clear_point();
     Fusion(target, point_cloud);
@@ -99,13 +100,11 @@ bool PriSecFusionComponent::IsExpired(
 bool PriSecFusionComponent::QueryPoseAffine(const std::string& target_frame_id,
                                             const std::string& source_frame_id,
                                             Eigen::Affine3d* pose) {
-  std::string err_string;
-  if (!transform_query_.LookupTransformToAffine(
-          target_frame_id, source_frame_id, cyber::Time(0), pose, 0.02f,
-          &err_string)) {
-    AERROR << "Can not find transform. "
-           << "target_id:" << target_frame_id << " frame_id:" << source_frame_id
-           << " Error info: " << err_string;
+  if (!transform_query_.GetLatestStaticTransformToAffine(
+          target_frame_id, source_frame_id, pose, 0.02f)) {
+    AERROR << "Can not find static transform. "
+           << "target_id:" << target_frame_id
+           << " frame_id:" << source_frame_id;
     return false;
   }
   return true;

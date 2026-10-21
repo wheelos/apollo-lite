@@ -17,11 +17,9 @@
 #include "modules/ndt_localization/common/localization_gflags.h"
 
 DEFINE_string(local_map_name, "local_map", "The path of localization map.");
-DEFINE_string(lidar_height_file,
-              "/apollo/modules/ndt_localization/params/velodyne64_height.yaml",
-              "The LiDAR height parameter file.");
-DEFINE_double(lidar_height_default, 1.80,
-              "The height from the center of velodyne to ground.");
+DEFINE_string(
+    ndt_calibration_sensor, "",
+    "Selected calibration sensor ID/frame; empty requires one LiDAR.");
 DEFINE_bool(if_utm_zone_id_from_folder, true,
             "load utm zone id from local map folder");
 DEFINE_string(lidar_topic, "/apollo/sensor/lidar128/compensator/PointCloud2",

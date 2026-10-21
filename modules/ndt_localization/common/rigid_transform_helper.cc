@@ -16,25 +16,17 @@
 
 #include "modules/ndt_localization/common/rigid_transform_helper.h"
 
-#include <chrono>
-#include <thread>
+#include <string>
 
 #include "cyber/common/log.h"
-#include "cyber/cyber.h"
 #include "modules/transform/transform_query.h"
-
-namespace {
-
-constexpr float kDefaultStaticTransformTimeoutSec = 1.0f;
-constexpr auto kStaticTransformRetryInterval = std::chrono::milliseconds(10);
-
-}  // namespace
 
 namespace apollo {
 namespace localization {
 namespace common {
 
-bool LookupStaticTransform(const std::string& target_frame_id,
+bool LookupStaticTransform(const transform::TransformQuery& query,
+                           const std::string& target_frame_id,
                            const std::string& source_frame_id,
                            Eigen::Affine3d* transform, float timeout_sec) {
   CHECK_NOTNULL(transform);
@@ -45,32 +37,13 @@ bool LookupStaticTransform(const std::string& target_frame_id,
     return false;
   }
 
-  apollo::transform::TransformQuery transform_query;
-  const float effective_timeout =
-      timeout_sec > 0.0f ? timeout_sec : kDefaultStaticTransformTimeoutSec;
-  const auto deadline = std::chrono::steady_clock::now() +
-                        std::chrono::duration<double>(effective_timeout);
-
-  do {
-    if (transform_query.GetLatestStaticTransformToAffine(
-            target_frame_id, source_frame_id, transform)) {
-      return true;
-    }
-    if (apollo::cyber::IsShutdown() ||
-        std::chrono::steady_clock::now() >= deadline) {
-      break;
-    }
-    std::this_thread::sleep_for(kStaticTransformRetryInterval);
-  } while (std::chrono::steady_clock::now() < deadline);
-
-  if (transform_query.GetLatestStaticTransformToAffine(
-          target_frame_id, source_frame_id, transform)) {
+  if (query.GetLatestStaticTransformToAffine(target_frame_id, source_frame_id,
+                                             transform, timeout_sec)) {
     return true;
   }
 
   AERROR << "Failed to resolve rigid static TF from " << source_frame_id
-         << " to " << target_frame_id << " within " << effective_timeout
-         << "s.";
+         << " to " << target_frame_id << " within " << timeout_sec << "s.";
   return false;
 }
 

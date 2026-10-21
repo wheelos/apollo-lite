@@ -13,12 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
+#include "modules/perception/fusion/common/camera_util.h"
+
+#include <string>
+
 #include "gtest/gtest.h"
 
 #include "cyber/common/log.h"
+#include "modules/common/vehicle_calibration/test_bundle.h"
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
 #include "modules/perception/fusion/base/sensor_data_manager.h"
-#include "modules/perception/fusion/common/camera_util.h"
 
 namespace apollo {
 namespace perception {
@@ -40,11 +44,12 @@ TEST(CameraUtilTest, test_is_pt_in_frustum) {
 }
 
 TEST(CameraUtilTest, test_object_in_camera_view_and_is_behind_camera) {
-  FLAGS_work_root = "/apollo/modules/perception/testdata/fusion/base";
-  FLAGS_obs_sensor_intrinsic_path =
-      "/apollo/modules/perception/testdata/"
-      "fusion/base/params";
-  FLAGS_obs_sensor_meta_path = "./data/sensor_meta.pt";
+  apollo::common::vehicle_calibration::TestBundle calibration;
+  calibration.AddSensor(apollo::common::vehicle_calibration::LIDAR,
+                        "velodyne64", "velodyne64");
+  calibration.AddSensor(apollo::common::vehicle_calibration::CAMERA,
+                        "camera_smartereye", "camera_smartereye");
+  ASSERT_TRUE(calibration.Publish());
 
   // create a lidar sensor object
   base::ObjectPtr base_lidar_object(new base::Object());

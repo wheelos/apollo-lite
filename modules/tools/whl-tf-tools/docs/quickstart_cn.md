@@ -2,19 +2,24 @@
 
 本指南涵盖所有工具的常用场景。
 
+运行时标定来自选定的车辆 bundle，Transform 不再提供 `conf/` 或 `params/`
+示例资产。离线检查应显式传入外参 YAML；下文 `-c` 仅用于用户提供的历史
+pb.txt 清单，不支持当前车辆 manifest，也不校验 bundle 身份。完整校验使用
+`//modules/tools/vehicle_calibration:validate_calibration`。
+
 **注意**：所有命令都假设您在**项目根目录**下运行。
 
 ## whl-tf-show - 可视化 TF 配置
 
 ```bash
 # 可视化目录中的所有 TF 配置
-./modules/tools/whl-tf-tools/whl_tf_show.py modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py /path/to/extrinsics/*.yaml
 
 # 保存为 PNG
-./modules/tools/whl-tf-tools/whl_tf_show.py -s output.png modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -s output.png /path/to/extrinsics/*.yaml
 
 # 自定义坐标轴长度
-./modules/tools/whl-tf-tools/whl_tf_show.py -l 1.0 modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -l 1.0 /path/to/extrinsics/*.yaml
 ```
 
 ## whl-tf-query - 查询变换
@@ -22,16 +27,16 @@
 ```bash
 # 从 Apollo 配置查询变换
 ./modules/tools/whl-tf-tools/whl_tf_query.py query \
-    -c modules/transform/conf/static_transform_conf.pb.txt \
+    -c /path/to/offline/static_transform_conf.pb.txt \
     imu rslidar_main_front
 
 # 交互式模式
 ./modules/tools/whl-tf-tools/whl_tf_query.py interactive \
-    -c modules/transform/conf/static_transform_conf.pb.txt
+    -c /path/to/offline/static_transform_conf.pb.txt
 
 # 保存并复用图
 ./modules/tools/whl-tf-tools/whl_tf_query.py load \
-    -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+    -c /path/to/offline/static_transform_conf.pb.txt -o graph.pkl
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu localization
 ```
 

@@ -13,29 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
-#include "modules/transform/static_transform_component.h"
 
-#include <cstdio>
+#pragma once
+
 #include <memory>
 
-#include "cyber/init.h"
-#include "gtest/gtest.h"
+#include "wheelos_msgs/transform_msgs/transform.pb.h"
+
+#include "cyber/component/component.h"
 
 namespace apollo {
 namespace transform {
 
-TEST(TransformComponentTest, Init) {
-  cyber::Init("transform_component_test");
-  auto component = std::make_shared<StaticTransformComponent>();
-  EXPECT_NE(component, nullptr);
-}
+class StaticTransformComponent final : public apollo::cyber::Component<> {
+ public:
+  StaticTransformComponent() = default;
+  ~StaticTransformComponent() = default;
+
+  bool Init() override;
+
+ private:
+  std::shared_ptr<cyber::Writer<TransformStampeds>> writer_;
+};
 
 }  // namespace transform
 }  // namespace apollo
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  const int result = RUN_ALL_TESTS();
-  std::fflush(nullptr);
-  std::_Exit(result);
-}

@@ -23,15 +23,16 @@
 
 #include "Eigen/Dense"
 
+#include "modules/dreamview/proto/camera_update.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
 #include "wheelos_msgs/localization_msgs/pose.pb.h"
 #include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
 #include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
-#include "modules/dreamview/proto/camera_update.pb.h"
 
 #include "cyber/cyber.h"
 #include "cyber/service_discovery/specific_manager/channel_manager.h"
 #include "modules/dreamview/backend/handlers/websocket_handler.h"
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -80,7 +81,8 @@ class PerceptionCameraUpdater {
    */
   void GetImageLocalization(std::vector<double> *localization);
 
-  apollo::transform::TransformQuery transform_query_;
+  apollo::transform::TransformQuery transform_query_{
+      apollo::transform::Buffer::Instance()};
   bool QueryStaticTF(const std::string &frame_id,
                      const std::string &child_frame_id,
                      Eigen::Matrix4d *matrix);

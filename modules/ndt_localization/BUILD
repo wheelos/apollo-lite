@@ -16,19 +16,21 @@ cc_library(
     ],
     copts = ["-DMODULE_NAME=\\\"NDTlocalization\\\""],
     deps = [
-        "@wheelos_common//modules/common/map:map_selection",
-        "@wheelos_common//modules/common/math",
-        "@wheelos_common//modules/common/monitor_log",
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/ndt_localization/common:localization_gflags",
         "//modules/ndt_localization/common:rigid_transform_helper",
         "//modules/ndt_localization/common/util",
         "//modules/ndt_localization/ndt_locator:ndt_lidar_locator",
+        "//modules/transform:buffer",
         "//modules/transform:transform_query",
         "@com_github_google_glog//:glog",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@core//cyber",
         "@eigen",
+        "@wheelos_common//modules/common/map:map_selection",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/util:util_tool",
+        "@wheelos_common//modules/common/vehicle_calibration:lidar_height",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
@@ -46,11 +48,11 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"NDTlocalization\\\""],
     deps = [
         ":ndt_localization_lib",
-        "@wheelos_common//modules/common/adapters:adapter_gflags",
-        "@wheelos_common//modules/common/math",
         "//modules/ndt_localization/common:localization_gflags",
         "//modules/transform:transform_broadcaster",
         "@core//cyber",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/math",
     ],
     alwayslink = True,
 )
@@ -60,6 +62,20 @@ cc_binary(
     linkshared = True,
     linkstatic = False,
     deps = [":ndt_localization_component_lib"],
+)
+
+cc_test(
+    name = "ndt_extrinsic_test",
+    size = "small",
+    srcs = ["ndt_extrinsic_test.cc"],
+    copts = ["-fno-access-control"],
+    deps = [
+        ":ndt_localization_lib",
+        "//modules/transform:buffer",
+        "//modules/transform:buffer_test_peer",
+        "@com_google_googletest//:gtest_main",
+        "@eigen",
+    ],
 )
 
 cc_test(
@@ -90,8 +106,8 @@ cc_test(
 filegroup(
     name = "runtime_data",
     srcs = [
-        "dag/dag_streaming_ndt_localization.dag",
         "conf/ndt_localization.conf",
+        "dag/dag_streaming_ndt_localization.dag",
         "launch/ndt_localization.launch",
         "params/velodyne64_height.yaml",
     ],

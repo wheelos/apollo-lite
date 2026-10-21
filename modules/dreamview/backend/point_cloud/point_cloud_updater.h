@@ -30,6 +30,10 @@
 #include <boost/thread/locks.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
+#include "modules/common/vehicle_calibration/lidar_height.h"
+#include "modules/transform/buffer.h"
+#include "modules/transform/transform_query.h"
+
 namespace pcl {
 struct PointXYZ;
 template <typename PointT>
@@ -80,21 +84,22 @@ class PointCloudUpdater {
   ~PointCloudUpdater();
   // dreamview callback function
   using DvCallback = std::function<bool(const std::string &string)>;
-  static void LoadLidarHeight(const std::string &file_path);
 
   /**
    * @brief Starts to push PointCloud to frontend.
    */
   void Start(DvCallback callback_api);
   void Stop();
-  // The height of lidar w.r.t the ground.
-  static float lidar_height_;
-
-  // Mutex to protect concurrent access to point_cloud_str_ and lidar_height_.
+  // Mutex to protect concurrent access to point_cloud_str_.
   // NOTE: Use boost until we have std version of rwlock support.
   static boost::shared_mutex mutex_;
 
  private:
+  bool InitializeCalibration();
+  bool calibration_ready_ = false;
+  apollo::common::vehicle_calibration::LidarHeight calibration_height_;
+  apollo::transform::TransformQuery transform_query_{
+      apollo::transform::Buffer::Instance()};
   void RegisterMessageHandlers();
 
   void UpdatePointCloud(
@@ -106,13 +111,8 @@ class PointCloudUpdater {
   void UpdateLocalizationTime(
       const std::shared_ptr<apollo::localization::LocalizationEstimate>
           &localization);
-  std::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> ConvertPCLPointCloud(
-      const std::shared_ptr<drivers::PointCloud> &point_cloud);
-
   void GetChannelMsg(std::vector<std::string> *channels);
   bool ChangeChannel(const std::string &channel);
-  constexpr static float kDefaultLidarHeight = 1.91f;
-
   std::unique_ptr<cyber::Node> node_;
 
   WebSocketHandler *websocket_;
