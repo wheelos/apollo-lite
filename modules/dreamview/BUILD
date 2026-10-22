@@ -11,6 +11,7 @@ cc_binary(
     name = "dreamview",
     srcs = ["main.cc"],
     copts = DREAMVIEW_COPTS + copts_if_teleop(),
+    linkstatic = False,
     data = [
         "@dreamview_frontend_assets//:all_files",
     ],

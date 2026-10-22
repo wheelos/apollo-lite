@@ -43,11 +43,13 @@ function show_help() {
   echo "  WHL_PORT_OFFSET     Numeric offset added to Dreamview dynamic port (helps avoid port collision)"
   echo ""
   echo "Commands:"
-  echo "  start      Start container for the selected mode"
+  echo "  start      Start container for the selected mode using local images only"
   echo "  enter      Enter container (starts first if not running)"
-  echo "  stop       Stop container for the selected mode, or 'all'"
+  echo "  exec       Run a command in a running, healthy container"
+  echo "  stop       Stop container and preserve it for the selected mode, or 'all'"
+  echo "  rm         Stop and remove container/network for the selected mode, or 'all'"
   echo "  status     Show Apollo container status for the selected mode"
-  echo "  update     Pull latest image and restart the selected mode"
+  echo "  pull       Pull image and update container (may interrupt running workloads)"
   echo "  prune      Remove legacy Apollo containers for current user"
   echo "  help       Show this help message"
   echo ""
@@ -55,13 +57,15 @@ function show_help() {
   echo "  dev        Standard development mode (Host net, Privileged)"
   echo "  test       Isolated test mode (Bridge net, Dynamic ports, optional GPU runtime)"
   echo "  prod       Production mode (Host net, Restart enabled)"
-  echo "  all        Stop all managed modes (stop only)"
+  echo "  all        Apply the selected stop/remove action to all configured modes"
   echo ""
   echo "Examples:"
   echo "  whl start dev                # Start dev container using DEV_* overrides"
   echo "  whl start test               # Start test container using TEST_* overrides"
-  echo "  whl stop test                # Stop only the test container"
-  echo "  whl stop all                 # Stop dev/test and prod when configured"
+  echo "  whl stop dev                 # Stop dev container but preserve it"
+  echo "  whl rm test                  # Stop and remove test container/network"
+  echo "  whl rm all                   # Stop and remove all configured modes"
+  echo "  whl exec prod -- <command>   # Run a command in the healthy prod container"
 }
 
 CUSTOM_IMAGE=""
@@ -85,7 +89,7 @@ function parse_args() {
         OS="$2"
         shift 2
         ;;
-      enter | start | stop | status | update | prune | help | --help | -h)
+      enter | exec | start | stop | status | pull | prune | help | --help | -h)
         break
         ;;
       dev | test | prod | all)
@@ -146,7 +150,7 @@ function validate_mode() {
   fi
 }
 
-function validate_stop_target() {
+function validate_mode_target() {
   local target="$1"
   if [[ "${target}" == "all" ]]; then
     return 0
@@ -276,17 +280,64 @@ function stop_mode() {
   prepare_mode_context "${mode}" "false"
   generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
   ensure_env_generated "${mode}"
-  $(get_cmd "${mode}") down 2>/dev/null || true
+  $(get_cmd "${mode}") stop
+}
+
+function rm_mode() {
+  local mode="$1"
+  prepare_mode_context "${mode}" "false"
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
+  ensure_env_generated "${mode}"
+  $(get_cmd "${mode}") down --remove-orphans
+}
+
+function wait_for_container_healthy() {
+  local container_name="$1"
+  local state
+  local health_status
+  local attempt
+  for ((attempt = 0; attempt < 90; attempt++)); do
+    if ! state="$(docker inspect --format \
+      '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
+      "${container_name}" 2>/dev/null)"; then
+      echo ">>> ERROR: Unable to inspect container '${container_name}'." >&2
+      return 1
+    fi
+    read -r state health_status <<<"${state}"
+    if [[ "${state}" != "running" ]]; then
+      echo ">>> ERROR: Container '${container_name}' is ${state} (health: ${health_status})." >&2
+      docker logs "${container_name}" || true
+      return 1
+    fi
+    if [[ "${health_status}" == "healthy" ]]; then
+      return 0
+    fi
+    if [[ "${health_status}" == "unhealthy" || "${health_status}" == "no-healthcheck" ]]; then
+      echo ">>> ERROR: Container '${container_name}' health check is ${health_status}." >&2
+      docker logs "${container_name}" || true
+      return 1
+    fi
+    sleep 1
+  done
+
+  echo ">>> ERROR: Container '${container_name}' did not become healthy within 90 seconds (${health_status})." >&2
+  docker logs "${container_name}" || true
+  return 1
 }
 
 function cmd_start() {
   local mode="${1:-dev}"
+  if [[ -n "${2:-}" ]]; then
+    echo ">>> ERROR: Unexpected start argument '${2}'." >&2
+    return 2
+  fi
+
   local quiet="${WHL_QUIET:-0}"
   validate_mode "${mode}"
   if [[ "${quiet}" == "1" ]]; then
-    prepare_mode_context "${mode}" "true" >/dev/null
+    prepare_mode_context "${mode}" "false" >/dev/null
   else
-    prepare_mode_context "${mode}" "true"
+    prepare_mode_context "${mode}" "false"
   fi
   require_host_ready
   verify_gpu_ready
@@ -297,6 +348,12 @@ function cmd_start() {
   fi
   ensure_env_generated "${mode}"
 
+  if ! docker image inspect "${APOLLO_IMAGE}" >/dev/null 2>&1; then
+    echo ">>> ERROR: Image '${APOLLO_IMAGE}' is not available locally; start does not pull images." >&2
+    echo ">>> Hint: run 'whl pull ${mode}' to pull and update the container." >&2
+    return 1
+  fi
+
   if [[ "${quiet}" != "1" ]]; then
     echo ">>> Starting Apollo [Mode: ${mode}]..."
     if [[ "${mode}" == "test" ]]; then
@@ -305,25 +362,11 @@ function cmd_start() {
   fi
 
   if [[ "${quiet}" == "1" ]]; then
-    $(get_cmd "${mode}") up -d --remove-orphans >/dev/null
+    $(get_cmd "${mode}") up -d --pull never --remove-orphans >/dev/null
   else
-    $(get_cmd "${mode}") up -d --remove-orphans
+    $(get_cmd "${mode}") up -d --pull never --remove-orphans
   fi
-  sleep 1
-  local running_services
-  if [[ "${quiet}" == "1" ]]; then
-    running_services="$($(get_cmd "${mode}") ps --services --filter "status=running" 2>/dev/null)" || {
-      echo ">>> ERROR: Unable to query container status." >&2
-      return 1
-    }
-  else
-    running_services="$($(get_cmd "${mode}") ps --services --filter "status=running")"
-  fi
-  if ! grep -q "core" <<<"${running_services}"; then
-    echo ">>> ERROR: Container failed to start. Logs:"
-    $(get_cmd "${mode}") logs core
-    exit 1
-  fi
+  wait_for_container_healthy "${CONTAINER_NAME}"
 
   if [[ "${quiet}" != "1" ]]; then
     echo ">>> Container is running."
@@ -341,6 +384,32 @@ function cmd_enter() {
   $(get_cmd "${mode}") exec -u "${USER}" -it core /bin/bash -l
 }
 
+function cmd_exec() {
+  local mode="${1:-}"
+  if [[ -z "${mode}" ]]; then
+    echo ">>> ERROR: exec requires a mode and command: whl exec <mode> -- <command> [args...]" >&2
+    return 2
+  fi
+  shift
+  if [[ "${1:-}" != "--" ]]; then
+    echo ">>> ERROR: exec requires '--' before the command." >&2
+    return 2
+  fi
+  shift
+  if [[ "$#" -eq 0 ]]; then
+    echo ">>> ERROR: exec requires a command after '--'." >&2
+    return 2
+  fi
+
+  validate_mode "${mode}"
+  prepare_mode_context "${mode}" "false"
+  require_host_ready
+  generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
+  ensure_env_generated "${mode}"
+  wait_for_container_healthy "${CONTAINER_NAME}"
+  $(get_cmd "${mode}") exec -T -u "$(id -un)" core "$@"
+}
+
 function cmd_status() {
   local mode="${1:-dev}"
   validate_mode "${mode}"
@@ -350,23 +419,29 @@ function cmd_status() {
   $(get_cmd "${mode}") ps
 }
 
-function cmd_update() {
+function cmd_pull() {
   local mode="${1:-dev}"
+  if [[ -n "${2:-}" ]]; then
+    echo ">>> ERROR: Unexpected pull argument '${2}'." >&2
+    return 2
+  fi
   validate_mode "${mode}"
-  prepare_mode_context "${mode}" "true"
+  prepare_mode_context "${mode}" "false"
   require_host_ready
   verify_gpu_ready
   generate_env "${mode}" "${PROJECT_ROOT}" "${DOCKER_DIR}" "${APOLLO_IMAGE}"
   ensure_env_generated "${mode}"
-  echo ">>> Updating Apollo image and restarting [Mode: ${mode}]..."
+  echo ">>> WARNING: This pulls the image and applies it to the ${mode} container. Compose may recreate the container and interrupt running workloads; use a maintenance window." >&2
+  echo ">>> Pulling Apollo image and updating container [Mode: ${mode}]..."
   $(get_cmd "${mode}") pull
-  $(get_cmd "${mode}") up -d --remove-orphans
+  $(get_cmd "${mode}") up -d --pull never --remove-orphans
+  wait_for_container_healthy "${CONTAINER_NAME}"
 }
 
 function cmd_stop() {
   local target="${1:-dev}"
   local prod_env_file="${DOCKER_DIR}/.env.prod"
-  validate_stop_target "${target}"
+  validate_mode_target "${target}"
   echo ">>> Stopping Apollo [Target: ${target}]..."
 
   if [[ "${target}" == "all" ]]; then
@@ -384,6 +459,27 @@ function cmd_stop() {
   echo ">>> Stopped."
 }
 
+function cmd_rm() {
+  local target="${1:-dev}"
+  local prod_env_file="${DOCKER_DIR}/.env.prod"
+  validate_mode_target "${target}"
+  echo ">>> Stopping and removing Apollo [Target: ${target}]..."
+
+  if [[ "${target}" == "all" ]]; then
+    rm_mode "dev"
+    rm_mode "test"
+    if [[ -f "${prod_env_file}" ]]; then
+      rm_mode "prod"
+    else
+      echo ">>> Skipping prod removal: ${prod_env_file} not found."
+    fi
+  else
+    rm_mode "${target}"
+  fi
+
+  echo ">>> Stopped and removed."
+}
+
 function cmd_prune() {
   local running_containers
   running_containers="$(docker ps -a --format '{{.Names}}')"
@@ -398,6 +494,10 @@ function cmd_prune() {
 }
 
 case "${ACTION}" in
+  exec)
+    shift
+    cmd_exec "$@"
+    ;;
   enter)
     shift
     cmd_enter "$@"
@@ -410,13 +510,17 @@ case "${ACTION}" in
     shift
     cmd_stop "$@"
     ;;
+  rm)
+    shift
+    cmd_rm "$@"
+    ;;
   status)
     shift
     cmd_status "$@"
     ;;
-  update)
+  pull)
     shift
-    cmd_update "$@"
+    cmd_pull "$@"
     ;;
   prune)
     cmd_prune

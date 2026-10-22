@@ -9,6 +9,8 @@ set -e
 USER_NAME=${USER_NAME:-apollo}
 USER_ID=${USER_ID:-1000}
 GROUP_ID=${GROUP_ID:-1000}
+READY_MARKER="/tmp/apollo-container-initialized"
+rm -f "${READY_MARKER}"
 
 if ! getent group "$USER_NAME" >/dev/null; then
     groupadd -g "$GROUP_ID" "$USER_NAME" 2>/dev/null || groupmod -g "$GROUP_ID" $(getent group "$GROUP_ID" | cut -d: -f1)
@@ -89,14 +91,9 @@ find "${USER_HOME}" -mindepth 1 -maxdepth 1 -name ".*" \
     -exec chown --no-dereference "${USER_ID}:${GROUP_ID}" {} +
 chown "${USER_ID}:${GROUP_ID}" "${USER_HOME}"
 
-# 4. Business logic branch
-if [[ "${AUTO_BOOTSTRAP}" == "true" ]]; then
-    echo "[Entrypoint] Auto-starting Dreamview..."
-    runuser -u "${USER_NAME}" -- bash -l -c "cd /apollo && ./scripts/bootstrap.sh start > /apollo/data/log/bootstrap.log 2>&1" || true
-fi
-
-# 5. Keep running the container
-echo ">>> Container is ready for user: $USER_NAME"
+# 4. Mark container initialization complete and keep the container alive.
+touch "${READY_MARKER}"
+echo ">>> Container initialization complete for user: $USER_NAME"
 if [[ "$(id -u)" == "0" && "${USER_NAME}" != "root" && \
       ( "${1:-}" != "runuser" || "${2:-}" != "-u" || \
         "${3:-}" != "${USER_NAME}" || "${4:-}" != "--" ) ]]; then
