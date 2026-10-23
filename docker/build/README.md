@@ -117,9 +117,9 @@ labels. System packages below are deliberate exceptions or image tools:
 | --- | --- | --- |
 | Bazel/Bazelisk | `install_bazel.sh`, `.bazelversion` | Reuses the workspace Bazel version |
 | Buildifier | `install_buildifier.sh` | Version 10.1.0, SHA256-verified amd64/arm64 binaries; CI uses the same installer |
-| C++/shell/Python lint | `install_llvm_clang.sh`, `install_minimal_environment.sh`, `py3_requirements.txt` | Clang-Format, ShellCheck, and the CI-pinned Black/isort/Flake8 versions |
+| C++/shell/Python lint | `install_llvm_clang.sh`, `install_lint_deps.sh`, `lint_requirements.txt`, `MODULE.bazel` | Clang-Format, ShellCheck, shared CI/image pins for Black/isort/Flake8, and Bazel-managed cpplint; no separate OS cpplint package |
 | FFmpeg | `install_modules_base.sh` → `install_ffmpeg.sh` | Source installation under `/opt/apollo/sysroot`, including headers and shared libraries |
-| GStreamer/GLib | `install_minimal_environment.sh`, `install_drivers_deps.sh` | `pkg-config`, core/app/video development packages, and runtime base/good/bad plugins |
+| GStreamer/GLib | `install_minimal_environment.sh`, `install_gstreamer_deps.sh` | `pkg-config`, core/app/video development packages, and runtime base/good/bad plugins; the NVIDIA L4T plugins are supplied by the Orin base image |
 | pcap/OpenSSL | `install_drivers_deps.sh` | Explicit driver development dependencies; do not rely on a GPU base's transitive OpenSSL installation |
 | Qt/OpenGL | `install_visualizer_deps.sh` → `install_qt.sh` | x86 Qt 5.12.9 SDK; Orin uses Ubuntu Qt with `/usr/local/qt5/include` mapped to system headers |
 | IPOPT | planning → `install_ipopt.sh` | `coinor-libipopt-dev` |

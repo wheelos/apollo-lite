@@ -90,6 +90,9 @@ ENV APOLLO_DIST=${APOLLO_DIST} \
 COPY docker/build/installers/installer_base.sh \
      docker/build/installers/install_geo_adjustment.sh \
      docker/build/installers/install_minimal_environment.sh \
+     docker/build/installers/install_lint_deps.sh \
+     docker/build/installers/lint_requirements.txt \
+     docker/build/installers/install_gstreamer_deps.sh \
      docker/build/installers/install_bazel.sh \
      docker/build/installers/install_buildifier.sh \
      docker/build/installers/install_cmake.sh \
@@ -107,6 +110,8 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     set -eux; \
     bash /opt/apollo/installers/install_geo_adjustment.sh "${GEOLOC}"; \
     bash /opt/apollo/installers/install_minimal_environment.sh; \
+    bash /opt/apollo/installers/install_lint_deps.sh; \
+    bash /opt/apollo/installers/install_gstreamer_deps.sh; \
     BAZEL_VERSION="$(cat /opt/apollo/bazelversion)" \
       bash /opt/apollo/installers/install_bazel.sh; \
     bash /opt/apollo/installers/install_buildifier.sh; \

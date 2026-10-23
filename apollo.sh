@@ -87,8 +87,14 @@ function build_dreamview_frontend() {
 }
 
 function build_test_and_lint() {
-    env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}"
-    env ${APOLLO_ENV} bash "${test_sh}" --config=unit_test
+    local -a jetson_orin_args=()
+    local jetson_orin_config
+    jetson_orin_config="$(determine_jetson_orin_build_config)"
+    if [[ -n "${jetson_orin_config}" ]]; then
+        jetson_orin_args=("${jetson_orin_config}")
+    fi
+    env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" "${jetson_orin_args[@]}"
+    env ${APOLLO_ENV} bash "${test_sh}" --config=unit_test "${jetson_orin_args[@]}"
     env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_lint.sh" --all
     success "Build and Test and Lint finished."
 }
@@ -160,53 +166,58 @@ function main() {
     local test_sh="${APOLLO_ROOT_DIR}/scripts/ci/apollo_test.sh"
     local coverage_sh="${APOLLO_ROOT_DIR}/scripts/ci/apollo_coverage.sh"
     local ci_sh="${APOLLO_ROOT_DIR}/scripts/ci/apollo_ci.sh"
-    local jetson_orin_config="$(determine_jetson_orin_build_config)"
+    local -a jetson_orin_args=()
+    local jetson_orin_config
+    jetson_orin_config="$(determine_jetson_orin_build_config)"
+    if [[ -n "${jetson_orin_config}" ]]; then
+        jetson_orin_args=("${jetson_orin_config}")
+    fi
 
     case "${cmd}" in
         config)
             _config_bazel_local_override "$@"
             ;;
         build)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" "${jetson_orin_args[@]}" "$@"
             ;;
         build_opt)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt "${jetson_orin_args[@]}" "$@"
             ;;
         build_dbg)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg "${jetson_orin_args[@]}" "$@"
             ;;
         build_cpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=cpu "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=cpu "${jetson_orin_args[@]}" "$@"
             ;;
         build_dbg_cpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=cpu "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=cpu "${jetson_orin_args[@]}" "$@"
             ;;
         build_opt_cpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=cpu "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=cpu "${jetson_orin_args[@]}" "$@"
             ;;
         build_gpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=gpu ${jetson_orin_config} "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=gpu "${jetson_orin_args[@]}" "$@"
             ;;
         build_dbg_gpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=gpu "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=gpu "${jetson_orin_args[@]}" "$@"
             ;;
         build_opt_gpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=gpu ${jetson_orin_config} "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=gpu "${jetson_orin_args[@]}" "$@"
             ;;
         build_prof)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=prof "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=prof "${jetson_orin_args[@]}" "$@"
             ;;
         build_teleop)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=teleop "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=teleop "${jetson_orin_args[@]}" "$@"
             ;;
         build_fe)
             build_dreamview_frontend
             ;;
         test)
-            env ${APOLLO_ENV} bash "${test_sh}" --config=unit_test "$@"
+            env ${APOLLO_ENV} bash "${test_sh}" --config=unit_test "${jetson_orin_args[@]}" "$@"
             ;;
         coverage)
-            env ${APOLLO_ENV} bash "${coverage_sh}" "$@"
+            env ${APOLLO_ENV} bash "${coverage_sh}" "${jetson_orin_args[@]}" "$@"
             ;;
         cibuild)
             env ${APOLLO_ENV} bash "${ci_sh}" "build"

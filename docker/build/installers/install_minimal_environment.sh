@@ -64,7 +64,6 @@ apt_get_update_and_install \
     libtool     \
     patch       \
     pkg-config      \
-    shellcheck      \
     libexpat1-dev   \
     linux-libc-dev
 
