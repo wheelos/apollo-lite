@@ -1,4 +1,4 @@
-engine_path: "/apollo/modules/lane/data/ufldv2_culane_resnet34.engine"
+engine_path: "/mnt/synology/models/ufldv2/ufldv2_culane_resnet34.engine"
 gpu_device_id: 0
 camera_name: "front_6mm"
 camera_frame_id: "front_6mm"

@@ -47,7 +47,11 @@ cc_library(
     name = "static_lane_calibrator",
     srcs = ["calibration/static_lane_calibrator.cc"],
     hdrs = ["calibration/static_lane_calibrator.h"],
-    deps = [":lane_types"],
+    deps = [
+        ":lane_types",
+        "@wheelos_common//vision/camera:camera_geometry",
+        "@wheelos_common//vision/camera:pinhole_camera_model",
+    ],
 )
 
 cc_library(
@@ -107,6 +111,18 @@ cc_test(
         ":lane_types",
         ":ufldv2",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "static_lane_calibrator_test",
+    size = "small",
+    srcs = ["calibration/static_lane_calibrator_test.cc"],
+    deps = [
+        ":lane_types",
+        ":static_lane_calibrator",
+        "@com_google_googletest//:gtest_main",
+        "@eigen",
     ],
 )
 
