@@ -436,7 +436,8 @@ void OnLanePlanning::FinalizeFrameHistory(ADCTrajectory* ptr_trajectory_pb) {
     return;
   }
   frame_->set_current_frame_planned_trajectory(*ptr_trajectory_pb);
-  injector_->frame_history()->Add(frame_->SequenceNum(), std::move(frame_));
+  const auto sequence_num = frame_->SequenceNum();
+  injector_->frame_history()->Add(sequence_num, std::move(frame_));
 }
 
 void OnLanePlanning::FinalizeTrajectoryForCycle(

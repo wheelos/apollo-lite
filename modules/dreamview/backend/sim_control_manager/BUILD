@@ -31,6 +31,7 @@ cc_binary(
     name = "sim_control",
     srcs = ["main.cc"],
     copts = ['-DMODULE_NAME=\\"sim_control\\"'],
+    linkstatic = False,
     deps = [
         ":sim_control_manager",
         "@core//cyber",

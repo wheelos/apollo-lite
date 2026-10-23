@@ -237,6 +237,12 @@ bool PlanningComponent::Init() {
   }
 
   if (!FLAGS_use_navigation_mode) {
+    routing_response_writer_ =
+        node_->CreateWriter<RoutingResponse>(FLAGS_routing_response_topic);
+    if (routing_response_writer_ == nullptr) {
+      AERROR << "failed to create RoutingResponse writer";
+      return false;
+    }
     routing_service_ = std::make_unique<routing::RoutingService>();
     auto routing_status = routing_service_->Init();
     if (routing_status.ok()) {
@@ -1067,6 +1073,9 @@ void PlanningComponent::CheckRerouting() {
     return;
   }
   common::util::FillHeader(node_->Name(), &response);
+  if (!routing_response_writer_->Write(response)) {
+    AERROR << "Failed to publish recomputed RoutingResponse";
+  }
   std::lock_guard<std::mutex> lock(mutex_);
   routing_.CopyFrom(response);
 }
@@ -1119,6 +1128,9 @@ void PlanningComponent::UpdateRoutingForCommand(
     return;
   }
   common::util::FillHeader(node_->Name(), &response);
+  if (!routing_response_writer_->Write(response)) {
+    AERROR << "Failed to publish command RoutingResponse";
+  }
   std::lock_guard<std::mutex> lock(mutex_);
   routing_.CopyFrom(response);
   routed_command_fingerprint_ = fingerprint;
@@ -1176,6 +1188,9 @@ void PlanningComponent::UpdateRoutingForMission(
   if (!update.accepted) {
     AERROR << "Mission route correlation failed: " << update.reason;
     return;
+  }
+  if (!routing_response_writer_->Write(response)) {
+    AERROR << "Failed to publish Mission RoutingResponse";
   }
   {
     std::lock_guard<std::mutex> lock(mutex_);

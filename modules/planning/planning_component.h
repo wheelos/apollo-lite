@@ -163,6 +163,8 @@ class PlanningComponent final
   std::shared_ptr<cyber::Reader<storytelling::Stories>> story_telling_reader_;
 
   std::shared_ptr<cyber::Writer<ADCTrajectory>> planning_writer_;
+  std::shared_ptr<cyber::Writer<routing::RoutingResponse>>
+      routing_response_writer_;
   std::shared_ptr<cyber::Writer<PlanningRuntimeStatus>>
       planning_runtime_status_writer_;
   std::shared_ptr<cyber::Writer<MotionDirective>> motion_directive_writer_;

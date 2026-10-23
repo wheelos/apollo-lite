@@ -637,6 +637,7 @@ void SimPerfectControl::PublishLocalization(
   double final_x, final_y, final_z, final_theta;
   auto final_local_ptr = std::make_shared<LocalizationEstimate>();
   FillHeader("SimPerfectControl", final_local_ptr.get());
+  final_local_ptr->mutable_header()->set_frame_id("map");
 
   // If relative localization is not used, directly use the noisy absolute
   // pose as the final pose.
