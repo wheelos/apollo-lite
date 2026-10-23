@@ -21,12 +21,13 @@
 #include <vector>
 
 #include "wheelos_msgs/map_msgs/map_lane.pb.h"
+
 #include "modules/common/math/box2d.h"
 #include "modules/common/math/line_segment2d.h"
 #include "modules/common/math/vec2d.h"
+#include "modules/map/hdmap/hdmap.h"
 #include "modules/map/hdmap/hdmap_common.h"
 #include "modules/map/hdmap/hdmap_util.h"
-#include "modules/map/hdmap/hdmap.h"
 
 namespace apollo {
 namespace hdmap {
@@ -38,11 +39,24 @@ struct LaneWaypoint {
   LaneWaypoint() = default;
   LaneWaypoint(LaneInfoConstPtr lane, const double s)
       : lane(CHECK_NOTNULL(lane)), s(s) {}
-  LaneWaypoint(LaneInfoConstPtr lane, const double s, const double l)
-      : lane(CHECK_NOTNULL(lane)), s(s), l(l) {}
+  LaneWaypoint(LaneInfoConstPtr lane, const double s, const double l,
+               bool reverse = false, int route_index = -1)
+      : lane(CHECK_NOTNULL(lane)),
+        s(s),
+        l(l),
+        reverse(reverse),
+        route_index(route_index) {}
   LaneInfoConstPtr lane = nullptr;
   double s = 0.0;
   double l = 0.0;
+  // s is native map s; l is relative to the traversal direction.
+  bool reverse = false;
+  // Position in the current RoutingResponse, not a lane ID.
+  int route_index = -1;
+
+  double Heading() const;
+  void GetWidth(double* left, double* right) const;
+  void GetRoadWidth(double* left, double* right) const;
 
   std::string DebugString() const;
 };
@@ -71,12 +85,32 @@ LaneWaypoint RightNeighborWaypoint(const LaneWaypoint& waypoint);
 
 struct LaneSegment {
   LaneSegment() = default;
-  LaneSegment(LaneInfoConstPtr lane, const double start_s, const double end_s)
-      : lane(CHECK_NOTNULL(lane)), start_s(start_s), end_s(end_s) {}
+  LaneSegment(LaneInfoConstPtr lane, const double start_s, const double end_s,
+              bool reverse = false, int route_index = -1)
+      : lane(CHECK_NOTNULL(lane)),
+        start_s(start_s),
+        end_s(end_s),
+        reverse(reverse),
+        route_index(route_index) {}
   LaneInfoConstPtr lane = nullptr;
   double start_s = 0.0;
   double end_s = 0.0;
+  // Keep the native interval ordered, independently of traversal direction.
+  bool reverse = false;
+  int route_index = -1;
   double Length() const { return end_s - start_s; }
+  double NativeS(double offset) const {
+    return reverse ? end_s - offset : start_s + offset;
+  }
+  double Offset(double native_s) const {
+    return reverse ? end_s - native_s : native_s - start_s;
+  }
+  LaneSegment Slice(double begin_offset, double end_offset) const {
+    return reverse ? LaneSegment(lane, NativeS(end_offset),
+                                 NativeS(begin_offset), true, route_index)
+                   : LaneSegment(lane, NativeS(begin_offset),
+                                 NativeS(end_offset), false, route_index);
+  }
 
   /**
    * Join neighboring lane segments if they have the same lane id

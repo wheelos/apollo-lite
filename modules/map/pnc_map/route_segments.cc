@@ -50,6 +50,9 @@ bool RouteSegments::WithinLaneSegment(const LaneSegment &lane_segment,
                                       const LaneWaypoint &waypoint) {
   return waypoint.lane &&
          lane_segment.lane->id().id() == waypoint.lane->id().id() &&
+         lane_segment.reverse == waypoint.reverse &&
+         (lane_segment.route_index < 0 || waypoint.route_index < 0 ||
+          lane_segment.route_index == waypoint.route_index) &&
          lane_segment.start_s - kSegmentationEpsilon <= waypoint.s &&
          lane_segment.end_s + kSegmentationEpsilon >= waypoint.s;
 }
@@ -64,6 +67,8 @@ bool RouteSegments::WithinLaneSegment(const LaneSegment &lane_segment,
 bool RouteSegments::WithinLaneSegment(const routing::LaneSegment &lane_segment,
                                       const LaneWaypoint &waypoint) {
   return waypoint.lane && lane_segment.id() == waypoint.lane->id().id() &&
+         (lane_segment.traversal_direction() == routing::AGAINST_CENTERLINE) ==
+             waypoint.reverse &&
          lane_segment.start_s() - kSegmentationEpsilon <= waypoint.s &&
          lane_segment.end_s() + kSegmentationEpsilon >= waypoint.s;
 }
@@ -123,11 +128,13 @@ void RouteSegments::SetRouteEndWaypoint(const LaneWaypoint &waypoint) {
 }
 
 LaneWaypoint RouteSegments::FirstWaypoint() const {
-  return LaneWaypoint(front().lane, front().start_s, 0.0);
+  return LaneWaypoint(front().lane, front().NativeS(0.0), 0.0, front().reverse,
+                      front().route_index);
 }
 
 LaneWaypoint RouteSegments::LastWaypoint() const {
-  return LaneWaypoint(back().lane, back().end_s, 0.0);
+  return LaneWaypoint(back().lane, back().NativeS(back().Length()), 0.0,
+                      back().reverse, back().route_index);
 }
 
 void RouteSegments::SetProperties(const RouteSegments &other) {
@@ -197,6 +204,23 @@ bool RouteSegments::Shrink(const double s, const double look_backward,
 bool RouteSegments::Shrink(const double s, const LaneWaypoint &waypoint,
                            const double look_backward,
                            const double look_forward) {
+  if (std::any_of(begin(), end(), [](const LaneSegment &segment) {
+        return segment.reverse || segment.route_index >= 0;
+      })) {
+    std::vector<LaneSegment> trimmed;
+    double accumulated = 0.0;
+    for (const auto &segment : *this) {
+      const double begin = std::max(0.0, s - look_backward - accumulated);
+      const double end =
+          std::min(segment.Length(), s + look_forward - accumulated);
+      if (begin < end) {
+        trimmed.push_back(segment.Slice(begin, end));
+      }
+      accumulated += segment.Length();
+    }
+    assign(trimmed.begin(), trimmed.end());
+    return true;
+  }
   double acc_s = 0.0;
   auto iter = begin();
   while (iter != end() && acc_s + iter->Length() < s - look_backward) {
@@ -250,7 +274,9 @@ bool RouteSegments::GetWaypoint(const double s, LaneWaypoint *waypoint) const {
         s < accumulated_s + iter->end_s - iter->start_s +
                 kSegmentationEpsilon) {
       waypoint->lane = iter->lane;
-      waypoint->s = s - accumulated_s + iter->start_s;
+      waypoint->s = iter->NativeS(s - accumulated_s);
+      waypoint->reverse = iter->reverse;
+      waypoint->route_index = iter->route_index;
       if (waypoint->s < iter->start_s) {
         waypoint->s = iter->start_s;
       } else if (waypoint->s > iter->end_s) {
@@ -287,10 +313,13 @@ bool RouteSegments::GetProjection(const common::math::Vec2d &point,
       lane_s = std::max(iter->start_s, lane_s);
       lane_s = std::min(iter->end_s, lane_s);
       min_l = std::fabs(lane_l);
-      sl_point->set_l(lane_l);
-      sl_point->set_s(lane_s - iter->start_s + accumulated_s);
+      sl_point->set_l(iter->reverse ? -lane_l : lane_l);
+      sl_point->set_s(iter->Offset(lane_s) + accumulated_s);
       waypoint->lane = iter->lane;
       waypoint->s = lane_s;
+      waypoint->l = iter->reverse ? -lane_l : lane_l;
+      waypoint->reverse = iter->reverse;
+      waypoint->route_index = iter->route_index;
     }
   }
   return has_projection;
@@ -343,8 +372,8 @@ bool RouteSegments::CanDriveFrom(const LaneWaypoint &waypoint) const {
   }
 
   // 2. heading should be the same.
-  double waypoint_heading = waypoint.lane->Heading(waypoint.s);
-  double segment_heading = segment_waypoint.lane->Heading(segment_waypoint.s);
+  double waypoint_heading = waypoint.Heading();
+  double segment_heading = segment_waypoint.Heading();
   double heading_diff =
       common::math::AngleDiff(waypoint_heading, segment_heading);
   if (std::fabs(heading_diff) > M_PI / 2) {
@@ -355,12 +384,10 @@ bool RouteSegments::CanDriveFrom(const LaneWaypoint &waypoint) const {
   // 3. the waypoint and the projected lane should not be separated apart.
   double waypoint_left_width = 0.0;
   double waypoint_right_width = 0.0;
-  waypoint.lane->GetWidth(waypoint.s, &waypoint_left_width,
-                          &waypoint_right_width);
+  waypoint.GetWidth(&waypoint_left_width, &waypoint_right_width);
   double segment_left_width = 0.0;
   double segment_right_width = 0.0;
-  segment_waypoint.lane->GetWidth(segment_waypoint.s, &segment_left_width,
-                                  &segment_right_width);
+  segment_waypoint.GetWidth(&segment_left_width, &segment_right_width);
   auto segment_projected_point =
       segment_waypoint.lane->GetSmoothPoint(segment_waypoint.s);
   double dist = common::util::DistanceXY(point, segment_projected_point);

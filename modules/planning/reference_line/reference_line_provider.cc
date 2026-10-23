@@ -801,7 +801,7 @@ AnchorPoint ReferenceLineProvider::GetAnchorPoint(
   auto waypoint = ref_point.lane_waypoints().front();
   double left_width = 0.0;
   double right_width = 0.0;
-  waypoint.lane->GetWidth(waypoint.s, &left_width, &right_width);
+  waypoint.GetWidth(&left_width, &right_width);
   const double kEpislon = 1e-8;
   double effective_width = 0.0;
 

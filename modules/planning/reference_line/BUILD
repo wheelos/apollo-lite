@@ -5,6 +5,22 @@ package(default_visibility = ["//visibility:public"])
 
 PLANNING_COPTS = ["-DMODULE_NAME=\\\"reference_line\\\""]
 
+cc_test(
+    name = "directional_reference_line_test",
+    size = "small",
+    srcs = ["directional_reference_line_test.cc"],
+    copts = ["-fno-access-control"],
+    deps = [
+        ":reference_line",
+        ":reference_line_provider",
+        "//modules/planning/common:planning_gflags",
+        "//modules/map/pnc_map",
+        "//modules/routing/core:directional_routing",
+        "@com_github_gflags_gflags//:gflags",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "reference_line",
     srcs = [

@@ -79,7 +79,9 @@ double PncMap::LookForwardDistance(double velocity) {
 LaneSegment PncMap::ToLaneSegment(const routing::LaneSegment &segment) const {
   auto lane = hdmap_->GetLaneById(hdmap::MakeMapId(segment.id()));
   ACHECK(lane) << "Invalid lane id: " << segment.id();
-  return LaneSegment(lane, segment.start_s(), segment.end_s());
+  return LaneSegment(
+      lane, segment.start_s(), segment.end_s(),
+      segment.traversal_direction() == routing::AGAINST_CENTERLINE);
 }
 
 void PncMap::UpdateNextRoutingWaypointIndex(int cur_index) {
@@ -102,8 +104,10 @@ void PncMap::UpdateNextRoutingWaypointIndex(int cur_index) {
          next_routing_waypoint_index_ < routing_waypoint_index_.size() &&
          routing_waypoint_index_[next_routing_waypoint_index_].index ==
              cur_index &&
-         adc_waypoint_.s <
-             routing_waypoint_index_[next_routing_waypoint_index_].waypoint.s) {
+         (adc_waypoint_.reverse ? -adc_waypoint_.s : adc_waypoint_.s) <
+             (adc_waypoint_.reverse ? -1.0 : 1.0) *
+                 routing_waypoint_index_[next_routing_waypoint_index_]
+                     .waypoint.s) {
     --next_routing_waypoint_index_;
   }
   // Search forwards
@@ -115,8 +119,10 @@ void PncMap::UpdateNextRoutingWaypointIndex(int cur_index) {
   while (next_routing_waypoint_index_ < routing_waypoint_index_.size() &&
          cur_index ==
              routing_waypoint_index_[next_routing_waypoint_index_].index &&
-         adc_waypoint_.s >=
-             routing_waypoint_index_[next_routing_waypoint_index_].waypoint.s) {
+         (adc_waypoint_.reverse ? -adc_waypoint_.s : adc_waypoint_.s) >=
+             (adc_waypoint_.reverse ? -1.0 : 1.0) *
+                 routing_waypoint_index_[next_routing_waypoint_index_]
+                     .waypoint.s) {
     ++next_routing_waypoint_index_;
   }
   if (next_routing_waypoint_index_ >= routing_waypoint_index_.size()) {
@@ -207,6 +213,27 @@ bool PncMap::IsNewRouting(const routing::RoutingResponse &prev,
 }
 
 bool PncMap::UpdateRoutingResponse(const routing::RoutingResponse &routing) {
+  bool directional = false;
+  for (const auto &road : routing.road()) {
+    for (const auto &passage : road.passage()) {
+      for (const auto &segment : passage.segment()) {
+        if (segment.traversal_direction() == routing::AGAINST_CENTERLINE) {
+          const auto lane = hdmap_->GetLaneById(hdmap::MakeMapId(segment.id()));
+          if (!lane || lane->lane().direction() == Lane::FORWARD ||
+              !std::isfinite(segment.start_s()) ||
+              !std::isfinite(segment.end_s()) || segment.start_s() < 0.0 ||
+              segment.end_s() > lane->total_length() ||
+              segment.start_s() > segment.end_s()) {
+            AERROR << "Invalid reverse routing segment: "
+                   << segment.ShortDebugString();
+            return false;
+          }
+          directional = true;
+        }
+      }
+    }
+  }
+  directional_route_ = directional;
   range_lane_ids_.clear();
   route_indices_.clear();
   all_lane_ids_.clear();
@@ -221,6 +248,10 @@ bool PncMap::UpdateRoutingResponse(const routing::RoutingResponse &routing) {
         route_indices_.emplace_back();
         route_indices_.back().segment =
             ToLaneSegment(passage.segment(lane_index));
+        if (directional_route_) {
+          route_indices_.back().segment.route_index =
+              static_cast<int>(route_indices_.size()) - 1;
+        }
         if (route_indices_.back().segment.lane == nullptr) {
           AERROR << "Failed to get lane segment from passage.";
           return false;
@@ -251,7 +282,9 @@ bool PncMap::UpdateRoutingResponse(const routing::RoutingResponse &routing) {
                                             request_waypoints.Get(i))) {
       routing_waypoint_index_.emplace_back(
           LaneWaypoint(route_indices_[j].segment.lane,
-                       request_waypoints.Get(i).s()),
+                       request_waypoints.Get(i).s(), 0.0,
+                       route_indices_[j].segment.reverse,
+                       route_indices_[j].segment.route_index),
           j);
       ++i;
     }
@@ -345,8 +378,10 @@ bool PncMap::PassageToSegments(routing::Passage passage,
       AERROR << "Failed to find lane: " << lane.id();
       return false;
     }
-    segments->emplace_back(lane_ptr, std::max(0.0, lane.start_s()),
-                           std::min(lane_ptr->total_length(), lane.end_s()));
+    segments->emplace_back(
+        lane_ptr, std::max(0.0, lane.start_s()),
+        std::min(lane_ptr->total_length(), lane.end_s()),
+        lane.traversal_direction() == routing::AGAINST_CENTERLINE);
   }
   return !segments->empty();
 }
@@ -444,6 +479,25 @@ bool PncMap::GetRouteSegments(const VehicleState &vehicle_state,
       ADEBUG << "Failed to convert passage to lane segments.";
       continue;
     }
+    if (directional_route_) {
+      const std::array<int, 3> passage_start = {road_index, index, 0};
+      auto occurrence = std::lower_bound(
+          route_indices_.begin(), route_indices_.end(), passage_start,
+          [](const RouteIndex &entry, const std::array<int, 3> &key) {
+            return entry.index < key;
+          });
+      for (std::size_t lane_index = 0; lane_index < segments.size();
+           ++lane_index, ++occurrence) {
+        const std::array<int, 3> expected = {road_index, index,
+                                             static_cast<int>(lane_index)};
+        if (occurrence == route_indices_.end() ||
+            occurrence->index != expected) {
+          AERROR << "Passage is missing from the current route";
+          return false;
+        }
+        segments[lane_index].route_index = occurrence->segment.route_index;
+      }
+    }
     const PointENU nearest_point =
         index == passage_index
             ? adc_waypoint_.lane->GetSmoothPoint(adc_waypoint_.s)
@@ -496,18 +550,11 @@ bool PncMap::GetNearestPointFromRouting(const VehicleState &state,
   waypoint->lane = nullptr;
   std::vector<LaneInfoConstPtr> lanes;
   const auto point = PointFactory::ToPointENU(state);
-  std::vector<LaneInfoConstPtr> valid_lanes;
-  for (auto lane_id : all_lane_ids_) {
-    hdmap::Id id = hdmap::MakeMapId(lane_id);
-    auto lane = hdmap_->GetLaneById(id);
-    if (nullptr != lane) {
-      valid_lanes.emplace_back(lane);
-    }
-  }
-
   // Get nearest_waypoints for current position
   std::vector<LaneWaypoint> valid_way_points;
-  for (const auto &lane : valid_lanes) {
+  for (int index = range_start_; index < range_end_; ++index) {
+    const auto &segment = route_indices_[index].segment;
+    const auto &lane = segment.lane;
     if (range_lane_ids_.count(lane->id().id()) == 0) {
       continue;
     }
@@ -528,7 +575,9 @@ bool PncMap::GetNearestPointFromRouting(const VehicleState &state,
     auto &last = valid_way_points.back();
     last.lane = lane;
     last.s = s;
-    last.l = l;
+    last.l = segment.reverse ? -l : l;
+    last.reverse = segment.reverse;
+    last.route_index = segment.route_index;
     ADEBUG << "distance:" << std::fabs(l);
   }
   if (valid_way_points.empty()) {
@@ -557,15 +606,13 @@ bool PncMap::GetNearestPointFromRouting(const VehicleState &state,
       distance = distance_to_lane;
       closest_index = i;
     }
-    lane_heading = valid_way_points[i].lane->Heading(valid_way_points[i].s);
+    lane_heading = valid_way_points[i].Heading();
     if (std::abs(common::math::AngleDiff(lane_heading, vehicle_heading)) <
         M_PI_2) {
       // Choose the lane with the closest distance to the vehicle and with the
       // right heading.
       if (-1 == right_heading_index || closest_index == i) {
-        waypoint->lane = valid_way_points[i].lane;
-        waypoint->s = valid_way_points[i].s;
-        waypoint->l = valid_way_points[i].l;
+        *waypoint = valid_way_points[i];
         right_heading_index = i;
       }
     }
@@ -573,9 +620,7 @@ bool PncMap::GetNearestPointFromRouting(const VehicleState &state,
   // Use the lane with the closest distance to the current position of the
   // vehicle.
   if (-1 == right_heading_index) {
-    waypoint->lane = valid_way_points[closest_index].lane;
-    waypoint->s = valid_way_points[closest_index].s;
-    waypoint->l = valid_way_points[closest_index].l;
+    *waypoint = valid_way_points[closest_index];
     AWARN << "Find no lane with the right heading, use the cloesest lane!";
   }
   return true;
@@ -643,6 +688,44 @@ bool PncMap::ExtendSegments(const RouteSegments &segments, double start_s,
   if (start_s >= end_s) {
     AERROR << "start_s(" << start_s << " >= end_s(" << end_s << ")";
     return false;
+  }
+  if (directional_route_) {
+    // Use the ordered route, not native successor IDs, when extending a
+    // reverse passage. Native predecessor/successor semantics are unchanged.
+    const int occurrence = segments.front().route_index;
+    if (occurrence < 0 ||
+        occurrence >= static_cast<int>(route_indices_.size()) ||
+        !RouteSegments::WithinLaneSegment(route_indices_[occurrence].segment,
+                                          segments.FirstWaypoint())) {
+      AERROR << "Directional passage has no valid route occurrence";
+      return false;
+    }
+    auto first = route_indices_.begin() + occurrence;
+    double begin_s =
+        first->segment.Offset(segments.FirstWaypoint().s) + start_s;
+    while (begin_s < 0.0 && first != route_indices_.begin()) {
+      --first;
+      begin_s += first->segment.Length();
+    }
+    const double stop_s = begin_s + end_s - start_s;
+    double accumulated = 0.0;
+    for (auto it = first; it != route_indices_.end(); ++it) {
+      const auto &segment = it->segment;
+      const double begin = std::max(0.0, begin_s - accumulated);
+      const double end = std::min(segment.Length(), stop_s - accumulated);
+      if (begin < end) {
+        truncated_segments->push_back(segment.Slice(begin, end));
+      }
+      accumulated += segment.Length();
+      if (accumulated >= stop_s) {
+        break;
+      }
+    }
+    if (truncated_segments->empty()) {
+      AERROR << "Directional extension has no positive-length route interval";
+      return false;
+    }
+    return true;
   }
   std::unordered_set<std::string> unique_lanes;
   static constexpr double kRouteEpsilon = 1e-3;

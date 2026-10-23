@@ -75,6 +75,9 @@ bool GraphCreator::Create() {
   node_index_map_.clear();
   road_id_map_.clear();
   showed_edge_id_set_.clear();
+  forbidden_lane_id_set_.clear();
+  graph_.clear_node();
+  graph_.clear_edge();
 
   for (const auto& road : pbmap_.road()) {
     for (const auto& section : road.section()) {
@@ -119,7 +122,11 @@ bool GraphCreator::Create() {
              << " because its type is NOT CITY_DRIVING.";
       continue;
     }
-    const auto& from_node = graph_.node(node_index_map_[lane_id]);
+    const auto node_iter = node_index_map_.find(lane_id);
+    if (node_iter == node_index_map_.end()) {
+      continue;
+    }
+    const auto& from_node = graph_.node(node_iter->second);
 
     AddEdge(from_node, lane.successor_id(), Edge::FORWARD);
     if (lane.length() < FLAGS_min_length_for_lane_change) {

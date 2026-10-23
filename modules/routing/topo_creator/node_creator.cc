@@ -76,6 +76,7 @@ void InitNodeInfo(const Lane& lane, const std::string& road_id,
   double lane_length = GetLaneLength(lane);
   node->set_lane_id(lane.id().id());
   node->set_road_id(road_id);
+  node->set_direction(lane.direction());
   AddOutBoundary(lane.left_boundary(), lane_length, node->mutable_left_out());
   AddOutBoundary(lane.right_boundary(), lane_length, node->mutable_right_out());
   node->set_length(lane_length);

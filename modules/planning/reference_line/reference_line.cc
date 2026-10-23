@@ -440,19 +440,26 @@ ReferencePoint ReferenceLine::Interpolate(const ReferencePoint& p0,
   std::vector<hdmap::LaneWaypoint> waypoints;
   if (!p0.lane_waypoints().empty() && !p1.lane_waypoints().empty()) {
     const auto& p0_waypoint = p0.lane_waypoints()[0];
-    if ((s - s0) + p0_waypoint.s <= p0_waypoint.lane->total_length()) {
-      const double lane_s = p0_waypoint.s + s - s0;
-      waypoints.emplace_back(p0_waypoint.lane, lane_s);
+    const double p0_s =
+        p0_waypoint.s + (p0_waypoint.reverse ? -1.0 : 1.0) * (s - s0);
+    if (p0_s >= 0.0 && p0_s <= p0_waypoint.lane->total_length()) {
+      waypoints.emplace_back(p0_waypoint.lane, p0_s, p0_waypoint.l,
+                             p0_waypoint.reverse, p0_waypoint.route_index);
     }
     const auto& p1_waypoint = p1.lane_waypoints()[0];
-    if (p1_waypoint.lane->id().id() != p0_waypoint.lane->id().id() &&
-        p1_waypoint.s - (s1 - s) >= 0) {
-      const double lane_s = p1_waypoint.s - (s1 - s);
-      waypoints.emplace_back(p1_waypoint.lane, lane_s);
+    const double p1_s =
+        p1_waypoint.s - (p1_waypoint.reverse ? -1.0 : 1.0) * (s1 - s);
+    if ((p1_waypoint.lane->id().id() != p0_waypoint.lane->id().id() ||
+         p1_waypoint.reverse != p0_waypoint.reverse ||
+         p1_waypoint.route_index != p0_waypoint.route_index) &&
+        p1_s >= 0.0 && p1_s <= p1_waypoint.lane->total_length()) {
+      waypoints.emplace_back(p1_waypoint.lane, p1_s, p1_waypoint.l,
+                             p1_waypoint.reverse, p1_waypoint.route_index);
     }
     if (waypoints.empty()) {
       const double lane_s = p0_waypoint.s;
-      waypoints.emplace_back(p0_waypoint.lane, lane_s);
+      waypoints.emplace_back(p0_waypoint.lane, lane_s, p0_waypoint.l,
+                             p0_waypoint.reverse, p0_waypoint.route_index);
     }
   }
   return ReferencePoint(hdmap::MapPathPoint({x, y}, heading, waypoints), kappa,

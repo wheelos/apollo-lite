@@ -158,6 +158,7 @@ class PncMap {
 
  private:
   routing::RoutingResponse routing_;
+  bool directional_route_ = false;
   struct RouteIndex {
     LaneSegment segment;
     std::array<int, 3> index;  // [road_index, passage_index, lane_index]

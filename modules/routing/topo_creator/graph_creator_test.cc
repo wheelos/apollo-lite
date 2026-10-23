@@ -16,10 +16,46 @@
 
 #include "modules/routing/topo_creator/graph_creator.h"
 
+#include <cstdio>
+
 #include "gtest/gtest.h"
+
+#include "cyber/common/file.h"
 
 using apollo::hdmap::Lane;
 using apollo::routing::GraphCreator;
+
+TEST(GraphCreatorTest, PreservesMapLaneDirection) {
+  apollo::hdmap::Map map;
+  auto* lane = map.add_lane();
+  lane->mutable_id()->set_id("bidirectional");
+  lane->set_type(Lane::CITY_DRIVING);
+  lane->set_direction(Lane::BIDIRECTION);
+  auto* curve = lane->mutable_central_curve()->add_segment();
+  curve->set_length(10.0);
+  curve->mutable_line_segment()->add_point()->set_x(0.0);
+  curve->mutable_line_segment()->add_point()->set_x(10.0);
+  for (auto& point : *curve->mutable_line_segment()->mutable_point()) {
+    point.set_y(0.0);
+  }
+  const auto input = ::testing::TempDir() + "bidirectional_map.pb.txt";
+  const auto output = ::testing::TempDir() + "bidirectional_topo.txt";
+  ASSERT_TRUE(apollo::cyber::common::SetProtoToASCIIFile(map, input));
+  apollo::routing::RoutingConfig config;
+  config.set_base_speed(10.0);
+  GraphCreator creator(input, output, config);
+  ASSERT_TRUE(creator.Create());
+  apollo::routing::Graph graph;
+  ASSERT_TRUE(apollo::cyber::common::GetProtoFromFile(output, &graph));
+  ASSERT_EQ(graph.node_size(), 1);
+  EXPECT_EQ(graph.node(0).direction(), Lane::BIDIRECTION);
+  ASSERT_TRUE(creator.Create());
+  EXPECT_EQ(creator.graph_.node_size(), 1);
+  EXPECT_EQ(std::remove(input.c_str()), 0);
+  EXPECT_EQ(std::remove(output.c_str()), 0);
+  const auto binary = ::testing::TempDir() + "bidirectional_topo.bin";
+  EXPECT_EQ(std::remove(binary.c_str()), 0);
+}
 
 TEST(GraphCreatorTest, IsValidUTurn) {
   const double min_turn_radius = 6.0;

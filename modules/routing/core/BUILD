@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -18,10 +18,34 @@ cc_library(
     hdrs = ["navigator.h"],
     copts = ROUTING_COPTS,
     deps = [
+        ":directional_routing",
         ":routing_black_list_range_generator",
         ":routing_result_generator",
         "@wheelos_common//modules/common/util",
         "//modules/routing/strategy",
+    ],
+)
+
+cc_library(
+    name = "directional_routing",
+    srcs = ["directional_routing.cc"],
+    hdrs = ["directional_routing.h"],
+    deps = [
+        "//modules/routing/proto:topo_graph_cc_proto",
+        "@core//cyber/common:log",
+        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "directional_routing_test",
+    size = "small",
+    srcs = ["directional_routing_test.cc"],
+    deps = [
+        ":directional_routing",
+        ":routing_navigator",
+        "@com_google_googletest//:gtest_main",
+        "@core//cyber/common:file",
     ],
 )
 

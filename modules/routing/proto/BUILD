@@ -35,6 +35,7 @@ proto_library(
     srcs = ["topo_graph.proto"],
     deps = [
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_geometry_proto",
+        "@wheelos_msgs//wheelos_msgs/map_msgs:map_lane_proto",
     ],
 )
 

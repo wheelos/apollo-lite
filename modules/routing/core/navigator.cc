@@ -16,6 +16,8 @@
 
 #include "modules/routing/core/navigator.h"
 
+#include <unordered_set>
+
 #include "cyber/common/file.h"
 #include "modules/routing/common/routing_gflags.h"
 #include "modules/routing/graph/sub_topo_graph.h"
@@ -99,8 +101,31 @@ Navigator::Navigator(const std::string& topo_file_path) {
     return;
   }
 
-  graph_.reset(new TopoGraph());
-  if (!graph_->LoadGraph(graph)) {
+  directional_routing_.reset(new DirectionalRouting());
+  if (!directional_routing_->LoadGraph(graph)) {
+    AERROR << "Failed to initialize directional routing graph";
+    return;
+  }
+  Graph forward_graph(graph);
+  forward_graph.clear_node();
+  forward_graph.clear_edge();
+  std::unordered_set<std::string> forward_ids;
+  for (const auto& node : graph.node()) {
+    if (node.direction() != hdmap::Lane::BACKWARD) {
+      forward_graph.add_node()->CopyFrom(node);
+      forward_ids.insert(node.lane_id());
+    }
+  }
+  for (const auto& edge : graph.edge()) {
+    if (forward_ids.count(edge.from_lane_id()) != 0 &&
+        forward_ids.count(edge.to_lane_id()) != 0) {
+      forward_graph.add_edge()->CopyFrom(edge);
+    }
+  }
+  if (!forward_graph.node().empty()) {
+    graph_.reset(new TopoGraph());
+  }
+  if (graph_ != nullptr && !graph_->LoadGraph(forward_graph)) {
     AINFO << "Failed to init navigator graph failed! File path: "
           << topo_file_path;
     return;
@@ -202,15 +227,39 @@ bool Navigator::SearchRouteByStrategy(
 
 bool Navigator::SearchRoute(const RoutingRequest& request,
                             RoutingResponse* const response) {
-  if (!ShowRequestInfo(request, graph_.get())) {
-    SetErrorCode(ErrorCode::ROUTING_ERROR_REQUEST,
-                 "Error encountered when reading request point!",
+  if (!IsReady()) {
+    SetErrorCode(ErrorCode::ROUTING_ERROR_NOT_READY, "Navigator is not ready!",
                  response->mutable_status());
     return false;
   }
-
-  if (!IsReady()) {
-    SetErrorCode(ErrorCode::ROUTING_ERROR_NOT_READY, "Navigator is not ready!",
+  if (directional_routing_->enabled()) {
+    std::string error;
+    const auto status = directional_routing_->Search(request, response, &error);
+    if (status == DirectionalRouting::SearchResult::FOUND) {
+      return true;
+    }
+    if (status == DirectionalRouting::SearchResult::INVALID_REQUEST) {
+      SetErrorCode(ErrorCode::ROUTING_ERROR_REQUEST, error,
+                   response->mutable_status());
+      return false;
+    }
+    // Existing forward-only lane-change passages remain available as a
+    // fallback. They cannot satisfy reverse-only or heading-constrained ends.
+    bool can_use_forward_graph = graph_ != nullptr;
+    for (const auto& point : request.waypoint()) {
+      can_use_forward_graph = can_use_forward_graph && !point.has_heading() &&
+                              graph_->GetNode(point.id()) != nullptr;
+    }
+    if (!can_use_forward_graph) {
+      SetErrorCode(ErrorCode::ROUTING_ERROR_RESPONSE, error,
+                   response->mutable_status());
+      return false;
+    }
+    AINFO << error << "; trying existing forward lane-change routing";
+  }
+  if (graph_ == nullptr || !ShowRequestInfo(request, graph_.get())) {
+    SetErrorCode(ErrorCode::ROUTING_ERROR_REQUEST,
+                 "Error encountered when reading request point!",
                  response->mutable_status());
     return false;
   }

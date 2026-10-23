@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "modules/routing/core/black_list_range_generator.h"
+#include "modules/routing/core/directional_routing.h"
 #include "modules/routing/core/result_generator.h"
 
 namespace apollo {
@@ -54,6 +55,7 @@ class Navigator {
  private:
   bool is_ready_ = false;
   std::unique_ptr<TopoGraph> graph_;
+  std::unique_ptr<DirectionalRouting> directional_routing_;
 
   TopoRangeManager topo_range_manager_;
 

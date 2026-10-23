@@ -49,6 +49,7 @@ cc_test(
     deps = [
         ":graph_creator",
         "@com_google_googletest//:gtest_main",
+        "@core//cyber/common:file",
     ],
 )
 
