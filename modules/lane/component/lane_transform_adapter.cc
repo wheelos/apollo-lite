@@ -26,19 +26,25 @@
 namespace apollo {
 namespace lane {
 
-bool LaneTransformAdapter::HasCameraToVehicleTransform(
+bool LaneTransformAdapter::LookupCameraToVehicleTransform(
     const std::string& camera_frame, const std::string& vehicle_frame,
-    double timestamp_sec, float timeout_sec, std::string* error) const {
-  if (camera_frame.empty() || vehicle_frame.empty()) {
+    double timestamp_sec, float timeout_sec,
+    Eigen::Isometry3d* T_vehicle_camera, std::string* error) const {
+  if (camera_frame.empty() || vehicle_frame.empty() ||
+      T_vehicle_camera == nullptr) {
     if (error != nullptr) {
-      *error = "camera or vehicle frame is empty";
+      *error = "camera/vehicle frame is empty or transform output is null";
     }
     return false;
   }
-  Eigen::Affine3d camera_to_vehicle = Eigen::Affine3d::Identity();
-  return query_.LookupTransformToAffine(vehicle_frame, camera_frame,
-                                        cyber::Time(timestamp_sec),
-                                        &camera_to_vehicle, timeout_sec, error);
+  Eigen::Affine3d affine = Eigen::Affine3d::Identity();
+  if (!query_.LookupTransformToAffine(vehicle_frame, camera_frame,
+                                      cyber::Time(timestamp_sec), &affine,
+                                      timeout_sec, error)) {
+    return false;
+  }
+  T_vehicle_camera->matrix() = affine.matrix();
+  return true;
 }
 
 }  // namespace lane

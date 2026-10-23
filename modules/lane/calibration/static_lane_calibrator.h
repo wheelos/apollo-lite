@@ -17,7 +17,17 @@
 
 #pragma once
 
+#include <cstdint>
+
+#include <Eigen/Geometry>
+
 #include "modules/lane/types/lane_types.h"
+
+namespace wheel {
+namespace vision {
+class CameraModel;
+}  // namespace vision
+}  // namespace wheel
 
 namespace apollo {
 namespace lane {
@@ -34,10 +44,15 @@ struct StaticCameraCalibration {
 class StaticLaneCalibrator {
  public:
   bool Init(const StaticCameraCalibration& calibration);
-  bool PopulateCameraCoordinates(LaneDetectionResult* result) const;
+  bool PopulateCameraCoordinates(
+      LaneDetectionResult* result, uint32_t image_width, uint32_t image_height,
+      const Eigen::Isometry3d& T_vehicle_camera) const;
 
  private:
-  bool ProjectToGround(const ImagePoint& image_point,
+  bool ProjectToGround(const wheel::vision::CameraModel& camera_model,
+                       const ImagePoint& image_point,
+                       uint32_t image_width, uint32_t image_height,
+                       const Eigen::Isometry3d& T_vehicle_camera,
                        CameraPoint* camera_point) const;
   static bool FitCameraCurve(LaneLineResult* lane);
 

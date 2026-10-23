@@ -21,6 +21,9 @@
 #include <cmath>
 #include <limits>
 
+#include "camera/camera_geometry.h"
+#include "camera/pinhole_camera_model.h"
+
 namespace apollo {
 namespace lane {
 
@@ -40,28 +43,37 @@ bool StaticLaneCalibrator::Init(const StaticCameraCalibration& calibration) {
   return true;
 }
 
-bool StaticLaneCalibrator::ProjectToGround(const ImagePoint& image_point,
-                                           CameraPoint* camera_point) const {
-  if (!initialized_ || camera_point == nullptr) {
+bool StaticLaneCalibrator::ProjectToGround(
+    const wheel::vision::CameraModel& camera_model,
+    const ImagePoint& image_point, uint32_t image_width,
+    uint32_t image_height, const Eigen::Isometry3d& T_vehicle_camera,
+    CameraPoint* camera_point) const {
+  if (!initialized_ || camera_point == nullptr || image_width == 0U ||
+      image_height == 0U || !std::isfinite(image_point.x) ||
+      !std::isfinite(image_point.y)) {
     return false;
   }
-  const float ray_x =
-      (image_point.x - calibration_.principal_x) / calibration_.focal_x;
-  const float ray_y =
-      (image_point.y - calibration_.principal_y) / calibration_.focal_y;
-  const float ground_direction = std::cos(calibration_.pitch_radians) * ray_y +
-                                 std::sin(calibration_.pitch_radians);
-  if (!std::isfinite(ground_direction) ||
-      std::fabs(ground_direction) <= 1.0e-6F) {
+
+  const double ground_z =
+      T_vehicle_camera.translation().z() - calibration_.camera_height_meters;
+  const wheel::vision::Plane3d ground_plane{Eigen::Vector3d::UnitZ(),
+                                             -ground_z};
+  Eigen::Vector3d point_vehicle;
+  if (!wheel::vision::PixelToPlane(
+          camera_model, Eigen::Vector2f(image_point.x, image_point.y),
+          T_vehicle_camera, ground_plane, &point_vehicle)) {
     return false;
   }
-  const float scale = calibration_.camera_height_meters / ground_direction;
-  if (!std::isfinite(scale) || scale <= 0.0F) {
+
+  const Eigen::Vector3d point_camera =
+      T_vehicle_camera.inverse() * point_vehicle;
+  const Eigen::Vector3f point_camera_float = point_camera.cast<float>();
+  if (!point_camera.allFinite() || !point_camera_float.allFinite()) {
     return false;
   }
-  camera_point->x = scale * ray_x;
-  camera_point->y = scale * ray_y;
-  camera_point->z = scale;
+  camera_point->x = point_camera_float.x();
+  camera_point->y = point_camera_float.y();
+  camera_point->z = point_camera_float.z();
   return std::isfinite(camera_point->x) && std::isfinite(camera_point->y) &&
          std::isfinite(camera_point->z);
 }
@@ -134,11 +146,25 @@ bool StaticLaneCalibrator::FitCameraCurve(LaneLineResult* lane) {
 }
 
 bool StaticLaneCalibrator::PopulateCameraCoordinates(
-    LaneDetectionResult* result) const {
+    LaneDetectionResult* result, uint32_t image_width, uint32_t image_height,
+    const Eigen::Isometry3d& T_vehicle_camera) const {
   if (!initialized_ || result == nullptr) {
     return false;
   }
-  result->calibration_pitch_radians = calibration_.pitch_radians;
+  Eigen::Matrix3f intrinsics = Eigen::Matrix3f::Identity();
+  intrinsics(0, 0) = calibration_.focal_x;
+  intrinsics(1, 1) = calibration_.focal_y;
+  intrinsics(0, 2) = calibration_.principal_x;
+  intrinsics(1, 2) = calibration_.principal_y;
+  wheel::vision::PinholeCameraModel camera_model;
+  if (!camera_model.Init(image_width, image_height, intrinsics)) {
+    return false;
+  }
+  const Eigen::Vector3d camera_forward =
+      T_vehicle_camera.linear().col(2).normalized();
+  result->calibration_pitch_radians = static_cast<float>(
+      std::atan2(-camera_forward.z(),
+                 std::hypot(camera_forward.x(), camera_forward.y())));
   result->camera_height_meters = calibration_.camera_height_meters;
   for (LaneLineResult& lane : result->lanes) {
     lane.camera_points.clear();
@@ -146,7 +172,8 @@ bool StaticLaneCalibrator::PopulateCameraCoordinates(
     lane.camera_points.reserve(lane.image_points.size());
     for (const ImagePoint& image_point : lane.image_points) {
       CameraPoint camera_point;
-      if (ProjectToGround(image_point, &camera_point)) {
+      if (ProjectToGround(camera_model, image_point, image_width, image_height,
+                          T_vehicle_camera, &camera_point)) {
         lane.camera_points.push_back(camera_point);
       }
     }

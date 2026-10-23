@@ -30,6 +30,18 @@ namespace lane {
 
 namespace {
 
+Eigen::Isometry3d MakeStaticCameraToVehicleTransform(float pitch_radians,
+                                                      float camera_height) {
+  const double pitch = static_cast<double>(pitch_radians);
+  const double cosine = std::cos(pitch);
+  const double sine = std::sin(pitch);
+  Eigen::Isometry3d transform = Eigen::Isometry3d::Identity();
+  transform.linear() << 0.0, -sine, cosine, -1.0, 0.0, 0.0, 0.0, -cosine,
+      -sine;
+  transform.translation().z() = static_cast<double>(camera_height);
+  return transform;
+}
+
 apollo::perception::camera::LaneLinePositionType ToWirePosition(
     LanePosition position) {
   switch (position) {
@@ -226,22 +238,29 @@ bool LaneDetectionComponent::Proc(
   if (!MakeImageView(*image, &image_view)) {
     return false;
   }
+  Eigen::Isometry3d T_vehicle_camera = Eigen::Isometry3d::Identity();
   if (config_.require_camera_to_vehicle_transform()) {
     const std::string camera_frame = config_.camera_frame_id().empty()
                                          ? image->frame_id()
                                          : config_.camera_frame_id();
     std::string transform_error;
-    if (!transform_adapter_.HasCameraToVehicleTransform(
+    if (!transform_adapter_.LookupCameraToVehicleTransform(
             camera_frame, config_.vehicle_frame_id(), image_view.timestamp_sec,
-            config_.transform_timeout_sec(), &transform_error)) {
+            config_.transform_timeout_sec(), &T_vehicle_camera,
+            &transform_error)) {
       AERROR << "Camera transform is unavailable: " << transform_error;
       return false;
     }
+  } else {
+    T_vehicle_camera = MakeStaticCameraToVehicleTransform(
+        config_.static_pitch_radians(), config_.camera_height_meters());
   }
+
   LaneDetectionResult result;
   if (!detector_->Detect(image_view, &result) ||
-      !calibrator_.PopulateCameraCoordinates(&result)) {
-    AERROR << "UFLDv2 lane inference or static calibration failed";
+      !calibrator_.PopulateCameraCoordinates(
+          &result, image_view.width, image_view.height, T_vehicle_camera)) {
+    AERROR << "UFLDv2 lane inference or 3D ground projection failed";
     return false;
   }
   std::shared_ptr<apollo::perception::PerceptionLanes> output(

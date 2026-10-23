@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include "Eigen/Geometry"
+
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -26,10 +28,10 @@ namespace lane {
 
 class LaneTransformAdapter {
  public:
-  bool HasCameraToVehicleTransform(const std::string& camera_frame,
-                                   const std::string& vehicle_frame,
-                                   double timestamp_sec, float timeout_sec,
-                                   std::string* error) const;
+  bool LookupCameraToVehicleTransform(
+      const std::string& camera_frame, const std::string& vehicle_frame,
+      double timestamp_sec, float timeout_sec,
+      Eigen::Isometry3d* T_vehicle_camera, std::string* error) const;
 
  private:
   transform::TransformQuery query_;
