@@ -45,6 +45,29 @@ void Dims(onnx::NodeProto* node, const std::string& name,
   for (int value : values) attribute->add_ints(value);
 }
 
+void SetDims(onnx::NodeProto* node, const std::string& name,
+             std::initializer_list<int> values) {
+  for (auto& attribute : *node->mutable_attribute()) {
+    if (attribute.name() == name) {
+      attribute.clear_ints();
+      for (int value : values) attribute.add_ints(value);
+      return;
+    }
+  }
+  ADD_FAILURE() << "Missing attribute " << name;
+}
+
+void SetString(onnx::NodeProto* node, const std::string& name,
+               const std::string& value) {
+  for (auto& attribute : *node->mutable_attribute()) {
+    if (attribute.name() == name) {
+      attribute.set_s(value);
+      return;
+    }
+  }
+  ADD_FAILURE() << "Missing attribute " << name;
+}
+
 class SparseModelTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -130,6 +153,22 @@ TEST_F(SparseModelTest, LoadsFp16GraphWithoutCuda) {
   EXPECT_EQ(model.layers[0].weight_data.size(), 128 * 5);
   EXPECT_EQ(model.layers[0].bias_data.size(), 128);
   EXPECT_EQ(model.layers[2].dense_shape, std::vector<int>({1, 256, 180, 180}));
+}
+
+TEST_F(SparseModelTest, LoadsXyzSparseLayout) {
+  auto* graph = model_.mutable_graph();
+  SetDims(graph->mutable_node(0), "input_spatial_shape", {180, 180, 2});
+  SetDims(graph->mutable_node(0), "output_spatial_shape", {180, 180, 2});
+  SetString(graph->mutable_node(1), "format", "xyz");
+  SetDims(graph->mutable_node(1), "input_spatial_shape", {180, 180, 2});
+
+  Save();
+  const auto model = LoadSparseModel(path_);
+  ASSERT_EQ(model.layers.size(), 3);
+  EXPECT_TRUE(model.layers[1].xyz);
+  EXPECT_EQ(model.layers[1].input_grid, std::vector<int>({180, 180, 2}));
+  EXPECT_EQ(model.layers[1].dense_shape,
+            std::vector<int>({1, 128, 2, 180, 180}));
 }
 
 TEST_F(SparseModelTest, RejectsUnsupportedOperator) {

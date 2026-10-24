@@ -101,7 +101,7 @@ single-LiDAR sweep accumulation.
 PCD directory
   -> PCL loader and configured five-feature adapter
   -> NVIDIA CUDA-CenterPoint executable (offline)
-       CUDA voxelization -> NV spconv SCN -> TensorRT RPN/CenterHead
+       CUDA voxelization -> shared spconv SCN adapter -> TensorRT RPN/CenterHead
        -> CUDA decode/NMS
   -> predictions.jsonl + per-frame timings.csv + raw NVIDIA text results
 

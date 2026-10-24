@@ -114,12 +114,12 @@ __global__ void Add(const __half* a, const __half* b, __half* output,
 
 __global__ void Scatter(const __half* features, const int* coordinates,
                         __half* output, int count, int channels, int z_size,
-                        int y_size, int x_size) {
+                        int y_size, int x_size, bool xyz) {
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= count) return;
-  const int z = coordinates[i * 4 + 1];
+  const int x = coordinates[i * 4 + (xyz ? 1 : 3)];
   const int y = coordinates[i * 4 + 2];
-  const int x = coordinates[i * 4 + 3];
+  const int z = coordinates[i * 4 + (xyz ? 3 : 1)];
   for (int c = 0; c < channels; ++c) {
     const int64_t offset =
         ((static_cast<int64_t>(c) * z_size + z) * y_size + y) * x_size + x;
@@ -136,6 +136,7 @@ class SpconvBackbone final : public SparseBackbone {
     auto model = LoadSparseModel(path);
     input_ = model.input;
     output_name_ = model.output;
+    output_shape_ = std::move(model.output_shape);
     for (auto& definition : model.layers) {
       Layer layer;
       static_cast<SparseModelLayer&>(layer) = std::move(definition);
@@ -223,10 +224,13 @@ class SpconvBackbone final : public SparseBackbone {
                                      layer.dense_shape.end());
           output.features = pool_.Get("dense", shape, tv::float16);
           output.features.zero_(context);
+          const int z_size = layer.xyz ? input.grid[2] : input.grid[0];
+          const int y_size = input.grid[1];
+          const int x_size = layer.xyz ? input.grid[0] : input.grid[2];
           Scatter<<<(input.count + 127) / 128, 128, 0, stream>>>(
               input.features.data_ptr<__half>(), input.indices.data_ptr<int>(),
               output.features.data_ptr<__half>(), input.count, input.channels,
-              input.grid[0], input.grid[1], input.grid[2]);
+              z_size, y_size, x_size, layer.xyz);
           Check(cudaGetLastError());
           output.dense = true;
         } else if (layer.op == "Reshape") {
@@ -255,6 +259,8 @@ class SpconvBackbone final : public SparseBackbone {
       throw;
     }
   }
+
+  std::vector<int64_t> Shape() const override { return output_shape_; }
 
  private:
   struct Pairs {
@@ -366,6 +372,7 @@ class SpconvBackbone final : public SparseBackbone {
   int device_ = -1;
   std::tuple<int, int> arch_;
   std::string input_, output_name_;
+  std::vector<int64_t> output_shape_;
   std::vector<Layer> layers_;
   Tuner tuner_;
   BufferPool pool_;

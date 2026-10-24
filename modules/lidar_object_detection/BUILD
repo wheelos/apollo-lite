@@ -113,11 +113,13 @@ cc_library(
 cc_library(
     name = "centerpoint_runtime_backend",
     srcs = ["inference/centerpoint_runtime_backend.cc"],
-    hdrs = ["inference/centerpoint_runtime_backend.h"],
+    hdrs = [
+        "inference/centerpoint_runtime_api.h",
+        "inference/centerpoint_runtime_backend.h",
+    ],
     linkopts = ["-ldl"],
     deps = [
         ":centerpoint_runner",
-        ":centerpoint_runtime_api",
         "//modules/lidar_object_detection/proto:lidar_object_detection_cc_proto",
     ],
 )

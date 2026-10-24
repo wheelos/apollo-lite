@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,10 +26,12 @@ class SparseBackbone {
   virtual ~SparseBackbone() = default;
 
   // Device FP16 features [count, 5] and int32 coordinates [count, 4].
+  // Coordinates and grid use the sparse model's declared XYZ or ZYX order.
   // Output belongs to this instance until its next Forward or destruction.
   // One instance must not be used concurrently or on multiple CUDA devices.
   virtual void* Forward(void* features, void* indices, unsigned int count,
                         const std::vector<int>& grid, cudaStream_t stream) = 0;
+  virtual std::vector<int64_t> Shape() const = 0;
 };
 
 std::unique_ptr<SparseBackbone> LoadSparseBackbone(

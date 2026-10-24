@@ -16,6 +16,8 @@
 
 #include <dlfcn.h>
 
+#include "modules/lidar_object_detection/inference/centerpoint_runtime_api.h"
+
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -26,8 +28,6 @@
 #include <vector>
 
 #include "modules/lidar_object_detection/proto/lidar_object_detection.pb.h"
-
-#include "modules/lidar_object_detection/inference/centerpoint_runtime_api.h"
 
 namespace apollo {
 namespace lidar_object_detection {

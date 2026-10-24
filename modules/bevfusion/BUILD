@@ -119,13 +119,11 @@ cc_library(
     includes = ["third_party/bevfusion"],
     deps = [
         ":bevfusion_cuda_kernels",
-        "//third_party/spconv:spconv_headers",
-        "//third_party/spconv:spconv_onnx_parser",
         "@com_google_protobuf//:protobuf",
         "@cuda//:cublas",
         "@cuda//:cuda_runtime",
-        "@local_config_spconv//:spconv",
         "@local_config_tensorrt//:tensorrt",
+        "//modules/lidar_object_detection/third_party/centerpoint:spconv_backbone",
     ],
     alwayslink = True,
 )
@@ -215,15 +213,14 @@ filegroup(
 )
 
 install_files(
-    name = "install_bevfusion_spconv",
-    files = ["@local_config_spconv//:spconv_shared_library"],
-    dest = "bevfusion/lib",
-    strip_prefix = ["third_party/**"],
+    name = "install_bevfusion_spconv_licenses",
+    files = ["@spconv//:licenses"],
+    dest = "bevfusion/share/licenses/spconv",
 )
 
 install(
     name = "install",
-    deps = [":install_bevfusion_spconv"],
+    deps = [":install_bevfusion_spconv_licenses"],
     data = [":runtime_config"],
     data_dest = "bevfusion",
     library_dest = "bevfusion/lib",

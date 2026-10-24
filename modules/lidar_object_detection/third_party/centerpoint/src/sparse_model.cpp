@@ -129,10 +129,9 @@ SparseModel LoadSparseModel(const std::string& path) {
   Require(input_shape.dim_size() == 2 && input_shape.dim(1).dim_value() == 5 &&
               output_shape.dim_size() == 4,
           "invalid graph input/output rank or feature count");
-  const std::vector<int64_t> expected_output{1, 256, 180, 180};
-  for (int i = 0; i < 4; ++i) {
-    Require(output_shape.dim(i).dim_value() == expected_output[i],
-            "invalid graph output shape");
+  for (const auto& dimension : output_shape.dim()) {
+    Require(dimension.dim_value() > 0, "output dimensions must be static");
+    result.output_shape.push_back(dimension.dim_value());
   }
   std::unordered_set<std::string> initializers;
   for (const auto& value : graph.initializer()) {
@@ -235,18 +234,25 @@ SparseModel LoadSparseModel(const std::string& path) {
       Require(node.input_size() == 1 && input_channels > 0, "unsupported Relu");
       grids[layer.output] = grids.at(node.input(0));
     } else if (layer.op == "ScatterDense") {
+      const auto format = String(node, "format");
       Require(node.input_size() == 1 && input_channels > 0 &&
-                  String(node, "format") == "zyx" &&
+                  (format == "zyx" || format == "xyz") &&
                   (String(node, "output_layout").empty() ||
                    String(node, "output_layout") == "NCHW"),
               "unsupported ScatterDense layout");
+      layer.xyz = format == "xyz";
       layer.input_grid = Dimensions(node, "input_spatial_shape", 3);
       layer.dense_shape = Dimensions(node, "output_shape", 5);
+      const std::vector<int> spatial_shape =
+          layer.xyz
+              ? std::vector<int>{layer.input_grid[2], layer.input_grid[1],
+                                 layer.input_grid[0]}
+              : layer.input_grid;
       Require(
           layer.input_grid == grids.at(node.input(0)) &&
               layer.dense_shape ==
-                  std::vector<int>({1, input_channels, layer.input_grid[0],
-                                    layer.input_grid[1], layer.input_grid[2]}),
+                  std::vector<int>({1, input_channels, spatial_shape[0],
+                                    spatial_shape[1], spatial_shape[2]}),
           "ScatterDense shape mismatch");
       dense_volume = Volume(std::vector<int64_t>(layer.dense_shape.begin(),
                                                  layer.dense_shape.end()));
@@ -255,9 +261,13 @@ SparseModel LoadSparseModel(const std::string& path) {
       Require(node.input_size() == 1 && input_channels == 0,
               "only dense Reshape is supported");
       layer.dense_shape = Dimensions(node, "dims", 4);
-      Require(layer.dense_shape == std::vector<int>({1, 256, 180, 180}) &&
-                  dense_volume == 256 * 180 * 180,
-              "output does not match CenterPoint TensorRT input");
+      Require(std::vector<int64_t>(layer.dense_shape.begin(),
+                                   layer.dense_shape.end()) ==
+                      result.output_shape &&
+                  dense_volume ==
+                      Volume(std::vector<int64_t>(result.output_shape.begin(),
+                                                  result.output_shape.end())),
+              "Reshape does not match graph output");
       output_channels = 0;
     } else {
       throw std::runtime_error("Unsupported spconv ONNX operator: " + layer.op);

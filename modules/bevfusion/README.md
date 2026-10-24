@@ -6,12 +6,11 @@ to NVIDIA `Lidar_AI_Solution` revision
 `7c1623f234d5a9794fd862c9456f68f87ae7b900`; its MIT license and source
 selection are recorded under `third_party/bevfusion/`.
 
-The first supported model is ResNet50 FP16. No models, TensorRT engines,
-datasets, training/QAT/PTQ tools, visualizer, demo assets, or spconv/ONNX
-schemas are included. The module links the existing
-`//third_party/spconv:spconv_headers` and
-`//third_party/spconv:spconv_onnx_parser`; it does not add or edit a shared
-dependency. TensorRT engines and the SCN ONNX must be generated for the target
+The first supported model is ResNet50 FP16. No models, TensorRT engines, datasets, training/QAT/PTQ tools, visualizer, demo
+assets, or spconv/ONNX schemas are included. Its sparse backbone reuses the
+CenterPoint adapter and the root Bzlmod `@spconv//:spconv` dependency, so the
+two modules do not build separate sparse-convolution implementations.
+TensorRT engines and the SCN ONNX must be generated for the target
 GPU/software stack and are not assumed portable.
 
 ## Input contract

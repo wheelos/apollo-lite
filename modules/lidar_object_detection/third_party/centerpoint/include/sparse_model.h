@@ -29,10 +29,12 @@ struct SparseModelLayer {
   int bound = 0;
   bool subm = false;
   bool relu = false;
+  bool xyz = false;
 };
 
 struct SparseModel {
   std::string input, output;
+  std::vector<int64_t> output_shape;
   std::vector<SparseModelLayer> layers;
 };
 

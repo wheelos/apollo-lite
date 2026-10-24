@@ -23,8 +23,7 @@
 
 #include "lidar-scn.hpp"
 
-#include <spconv/engine.hpp>
-#include "onnx-parser.hpp"
+#include "sparse_backbone.h"
 
 namespace bevfusion {
 namespace lidar {
@@ -36,27 +35,27 @@ class SCNImplement : public SCN {
     voxelization_ = create_voxelization(param_.voxelization);
     if (voxelization_ == nullptr) return false;
 
-    native_scn_ = spconv::load_engine_from_onnx(param_.model, static_cast<spconv::Precision>(param_.precision));
+    native_scn_ = LoadSparseBackbone(param_.model);
     return native_scn_ != nullptr;
   }
 
   virtual const nvtype::half* forward(const nvtype::half* points, unsigned int num_points, void* stream) override {
     voxelization_->forward(points, num_points, stream, param_.order);
-    native_scn_->input(0)->features().reference((void*)voxelization_->features(), std::vector<int64_t>{voxelization_->num_voxels(), voxelization_->voxel_dim()}, spconv::DataType::Float16);
-    native_scn_->input(0)->indices().reference((void*)voxelization_->indices(), std::vector<int64_t>{voxelization_->num_voxels(), voxelization_->indices_dim()}, spconv::DataType::Int32);
-    native_scn_->input(0)->set_grid_size(voxelization_->grid_size());
-    native_scn_->forward(stream);
-    return native_scn_->output(0)->features().ptr<nvtype::half>();
+    return static_cast<const nvtype::half*>(native_scn_->Forward(
+        const_cast<void*>(voxelization_->features()),
+        const_cast<void*>(voxelization_->indices()),
+        voxelization_->num_voxels(), voxelization_->grid_size(),
+        static_cast<cudaStream_t>(stream)));
   }
 
   virtual std::vector<int64_t> shape() override {
-    return native_scn_->output(0)->features().shape;
+    return native_scn_->Shape();
   }
 
  private:
   SCNParameter param_;
   std::shared_ptr<Voxelization> voxelization_;
-  std::shared_ptr<spconv::Engine> native_scn_;
+  std::unique_ptr<SparseBackbone> native_scn_;
 };
 
 std::shared_ptr<SCN> create_scn(const SCNParameter& param) {

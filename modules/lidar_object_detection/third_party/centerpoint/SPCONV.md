@@ -20,11 +20,12 @@ archive module with an **explicit generation stage**, not a published
 generated-source archive or a binary-only distribution.
 
 Upstream spconv provides code-generated operators, not a loader for NVIDIA's
-custom ONNX graph. The module-local adapter implements `SparseConvolution`,
-sparse `Add`/`Relu`, `ScatterDense` and `Reshape` for the existing FP16,
-batch-one CenterPoint export. It rejects unsupported operators, quantization,
-shapes and weights. It does not change voxelization, model weights, TensorRT
-head or decode/NMS.
+custom ONNX graph. The adapter implements `SparseConvolution`, sparse
+`Add`/`Relu`, `ScatterDense` and `Reshape` for batch-one FP16 graphs. Both
+modules link the same `@spconv//:spconv` target and sparse graph adapter;
+BEVFusion graphs must use the supported operators and XYZ scatter layout. The
+adapter rejects unsupported operators, quantization, shapes and weights. It
+does not change voxelization, model weights, TensorRT heads or decode/NMS.
 
 As the mapped non-root user in the managed dev container, reuse its CUDA
 toolchain and the isolated Python 3.10 codegen environment through `PYTHONPATH`:
