@@ -63,7 +63,7 @@ offline fixtures. This remains a low-speed synthetic-observation baseline, not
 a production Cyber component or real-perception/control integration.
 
 The authoritative design, ownership and implementation status are in
-[`wheelos-service/context/modules/local_planning`](../../wheelos-service/context/modules/local_planning/README.md).
+[`ad_agents/context/modules/local_planning`](../../ad_agents/context/modules/local_planning/README.md).
 
 Build/run commands and simulation limits:
-[`ODOM-only MuJoCo simulation`](../../wheelos-service/context/modules/local_planning/run/odom-only-mujoco-simulation.md).
+[`ODOM-only MuJoCo simulation`](../../ad_agents/context/modules/local_planning/run/odom-only-mujoco-simulation.md).

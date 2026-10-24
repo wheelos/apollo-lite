@@ -8,4 +8,20 @@ message MissionConfig {
 
   // Tick ​​frequency, default 100ms (10Hz)
   optional int32 tick_interval_ms = 2 [default = 100];
+
+  optional string planning_command_topic = 3
+      [default = "/apollo/planning/command"];
+
+  optional string planning_runtime_status_topic = 4
+      [default = "/apollo/planning/runtime_status"];
+
+  optional string control_runtime_status_topic = 5
+      [default = "/apollo/control/runtime_status"];
+
+  optional string mission_runtime_status_topic = 6
+      [default = "/apollo/mission/runtime_status"];
+  optional string mission_directive_topic = 7
+      [default = "/apollo/mission/directive"];
+  optional string mission_request_ledger_path = 8
+      [default = "/apollo/data/mission-request-ledger.db"];
 }

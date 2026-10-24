@@ -27,7 +27,6 @@ try:
     from .job_manager import JobContext, JobManager
     from .record_utils import (
         copy_tree,
-        count_topic_messages,
         extract_pointcloud_dataset,
         inspect_records,
     )
@@ -42,24 +41,13 @@ except ImportError:  # pragma: no cover
         wait_for_file,
     )
     from job_manager import JobContext, JobManager
-    from record_utils import copy_tree, count_topic_messages, extract_pointcloud_dataset, inspect_records
+    from record_utils import copy_tree, extract_pointcloud_dataset, inspect_records
 
 
 def _first_existing(paths: List[str]) -> str:
     for path in paths:
         if (REPO_ROOT / path).exists():
             return path
-    return ""
-
-
-def _extract_first_channel_from_dag(dag_path: Path) -> str:
-    if not dag_path.exists():
-        return ""
-    for raw_line in dag_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.split("#", 1)[0].strip()
-        if not line.startswith("channel:"):
-            continue
-        return line.split(":", 1)[1].strip().strip('"')
     return ""
 
 
@@ -384,191 +372,6 @@ class PerceptionLidarPlugin(ToolboxPlugin):
         summary["raw_viewer_url"] = f"/artifacts/{ctx.job_id}/viewer/index.html"
         summary["viewer_url"] = f"/tools/jobs/{ctx.job_id}/viewer"
         summary["viewer_dir"] = str(viewer_dir)
-        ctx.set_summary(summary)
-
-
-class EndpointStaticPlugin(ToolboxPlugin):
-    plugin_id = "endpoint_static"
-    name = "Endpoint Static"
-    description = "Replay record bags into endpoint_static_visualizer_exporter and open the generated viewer."
-
-    def probe(self) -> Dict[str, Any]:
-        exporter_src = (REPO_ROOT / "modules/localization/endpoint/tools/endpoint_static_visualizer_exporter.cc").exists()
-        recorder_src = (REPO_ROOT / "cyber/tools/cyber_recorder/main.cc").exists()
-        return {
-            "available": exporter_src and recorder_src,
-            "actions": {"export_and_view": exporter_src and recorder_src},
-            "missing": [],
-        }
-
-    def actions(self) -> List[Dict[str, Any]]:
-        dag_default = _first_existing(
-            ["modules/localization/dag/dag_streaming_endpoint_localization.dag"]
-        )
-        return [
-            {
-                "action_id": "export_and_view",
-                "title": "Export And Visualize",
-                "description": "Toolbox manages the output workspace and opens the generated static viewer.",
-                "fields": [
-                    {
-                        "name": "data_package",
-                        "label": "Data Package",
-                        "type": "path",
-                        "required": True,
-                    },
-                    {"name": "dag_config", "label": "DAG Config", "type": "path", "default": dag_default},
-                    {"name": "max_full_points", "label": "Max Full Points", "type": "number", "default": 30000},
-                    {"name": "max_filtered_points", "label": "Max Filtered Points", "type": "number", "default": 0},
-                    {"name": "export_every_n", "label": "Export Every N", "type": "number", "default": 1},
-                    {"name": "max_exports", "label": "Max Exports", "type": "number", "default": 0},
-                ],
-            }
-        ]
-
-    def run_action(self, action_id: str, params: Dict[str, Any], ctx: JobContext) -> None:
-        del action_id
-        exporter_bin = ensure_container_binary(
-            "//modules/localization/endpoint/tools:endpoint_static_visualizer_exporter", ctx
-        )
-        recorder_bin = ensure_container_binary("@core//cyber/tools/cyber_recorder:cyber_recorder", ctx)
-        supports_progress_file = container_binary_supports_flag(exporter_bin, "--progress_file")
-        supports_expected_exports = container_binary_supports_flag(exporter_bin, "--expected_exports")
-        dag_config = params.get("dag_config") or _first_existing(
-            ["modules/localization/dag/dag_streaming_endpoint_localization.dag"]
-        )
-        if not dag_config:
-            raise RuntimeError("missing dag_config")
-        input_topic = _extract_first_channel_from_dag(REPO_ROOT / dag_config)
-        output_dir = ctx.workspace / "viewer"
-        progress_file = ctx.workspace / "endpoint_progress.json"
-        inspect_result = inspect_records(params["data_package"])
-        total_messages = count_topic_messages(params["data_package"], input_topic) if input_topic else 0
-        export_every_n = max(1, int(params.get("export_every_n") or 1))
-        expected_exports = total_messages // export_every_n + (1 if total_messages % export_every_n else 0)
-        max_exports = int(params.get("max_exports") or 0)
-        if max_exports > 0:
-            expected_exports = min(expected_exports, max_exports)
-
-        files = inspect_result["files"]
-        play_parts = [shlex.quote(recorder_bin), "play"]
-        for file_path in files:
-            play_parts.append(f"-f {shlex.quote(host_to_container(Path(file_path)))}")
-
-        exporter_parts = [
-            shlex.quote(exporter_bin),
-            f"--dag_config={shlex.quote(host_to_container(REPO_ROOT / dag_config))}",
-            f"--output_dir={shlex.quote(host_to_container(output_dir))}",
-            f"--max_full_points={int(params.get('max_full_points') or 30000)}",
-            f"--max_filtered_points={int(params.get('max_filtered_points') or 0)}",
-            f"--export_every_n={export_every_n}",
-        ]
-        if supports_expected_exports:
-            exporter_parts.append(f"--expected_exports={expected_exports}")
-        if supports_progress_file:
-            exporter_parts.append(
-                f"--progress_file={shlex.quote(host_to_container(progress_file))}"
-            )
-
-        ctx.set_progress(1.0, "prepare", f"replaying {len(files)} record file(s)")
-        if progress_file.exists():
-            progress_file.unlink()
-
-        def _start_process(command: List[str], name: str) -> tuple[subprocess.Popen[str], "queue.Queue[str]"]:
-            ctx.log("$ " + " ".join(shlex.quote(part) for part in command))
-            process = subprocess.Popen(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-            )
-            output_queue: "queue.Queue[str]" = queue.Queue()
-
-            def _reader() -> None:
-                assert process.stdout is not None
-                for line in process.stdout:
-                    output_queue.put(f"[{name}] {line.rstrip()}")
-
-            threading.Thread(target=_reader, daemon=True).start()
-            return process, output_queue
-
-        exporter_process, exporter_queue = _start_process(
-            container_command(" ".join(exporter_parts)), "endpoint_exporter"
-        )
-        time.sleep(2.0)
-        play_process, play_queue = _start_process(
-            container_command(" ".join(play_parts)), "cyber_recorder"
-        )
-
-        stopped_play_for_limit = False
-        exporter_marked_done = False
-        last_progress_mtime = 0.0
-
-        def _drain_logs() -> None:
-            for output_queue in (exporter_queue, play_queue):
-                while True:
-                    try:
-                        ctx.log(output_queue.get_nowait())
-                    except queue.Empty:
-                        break
-
-        try:
-            while True:
-                _drain_logs()
-
-                if supports_progress_file and progress_file.exists():
-                    mtime = progress_file.stat().st_mtime
-                    if mtime != last_progress_mtime:
-                        last_progress_mtime = mtime
-                        ctx.read_progress_file(progress_file)
-                        try:
-                            payload = json.loads(progress_file.read_text(encoding="utf-8"))
-                        except Exception:
-                            payload = {}
-                        current = int(payload.get("current", 0) or 0)
-                        exporter_marked_done = bool(payload.get("done", False))
-                        if expected_exports > 0 and current >= expected_exports and not stopped_play_for_limit:
-                            stopped_play_for_limit = True
-                            if play_process.poll() is None:
-                                play_process.terminate()
-                        if exporter_marked_done:
-                            if play_process.poll() is None:
-                                play_process.terminate()
-
-                exporter_done = exporter_process.poll() is not None
-                play_done = play_process.poll() is not None
-
-                if exporter_done and not play_done:
-                    play_process.terminate()
-
-                if exporter_done and play_done:
-                    _drain_logs()
-                    break
-
-                time.sleep(0.2)
-        finally:
-            for process in (play_process, exporter_process):
-                if process.poll() is None:
-                    process.terminate()
-            time.sleep(0.2)
-            for process in (play_process, exporter_process):
-                if process.poll() is None:
-                    process.kill()
-            _drain_logs()
-            if supports_progress_file and progress_file.exists():
-                ctx.read_progress_file(progress_file)
-
-        if exporter_process.returncode != 0:
-            raise RuntimeError(f"endpoint exporter failed with exit code {exporter_process.returncode}")
-
-        ctx.add_artifact("viewer", "Viewer", output_dir, "index.html")
-        summary = {
-            "raw_viewer_url": f"/artifacts/{ctx.job_id}/viewer/index.html",
-            "viewer_url": f"/tools/jobs/{ctx.job_id}/viewer",
-            "viewer_dir": str(output_dir),
-            "expected_exports": expected_exports,
-        }
         ctx.set_summary(summary)
 
 
@@ -906,7 +709,6 @@ class LivePointCloudPlugin(ToolboxPlugin):
 def create_plugins(job_manager: JobManager) -> Dict[str, ToolboxPlugin]:
     plugins: List[ToolboxPlugin] = [
         PerceptionLidarPlugin(job_manager),
-        EndpointStaticPlugin(job_manager),
         SlamVisualizationPlugin(job_manager),
         LivePointCloudPlugin(job_manager),
     ]

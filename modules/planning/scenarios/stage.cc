@@ -133,48 +133,6 @@ bool Stage::ExecuteTaskOnReferenceLine(
   return true;
 }
 
-bool Stage::ExecuteTaskOnReferenceLineForOnlineLearning(
-    const common::TrajectoryPoint& planning_start_point, Frame* frame) {
-  // online learning mode
-  for (auto& reference_line_info : *frame->mutable_reference_line_info()) {
-    reference_line_info.SetDrivable(false);
-  }
-
-  // FIXME(all): current only pick up the first reference line to use
-  // learning model trajectory
-  auto& picked_reference_line_info =
-      frame->mutable_reference_line_info()->front();
-  for (auto* task : task_list_) {
-    const double start_timestamp = Clock::NowInSeconds();
-
-    const auto ret = task->Execute(frame, &picked_reference_line_info);
-
-    const double end_timestamp = Clock::NowInSeconds();
-    const double time_diff_ms = (end_timestamp - start_timestamp) * 1000;
-    ADEBUG << "task[" << task->Name() << "] time spent: " << time_diff_ms
-           << " ms.";
-    RecordDebugInfo(&picked_reference_line_info, task->Name(), time_diff_ms);
-
-    if (!ret.ok()) {
-      AERROR << "Failed to run tasks[" << task->Name()
-             << "], Error message: " << ret.error_message();
-      break;
-    }
-  }
-
-  const std::vector<common::TrajectoryPoint>& adc_future_trajectory_points =
-      picked_reference_line_info.trajectory();
-  DiscretizedTrajectory trajectory;
-  if (picked_reference_line_info.AdjustTrajectoryWhichStartsFromCurrentPos(
-          planning_start_point, adc_future_trajectory_points, &trajectory)) {
-    picked_reference_line_info.SetTrajectory(trajectory);
-    picked_reference_line_info.SetDrivable(true);
-    picked_reference_line_info.SetCost(0);
-  }
-
-  return true;
-}
-
 bool Stage::ExecuteTaskOnOpenSpace(Frame* frame) {
   auto ret = common::Status::OK();
   for (auto* task : task_list_) {

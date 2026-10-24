@@ -285,9 +285,9 @@ class LaneFollowPlanner::GenerateTask : public Task {
     auto actual_status = CheckLaneFootprint(input, c_, p);
     if (!actual_status.ok()) return actual_status;
     const double actual_remaining = stop_s - path.Project(Vec2d(p.x, p.y)).s;
-    if (actual_remaining < 0.0 ||
+    if (actual_remaining < -kStopPositionTolerance ||
         p.speed * p.speed / (2.0 * c_.braking) + p.speed * c_.step >
-            actual_remaining) {
+            actual_remaining + kStopPositionTolerance) {
       return Error("actual ODOM state has insufficient distance to stop");
     }
     TrajectoryStart start;
@@ -297,7 +297,22 @@ class LaneFollowPlanner::GenerateTask : public Task {
          c_.stitch_speed_tolerance},
         &start);
     if (!stitch_status.ok()) return stitch_status;
-    p = start.point;
+    if (start.continuity == TrajectoryContinuityState::STITCHED) {
+      const double stitched_remaining =
+          stop_s - path.Project(Vec2d(start.point.x, start.point.y)).s;
+      if (stitched_remaining < -kStopPositionTolerance ||
+          start.point.speed * start.point.speed / (2.0 * c_.braking) +
+                  start.point.speed * c_.step >
+              stitched_remaining + kStopPositionTolerance) {
+        start.continuity = TrajectoryContinuityState::REANCHORED;
+      } else {
+        p = start.point;
+      }
+    }
+    if (start.continuity == TrajectoryContinuityState::REANCHORED) {
+      p.acceleration = start.point.acceleration;
+      p.curvature = start.point.curvature;
+    }
     w_->trajectory.stitched =
         start.continuity == TrajectoryContinuityState::STITCHED;
     const auto projection = path.Project(Vec2d(p.x, p.y));
@@ -309,9 +324,9 @@ class LaneFollowPlanner::GenerateTask : public Task {
       p.time = i * c_.step;
       const auto current = path.Project(Vec2d(p.x, p.y));
       const double remaining = stop_s - current.s;
-      if (remaining < -1e-6 ||
+      if (remaining < -kStopPositionTolerance ||
           p.speed * p.speed / (2.0 * c_.braking) + p.speed * c_.step >
-              remaining + 1e-6) {
+              remaining + kStopPositionTolerance) {
         return Error("insufficient observed distance to stop: planning_time=" +
                      std::to_string(input.planning_time) +
                      " rollout_time=" + std::to_string(p.time) +

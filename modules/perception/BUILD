@@ -7,7 +7,7 @@ filegroup(
     name = "perception_testdata",
     srcs = glob([
         "testdata/**",
-    ]),
+    ], allow_empty = True),
 )
 
 install(

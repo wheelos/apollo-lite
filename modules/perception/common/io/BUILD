@@ -24,6 +24,18 @@ cc_library(
 )
 
 cc_test(
+    name = "brown_camera_intrinsic_test",
+    size = "small",
+    srcs = ["brown_camera_intrinsic_test.cc"],
+    deps = [
+        ":io_util",
+        "@com_google_googletest//:gtest_main",
+        "@eigen",
+        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
+    ],
+)
+
+cc_test(
     name = "io_util_test",
     size = "small",
     srcs = ["io_util_test.cc"],

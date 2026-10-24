@@ -81,10 +81,9 @@ DEFINE_double(system_status_lifetime_seconds, 30,
               "replay message if the timestamp is old, where we should ignore "
               "the status change.");
 
-DEFINE_string(lidar_height_yaml,
-              "/apollo/modules/localization/msf/params/velodyne_params/"
-              "velodyne64_height.yaml",
-              "The yaml file for reading height of lidar w.r.t. ground.");
+DEFINE_string(
+    dreamview_calibration_sensor, "",
+    "Point-cloud calibration sensor ID/frame; empty requires one LiDAR.");
 
 DEFINE_int32(monitor_msg_pending_queue_size, 10,
              "Max monitor message pending queue size");

@@ -32,10 +32,10 @@ constexpr char kPrimaryTopicFallback[] = "primary_lidar";
 apollo::transform::TimedTransformResolverOptions
 LidarUnifiedComponent::BuildTransformResolverOptions() const {
   apollo::transform::TimedTransformResolverOptions options;
-  options.tf2_buffer_size_sec =
+  options.query_timeout_sec =
       static_cast<float>(config_.sensor_pose_query_timeout_sec());
   options.cache_duration_sec = config_.sensor_pose_cache_duration_sec();
-  options.max_extrapolation_latency_sec =
+  options.max_extrapolation_sec =
       config_.sensor_pose_cache_max_extrapolation_sec();
   return options;
 }
@@ -185,7 +185,10 @@ LidarUnifiedComponent::EnsureSensorState(const std::string& sensor_id) {
     sensor_state->pose_resolver =
         std::make_unique<apollo::transform::TimedTransformResolver>(
             sensor_state->transform_query.get());
-    sensor_state->pose_resolver->SetOptions(BuildTransformResolverOptions());
+    if (!sensor_state->pose_resolver->SetOptions(
+            BuildTransformResolverOptions())) {
+      return nullptr;
+    }
   }
   sensor_states_.emplace(sensor_id, sensor_state);
   return sensor_state;

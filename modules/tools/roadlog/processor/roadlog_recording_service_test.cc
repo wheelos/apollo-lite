@@ -16,8 +16,12 @@
 
 #include "modules/tools/roadlog/processor/roadlog_recording_service.h"
 
+#include <cstdlib>
+#include <string>
+
 #include "gtest/gtest.h"
 
+#include "modules/common/vehicle_calibration/test_bundle.h"
 #include "modules/tools/roadlog/common/roadlog_layout.h"
 
 namespace apollo {
@@ -54,15 +58,66 @@ TEST(RoadlogRecordingServiceTest, BuildsRecorderOptionsFromPolicy) {
   EXPECT_EQ(64ULL * 1024ULL * 1024ULL, options.header.segment_raw_size());
   const auto& recorder_config = options.recorder_config_bundle;
   EXPECT_EQ(1U, recorder_config.version);
-  EXPECT_EQ(
-      apollo::cyber::record::SelectorAction::kExclude,
-      recorder_config.subscription.default_action);
+  EXPECT_EQ(apollo::cyber::record::SelectorAction::kExclude,
+            recorder_config.subscription.default_action);
   ASSERT_EQ(2U, recorder_config.subscription.selectors.size());
   EXPECT_EQ(1U, recorder_config.policies.rules.size());
   EXPECT_DOUBLE_EQ(1.0,
                    recorder_config.policies.rules.front().policy.max_rate_hz);
   EXPECT_EQ(1ULL * 1024ULL * 1024ULL,
             recorder_config.policies.default_policy.drop_message_size_bytes);
+}
+
+TEST(RoadlogRecordingServiceTest, RecordsSelectedCalibrationIdentity) {
+  namespace vc = apollo::common::vehicle_calibration;
+  vc::TestBundle bundle;
+  bundle.AddSensor(vc::LIDAR, "lidar", "lidar_link");
+  ASSERT_TRUE(bundle.Publish());
+  std::string digest;
+  ASSERT_TRUE(vc::Registry::FileSha256(
+      bundle.path("calibration_manifest.pb.txt"), &digest));
+  RoadlogRecordingService::RecorderOptions options;
+  std::string error;
+  ASSERT_TRUE(RoadlogRecordingService::BuildRecorderOptions(
+      SmartRecordTrigger(), "/tmp/test.record", &options, &error));
+  const auto& metadata = options.header.metadata();
+  EXPECT_EQ(metadata.at("wheelos.calibration.status"), "selected");
+  EXPECT_EQ(metadata.at("wheelos.calibration.vehicle_id"), "test-vehicle");
+  EXPECT_EQ(metadata.at("wheelos.calibration.version"), "v2");
+  EXPECT_EQ(metadata.at("wheelos.calibration.manifest_sha256"), digest);
+  EXPECT_EQ(metadata.at("wheelos.calibration.schema_version"), "2");
+  EXPECT_EQ(metadata.at("wheelos.calibration.test_only"), "true");
+}
+
+TEST(RoadlogRecordingServiceTest, RejectsInvalidSelectedCalibration) {
+  namespace vc = apollo::common::vehicle_calibration;
+  vc::TestBundle bundle;
+  bundle.AddSensor(vc::LIDAR, "lidar", "lidar_link");
+  ASSERT_TRUE(bundle.Publish());
+  setenv("WHEELOS_CALIBRATION_MANIFEST_SHA256", "wrong", 1);
+  RoadlogRecordingService::RecorderOptions options;
+  std::string error;
+  EXPECT_FALSE(RoadlogRecordingService::BuildRecorderOptions(
+      SmartRecordTrigger(), "/tmp/test.record", &options, &error));
+  EXPECT_FALSE(error.empty());
+  EXPECT_TRUE(options.header.metadata().empty());
+  unsetenv("WHEELOS_VEHICLE_PROFILE_KEY");
+  EXPECT_FALSE(RoadlogRecordingService::BuildRecorderOptions(
+      SmartRecordTrigger(), "/tmp/test.record", &options, &error));
+  EXPECT_TRUE(options.header.metadata().empty());
+}
+
+TEST(RoadlogRecordingServiceTest, ExplicitlyMarksUnselectedCalibration) {
+  apollo::common::vehicle_calibration::TestBundle environment;
+  unsetenv("WHEELOS_VEHICLE_PROFILE_KEY");
+  unsetenv("WHEELOS_CALIBRATION_MANIFEST_SHA256");
+  RoadlogRecordingService::RecorderOptions options;
+  std::string error;
+  ASSERT_TRUE(RoadlogRecordingService::BuildRecorderOptions(
+      SmartRecordTrigger(), "/tmp/test.record", &options, &error));
+  EXPECT_EQ(options.header.metadata().size(), 1);
+  EXPECT_EQ(options.header.metadata().at("wheelos.calibration.status"),
+            "not_selected");
 }
 
 TEST(RoadlogRecordingServiceTest, RejectsDuplicateRateRule) {

@@ -160,6 +160,7 @@ proto_library(
     name = "control_conf_proto",
     srcs = ["control_conf.proto"],
     deps = [
+        ":pid_conf_proto",
         ":diff_drive_lat_controller_conf_proto",
         ":lat_controller_conf_proto",
         ":lon_controller_conf_proto",

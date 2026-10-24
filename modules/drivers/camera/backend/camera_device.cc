@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <system_error>
 #include <thread>
+#include <utility>
 
 #include <linux/videodev2.h>
 
@@ -68,14 +69,20 @@ uint64_t get_monotonic_now_ns() {
 
 using apollo::drivers::camera::config::OutputType;
 
-CameraDevice::CameraDevice(const ConfPtr& config)
+CameraDevice::CameraDevice(const ConfPtr& config, DeviceFactory device_factory)
     : config_(config),
+      device_factory_(std::move(device_factory)),
       state_(State::UNINITIALIZED),  // Initial state
       last_timestamp_ns_(0),
       frame_drop_interval_ns_(0),
       frame_warning_interval_ns_(0),
       reconnect_attempts_(0),
       select_timeout_count_(0) {
+  if (!device_factory_) {
+    device_factory_ = [](ConfPtr device_config) {
+      return std::make_unique<V4L2Device>(std::move(device_config));
+    };
+  }
   AINFO << "Attempting to initialize CameraDevice for "
         << config_->camera_dev();
   if (!Init()) {
@@ -109,7 +116,10 @@ bool CameraDevice::Init() {
     // Resetting unique_ptr if it already holds an object (e.g., during
     // reconnect)
     device_.reset();
-    device_ = std::make_unique<V4L2Device>(config_);
+    device_ = device_factory_(config_);
+    if (device_ == nullptr) {
+      throw std::runtime_error("Camera capture device factory returned null");
+    }
 
     // Configure V4L2Device with desired parameters
     AINFO << "Configuring V4L2Device: " << config_->camera_dev()

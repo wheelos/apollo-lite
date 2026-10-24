@@ -52,13 +52,6 @@ function _determine_perception_disabled() {
   fi
 }
 
-function _determine_localization_disabled() {
-    if [ "${ARCH}" != "x86_64" ]; then
-      # Skip msf for non-x86_64 platforms
-      DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/localization/msf/..."
-    fi
-}
-
 function _determine_planning_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
     DISABLED_TARGETS="${DISABLED_TARGETS} \
@@ -76,7 +69,6 @@ function _determine_map_disabled() {
 function determine_disabled_targets() {
   if [ "$#" -eq 0 ]; then
     _determine_drivers_disabled
-    _determine_localization_disabled
     _determine_perception_disabled
     _determine_planning_disabled
     _determine_map_disabled
@@ -88,9 +80,6 @@ function determine_disabled_targets() {
     case "${component}" in
       drivers)
         _determine_drivers_disabled
-        ;;
-      localization)
-        _determine_localization_disabled
         ;;
       perception)
         _determine_perception_disabled
@@ -367,27 +356,30 @@ function run_bazel_build() {
   if [[ "$(uname -m)" == "aarch64" ]]; then
     local copts_args="--copt=-march=native --host_copt=-march=native --copt=-fPIC --host_copt=-fPIC"
   else
-    # x64
-    local copts_args="--copt=-mavx2 --host_copt=-mavx2"
+    local copts_args=""
   fi
   build_args="${copts_args} ${jobs_args} ${cpus_args} ${rams_args}"
   info "${TAB}Build Command: bazel build ${CMDLINE_OPTIONS} ${build_args} -- ${formatted_targets}"
 
-  local bazel_startup_args=""
-  local bazel_cache_args=""
-  local cache_owner_uid=""
-  cache_owner_uid="$(stat -c '%u' "${APOLLO_CACHE_DIR}" 2>/dev/null || true)"
-  if [[ ! -w "${APOLLO_CACHE_DIR}" || -z "${cache_owner_uid}" || "${cache_owner_uid}" != "$(id -u)" ]]; then
-    # TODO(container-env): Fix mounted workspace cache ownership in container
-    # startup so this /tmp fallback can be removed.
-    local fallback_bazel_root="/tmp/bazel"
-    mkdir -p "${fallback_bazel_root}/repo_cache" "${fallback_bazel_root}/disk_cache"
-    bazel_startup_args="--output_user_root=${fallback_bazel_root}"
-    bazel_cache_args="--repository_cache=${fallback_bazel_root}/repo_cache --disk_cache=${fallback_bazel_root}/disk_cache"
-    warning "APOLLO_CACHE_DIR is not writable, using ${fallback_bazel_root} for Bazel caches."
+  local bazel_cache_root="${BAZEL_CACHE_DIR:-${APOLLO_CACHE_DIR}/bazel}"
+  local repository_cache="${bazel_cache_root}/repo_cache"
+  local disk_cache="${bazel_cache_root}/disk_cache"
+  if ! mkdir -p "${repository_cache}" "${disk_cache}"; then
+    error "Unable to create Bazel caches under ${bazel_cache_root}."
+    exit 1
+  fi
+  if [[ ! -w "${repository_cache}" || ! -w "${disk_cache}" ]]; then
+    error "Bazel caches under ${bazel_cache_root} are not writable by $(id -un) (uid $(id -u))."
+    error "Fix the mounted cache ownership or configure the mode-specific BAZEL_CACHE_DIR; refusing a temporary cache fallback."
+    exit 1
   fi
 
-  bazel ${bazel_startup_args} build ${CMDLINE_OPTIONS} ${build_args} ${bazel_cache_args} -- ${formatted_targets}
+  local bazel_cache_args=(
+    "--repository_cache=${repository_cache}"
+    "--disk_cache=${disk_cache}"
+  )
+
+  bazel build ${CMDLINE_OPTIONS} ${build_args} "${bazel_cache_args[@]}" -- ${formatted_targets}
 }
 
 function main() {

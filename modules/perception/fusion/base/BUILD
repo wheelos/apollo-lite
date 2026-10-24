@@ -159,6 +159,7 @@ cc_test(
     deps = [
         ":sensor_data_manager",
         "@com_google_googletest//:gtest_main",
+        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
     ],
 )
 

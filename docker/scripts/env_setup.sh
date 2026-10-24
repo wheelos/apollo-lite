@@ -57,7 +57,7 @@ function mode_env_prefix() {
 function is_supported_project_env_key() {
   local key="$1"
   case "${key}" in
-    AUTO_BOOTSTRAP | DISPLAY | OS | TARGET_ARCH | WHL_DISPLAY | WHL_PORT_OFFSET | WHL_PROJECT_SUFFIX | DEV_APOLLO_IMAGE | DEV_BAZEL_CACHE_DIR | DEV_SERVER_PORT | DEV_SHM_SIZE | DEV_USE_GPU | DEV_USE_GPU_HOST | TEST_APOLLO_IMAGE | TEST_BAZEL_CACHE_DIR | TEST_CPUS | TEST_MEMORY | TEST_SERVER_PORT | TEST_SHM_SIZE | TEST_USE_GPU | TEST_USE_GPU_HOST | PROD_APOLLO_IMAGE | PROD_BAZEL_CACHE_DIR | PROD_SERVER_PORT | PROD_SHM_SIZE | PROD_USE_GPU | PROD_USE_GPU_HOST)
+    APOLLO_REPO | DISPLAY | GEOLOC | OS | TARGET_ARCH | WHL_DISPLAY | WHL_PORT_OFFSET | WHL_PROJECT_SUFFIX | DEV_APOLLO_IMAGE | DEV_BAZEL_CACHE_DIR | DEV_SERVER_PORT | DEV_SHM_SIZE | DEV_USE_GPU | DEV_USE_GPU_HOST | TEST_APOLLO_IMAGE | TEST_BAZEL_CACHE_DIR | TEST_CPUS | TEST_MEMORY | TEST_SERVER_PORT | TEST_SHM_SIZE | TEST_USE_GPU | TEST_USE_GPU_HOST | PROD_APOLLO_IMAGE | PROD_BAZEL_CACHE_DIR | PROD_SERVER_PORT | PROD_SHM_SIZE | PROD_USE_GPU | PROD_USE_GPU_HOST)
       return 0
       ;;
     *)
@@ -198,25 +198,6 @@ function calculate_dreamview_port() {
   echo $(( base_port + uid_offset + project_offset + extra_offset ))
 }
 
-function detect_os_version() {
-  local os_version="${OS:-}"
-  if [[ -n "${os_version}" ]]; then
-    echo "${os_version}"
-    return
-  fi
-
-  local detected_os="22.04"
-  if [[ -f /etc/os-release ]]; then
-    # shellcheck source=/dev/null
-    source /etc/os-release 2>/dev/null || true
-    if [[ "${ID:-}" == "ubuntu" && -n "${VERSION_ID:-}" ]]; then
-      detected_os="${VERSION_ID}"
-    fi
-  fi
-
-  echo "${detected_os}"
-}
-
 function detect_timezone() {
   if command -v timedatectl 2>&1 >/dev/null; then
     timedatectl | grep "Time zone" | awk '{print $3}'
@@ -286,7 +267,7 @@ function resolve_mode_bazel_cache_dir() {
     echo "${override_dir}"
     return 0
   fi
-  echo "${project_root}/.cache/bazel/${mode}/repo_cache"
+  echo "${project_root}/.cache/bazel"
 }
 
 function resolve_mode_shm_size() {
@@ -387,7 +368,6 @@ RUNTIME_ENV_FILE=${runtime_env_name}
 SERVER_PORT=${dreamview_port}
 DREAMVIEW_PORT=${dreamview_port}
 USE_GPU_HOST=${use_gpu_host}
-AUTO_BOOTSTRAP=${AUTO_BOOTSTRAP:-false}
 ENV_EOF
 
   if [[ "${mode}" == "test" ]]; then

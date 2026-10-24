@@ -27,9 +27,10 @@
 #undef ALIVE
 #endif
 
-#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "modules/drivers/lidar/compensator/proto/lidar_compensator_config.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -72,7 +73,7 @@ class Compensator {
 
   bool IsValid(const Eigen::Vector3d& point);
 
-    transform::TransformQuery transform_query_;
+  transform::TransformQuery transform_query_{transform::Buffer::Instance()};
   LidarCompensatorConfig config_;
 };
 

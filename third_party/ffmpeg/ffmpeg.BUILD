@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_import", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -6,50 +6,58 @@ licenses(["notice"])
 
 cc_library(
     name = "avcodec",
-    includes = ["."],
     hdrs = glob(["libavcodec/*.h"]),
-    linkopts = [
-        "-L/opt/apollo/sysroot/lib",
-        "-lavcodec",
-    ],
+    includes = ["."],
     deps = [
+        ":avcodec_shared",
         ":avutil",
     ],
 )
 
 cc_library(
     name = "avformat",
-    includes = ["."],
     hdrs = glob(["libavformat/*.h"]),
-    linkopts = [
-        "-L/opt/apollo/sysroot/lib",
-        "-lavformat",
-    ],
+    includes = ["."],
     deps = [
         ":avcodec",
+        ":avformat_shared",
         ":avutil",
     ],
 )
 
 cc_library(
     name = "swscale",
-    includes = ["."],
     hdrs = glob(["libswscale/*.h"]),
-    linkopts = [
-        "-L/opt/apollo/sysroot/lib",
-        "-lswscale",
-    ],
+    includes = ["."],
     deps = [
         ":avutil",
+        ":swscale_shared",
     ],
 )
 
 cc_library(
     name = "avutil",
-    includes = ["."],
     hdrs = glob(["libavutil/*.h"]),
-    linkopts = [
-        "-L/opt/apollo/sysroot/lib",
-        "-lavutil",
-    ],
+    includes = ["."],
+    deps = [":avutil_shared"],
+)
+
+cc_import(
+    name = "avcodec_shared",
+    shared_library = "lib/libavcodec.so",
+)
+
+cc_import(
+    name = "avformat_shared",
+    shared_library = "lib/libavformat.so",
+)
+
+cc_import(
+    name = "avutil_shared",
+    shared_library = "lib/libavutil.so",
+)
+
+cc_import(
+    name = "swscale_shared",
+    shared_library = "lib/libswscale.so",
 )

@@ -1,0 +1,10 @@
+# Opt in with --config=dev for build, test, query, and mod commands.
+# Remote registries in .bazelrc retain priority; this is a fallback for
+# module versions that have not been published there yet.
+common:dev --registry=file://%workspace%/pkgs/bazel-central-registry
+
+# Module names, not repository aliases (for example, core), are required.
+common:dev --override_module=wheelos_common=%workspace%/pkgs/common
+common:dev --override_module=wheelos_map=%workspace%/pkgs/map
+common:dev --override_module=wheelos_core=%workspace%/pkgs/core
+common:dev --override_module=wheelos_msgs=%workspace%/pkgs/wheelos_msgs

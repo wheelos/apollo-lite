@@ -152,6 +152,21 @@ bool YuvProcessor::Process(const void* src, size_t len,
     return false;
   }
 
+  const int width = dest_pb->width();
+  const int height = dest_pb->height();
+  if (width <= 0 || height <= 0 || width % 2 != 0) {
+    AERROR << "YuvProcessor: invalid YUV422 image size " << width << "x"
+           << height;
+    return false;
+  }
+  const size_t required_len =
+      static_cast<size_t>(width) * static_cast<size_t>(height) * 2;
+  if (len < required_len) {
+    AERROR << "YuvProcessor: source buffer too small: " << len << " < "
+           << required_len;
+    return false;
+  }
+
   const uint8_t* yuv_data_ptr = static_cast<const uint8_t*>(src);
 
   // Determine the effective format (account for UV swapping)
@@ -195,16 +210,9 @@ bool YuvProcessor::Process(const void* src, size_t len,
     yuv_data_ptr = yuyv_buffer_.data();
   }
 
-  int width = dest_pb->width();
-  int height = dest_pb->height();
-  if (width <= 0 || height <= 0) {
-    AERROR << "YuvProcessor: invalid image size " << width << "x" << height;
-    return false;
-  }
-
   if (output_format_ == OutputFormat::YUYV) {
     // Direct copy to protobuf buffer for YUYV output
-    dest_pb->set_data(yuv_data_ptr, len);
+    dest_pb->set_data(yuv_data_ptr, required_len);
   } else if (output_format_ == OutputFormat::RGB) {
     const size_t needed = static_cast<size_t>(width) * height * 3;
     auto* out = dest_pb->mutable_data();

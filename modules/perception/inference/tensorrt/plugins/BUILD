@@ -8,7 +8,16 @@ licenses(["notice"])
 
 cc_library(
     name = "perception_inference_tensorrt_plugins",
-    hdrs = glob(["*.h"]),
+    hdrs = [
+        "argmax_plugin.h",
+        "dfmb_psroi_align_plugin.h",
+        "kernels.h",
+        "leakyReLU_plugin.h",
+        "rcnn_proposal_plugin.h",
+        "rpn_proposal_ssd_plugin.h",
+        "slice_plugin.h",
+        "softmax_plugin.h",
+    ],
     deps = [
         ":dfmb_psroi_align_plugin",
         ":perception_inference_tensorrt_plugins_argmax_cuda",

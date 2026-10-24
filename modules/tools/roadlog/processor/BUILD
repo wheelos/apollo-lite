@@ -14,6 +14,7 @@ cc_library(
         "@core//cyber/proto:record_cc_proto",
         "@core//cyber/record:header_builder",
         "@core//cyber/tools/cyber_recorder:recorder",
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
     ],
 )
 
@@ -24,6 +25,7 @@ cc_test(
     deps = [
         ":roadlog_recording_service",
         "//modules/planning/common:gtest_exit_main",
+        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
     ],
 )
 

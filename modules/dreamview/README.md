@@ -6,7 +6,7 @@ Dreamview or Apollo's HMI module provides a web application that helps developer
 
 ## Input
   Currently Dreamview monitors the following messages:
-  * Localization, defined by Protobuf message `LocalizationEstimate`, which can be found in file `localization/proto/localization.proto`.
+  * Localization, defined by the Protobuf message `LocalizationEstimate`.
   * Chassis, defined by Protobuf message `Chassis`, which can be found in file `canbus/proto/chassis.proto`.
   * Planning, defined by Protobuf message `ADCTrajectory`, which can be found in file `planning/proto/planning.proto`.
   * Monitor, defined by Protobuf message `MonitorMessage`, which can be found in file `common/monitor/proto/monitor.proto`.

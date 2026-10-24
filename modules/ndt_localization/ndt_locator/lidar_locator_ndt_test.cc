@@ -20,12 +20,14 @@
 #include <sstream>
 
 #include <boost/filesystem.hpp>
+
 #include "gtest/gtest.h"
+
 #include "pcl/io/pcd_io.h"
 
 #include "cyber/common/log.h"
-#include "modules/localization/msf/common/io/pcl_point_types.h"
-#include "modules/localization/msf/common/io/velodyne_utility.h"
+#include "modules/ndt_localization/common/io/pcl_point_types.h"
+#include "modules/ndt_localization/common/io/velodyne_utility.h"
 
 namespace apollo {
 namespace localization {

@@ -5,12 +5,14 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "canbus_udas_ultrasonic_radar_protocol",
-    srcs = glob([
-        "*.cc",
-    ]),
-    hdrs = glob([
-        "*.h",
-    ]),
+    srcs = [
+        "sensor_dist_f_5c9.cc",
+        "sensor_dist_r_5c8.cc",
+    ],
+    hdrs = [
+        "sensor_dist_f_5c9.h",
+        "sensor_dist_r_5c8.h",
+    ],
     deps = [
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",

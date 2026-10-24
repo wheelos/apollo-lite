@@ -83,7 +83,14 @@ inline uint32_t crc32_block(const uint8_t *buffer, size_t length) {
 // Converts NovAtel's azimuth (north = 0, east = 90) to FLU yaw (east = 0, north
 // = pi/2).
 constexpr double azimuth_deg_to_yaw_rad(double azimuth) {
-  return (90.0 - azimuth) * kDegToRad;
+  const double yaw = (90.0 - azimuth) * kDegToRad;
+  if (yaw < -M_PI) {
+    return yaw + 2.0 * M_PI;
+  }
+  if (yaw > M_PI) {
+    return yaw - 2.0 * M_PI;
+  }
+  return yaw;
 }
 
 // Rotating around the z-axis counterclockwise by 90 degrees.

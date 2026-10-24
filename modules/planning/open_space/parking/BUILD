@@ -85,7 +85,7 @@ cc_test(
         ":parking_slot",
         ":parking_slot_provider",
         "//modules/map/pnc_map:path",
-        "//modules/planning/testing:gtest_exit_main",
+        "//modules/planning/common:gtest_exit_main",
         "@wheelos_msgs//wheelos_msgs/map_msgs:map_parking_space_cc_proto",
     ],
 )
@@ -96,7 +96,7 @@ cc_test(
     srcs = ["parking_pose_selector_test.cc"],
     deps = [
         ":parking_pose_selector",
-        "//modules/planning/testing:gtest_exit_main",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 
@@ -106,7 +106,7 @@ cc_test(
     srcs = ["parking_roi_builder_test.cc"],
     deps = [
         ":parking_roi_geometry",
-        "//modules/planning/testing:gtest_exit_main",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 
@@ -117,7 +117,7 @@ cc_test(
     deps = [
         ":parking_pose_selector",
         ":parking_roi_validator",
-        "//modules/planning/testing:gtest_exit_main",
+        "//modules/planning/common:gtest_exit_main",
     ],
 )
 

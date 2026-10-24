@@ -10,9 +10,6 @@ cc_library(
         "include/**/*.h",
         "include/**/*.hpp",
         "include/**/*.cuh",
-        "include/**/*.c",
-        "include/**/*.cpp",
-        "include/**/*.cxx",
     ]),
     includes = [
         "include",

@@ -17,30 +17,22 @@
 #pragma once
 
 #include <memory>
-#include <mutex>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
-#include "tf2/buffer_core.h"
-#include "tf2/convert.h"
-
-#include "cyber/node/node.h"
+#include "cyber/common/macros.h"
+#include "cyber/common/types.h"
 #include "modules/transform/buffer_interface.h"
 
 namespace apollo {
 namespace transform {
 
-// extend the BufferInterface class and BufferCore class
-class Buffer : public BufferInterface, public tf2::BufferCore {
+// Runtime ownership belongs to application assembly, not individual algorithms.
+class Buffer : public BufferInterface {
  public:
-  /**
-   * @brief  Constructor for a Buffer object
-   * @param cache_time How long to keep a history of transforms
-   * @param debug Whether to advertise the view_frames service that exposes
-   * debugging information from the buffer
-   * @return
-   */
+  explicit Buffer(bool initialize_runtime);
+  ~Buffer() override;
+
+  // Explicit startup reports failure; runtime constructors fail fast on error.
   int Init();
 
   /** \brief Get the transform between two frames by frame ID.
@@ -51,8 +43,7 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
    * \param timeout How long to block before failing
    * \return The transform between the frames
    *
-   * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
-   * tf2::ExtrapolationException, tf2::InvalidArgumentException
+   * Throws TransformException on lookup failure.
    */
   TransformStamped lookupTransform(
       const std::string& target_frame, const std::string& source_frame,
@@ -72,8 +63,7 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
    * \param timeout How long to block before failing
    * \return The transform between the frames
    *
-   * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
-   * tf2::ExtrapolationException, tf2::InvalidArgumentException
+   * Throws TransformException on lookup failure.
    */
   TransformStamped lookupTransform(
       const std::string& target_frame, const cyber::Time& target_time,
@@ -121,42 +111,14 @@ class Buffer : public BufferInterface, public tf2::BufferCore {
                                 TransformStamped* tf) const override;
 
   TransformBufferDiagnostics GetDiagnosticsSnapshot() const override;
+  uint64_t GetTimeEpoch() override;
+  // Reset dynamic history and advance its epoch; preserve static calibration.
+  void clear();
 
  private:
-  struct EdgeDiagnosticsState {
-    bool is_static = false;
-    double latest_timestamp_sec = 0.0;
-    uint64_t received_count = 0;
-  };
-
-  static std::string BuildEdgeKey(const std::string& frame_id,
-                                  const std::string& child_frame_id);
-
-  void SubscriptionCallback(
-      const std::shared_ptr<const TransformStampeds>& transform);
-  void StaticSubscriptionCallback(
-      const std::shared_ptr<const TransformStampeds>& transform);
-  void SubscriptionCallbackImpl(
-      const std::shared_ptr<const TransformStampeds>& transform,
-      bool is_static);
-
-  void TF2MsgToCyber(const geometry_msgs::TransformStamped& tf2_trans_stamped,
-                     TransformStamped& trans_stamped) const;  // NOLINT
-
-  std::unique_ptr<cyber::Node> node_;
-  std::shared_ptr<cyber::Reader<TransformStampeds>> message_subscriber_tf_;
-  std::shared_ptr<cyber::Reader<TransformStampeds>>
-      message_subscriber_tf_static_;
-
-  cyber::Time last_update_;
-  std::vector<geometry_msgs::TransformStamped> static_msgs_;
-  mutable std::mutex diagnostics_mutex_;
-  std::atomic<uint64_t> dynamic_message_count_{0};
-  std::atomic<uint64_t> static_message_count_{0};
-  std::atomic<uint64_t> dynamic_transform_count_{0};
-  std::atomic<uint64_t> static_transform_count_{0};
-  std::atomic<uint64_t> time_jump_count_{0};
-  std::unordered_map<std::string, EdgeDiagnosticsState> edge_diagnostics_;
+  friend class BufferTestPeer;
+  class Impl;
+  std::unique_ptr<Impl> impl_;
 
   DECLARE_SINGLETON(Buffer)
 };  // class

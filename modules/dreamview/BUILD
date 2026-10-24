@@ -11,6 +11,7 @@ cc_binary(
     name = "dreamview",
     srcs = ["main.cc"],
     copts = DREAMVIEW_COPTS + copts_if_teleop(),
+    linkstatic = False,
     data = [
         "@dreamview_frontend_assets//:all_files",
     ],
@@ -23,7 +24,6 @@ filegroup(
     name = "dreamview_conf",
     srcs = glob([
         "conf/*.conf",
-        "conf/*.txt",
         "conf/hmi_modes/**/*.txt",
         "conf/recording/**/*.yaml",
         "launch/*.launch",

@@ -98,6 +98,7 @@ bool OsqpSpline2dSolver::Solve() {
       0.5 * (kernel_.kernel_matrix() + kernel_.kernel_matrix().transpose());
   ADEBUG << "P: " << P.rows() << ", " << P.cols();
   if (P.rows() == 0) {
+    AERROR << "OSQP 2d spline solver received an empty kernel.";
     return false;
   }
 
@@ -117,6 +118,7 @@ bool OsqpSpline2dSolver::Solve() {
   A << inequality_constraint_matrix, equality_constraint_matrix;
   ADEBUG << "A: " << A.rows() << ", " << A.cols();
   if (A.rows() == 0) {
+    AERROR << "OSQP 2d spline solver received no constraints.";
     return false;
   }
 
@@ -161,10 +163,9 @@ bool OsqpSpline2dSolver::Solve() {
   if (settings == nullptr) {
     return false;
   }
-  settings->alpha = 1.0;  // Change alpha parameter
   settings->eps_abs = 1.0e-05;
   settings->eps_rel = 1.0e-05;
-  settings->max_iter = 5000;
+  settings->max_iter = 20000;
   settings->polishing = true;
   settings->verbose = FLAGS_enable_osqp_debug;
 
@@ -182,10 +183,11 @@ bool OsqpSpline2dSolver::Solve() {
   }
 
   OSQPSolver* solver = nullptr;
-  if (osqp_setup(&solver, P_matrix, q.data(), A_matrix, l.data(), u.data(),
-                 constraint_num, static_cast<OSQPInt>(P.rows()), settings) !=
-          0 ||
-      solver == nullptr) {
+  const OSQPInt setup_status =
+      osqp_setup(&solver, P_matrix, q.data(), A_matrix, l.data(), u.data(),
+                 constraint_num, static_cast<OSQPInt>(P.rows()), settings);
+  if (setup_status != 0 || solver == nullptr) {
+    AERROR << "Failed to setup OSQP 2d spline solver, status " << setup_status;
     if (solver != nullptr) {
       osqp_cleanup(solver);
     }
@@ -199,6 +201,10 @@ bool OsqpSpline2dSolver::Solve() {
   osqp_solve(solver);
   if (solver->solution == nullptr ||
       !HasUsableSolutionStatus(solver->info->status_val)) {
+    AERROR << "OSQP 2d spline solver failed with status "
+           << solver->info->status << " after " << solver->info->iter
+           << " iterations; primal residual: " << solver->info->prim_res
+           << ", dual residual: " << solver->info->dual_res;
     osqp_cleanup(solver);
     OSQPCscMatrix_free(A_matrix);
     OSQPCscMatrix_free(P_matrix);
@@ -220,7 +226,11 @@ bool OsqpSpline2dSolver::Solve() {
   OSQPCscMatrix_free(P_matrix);
   OSQPSettings_free(settings);
 
-  return spline_.set_splines(solved_params, spline_.spline_order());
+  if (!spline_.set_splines(solved_params, spline_.spline_order())) {
+    AERROR << "Failed to set OSQP 2d spline solution.";
+    return false;
+  }
+  return true;
 }
 
 // extract

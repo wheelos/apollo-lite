@@ -18,11 +18,13 @@
 #include <chrono>
 #include <future>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "Eigen/Eigen"
 
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
+
 #include "modules/transform/buffer.h"
 
 namespace apollo {
@@ -177,8 +179,7 @@ bool LidarFusionComponent::Proc(
   const auto writer_start = cyber::Time::Now().ToNanosecond();
   writer_->Write(target_pc);
   const auto writer_complete = cyber::Time::Now().ToNanosecond();
-  const auto end_to_end_diff =
-      writer_complete - processing_start;
+  const auto end_to_end_diff = writer_complete - processing_start;
   AINFO << "Pointcloud fusion diff: primary_prepare_ms: "
         << (primary_prepare_complete - processing_start) / 1e6
         << ", fusion_wait_ms: "
@@ -301,16 +302,20 @@ bool LidarFusionComponent::QueryPoseAffine(const uint64_t& timestamp,
                                            const std::string& target_frame_id,
                                            const std::string& source_frame_id,
                                            Eigen::Affine3d* pose) {
-  if (timestamp == 0U &&
-      transform_query_.GetLatestStaticTransformToAffine(
-          target_frame_id, source_frame_id, pose)) {
+  if (timestamp == 0U) {
+    if (!transform_query_.GetLatestStaticTransformToAffine(
+            target_frame_id, source_frame_id, pose, 0.02f)) {
+      AERROR << "Missing rigid calibration from " << source_frame_id << " to "
+             << target_frame_id;
+      return false;
+    }
     return true;
   }
   cyber::Time query_time(timestamp);
   std::string err_string;
-  if (!transform_query_.LookupTransformToAffine(
-          target_frame_id, source_frame_id, query_time, pose, 2e-2,
-          &err_string)) {
+  if (!transform_query_.LookupTransformToAffine(target_frame_id,
+                                                source_frame_id, query_time,
+                                                pose, 2e-2, &err_string)) {
     AERROR << "Can not find transform, "
            << "target_frame_id: " << target_frame_id
            << ", source_frame_id: " << source_frame_id
@@ -327,7 +332,8 @@ bool LidarFusionComponent::GetPoseAffine(
   auto& target_frame_id = target_pc->header().frame_id();
   auto& source_frame_id = source_pc->header().frame_id();
   // query tf
-  auto transform = static_tf_map_.find(source_frame_id);
+  const std::string key = target_frame_id + "\n" + source_frame_id;
+  auto transform = static_tf_map_.find(key);
   if (transform == static_tf_map_.end()) {
     Eigen::Affine3d pose_d;
     if (!QueryPoseAffine(0, target_frame_id, source_frame_id, &pose_d)) {
@@ -335,9 +341,9 @@ bool LidarFusionComponent::GetPoseAffine(
              << source_frame_id << " to target frame: " << target_frame_id;
       return false;
     }
-    static_tf_map_[source_frame_id] = pose_d.cast<float>();
+    static_tf_map_[key] = pose_d.cast<float>();
   }
-  *pose = static_tf_map_[source_frame_id];
+  *pose = static_tf_map_[key];
   return true;
 }
 

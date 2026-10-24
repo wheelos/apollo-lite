@@ -16,6 +16,8 @@
 
 #include "modules/dreamview/backend/point_cloud/point_cloud_updater.h"
 
+#include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -23,11 +25,10 @@
 #include "pcl/filters/voxel_grid.h"
 #include "pcl/point_cloud.h"
 #include "pcl/point_types.h"
-#include "yaml-cpp/yaml.h"
 
+#include "modules/dreamview/proto/point_cloud.pb.h"
 #include "wheelos_msgs/localization_msgs/localization.pb.h"
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
-#include "modules/dreamview/proto/point_cloud.pb.h"
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
@@ -35,16 +36,18 @@
 #include "cyber/time/clock.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/util/string_util.h"
+#include "modules/common/vehicle_calibration/lidar_height.h"
 #include "modules/dreamview/backend/common/dreamview_gflags.h"
 #include "modules/dreamview/backend/handlers/websocket_handler.h"
+#include "modules/dreamview/backend/point_cloud/point_cloud_conversion.h"
 #include "modules/dreamview/backend/simulation_world/simulation_world_updater.h"
+#include "modules/transform/ground_reference.h"
 namespace apollo {
 namespace dreamview {
 
 using apollo::localization::LocalizationEstimate;
 using Json = nlohmann::json;
 
-float PointCloudUpdater::lidar_height_ = kDefaultLidarHeight;
 boost::shared_mutex PointCloudUpdater::mutex_;
 
 PointCloudUpdater::PointCloudUpdater(WebSocketHandler *websocket,
@@ -59,28 +62,17 @@ PointCloudUpdater::PointCloudUpdater(WebSocketHandler *websocket,
 
 PointCloudUpdater::~PointCloudUpdater() { Stop(); }
 
-void PointCloudUpdater::LoadLidarHeight(const std::string &file_path) {
-  if (!cyber::common::PathExists(file_path)) {
-    AWARN << "No such file: " << FLAGS_lidar_height_yaml
-          << ". Using default lidar height:" << kDefaultLidarHeight;
-    boost::unique_lock<boost::shared_mutex> writer_lock(mutex_);
-    lidar_height_ = kDefaultLidarHeight;
-    return;
+bool PointCloudUpdater::InitializeCalibration() {
+  apollo::common::vehicle_calibration::Registry registry;
+  apollo::common::vehicle_calibration::LidarHeight height;
+  if (!registry.LoadFromEnvironment() ||
+      !apollo::common::vehicle_calibration::LoadLidarHeight(
+          registry, FLAGS_dreamview_calibration_sensor, &height)) {
+    AERROR << "Point-cloud display requires selected LiDAR calibration.";
+    return false;
   }
-
-  YAML::Node config = YAML::LoadFile(file_path);
-  if (config["vehicle"] && config["vehicle"]["parameters"]) {
-    boost::unique_lock<boost::shared_mutex> writer_lock(mutex_);
-    lidar_height_ = config["vehicle"]["parameters"]["height"].as<float>();
-    AINFO << "Lidar height is updated to " << lidar_height_;
-    return;
-  }
-
-  AWARN << "Fail to load the lidar height yaml file: "
-        << FLAGS_lidar_height_yaml
-        << ". Using default lidar height:" << kDefaultLidarHeight;
-  boost::unique_lock<boost::shared_mutex> writer_lock(mutex_);
-  lidar_height_ = kDefaultLidarHeight;
+  calibration_height_ = height;
+  return true;
 }
 
 void PointCloudUpdater::RegisterMessageHandlers() {
@@ -212,12 +204,15 @@ bool PointCloudUpdater::ChangeChannel(const std::string &channel) {
 
 void PointCloudUpdater::Start(DvCallback callback_api) {
   callback_api_ = callback_api;
+  calibration_ready_ = InitializeCalibration();
+  if (!calibration_ready_) {
+    return;
+  }
   localization_reader_ = node_->CreateReader<LocalizationEstimate>(
       FLAGS_localization_topic,
       [this](const std::shared_ptr<LocalizationEstimate> &msg) {
         UpdateLocalizationTime(msg);
       });
-  LoadLidarHeight(FLAGS_lidar_height_yaml);
 }
 
 void PointCloudUpdater::Stop() {
@@ -226,33 +221,19 @@ void PointCloudUpdater::Stop() {
   }
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr PointCloudUpdater::ConvertPCLPointCloud(
-    const std::shared_ptr<drivers::PointCloud> &point_cloud) {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_ptr(
-      new pcl::PointCloud<pcl::PointXYZ>);
-  pcl_ptr->width = point_cloud->width();
-  pcl_ptr->height = point_cloud->height();
-  pcl_ptr->is_dense = false;
-
-  if (point_cloud->width() * point_cloud->height() !=
-      static_cast<unsigned int>(point_cloud->point_size())) {
-    pcl_ptr->width = 1;
-    pcl_ptr->height = point_cloud->point_size();
-  }
-  pcl_ptr->points.resize(point_cloud->point_size());
-
-  for (size_t i = 0; i < pcl_ptr->points.size(); ++i) {
-    const auto &point = point_cloud->point(static_cast<int>(i));
-    pcl_ptr->points[i].x = point.x();
-    pcl_ptr->points[i].y = point.y();
-    pcl_ptr->points[i].z = point.z();
-  }
-  return pcl_ptr;
-}
-
 void PointCloudUpdater::UpdatePointCloud(
     const std::shared_ptr<drivers::PointCloud> &point_cloud) {
-  if (!enabled_) {
+  if (!enabled_ || !calibration_ready_) {
+    return;
+  }
+  Eigen::Affine3d ground_from_cloud;
+  if (!apollo::transform::QueryGroundTransform(
+          transform_query_, calibration_height_.frame_id,
+          calibration_height_.height, point_cloud->header().frame_id(),
+          &ground_from_cloud, 0.01f)) {
+    AERROR_EVERY(100) << "Point-cloud display requires a static path to "
+                         "base_link: "
+                      << point_cloud->header().frame_id();
     return;
   }
   if (point_cloud->header().has_timestamp_sec()) {
@@ -271,13 +252,13 @@ void PointCloudUpdater::UpdatePointCloud(
     if (future_ready_) {
       future_ready_ = false;
       // transform from drivers::PointCloud to pcl::PointCloud
-      pcl_ptr = ConvertPCLPointCloud(point_cloud);
+      pcl_ptr = ConvertPCLPointCloud(*point_cloud, ground_from_cloud);
       std::future<void> f =
           cyber::Async(&PointCloudUpdater::FilterPointCloud, this, pcl_ptr);
       async_future_ = std::move(f);
     }
   } else {
-    pcl_ptr = ConvertPCLPointCloud(point_cloud);
+    pcl_ptr = ConvertPCLPointCloud(*point_cloud, ground_from_cloud);
     this->FilterPointCloud(pcl_ptr);
   }
 }
@@ -303,18 +284,13 @@ void PointCloudUpdater::FilterPointCloud(
     pcl_filtered_ptr = pcl_ptr;
   }
 
-  float z_offset;
-  {
-    boost::shared_lock<boost::shared_mutex> reader_lock(mutex_);
-    z_offset = lidar_height_;
-  }
   apollo::dreamview::PointCloud point_cloud_pb;
   for (size_t idx = 0; idx < pcl_filtered_ptr->size(); ++idx) {
     pcl::PointXYZ &pt = pcl_filtered_ptr->points[idx];
     if (!std::isnan(pt.x) && !std::isnan(pt.y) && !std::isnan(pt.z)) {
       point_cloud_pb.add_num(pt.x);
       point_cloud_pb.add_num(pt.y);
-      point_cloud_pb.add_num(pt.z + z_offset);
+      point_cloud_pb.add_num(pt.z);
     }
   }
   {

@@ -15,25 +15,60 @@
  *****************************************************************************/
 #include "modules/perception/fusion/lib/data_fusion/type_fusion/dst_type_fusion/dst_type_fusion.h"
 
+#include <filesystem>  // NOLINT(build/c++17)
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <boost/format.hpp>
 
 #include "gtest/gtest.h"
+
+#include "tools/cpp/runfiles/runfiles.h"
+
+#include "modules/common/vehicle_calibration/test_bundle.h"
+#include "modules/perception/common/sensor_manager/sensor_manager.h"
 #include "modules/perception/fusion/base/sensor_data_manager.h"
 #include "modules/perception/fusion/common/camera_util.h"
-#include "modules/perception/common/sensor_manager/sensor_manager.h"
 
 namespace apollo {
 namespace perception {
 namespace fusion {
 
-TEST(DstTypeFusionTest, test_update_with_measurement) {
-  FLAGS_work_root =
-      "/apollo/modules/perception/testdata/"
-      "fusion/dst_type_fusion";
-  FLAGS_obs_sensor_intrinsic_path =
-      "/apollo/modules/perception/testdata/"
-      "fusion/dst_type_fusion/params";
-  FLAGS_obs_sensor_meta_path = "./data/sensor_meta.pt";
+class DstTypeFusionTest : public ::testing::Test {
+ protected:
+  static void SetUpTestSuite() {
+    namespace vc = apollo::common::vehicle_calibration;
+    calibration_ = std::make_unique<vc::TestBundle>();
+    calibration_->AddSensor(vc::LIDAR, "velodyne_64", "velodyne_64");
+    calibration_->AddSensor(vc::RADAR, "radar", "radar");
+    calibration_->AddSensor(vc::CAMERA, "camera_smartereye",
+                            "camera_smartereye");
+    ASSERT_TRUE(calibration_->Publish());
+    std::string error;
+    std::unique_ptr<bazel::tools::cpp::runfiles::Runfiles> runfiles(
+        bazel::tools::cpp::runfiles::Runfiles::CreateForTest(
+            BAZEL_CURRENT_REPOSITORY, &error));
+    ASSERT_NE(runfiles, nullptr) << error;
+    const auto config = runfiles->Rlocation(
+        "apollo/modules/perception/fusion/lib/data_fusion/type_fusion/"
+        "dst_type_fusion/testdata/conf/config_manager.config",
+        BAZEL_CURRENT_REPOSITORY);
+    ASSERT_TRUE(std::filesystem::is_regular_file(config)) << config;
+    FLAGS_work_root =
+        std::filesystem::path(config).parent_path().parent_path().string();
+    FLAGS_config_manager_path = "conf";
+  }
+
+  static void TearDownTestSuite() { calibration_.reset(); }
+
+ private:
+  inline static std::unique_ptr<apollo::common::vehicle_calibration::TestBundle>
+      calibration_;
+};
+
+TEST_F(DstTypeFusionTest, test_update_with_measurement) {
   EXPECT_TRUE(common::SensorManager::Instance()->Init());
 
   std::cout << "start init dst app\n";
@@ -115,14 +150,7 @@ TEST(DstTypeFusionTest, test_update_with_measurement) {
            static_cast<size_t>(base::ObjectType::PEDESTRIAN));
 }
 
-TEST(DstTypeFusionTest, test_update_without_measurement) {
-  FLAGS_work_root =
-      "/apollo/modules/perception/testdata/"
-      "fusion/dst_type_fusion";
-  FLAGS_obs_sensor_intrinsic_path =
-      "/apollo/modules/perception/testdata/"
-      "fusion/dst_type_fusion/params";
-  FLAGS_obs_sensor_meta_path = "./conf/sensor_meta.config";
+TEST_F(DstTypeFusionTest, test_update_without_measurement) {
   common::SensorManager *sensor_manager = common::SensorManager::Instance();
   EXPECT_NE(sensor_manager, nullptr);
 

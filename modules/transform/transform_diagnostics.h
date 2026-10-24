@@ -15,8 +15,6 @@
 #pragma once
 
 #include <cstdint>
-#include <iomanip>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -30,16 +28,7 @@ struct TransformEdgeDiagnostics {
   double latest_timestamp_sec = 0.0;
   uint64_t received_count = 0;
 
-  std::string ToJsonString() const {
-    std::ostringstream oss;
-    oss << "{\"frame_id\":\"" << frame_id << "\",\"child_frame_id\":\""
-        << child_frame_id
-        << "\",\"is_static\":" << (is_static ? "true" : "false")
-        << ",\"latest_timestamp_sec\":" << std::fixed << std::setprecision(6)
-        << latest_timestamp_sec << ",\"received_count\":" << received_count
-        << "}";
-    return oss.str();
-  }
+  std::string ToJsonString() const;
 };
 
 struct TransformBufferDiagnostics {
@@ -51,25 +40,10 @@ struct TransformBufferDiagnostics {
   uint64_t dynamic_transform_count = 0;
   uint64_t static_transform_count = 0;
   uint64_t time_jump_count = 0;
+  uint64_t rejected_message_count = 0;
   std::vector<TransformEdgeDiagnostics> edges;
 
-  std::string ToJsonString() const {
-    std::ostringstream oss;
-    oss << "{\"last_update_sec\":" << std::fixed << std::setprecision(6)
-        << last_update_sec
-        << ",\"dynamic_message_count\":" << dynamic_message_count
-        << ",\"static_message_count\":" << static_message_count
-        << ",\"dynamic_transform_count\":" << dynamic_transform_count
-        << ",\"static_transform_count\":" << static_transform_count
-        << ",\"time_jump_count\":" << time_jump_count
-        << ",\"edge_count\":" << edges.size() << ",\"edges\":[";
-    for (size_t i = 0; i < edges.size(); ++i) {
-      if (i > 0) oss << ",";
-      oss << edges[i].ToJsonString();
-    }
-    oss << "]}";
-    return oss.str();
-  }
+  std::string ToJsonString() const;
 };
 
 struct TransformQueryDiagnostics {
@@ -83,19 +57,7 @@ struct TransformQueryDiagnostics {
   uint64_t static_lookup_success = 0;
   std::string last_error;
 
-  std::string ToJsonString() const {
-    std::ostringstream oss;
-    oss << "{\"can_transform_calls\":" << can_transform_calls
-        << ",\"can_transform_success\":" << can_transform_success
-        << ",\"lookup_transform_calls\":" << lookup_transform_calls
-        << ",\"lookup_transform_success\":" << lookup_transform_success
-        << ",\"affine_lookup_calls\":" << affine_lookup_calls
-        << ",\"affine_lookup_success\":" << affine_lookup_success
-        << ",\"static_lookup_calls\":" << static_lookup_calls
-        << ",\"static_lookup_success\":" << static_lookup_success
-        << ",\"last_error\":\"" << last_error << "\"}";
-    return oss.str();
-  }
+  std::string ToJsonString() const;
 };
 
 enum class TimedTransformResolveStatus {
@@ -108,25 +70,7 @@ enum class TimedTransformResolveStatus {
   kFailedCacheMiss,
 };
 
-inline const char* ToString(TimedTransformResolveStatus status) {
-  switch (status) {
-    case TimedTransformResolveStatus::kNotStarted:
-      return "not_started";
-    case TimedTransformResolveStatus::kTf2Lookup:
-      return "tf2_lookup";
-    case TimedTransformResolveStatus::kLatestFallback:
-      return "latest_fallback";
-    case TimedTransformResolveStatus::kCacheInterpolation:
-      return "cache_interpolation";
-    case TimedTransformResolveStatus::kCacheExtrapolation:
-      return "cache_extrapolation";
-    case TimedTransformResolveStatus::kFailedTf2Lookup:
-      return "failed_tf2_lookup";
-    case TimedTransformResolveStatus::kFailedCacheMiss:
-      return "failed_cache_miss";
-  }
-  return "unknown";
-}
+const char* ToString(TimedTransformResolveStatus status);
 
 struct TimedTransformResolverDiagnostics {
   TimedTransformResolveStatus last_status =
@@ -141,21 +85,7 @@ struct TimedTransformResolverDiagnostics {
   double max_cache_extrapolation_sec = 0.0;
   std::string last_error;
 
-  std::string ToJsonString() const {
-    std::ostringstream oss;
-    oss << "{\"last_status\":\"" << ToString(last_status) << "\""
-        << ",\"resolve_calls\":" << resolve_calls
-        << ",\"tf2_lookup_success\":" << tf2_lookup_success
-        << ",\"latest_fallback_success\":" << latest_fallback_success
-        << ",\"cache_interpolation_success\":" << cache_interpolation_success
-        << ",\"cache_extrapolation_success\":" << cache_extrapolation_success
-        << ",\"failed_tf2_lookup\":" << failed_tf2_lookup
-        << ",\"failed_cache_miss\":" << failed_cache_miss
-        << ",\"max_cache_extrapolation_sec\":" << std::fixed
-        << std::setprecision(6) << max_cache_extrapolation_sec
-        << ",\"last_error\":\"" << last_error << "\"}";
-    return oss.str();
-  }
+  std::string ToJsonString() const;
 };
 
 }  // namespace transform

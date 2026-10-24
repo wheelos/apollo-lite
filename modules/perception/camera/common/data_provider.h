@@ -18,6 +18,8 @@
 #include <memory>
 #include <string>
 
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
+
 #include "modules/perception/base/blob.h"
 #include "modules/perception/base/box.h"
 #include "modules/perception/base/image.h"
@@ -79,6 +81,10 @@ class DataProvider {
 
   bool Init(const InitOptions &options = InitOptions());
 
+  bool FillImageData(const drivers::Image &image);
+
+  // Trusted packed buffers only; message consumers must use the checked
+  // overload.
   // @brief: fill raw image data.
   // @param [in]: options
   // @param [in/out]: blob

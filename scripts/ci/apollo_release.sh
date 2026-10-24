@@ -10,7 +10,7 @@ export PREFIX_DIR=/opt/apollo/neo/packages/
 LIST_ONLY=0
 RESOLVE_DEPS=0
 PRE_CLEAN=0
-BAZEL_OPTS=" -c opt --copt=-mavx2 --host_copt=-mavx2 --jobs=$(nproc) --local_resources=memory=HOST_RAM*0.5"
+BAZEL_OPTS=" -c opt --jobs=$(nproc) --local_resources=memory=HOST_RAM*0.5"
 SHORTHAND_TARGETS=
 CMDLINE_OPTIONS=
 INSTALL_OPTIONS=
@@ -220,9 +220,6 @@ function run_install() {
     bazel run ${BAZEL_OPTS} ${CMDLINE_OPTIONS} ${install_targets} \
         -- ${install_opts} ${INSTALL_OPTIONS} "${PREFIX_DIR}"
 
-    # install files copy from source code.
-    bazel run ${BAZEL_OPTS} ${CMDLINE_OPTIONS} //:install_src \
-        -- ${install_opts} ${INSTALL_OPTIONS} "${PREFIX_DIR}"
 }
 
 function export_python_path() {

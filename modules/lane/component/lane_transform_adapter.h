@@ -19,6 +19,7 @@
 
 #include <string>
 
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -32,7 +33,7 @@ class LaneTransformAdapter {
                                    std::string* error) const;
 
  private:
-  transform::TransformQuery query_;
+  transform::TransformQuery query_{transform::Buffer::Instance()};
 };
 
 }  // namespace lane

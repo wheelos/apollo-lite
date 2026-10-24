@@ -52,6 +52,13 @@ install_dependencies() {
         libass-dev libfreetype6-dev libva-dev libvdpau-dev
 }
 
+install_packaged_ffmpeg() {
+    info "Installing Ubuntu's packaged FFmpeg for QEMU validation..."
+    apt_get_update_and_install ffmpeg
+    mkdir -p "${SYSROOT_DIR}/bin"
+    ln -sf "$(command -v ffmpeg)" "${SYSROOT_DIR}/bin/ffmpeg"
+}
+
 compile_ffmpeg() {
     info "Compiling and installing FFmpeg version ${VERSION}..."
     local pkg_name="ffmpeg-${VERSION}.tar.xz"
@@ -87,8 +94,13 @@ compile_ffmpeg() {
             --enable-libx264 \
             --enable-libx265
 
-        info "Building with $(nproc) jobs..."
-        make -j"$(nproc)"
+        local build_jobs="${FFMPEG_BUILD_JOBS:-$(nproc)}"
+        if [[ ! "${build_jobs}" =~ ^[1-9][0-9]*$ ]]; then
+            error "FFMPEG_BUILD_JOBS must be a positive integer, got '${build_jobs}'."
+            return 1
+        fi
+        info "Building with ${build_jobs} jobs..."
+        make -j"${build_jobs}"
 
         info "Installing..."
         make install
@@ -114,15 +126,30 @@ cleanup() {
 }
 
 main() {
-    if ! check_ffmpeg_installed; then
-        install_dependencies
-        compile_ffmpeg
-        ldconfig
-        cleanup
-        info "FFmpeg ${VERSION} installation completed successfully."
-    else
-        info "Skipping FFmpeg installation."
-    fi
+    case "${FFMPEG_BUILD_MODE:-source}" in
+        source)
+            if ! check_ffmpeg_installed; then
+                install_dependencies
+                compile_ffmpeg
+                ldconfig
+                cleanup
+                info "FFmpeg ${VERSION} installation completed successfully."
+            else
+                info "Skipping FFmpeg installation."
+            fi
+            ;;
+        package)
+            if ! check_ffmpeg_installed; then
+                install_packaged_ffmpeg
+            else
+                info "Skipping FFmpeg installation."
+            fi
+            ;;
+        *)
+            error "Unsupported FFMPEG_BUILD_MODE '${FFMPEG_BUILD_MODE}'. Use 'source' or 'package'."
+            exit 1
+            ;;
+    esac
 
     info "Verify with: ffmpeg -version"
 }

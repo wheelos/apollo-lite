@@ -18,14 +18,18 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <cstdio>
 #include <limits>
 #include <map>
+#include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <boost/algorithm/string.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include "absl/strings/str_cat.h"
 
@@ -40,6 +44,7 @@
 #include "modules/perception/camera/common/data_provider.h"
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
 #include "modules/perception/onboard/common_flags/common_flags.h"
+#include "modules/perception/onboard/transform_wrapper/sensor_calibration.h"
 
 namespace apollo {
 namespace perception {
@@ -65,7 +70,8 @@ std::map<base::TLColor, TLInfo> s_tl_infos = {
     {base::TLColor::TL_GREEN,
      {cv::Scalar(0, 255, 0), "GREEN", "GREEN traffic light"}},
     {base::TLColor::TL_YELLOW,
-     {cv::Scalar(0, 255, 255), "YELLOW", "YELLOW traffic light"}}};
+     {cv::Scalar(0, 255, 255), "YELLOW", "YELLOW traffic light"}},
+};
 
 static int GetGpuId(
     const apollo::perception::camera::CameraPerceptionInitOptions& options) {
@@ -332,6 +338,15 @@ int TrafficLightsPerceptionComponent::InitV2XListener() {
 }
 
 int TrafficLightsPerceptionComponent::InitCameraFrame() {
+  int calibrated_width = 0;
+  int calibrated_height = 0;
+  if (!GetCommonCameraImageSize(*common::SensorManager::Instance(),
+                                camera_names_, &calibrated_width,
+                                &calibrated_height) ||
+      calibrated_width != image_width_ || calibrated_height != image_height_) {
+    AERROR << "Traffic-light image dimensions must match selected calibration.";
+    return cyber::FAIL;
+  }
   data_provider_init_options_.image_height = image_height_;
   data_provider_init_options_.image_width = image_width_;
   int gpu_id = GetTrafficGpuId(trafficlight_config);
@@ -418,9 +433,9 @@ void TrafficLightsPerceptionComponent::OnReceiveImage(
   camera::DataProvider::ImageOptions image_options;
   image_options.target_color = base::Color::RGB;
   frame_->data_provider = data_providers_map_.at(camera_name).get();
-  frame_->data_provider->FillImageData(
-      image_height_, image_width_,
-      reinterpret_cast<const uint8_t*>(msg->data().data()), msg->encoding());
+  if (!frame_->data_provider->FillImageData(*msg)) {
+    return;
+  }
   frame_->timestamp = image_msg_ts;
   // caros monitor -- image system time diff
   const auto& diff_image_sys_ts = image_msg_ts - receive_img_timestamp;
@@ -700,8 +715,7 @@ bool TrafficLightsPerceptionComponent::GetPoseFromTF(
   std::string err_string;
   if (!transform_query_.LookupTransformToAffine(
           frame_id, child_frame_id, apollo::cyber::Time(timestamp),
-          &affine_pose, static_cast<float>(tf2_timeout_second_),
-          &err_string)) {
+          &affine_pose, static_cast<float>(tf2_timeout_second_), &err_string)) {
     AERROR << "Can not find transform. " << FORMAT_TIMESTAMP(timestamp)
            << " frame_id: " << frame_id << " child_frame_id: " << child_frame_id
            << " Error info: " << err_string;

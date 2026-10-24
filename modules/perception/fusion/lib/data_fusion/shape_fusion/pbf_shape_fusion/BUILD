@@ -28,6 +28,7 @@ cc_test(
         "//modules/perception/base:frame",
         "//modules/perception/common:perception_gflags",
         "@com_google_googletest//:gtest_main",
+        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
     ],
 )
 

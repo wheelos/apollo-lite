@@ -11,11 +11,6 @@
   - 调 `offline_lidar_obstacle_perception`
   - toolbox 自动管理输出目录
   - 可选 GT 对比，完成后会在 viewer 页展示结果目录和 summary
-- `endpoint_static`
-  - 内部启动 `endpoint_static_visualizer_exporter`
-  - 内部启动 `cyber_recorder play`
-  - 基于 `expected_exports` 自动退出
-  - toolbox 自动管理输出目录
 - `slam_visualization`
   - 单端口 live 页面
   - 通过容器内 `slam_stream_proxy.py` 订阅 cyber 数据
@@ -72,20 +67,6 @@ http://127.0.0.1:8080
 6. 完成后点击 `Open Viewer` 查看逐帧可视化。
 7. 如果后续要把这次结果当作 GT，直接使用任务详情里显示的 `Result Dir`。
 
-### Endpoint Static
-
-1. 在左侧选择 `Endpoint Static`。
-2. 在右侧填写：
-   - `Data Package`
-   - `DAG Config`
-   - 可选的 `Max Full Points`
-   - 可选的 `Max Filtered Points`
-   - 可选的 `Export Every N`
-   - 可选的 `Max Exports`
-3. 点 `Run`。
-4. 任务运行后，在 `Jobs` 里查看当前导出进度和日志。
-5. 完成后点击 `Open Viewer` 查看静态可视化页面。
-
 ### SLAM Visualization
 
 1. 在左侧选择 `SLAM Visualization`。
@@ -121,5 +102,3 @@ toolbox 不会自动编译目标。
 - `//modules/tools/whl_toolbox:live_pointcloud_viewer`
 - `//modules/perception/tool/benchmark/lidar:lidar_web_visualizer_exporter`
 - `//modules/perception/tool/benchmark/lidar:lidar_benchmark`
-- `//modules/localization/endpoint/tools:endpoint_static_visualizer_exporter`
-- `@core//cyber/tools/cyber_recorder:cyber_recorder`

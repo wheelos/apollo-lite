@@ -332,6 +332,7 @@ TEST(LaneFollowPlannerTest, TrackingDivergenceDoesNotResetBraking) {
   EXPECT_LE(
       std::abs(trajectory.points.front().acceleration - expected.acceleration),
       config.max_jerk * config.step + 1e-8);
+  EXPECT_DOUBLE_EQ(expected.curvature, trajectory.points.front().curvature);
 }
 
 TEST(LaneFollowPlannerTest, StopBoundaryDoesNotCollapseLateralLookahead) {

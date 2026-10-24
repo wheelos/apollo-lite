@@ -17,7 +17,7 @@ cc_binary(
     name = "routing_dump",
     srcs = ["routing_dump.cc"],
     deps = [
-        "//modules/routing",
+        "//modules/routing:routing_service",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
 )
@@ -26,7 +26,7 @@ cc_binary(
     name = "routing_cast",
     srcs = ["routing_cast.cc"],
     deps = [
-        "//modules/routing",
+        "//modules/routing:routing_service",
     ],
 )
 

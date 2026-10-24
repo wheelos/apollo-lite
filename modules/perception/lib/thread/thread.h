@@ -15,6 +15,9 @@
  *****************************************************************************/
 #pragma once
 
+#include <pthread.h>
+
+#include <atomic>
 #include <string>
 
 namespace apollo {
@@ -24,7 +27,11 @@ namespace lib {
 class Thread {
  public:
   explicit Thread(bool joinable = false, const std::string &name = "Thread")
-      : tid_(0), started_(false), joinable_(joinable), thread_name_(name) {}
+      : tid_(0),
+        started_(false),
+        joinable_(joinable),
+        thread_name_(name),
+        alive_(false) {}
 
   pthread_t tid() const { return tid_; }
 
@@ -50,8 +57,10 @@ class Thread {
   virtual void Run() = 0;
 
   static void *ThreadRunner(void *arg) {
-    Thread *t = reinterpret_cast<Thread *>(arg);
+    Thread *t = static_cast<Thread *>(arg);
+    pthread_cleanup_push(&Thread::MarkStopped, arg);
     t->Run();
+    pthread_cleanup_pop(1);
     return nullptr;
   }
 
@@ -61,6 +70,11 @@ class Thread {
   std::string thread_name_;
 
  private:
+  static void MarkStopped(void *arg) {
+    static_cast<Thread *>(arg)->alive_.store(false, std::memory_order_release);
+  }
+
+  std::atomic<bool> alive_;
 };
 
 }  // namespace lib

@@ -15,6 +15,7 @@
 #include "cyber/component/timer_component.h"
 #include "modules/collision_guardian/core/occupancy_detector.h"
 #include "modules/collision_guardian/core/risk_filter.h"
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -44,7 +45,7 @@ class CollisionGuardianComponent final : public cyber::TimerComponent {
   CollisionGuardianConfig config_;
   std::unique_ptr<OccupancyDetector> detector_;
   std::unique_ptr<RiskFilter> risk_filter_;
-  transform::TransformQuery transform_query_;
+  transform::TransformQuery transform_query_{transform::Buffer::Instance()};
 
   std::shared_ptr<cyber::Reader<drivers::PointCloud>> pointcloud_reader_;
   std::shared_ptr<cyber::Reader<OccupancyGrid>> occupancy_grid_reader_;

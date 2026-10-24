@@ -5,12 +5,14 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "canbus_yg_radar_protocol",
-    srcs = glob([
-        "*.cc",
-    ]),
-    hdrs = glob([
-        "*.h",
-    ]),
+    srcs = [
+        "radar_object_info_540.cc",
+        "radar_object_list_560.cc",
+    ],
+    hdrs = [
+        "radar_object_info_540.h",
+        "radar_object_list_560.h",
+    ],
     deps = [
         "//modules/drivers/canbus/can_comm:message_manager_base",
         "//modules/drivers/canbus/common:canbus_common",

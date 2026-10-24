@@ -11,6 +11,7 @@ cc_binary(
     ],
     deps = [
         "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/math",
         "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/prediction/common:prediction_gflags",

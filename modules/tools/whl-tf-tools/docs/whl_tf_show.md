@@ -2,6 +2,10 @@
 
 Visualize TF (transform) configuration files showing the coordinate frame relationships with interactive 3D visualization.
 
+Supply explicit extrinsic YAMLs for offline inspection; Transform no longer
+ships `params/` or `conf/` calibration assets. Historical `-c` inventories are
+not current vehicle manifests and do not establish bundle validity.
+
 ## Features
 
 - Load multiple TF configuration YAML files
@@ -24,7 +28,7 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 ### Basic Usage
 
 ```bash
-./modules/tools/whl-tf-tools/whl_tf_show.py modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py /path/to/extrinsics/*.yaml
 ```
 
 ### Command-Line Options
@@ -42,16 +46,16 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 ./modules/tools/whl-tf-tools/whl_tf_show.py imu_to_localization.yaml main_front_to_imu.yaml
 
 # Use a specific root frame
-./modules/tools/whl-tf-tools/whl_tf_show.py -r localization modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -r localization /path/to/extrinsics/*.yaml
 
 # Custom axis length
-./modules/tools/whl-tf-tools/whl_tf_show.py -l 1.0 modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -l 1.0 /path/to/extrinsics/*.yaml
 
 # Save to PNG file
-./modules/tools/whl-tf-tools/whl_tf_show.py -s output.png modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -s output.png /path/to/extrinsics/*.yaml
 
 # Save to high-resolution PDF
-./modules/tools/whl-tf-tools/whl_tf_show.py -s output.pdf modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -s output.pdf /path/to/extrinsics/*.yaml
 ```
 
 ## TF Configuration File Format

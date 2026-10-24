@@ -33,13 +33,13 @@ with remission values in `[0, 1]`.
 Export the available checkpoint from the RangeRet environment:
 
 ```sh
-python3 wheelos-service/context/framework/skills/rangeret-engine-conversion/export_rangeret_onnx.py \
+python3 ad_agents/context/framework/skills/rangeret-engine-conversion/export_rangeret_onnx.py \
   --source-dir <path-to-RangeRet-repo> \
   --checkpoint <path-to-models>/rangeret-kitti-657.pt \
   --config <path-to-RangeRet-repo>/config/RangeRet-semantickitti.yaml \
   --output <path-to-models>/rangeret-kitti-657.onnx
 
-python3 wheelos-service/context/framework/skills/rangeret-engine-conversion/build_rangeret_engine.py \
+python3 ad_agents/context/framework/skills/rangeret-engine-conversion/build_rangeret_engine.py \
   --onnx=<path-to-models>/rangeret-kitti-657.onnx \
   --engine=<path-to-models>/rangeret-kitti-657.engine
 

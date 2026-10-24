@@ -15,8 +15,6 @@
  *****************************************************************************/
 #include "modules/perception/lib/thread/thread.h"
 
-#include <csignal>
-
 #include "cyber/common/log.h"
 
 namespace apollo {
@@ -30,10 +28,11 @@ void Thread::Start() {
       pthread_attr_setdetachstate(
           &attr, joinable_ ? PTHREAD_CREATE_JOINABLE : PTHREAD_CREATE_DETACHED),
       0);
-  CHECK_EQ(pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, nullptr), 0);
-  CHECK_EQ(pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, nullptr), 0);
-
+  alive_.store(true, std::memory_order_release);
   int result = pthread_create(&tid_, &attr, &ThreadRunner, this);
+  if (result != 0) {
+    alive_.store(false, std::memory_order_release);
+  }
   CHECK_EQ(result, 0) << "Could not create thread (" << result << ")";
 
   CHECK_EQ(pthread_attr_destroy(&attr), 0);
@@ -49,22 +48,7 @@ void Thread::Join() {
   tid_ = 0;
 }
 
-bool Thread::IsAlive() {
-  if (tid_ == 0) {
-    return false;
-  }
-  // no signal sent, just check existence for thread
-  int ret = pthread_kill(tid_, 0);
-  if (ret == ESRCH) {
-    return false;
-  }
-  if (ret == EINVAL) {
-    AWARN << "Invalid singal.";
-    return false;
-  }
-
-  return true;
-}
+bool Thread::IsAlive() { return alive_.load(std::memory_order_acquire); }
 
 }  // namespace lib
 }  // namespace perception

@@ -12,3 +12,8 @@ pipeline, not by a separate application-side limiter.
 
 Example configurations, DAGs, and launch files are under `conf/`, `dag/`, and
 `launch/`. Supported source backends are `V4L2_MMAP` and `NVV4L2_DMABUF`.
+
+Tests cover pipeline construction and the NVMM sample-to-`GpuFrame` metadata and
+buffer-lifetime contract using a mock GStreamer sample. Real camera modes,
+NVMM/DMABUF interoperability, and sustained streaming require Orin hardware
+qualification.

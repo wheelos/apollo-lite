@@ -19,15 +19,9 @@ cc_library(
 )
 
 cc_library(
-    name = "planner_dispatcher",
-    srcs = [
-        "on_lane_planner_dispatcher.cc",
-        "planner_dispatcher.cc",
-    ],
-    hdrs = [
-        "on_lane_planner_dispatcher.h",
-        "planner_dispatcher.h",
-    ],
+    name = "planner_selector",
+    srcs = ["planner_selector.cc"],
+    hdrs = ["planner_selector.h"],
     copts = [
         "-DMODULE_NAME=\\\"planning\\\"",
         "-fopenmp",
@@ -35,20 +29,19 @@ cc_library(
     deps = [
         ":planner",
         "@wheelos_common//modules/common/status",
-        "@wheelos_common//modules/common/util",
+        "//modules/planning/common:dependency_injector",
         "//modules/planning/planner/public_road:public_road_planner",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+        "//modules/planning/proto:planning_config_cc_proto",
     ],
 )
 
 cc_test(
-    name = "on_lane_planner_dispatcher_test",
+    name = "planner_selector_test",
     size = "small",
-    srcs = ["on_lane_planner_dispatcher_test.cc"],
+    srcs = ["planner_selector_test.cc"],
     linkopts = ["-lgomp"],
-    linkstatic = True,
     deps = [
-        ":planner_dispatcher",
+        ":planner_selector",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -19,7 +19,7 @@ cc_binary(
         ":test_data",
     ],
     deps = [
-        "//modules/routing",
+        "//modules/routing:routing_service",
     ],
 )
 

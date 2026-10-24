@@ -55,7 +55,8 @@ class ScenarioManager final {
   bool Init(const PlanningConfig& planning_config);
 
   /**
-   * @brief Main entry point for every planning frame.
+   * @brief Main entry point for scenario observation, dispatch, and context
+   * update before the active scenario executes.
    */
   void Update(const common::TrajectoryPoint& ego_point, const Frame& frame);
 
@@ -68,8 +69,6 @@ class ScenarioManager final {
    *        and determine if a scenario transition is needed.
    */
   void ScenarioDispatch(const Frame& frame);
-
-  ScenarioType ScenarioDispatchLearning(const Frame& frame);
 
   /**
    * @brief Helper: Handle scenario switching life-cycle

@@ -1,0 +1,21 @@
+model {
+  gpu_device_id: 0
+  scn_onnx_path: "/apollo/modules/lidar_object_detection-dev/local/model/centerpoint.scn.onnx"
+  rpn_centerhead_engine_path: "/apollo/modules/lidar_object_detection-dev/local/model/rpn_centerhead_sim.plan"
+  model_revision: "7c1623f234d5a9794fd862c9456f68f87ae7b900"
+  runtime_library_path: "/apollo/modules/lidar_object_detection-dev/local/lib/libcenterpoint_runtime.so"
+  input_feature { source: POINT_FEATURE_X }
+  input_feature { source: POINT_FEATURE_Y }
+  input_feature { source: POINT_FEATURE_Z }
+  input_feature { source: POINT_FEATURE_INTENSITY scale: 1.0 }
+  input_feature { source: POINT_FEATURE_TIME_OFFSET_SECONDS scale: 1.0 }
+}
+input_channel: "/apollo/sensor/velodyne128/compensator/PointCloud2"
+output_channel: "/apollo/perception/centerpoint/detections"
+sensor_name: "velodyne128"
+sensor_parent_frame_id: "base_link"
+sensor_frame_id: "velodyne128"
+world_frame_id: "map"
+vehicle_frame_id: "base_link"
+sweep_count: 10
+max_input_point_count: 300000

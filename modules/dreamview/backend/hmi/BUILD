@@ -62,6 +62,7 @@ cc_library(
         "@wheelos_common//modules/common/configs:config_gflags",
         "@wheelos_common//modules/common/configs:vehicle_config_helper",
         "@wheelos_common//modules/common/kv_db",
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/util:util_tool",
         "//modules/dreamview/backend/common:dreamview_gflags",
         "//modules/dreamview/proto:hmi_config_cc_proto",

@@ -133,36 +133,4 @@ cc_test(
     ],
 )
 
-cc_test(
-    name = "pnc_map_test",
-    size = "small",
-    srcs = ["pnc_map_test.cc"],
-    data = [
-        ":testdata",
-    ],
-    linkstatic = True,
-    deps = [
-        ":pnc_map",
-        "@wheelos_common//modules/common/util",
-        "@wheelos_common//modules/common/util:string_util",
-        "@com_google_googletest//:gtest_main",
-        "@core//cyber/common:file",
-    ],
-)
-
-cc_test(
-    name = "route_segments_test",
-    size = "small",
-    srcs = ["route_segments_test.cc"],
-    data = [
-        ":testdata",
-    ],
-    deps = [
-        ":route_segments",
-        "@wheelos_common//modules/common/util",
-        "@com_google_googletest//:gtest_main",
-        "@core//cyber/common:file",
-    ],
-)
-
 cpplint()

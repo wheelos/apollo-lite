@@ -20,21 +20,6 @@
 
 #pragma once
 
-#include <vector>
-
-#include "wheelos_msgs/basic_msgs/pnc_point.pb.h"
-#include "wheelos_msgs/config_msgs/vehicle_config.pb.h"
-
-#include "modules/common/status/status.h"
-#include "modules/planning/common/obstacle.h"
-#include "modules/planning/common/path/path_data.h"
-#include "modules/planning/common/path_decision.h"
-#include "modules/planning/common/speed/speed_data.h"
-#include "modules/planning/common/speed/st_boundary.h"
-#include "modules/planning/common/speed_limit.h"
-#include "modules/planning/common/trajectory/discretized_trajectory.h"
-#include "modules/planning/reference_line/reference_line.h"
-
 namespace apollo {
 namespace planning {
 
@@ -45,9 +30,6 @@ class STGuideLine {
   STGuideLine() {}
 
   void Init(double desired_v);
-
-  void Init(double desired_v,
-            const std::vector<common::TrajectoryPoint> &speed_reference);
 
   virtual ~STGuideLine() = default;
 
@@ -61,8 +43,6 @@ class STGuideLine {
   double t0_;
   double s0_;
   double v0_;
-  // St guideline from upstream modules
-  SpeedData guideline_speed_data_;
 };
 
 }  // namespace planning

@@ -91,7 +91,6 @@ build:prof --cxxopt="-DENABLE_PERF=1"
 build:jetson_orin --platforms=//tools/platform:jetson_orin_platform
 
 # Build WheelOS with C++ 17 features
-build:c++17 --cxxopt=-std=c++17
 build:c++20 --cxxopt=-std=c++20
 
 # Enable C++17 by default
@@ -136,3 +135,4 @@ coverage --test_tag_filters=-cpplint
 
 # Optional developer-specific overrides.
 try-import %workspace%/.bazelrc.user
+try-import %workspace%/.bazelrc.dev

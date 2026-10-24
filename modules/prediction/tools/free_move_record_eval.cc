@@ -38,6 +38,7 @@
 #include "cyber/record/record_message.h"
 #include "cyber/record/record_reader.h"
 #include "modules/common/configs/config_gflags.h"
+#include "modules/common/map/map_selection.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/prediction/container/obstacles/obstacles_container.h"
@@ -698,7 +699,8 @@ int main(int argc, char** argv) {
   }
 
   apollo::cyber::Init(argv[0]);
-  FLAGS_map_dir = "modules/prediction/testdata";
+  apollo::common::MapSelection::SetTestMapDirectory(
+      "modules/prediction/testdata");
   FLAGS_base_map_filename = "kml_map.bin";
   FLAGS_sim_map_filename = "kml_map.bin";
   FLAGS_prediction_trajectory_time_length =

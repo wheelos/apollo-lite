@@ -296,6 +296,7 @@ cc_test(
     copts = PLANNING_FOPENMP,
     linkopts = ["-lgomp"],
     linkstatic = True,
+    target_compatible_with = requires_cuda(),
     deps = [
         ":distance_approach_ipopt_cuda_interface",
         "@com_google_googletest//:gtest_main",

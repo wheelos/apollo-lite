@@ -36,8 +36,8 @@ TEST(CommonTest, IsZero) {
 
 TEST(CommonTest, Crc32Word) {
   EXPECT_EQ(crc32_word(0), 0);
-  EXPECT_EQ(crc32_word(1), 0xEDB88320);
-  EXPECT_EQ(crc32_word(0xFFFFFFFF), 0xC9E95ECB);
+  EXPECT_EQ(crc32_word(1), 0x77073096);
+  EXPECT_EQ(crc32_word(0xFFFFFFFF), 0x2DFD1072);
 }
 
 TEST(CommonTest, Crc32Block) {
@@ -46,20 +46,20 @@ TEST(CommonTest, Crc32Block) {
 
   std::vector<uint8_t> single_byte_buffer = {0x01};
   EXPECT_EQ(crc32_block(single_byte_buffer.data(), single_byte_buffer.size()),
-            0xEDB88320);
+            0x77073096);
 
   std::vector<uint8_t> multi_byte_buffer = {0x12, 0x34, 0x56, 0x78};
   EXPECT_EQ(crc32_block(multi_byte_buffer.data(), multi_byte_buffer.size()),
-            0x87D6E60C);
+            0x6B4DD184);
 }
 
 TEST(CommonTest, AzimuthDegToYawRad) {
-  EXPECT_FLOAT_EQ(azimuth_deg_to_yaw_rad(0.0), M_PI / 2.0);
-  EXPECT_FLOAT_EQ(azimuth_deg_to_yaw_rad(90.0), 0.0);
-  EXPECT_FLOAT_EQ(azimuth_deg_to_yaw_rad(180.0), -M_PI / 2.0);
-  EXPECT_FLOAT_EQ(azimuth_deg_to_yaw_rad(270.0), -M_PI);
-  EXPECT_FLOAT_EQ(azimuth_deg_to_yaw_rad(360.0), M_PI / 2.0);
-  EXPECT_FLOAT_EQ(azimuth_deg_to_yaw_rad(45.0), M_PI * 0.25);
+  EXPECT_NEAR(azimuth_deg_to_yaw_rad(0.0), M_PI / 2.0, 1.0e-12);
+  EXPECT_NEAR(azimuth_deg_to_yaw_rad(90.0), 0.0, 1.0e-12);
+  EXPECT_NEAR(azimuth_deg_to_yaw_rad(180.0), -M_PI / 2.0, 1.0e-12);
+  EXPECT_NEAR(azimuth_deg_to_yaw_rad(270.0), -M_PI, 1.0e-12);
+  EXPECT_NEAR(azimuth_deg_to_yaw_rad(360.0), M_PI / 2.0, 1.0e-12);
+  EXPECT_NEAR(azimuth_deg_to_yaw_rad(45.0), M_PI * 0.25, 1.0e-12);
 }
 
 TEST(CommonTest, RfuToFlu) {

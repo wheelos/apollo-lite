@@ -39,7 +39,7 @@ class MissionIdleScenario : public Scenario {
       const ScenarioConfig::StageConfig& stage_config,
       const std::shared_ptr<DependencyInjector>& injector) override;
 
-  ScenarioGrade Grade() const override { return ScenarioGrade::MISSION; }
+  ScenarioGrade Grade() const override { return ScenarioGrade::CRUISE; }
 
  private:
   bool init_ = false;

@@ -40,32 +40,6 @@ message LaneChangeDeciderConfig {
 }
 
 //////////////////////////////////
-// LearningModelInferenceTaskConfig
-
-message LearningModelInferenceTaskConfig {
-  enum ModelType {
-    CNN = 1;
-    CNN_LSTM = 2;
-  }
-  optional ModelType model_type = 1;
-  optional string cpu_model_file = 2;
-  optional string gpu_model_file = 3;
-  optional bool use_cuda = 4 [default = true];
-  // delta_t depends on the model output, not a configurable value here
-  optional double trajectory_delta_t = 5 [default = 0.2];  // second
-  optional bool allow_empty_learning_based_data = 6 [default = false];
-  optional bool allow_empty_output_trajectory = 7 [default = false];
-}
-
-//////////////////////////////////
-// LearningModelInferenceTrajectoryTaskConfig
-
-message LearningModelInferenceTrajectoryTaskConfig {
-  optional double min_adc_future_trajectory_time_length = 1
-      [default = 2.0];  // second
-}
-
-//////////////////////////////////
 // Navi
 
 message NaviObstacleDeciderConfig {
@@ -168,15 +142,6 @@ message PathLaneBorrowDeciderConfig {
 }
 
 //////////////////////////////////
-// PathReferenceDeciderConfig
-
-message PathReferenceDeciderConfig {
-  optional uint32 min_path_reference_length = 1 [default = 20];
-  // learning model s weight
-  optional double weight_x_ref_path_reference = 2;
-}
-
-//////////////////////////////////
 // PathReuseDeciderConfig
 
 message PathReuseDeciderConfig {
@@ -218,9 +183,10 @@ message PiecewiseJerkNonlinearSpeedOptimizerConfig {
 // PiecewiseJerkPathOptimizerConfig
 
 message PiecewiseJerkPathOptimizerConfig {
+  reserved 3;
+  reserved "path_reference_l_weight";
   optional PiecewiseJerkPathWeights default_path_config = 1;
   optional PiecewiseJerkPathWeights lane_change_path_config = 2;
-  optional double path_reference_l_weight = 3 [default = 0.0];
 }
 
 message PiecewiseJerkPathWeights {

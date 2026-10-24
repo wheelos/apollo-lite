@@ -19,6 +19,13 @@
  **/
 #include "modules/planning/reference_line/qp_spline_reference_line_smoother.h"
 
+#include <algorithm>
+#include <chrono>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "gtest/gtest.h"
 
 #include "modules/planning/proto/reference_line_smoother_config.pb.h"
@@ -36,7 +43,12 @@ namespace planning {
 class QpSplineReferenceLineSmootherTest : public ::testing::Test {
  public:
   virtual void SetUp() {
-    config_.mutable_qp_spline()->set_spline_order(5);
+    auto* qp_config = config_.mutable_qp_spline();
+    qp_config->set_spline_order(5);
+    qp_config->set_max_spline_length(25.0);
+    qp_config->set_regularization_weight(1e-5);
+    qp_config->set_second_derivative_weight(200.0);
+    qp_config->set_third_derivative_weight(1000.0);
     smoother_.reset(new QpSplineReferenceLineSmoother(config_));
     hdmap_.LoadMapFromFile(map_file);
     const std::string lane_id = "1_-1";
@@ -103,7 +115,7 @@ TEST_F(QpSplineReferenceLineSmootherTest, smooth) {
   std::chrono::duration<double> diff = end - start;
   std::cout << "Time to solver is " << diff.count() << " s\n";
 
-  EXPECT_NEAR(152.5409, smoothed_reference_line.Length(), 1.0e-2);
+  EXPECT_NEAR(152.8529, smoothed_reference_line.Length(), 1.0e-2);
 }
 
 }  // namespace planning

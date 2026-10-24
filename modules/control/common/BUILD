@@ -127,16 +127,167 @@ cc_library(
 )
 
 cc_library(
+    name = "terminal_control_helper",
+    srcs = ["terminal_control_helper.cc"],
+    hdrs = ["terminal_control_helper.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "@wheelos_common//modules/common/math",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "control_command_goal",
+    srcs = ["control_command_goal.cc"],
+    hdrs = ["control_command_goal.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "motion_execution_validator",
+    srcs = ["motion_execution_validator.cc"],
+    hdrs = ["motion_execution_validator.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "executor_arbiter",
+    srcs = ["executor_arbiter.cc"],
+    hdrs = ["executor_arbiter.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "motion_command_adapter",
+    srcs = ["motion_command_adapter.cc"],
+    hdrs = ["motion_command_adapter.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "motion_execution_monitor",
+    srcs = ["motion_execution_monitor.cc"],
+    hdrs = ["motion_execution_monitor.h"],
+    copts = CONTROL_COPTS,
+    deps = [":motion_primitive_executor"],
+)
+
+cc_library(
+    name = "motion_primitive_executor",
+    srcs = ["motion_primitive_executor.cc"],
+    hdrs = ["motion_primitive_executor.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        ":motion_execution_validator",
+        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "motion_execution_manager",
+    srcs = ["motion_execution_manager.cc"],
+    hdrs = ["motion_execution_manager.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        ":motion_execution_validator",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "strategy_orchestrator",
+    srcs = ["strategy_orchestrator.cc"],
+    hdrs = ["strategy_orchestrator.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        "//modules/control/proto:control_conf_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+        ":control_command_goal",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
+    ],
+)
+
+cc_library(
     name = "common",
     copts = CONTROL_COPTS,
     deps = [
+        ":control_command_goal",
         ":control_gflags",
         ":hysteresis_filter",
         ":interpolation_1d",
         ":interpolation_2d",
         ":leadlag_controller",
+        ":executor_arbiter",
+        ":motion_command_adapter",
+        ":motion_execution_manager",
+        ":motion_execution_monitor",
+        ":motion_execution_validator",
+        ":motion_primitive_executor",
         ":pid_controller",
+        ":strategy_orchestrator",
+        ":terminal_control_helper",
         ":trajectory_analyzer",
+    ],
+)
+
+cc_test(
+    name = "executor_arbiter_test",
+    size = "small",
+    srcs = ["executor_arbiter_test.cc"],
+    deps = [
+        ":executor_arbiter",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_primitive_executor_test",
+    size = "small",
+    srcs = ["motion_primitive_executor_test.cc"],
+    deps = [
+        ":motion_execution_monitor",
+        ":motion_primitive_executor",
+        ":strategy_orchestrator",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_command_adapter_test",
+    size = "small",
+    srcs = ["motion_command_adapter_test.cc"],
+    deps = [
+        ":motion_command_adapter",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_chain_contract_test",
+    size = "small",
+    srcs = ["motion_chain_contract_test.cc"],
+    linkopts = ["-fopenmp"],
+    deps = [
+        ":executor_arbiter",
+        ":motion_execution_manager",
+        "//modules/planning/common:gtest_exit_main",
+        "//modules/planning/common:motion_plan_builder",
     ],
 )
 
@@ -244,6 +395,46 @@ cc_test(
         "//modules/control/proto:pid_conf_cc_proto",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
+    ],
+)
+
+cc_test(
+    name = "terminal_control_helper_test",
+    size = "small",
+    srcs = ["terminal_control_helper_test.cc"],
+    deps = [
+        ":terminal_control_helper",
+        "//modules/planning/common:gtest_exit_main",
+    ],
+)
+
+cc_test(
+    name = "strategy_orchestrator_test",
+    size = "small",
+    srcs = ["strategy_orchestrator_test.cc"],
+    deps = [
+        ":strategy_orchestrator",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_execution_validator_test",
+    size = "small",
+    srcs = ["motion_execution_validator_test.cc"],
+    deps = [
+        ":motion_execution_validator",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "motion_execution_manager_test",
+    size = "small",
+    srcs = ["motion_execution_manager_test.cc"],
+    deps = [
+        ":motion_execution_manager",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

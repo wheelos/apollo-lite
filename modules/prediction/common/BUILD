@@ -147,6 +147,10 @@ cc_test(
 cc_library(
     name = "kml_map_based_test",
     hdrs = ["kml_map_based_test.h"],
+    deps = [
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/map:map_selection",
+    ],
 )
 
 cc_library(

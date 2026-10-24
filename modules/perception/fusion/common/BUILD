@@ -37,6 +37,7 @@ cc_test(
         "//modules/perception/common/sensor_manager",
         "//modules/perception/fusion/base",
         "@com_google_googletest//:gtest_main",
+        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
     ],
 )
 

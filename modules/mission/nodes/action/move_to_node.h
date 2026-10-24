@@ -39,6 +39,9 @@ class MoveToNode : public BT::StatefulActionNode {
   BT::NodeStatus onRunning() override;
 
   void onHalted() override;
+
+ private:
+  std::string current_command_id_;
 };
 
 }  // namespace mission

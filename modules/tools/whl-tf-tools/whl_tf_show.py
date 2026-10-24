@@ -759,7 +759,7 @@ def main(tf_files, config_files, apollo_root, root, length, save):
 
         \b
         # Visualize TF configs from a static transform config file
-        whl_tf_show -c modules/transform/conf/static_transform_conf.pb.txt
+        whl_tf_show -c /path/to/offline/static_transform_conf.pb.txt
 
         \b
         # Combine both sources

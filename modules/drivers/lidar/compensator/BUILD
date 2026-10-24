@@ -9,7 +9,6 @@ filegroup(
     name = "runtime_data",
     srcs = glob([
         "conf/*.txt",
-        "conf/*.conf",
         "dag/*.dag",
         "launch/*.launch",
     ]),
@@ -36,12 +35,13 @@ cc_library(
     ],
     copts = LIDAR_COMPENSATOR_COPTS,
     deps = [
-        "@wheelos_common//modules/common/adapters:adapter_gflags",
-        "@wheelos_common//modules/common/latency_recorder",
         "//modules/drivers/lidar/compensator/proto:lidar_compensator_config_cc_proto",
+        "//modules/transform:buffer",
         "//modules/transform:transform_query",
         "@core//cyber",
         "@eigen",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/latency_recorder",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
     alwayslink = True,
