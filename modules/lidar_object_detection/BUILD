@@ -5,6 +5,78 @@ load("//tools/install:install.bzl", "install", "install_files")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "pointpillars_runtime_api",
+    alwayslink = True,
+    srcs = ["inference/pointpillars_runtime_api.cc"],
+    hdrs = ["inference/pointpillars_runtime_api.h"],
+    deps = [
+        "//modules/lidar_object_detection/third_party/pointpillars:pointpillars",
+        "@cuda//:cuda_runtime",
+        "@local_config_tensorrt//:tensorrt",
+    ],
+)
+
+cc_binary(
+    name = "libpointpillars_runtime.so",
+    linkshared = True,
+    linkstatic = True,
+    deps = [":pointpillars_runtime_api"],
+)
+
+cc_library(
+    name = "pointpillars_input",
+    srcs = ["types/pointpillars_input.cc"],
+    hdrs = ["types/pointpillars_input.h"],
+    deps = ["@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto"],
+)
+
+cc_test(
+    name = "pointpillars_input_test",
+    size = "small",
+    srcs = ["types/pointpillars_input_test.cc"],
+    deps = [
+        ":pointpillars_input",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "pointpillars_component_lib",
+    srcs = ["component/pointpillars_component.cc"],
+    hdrs = [
+        "component/pointpillars_component.h",
+        "inference/pointpillars_runtime_api.h",
+    ],
+    linkopts = ["-ldl"],
+    deps = [
+        ":pointpillars_input",
+        "//modules/lidar_object_detection/proto:pointpillars_cc_proto",
+        "@core//cyber",
+    ],
+    alwayslink = True,
+)
+
+cc_binary(
+    name = "libpointpillars_component.so",
+    linkshared = True,
+    linkstatic = False,
+    deps = [":pointpillars_component_lib"],
+)
+
+cc_test(
+    name = "pointpillars_component_test",
+    size = "small",
+    srcs = ["component/pointpillars_component_test.cc"],
+    tags = ["manual"],
+    deps = [
+        ":pointpillars_component_lib",
+        "@com_google_googletest//:gtest",
+        "@com_google_protobuf//:protobuf",
+        "@core//cyber",
+    ],
+)
+
+cc_library(
     name = "model_input",
     srcs = ["types/model_input.cc"],
     hdrs = ["types/model_input.h"],
@@ -138,10 +210,10 @@ cc_test(
 
 filegroup(
     name = "runtime_config",
-    srcs = glob([
-        "conf/**",
-        "dag/**",
-    ]),
+    srcs = [
+        "conf/centerpoint_component.pb.txt",
+        "dag/centerpoint.dag",
+    ],
 )
 
 install_files(
@@ -162,6 +234,21 @@ install(
     targets = [
         ":libcenterpoint_component.so",
         ":libcenterpoint_runtime.so",
+    ],
+)
+
+install(
+    name = "install_pointpillars",
+    data = [
+        "conf/pointpillars_component.pb.txt",
+        "dag/pointpillars.dag",
+        "tools/run_pointpillars.py",
+    ],
+    data_dest = "lidar_object_detection",
+    library_dest = "lidar_object_detection/lib",
+    targets = [
+        ":libpointpillars_component.so",
+        ":libpointpillars_runtime.so",
     ],
 )
 

@@ -1,0 +1,37 @@
+model {
+  gpu_device_id: 0
+  runtime_library_path: ""
+  camera_backbone_engine_path: ""
+  lidar_scn_onnx_path: ""
+  camera_vtransform_engine_path: ""
+  transfusion_engine_path: ""
+  bbox_engine_path: ""
+  model_revision: ""
+  max_input_point_count: 300000
+}
+camera_channel: ""
+camera_channel: ""
+camera_channel: ""
+camera_channel: ""
+camera_channel: ""
+camera_channel: ""
+lidar_channel: ""
+output_channel: ""
+max_timestamp_skew_ns: 0
+max_sync_wait_ns: 0
+input_queue_capacity: 4
+camera_frame_id: ""
+camera_frame_id: ""
+camera_frame_id: ""
+camera_frame_id: ""
+camera_frame_id: ""
+camera_frame_id: ""
+lidar_frame_id: ""
+calibration_revision: ""
+lidar_feature_contract: BEVFUSION_LIDAR_FEATURE_UNSPECIFIED
+lidar_sweep_policy: BEVFUSION_LIDAR_SWEEP_UNSPECIFIED
+max_point_time_offset_seconds: 0.0
+# Set camera_to_lidar, camera_intrinsics, lidar_to_image, and
+# image_augmentation to 96 row-major float values each for the same
+# calibration_revision and the configured camera_frame_id/lidar_frame_id.
+# Set exactly five point_feature_scale values after verifying model units.
