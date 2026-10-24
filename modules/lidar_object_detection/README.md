@@ -1,5 +1,94 @@
 # LiDAR Object Detection
 
+## NVIDIA PointPillars (independent experimental backend)
+
+The module also provides NVIDIA CUDA-PointPillars at pinned revision
+`092affc36c72d7b8f7530685d4c0f538d987a94b`. It uses single-sweep KITTI XYZI
+inputs, not the CenterPoint five-feature/10-sweep input contract. Existing
+CenterPoint interfaces and default DAG are unchanged. The old PointPillars
+under `modules/perception` is also unchanged.
+
+In the managed non-root development container, build the independent runtime
+and component:
+
+```sh
+bazel build --config=dev --config=gpu \
+  //modules/lidar_object_detection:libpointpillars_runtime.so \
+  //modules/lidar_object_detection:libpointpillars_component.so
+bazel test --config=dev //modules/lidar_object_detection:pointpillars_input_test
+```
+
+Build a TensorRT FP16 engine for the target GPU using the ONNX from the pinned
+upstream model, then run packed little-endian float32 XYZI frames:
+
+```sh
+python3 modules/lidar_object_detection/tools/run_pointpillars.py \
+  --runtime=bazel-bin/modules/lidar_object_detection/libpointpillars_runtime.so \
+  --build-onnx=/path/to/pointpillar.onnx --engine=/path/to/new-pointpillar.plan
+python3 modules/lidar_object_detection/tools/run_pointpillars.py \
+  --runtime=bazel-bin/modules/lidar_object_detection/libpointpillars_runtime.so \
+  --engine=/path/to/new-pointpillar.plan \
+  --input=/path/to/frame.bin --output=/path/to/new-predictions.jsonl
+```
+
+The runner refuses to overwrite an existing engine or output. Input must
+contain 1..300000 finite XYZI rows. Exceeding the engine's occupied-pillar
+capacity (10000 for the pinned ONNX, up to 40000 supported by the kernels) is an explicit
+error, not silent memory corruption or clipping. Point selection within a
+pillar follows the upstream nondeterministic GPU implementation. Output boxes
+are geometric centers, sizes along input x/y/z, yaw in radians about +z, and
+zero-based KITTI classes Car/Pedestrian/Cyclist. No velocity is inferred.
+JSONL is prediction data, not an official KITTI evaluation submission.
+
+The versioned runtime ABI checks detection size and converts runtime failures
+to explicit errors. The optional Cyber component dynamically loads this DSO,
+requires an exact sensor frame match and explicitly configured positive
+intensity scale, and publishes `PointPillarsFrameResult`. Select intensity
+scale from the checkpoint's training units; there is no default guessed scale.
+The configuration and DAG are intentionally incomplete templates: fill engine,
+runtime, model revision, sensor frame, output and input channels before launch.
+No production perception flow is enabled automatically.
+
+Install with `//modules/lidar_object_detection:install_pointpillars`; supply
+the desired install prefix as for other module install targets. Model files
+and TensorRT engines are separate deployment artifacts and are not bundled.
+The imported Apache-2.0 sources and changes are recorded under
+`third_party/pointpillars/UPSTREAM.md`. Building does not establish dataset
+accuracy, target latency, long-run resource stability or vehicle readiness.
+
+The offline input tests require only Python's standard library. GPU/ABI tests
+are opt-in and require the runtime and target-built engine:
+
+```sh
+cd modules/lidar_object_detection/tools
+POINTPILLARS_RUNTIME=/path/to/libpointpillars_runtime.so \
+POINTPILLARS_ENGINE=/path/to/pointpillar.plan \
+POINTPILLARS_SAMPLE=/path/to/kitti-frame.bin \
+python3 -m unittest test_run_pointpillars test_pointpillars_runtime -v
+```
+
+The GPU tests exercise engine-capacity overflow rejection, valid frames after
+a rejection, and nonfinite input handling. `POINTPILLARS_SAMPLE` is optional;
+without it the test uses a synthetic in-range point, not an accuracy dataset.
+`pointpillars_component_test` is an explicit/manual Cyber integration target;
+pass the same runtime/engine paths via Bazel `--test_env`. It initializes the
+component, processes input, rejects the wrong sensor frame, and reloads the
+runtime. TensorRT plugin code remains resident until process exit because its
+plugin registry retains creator pointers; inference GPU buffers are still
+released when each runtime is destroyed.
+For direct test-binary execution against a local core checkout, set
+`CYBER_PATH` to that checkout's `cyber` directory so Cyber can find its runtime
+configuration.
+
+The isolated migration's model artifacts are deployed under
+`/mnt/synology/models/pointpillars/nvidia-092affc/`: `pointpillar.onnx`,
+`pointpillar-sm89-fp16.plan`, a KITTI smoke sample, and `manifest.json` with
+source revisions and SHA-256 checksums. The engine was built for RTX 4060
+(SM89), CUDA 12.8 and TensorRT 10.9; rebuild it for other environments. These
+paths do not configure vehicle channels or enable a default component.
+
+## Existing CenterPoint backend
+
 This is an experimental CenterPoint LiDAR detection module with an offline
 inference/evaluation path and an optional Cyber component. It does not replace
 the existing perception pipeline and does not implement tracking or

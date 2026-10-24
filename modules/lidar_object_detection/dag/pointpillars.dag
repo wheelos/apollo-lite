@@ -1,0 +1,12 @@
+# Set the input channel and installation prefix for your deployment.
+module_config {
+  module_library: "/apollo/modules/lidar_object_detection-dev/local/lib/libpointpillars_component.so"
+  components {
+    class_name: "PointPillarsComponent"
+    config {
+      name: "PointPillars"
+      config_file_path: "/apollo/modules/lidar_object_detection-dev/local/conf/pointpillars_component.pb.txt"
+      readers { channel: "" }
+    }
+  }
+}

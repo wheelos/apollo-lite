@@ -1,0 +1,70 @@
+syntax = "proto2";
+
+package apollo.bevfusion;
+
+message BevFusionDetection {
+  optional float center_x = 1;
+  optional float center_y = 2;
+  optional float center_z = 3;
+  optional float width = 4;
+  optional float length = 5;
+  optional float height = 6;
+  optional float velocity_x = 7;
+  optional float velocity_y = 8;
+  optional float yaw = 9;
+  optional int32 class_id = 10;
+  optional float score = 11;
+}
+
+message BevFusionFrameResult {
+  optional uint64 timestamp_ns = 1;
+  optional uint32 input_point_count = 2;
+  repeated BevFusionDetection detection = 3;
+  optional double inference_ms = 4;
+  optional string model_revision = 5;
+  optional string calibration_revision = 6;
+}
+
+enum BevFusionLidarFeatureContract {
+  BEVFUSION_LIDAR_FEATURE_UNSPECIFIED = 0;
+  XYZ_INTENSITY_POINT_TIME_OFFSET_SECONDS = 1;
+}
+
+enum BevFusionLidarSweepPolicy {
+  BEVFUSION_LIDAR_SWEEP_UNSPECIFIED = 0;
+  SINGLE_SWEEP_EXPERIMENTAL = 1;
+}
+
+message BevFusionModelConfig {
+  optional int32 gpu_device_id = 1 [default = 0];
+  optional string runtime_library_path = 2;
+  optional string camera_backbone_engine_path = 3;
+  optional string lidar_scn_onnx_path = 4;
+  optional string camera_vtransform_engine_path = 5;
+  optional string transfusion_engine_path = 6;
+  optional string bbox_engine_path = 7;
+  optional float confidence_threshold = 8;
+  optional uint32 max_input_point_count = 9 [default = 300000];
+  optional string model_revision = 10;
+}
+
+message BevFusionComponentConfig {
+  optional BevFusionModelConfig model = 1;
+  repeated string camera_channel = 2;
+  optional string lidar_channel = 3;
+  optional string output_channel = 4;
+  optional uint64 max_timestamp_skew_ns = 15;
+  optional uint64 max_sync_wait_ns = 5;
+  optional uint32 input_queue_capacity = 6 [default = 4];
+  repeated string camera_frame_id = 7;
+  optional string lidar_frame_id = 8;
+  optional string calibration_revision = 9;
+  repeated float camera_to_lidar = 10 [packed = true];
+  repeated float camera_intrinsics = 11 [packed = true];
+  repeated float lidar_to_image = 12 [packed = true];
+  repeated float image_augmentation = 13 [packed = true];
+  repeated float point_feature_scale = 14 [packed = true];
+  optional BevFusionLidarFeatureContract lidar_feature_contract = 16;
+  optional BevFusionLidarSweepPolicy lidar_sweep_policy = 17;
+  optional float max_point_time_offset_seconds = 18;
+}
