@@ -8,8 +8,16 @@ This directory contains the upstream CenterPoint implementation and its CUDA
 kernels, with compatibility adaptations for the repository's CUDA/TensorRT
 toolchain. It is not a pristine source export. Keep Apollo's C ABI wrapper and
 resource lifecycle code under `modules/lidar_object_detection/inference/`;
-keep the reusable spconv headers, ONNX parser, and schemas under the single
-repository-level `third_party/spconv/` copy.
+keep serialized-model schemas under `third_party/onnx/` and the reusable
+spconv library build in the registry module `spconv@2.3.8.bcr.1`.
+
+`sparse_backbone.h`, `spconv_backbone.cu`,
+`sparse_model.*` and their validation tools are Apollo integration additions,
+not NVIDIA upstream files. `CenterPoint` calls the common backend interface;
+the sole backend compiles pinned spconv 2.3.8/cumm generated sources as
+described in [`SPCONV.md`](SPCONV.md). The NVIDIA sparse-engine wrapper,
+imported DSO, headers and parser are no longer used. NVIDIA provenance still
+applies to the retained voxelizer, TensorRT integration and postprocessing.
 
 Before updating the pinned revision, compare the proposed source against the
 upstream revision, review and document compatibility changes, preserve upstream

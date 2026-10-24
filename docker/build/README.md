@@ -126,7 +126,7 @@ labels. System packages below are deliberate exceptions or image tools:
 | LibTorch | planning/perception/prediction → `install_libtorch.sh` | Module installer deduplicates the shared script; CPU/CUDA/Orin artifacts differ |
 | LZ4/LevelDB | perception → `install_perception_deps.sh` | Used by existing `-llz4`/`-lleveldb` targets |
 | CUDA/cuDNN/TensorRT | CUDA or Jetson base plus `dev.dockerfile` | Not installed in the CPU image; GPU targets require a matching GPU image |
-| NVIDIA spconv | Explicit external SDK delivery | Not installed by the image; supply the compatible library via `--repo_env=APOLLO_NVIDIA_SPCONV_LIBRARY=/path/to/libspconv.so` |
+| spconv 2.3.8 | Registry module `spconv@2.3.8.bcr.1` | Explicit source generation with an isolated Python environment; runtime compiled through Bzlmod, no NVIDIA spconv SDK import |
 | Protoc/Python Protobuf | `install_protobuf_release.sh` | Image tooling/runtime, separate from Bazel's C++ Protobuf build |
 | Python tools | `install_python_modules.sh` | Includes GEOS/HDF5 development packages for Python dependencies, not Bazel C++ replacements |
 | Packaging | `install_release_deps.sh` | patchelf |

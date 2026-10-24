@@ -150,9 +150,14 @@ extern "C" bool centerpoint_runtime_infer(
     SetError(cudaGetErrorString(status), error, error_capacity);
     return false;
   }
-  if (runtime->centerpoint->doinfer(runtime->device_points, point_count,
+  try {
+    if (runtime->centerpoint->doinfer(runtime->device_points, point_count,
                                     runtime->stream) != 0) {
-    SetError("CenterPoint inference execution failed", error, error_capacity);
+      SetError("CenterPoint inference execution failed", error, error_capacity);
+      return false;
+    }
+  } catch (const std::exception& exception) {
+    SetError(exception.what(), error, error_capacity);
     return false;
   }
   const auto& output = runtime->centerpoint->nms_pred_;

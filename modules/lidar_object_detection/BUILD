@@ -45,8 +45,8 @@ cc_library(
     linkopts = ["-ldl"],
     deps = [
         ":centerpoint_runner",
-        "//modules/lidar_object_detection/proto:lidar_object_detection_cc_proto",
         ":centerpoint_runtime_api",
+        "//modules/lidar_object_detection/proto:lidar_object_detection_cc_proto",
     ],
 )
 
@@ -55,8 +55,9 @@ cc_library(
     srcs = ["inference/centerpoint_runtime_api.cc"],
     hdrs = ["inference/centerpoint_runtime_api.h"],
     deps = [
-        "//modules/lidar_object_detection/third_party/centerpoint:centerpoint",
+        "//modules/lidar_object_detection/third_party/centerpoint",
     ],
+    alwayslink = True,
 )
 
 cc_library(
@@ -86,9 +87,12 @@ cc_binary(
 
 cc_binary(
     name = "libcenterpoint_runtime.so",
+    linkopts = [
+        "-Wl,-rpath,$$ORIGIN",
+        "-Wl,-z,defs",
+    ],
     linkshared = True,
     linkstatic = True,
-    linkopts = ["-Wl,-rpath,$$ORIGIN"],
     deps = [":centerpoint_runtime_api"],
 )
 
@@ -145,15 +149,14 @@ filegroup(
 )
 
 install_files(
-    name = "install_centerpoint_spconv",
-    files = ["@local_config_spconv//:spconv_shared_library"],
-    dest = "lidar_object_detection/lib",
+    name = "install_centerpoint_spconv_licenses",
+    dest = "lidar_object_detection/share/licenses/spconv",
+    files = ["@spconv//:licenses"],
     strip_prefix = ["third_party/**"],
 )
 
 install(
     name = "install",
-    deps = [":install_centerpoint_spconv"],
     data = [
         ":runtime_config",
     ],
@@ -162,6 +165,9 @@ install(
     targets = [
         ":libcenterpoint_component.so",
         ":libcenterpoint_runtime.so",
+    ],
+    deps = [
+        ":install_centerpoint_spconv_licenses",
     ],
 )
 

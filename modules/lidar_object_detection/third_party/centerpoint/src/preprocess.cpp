@@ -26,6 +26,7 @@
 #include <assert.h>
 
 #include <iostream>
+#include <stdexcept>
 
 PreProcessCuda::PreProcessCuda() {}
 
@@ -110,6 +111,14 @@ int PreProcessCuda::generateVoxels(const float *points, size_t points_size,
   checkCudaErrors(cudaMemcpyAsync(h_real_num_voxels_, d_real_num_voxels_,
                                   sizeof(int), cudaMemcpyDeviceToHost, stream));
   checkCudaErrors(cudaStreamSynchronize(stream));
+
+  if (*h_real_num_voxels_ == 0) {
+    throw std::runtime_error(
+        "CenterPoint voxelization produced no in-range voxels");
+  }
+  if (*h_real_num_voxels_ > params_.max_voxels) {
+    throw std::runtime_error("CenterPoint voxelization exceeds voxel capacity");
+  }
 
   checkCudaErrors(
       featureExtractionLaunch(voxels_temp_, d_voxel_num_, *h_real_num_voxels_,

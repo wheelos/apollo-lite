@@ -28,6 +28,9 @@ specified in `CenterPointModelConfig`. Confirm intensity and time-lag units
 against the selected model export before running. Zero point timestamps map to
 a zero time lag. Frames with zero points or more than NVIDIA's 300,000-point
 input limit are rejected.
+Voxelization also rejects frames with no in-range voxels or a voxel count
+above capacity, returning an explicit runtime error instead of launching an
+invalid CUDA grid.
 
 `types/sweep_fusion.*` provides the real-time data-path primitive: it keeps a
 bounded history, transforms prior sweeps into the current LiDAR frame using
@@ -154,20 +157,17 @@ repositories. The dependency boundary is:
 | Dependency | Source / management | Runtime requirement |
 | --- | --- | --- |
 | CenterPoint CUDA/TensorRT implementation | Pinned, MIT-licensed source snapshot in `third_party/centerpoint/` | CUDA toolkit/driver and a compatible TensorRT installation |
-| spconv headers, ONNX parser and schemas | Shared repository source in `third_party/spconv/` | No second module-local copy |
-| spconv implementation | Compatible prebuilt `libspconv.so`, selected through `APOLLO_NVIDIA_SPCONV_LIBRARY` | Installed beside the runtime DSO or available to the dynamic loader |
+| ONNX schemas and model loader | Shared schemas in `third_party/onnx/`, CenterPoint host-side `sparse_model` loader | Protobuf, no NVIDIA sparse-engine parser |
+| spconv 2.3.8 | Registry module `spconv@2.3.8.bcr.1`, with explicit pinned source generation | Sole sparse backbone, compiled into the runtime; no imported spconv DSO |
 | Model artifacts | Supplied by the deployment; not checked in | Matching SCN ONNX and TensorRT engine |
 
-The spconv source and binary are intentionally separate: this repository
-contains headers/parser/schema, not the implementation used to build the
-prebuilt library. Set
-`APOLLO_NVIDIA_SPCONV_LIBRARY` to the compatible `libspconv.so` and forward it
-to Bazel with `--repo_env`:
+Prepare the pinned generated tree as described in
+[`SPCONV.md`](third_party/centerpoint/SPCONV.md), then build/install with CUDA:
 
 ```sh
-export APOLLO_NVIDIA_SPCONV_LIBRARY=<path-to-compatible-libspconv.so>
-bazel run --config=dev \
-  --repo_env=APOLLO_NVIDIA_SPCONV_LIBRARY="${APOLLO_NVIDIA_SPCONV_LIBRARY}" \
+bazel run --config=dev --config=gpu --config=opt --lockfile_mode=off \
+  --repo_env=SPCONV_SOURCE_ROOT=<prepared-source-tree> \
+  --@rules_cuda//cuda:archs=<matching-generated-GPU-architecture> \
   //modules/lidar_object_detection:install -- /apollo/modules
 ```
 
@@ -184,11 +184,14 @@ CUDA driver support must be available in the target NVIDIA software image.
 The ONNX model and TensorRT engine are separate deployment artifacts; the
 component config must point to the exact model files used to build the engine.
 
-The CenterPoint runtime consumes the single shared spconv integration under
-the repository-root `third_party/spconv`: its vendored headers, ONNX parser and
-schemas are compiled from source, while `libspconv.so` remains a compatible
-prebuilt dependency provided through `APOLLO_NVIDIA_SPCONV_LIBRARY`. No spconv
-source copy is nested in the CenterPoint module.
+The runtime uses `spconv_backbone.cu`, backed by upstream spconv 2.3.8, as its
+only sparse implementation. The former NVIDIA spconv import and backend
+selection have been removed. This replaces only the sparse backbone; it
+retains the existing ONNX model, voxelizer, TensorRT head and postprocessing.
+The install target packages spconv/cumm licenses but no NVIDIA spconv DSO.
+See [`SPCONV.md`](third_party/centerpoint/SPCONV.md) for source preparation,
+stream/lifetime contracts and the validation harness. This implementation
+choice does not establish full accuracy or deployment acceptance.
 
 The nuScenes Python dependencies remain evaluation-only. The validated
 experiment used RTX 4060 (SM89), CUDA 12.8, and TensorRT 10.9 with local NVIDIA

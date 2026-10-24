@@ -38,7 +38,6 @@
 #include "NvInfer.h"
 #include "NvInferRuntime.h"
 #include "NvOnnxConfig.h"
-#include "onnx-parser.hpp"
 #include "timer.hpp"
 
 template <typename T>
@@ -60,7 +59,7 @@ CenterPoint::CenterPoint(const std::string &modelFile,
   pre_.reset(new PreProcessCuda());
   post_.reset(new PostProcessCuda());
 
-  scn_engine_ = spconv::load_engine_from_onnx(scnModelFile);
+  scn_engine_ = LoadSparseBackbone(scnModelFile);
   if (scn_engine_ == nullptr) {
     throw std::runtime_error("Unable to load sparse-convolution ONNX: " +
                              scnModelFile);
@@ -173,14 +172,8 @@ int CenterPoint::doinfer(void *points, unsigned int point_num,
   }
 
   timer_.start(stream);
-  auto *scn_input = scn_engine_->input(0);
-  scn_input->features().reference(d_voxel_features, {valid_num, 5},
-                                  spconv::DataType::Float16);
-  scn_input->indices().reference(d_voxel_indices, {valid_num, 4},
-                                 spconv::DataType::Int32);
-  scn_input->set_grid_size(sparse_shape);
-  scn_engine_->forward(stream);
-  auto *result_features = scn_engine_->output(0)->features().ptr();
+  auto *result_features = scn_engine_->Forward(
+      d_voxel_features, d_voxel_indices, valid_num, sparse_shape, stream);
   last_sparse_backbone_ms_ = timer_.stop("3D Backbone", verbose_);
   timing_scn_engine_.push_back(last_sparse_backbone_ms_);
 
