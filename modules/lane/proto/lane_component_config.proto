@@ -27,4 +27,7 @@ message LaneComponentConfig {
   optional float focal_y = 19;
   optional float principal_x = 20;
   optional float principal_y = 21;
+  optional float radial_distortion_k1 = 22 [default = 0.0];
+  optional float radial_distortion_k2 = 23 [default = 0.0];
+  optional float radial_distortion_k3 = 24 [default = 0.0];
 }

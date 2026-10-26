@@ -17,6 +17,7 @@
 
 #include "modules/lane/inference/ufldv2.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <vector>
@@ -153,6 +154,31 @@ TEST(Ufldv2DecoderTest, DecodesRowAnchorsIntoSourceCoordinates) {
   EXPECT_NEAR(result.lanes[0].image_points.back().x, 803.5F, 1.0F);
   EXPECT_NEAR(result.lanes[0].image_points.back().y, 999.0F, 0.01F);
   EXPECT_EQ(result.lanes[0].position, LanePosition::kEgoRight);
+}
+
+TEST(Ufldv2DecoderTest, DecodesColumnHeadInFullImageCoordinates) {
+  std::vector<uint8_t> bytes;
+  const ImageView image = MakeImage(&bytes);
+  Ufldv2TensorOutputs outputs = MakeOutputs();
+  for (int anchor : {10, 20, 30}) {
+    outputs.exist_col.values[ExistenceIndex(1, anchor, 0, 81)] = 20.0F;
+    const int grid = 50 + anchor - 10;
+    outputs.loc_col.values[
+        (static_cast<size_t>(grid) * 81U + static_cast<size_t>(anchor)) *
+        4U] = 20.0F;
+  }
+  LaneDetectionResult result;
+
+  ASSERT_TRUE(Ufldv2Decoder().Decode(image, outputs, &result));
+  ASSERT_FALSE(result.lanes.empty());
+  const auto lane = std::find_if(
+      result.lanes.begin(), result.lanes.end(),
+      [](const LaneLineResult& candidate) {
+        return candidate.candidate_id == 0U;
+      });
+  ASSERT_NE(lane, result.lanes.end());
+  ASSERT_EQ(lane->image_points.size(), 3U);
+  EXPECT_NEAR(lane->image_points.front().y, 504.5F, 1.0F);
 }
 
 TEST(Ufldv2DecoderTest, RejectsUnexpectedTensorShape) {

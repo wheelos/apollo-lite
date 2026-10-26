@@ -82,6 +82,9 @@ bool LaneDetectionComponent::Init() {
   calibration.principal_y = config_.principal_y();
   calibration.camera_height_meters = config_.camera_height_meters();
   calibration.pitch_radians = config_.static_pitch_radians();
+  calibration.radial_distortion = {
+      config_.radial_distortion_k1(), config_.radial_distortion_k2(),
+      config_.radial_distortion_k3()};
   if (!calibrator_.Init(calibration)) {
     AERROR << "Invalid static camera calibration";
     return false;

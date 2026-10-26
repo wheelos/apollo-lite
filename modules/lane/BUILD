@@ -50,6 +50,12 @@ cc_library(
     deps = [":lane_types"],
 )
 
+cc_binary(
+    name = "static_lane_projection_point",
+    srcs = ["calibration/static_lane_projection_point.cc"],
+    deps = [":static_lane_calibrator"],
+)
+
 cc_library(
     name = "lane_transform_adapter",
     srcs = ["component/lane_transform_adapter.cc"],
@@ -106,6 +112,17 @@ cc_test(
         ":image_frame",
         ":lane_types",
         ":ufldv2",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "static_lane_calibrator_test",
+    size = "small",
+    srcs = ["calibration/static_lane_calibrator_test.cc"],
+    deps = [
+        ":lane_types",
+        ":static_lane_calibrator",
         "@com_google_googletest//:gtest_main",
     ],
 )
