@@ -1,20 +1,21 @@
 # LiDAR Object Detection
 
-## NVIDIA PointPillars (independent experimental backend)
+## NVIDIA PointPillars backend
 
 The module also provides NVIDIA CUDA-PointPillars at pinned revision
 `092affc36c72d7b8f7530685d4c0f538d987a94b`. It uses single-sweep KITTI XYZI
-inputs, not the CenterPoint five-feature/10-sweep input contract. Existing
-CenterPoint interfaces and default DAG are unchanged. The old PointPillars
-under `modules/perception` is also unchanged.
+inputs, not the CenterPoint five-feature/10-sweep input contract. CenterPoint
+and PointPillars share one Cyber component, one DAG, one component config, and
+one output message. Their model-specific preprocessing, runtime operators, and
+postprocessing remain separate.
 
-In the managed non-root development container, build the independent runtime
-and component:
+In the managed non-root development container, build the runtime and shared
+component:
 
 ```sh
 bazel build --config=dev --config=gpu \
   //modules/lidar_object_detection:libpointpillars_runtime.so \
-  //modules/lidar_object_detection:libpointpillars_component.so
+  //modules/lidar_object_detection:liblidar_object_detection_component.so
 bazel test --config=dev //modules/lidar_object_detection:pointpillars_input_test
 ```
 
@@ -33,25 +34,31 @@ python3 modules/lidar_object_detection/tools/run_pointpillars.py \
 
 The runner refuses to overwrite an existing engine or output. Input must
 contain 1..300000 finite XYZI rows. Exceeding the engine's occupied-pillar
-capacity (10000 for the pinned ONNX, up to 40000 supported by the kernels) is an explicit
-error, not silent memory corruption or clipping. Point selection within a
-pillar follows the upstream nondeterministic GPU implementation. Output boxes
+capacity (10000 for the pinned ONNX, up to 40000 supported by the kernels) is
+an explicit error, not silent memory corruption or clipping. Point selection
+within a pillar follows the upstream nondeterministic GPU implementation. Output boxes
 are geometric centers, sizes along input x/y/z, yaw in radians about +z, and
 zero-based KITTI classes Car/Pedestrian/Cyclist. No velocity is inferred.
 JSONL is prediction data, not an official KITTI evaluation submission.
 
 The versioned runtime ABI checks detection size and converts runtime failures
-to explicit errors. The optional Cyber component dynamically loads this DSO,
+to explicit errors. The shared Cyber component dynamically loads this DSO,
 requires an exact sensor frame match and explicitly configured positive
-intensity scale, and publishes `PointPillarsFrameResult`. Select intensity
-scale from the checkpoint's training units; there is no default guessed scale.
-The configuration and DAG are intentionally incomplete templates: fill engine,
-runtime, model revision, sensor frame, output and input channels before launch.
+intensity scale, and publishes `LidarObjectDetectionFrameResult`. Select
+intensity scale from the checkpoint's training units; there is no default
+guessed scale. The single config is a protobuf `oneof`: replace its `centerpoint`
+block with a `pointpillars` block to switch models. Configure the model paths,
+revision, sensor frame, output channel, and the DAG reader channel before launch.
+The checked-in example uses the `left_front` sensor frame and matching
+`/apollo/sensor/vanjeelidar/left_front/PointCloud2` topic from the `ad_agents`
+calibration example; the selected vehicle calibration remains authoritative,
+so update both when using another sensor.
 No production perception flow is enabled automatically.
 
-Install with `//modules/lidar_object_detection:install_pointpillars`; supply
-the desired install prefix as for other module install targets. Model files
-and TensorRT engines are separate deployment artifacts and are not bundled.
+Install both model runtimes and the shared component with
+`//modules/lidar_object_detection:install`; supply the desired install prefix
+as for other module install targets. Model files and TensorRT engines are
+separate deployment artifacts and are not bundled.
 The imported Apache-2.0 sources and changes are recorded under
 `third_party/pointpillars/UPSTREAM.md`. Building does not establish dataset
 accuracy, target latency, long-run resource stability or vehicle readiness.
@@ -70,11 +77,12 @@ python3 -m unittest test_run_pointpillars test_pointpillars_runtime -v
 The GPU tests exercise engine-capacity overflow rejection, valid frames after
 a rejection, and nonfinite input handling. `POINTPILLARS_SAMPLE` is optional;
 without it the test uses a synthetic in-range point, not an accuracy dataset.
-`pointpillars_component_test` is an explicit/manual Cyber integration target;
-pass the same runtime/engine paths via Bazel `--test_env`. It initializes the
-component, processes input, rejects the wrong sensor frame, and reloads the
-runtime. TensorRT plugin code remains resident until process exit because its
-plugin registry retains creator pointers; inference GPU buffers are still
+`lidar_object_detection_component_test` is an explicit/manual Cyber integration
+target; pass the same runtime/engine paths via Bazel `--test_env`. It initializes
+the shared component with the PointPillars backend, processes input, rejects
+the wrong sensor frame, and reloads the runtime. TensorRT plugin code remains
+resident until process exit because its plugin registry retains creator
+pointers; inference GPU buffers are still
 released when each runtime is destroyed.
 For direct test-binary execution against a local core checkout, set
 `CYBER_PATH` to that checkout's `cyber` directory so Cyber can find its runtime
@@ -106,10 +114,21 @@ PCD directory
   -> predictions.jsonl + per-frame timings.csv + raw NVIDIA text results
 
 Cyber PointCloud
-  -> pose-aligned temporal sweep fusion -> configured five-feature adapter
-  -> Apollo C ABI adapter -> CenterPoint CUDA/TensorRT runtime
-  -> CenterPointFrameResult
+  -> shared component input/frame validation and result publication
+       CenterPoint: pose-aligned temporal sweep fusion -> five-feature adapter
+         -> CenterPoint CUDA/TensorRT runtime -> model-specific postprocessing
+       PointPillars: XYZI adapter -> PointPillars CUDA/TensorRT runtime
+         -> model-specific postprocessing
+  -> LidarObjectDetectionFrameResult
 ```
+
+Both backends consume XYZ in the configured incoming PointCloud frame.
+PointPillars uses the current XYZI sweep; CenterPoint builds its configured
+five-feature input after aligning temporal sweeps into the current sensor frame.
+The shared result records that frame and the selected backend, with common box
+fields, but class IDs retain each model's taxonomy and PointPillars has no
+velocity output. A common message schema does not by itself establish equivalent
+predictions or accuracy.
 
 `types/model_input.*` adapts each Apollo point cloud to packed five-float rows.
 The first three channels must be `x, y, z`; the other sources and scales are
@@ -126,7 +145,8 @@ bounded history, transforms prior sweeps into the current LiDAR frame using
 the supplied sensor-to-world poses, filters close points from historical
 sweeps, and encodes positive time lag for `ModelInputBuilder`. It rejects
 out-of-order timestamps, invalid poses, and fused clouds over the configured
-point limit. `CenterPointComponent` uses it to fuse incoming Cyber
+point limit. The shared component uses it for CenterPoint and bypasses sweep
+fusion for PointPillars.
 PointCloud messages before inference.
 
 For nuScenes, `prepare_nuscenes_manifest.py` reads the official info pickle,
@@ -246,7 +266,7 @@ repositories. The dependency boundary is:
 | Dependency | Source / management | Runtime requirement |
 | --- | --- | --- |
 | CenterPoint CUDA/TensorRT implementation | Pinned, MIT-licensed source snapshot in `third_party/centerpoint/` | CUDA toolkit/driver and a compatible TensorRT installation |
-| ONNX schemas and model loader | Shared schemas in `third_party/onnx/`, CenterPoint host-side `sparse_model` loader | Protobuf, no NVIDIA sparse-engine parser |
+| ONNX schemas and model loader | Shared schemas in `third_party/onnx/`, detector-owned `sparse_model` graph parser | Protobuf, no NVIDIA sparse-engine parser |
 | spconv 2.3.8 | Registry module `spconv@2.3.8.bcr.1`, with explicit pinned source generation | Sole sparse backbone, compiled into the runtime; no imported spconv DSO |
 | Model artifacts | Supplied by the deployment; not checked in | Matching SCN ONNX and TensorRT engine |
 
@@ -273,14 +293,18 @@ CUDA driver support must be available in the target NVIDIA software image.
 The ONNX model and TensorRT engine are separate deployment artifacts; the
 component config must point to the exact model files used to build the engine.
 
-The runtime uses `spconv_backbone.cu`, backed by upstream spconv 2.3.8, as its
-only sparse implementation. The former NVIDIA spconv import and backend
-selection have been removed. This replaces only the sparse backbone; it
-retains the existing ONNX model, voxelizer, TensorRT head and postprocessing.
-The install target packages spconv/cumm licenses but no NVIDIA spconv DSO.
-See [`SPCONV.md`](third_party/centerpoint/SPCONV.md) for source preparation,
-stream/lifetime contracts and the validation harness. This implementation
-choice does not establish full accuracy or deployment acceptance.
+The runtime uses the shared
+`@wheelos_perception_ops//ops/spconv:spconv_backbone` target, backed by
+upstream spconv 2.3.8, as its only sparse implementation. The model-neutral
+CUDA executor lives under `pkgs/perception_ops/ops/spconv`; CenterPoint owns
+the custom ONNX parser and detector integration. The former NVIDIA spconv
+import and backend selection have been removed. This replaces only the sparse
+backbone; it retains the existing ONNX model, voxelizer, TensorRT head and
+postprocessing. The install target packages spconv/cumm licenses but no NVIDIA
+spconv DSO. See [`SPCONV.md`](third_party/centerpoint/SPCONV.md) for source
+preparation, stream/lifetime contracts and the validation harness. This
+implementation choice does not establish full accuracy or deployment
+acceptance.
 
 The nuScenes Python dependencies remain evaluation-only. The validated
 experiment used RTX 4060 (SM89), CUDA 12.8, and TensorRT 10.9 with local NVIDIA

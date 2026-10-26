@@ -41,42 +41,6 @@ cc_test(
 )
 
 cc_library(
-    name = "pointpillars_component_lib",
-    srcs = ["component/pointpillars_component.cc"],
-    hdrs = [
-        "component/pointpillars_component.h",
-        "inference/pointpillars_runtime_api.h",
-    ],
-    linkopts = ["-ldl"],
-    deps = [
-        ":pointpillars_input",
-        "//modules/lidar_object_detection/proto:pointpillars_cc_proto",
-        "@core//cyber",
-    ],
-    alwayslink = True,
-)
-
-cc_binary(
-    name = "libpointpillars_component.so",
-    linkshared = True,
-    linkstatic = False,
-    deps = [":pointpillars_component_lib"],
-)
-
-cc_test(
-    name = "pointpillars_component_test",
-    size = "small",
-    srcs = ["component/pointpillars_component_test.cc"],
-    tags = ["manual"],
-    deps = [
-        ":pointpillars_component_lib",
-        "@com_google_googletest//:gtest",
-        "@com_google_protobuf//:protobuf",
-        "@core//cyber",
-    ],
-)
-
-cc_library(
     name = "model_input",
     srcs = ["types/model_input.cc"],
     hdrs = ["types/model_input.h"],
@@ -135,13 +99,18 @@ cc_library(
 )
 
 cc_library(
-    name = "centerpoint_component_lib",
-    srcs = ["component/centerpoint_component.cc"],
-    hdrs = ["component/centerpoint_component.h"],
+    name = "lidar_object_detection_component_lib",
+    srcs = ["component/lidar_object_detection_component.cc"],
+    hdrs = [
+        "component/lidar_object_detection_component.h",
+        "inference/pointpillars_runtime_api.h",
+    ],
     copts = ['-DMODULE_NAME=\\"lidar_object_detection\\"'],
+    linkopts = ["-ldl"],
     deps = [
         ":centerpoint_runner",
         ":centerpoint_runtime_backend",
+        ":pointpillars_input",
         ":sweep_fusion",
         "//modules/lidar_object_detection/proto:lidar_object_detection_cc_proto",
         "//modules/perception/onboard/transform_wrapper",
@@ -153,10 +122,23 @@ cc_library(
 )
 
 cc_binary(
-    name = "libcenterpoint_component.so",
+    name = "liblidar_object_detection_component.so",
     linkshared = True,
     linkstatic = False,
-    deps = [":centerpoint_component_lib"],
+    deps = [":lidar_object_detection_component_lib"],
+)
+
+cc_test(
+    name = "lidar_object_detection_component_test",
+    size = "small",
+    srcs = ["component/lidar_object_detection_component_test.cc"],
+    tags = ["manual"],
+    deps = [
+        ":lidar_object_detection_component_lib",
+        "@com_google_googletest//:gtest",
+        "@com_google_protobuf//:protobuf",
+        "@core//cyber",
+    ],
 )
 
 cc_binary(
@@ -217,8 +199,8 @@ cc_test(
 filegroup(
     name = "runtime_config",
     srcs = [
-        "conf/centerpoint_component.pb.txt",
-        "dag/centerpoint.dag",
+        "conf/lidar_object_detection_component.pb.txt",
+        "dag/lidar_object_detection.dag",
     ],
 )
 
@@ -233,30 +215,17 @@ install(
     name = "install",
     data = [
         ":runtime_config",
-    ],
-    data_dest = "lidar_object_detection",
-    library_dest = "lidar_object_detection/lib",
-    targets = [
-        ":libcenterpoint_component.so",
-        ":libcenterpoint_runtime.so",
-    ],
-    deps = [
-        ":install_centerpoint_spconv_licenses",
-    ],
-)
-
-install(
-    name = "install_pointpillars",
-    data = [
-        "conf/pointpillars_component.pb.txt",
-        "dag/pointpillars.dag",
         "tools/run_pointpillars.py",
     ],
     data_dest = "lidar_object_detection",
     library_dest = "lidar_object_detection/lib",
     targets = [
-        ":libpointpillars_component.so",
+        ":liblidar_object_detection_component.so",
+        ":libcenterpoint_runtime.so",
         ":libpointpillars_runtime.so",
+    ],
+    deps = [
+        ":install_centerpoint_spconv_licenses",
     ],
 )
 

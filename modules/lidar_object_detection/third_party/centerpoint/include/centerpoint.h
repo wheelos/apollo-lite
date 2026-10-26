@@ -29,7 +29,7 @@
 #include "common.h"
 #include "postprocess.h"
 #include "preprocess.h"
-#include "sparse_backbone.h"
+#include "spconv/sparse_backbone.h"
 #include "tensorrt.hpp"
 #include "timer.hpp"
 
@@ -43,7 +43,7 @@ class CenterPoint {
   bool verbose_;
 
   std::shared_ptr<PreProcessCuda> pre_;
-  std::unique_ptr<SparseBackbone> scn_engine_;
+  std::unique_ptr<wheelos::perception::ops::spconv::SparseBackbone> scn_engine_;
   std::shared_ptr<TensorRT::Engine> trt_;
   std::shared_ptr<PostProcessCuda> post_;
 

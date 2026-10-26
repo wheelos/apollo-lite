@@ -15,7 +15,9 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
+#include <vector>
 
 #include "modules/lidar_object_detection/proto/lidar_object_detection.pb.h"
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
@@ -23,29 +25,47 @@
 #include "cyber/cyber.h"
 #include "modules/lidar_object_detection/inference/centerpoint_backend.h"
 #include "modules/lidar_object_detection/inference/centerpoint_runner.h"
+#include "modules/lidar_object_detection/inference/pointpillars_runtime_api.h"
 #include "modules/lidar_object_detection/types/sweep_fusion.h"
 #include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
 
 namespace apollo {
 namespace lidar_object_detection {
 
-class CenterPointComponent
+class LidarObjectDetectionComponent
     : public cyber::Component<apollo::drivers::PointCloud> {
  public:
+  ~LidarObjectDetectionComponent() override;
   bool Init() override;
   bool Proc(
       const std::shared_ptr<apollo::drivers::PointCloud>& message) override;
 
  private:
-  CenterPointComponentConfig config_;
-  std::unique_ptr<CenterPointBackend> backend_;
-  std::unique_ptr<CenterPointRunner> runner_;
+  bool InitCenterPoint(const CenterPointModelConfig& config,
+                       std::string* error);
+  bool InitPointPillars(const PointPillarsModelConfig& config,
+                        std::string* error);
+  bool ProcessCenterPoint(
+      const std::shared_ptr<const apollo::drivers::PointCloud>& message,
+      LidarObjectDetectionFrameResult* result, std::string* error);
+  bool ProcessPointPillars(
+      const std::shared_ptr<const apollo::drivers::PointCloud>& message,
+      LidarObjectDetectionFrameResult* result, std::string* error);
+
+  LidarObjectDetectionComponentConfig config_;
+  std::unique_ptr<CenterPointBackend> centerpoint_backend_;
+  std::unique_ptr<CenterPointRunner> centerpoint_runner_;
   std::unique_ptr<perception::onboard::TransformWrapper> transform_;
   PointCloudSweepFusion sweep_fusion_;
-  std::shared_ptr<cyber::Writer<CenterPointFrameResult>> writer_;
+  void* pointpillars_library_ = nullptr;
+  void* pointpillars_runtime_ = nullptr;
+  decltype(&pointpillars_runtime_destroy) pointpillars_destroy_ = nullptr;
+  decltype(&pointpillars_runtime_infer) pointpillars_infer_ = nullptr;
+  std::shared_ptr<cyber::Writer<LidarObjectDetectionFrameResult>> writer_;
+  std::mutex mutex_;
 };
 
-CYBER_REGISTER_COMPONENT(CenterPointComponent);
+CYBER_REGISTER_COMPONENT(LidarObjectDetectionComponent);
 
 }  // namespace lidar_object_detection
 }  // namespace apollo

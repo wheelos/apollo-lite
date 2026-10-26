@@ -6,13 +6,6 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 cc_library(
-    name = "sparse_backbone_api",
-    hdrs = ["include/sparse_backbone.h"],
-    includes = ["include"],
-    deps = ["@cuda//:cuda_runtime"],
-)
-
-cc_library(
     name = "sparse_model",
     srcs = ["src/sparse_model.cpp"],
     hdrs = ["include/sparse_model.h"],
@@ -20,6 +13,7 @@ cc_library(
     deps = [
         "//third_party/onnx:onnx_proto_cc",
         "@com_google_protobuf//:protobuf",
+        "@wheelos_perception_ops//ops/spconv:spconv_backbone_api",
     ],
 )
 
@@ -39,23 +33,8 @@ cc_binary(
     testonly = True,
     srcs = ["src/sparse_backbone_benchmark.cpp"],
     deps = [
-        ":sparse_backbone_api",
-        ":spconv_backbone",
-    ],
-)
-
-cuda_library(
-    name = "spconv_backbone",
-    srcs = ["src/spconv_backbone.cu"],
-    copts = [
-        "-std=c++17",
-        "-O3",
-        "--extended-lambda",
-    ],
-    deps = [
-        ":sparse_backbone_api",
         ":sparse_model",
-        "@spconv",
+        "@wheelos_perception_ops//ops/spconv:spconv_backbone",
     ],
 )
 
@@ -101,10 +80,10 @@ cc_library(
         "src",
     ],
     deps = [
-        ":sparse_backbone_api",
-        ":spconv_backbone",
+        ":sparse_model",
         "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
+        "@wheelos_perception_ops//ops/spconv:spconv_backbone",
     ],
     alwayslink = True,
 )

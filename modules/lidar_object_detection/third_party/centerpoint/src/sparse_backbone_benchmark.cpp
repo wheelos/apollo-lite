@@ -26,7 +26,8 @@
 #include <string>
 #include <vector>
 
-#include "modules/lidar_object_detection/third_party/centerpoint/include/sparse_backbone.h"
+#include "sparse_model.h"
+#include "spconv/sparse_backbone.h"
 
 namespace {
 
@@ -90,7 +91,8 @@ int Run(const std::string& model, const std::string& list,
   std::ofstream csv(directory + "/timings.csv");
   csv.exceptions(std::ios::failbit | std::ios::badbit);
   csv << "pass,fixture,count,forward_wall_ms,hash\n";
-  auto backbone = LoadSparseBackbone(model);
+  auto backbone = wheelos::perception::ops::spconv::CreateSparseBackbone(
+      LoadSparseModel(model));
   auto features_device = Allocate(160000 * 5 * sizeof(uint16_t));
   auto indices_device = Allocate(160000 * 4 * sizeof(int32_t));
   std::array<Stream, 2> streams;

@@ -11,13 +11,15 @@ resource lifecycle code under `modules/lidar_object_detection/inference/`;
 keep serialized-model schemas under `third_party/onnx/` and the reusable
 spconv library build in the registry module `spconv@2.3.8.bcr.1`.
 
-`sparse_backbone.h`, `spconv_backbone.cu`,
 `sparse_model.*` and their validation tools are Apollo integration additions,
-not NVIDIA upstream files. `CenterPoint` calls the common backend interface;
-the sole backend compiles pinned spconv 2.3.8/cumm generated sources as
-described in [`SPCONV.md`](SPCONV.md). The NVIDIA sparse-engine wrapper,
-imported DSO, headers and parser are no longer used. NVIDIA provenance still
-applies to the retained voxelizer, TensorRT integration and postprocessing.
+not NVIDIA upstream files. The ONNX parser remains with the detector
+integration; the model-neutral sparse graph API and CUDA executor live in
+`pkgs/perception_ops/ops/spconv`. `CenterPoint` maps the parsed graph into that
+public API, whose sole backend compiles pinned spconv 2.3.8/cumm generated
+sources as described in [`SPCONV.md`](SPCONV.md). The NVIDIA sparse-engine
+wrapper, imported DSO, headers and parser are no longer used. NVIDIA
+provenance still applies to the retained voxelizer, TensorRT integration and
+postprocessing.
 
 Before updating the pinned revision, compare the proposed source against the
 upstream revision, review and document compatibility changes, preserve upstream

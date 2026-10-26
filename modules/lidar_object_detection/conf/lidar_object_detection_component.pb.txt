@@ -1,4 +1,5 @@
-model {
+# Select one backend by replacing the centerpoint block with pointpillars.
+centerpoint {
   gpu_device_id: 0
   scn_onnx_path: "/apollo/modules/lidar_object_detection-dev/local/model/centerpoint.scn.onnx"
   rpn_centerhead_engine_path: "/apollo/modules/lidar_object_detection-dev/local/model/rpn_centerhead_sim.plan"
@@ -10,11 +11,10 @@ model {
   input_feature { source: POINT_FEATURE_INTENSITY scale: 1.0 }
   input_feature { source: POINT_FEATURE_TIME_OFFSET_SECONDS scale: 1.0 }
 }
-input_channel: "/apollo/sensor/velodyne128/compensator/PointCloud2"
-output_channel: "/apollo/perception/centerpoint/detections"
-sensor_name: "velodyne128"
+output_channel: "/apollo/perception/lidar_object_detection/detections"
+sensor_name: "left_front"
 sensor_parent_frame_id: "base_link"
-sensor_frame_id: "velodyne128"
+sensor_frame_id: "left_front"
 world_frame_id: "map"
 vehicle_frame_id: "base_link"
 sweep_count: 10

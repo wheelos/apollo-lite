@@ -1,8 +1,0 @@
-# Template only: set deployment-specific paths, channels, frame and intensity
-# scale before launch. No existing perception pipeline is changed.
-engine_path: ""
-runtime_library_path: ""
-gpu_device_id: 0
-sensor_frame_id: ""
-output_channel: ""
-model_revision: ""

@@ -1,9 +1,12 @@
 # CenterPoint sparse convolution
 
-The sparse backbone uses upstream spconv 2.3.8, compiled from generated
-C++/CUDA sources, through Apollo's CenterPoint ONNX adapter. The former
-NVIDIA sparse-engine import, headers and parser have been removed. No
-prebuilt `libspconv.so` or backend-selection flag is needed.
+The reusable sparse-convolution graph executor is in the public
+`wheelos_perception_ops` package at `pkgs/perception_ops/ops/spconv`. Bazel
+builds the generated spconv-backed operator target once for both consumers.
+The CenterPoint integration owns the ONNX graph parser and maps the validated
+graph into the package's model-neutral API. BEVFusion uses that parser target
+and the same operator target; neither module carries a separate sparse engine.
+No prebuilt `libspconv.so` or backend-selection flag is needed.
 
 ## Registry dependency
 
@@ -20,12 +23,16 @@ archive module with an **explicit generation stage**, not a published
 generated-source archive or a binary-only distribution.
 
 Upstream spconv provides code-generated operators, not a loader for NVIDIA's
-custom ONNX graph. The adapter implements `SparseConvolution`, sparse
-`Add`/`Relu`, `ScatterDense` and `Reshape` for batch-one FP16 graphs. Both
-modules link the same `@spconv//:spconv` target and sparse graph adapter;
-BEVFusion graphs must use the supported operators and XYZ scatter layout. The
-adapter rejects unsupported operators, quantization, shapes and weights. It
-does not change voxelization, model weights, TensorRT heads or decode/NMS.
+custom ONNX graph. The Apollo executor implements `SparseConvolution`, sparse
+`Add`/`Relu`, `ScatterDense`, dense `Transpose` and `Reshape` for batch-one FP16 tensors and
+weights. The NVIDIA sparse graph may also carry `int8` precision hints for
+its former engine builder; as in the previous BEVFusion integration, this
+runtime deliberately forces FP16 execution and validates the underlying graph
+and initializers as FP16. Unknown precision hints, unsupported operators,
+shapes and weights are rejected. The operator package directly depends on
+`@spconv//:spconv`; model modules depend on
+`@wheelos_perception_ops//ops/spconv:spconv_backbone`. The executor does not
+own voxelization, model weights, TensorRT heads or decode/NMS.
 
 As the mapped non-root user in the managed dev container, reuse its CUDA
 toolchain and the isolated Python 3.10 codegen environment through `PYTHONPATH`:
@@ -48,7 +55,8 @@ bazel build --config=dev --config=gpu --config=opt \
   --lockfile_mode=off \
   --repo_env=SPCONV_SOURCE_ROOT=/apollo/.cache/spconv-registry-source-2.3.8-sm89 \
   --@rules_cuda//cuda:archs=sm_89 --jobs=4 \
-  //modules/lidar_object_detection:libcenterpoint_runtime.so
+  //modules/lidar_object_detection:libcenterpoint_runtime.so \
+  //modules/bevfusion:libbevfusion_runtime.so
 ```
 
 Codegen architecture and Bazel architecture must match the target GPU.
@@ -72,7 +80,9 @@ instance; SubM index relations are cached only within one frame. The retained
 workspace cap is 1 GiB, excluding weights and upstream sorting scratch.
 
 `//modules/lidar_object_detection/third_party/centerpoint:sparse_model_test`
-checks supported and malformed graphs without requiring a GPU or model file.
+checks supported and malformed ONNX graphs without requiring a GPU or model
+file. The public package contains only the CUDA executor; model parsing and
+its CPU-only test remain with the CenterPoint integration.
 The test-only `sparse_backbone_benchmark` binary accepts:
 
 ```text

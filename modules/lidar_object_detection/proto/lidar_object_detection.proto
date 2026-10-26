@@ -27,9 +27,19 @@ message CenterPointModelConfig {
   optional string runtime_library_path = 6;
 }
 
-message CenterPointComponentConfig {
-  optional CenterPointModelConfig model = 1;
-  optional string input_channel = 2;
+message PointPillarsModelConfig {
+  optional string engine_path = 1;
+  optional string runtime_library_path = 2;
+  optional int32 gpu_device_id = 3 [default = 0];
+  optional float intensity_scale = 4;
+  optional string model_revision = 5;
+}
+
+message LidarObjectDetectionComponentConfig {
+  oneof backend_config {
+    CenterPointModelConfig centerpoint = 1;
+    PointPillarsModelConfig pointpillars = 2;
+  }
   optional string output_channel = 3;
   optional string sensor_name = 4;
   optional string sensor_parent_frame_id = 5;
@@ -67,4 +77,36 @@ message CenterPointFrameResult {
   optional double rpn_centerhead_ms = 10;
   optional double decode_nms_ms = 11;
   optional double total_inference_ms = 12;
+}
+
+enum LidarObjectDetectionBackend {
+  LIDAR_OBJECT_DETECTION_BACKEND_UNSPECIFIED = 0;
+  LIDAR_OBJECT_DETECTION_BACKEND_CENTERPOINT = 1;
+  LIDAR_OBJECT_DETECTION_BACKEND_POINTPILLARS = 2;
+}
+
+message LidarObjectDetection {
+  optional float center_x = 1;
+  optional float center_y = 2;
+  optional float center_z = 3;
+  optional float size_x = 4;
+  optional float size_y = 5;
+  optional float size_z = 6;
+  optional float velocity_x = 7;
+  optional float velocity_y = 8;
+  optional float yaw = 9;
+  optional int32 class_id = 10;
+  optional float score = 11;
+}
+
+message LidarObjectDetectionFrameResult {
+  optional apollo.common.Header header = 1;
+  optional string sensor_frame_id = 2;
+  optional string model_revision = 3;
+  optional LidarObjectDetectionBackend backend = 4;
+  optional uint32 input_point_count = 5;
+  repeated LidarObjectDetection detection = 6;
+  optional double preprocess_ms = 7;
+  optional double inference_ms = 8;
+  optional double total_pipeline_ms = 9;
 }

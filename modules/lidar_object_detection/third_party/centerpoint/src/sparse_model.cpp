@@ -85,6 +85,25 @@ std::vector<int> Dimensions(const onnx::NodeProto& node,
   return result;
 }
 
+std::vector<int> TransposePermutation(const onnx::NodeProto& node,
+                                      size_t rank) {
+  const auto* permutation = Attribute(node, "perm");
+  const auto* legacy_dimensions = Attribute(node, "dims");
+  Require(permutation == nullptr || legacy_dimensions == nullptr,
+          "Transpose has both perm and dims attributes");
+  if (permutation != nullptr) {
+    return Dimensions(node, "perm", rank);
+  }
+  if (legacy_dimensions != nullptr) {
+    return Dimensions(node, "dims", rank);
+  }
+  std::vector<int> result(rank);
+  for (size_t axis = 0; axis < rank; ++axis) {
+    result[axis] = static_cast<int>(rank - axis - 1);
+  }
+  return result;
+}
+
 std::vector<uint16_t> Weight(const onnx::GraphProto& graph,
                              const std::string& name,
                              const std::vector<int64_t>& shape) {
@@ -107,7 +126,8 @@ std::vector<uint16_t> Weight(const onnx::GraphProto& graph,
 
 }  // namespace
 
-SparseModel LoadSparseModel(const std::string& path) {
+wheelos::perception::ops::spconv::SparseModel LoadSparseModel(
+    const std::string& path) {
   std::ifstream file(path, std::ios::binary);
   onnx::ModelProto model;
   Require(file.good() && model.ParseFromIstream(&file), "cannot parse " + path);
@@ -116,7 +136,7 @@ SparseModel LoadSparseModel(const std::string& path) {
               graph.node_size() > 0 &&
               graph.node(0).op_type() == "SparseConvolution",
           "expected one sparse input and one dense output");
-  SparseModel result;
+  wheelos::perception::ops::spconv::SparseModel result;
   result.input = graph.input(0).name();
   result.output = graph.output(0).name();
   Require(graph.input(0).type().tensor_type().elem_type() ==
@@ -129,6 +149,7 @@ SparseModel LoadSparseModel(const std::string& path) {
   Require(input_shape.dim_size() == 2 && input_shape.dim(1).dim_value() == 5 &&
               output_shape.dim_size() == 4,
           "invalid graph input/output rank or feature count");
+  result.input_channels = input_shape.dim(1).dim_value();
   for (const auto& dimension : output_shape.dim()) {
     Require(dimension.dim_value() > 0, "output dimensions must be static");
     result.output_shape.push_back(dimension.dim_value());
@@ -139,9 +160,10 @@ SparseModel LoadSparseModel(const std::string& path) {
   }
   std::unordered_map<std::string, int> channels{{result.input, 5}};
   std::unordered_map<std::string, std::vector<int>> grids;
+  std::unordered_map<std::string, std::vector<int>> dense_shapes;
   int64_t dense_volume = 0;
   for (const auto& node : graph.node()) {
-    SparseModelLayer layer;
+    wheelos::perception::ops::spconv::SparseModelLayer layer;
     layer.op = node.op_type();
     Require(node.output_size() == 1 && node.input_size() >= 1,
             "invalid node arity: " + node.name());
@@ -166,8 +188,8 @@ SparseModel LoadSparseModel(const std::string& path) {
               "unsupported convolution configuration");
       for (const auto& name : {"precision", "output_precision"}) {
         const auto precision = String(node, name);
-        Require(precision.empty() || precision == "fp16",
-                "only FP16 is supported");
+        Require(precision.empty() || precision == "fp16" || precision == "int8",
+                "unsupported convolution precision hint");
       }
       Require(!Attribute(node, "output_padding") ||
                   Dimensions(node, "output_padding", 3) ==
@@ -243,31 +265,52 @@ SparseModel LoadSparseModel(const std::string& path) {
       layer.xyz = format == "xyz";
       layer.input_grid = Dimensions(node, "input_spatial_shape", 3);
       layer.dense_shape = Dimensions(node, "output_shape", 5);
-      const std::vector<int> spatial_shape =
-          layer.xyz
-              ? std::vector<int>{layer.input_grid[2], layer.input_grid[1],
-                                 layer.input_grid[0]}
-              : layer.input_grid;
-      Require(
-          layer.input_grid == grids.at(node.input(0)) &&
-              layer.dense_shape ==
-                  std::vector<int>({1, input_channels, spatial_shape[0],
-                                    spatial_shape[1], spatial_shape[2]}),
-          "ScatterDense shape mismatch");
+      std::vector<int> expected_shape{1, input_channels};
+      expected_shape.insert(expected_shape.end(), layer.input_grid.begin(),
+                            layer.input_grid.end());
+      Require(layer.input_grid == grids.at(node.input(0)) &&
+                  layer.dense_shape == expected_shape,
+              "ScatterDense shape mismatch");
       dense_volume = Volume(std::vector<int64_t>(layer.dense_shape.begin(),
                                                  layer.dense_shape.end()));
+      dense_shapes[layer.output] = layer.dense_shape;
+      output_channels = 0;
+    } else if (layer.op == "Transpose") {
+      Require(node.input_size() == 1 && input_channels == 0 &&
+                  dense_shapes.count(layer.inputs[0]),
+              "Transpose requires a dense input");
+      const auto& input_shape = dense_shapes.at(layer.inputs[0]);
+      layer.transpose = TransposePermutation(node, input_shape.size());
+      std::vector<bool> seen(input_shape.size(), false);
+      layer.dense_shape.resize(input_shape.size());
+      for (size_t axis = 0; axis < input_shape.size(); ++axis) {
+        const int input_axis = layer.transpose[axis];
+        Require(static_cast<size_t>(input_axis) < input_shape.size() &&
+                    !seen[input_axis],
+                "invalid Transpose permutation");
+        seen[input_axis] = true;
+        layer.dense_shape[axis] = input_shape[input_axis];
+      }
+      dense_shapes[layer.output] = layer.dense_shape;
       output_channels = 0;
     } else if (layer.op == "Reshape") {
-      Require(node.input_size() == 1 && input_channels == 0,
+      Require(node.input_size() == 1 && input_channels == 0 &&
+                  dense_shapes.count(layer.inputs[0]),
               "only dense Reshape is supported");
       layer.dense_shape = Dimensions(node, "dims", 4);
       Require(std::vector<int64_t>(layer.dense_shape.begin(),
                                    layer.dense_shape.end()) ==
                       result.output_shape &&
+                  Volume(std::vector<int64_t>(
+                      dense_shapes.at(layer.inputs[0]).begin(),
+                      dense_shapes.at(layer.inputs[0]).end())) ==
+                      Volume(std::vector<int64_t>(layer.dense_shape.begin(),
+                                                  layer.dense_shape.end())) &&
                   dense_volume ==
                       Volume(std::vector<int64_t>(result.output_shape.begin(),
                                                   result.output_shape.end())),
               "Reshape does not match graph output");
+      dense_shapes[layer.output] = layer.dense_shape;
       output_channels = 0;
     } else {
       throw std::runtime_error("Unsupported spconv ONNX operator: " + layer.op);

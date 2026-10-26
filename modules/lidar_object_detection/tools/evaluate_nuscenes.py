@@ -100,6 +100,7 @@ def _read_manifest(path):
 
 def _read_predictions(path):
     predictions = {}
+    box_semantics_by_token = {}
     with path.open(encoding="utf-8") as source:
         for line_number, line in enumerate(source, 1):
             try:
@@ -128,10 +129,18 @@ def _read_predictions(path):
                 raise ValueError(
                     "{}:{}: detections must be a list".format(path, line_number)
                 )
+            box_semantics = frame.get("box_semantics", {})
+            if not isinstance(box_semantics, dict):
+                raise ValueError(
+                    "{}:{}: box_semantics must be an object".format(
+                        path, line_number
+                    )
+                )
             predictions[token] = detections
+            box_semantics_by_token[token] = box_semantics
     if not predictions:
         raise ValueError("No predictions found in {}".format(path))
-    return predictions
+    return predictions, box_semantics_by_token
 
 
 def _transform_position(matrix, point):
@@ -220,17 +229,37 @@ def _nuscenes_yaw(yaw):
     return -float(yaw) - math.pi / 2.0
 
 
-def _convert_detection(detection, record):
+def _convert_detection(detection, record, box_semantics=None):
+    box_semantics = box_semantics or {}
     class_id = detection.get("class_id")
     if not isinstance(class_id, int) or not 0 <= class_id < len(MODEL_CLASSES):
         raise ValueError("Detection class_id is outside the model class range")
-    center = detection.get("center")
-    size = detection.get("size")
-    velocity = detection.get("velocity")
+    if "center" in detection:
+        center = detection.get("center")
+        size = detection.get("size")
+        velocity = detection.get("velocity")
+    else:
+        center = [
+            detection.get("center_x"),
+            detection.get("center_y"),
+            detection.get("center_z"),
+        ]
+        size = [
+            detection.get("width"),
+            detection.get("length"),
+            detection.get("height"),
+        ]
+        velocity = [
+            detection.get("velocity_x"),
+            detection.get("velocity_y"),
+        ]
     yaw = detection.get("yaw")
     score = detection.get("score")
     vectors = ((center, 3), (size, 3), (velocity, 2))
-    if any(not isinstance(vector, list) or len(vector) != size for vector, size in vectors):
+    if any(
+        not isinstance(vector, list) or len(vector) != size
+        for vector, size in vectors
+    ):
         raise ValueError("Detection center, size, or velocity has an invalid shape")
     try:
         center = [float(value) for value in center]
@@ -245,6 +274,18 @@ def _convert_detection(detection, record):
         raise ValueError("Detection contains a non-finite value")
     if min(size) <= 0.0 or not 0.0 <= score <= 1.0:
         raise ValueError("Detection size or score is outside its valid range")
+
+    center_z_semantics = box_semantics.get("center_z")
+    if center_z_semantics == (
+        "bottom-center z, as decoded by the NVIDIA upstream core"
+    ):
+        center[2] += size[2] * 0.5
+    elif center_z_semantics is not None and center_z_semantics != (
+        "box center z in the input LiDAR frame"
+    ):
+        raise ValueError(
+            "Unsupported center_z box semantics: {}".format(center_z_semantics)
+        )
 
     point_ego = _transform_position(record["lidar2ego"], center)
     point_global = _transform_position(record["ego2global"], point_ego)
@@ -283,7 +324,8 @@ def _convert_detection(detection, record):
     }
 
 
-def create_result(manifest, predictions):
+def create_result(manifest, predictions, box_semantics_by_token=None):
+    box_semantics_by_token = box_semantics_by_token or {}
     missing = set(manifest) - set(predictions)
     unexpected = set(predictions) - set(manifest)
     if missing or unexpected:
@@ -295,7 +337,9 @@ def create_result(manifest, predictions):
     result = {}
     for token, record in manifest.items():
         result[token] = [
-            _convert_detection(detection, record)
+            _convert_detection(
+                detection, record, box_semantics_by_token.get(token)
+            )
             for detection in predictions[token]
         ]
     return {
@@ -327,8 +371,9 @@ def main():
                 "use --format-only or install the evaluator dependency"
             ) from exc
 
+    predictions, box_semantics_by_token = _read_predictions(predictions_path)
     result = create_result(
-        _read_manifest(manifest_path), _read_predictions(predictions_path)
+        _read_manifest(manifest_path), predictions, box_semantics_by_token
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     result_path = output_dir / "nuscenes_results.json"
