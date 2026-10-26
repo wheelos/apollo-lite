@@ -24,6 +24,7 @@ read its `SKILL.md`. Select by `name`/`description`; load only what is needed.
 - [Offline vendor delivery](.agents/skills/vendor/SKILL.md)
 - [Multi-repository development](.agents/skills/multi-repo-dev/SKILL.md)
 - [Repository Agent setup](.agents/skills/repository-agent-setup/SKILL.md)
+- [Long-horizon development](.agents/skills/long-horizon-development/SKILL.md)
 - [Engineering solution design](.agents/skills/engineering-solution-design/SKILL.md)
 - [Algorithm development](.agents/skills/algorithm-development/SKILL.md)
 - [Performance optimization](.agents/skills/performance-optimization/SKILL.md)

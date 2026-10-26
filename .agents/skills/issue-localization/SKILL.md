@@ -1,80 +1,116 @@
 ---
 name: issue-localization
-description: Search existing evidence and working code before tracing the first wrong state and testing root-cause hypotheses. Use for 问题分析、错误定位、异常行为、测试失败、跨模块故障、先查找再定位。
+description: Search existing evidence and working code before tracing the first wrong state and testing root-cause hypotheses. Use for problem analysis, fault localization, unexpected behavior, test failures, and cross-module failures.
 ---
 
-# 先查找、后定位的问题分析
+# Issue Localization: Search Before Tracing
 
-## 适用与前置条件
+## Scope and prerequisites
 
-用于原因未知的错误、异常行为和失败；目标是缩小故障范围并建立因果证据，
-而非先猜修复。纯性能问题交接 `performance-optimization`。
-读取任务涉及的源码、测试、已有结果与近期相关改动，保护现有工作区。
-领域知识和工具入口见[技能索引](../README.md)，不全仓盲扫或预先加载所有模块。
+Use for errors, unexpected behavior, and failures with an unknown cause. The
+goal is to narrow the fault and establish causal evidence, not to guess a fix.
+Hand off performance-only issues to `performance-optimization`.
+Read relevant source, tests, existing results, and recent related changes;
+preserve the current worktree.
+See the [skill index](../README.md) for domain knowledge and tool entry
+points. Do not blindly scan the entire repository or preload every module.
 
-## 流程
+## Workflow
 
-### 1. 描述症状，先查已有证据
+### 1. Describe the symptom and inspect existing evidence first
 
-明确预期与实际、触发条件、受影响版本、首次异常时间或周期、输入输出。
-先完整读取相关错误、堆栈和已有日志，再查当前实现、调用关系、
-配置开关、同类测试与可工作的相似路径。已有上下文能回答时不重复询问。
-只检索相关历史、已知问题和参考实现；搜索命中不是根因证据。
+Clarify expected and actual behavior, trigger conditions, affected versions,
+first anomaly time or cycle, and inputs and outputs.
+Read the relevant errors, stack traces, and existing logs in full, then
+inspect current implementation, call relationships, configuration switches,
+similar tests, and working paths. Do not ask again for information already
+available in context.
+Search only relevant history, known issues, and reference implementations; a
+search hit is not root-cause evidence.
 
-优先使用现有复现条件。不能稳定复现时保存已知事件和缺失证据，
-不要猜修复；新增采集必须能区分具体假设，且避免敏感数据与无界日志。
+Prefer existing reproduction conditions. If the issue cannot be reproduced
+reliably, preserve known events and identify missing evidence instead of
+guessing a fix. Any new collection must distinguish specific hypotheses and
+avoid sensitive data or unbounded logs.
 
-### 2. 缩小到第一个错误边界
+### 2. Narrow the investigation to the first incorrect boundary
 
-从症状反向追踪输入、状态转换和调用路径，逐层比较正常与失败样例。
-找到最早可证实的异常输入、配置、时序、状态或输出，
-区分“此处发现错误”与“此处制造错误”，不只修补最后报错的消费者。
-多组件系统只检查相关边界，必要时增加最小观测点，不全面插桩。
+Trace inputs, state transitions, and call paths backward from the symptom,
+comparing normal and failing examples layer by layer.
+Find the earliest provable anomalous input, configuration, timing, state, or
+output. Distinguish where an error is observed from where it is introduced;
+do not patch only the final consumer that reports the error.
+In multi-component systems, inspect only relevant boundaries and add minimal
+instrumentation if needed; do not instrument everything.
 
-自动驾驶问题按证据核查坐标与单位、事件时间和接收时间、输入新鲜度、
-重置、配置、上游输出与下游解释。跨时钟域日志须确认同步和偏移，
-不能只按日志打印先后断定因果。
-规划异常区分输入与决策边界、优化求解、轨迹拼接和控制响应；
-只展开相关方向，不强制遍历全部故障类别。
+For autonomous-driving issues, use evidence to check coordinates and units,
+event time and receipt time, input freshness, reset, configuration, upstream
+outputs, and downstream interpretation. For logs across clock domains,
+confirm synchronization and offsets; do not infer causality only from log
+print order.
+For planning anomalies, distinguish input and decision boundaries,
+optimization solving, trajectory stitching, and control response. Explore
+only relevant areas; do not require checking every failure category.
 
-### 3. 建立并检验必要假设
+### 3. Form and test necessary hypotheses
 
-将已确认事实、待验证假设、已排除原因分开。
-每个候选原因写明支持证据、反证条件和最小区分检查，优先检查成本低、
-能最大程度缩小范围的假设；数量随不确定性变化，不机械凑足三个。
-一次实验尽量改变一个主要变量，先预测结果再执行。
+Separate confirmed facts, hypotheses to test, and eliminated causes.
+For each candidate cause, state supporting evidence, falsification
+conditions, and the smallest discriminating check. Prioritize low-cost
+hypotheses that can narrow the scope most; the number depends on uncertainty,
+not a mechanical requirement to list three.
+Change one main variable per experiment when possible; predict the outcome
+before running it.
 
-证据足够即可停止扩展。实验失败则更新假设，不叠加补丁或重复无信息增益的操作。
-相关性、时间上相邻或改参数后“似乎好了”都不足以单独证明根因。
-无法确认时交付已缩小范围和下一项检查，明确尚未定位。
+Stop expanding the investigation when evidence is sufficient. Update
+hypotheses when an experiment fails; do not stack patches or repeat
+operations that add no information.
+Correlation, temporal proximity, or a parameter change that “seems to help”
+does not by itself prove a root cause.
+If the cause cannot be confirmed, report the narrowed scope and next check,
+and explicitly state that localization is incomplete.
 
-### 4. 修复根因并防止回归
+### 4. Fix the root cause and prevent regression
 
-只做分析的任务到根因与证据边界为止；授权修复时才修改实现。
-写清“触发条件 → 首个错误输入/状态 → 传播路径 → 可见症状”。
-用最小复现或针对性测试证明原问题，再实现最小修复并按影响范围回归。
-不通过扩大容差、静默兜底、延长超时或增加重试掩盖未知原因。
-若契约本就要求容错，也必须说明故障机制、边界与失败可见性。
+For analysis-only tasks, stop at the root cause and evidence boundary; modify
+implementation only when a fix is authorized.
+State the chain “trigger condition → first incorrect input/state →
+propagation path → visible symptom.”
+Use a minimal reproduction or targeted test to demonstrate the original
+problem, then implement the smallest fix and run regression coverage matching
+the impact.
+Do not hide unknown causes by widening tolerances, silently falling back,
+extending timeouts, or adding retries.
+If the contract requires fault tolerance, still explain the failure
+mechanism, boundary, and how failures remain visible.
 
-涉及场景行为时交接 `simulation-regression`；证据已覆盖的局部缺陷
-不默认启动全栈回放。反复修复无效时停止，重新检查前提和边界，
-涉及架构重设计或范围扩大先征求用户选择。
+For scenario behavior, hand off to `simulation-regression`; do not
+automatically launch full-stack replay for a local defect already covered by
+evidence.
+If repeated fixes are ineffective, stop and recheck assumptions and
+boundaries. Ask the user before architectural redesign or scope expansion.
 
-## 交付与验收
+## Deliverables and acceptance
 
-交付症状、复现状态、首错边界、关键源码与运行证据、已排除项、
-因果链、修复或下一项检查及残余风险。
-区分“已复现”“已缩小范围”“根因已确认”“已修复并验证”，
-不能用代码改动或测试进程退出成功代替原症状已解决的证据。
+Report the symptom, reproduction status, first-failure boundary, key source
+and runtime evidence, eliminated causes, causal chain, fix or next check, and
+residual risks.
+Distinguish “reproduced,” “scope narrowed,” “root cause confirmed,” and
+“fixed and verified.” A code change or successful test-process exit does not
+prove that the original symptom is resolved.
 
-## 失败处理
+## Failure handling
 
-原始包缺失、工具不可用或时序不可比时，说明对结论的影响，
-选择能检验同一假设的安全替代证据。仍不足则报告缺口并停止推断。
-不自动重启共享服务、清空数据、更新依赖或替换环境。
+If raw packages are missing, tools are unavailable, or timing is
+incomparable, state how this affects the conclusion and choose safe
+alternative evidence that tests the same hypothesis.
+If evidence remains insufficient, report the gap and stop inferring.
+Do not automatically restart shared services, clear data, update
+dependencies, or replace the environment.
 
-## 依据
+## Basis
 
-保留 context 的首错层和因果链方法，借鉴
-[Superpowers systematic-debugging](../README.md) 的取证、工作样例对比与单假设实验；
-不复制其固定重试次数或全量阅读要求。
+Retain the first-failure-layer and causal-chain methods from context. Adapt
+evidence gathering, comparison with working examples, and single-hypothesis
+experiments from [Superpowers systematic-debugging](../README.md); do not
+copy its fixed retry counts or requirement to read everything.

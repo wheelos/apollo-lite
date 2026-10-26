@@ -1,90 +1,128 @@
 ---
 name: simulation-regression
-description: Reproduce autonomous-driving behavior with the right replay or closed-loop harness, explicit assertions, frozen fixtures, and regression evidence. Use for 回放复现、闭环仿真、场景回归、首错帧分析与问题转回归。
+description: Reproduce autonomous-driving behavior with the right replay or closed-loop harness, explicit assertions, frozen fixtures, and regression evidence. Use for replay reproduction, closed-loop simulation, scenario regression, first-failure-frame analysis, and converting issues into regressions.
 ---
 
-# 仿真、回放与场景回归
+# Simulation, Replay, and Scenario Regression
 
-## 适用与前置条件
+## Scope and prerequisites
 
-用于已有问题复现、算法或工程变化的场景验证，不为每个局部改动启动全栈。
-先定义要证明的行为与影响范围，读取所属模块契约和已有场景。
-命令、运行环境和证据范围见[技能索引](../README.md)中的权威 registry；
-执行前核对实际 harness 与帮助，不发明场景 ID、参数、断言或产物路径。
-未知根因先用 `issue-localization`，不要用大量仿真代替定位。
+Use this skill to reproduce existing issues and validate scenarios affected by
+algorithm or engineering changes. Do not launch the full stack for every local
+change.
+First define the behavior to prove and its scope, then read the owning
+module's contract and existing scenarios.
+For commands, runtime environments, and evidence scope, see the authoritative
+registries in the [skill index](../README.md). Before execution, verify the
+actual harness and its help; do not invent scenario IDs, parameters,
+assertions, or artifact paths.
+For an unknown root cause, use `issue-localization` first; do not use extensive
+simulation as a substitute for diagnosis.
 
-## 流程
+## Workflow
 
-### 1. 按问题选择执行模型
+### 1. Select an execution model for the problem
 
-| 模型 | 适合证明 | 不能单独证明 |
 | --- | --- | --- |
-| 局部单元或组件测试 | 数学性质、状态转换、局部接口 | 整车交互与真实传感器行为 |
-| 开环记录回放 | 已记录输入下的首错重建与模块输出对照 | 新决策改变自车和环境后的闭环结果 |
-| 闭环仿真 | 决策、控制和环境反馈下的行为 | 仿真模型未覆盖的真实世界安全性 |
-| HIL 或实车 | 硬件与实际环境耦合的特定行为 | 全部场景的普遍正确性 |
+| Model | Can demonstrate | Cannot demonstrate alone |
+| --- | --- | --- |
+| Local unit or component test | Mathematical properties, state transitions, and local interfaces | Whole-vehicle interactions and real sensor behavior |
+| Open-loop log replay | First-failure reconstruction and module-output comparison for recorded inputs | Closed-loop outcomes after new decisions change the ego vehicle or environment |
+| Closed-loop simulation | Behavior under decision, control, and environment feedback | Real-world safety outside the simulation model's coverage |
+| HIL or road vehicle | Specific behavior coupled to hardware and the actual environment | General correctness across all scenarios |
 
-选择能支持当前结论的最小模型。确认 harness 真正运行了哪些模块，
-哪些输出来自记录、哪些重新计算，避免旧输出掩盖待测改动。
-道路测试和硬件操作需要明确授权与既有安全流程，不能由普通回归自动升级。
+Choose the smallest model that supports the current conclusion. Confirm which
+modules the harness actually runs, which outputs come from the recording, and
+which are recomputed; do not let old outputs mask the change under test.
+Road tests and hardware operations require explicit authorization and
+established safety procedures; ordinary regression must not escalate to them
+automatically.
 
-### 2. 冻结可复现条件
+### 2. Freeze reproducibility conditions
 
-记录代码与构建版本、配置、地图、路线、车辆参数、输入包、模型版本、
-模块集合、随机种子和时钟/回放速率，按场景适用性裁剪。
-明确初始状态、跨次运行清理和记录包完整性；使用 harness 的隔离机制，
-不得手动清空共享目录或中断其他人的进程。
-先复用已有场景，确需新建时只保留必要触发条件和合法数据来源。
+Record code and build versions, configuration, map, route, vehicle
+parameters, input package, model version, module set, random seed, and
+clock/replay rate, trimming the list to the scenario.
+Specify initial state, cleanup between runs, and recording-package integrity.
+Use the harness's isolation mechanism; do not manually clear shared
+directories or interrupt another person's process.
+Reuse existing scenarios first. If a new scenario is necessary, retain only
+the essential trigger conditions and use legitimate data sources.
 
-### 3. 执行前定义可判定断言
+### 3. Define decidable assertions before execution
 
-把预期行为写成输入前提、观测对象、时间窗口、阈值和判定方式。
-包括触发条件确实发生、输出有效，以及本次变更相关的行为约束；
-按需检查碰撞、可行性、跟踪误差、完成条件或截止时间，不臆造标准。
-先确认 fixture 和运行前提，避免场景没有真正触发却“通过”。
+Express expected behavior using input preconditions, observations, time
+windows, thresholds, and evaluation methods.
+Include proof that trigger conditions occurred, outputs are valid, and
+behavioral constraints related to the change are met. Check collision,
+feasibility, tracking error, completion conditions, or deadlines as relevant;
+do not invent criteria.
+Verify fixtures and runtime prerequisites first so a scenario that never
+triggered cannot be reported as “passing.”
 
-区分环境/启动失败、无效场景、行为断言失败、跳过和通过。
-缺失必要 topic、probe 或指标不能按通过处理；进程退出成功也不等于断言通过。
-图形可视化用于分析，不取代可自动计算的断言。
+Distinguish environment or startup failures, invalid scenarios, failed
+behavioral assertions, skips, and passes.
+Missing required topics, probes, or metrics cannot count as a pass; a
+successful process exit does not mean assertions passed.
+Visualization can aid analysis but does not replace computable assertions.
 
-### 4. 执行并分析首错
+### 4. Execute and analyze the first failure
 
-按原始证据还原首个错误帧、决策或状态，比较相关输入和前后版本的输出。
-闭环轨迹可能很快分叉，应优先核对分叉前提和第一个因果差异，
-不强行对齐已经不同的后续帧。性能声明转入 `performance-optimization`。
+Use original evidence to reconstruct the first failing frame, decision, or
+state, and compare relevant inputs and outputs across versions.
+Closed-loop trajectories may diverge quickly. Prioritize checking divergence
+preconditions and the first causal difference; do not force alignment of
+subsequent frames that have already diverged.
+For performance claims, hand off to `performance-optimization`.
 
-先保留失败证据，不无界重跑到通过。怀疑不稳定性时固定条件做有界重复，
-记录所有结果、种子与失败频率；重复次数依据问题和成本确定。
-使用契约允许的数值容差，不要求不具备确定性的系统逐位一致，
-也不通过放宽断言隐藏抖动。
+Preserve failure evidence first; do not rerun without bounds until a pass
+appears. If instability is suspected, repeat a bounded number of times under
+fixed conditions and record every result, seed, and failure rate. Choose the
+number of repetitions based on the problem and cost.
+Use numerical tolerances permitted by the contract. Do not require
+bit-for-bit consistency from nondeterministic systems or hide instability by
+loosening assertions.
 
-### 5. 将稳定复现沉淀为回归
+### 5. Turn a stable reproduction into a regression
 
-当触发条件和正确结果已明确，把真实问题压缩为已有 harness 可执行的
-最小场景，保留必要时序与交互，不复制整个现场包。
-修复类场景应能检出原缺陷，且在修复后通过；避免仅对当前输出做快照。
-最小化后核对仍触发同一机制，不把事故表象相似当作机制相同。
-维护场景断言、fixture 版本与来源；只有用户要求才额外归档知识文档。
+Once trigger conditions and correct outcomes are clear, reduce the real issue
+to a minimal scenario executable by an existing harness. Preserve necessary
+timing and interactions; do not copy the entire incident package.
+A regression for a fix should detect the original defect and pass after the
+fix; avoid snapshots of current output alone.
+After minimization, verify that the scenario still triggers the same
+mechanism; similar symptoms do not prove the mechanisms are the same.
+Maintain scenario assertions, fixture versions, and sources. Archive a
+separate knowledge document only when requested by the user.
 
-## Planning sim-agent 边界
+## Planning sim-agent boundary
 
-若选用已有 Planning sim-agent，先读取
+If using the existing Planning sim-agent, first read
 `ad_agents/sim_agent/skills/planning-simulation/SKILL.md`，
-严格保留其 Plan 校验、精确计划批准、Worker 与确定性评估边界。
-本 skill 不批准计划，不代替该执行器，也不自动启动 agent workflow。
-其他 harness 遵守各自已存在的授权要求，不虚构通用审批工具。
+and preserve its Plan validation, exact-plan approval, Worker, and
+deterministic-evaluation boundaries.
+This skill does not approve plans, replace that executor, or automatically
+start an agent workflow.
+Follow the authorization requirements of other existing harnesses; do not
+invent a generic approval tool.
 
-## 交付与验收
+## Deliverables and acceptance
 
-交付行为问题、执行模型及局限、冻结条件、场景与断言、实际执行状态、
-首错或对照结论、产物位置及未覆盖的风险。
-结果关联到对应代码和 fixture，保留原始日志、结构化结果与可用的 JUnit/probe；
-以实际 harness 产物为准，不伪造缺失文件。
-软件仿真通过不能宣称已完成道路或硬件验证。
+Report the behavioral question, execution model and limitations, frozen
+conditions, scenario and assertions, actual execution status, first-failure
+or comparison findings, artifact locations, and uncovered risks.
+Link results to the relevant code and fixtures. Preserve raw logs, structured
+results, and available JUnit/probe artifacts; use the actual harness outputs
+as evidence and do not fabricate missing files.
+A passing software simulation does not establish road or hardware validation.
 
-## 失败处理与依据
+## Failure handling and basis
 
-环境或夹具无效时停止行为判定，先诊断环境问题；修正影响配置、依赖、
-数据或授权边界时先询问。不可用的硬件或数据应列为证据缺口。
-复用 context 的执行模型与首错帧方法，以及已有 Planning skill 的确定性断言；
-证据验收原则参考[技能索引](../README.md)，不照搬外部执行或部署步骤。
+When the environment or fixture is invalid, stop behavioral evaluation and
+diagnose the environment first. Ask before changing configuration,
+dependencies, data, or authorization boundaries. Report unavailable hardware
+or data as evidence gaps.
+Reuse the execution models and first-failure-frame methods from context, as
+well as deterministic assertions from the existing Planning skill. See the
+[skill index](../README.md) for evidence acceptance principles; do not copy
+external execution or deployment procedures.

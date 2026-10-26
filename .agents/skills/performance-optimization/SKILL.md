@@ -1,88 +1,130 @@
 ---
 name: performance-optimization
-description: Measure before optimizing; collect profiles, identify the dominant bottleneck, and verify controlled improvements. Use for 性能分析、热点采集、延迟、CPU/GPU、内存增长、吞吐、锁竞争与调度等待。
+description: Measure before optimizing; collect profiles, identify the dominant bottleneck, and verify controlled improvements. Use for performance analysis, hotspot profiling, latency, CPU/GPU, memory growth, throughput, lock contention, and scheduler waits.
 ---
 
-# 证据驱动的性能优化
+# Evidence-Driven Performance Optimization
 
-## 适用与前置条件
+## Scope and prerequisites
 
-用于资源消耗或实时预算问题。先分析、采集、归因，再优化，不凭代码外观猜热点。
-若症状主要是功能错误，先使用 `issue-localization`。
-读取模块契约、现有性能工具与测试入口；命令权威入口见[技能索引](../README.md)。
-使用已批准的环境与权限，不自动安装 profiler 或改变共享机器的运行参数。
+Use for resource-consumption or real-time-budget issues. Analyze, measure, and
+attribute the bottleneck before optimizing; do not guess hotspots from code
+appearance.
+If the primary symptom is a functional error, start with
+`issue-localization`.
+Read the module contract, existing performance tools, and test entry points;
+see the [skill index](../README.md) for authoritative command references.
+Use approved environments and permissions. Do not automatically install a
+profiler or change shared-machine runtime settings.
 
-## 流程
+## Workflow
 
-### 1. 明确指标并冻结条件
+### 1. Define metrics and freeze conditions
 
-定义用户可感知或契约要求的指标、测量区间、当前问题与目标预算。
-区分端到端延迟、单阶段耗时、CPU 时间、吞吐、内存峰值和长期增长；
-均值、尾延迟、deadline miss 或丢帧率按问题选择，不能相互替代。
+Define metrics, measurement intervals, the current problem, and target
+budgets, based on user-visible behavior or contractual requirements.
+Distinguish end-to-end latency, per-stage time, CPU time, throughput, memory
+peak, and long-term growth. Select mean, tail latency, deadline misses, or
+frame-drop rate as appropriate; they are not interchangeable.
 
-固定代码和依赖版本、构建模式、硬件、容器、数据、配置、并发与回放速率。
-记录预热、缓存、输入量、其他负载和采样开销。共享环境无法隔离时报告限制，
-不停止别人的进程，不自动改 CPU 频率、亲和性或 GPU 功耗设置。
+Fix code and dependency versions, build mode, hardware, container, data,
+configuration, concurrency, and replay rate.
+Record warm-up, cache state, input volume, other loads, and measurement
+overhead. If a shared environment cannot be isolated, report the limitation.
+Do not stop another person's process or automatically change CPU frequency,
+affinity, or GPU power settings.
 
-### 2. 先采集基线，再逐层定位
+### 2. Measure a baseline, then localize the bottleneck layer by layer
 
-先用低成本计数器和阶段计时定位范围，再按证据选调用栈采样、trace、
-内存、锁或 GPU 工具。不要在不了解问题时同时开启所有重型采集。
-保存采集范围、工具参数和原始结果；现有证据足够时不重复采集。
+Use low-cost counters and per-stage timing to locate the area first, then
+select call-stack sampling, tracing, memory, lock, or GPU tools based on
+evidence. Do not enable every heavyweight profiler before understanding the
+problem.
+Save the profiling scope, tool parameters, and raw results; do not repeat
+collection when existing evidence is sufficient.
 
-区分瓶颈类型：
+Distinguish bottleneck types:
 
-- 计算：CPU/GPU 核心工作、重复计算或问题规模增长。
-- 数据：复制、分配、序列化、I/O、缓存或内存带宽。
-- 等待：锁、队列、调度、跨进程通信和下游背压。
-- 内存：峰值、保留、碎片和持续增长；RSS 增加不直接等于泄漏。
+- Compute: CPU/GPU core work, repeated computation, or growth in problem size.
+- Data: Copying, allocation, serialization, I/O, cache, or memory bandwidth.
+- Waiting: Locks, queues, scheduling, inter-process communication, and
+  downstream backpressure.
+- Memory: Peak, retention, fragmentation, and continued growth; an increase
+  in RSS does not by itself mean a leak.
 
-结合调用次数、输入规模、inclusive/self 耗时与关键路径解释热点。
-CPU 热点不一定导致墙钟延迟；异步 GPU 提交耗时不代表 kernel 已完成，
-测量应使用正确的完成边界，同时说明同步对生产执行方式的扰动。
-确认队列等待、上游供给和消费者限速，避免把等待当成计算慢。
+Explain hotspots using call counts, input size, inclusive/self time, and the
+critical path.
+A CPU hotspot does not necessarily cause wall-clock latency. Asynchronous GPU
+submission time does not mean the kernel has completed; measure at the
+appropriate completion boundary and state how synchronization perturbs
+production execution.
+Check queue waits, upstream supply, and consumer rate limits so that waiting
+is not misdiagnosed as slow computation.
 
-### 3. 建立优化假设
+### 3. Form an optimization hypothesis
 
-写清“证据 → 主导瓶颈 → 原因 → 最小改动 → 预期可观测变化”。
-优先优化对目标指标贡献最大的可改原因，估算局部收益对整体的上限，
-避免针对不在关键路径上的高耗时函数作无效优化。
-每次验证一个主要因果假设，不把算法、线程数、精度和缓存策略混成一次实验。
+State the chain “evidence → dominant bottleneck → cause → minimal change →
+expected observable change.”
+Prioritize the modifiable cause that contributes most to the target metric,
+estimate the upper bound of its overall benefit, and avoid optimizing
+expensive functions that are not on the critical path.
+Test one primary causal hypothesis at a time; do not combine algorithm,
+thread-count, precision, and cache-policy changes in one experiment.
 
-实现前核对正确性、线程安全、数据新鲜度、内存和最坏时延约束。
-降低精度、减少场景覆盖、丢数据、扩大缓存或改变行为不是免费的优化，
-必须明确代价并获得必要确认。
+Before implementation, check correctness, thread safety, data freshness,
+memory, and worst-case latency constraints.
+Reducing precision, scenario coverage, or data; increasing caches; or changing
+behavior is not a free optimization. Make the trade-off explicit and obtain
+necessary confirmation.
 
-### 4. 同条件对照验证
+### 4. Validate a comparison under equivalent conditions
 
-使用相同输入、构建模式、指标定义与计时边界比较基线和改动。
-稳定态指标先预热；冷启动问题单独保留冷启动测量，不能用预热隐藏成本。
-按波动大小和决策精度重复采样，必要时交错基线与候选，减少环境漂移。
-保留每次样本、样本量与分布；微基准的重复均值不能冒充逐帧 P99。
+Compare baseline and change using the same input, build mode, metric
+definition, and timing boundaries.
+Warm up for steady-state metrics. Keep separate cold-start measurements for
+cold-start issues; do not use warm-up to hide the cost.
+Repeat samples based on variability and required decision precision. When
+useful, interleave baseline and candidate runs to reduce environmental drift.
+Preserve every sample, sample count, and distribution; do not present a
+microbenchmark's repeated mean as per-frame P99.
 
-报告绝对值、相对变化、波动范围及是否达到预先约定门槛。
-差异落在噪声范围内就说明尚无可靠收益，不挑最好一次结果。
-微基准用于验证局部机制，端到端性能声明仍需对应负载证据。
-用无重型采集的对照确认收益不只是 profiler 扰动造成的假象。
+Report absolute values, relative changes, variability, and whether
+pre-agreed thresholds were met.
+If the difference falls within noise, state that no reliable improvement has
+been demonstrated; do not cherry-pick the best run.
+Microbenchmarks validate local mechanisms; end-to-end performance claims
+still require evidence under the relevant workload.
+Use a comparison without heavyweight profiling to confirm that an apparent
+gain is not merely a profiler artifact.
 
-运行覆盖改动的正确性回归，确认没有把开销转移到其他线程、GPU、
-内存或下游，也没有牺牲算法质量与尾时延。证据足够后停止测试。
+Run correctness regressions covering the change. Confirm that cost was not
+shifted to other threads, the GPU, memory, or downstream components and that
+algorithm quality and tail latency were not sacrificed. Stop once evidence
+is sufficient.
 
-## 交付与验收
+## Deliverables and acceptance
 
-交付负载与环境、指标与预算、基线、采集证据、瓶颈归因、改动、
-对照样本、正确性结果和剩余限制。性能结论必须可追溯到原始结果。
-只完成分析时交付已证实瓶颈及下一项区分实验，不宣称已优化。
+Report workload and environment, metrics and budgets, baseline, profiling
+evidence, bottleneck attribution, changes, comparison samples, correctness
+results, and remaining limitations. Performance conclusions must be
+traceable to raw results.
+If only analysis was completed, report the confirmed bottleneck and next
+discriminating experiment; do not claim optimization.
 
-## 失败处理
+## Failure handling
 
-工具缺失、权限不足或采集扰动过大时，停止该采集，选择已有低成本证据；
-替代方法不足以支持结论时明确阻塞，涉及安装或环境变更先询问。
-未找到热点就继续缩小范围，不随机优化。收益不稳定或发生功能回归时
-重新检查假设；只撤销自己明确可分离的实验改动，保留他人工作。
+If a tool is missing, permissions are insufficient, or profiling overhead is
+too high, stop that collection and use existing low-cost evidence.
+If the alternative cannot support a conclusion, state the blocker. Ask before
+installing tools or changing the environment.
+If no hotspot is found, continue narrowing the scope rather than optimizing
+randomly. Recheck the hypothesis when gains are unstable or functional
+regressions occur. Revert only experimental changes that are clearly
+separable and yours; preserve others' work.
 
-## 依据
+## Basis
 
-复用现有 context 的性能分层思路，对照测量参考
-[Google Benchmark](../README.md)。本流程自含验证步骤，不依赖当前缺失的
-`performance-testing.md`，也不要求引入新的 benchmark 库。
+Reuse the performance-layering approach from existing context; comparative
+measurement is informed by [Google Benchmark](../README.md).
+This workflow includes its own validation steps and does not depend on the
+currently missing `performance-testing.md` or require a new benchmark library.

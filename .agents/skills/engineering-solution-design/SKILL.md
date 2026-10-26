@@ -1,183 +1,274 @@
 ---
 name: engineering-solution-design
-description: Design engineering solutions through industry practices, open-source research, reuse-versus-build comparison, and architecture decisions. Use for 技术选型、方案对比、开源借鉴、工程范式、架构设计、定制场景原则制定与最小框架设计。
+description: Design engineering solutions through industry practices, open-source research, reuse-versus-build comparison, and architecture decisions. Use for technology selection, solution comparison, open-source adoption, engineering patterns, architecture, and minimal framework design.
 ---
 
-# 工程方案选型与设计
+# Engineering Solution Selection and Design
 
-## 适用范围
+## Scope
 
-用于新能力设计、技术选型、架构演进，以及从开源项目借鉴工程范式。
-目标是产出有证据、可取舍、可分阶段落地的最小正确方案，而非堆砌技术名词。
-默认交付设计；只有任务明确包含实现时才修改代码或搭建框架。
+Use for designing new capabilities, technology selection, architecture
+evolution, and adopting engineering patterns from open-source projects.
+The goal is a minimal, correct solution that is evidence-based, trade-off
+aware, and implementable in stages—not a collection of technology buzzwords.
+The default deliverable is a design; modify code or build a framework only
+when implementation is explicitly part of the task.
 
-## 任务分流
+## Task routing
 
-本 skill 负责“选什么、为什么、边界怎么划”，不包办算法实现或故障调查。
-算法实现交接 `algorithm-development`，原因未知的异常交接 `issue-localization`，
-资源瓶颈交接 `performance-optimization`，场景验证交接 `simulation-regression`。
-入口与方法出处见[技能索引](../README.md)。只在当前任务需要时交接。
-已有方案能满足明确的小改动时，直接沿用，只记录新增约束与必要取舍，
-不强制重新生成候选表、文档或审批流程。
+This skill addresses what to select, why, and where to draw boundaries; it
+does not take over algorithm implementation or fault investigation.
+Hand off algorithm implementation to `algorithm-development`, unknown
+anomalies to `issue-localization`, resource bottlenecks to
+`performance-optimization`, and scenario validation to `simulation-regression`.
+See the [skill index](../README.md) for entry points and method references.
+Hand off only when needed for the current task.
+When an existing solution meets the needs of a clearly scoped small change,
+reuse it and record only new constraints and necessary trade-offs; do not
+require a new candidate matrix, document, or approval process.
 
-## 前置条件
+## Prerequisites
 
-- 遵循当前仓库的 agent 规则，读取目标模块相关源码、测试和必要上下文。
-- 确认现有能力、模块归属、依赖边界与工作区改动，优先复用仓库已有机制。
-- 明确目标、非目标、使用场景、交付阶段与不可违反的约束。
-- 缺失信息若会改变选型、系统边界或关键行为，先询问；其余假设显式标注。
-- 外部调研只发送公开、非敏感问题，不上传内部代码、日志、凭据或业务数据。
+- Follow the repository's agent rules and read relevant source, tests, and
+  necessary context for the target module.
+- Confirm existing capabilities, module ownership, dependency boundaries, and
+  worktree changes; prefer reusing existing repository mechanisms.
+- Clarify goals, non-goals, use cases, delivery stages, and non-negotiable
+  constraints.
+- Ask first when missing information could change the selection, system
+  boundary, or key behavior; explicitly label other assumptions.
+- Use only public, non-sensitive questions for external research. Do not
+  upload internal code, logs, credentials, or business data.
 
-## 核心原则
+## Core principles
 
-- **先看已有答案。** 成熟通用问题优先采用已验证的实现、接口与工程范式，
-  不为展示设计能力重新发明；也不因某项目知名就照搬其全部架构。
-- **借鉴机制，不照搬规模。** 分清直接依赖、协议兼容、局部适配、思想借鉴、
-  fork 和自研。每种方式都有不同的许可证、维护和升级成本。
-- **未知问题原则先行。** 小众、未解决或强定制问题先明确不变量与取舍，
-  再定系统边界、模块职责、关键契约，最后才进入算法和实现细节。
-- **框架优先，不是空壳优先。** 可以延后局部细节，但不能跳过影响架构的
-  可行性风险，也不能用空方法、吞错或伪成功冒充可工作的最小闭环。
-- **深度与风险相称。** 简单可逆决策使用简短对比；高成本、不可逆或高风险
-  决策需要更强证据。满足决策需要后停止调研，不追求穷尽项目清单。
+- **Look for existing answers first.** Prefer verified implementations,
+  interfaces, and engineering patterns for mature, general problems. Do not
+  reinvent them to demonstrate design skills, and do not copy an entire
+  architecture just because a project is well known.
+- **Adopt mechanisms, not scale.** Distinguish direct dependencies, protocol
+  compatibility, local adaptation, conceptual borrowing, forks, and
+  in-house development. Each has different licensing, maintenance, and upgrade
+  costs.
+- **For unknown problems, establish principles first.** For niche, unresolved,
+  or highly customized problems, define invariants and trade-offs before
+  deciding system boundaries, module responsibilities, and key contracts;
+  address algorithm and implementation details last.
+- **Prefer a working framework, not an empty shell.** Some local details may
+  be deferred, but do not skip feasibility risks that affect the architecture
+  or substitute empty methods, swallowed errors, or false success for a
+  working minimal path.
+- **Match depth to risk.** Use brief comparisons for simple, reversible
+  decisions and stronger evidence for costly, irreversible, or high-risk
+  decisions. Stop researching once the decision is supported; do not aim to
+  exhaustively list projects.
 
-## 工作流程
+## Workflow
 
-### 1. 定义问题和选型门槛
+### 1. Define the problem and selection criteria
 
-用简短说明列出业务目标、现有基线、输入输出、非目标与成功标准。
-将要求分为硬约束和可权衡项；性能等要求应包含场景、量级和判定方式，
-不能凭空制定指标。
+Briefly state business goals, the current baseline, inputs and outputs,
+non-goals, and success criteria.
+Separate hard constraints from tradeable requirements. Performance
+requirements should include the scenario, scale, and evaluation method; do not
+invent metrics.
 
-先判断问题属于哪一类，必要时按模块分别判断：
+First classify the problem, assessing modules separately when necessary:
 
-| 类型 | 默认路径 |
+| Problem type | Default path |
 | --- | --- |
-| 成熟通用问题 | 找成熟范式和实现，比较复用方式，以最少适配满足约束 |
-| 成熟核心加定制边界 | 复用通用核心，隔离定制策略，明确接口与升级边界 |
-| 小众、未解决或强定制 | 有限调研后制定原则，设计框架，用风险实验验证关键假设 |
+| Mature, general problem | Find established patterns and implementations; compare reuse options and satisfy constraints with minimal adaptation |
+| Mature core with a customized boundary | Reuse the general core, isolate customized policies, and define interface and upgrade boundaries |
+| Niche, unresolved, or highly customized problem | Conduct focused research, establish principles, design a framework, and validate key assumptions with risk experiments |
 
-“暂未找到”不等于“业界没有”。说明调研范围和缺失证据，不宣称不存在方案。
+“Not found yet” does not mean “does not exist in the industry.” State the
+research scope and missing evidence; do not claim that no solution exists.
 
-### 2. 调研优秀实践和开源实现
+### 2. Research established practices and open-source implementations
 
-从官方文档、原始论文或标准、项目源码、测试、发布记录和维护讨论取证。
-博客与榜单只用于发现线索；stars、徽章或厂商宣传不能独立证明适用性。
-先形成少量候选，通常深入比较 2–3 个有代表性的方案；不足时如实说明，
-不为凑数编造项目。将现有实现或不引入新依赖作为基线。
+Gather evidence from official documentation, original papers or standards,
+project source, tests, release records, and maintainer discussions.
+Use blogs and rankings only to discover leads; stars, badges, and vendor claims
+alone do not demonstrate suitability.
+Start with a small set of candidates and usually compare two or three
+representative options in depth. State when evidence is insufficient; do not
+invent candidates to fill a quota. Include the existing implementation or
+adding no dependency as a baseline.
 
-对影响结论的候选，检查实际关键路径与代表性测试，不仅阅读 README。
-记录来源链接、查看日期和版本或 commit；源码证据使用固定版本路径与符号，
-有可靠行号时补充行号。区分：
+For candidates that affect the conclusion, inspect actual critical paths and
+representative tests, not only the README.
+Record source links, access date, and version or commit. For source evidence,
+use version-pinned paths and symbols, adding reliable line numbers when
+available. Distinguish:
 
-- **已核验事实：** 来源实际证明了什么；源码可见不代表已运行验证。
-- **适用性推断：** 哪些场景与本项目相同，哪些前提不同。
-- **待验证假设：** 仍需实验或用户确认的能力、成本和限制。
+- **Verified facts:** What the source actually demonstrates; source code being
+  present does not mean it has been run and validated.
+- **Applicability assessment:** Which scenarios match this project and which
+  assumptions differ.
+- **Unverified assumptions:** Capabilities, costs, or limitations that still
+  require an experiment or user confirmation.
 
-每个参考项目必须说明：借鉴什么机制、解决什么问题、不借鉴什么，
-以及需要哪些适配。比较总成本，包括集成、部署、排错、长期维护、
-上游升级、fork 补丁和替换成本。
-核查许可证、传递依赖及分发义务；许可证不明确时不能默认允许复制代码。
-不得将某版本的结论扩展为整个项目永远成立的性质。
+For each reference project, state which mechanism is borrowed, what problem it
+solves, what is not adopted, and what adaptation is required.
+Compare total costs, including integration, deployment, debugging,
+long-term maintenance, upstream upgrades, fork patches, and replacement.
+Check licenses, transitive dependencies, and distribution obligations. Do not
+assume code may be copied when its license is unclear.
+Do not generalize findings about one version into claims that apply to the
+project forever.
 
-### 3. 对比并作出选择
+### 3. Compare options and make a selection
 
-先做硬约束筛选，再做取舍。硬约束不满足的方案应淘汰；硬约束未知的方案
-只能作为条件候选，不能靠其他优势“平均抵消”。
+Filter against hard constraints first, then weigh trade-offs. Eliminate
+options that fail a hard constraint. If a hard constraint is unknown, treat
+the option only as conditional; other advantages cannot “average out” the
+uncertainty.
 
-使用与本任务有关的维度，避免无意义的大表：
+Use dimensions relevant to the task; avoid an unnecessarily large comparison
+table:
 
-| 候选及复用方式 | 证据与适配场景 | 硬约束 | 工程与维护代价 | 风险/未知 | 结论 |
+| Candidate and reuse approach | Evidence and applicable scenarios | Hard constraints | Engineering and maintenance costs | Risks/unknowns | Conclusion |
 | --- | --- | --- | --- | --- | --- |
-| 现有基线 | 实际行为与不足 | 满足/不满足/未知 | 保持现状的代价 | 尚缺证据 | 保留/淘汰及原因 |
-| 候选方案 | 来源、版本、关键机制 | 满足/不满足/未知 | 集成、升级与退出成本 | 验证方法 | 推荐/备选/淘汰及原因 |
+| Existing baseline | Actual behavior and shortcomings | Met/not met/unknown | Cost of keeping the status quo | Missing evidence | Retain/reject and why |
+| Candidate | Source, version, and key mechanism | Met/not met/unknown | Integration, upgrade, and exit costs | Validation method | Recommend/alternate/reject and why |
 
-可以比较直接复用、薄适配和自研，但不强迫每次包含全部方式。
-只有权重与评分依据明确时才使用加权评分，不用虚构精度掩盖判断。
+Compare direct reuse, thin adaptation, and in-house development when relevant,
+but do not require every task to include all approaches.
+Use weighted scores only when weights and scoring criteria are clear; do not
+use fabricated precision to disguise judgment.
 
-给出推荐方案、未选方案的关键原因、明确接受的缺点和重新评估触发条件。
-证据不足时输出条件性建议及最小验证计划，不包装成已完成选型。
-涉及重大行为取舍或依赖、环境、部署方式的变更，先取得必要确认再执行。
+State the recommended option, key reasons for rejecting alternatives,
+accepted disadvantages, and conditions that would trigger reassessment.
+When evidence is insufficient, provide a conditional recommendation and
+minimal validation plan; do not present selection as complete.
+Obtain necessary confirmation before implementing significant behavioral
+trade-offs or changes to dependencies, environments, or deployment.
 
-### 4. 原则先行，逐层收敛架构
+### 4. Establish principles, then refine the architecture in layers
 
-对定制部分先写少量可检查的原则，每条包含“不变量、理由、设计影响、
-验证方式”。原则要能约束设计，避免“高性能、高扩展”等空泛口号。
-成熟方案也必须说明它与这些原则是否兼容。
+For customized parts, first write a small number of verifiable principles.
+Each principle should include an invariant, rationale, design impact, and
+verification method. Principles must constrain the design; avoid vague
+slogans such as “high performance” or “high extensibility.”
+For mature solutions, also state whether they are compatible with these
+principles.
 
-按以下顺序展开，只深入到当前决策需要的层级：
+Develop the design in the following order, going only as deep as the current
+decision requires:
 
-1. **系统边界：** 用户、外部系统、信任边界、输入输出和部署约束。
-2. **大框架：** 主数据流、控制流、状态所有权、依赖方向与失败路径。
-3. **模块：** 单一职责、接口契约、状态归属、复用来源和定制边界。
-4. **关键细节：** 仅展开会影响正确性、可行性、性能门槛或兼容性的内容。
+1. **System boundaries:** Users, external systems, trust boundaries,
+   inputs and outputs, and deployment constraints.
+2. **High-level structure:** Main data and control flows, state ownership,
+   dependency direction, and failure paths.
+3. **Modules:** Single responsibilities, interface contracts, state
+   ownership, reuse sources, and customization boundaries.
+4. **Key details:** Expand only details that affect correctness, feasibility,
+   performance thresholds, or compatibility.
 
-契约至少明确输入输出的语义与错误行为；按需补充时序、单位、坐标系、
-并发和生命周期。不要把外部项目特有的部署规模或依赖体系直接带入本项目。
-使用一张简图和必要的模块表即可，不要求填满整套架构文档模板。
+At minimum, contracts must specify input/output semantics and error behavior;
+add timing, units, coordinate frames, concurrency, and lifecycle details as
+needed. Do not directly import another project's deployment scale or
+dependency ecosystem into this project.
+A simple diagram and a necessary module table are sufficient; do not require
+filling out an entire architecture-document template.
 
-将未决细节分为“必须先验证”和“可以延后”两类，并说明延后理由、
-约束边界及重访条件。不可将决定方案是否成立的风险列为无关细节。
-在自动驾驶模块中，按适用性明确坐标变换方向、时间基准、数据新鲜度、
-重置与重定位、实时预算及失败降级契约；不假定所有模块都需要这些概念。
+Classify unresolved details as “must validate first” or “can defer,” and
+state the reason for deferral, constraint boundary, and revisit conditions.
+Do not label a risk that determines whether the solution is viable as an
+unrelated detail.
+For autonomous-driving modules, specify coordinate-transform direction,
+time basis, data freshness, reset and relocalization behavior, real-time
+budgets, and failure/degradation contracts as applicable; do not assume every
+module needs every concept.
 
-### 5. 规划最小闭环与演进
+### 5. Plan a minimal end-to-end path and evolution
 
-先定义一条输入到结果可观察的最小纵向路径，而不是同时搭建所有模块。
-通常分为：关键风险实验、最小闭环、按需求补齐能力；无需机械套用阶段数。
-每阶段写明交付物、依赖、验收条件与停止或回退条件。
+First define a minimal vertical path from input to an observable result rather
+than building every module at once.
+Typical stages are a critical-risk experiment, a minimal end-to-end path, and
+capability additions driven by need; do not mechanically require a fixed
+number of stages.
+For each stage, state deliverables, dependencies, acceptance criteria, and
+stop or rollback conditions.
 
-若用户只要求框架设计，交付模块边界、关键契约和实施顺序即可。
-若用户授权实现，优先打通这条路径，沿用现有工程和测试机制：
+If the user requests only framework design, deliver module boundaries, key
+contracts, and implementation order.
+If implementation is authorized, prioritize completing this path and reuse
+existing engineering and test mechanisms:
 
-- 未实现能力显式报告，不返回伪造的成功结果。
-- mock、stub 和诊断输入必须标明适用范围，不能作为生产正确性证据。
-- 风险实验验证具体假设，使用有代表性的负载与基线；不得将计划写成实测。
-- 只运行覆盖当前变化的最小必要验证，使用仓库已核验的命令和环境。
-- 明确扩展点来自什么已知变化，不预建通用插件平台或不需要的抽象层。
-- 将交接内容限定为已选方案、约束、关键契约、未决风险与验收标准，
-  不要求下一阶段重做已完成且仍有效的调研。
+- Report unimplemented capabilities explicitly; do not return fabricated
+  success results.
+- State the scope of mocks, stubs, and diagnostic inputs; they are not
+  evidence of production correctness.
+- Use representative loads and a baseline to validate specific risk
+  hypotheses; do not report a plan as a measurement.
+- Run only the minimum validation needed to cover the change, using
+  repository-verified commands and environments.
+- Identify which known changes motivate extension points; do not prebuild a
+  generic plugin platform or unnecessary abstraction layers.
+- Limit handoff information to the selected solution, constraints, key
+  contracts, unresolved risks, and acceptance criteria. Do not require the
+  next stage to repeat research that is complete and still valid.
 
-## 交付格式
+## Deliverable format
 
-按问题规模压缩以下内容；小问题可用几段文字，不强制创建文档文件：
+Scale the following content to the problem; a few paragraphs are sufficient
+for small problems, and creating a document is not mandatory:
 
-1. **结论：** 推荐方式、适用前提、选择状态（建议/待验证/已确认）。
-2. **约束与原则：** 目标、非目标、硬门槛和设计不变量。
-3. **证据与对比：** 来源、候选、借鉴范围、取舍及未选原因。
-4. **框架与模块：** 关键路径、所有权、接口、失败行为与暂缓细节。
-5. **落地路线：** 最小闭环、验收条件、风险实验、退出与重评条件。
+1. **Conclusion:** Recommended approach, applicable assumptions, and selection status (proposed, pending validation, or confirmed).
+2. **Constraints and principles:** Goals, non-goals, hard gates, and design invariants.
+3. **Evidence and comparison:** Sources, candidates, scope of reuse, trade-offs, and reasons for rejection.
+4. **Framework and modules:** Critical path, ownership, interfaces, failure behavior, and deferred details.
+5. **Implementation path:** Minimal end-to-end path, acceptance criteria, risk experiments, exit conditions, and reassessment conditions.
 
-重大选择可按 ADR 思路记录背景、驱动因素、选项、决定、后果与确认方式；
-不为每个局部实现选择单独建立 ADR。只有用户要求持久化知识时，才按
-`ad_agents/context/` 的维护规则归档并更新其索引，不另建知识权威。
+For significant decisions, record context, drivers, options, decisions,
+consequences, and confirmation in an ADR-like format; do not create a separate
+ADR for every local implementation choice. Persist knowledge only when
+requested by the user, following the maintenance rules for
+`ad_agents/context/` and updating its index. Do not establish a competing
+knowledge authority.
 
-## 验收
+## Acceptance
 
-- 推荐有可追溯证据，明确与本项目的匹配点和不适用部分。
-- 比较包含可行基线，淘汰项有理由，未知项不伪装为事实。
-- 定制方案有原则、边界、状态所有权、关键契约和最小闭环。
-- 暂缓细节不影响当前架构成立；关键风险有验证与重访条件。
-- 设计交付不声称实现已验证；实现交付不将空壳当作完成。
-- 只有获授权的代码、依赖和持久化文档发生变化。
+- The recommendation has traceable evidence and identifies what does and does
+  not match this project.
+- The comparison includes a viable baseline; rejected options have reasons;
+  unknowns are not presented as facts.
+- A customized solution defines principles, boundaries, state ownership, key
+  contracts, and a minimal end-to-end path.
+- Deferred details do not undermine the current architecture; key risks have
+  validation and revisit conditions.
+- A design deliverable does not claim implementation was validated; an
+  implementation deliverable does not treat a shell as complete.
+- Only authorized code, dependencies, and persistent documents are changed.
 
-## 失败处理
+## Failure handling
 
-外部来源不可访问时，改用可访问的公开原始资料或已有版本证据，不绕过
-访问限制，不编造引用。仍缺关键证据时降低结论置信度并列明缺口。
-约束冲突、关键实验失败或存在重大取舍时停止相关动作，说明原因和选项，
-请用户决定；不静默放宽门槛、引入依赖或扩大范围。
+If an external source is unavailable, use accessible public primary sources or
+existing versioned evidence; do not bypass access restrictions or fabricate
+citations. If key evidence is still missing, lower confidence and state the
+gap.
+Stop the affected work when constraints conflict, a key experiment fails, or
+a significant trade-off remains. Explain the reason and options, then ask the
+user to decide; do not silently relax gates, introduce dependencies, or expand
+scope.
 
-## 方法参考
+## Method references
 
-以下为方法依据，不是针对所有项目的固定技术选型；链接固定到调研版本。
-本流程对其作任务化综合，不要求完整照搬任何模板。
+The following references provide methods, not fixed technology selections
+for all projects. Links are pinned to the reviewed versions.
+This workflow synthesizes them for the task; it does not require copying any
+template in full.
 
-- [MADR 决策模板](https://github.com/adr/madr/blob/ba75bb1b20d42af5746b246ad348c202419ae681/template/adr-template.md)：
-  背景、驱动因素、候选、后果与确认方式，用于可追溯的选型记录。
-- [arc42 架构模板](https://github.com/arc42/arc42-template/blob/9057fe1f32ce543e546f76971515c537f0dd3f63/EN/arc42-template.adoc)：
-  目标、约束、上下文、策略、构建块、运行视图、质量与风险，用于分层组织设计。
+- [MADR decision template](https://github.com/adr/madr/blob/ba75bb1b20d42af5746b246ad348c202419ae681/template/adr-template.md):
+  context, drivers, candidates, consequences, and confirmation for traceable
+  selection records.
+- [arc42 architecture template](https://github.com/arc42/arc42-template/blob/9057fe1f32ce543e546f76971515c537f0dd3f63/EN/arc42-template.adoc):
+  goals, constraints, context, strategy, building blocks, runtime views,
+  quality, and risks for organizing a layered design.
 - [OpenSSF Best Practices](https://github.com/ossf/best-practices-badge/blob/2ea9de20f655c91a200bf3d9fe377455cc404f68/README.md)：
-  开源项目的许可证、发布、测试和维护实践；自认证徽章仅为线索，不代替适用性验证。
+  licensing, release, testing, and maintenance practices for open-source
+  projects; a self-certified badge is only a lead, not a substitute for
+  validating suitability.
 
-以上资料查看日期：2026-10-26。
+Sources last reviewed: 2026-10-26.

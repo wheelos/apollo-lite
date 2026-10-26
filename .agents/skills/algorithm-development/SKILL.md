@@ -1,97 +1,152 @@
 ---
 name: algorithm-development
-description: Develop and integrate autonomous-driving algorithms with explicit mathematical contracts, simple baselines, numerical checks, and reproducible evaluation. Use for 算法开发、优化求解、状态估计、感知预测规划控制算法实现与评估。
+description: Develop and integrate autonomous-driving algorithms with explicit mathematical contracts, simple baselines, numerical checks, and reproducible evaluation. Use for algorithm development, optimization, state estimation, and perception, prediction, planning, and control implementation and evaluation.
 ---
 
-# 算法模块开发
+# Algorithm Module Development
 
-## 适用与边界
+## Scope and boundaries
 
-用于算法建模、实现、替换和工程集成，不将所有算法任务视为模型训练。
-方案尚未确定时使用 `engineering-solution-design`；已有异常先用
-`issue-localization`；纯资源优化使用 `performance-optimization`。
-明确的小修复沿用既有契约，不强制重做算法选型。
+Use for algorithm modeling, implementation, replacement, and engineering
+integration; not every algorithm task is a model-training task.
+When the approach has not been selected, use `engineering-solution-design`;
+for an existing anomaly, use `issue-localization` first; for resource-only
+optimization, use `performance-optimization`.
+For a clearly scoped small fix, use existing contracts rather than repeating
+algorithm selection.
 
-## 前置条件
+## Prerequisites
 
-读取所属模块的规则、源码、测试和调用点，确认已有算法、数学库与评估入口。
-从 `ad_agents/context/` 获取领域契约，不能从论文或外部实现推断本仓库 API。
-构建、lint 与验证入口见[技能索引](../README.md)，只加载需要的执行 skill。
+Read the owning module's rules, source, tests, and call sites, and identify
+existing algorithms, math libraries, and evaluation entry points.
+Get domain contracts from `ad_agents/context/`; do not infer this
+repository's APIs from papers or external implementations.
+See the [skill index](../README.md) for build, lint, and validation entry
+points; load only the execution skills needed.
 
-## 流程
+## Workflow
 
-### 1. 写清问题与契约
+### 1. Specify the problem and contract
 
-明确目标、输入输出、状态、适用域、非目标和相对现有基线的预期收益。
-按需定义：
+Clarify goals, inputs and outputs, state, domain of applicability, non-goals,
+and expected benefit relative to the existing baseline.
+Specify as needed:
 
-- 坐标系、变换方向、单位、角度约定、时间基准、采样周期和数据新鲜度。
-- 状态初始化、更新顺序、生命周期、重置和跨帧信息的所有权。
-- 目标函数、硬约束与软代价、概率或噪声假设、可观测性与退化条件。
-- 误差、效果、计算和内存预算；要求来自任务或证据，不能臆造阈值。
-- 无输入、无解、不收敛、非有限值或超时的状态与已有降级契约。
+- Coordinate frames, transform direction, units, angle conventions, time
+  basis, sample period, and data freshness.
+- State initialization, update order, lifecycle, reset, and ownership of
+  cross-frame information.
+- Objective function, hard constraints and soft costs, probability or noise
+  assumptions, observability, and degradation conditions.
+- Error, effectiveness, compute, and memory budgets; derive requirements
+  from the task or evidence, and do not invent thresholds.
+- Existing degradation contracts and behavior for missing input,
+  infeasibility, non-convergence, non-finite values, or timeouts.
 
-不是每类算法都需要全部项目，只写影响本次正确性的内容。
-预算、降级或关键假设缺失且会改变行为时，先向用户确认。
+Not every algorithm needs every item; specify only what affects correctness
+for this task.
+Ask the user first when a missing budget, degradation policy, or key
+assumption could change behavior.
 
-### 2. 建立可解释基线
+### 2. Establish an interpretable baseline
 
-优先使用现有实现、简单解析解、小规模枚举或可独立核对的参考算法。
-确认参考结果适用的前提；不能只用待测实现生成自己的“正确答案”。
-成熟机制优先复用；定制部分先定不变量与模块边界，再深入实现。
-先确定评估口径再调参，防止只挑有利案例或不断移动验收门槛。
+Prefer the existing implementation, a simple analytical solution, a small
+enumeration, or an independently verifiable reference algorithm.
+Confirm the assumptions behind the reference result; do not use only the
+implementation under test to generate its own “correct answer.”
+Reuse mature mechanisms first. For customized parts, establish invariants and
+module boundaries before implementation details.
+Define evaluation criteria before tuning to avoid cherry-picking favorable
+cases or repeatedly moving acceptance thresholds.
 
-### 3. 实现最小可工作路径
+### 3. Implement the minimal working path
 
-沿用既有模块边界，把数值核心与消息、配置、调度适配分离，
-但不为一次改动新建不必要的框架或复制已有适配层。
-输入、输出与失败状态必须显式；不能用零值、上一帧结果或空轨迹静默兜底。
-若既有契约允许复用上一帧，应保留有效期、原因和状态标记。
+Follow existing module boundaries. Separate the numerical core from message,
+configuration, and scheduling adapters, but do not create an unnecessary
+framework or duplicate an existing adapter for a single change.
+Make inputs, outputs, and failure states explicit; do not silently fall back
+to zero values, previous-frame results, or empty trajectories.
+If the existing contract permits reusing a previous frame, preserve its
+validity period, reason, and status marker.
 
-先打通一条真实输入到可检查输出的路径。框架阶段的未实现能力必须可识别，
-mock 和理想输入只证明局部机制，不能证明真实场景算法效果。
-实时路径按需检查有界计算、内存分配与异步结果是否过期；先测量再做性能重构。
+First connect a real input to an inspectable output. Unimplemented
+capabilities in a framework stage must be identifiable. Mocks and idealized
+inputs demonstrate only local mechanisms, not algorithm effectiveness in
+real scenarios.
+For real-time paths, check bounded computation, memory allocation, and
+staleness of asynchronous results as needed; measure before performance
+refactoring.
 
-### 4. 验证正确性与数值行为
+### 4. Validate correctness and numerical behavior
 
-添加少量直接覆盖新增或修复行为的测试，优先放在现有测试文件。
-根据算法风险选择，而非机械凑齐：
+Add a small number of tests that directly cover new or fixed behavior,
+preferably in existing test files.
+Select tests according to algorithmic risk rather than mechanically
+including every category:
 
-- 已知答案、小规模参考对照和守恒、界限、对称性等不变量。
-- 空输入、边界、退化、异常尺度和失败状态；检查输出是否满足硬约束。
-- 浮点比较区分绝对与相对误差，说明容差依据；不要求跨平台逐位一致。
-- 涉及导数时，可用适当步长的有限差分核对；涉及求解器时检查残差、
-  可行性和终止原因，不能只看“返回成功”。
-- 涉及状态时检查初始化、序列更新、重置和不连续输入，而非只测单帧。
+- Known answers, small reference comparisons, and invariants such as
+  conservation, bounds, and symmetry.
+- Empty inputs, boundaries, degenerate cases, unusual scales, and failure
+  states; check that outputs satisfy hard constraints.
+- Distinguish absolute and relative error in floating-point comparisons and
+  explain the basis for tolerances; do not require bit-for-bit cross-platform
+  agreement.
+- For derivatives, use finite differences with an appropriate step size when
+  applicable. For solvers, check residuals, feasibility, and termination
+  reasons rather than only “success” status.
+- For stateful behavior, test initialization, sequential updates, reset, and
+  discontinuous inputs, not just a single frame.
 
-只有性质确实成立时才使用变形或性质测试，避免把错误假设写成测试。
-修复缺陷时证明测试能检出原缺陷；不覆盖或回退他人的工作来制造失败。
+Use metamorphic or property-based tests only when the properties genuinely
+hold; do not encode incorrect assumptions as tests.
+For a bug fix, prove that the test detects the original defect. Do not
+overwrite or revert another person's work to manufacture a failure.
 
-### 5. 评估效果并集成
+### 5. Evaluate effectiveness and integrate
 
-固定代码、依赖、配置、数据版本与随机性；保留代表性场景和已知失败场景。
-分别报告算法正确性、任务效果、资源预算和剩余限制，不用一个平均分替代全部。
-学习类算法按需隔离训练、调参、测试数据，检查场景或时间上的数据泄漏；
-记录模型与预处理版本，核对训练和推理契约。
+Fix code, dependency, configuration, data versions, and randomness; retain
+representative scenarios and known failure cases.
+Report algorithmic correctness, task effectiveness, resource budgets, and
+remaining limitations separately; do not use one average score as a
+substitute for all of them.
+For learning-based algorithms, isolate training, tuning, and test data as
+needed and check for scenario or temporal data leakage. Record model and
+preprocessing versions and verify training/inference contracts.
 
-离线指标不能替代闭环行为证据。输出会影响下游行为时，使用
-`simulation-regression` 选择最小足够验证；不默认需要整车或道路测试。
-有性能收益声明时，使用 `performance-optimization` 的对照测量流程。
+Offline metrics do not replace closed-loop behavioral evidence. When outputs
+affect downstream behavior, use `simulation-regression` to select the
+smallest sufficient validation; do not assume whole-vehicle or road tests
+are required.
+For performance claims, use the controlled measurement workflow in
+`performance-optimization`.
 
-## 交付与验收
+## Deliverables and acceptance
 
-交付契约与假设、基线、实现范围、正确性和效果证据、失败边界与未决风险。
-证据来自实际结果；未运行、仅仿真、仅理想输入、尚需硬件验证必须区分。
-预期收益未实现时如实报告，不能通过改变指标、放宽约束或隐藏失败宣告完成。
+Report contracts and assumptions, baseline, implementation scope,
+correctness and effectiveness evidence, failure boundaries, and unresolved
+risks.
+Base evidence on actual results; distinguish work that was not run,
+simulation-only results, idealized-input results, and results still requiring
+hardware validation.
+If the expected benefit was not achieved, report that honestly. Do not claim
+completion by changing metrics, relaxing constraints, or hiding failures.
 
-## 失败处理
+## Failure handling
 
-出现无法解释的数值偏差、不可行解或回归，停止相关改动并保留最小输入与状态。
-先排查语义、时间、坐标与配置，再判断数学模型和实现；按证据选择顺序，
-不把所有失败归因于参数。改变问题定义、约束或降级方式前获得必要确认。
-不自动安装新求解器、替换数学库或扩大实验规模来掩盖问题。
+If unexplained numerical deviations, infeasible solutions, or regressions
+occur, stop the related change and preserve the minimal input and state.
+First check semantics, timing, coordinates, and configuration, then assess
+the mathematical model and implementation. Choose the order based on
+evidence; do not attribute every failure to parameters.
+Obtain necessary confirmation before changing the problem definition,
+constraints, or degradation behavior.
+Do not automatically install a new solver, replace a math library, or expand
+the experiment to hide a problem.
 
-## 依据
+## Basis
 
-采用[技能索引](../README.md)中 SciPy 的类型适配断言思路与证据验收方法；
-本文的算法建模和自动驾驶契约要求为场景化补充，不引入外部断言 API。
+Use the type-aware assertion approach from SciPy and the evidence acceptance
+methods referenced by the [skill index](../README.md).
+The algorithm modeling and autonomous-driving contract requirements here
+are scenario-specific additions; they do not introduce an external assertion
+API.
