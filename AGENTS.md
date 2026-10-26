@@ -24,6 +24,13 @@ read its `SKILL.md`. Select by `name`/`description`; load only what is needed.
 - [Offline vendor delivery](.agents/skills/vendor/SKILL.md)
 - [Multi-repository development](.agents/skills/multi-repo-dev/SKILL.md)
 - [Repository Agent setup](.agents/skills/repository-agent-setup/SKILL.md)
+- [Engineering solution design](.agents/skills/engineering-solution-design/SKILL.md)
+- [Algorithm development](.agents/skills/algorithm-development/SKILL.md)
+- [Performance optimization](.agents/skills/performance-optimization/SKILL.md)
+- [Issue localization](.agents/skills/issue-localization/SKILL.md)
+- [Simulation regression](.agents/skills/simulation-regression/SKILL.md)
+
+Use the [skill index](.agents/skills/README.md) to route engineering tasks.
 
 ## Environment
 
