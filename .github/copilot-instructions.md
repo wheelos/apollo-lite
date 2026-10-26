@@ -7,8 +7,8 @@ This repository follows a strict decoupled architecture optimized for modern lar
 1. **Reality > Docs:** Hierarchy of truth: `Compiler > Tests > Runtime > Source Code > Context Docs > README > Comments`. Never modify working code to fit stale documentation.
 2. **Zero Hallucination:** NEVER invent APIs, commands, file paths, variables, or repo structures. If unknown, retrieve context or ask the user.
 3. **Minimal Change:** Implement the smallest correct solution. NO unrelated refactoring, cosmetic cleanups, or symbol renaming.
-4. **Fail Fast:** If any command, build, or validation fails -> STOP immediately. Read `ad_agents/context/framework/anti-patterns/README.md`. Explain the root cause and wait for user confirmation. NEVER blindly retry.
-5. **Scope Containment:** Only execute the requested task. If out-of-scope work is required, STOP and ask for permission.
+4. **Fail Fast, Recover Deliberately:** Stop the failing command or unsafe action at the first actionable error; do not blindly retry, hide the error, or treat invalid output as success. Diagnose the cause and consult `ad_agents/context/framework/validation/failure-recovery-and-user-choice.md`. Continue with a safe, deterministic, in-scope correction when evidence supports it. When recovery has meaningful alternatives, may be destructive, changes dependencies or environment state, or expands scope, present concise options and ask the user to choose before proceeding.
+5. **Scope Containment:** Only execute the requested task. If out-of-scope work is required, do not perform it; explain why and offer the user clear options, including proceeding only with their approval.
 6. **Meta Rule (Conflict Resolution):** When multiple rules conflict, always choose the action that sequentially:
    1) Preserves correctness.
    2) Minimizes scope.

@@ -6,7 +6,10 @@
 - Keep changes scoped and preserve unrelated work.
 - Run builds and lint in the managed container as the mapped non-root user.
   Reuse caches; do not hardcode usernames.
-- Stop at the first actionable failure; do not retry blindly.
+- Stop the failing action at the first actionable error; diagnose it, then
+  recover safely in scope or offer the user options before consequential
+  alternatives. Do not retry blindly. See
+  `ad_agents/context/framework/validation/failure-recovery-and-user-choice.md`.
 - Durable repository knowledge lives in `ad_agents/context/`.
 - Each `pkgs/` checkout is independent: read its own `AGENTS.md` and skills.
 
