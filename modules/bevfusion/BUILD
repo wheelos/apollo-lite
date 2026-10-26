@@ -119,11 +119,12 @@ cc_library(
     includes = ["third_party/bevfusion"],
     deps = [
         ":bevfusion_cuda_kernels",
+        "//modules/lidar_object_detection/third_party/centerpoint:sparse_model",
         "@com_google_protobuf//:protobuf",
         "@cuda//:cublas",
         "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
-        "//modules/lidar_object_detection/third_party/centerpoint:spconv_backbone",
+        "@wheelos_perception_ops//ops/spconv:spconv_backbone",
     ],
     alwayslink = True,
 )
@@ -144,9 +145,9 @@ cc_library(
 
 cc_binary(
     name = "libbevfusion_runtime.so",
+    linkopts = ["-Wl,-rpath,$$ORIGIN"],
     linkshared = True,
     linkstatic = True,
-    linkopts = ["-Wl,-rpath,$$ORIGIN"],
     target_compatible_with = select({
         "//tools/platform:use_gpu": [],
         "//conditions:default": ["@platforms//:incompatible"],
@@ -162,8 +163,8 @@ cc_library(
     ],
     hdrs = [
         "inference/bevfusion_runner.h",
-        "inference/bevfusion_runtime_backend.h",
         "inference/bevfusion_runtime_api.h",
+        "inference/bevfusion_runtime_backend.h",
     ],
     linkopts = ["-ldl"],
     deps = [
@@ -214,13 +215,12 @@ filegroup(
 
 install_files(
     name = "install_bevfusion_spconv_licenses",
-    files = ["@spconv//:licenses"],
     dest = "bevfusion/share/licenses/spconv",
+    files = ["@spconv//:licenses"],
 )
 
 install(
     name = "install",
-    deps = [":install_bevfusion_spconv_licenses"],
     data = [":runtime_config"],
     data_dest = "bevfusion",
     library_dest = "bevfusion/lib",
@@ -228,6 +228,7 @@ install(
         ":libbevfusion_component_plugin.so",
         ":libbevfusion_runtime.so",
     ],
+    deps = [":install_bevfusion_spconv_licenses"],
 )
 
 cpplint()

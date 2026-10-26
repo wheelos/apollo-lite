@@ -7,11 +7,21 @@ to NVIDIA `Lidar_AI_Solution` revision
 selection are recorded under `third_party/bevfusion/`.
 
 The first supported model is ResNet50 FP16. No models, TensorRT engines, datasets, training/QAT/PTQ tools, visualizer, demo
-assets, or spconv/ONNX schemas are included. Its sparse backbone reuses the
-CenterPoint adapter and the root Bzlmod `@spconv//:spconv` dependency, so the
-two modules do not build separate sparse-convolution implementations.
+assets, or spconv/ONNX schemas are included. Its sparse backbone uses the
+public `@wheelos_perception_ops//ops/spconv:spconv_backbone` target; the
+operator package directly depends on root Bzlmod `spconv@2.3.8.bcr.1`, so
+CenterPoint and BEVFusion do not maintain separate sparse-convolution
+implementations. The shared custom sparse-ONNX parser remains in the
+detector-integration target
+`//modules/lidar_object_detection/third_party/centerpoint:sparse_model`;
+operator execution itself has no dependency on ONNX or detector modules.
 TensorRT engines and the SCN ONNX must be generated for the target
 GPU/software stack and are not assumed portable.
+The sparse ONNX graph and initializer tensors must be FP16. Legacy node
+`precision`/`output_precision` values of `int8` are engine-builder hints; the
+shared executor intentionally forces FP16 execution, matching the previous
+BEVFusion integration. Its sparse graph path includes XYZ `ScatterDense`,
+dense `Transpose`, and `Reshape`; it does not execute INT8 kernels.
 
 ## Input contract
 

@@ -23,7 +23,8 @@
 
 #include "lidar-scn.hpp"
 
-#include "sparse_backbone.h"
+#include "sparse_model.h"
+#include "spconv/sparse_backbone.h"
 
 namespace bevfusion {
 namespace lidar {
@@ -35,11 +36,14 @@ class SCNImplement : public SCN {
     voxelization_ = create_voxelization(param_.voxelization);
     if (voxelization_ == nullptr) return false;
 
-    native_scn_ = LoadSparseBackbone(param_.model);
+    native_scn_ = wheelos::perception::ops::spconv::CreateSparseBackbone(
+        LoadSparseModel(param_.model));
     return native_scn_ != nullptr;
   }
 
-  virtual const nvtype::half* forward(const nvtype::half* points, unsigned int num_points, void* stream) override {
+  virtual const nvtype::half* forward(const nvtype::half* points,
+                                      unsigned int num_points,
+                                      void* stream) override {
     voxelization_->forward(points, num_points, stream, param_.order);
     return static_cast<const nvtype::half*>(native_scn_->Forward(
         const_cast<void*>(voxelization_->features()),
@@ -48,14 +52,12 @@ class SCNImplement : public SCN {
         static_cast<cudaStream_t>(stream)));
   }
 
-  virtual std::vector<int64_t> shape() override {
-    return native_scn_->Shape();
-  }
+  virtual std::vector<int64_t> shape() override { return native_scn_->Shape(); }
 
  private:
   SCNParameter param_;
   std::shared_ptr<Voxelization> voxelization_;
-  std::unique_ptr<SparseBackbone> native_scn_;
+  std::unique_ptr<wheelos::perception::ops::spconv::SparseBackbone> native_scn_;
 };
 
 std::shared_ptr<SCN> create_scn(const SCNParameter& param) {
