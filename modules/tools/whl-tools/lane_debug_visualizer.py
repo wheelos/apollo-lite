@@ -170,6 +170,10 @@ def lane_record(lane):
         "image_points": [
             [point.x, point.y] for point in lane.curve_image_point_set
         ],
+        "camera_points": [
+            [point.x, point.y, point.z]
+            for point in lane.curve_camera_point_set
+        ],
     }
 
 
@@ -316,6 +320,8 @@ class LaneDebugVisualizer:
             f"saved pair {key} ({record['lane_count']} lanes"
             f"{', no overlay' if output_path is None else ''})",
             flush=True)
+        if self.saved_count >= self.args.max_frames:
+            self.stop_event.set()
 
     def on_image(self, image):
         key = timestamp_ns(image.measurement_time)

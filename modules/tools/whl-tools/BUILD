@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 
 py_binary(
     name = "save_lidar_semantic_pcd",
@@ -29,6 +29,38 @@ py_binary(
         "@wheelos_msgs//wheelos_msgs/perception_msgs:perception_lane_py_pb2",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_py_pb2",
     ],
+)
+
+py_binary(
+    name = "openlane_lane_evaluator",
+    srcs = ["openlane_lane_evaluator.py"],
+    main = "openlane_lane_evaluator.py",
+)
+
+py_binary(
+    name = "openlane_projection_accuracy",
+    srcs = ["openlane_projection_accuracy.py"],
+    main = "openlane_projection_accuracy.py",
+)
+
+py_test(
+    name = "openlane_lane_evaluator_test",
+    size = "small",
+    srcs = [
+        "openlane_lane_evaluator.py",
+        "openlane_lane_evaluator_test.py",
+    ],
+    main = "openlane_lane_evaluator_test.py",
+)
+
+py_test(
+    name = "openlane_projection_accuracy_test",
+    size = "small",
+    srcs = [
+        "openlane_projection_accuracy.py",
+        "openlane_projection_accuracy_test.py",
+    ],
+    main = "openlane_projection_accuracy_test.py",
 )
 
 py_binary(
