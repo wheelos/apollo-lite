@@ -19,10 +19,10 @@ cc_library(
     hdrs = ["gnss_component.h"],
     copts = GNSS_COPTS,
     deps = [
-        "@wheelos_common//modules/common/monitor_log",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/gnss/stream:raw_stream",
         "@core//cyber",
+        "@wheelos_common//modules/common/monitor_log",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:drive_state_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:vehicle_signal_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
@@ -41,6 +41,14 @@ install(
     library_dest = "drivers/lib/gnss",
     targets = [
         ":libgnss_component.so",
+    ],
+)
+
+filegroup(
+    name = "test_data_files",
+    srcs = [
+        "test_data/novatel.bin",
+        "test_data/novatel_manifest.json",
     ],
 )
 

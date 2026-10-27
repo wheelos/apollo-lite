@@ -64,6 +64,7 @@ class Parser {
     GLOEPHEMERIDES,
     BEST_GNSS_POS,
     HEADING,
+    CORRECTED_IMU,
   };
 
   // A general pointer to a protobuf message. Used for parsed results.

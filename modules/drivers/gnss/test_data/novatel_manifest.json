@@ -1,0 +1,34 @@
+{
+  "file": "novatel.bin",
+  "sha256": "bab9ca0294a09efd3fa9bcdc53547cd08dd318450dfb5b67199f3a1dc0b619b0",
+  "bytes": 1070568,
+  "provenance": "Existing repository capture; receiver, firmware, acquisition location and date are unknown.",
+  "wire_format": "NovAtel OEM little-endian binary, CRC32 initial value 0, polynomial 0xedb88320",
+  "gps_time": "GPS week and seconds of week, not UTC or host receipt time",
+  "imu": {
+    "wire_type": 26,
+    "model": "ISA100C",
+    "native_rate_hz": 200,
+    "accel_increment_m_s_per_count": 2e-8,
+    "gyro_increment_rad_per_count": 1e-9,
+    "frame_mapping_for_test": 5
+  },
+  "crc_valid_frames": 17785,
+  "logs": {
+    "RAWIMUSX_1462": {"count": 15953, "observed_rate_hz": 200},
+    "INSPVAS_508": {"count": 796, "observed_rate_hz": 10},
+    "CORRIMUDATAS_813": {"count": 796, "observed_rate_hz": 10},
+    "INSCOVS_320": {"count": 80, "observed_rate_hz": 1},
+    "BESTGNSSPOS_1429": {"count": 80, "observed_rate_hz": 1},
+    "BESTGNSSVEL_1430": {"count": 80, "observed_rate_hz": 1}
+  },
+  "expected_output": {
+    "IMU": 15953,
+    "INS": 796,
+    "CORRECTED_IMU": 796,
+    "BEST_GNSS_POS": 80,
+    "GNSS": 160,
+    "mean_raw_acceleration_norm_m_s2": {"value": 9.80665, "tolerance": 0.01}
+  },
+  "scope": "Software parser regression, not evidence of receiver configuration, HIL or FAST-LIO acceptance."
+}

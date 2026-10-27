@@ -71,8 +71,15 @@ message Stream {
 
 // Device-specific configuration.
 message NovatelConfig {
-  // See Page 75 of SPAN on OEM6 Firmware Reference Manual for details.
+  // Driver-only raw enclosure -> FLU mapping, with the wire's negative Y
+  // already undone: 5 -> (Y,-X,Z); 6 -> (X,-Y,-Z). Other values are rejected.
+  // Does not send SETIMUORIENTATION or apply SETINSROTATION/lever arms.
   optional int32 imu_orientation = 1 [default = 5];
+  // Required for CORRIMUDATA(S): the configured LOG ONTIME rate, not the
+  // native IMU sampling rate (e.g. ONTIME 0.1 -> 10 Hz). Missing/nonpositive
+  // values reject legacy corrected logs, without disabling raw IMU/PVA.
+  // IMURATECORRIMUS instead requires a detected or configured native model.
+  optional double corrimu_rate_hz = 2;
 }
 
 message UbloxConfig {}

@@ -37,6 +37,13 @@ command {
 
 rtk_solution_type: RTK_RECEIVER_SOLUTION
 imu_type: ADIS16488
+# This is a deployment example, not receiver discovery. RAWIMUX's wire model
+# must agree with imu_type; novatel.bin's ISA100C fixture needs ISA100C + 10 Hz.
+novatel_config {
+    imu_orientation: 5
+    # Must match the receiver's CORRIMUDATA(S) LOG ONTIME period.
+    corrimu_rate_hz: 100
+}
 proj4_text: "+proj=utm +zone=10 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 
 # If given, the driver will send velocity info into novatel one time per second
@@ -45,7 +52,20 @@ wheel_parameters: "SETWHEELPARAMETERS 100 1 1\r\n"
 #gpsbin_folder: "/apollo/data/gpsbin"
 
 #########################################################################
-# notice: only for debug, won't configure device through driver online!!!
+# Disabled receiver-command examples. Uncommenting login_commands DOES send
+# commands during startup/reconnection (currently through the data stream).
+# imu_type and corrimu_rate_hz must match the receiver's actual setup.
+#
+# RAWIMUSX ONNEW: native IMU rate (model dependent; ADIS16488/ISA100C: 200 Hz).
+# INSPVAS/CORRIMUDATAS ONTIME 0.01: 100 Hz; BESTGNSSPOS/VEL and INSCOV: 1 Hz.
+# INSPVAX ONTIME 0.5: 2 Hz status only; RANGE ONTIME 0.2: 5 Hz observations.
+# Ephemeris ONNEW/ONTIME is separate from IMU/PVA solution frequency.
+# Output is event-driven; the driver does not enforce these example rates.
+#
+# At 200/100/100 Hz, RAWIMUSX + CORRIMUDATAS + INSPVAS alone need about
+# 29.2 kB/s including headers/CRC. A physical 115200 baud 8N1 link carries
+# at most 11.52 kB/s before other logs/commands. Verify actual link throughput
+# (USB ACM baud may be virtual); do not enable all examples without budgeting.
 #########################################################################
 # login_commands: "UNLOGALL THISPORT\r\n"
 # login_commands: "LOG COM2 GPRMC ONTIME 1.0 0.25\r\n"
