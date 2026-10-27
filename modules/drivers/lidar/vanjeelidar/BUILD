@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install")
 
@@ -37,6 +37,27 @@ cc_binary(
 )
 
 cc_library(
+    name = "measurement_conversion",
+    srcs = ["src/measurement_conversion.cc"],
+    hdrs = ["src/measurement_conversion.h"],
+    deps = [
+        "//modules/drivers/lidar/vanjeelidar/proto:vanjeelidar_cc_proto",
+        "@vanjee-lidar-sdk//:vanjee_driver",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "measurement_conversion_test",
+    size = "small",
+    srcs = ["src/measurement_conversion_test.cc"],
+    deps = [
+        ":measurement_conversion",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "vanjeelidar_component_lib",
     srcs = [
         "src/vanjeelidar_component.cpp",
@@ -46,6 +67,7 @@ cc_library(
     ],
     copts = VANJEE_COPTS,
     deps = [
+        ":measurement_conversion",
         "//modules/drivers/lidar/common:lidar_common",
         "//modules/drivers/lidar/vanjeelidar/proto:vanjeelidar_cc_proto",
         "//modules/drivers/lidar/vanjeelidar/proto:vanjeelidar_config_cc_proto",
@@ -53,6 +75,18 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
     ],
     alwayslink = True,
+)
+
+cc_test(
+    name = "vanjeelidar_component_test",
+    size = "small",
+    srcs = ["src/vanjeelidar_component_test.cc"],
+    data = ["@core//cyber:cyber_conf"],
+    deps = [
+        ":vanjeelidar_component_lib",
+        "@com_google_googletest//:gtest",
+        "@core//cyber",
+    ],
 )
 
 cpplint()

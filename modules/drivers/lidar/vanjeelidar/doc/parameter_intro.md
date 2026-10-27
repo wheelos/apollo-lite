@@ -22,6 +22,8 @@ The Vanjee LiDAR driver configuration follows a hierarchical structure defined i
 - **LidarConfigBase**: Base LiDAR configuration (frame_id, scan_channel, etc.)
 - **VanjeeDriverParam**: Main driver parameters including input and decoder settings
 - **VanjeeMemsParam**: MEMS-specific parameters for MEMS LiDAR models
+- **imu_channel / imu_frame_id**: Required Apollo output channel and actual SDK
+  output-vector frame whenever IMU processing is enabled
 
 ---
 
@@ -174,7 +176,7 @@ input_param {
 |-----------|------|---------|-------------|
 | `point_cloud_enable` | bool | `false` | Enable point cloud output |
 | `imu_enable` | int32 | `-1` | IMU enable mode |
-| `imu_orientation_enable` | bool | `true` | Enable IMU orientation transform |
+| `imu_orientation_enable` | bool | `true` | Calculate SDK orientation (not published by Apollo) |
 | `laser_scan_enable` | bool | `false` | Enable laser scan output |
 | `device_ctrl_state_enable` | bool | `false` | Enable device state messages |
 | `device_ctrl_cmd_enable` | bool | `false` | Enable device command messages |
@@ -247,6 +249,12 @@ Controls IMU data processing:
 | `-1` | Disable IMU (default) |
 | `0` | Enable IMU with default calibration parameters |
 | `1` | Enable IMU with configured parameters |
+
+Modes 0 and 1 require top-level `imu_channel` and `imu_frame_id`. The default
+720-16 examples use mode 0 and disable orientation calculation. The SDK still
+requires stationary gyro calibration and may withhold measurements until it
+finishes. See [IMU output and point time](../README.md#4-imu-output-and-point-time)
+for message, SI units, frames and clock-selection limits.
 
 #### hide_points_range
 
@@ -400,7 +408,13 @@ driver_param {
 
 ### Example 3: With Transform and IMU
 
+SDK spatial transforms depend on build flags; the current overlay does not
+enable them. Example extrinsics are illustrative, not calibrated values.
+
 ```protobuf
+imu_channel: "/apollo/sensor/vanjee/Imu"
+imu_frame_id: "vanjee_sdk_imu"
+
 config_base {
   frame_id: "velodyne"
   scan_channel: "/apollo/sensor/vanjee/scan"

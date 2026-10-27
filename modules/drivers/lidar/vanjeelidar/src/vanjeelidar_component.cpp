@@ -17,22 +17,31 @@
 #include "modules/drivers/lidar/vanjeelidar/src/vanjeelidar_component.h"
 
 #include <memory>
+#include <string>
 #include <vector>
 
+#include <vanjee_driver/api/lidar_driver.hpp>
+#include <vanjee_driver/driver/driver_param.hpp>
 #include <vanjee_driver/driver/input/input.hpp>
+#include <vanjee_driver/msg/lidar_parameter_interface_msg.hpp>
 #include <vanjee_driver/utility/buffer.hpp>
+
+#include "modules/drivers/lidar/vanjeelidar/src/measurement_conversion.h"
 
 namespace apollo {
 namespace drivers {
 namespace lidar {
 
+using ::vanjee::lidar::InputType;
+
 VanjeelidarComponent::~VanjeelidarComponent() {
-  if (cloud_handle_thread_.joinable()) {
-    cloud_handle_thread_.join();
-  }
   if (driver_ptr_ != nullptr) {
     driver_ptr_->stop();
-    driver_ptr_ = nullptr;
+  }
+  running_.store(false);
+  cloud_queue_.push(nullptr);
+  if (cloud_handle_thread_.joinable()) {
+    cloud_handle_thread_.join();
   }
 }
 
@@ -42,7 +51,26 @@ bool VanjeelidarComponent::Init() {
     return false;
   }
 
-  this->InitBase(conf_.config_base());
+  const int imu_mode = conf_.driver_param().decoder_param().imu_enable();
+  if (imu_mode < -1 || imu_mode > 1) {
+    AERROR << "Unsupported Vanjee imu_enable mode: " << imu_mode;
+    return false;
+  }
+  if (imu_mode != -1) {
+    if (conf_.imu_channel().empty() || conf_.imu_frame_id().empty()) {
+      AERROR << "Enabled Vanjee IMU requires imu_channel and imu_frame_id";
+      return false;
+    }
+    imu_writer_ = node_->CreateWriter<vanjee::VanjeeImu>(conf_.imu_channel());
+    if (imu_writer_ == nullptr) {
+      AERROR << "Failed to create Vanjee IMU writer: " << conf_.imu_channel();
+      return false;
+    }
+  }
+  if (!this->InitBase(conf_.config_base())) {
+    AERROR << "Failed to initialize Vanjee packet and point cloud channels";
+    return false;
+  }
 
   scan_buffer_ = std::make_shared<SyncBuffering<::vanjee::lidar::ScanData>>();
   scan_buffer_->Init();
@@ -54,8 +82,7 @@ bool VanjeelidarComponent::Init() {
       std::make_shared<SyncBuffering<::vanjee::lidar::DeviceCtrl>>();
   device_ctrl_buffer_->Init();
 
-  cloud_handle_thread_ = std::thread(&VanjeelidarComponent::ProcessCloud, this);
-  // TODO(All): add thread to handle scan data and imu data
+  // TODO(All): add handling for scan data.
 
   driver_ptr_ = std::make_shared<::vanjee::lidar::LidarDriver<PointCloudMsg>>();
 
@@ -242,6 +269,8 @@ bool VanjeelidarComponent::Init() {
     return false;
   }
 
+  running_.store(true);
+  cloud_handle_thread_ = std::thread(&VanjeelidarComponent::ProcessCloud, this);
   if (!driver_ptr_->start()) {
     AERROR << "vanjee Driver start failed";
     return false;
@@ -289,7 +318,25 @@ VanjeelidarComponent::VanjeeImuPacketAllocateCallback() {
 }
 void VanjeelidarComponent::VanjeeImuPacketPutCallback(
     std::shared_ptr<::vanjee::lidar::ImuPacket> imu_packet) {
-  imu_queue_.push(imu_packet);
+  if (imu_packet == nullptr) {
+    AERROR << "Received null Vanjee IMU packet";
+    return;
+  }
+  if (imu_writer_ == nullptr) {
+    AERROR << "Received Vanjee IMU packet without configured publisher";
+    return;
+  }
+  auto message = std::make_shared<vanjee::VanjeeImu>();
+  std::string error;
+  if (!ConvertVanjeeImu(*imu_packet, conf_.imu_frame_id(),
+                        conf_.driver_param().decoder_param().use_lidar_clock(),
+                        cyber::Time::Now().ToSecond(), message.get(), &error)) {
+    AERROR << "Rejected Vanjee IMU packet: " << error;
+    return;
+  }
+  if (!imu_writer_->Write(message)) {
+    AERROR << "Failed to publish Vanjee IMU on " << conf_.imu_channel();
+  }
 }
 
 std::shared_ptr<PointCloudMsg>
@@ -311,49 +358,24 @@ void VanjeelidarComponent::VanjeeDeviceCtrlPutCallback(
   device_ctrl_queue_.push(device_ctrl);
 }
 
-void VanjeelidarComponent::PreparePointsMsg(PointCloud& msg) {
-  msg.set_height(1);
-  msg.set_width(msg.point_size() / msg.height());
-
-  const auto timestamp =
-      msg.point(static_cast<int>(msg.point_size()) - 1).timestamp();
-  msg.set_measurement_time(
-      GetSecondTimestampFromNanosecondTimestamp(timestamp));
-  double lidar_time = GetSecondTimestampFromNanosecondTimestamp(timestamp);
-  double diff_time = msg.header().timestamp_sec() - lidar_time;
-
-  if (diff_time > 0.02) {
-    AINFO << std::fixed << std::setprecision(16)
-          << "system time: " << msg.header().timestamp_sec()
-          << ", lidar time: " << lidar_time << ", diff is:" << diff_time;
-  }
-
-  msg.mutable_header()->set_lidar_timestamp(timestamp);
-}
-
 void VanjeelidarComponent::ProcessCloud() {
-  while (!cyber::IsShutdown()) {
+  while (running_.load() && !cyber::IsShutdown()) {
     std::shared_ptr<PointCloudMsg> msg = cloud_queue_.popWait();
     if (msg.get() == NULL) {
-      AWARN << "VanjeeCloudPutCallback get nullptr, continue";
       continue;
     }
     auto apollo_pc = AllocatePointCloud();
 
-    for (auto p : msg->points) {
-      PointXYZIT* point = apollo_pc->add_point();
-      point->set_x(p.x);
-      point->set_y(p.y);
-      point->set_z(p.z);
-      point->set_intensity(static_cast<uint32_t>(p.intensity));
-      point->set_timestamp(GetNanosecondTimestampFromSecondTimestamp(
-          p.timestamp + msg->timestamp));
+    std::string error;
+    if (!ConvertVanjeePointCloud(
+            *msg, conf_.driver_param().decoder_param().use_offset_timestamp(),
+            conf_.config_base().frame_id(), apollo_pc.get(), &error)) {
+      AERROR << "Rejected Vanjee point cloud: " << error;
+      continue;
     }
-    apollo_pc->set_is_dense(msg->is_dense);
-    this->PreparePointsMsg(*apollo_pc);
     ADEBUG << "ProcessCloud: apollo_pc point size: " << apollo_pc->point_size();
-    if (apollo_pc->point_size() != 0) {
-      WritePointCloud(apollo_pc);
+    if (!WritePointCloud(apollo_pc)) {
+      AERROR << "Failed to publish Vanjee point cloud";
     }
   }
 }

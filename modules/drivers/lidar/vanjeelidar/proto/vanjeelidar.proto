@@ -3,6 +3,7 @@ syntax = "proto2";
 package apollo.drivers.vanjee;
 
 import "wheelos_msgs/basic_msgs/header.proto";
+import "wheelos_msgs/basic_msgs/geometry.proto";
 
 // deprecated
 message VanjeeScanPacket {
@@ -22,6 +23,21 @@ message VanjeePacket {
   optional double timestamp = 1;
   optional uint32 seq = 2;
   optional bytes data = 3;
+}
+
+// SDK-calibrated IMU measurements, not GPS-epoch gnss.Imu measurements.
+// Orientation and covariance are deliberately omitted: the SDK does not
+// consistently initialize them for every decoder/mode.
+message VanjeeImu {
+  optional apollo.common.Header header = 1;
+  // SDK seconds in the same selected clock domain as the LiDAR points.
+  optional double measurement_time = 2;
+  // m/s^2, including gravity response, in header.frame_id after SDK rotation.
+  optional apollo.common.Point3D linear_acceleration = 3;
+  // rad/s, in the same frame; no additional Apollo rotation or scaling.
+  optional apollo.common.Point3D angular_velocity = 4;
+  // Clock selection only; true does NOT assert hardware synchronization.
+  optional bool use_lidar_clock = 5;
 }
 
 // keep consistent with Vanjee SDK ::vanjee::lidar::ScanData
