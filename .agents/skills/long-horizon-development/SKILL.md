@@ -103,6 +103,15 @@ deferred risks coherent across these handoffs.
 
 ## Acceptance
 
+For work that must survive interruption, use the
+[task checkpoint contract](../../../ad_agents/context/framework/validation/agent-task-checkpoints.md)
+and [checkpoint tools](../../../scripts/agents/README.md). Store task state in
+the session workspace, not in durable context. Capture every relevant checkout,
+untracked input, configuration, and fixture in the explicit fingerprint scope.
+On resume, compare fingerprints, recheck current ownership and outstanding
+approvals, then reuse only evidence whose inputs are unchanged.
+Do not treat checkpoint status as authorization or a test result.
+
 - The user-visible goal and hard gates remain explicit throughout delivery.
 - A working, inspectable minimum path exists before optional breadth or polish.
 - Baselines and evidence identify their inputs and limitations; no proxy is

@@ -15,6 +15,11 @@ every skill at once.
 | Latency, CPU, GPU, memory, or throughput issues | [performance-optimization](performance-optimization/SKILL.md) | Baseline, profiling, bottleneck attribution, optimization, and controlled remeasurement |
 | Failures, unexpected behavior, or unknown causes | [issue-localization](issue-localization/SKILL.md) | Search and gather evidence before locating the root cause; require causal evidence for fixes |
 | Replay, closed-loop simulation, and scenario regression | [simulation-regression](simulation-regression/SKILL.md) | Explicit execution model, deterministic assertions, and evidence package |
+| Diff or change review | [change-review](change-review/SKILL.md) | Evidence-backed behavioral findings without unsolicited fixes |
+| Selecting validation for a change | [test-impact-analysis](test-impact-analysis/SKILL.md) | Required evidence matched to affected contracts and risk |
+| Cross-consumer interface changes | [interface-migration](interface-migration/SKILL.md) | Compatibility inventory, migration order, and consumer proof |
+| Model, preprocessing, or inference engine integration | [model-artifact-integration](model-artifact-integration/SKILL.md) | Versioned inference contract and target-runtime evidence |
+| Evaluating agent rules, skills, or tools | [agent-evaluation](agent-evaluation/SKILL.md) | Reviewed case results, hard-gate failures, and comparable run evidence |
 
 Start with the current problem and load another skill only when a handoff is
 needed; these skills are not a mandatory pipeline for every task.
@@ -39,7 +44,7 @@ the impact.
 
 Read commands from the authoritative entry points below as needed, and verify
 them against the current source or tool help. If a referenced document is
-missing, search for the same filename under `context/`; if it is still not
+missing, search for the same filename under `ad_agents/context/`; if it is still not
 found, report the gap instead of inventing a command or installing a tool:
 
 - `ad_agents/context/framework/build/build-and-test-command-registry.md`

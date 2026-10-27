@@ -11,8 +11,8 @@ Repository/
   .github/              # GitHub governance and provider integration
   .agents/
     skills/             # How to perform a task
-    knowledge/          # Durable, verified repository facts
-    notes/              # Ignored temporary investigations
+  ad_agents/context/    # Existing durable knowledge authority
+  Session workspace/    # Temporary task state and evidence
 ```
 
 ## When
@@ -36,15 +36,12 @@ editing.
 3. Add `.agents/skills/<task>/SKILL.md` with `name` and a searchable
    `description`, then scope, prerequisites, steps, acceptance, and failure
    handling. Include only source-verified commands; keep core steps self-contained.
-4. Add `.agents/knowledge/README.md` indexing narrow, source-backed topics.
-   Record facts, boundaries, evidence, and update triggers rather than transcripts.
-   If a durable authority already exists, link it instead of duplicating facts.
-   Migrate legacy topics individually and leave compatibility pointers; do not
-   silently create competing sources of truth.
-5. Add `.agents/notes/README.md` explaining temporary investigations. Ignore
-   note contents by default; never store credentials, personal data, or raw
-   sensitive logs. Promote validated reusable conclusions into knowledge or a
-   skill, then remove obsolete notes.
+4. Link the existing durable authority instead of creating `.agents/knowledge/`.
+   Keep facts source-backed, narrowly indexed, and separate from procedures.
+   Preserve existing ownership; do not move established knowledge silently.
+5. Keep temporary investigations in the session workspace. Never store credentials,
+   personal data, or raw sensitive logs. Promote reusable conclusions only when
+   authorized through the existing context-maintenance process.
 6. Merge existing content; add only useful task skills and truthful indices.
    Do not fabricate architecture, commands, empty capability claims, or
    duplicate every skill across repositories.
@@ -55,6 +52,9 @@ editing.
 - GitHub governance remains intact; shared rules have one authoritative home.
 - Existing knowledge remains reachable with explicit migration boundaries.
 - Temporary notes are ignored; reusable guidance is tracked in its owning repo.
+- Run the [configuration check](../../../scripts/agents/README.md), review
+  entrypoint/command consistency, and compare agent behavior on relevant
+  evaluation cases. Syntax checks do not prove instruction effectiveness.
 - Report which repositories changed. Documentation-only setup needs no builds.
 
 ## Failure handling
