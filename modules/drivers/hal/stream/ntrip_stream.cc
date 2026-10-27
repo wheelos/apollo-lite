@@ -53,20 +53,8 @@ NtripStream::NtripStream(const std::string& address, uint16_t port,
                   common::util::EncodeBase64(user + ":" + passwd) + "\r\n";
   }
 
-  // Create the underlying TcpStream. Use timeout_usec = 0 for non-blocking
-  // reads/writes handled by NtripStream's select/pselect logic or its own
-  // timeouts. Let's pass a small timeout to TcpStream constructor, or use its
-  // default? Original used 0. Using 0 makes TcpStream non-blocking. NtripStream
-  // will manage the blocking/timeout using wait_readable/wait_writable if
-  // needed. Let's configure TcpStream with the *data activity timeout* for its
-  // read/write, or keep it non-blocking and handle waiting here. The most
-  // common is NtripStream handles timeouts. Let's pass 0 to TcpStream.
+  // Use the configured NTRIP timeout for TCP connect/read/write operations.
   try {
-    // The TcpStream constructor should throw on invalid address/port format or
-    // other setup errors.
-    // use timeout_s_ as connect timeout for non-blocking issue in TcpStream.
-    // TODO(All): fix issue in tcp_stream and re-enable non-blocking
-    // TODO(All): distinguish read/write timeout and connection timeout
     tcp_stream_ = std::make_unique<TcpStream>(
         address_, port_,
         std::chrono::duration_cast<std::chrono::microseconds>(
@@ -93,6 +81,7 @@ NtripStream::~NtripStream() {
 // Throws std::runtime_error for fatal errors during setup or handshake.
 // Returns true on success. Returns false on failure (when not throwing).
 bool NtripStream::Connect() {
+  std::lock_guard<std::timed_mutex> read_lock(read_mutex_);
   std::lock_guard<std::mutex> lock(internal_mutex_);
 
   if (is_login_) {
@@ -100,6 +89,9 @@ bool NtripStream::Connect() {
     status_ = Stream::Status::CONNECTED;
     return true;
   }
+
+  pending_data_.clear();
+  pending_data_offset_ = 0;
 
   AINFO << "Attempting to connect and login to NTRIP caster " << address_ << ":"
         << port_ << "/" << mountpoint_;
@@ -158,7 +150,17 @@ bool NtripStream::Connect() {
     AINFO << "NtripStream sent GET request.";
 
     // 3. Read and parse the HTTP response header.
-    std::string response_header = read_http_header_locked(timeout_s_);
+    std::string response = read_http_header_locked(timeout_s_);
+    const std::string delimiter = "\r\n\r\n";
+    const size_t header_end = response.find(delimiter);
+    if (header_end == std::string::npos) {
+      last_errno_ = EPROTO;
+      throw std::runtime_error("NtripStream response has no header delimiter.");
+    }
+
+    const size_t body_start = header_end + delimiter.size();
+    pending_data_.assign(response.begin() + body_start, response.end());
+    std::string response_header = response.substr(0, body_start);
 
     AINFO << "NtripStream received response header (first few lines):";
     // Log first few lines of header
@@ -252,10 +254,17 @@ bool NtripStream::Connect() {
 }
 
 bool NtripStream::Disconnect() {
+  std::lock_guard<std::timed_mutex> read_lock(read_mutex_);
   std::lock_guard<std::mutex> lock(
       internal_mutex_);  // Lock during disconnection
 
+  pending_data_.clear();
+  pending_data_offset_ = 0;
+
   if (!is_login_) {
+    if (tcp_stream_) {
+      tcp_stream_->Disconnect();
+    }
     status_ = Stream::Status::DISCONNECTED;
     AINFO << "NtripStream already disconnected.";
     return true;
@@ -263,8 +272,7 @@ bool NtripStream::Disconnect() {
 
   AINFO << "Disconnecting NTRIP stream from " << address_ << ":" << port_ << "/"
         << mountpoint_;
-  is_login_ = false;  // Set login state to false immediately
-
+  is_login_ = false;
   bool ret = true;
   if (tcp_stream_) {
     ret = tcp_stream_->Disconnect();  // Disconnect underlying TCP stream
@@ -287,60 +295,37 @@ bool NtripStream::Disconnect() {
 
 // Attempts to disconnect and reconnect the NTRIP stream.
 // Called internally on timeout or read/write errors.
-// Assumes the caller holds the internal_mutex_ lock.
+// Connection-state changes are serialized by both stream mutexes.
 void NtripStream::Reconnect() {
-  // Mutex is already locked by the caller (read or write)
   AINFO << "Reconnect: Attempting to reconnect ntrip caster " << address_ << ":"
         << port_ << "/" << mountpoint_;
 
-  // Disconnect the current stream state
-  // No need for lock guard here as we already hold the lock.
-  // Disconnect() method acquires lock internally, avoid double locking issues
-  // if possible. Or, make Disconnect_locked helper that assumes lock is held.
-  // Let's call the public Disconnect(). If it acquires lock internally, it's
-  // fine. Need to release lock before calling Disconnect() if Disconnect()
-  // acquires lock internally. A pattern could be: {
-  // std::unique_lock<std::mutex> unlock(internal_mutex_); unlock.unlock();
-  // Disconnect(); } lock.lock(); Or, make Disconnect_internal() that doesn't
-  // lock. Let's assume Disconnect() is safe to call even if lock is held (e.g.,
-  // tries to acquire lock, or detects it's held). Or simplify: just call
-  // close() on the underlying tcp_stream_
-  if (tcp_stream_) {
-    tcp_stream_->Disconnect();  // Call disconnect on underlying stream
+  // Disconnect the current stream state under the mutex.
+  {
+    std::lock_guard<std::timed_mutex> read_lock(read_mutex_);
+    std::lock_guard<std::mutex> lock(internal_mutex_);
+    if (is_login_) {
+      return;
+    }
+    if (tcp_stream_) {
+      tcp_stream_->Disconnect();
+    }
+    is_login_ = false;
+    status_ = Stream::Status::DISCONNECTED;
+    pending_data_.clear();
+    pending_data_offset_ = 0;
   }
-  is_login_ = false;  // Ensure login state is false
-  status_ = Stream::Status::DISCONNECTED;
 
-  // Attempt to connect again
   try {
-    // Connect() acquires the lock internally, so need to release it here first.
-    // Releasing and re-acquiring the lock around the Connect call in
-    // Reconnect is crucial to avoid deadlock if Connect needs the lock
-    // internally, and to allow other threads to potentially acquire the lock if
-    // Reconnect blocks. Let's pass the lock to Connect, or ensure Connect
-    // doesn't block on the same lock. Simpler: Call Connect() which handles its
-    // own locking (if designed to be externally callable and thread-safe). If
-    // Connect() *must* be called with the mutex locked, then Reconnect
-    // needs Connect_locked helper. Let's assume Connect() can be called
-    // externally and handles its own required locking. So, release the lock
-    // *around* the Connect call.
-    std::unique_lock<std::mutex> relock(internal_mutex_);
-    relock.unlock();  // Release lock before calling Connect
-
     bool connect_success = Connect();
 
-    relock.lock();  // Re-acquire lock after Connect returns or throws
-
     if (connect_success) {
-      data_active_s_ = cyber::Time::Now().ToSecond();
       AINFO << "Reconnect: Reconnected successfully.";
     } else {
-      // Connect returned false
       AERROR << "Reconnect: Connect attempt returned false.";
     }
-
   } catch (const std::exception& e) {
-    // Catch exception from Connect attempt
+    std::lock_guard<std::mutex> lock(internal_mutex_);
     last_errno_ = tcp_stream_ ? tcp_stream_->get_last_error_code() : EBADF;
     AERROR << "Reconnect: Connect attempt threw: " << e.what()
            << " (Underlying errno: " << last_errno_ << ", "
@@ -351,7 +336,8 @@ void NtripStream::Reconnect() {
 // Reads the HTTP response header from the TCP stream until "\r\n\r\n" or
 // timeout. Assumes the caller holds the internal_mutex_ lock. Throws
 // std::runtime_error on read error, timeout during header read, or if
-// connection closes prematurely. Returns the received header string.
+// connection closes prematurely. Returns all bytes received with the header;
+// Connect() preserves any bytes after the header delimiter as stream data.
 std::string NtripStream::read_http_header_locked(uint32_t timeout_s) {
   if (!tcp_stream_ || !tcp_stream_->Connect()) {
     last_errno_ = ENOTCONN;
@@ -441,105 +427,136 @@ std::string NtripStream::read_http_header_locked(uint32_t timeout_s) {
 
 // Read data from the NTRIP stream.
 size_t NtripStream::read(uint8_t* buffer, size_t max_length) {
-  // tcp stream is duplex, so we can read and write concurrently. no need to
-  // share the mutex between read and write operation
-  // TODO(All): separator mutex and make thread safety for multiple read
-  // std::lock_guard<std::mutex> lock(internal_mutex_);  // Lock for thread
-  // safety
-
-  // Check connection status and potentially reconnect
-  if (!is_login_) {
-    // Not logged in. Attempt reconnect. Reconnect handles its own state
-    // and logging.
-    Reconnect();
-    if (!is_login_) {
-      // Still not logged in after reconnect attempt.
-      last_errno_ = ENOTCONN;  // Not connected
-      AERROR
-          << "NtripStream read failed: Not connected after reconnect attempt.";
-      return 0;  // Cannot read
-    }
-    AINFO << "NtripStream read: Reconnected successfully.";
-  }
-
-  // Check if tcp_stream_ is still valid after reconnect
-  if (!tcp_stream_) {
-    last_errno_ = EBADF;
-    AERROR << "NtripStream read failed: internal tcp_stream_ is null after "
-              "connect check.";
-    status_ = Stream::Status::ERROR;
-    return 0;  // Cannot read
-  }
-
-  size_t ret = 0;
-  last_errno_ = 0;  // Reset errno before read attempt
-
-  try {
-    // Delegate read to the underlying TcpStream.
-    // TcpStream::read returns >0 on data, 0 on timeout/would block, throws on
-    // fatal error/remote closed. The timeout_usec_ in TcpStream is 0
-    // (non-blocking read kernel). This read call will return immediately with
-    // available data or 0 if none.
-    ret = tcp_stream_->read(buffer, max_length);
-
-    if (ret > 0) {
-      // Successfully read data, update activity timestamp
-      data_active_s_ = cyber::Time::Now().ToSecond();
-      last_errno_ = 0;  // Clear error
-    } else if (ret == 0) {
-      // Read returned 0. This indicates timeout or non-blocking with no data
-      // available. TcpStream::read throws on remote closed.
-      last_errno_ = tcp_stream_->get_last_error_code();
-      status_ = Stream::Status::CONNECTED;
-    } else {
-      // ret < 0 is not expected from optimized TcpStream::read (it throws).
-      // Defensive check, treat as error if it happens.
-      last_errno_ = tcp_stream_->get_last_error_code();  // Get underlying error
-      AERROR << "NtripStream read got unexpected negative return from "
-                "tcp_stream_->read: "
-             << ret << ". Underlying error: " << strerror(last_errno_);
-      // Throw to signal unexpected state.
-      Disconnect();  // Clean up
-      throw std::runtime_error(
-          "NtripStream read got unexpected return value from "
-          "tcp_stream_->read.");
-    }
-
-  } catch (const std::exception& e) {
-    // Catch exceptions from TcpStream::read (fatal error, remote closed)
-    last_errno_ = tcp_stream_ ? tcp_stream_->get_last_error_code() : EBADF;
-    AERROR << "NtripStream read failed from tcp_stream_: " << e.what()
-           << " (Underlying errno: " << last_errno_ << ", "
-           << strerror(last_errno_) << ").";
-    // This is a fatal error, need to disconnect and potentially reconnect.
-    Disconnect();  // Clean up
-    status_ = Stream::Status::ERROR;
-    is_login_ = false;  // Ensure login state is false
-
-    // Reconnect is handled by the check at the start of the read method on the
-    // *next* call. Throw exception to signal fatal error to the caller.
-    throw std::runtime_error("NtripStream read fatal error: " +
-                             std::string(e.what()));
-  }
-
-  // Check data activity timeout *after* handling the read result.
-  // Use cyber::Time::Now().ToSecond() directly for current time.
-  double current_time = cyber::Time::Now().ToSecond();
-  if (current_time - data_active_s_ > timeout_s_) {
-    AINFO << "NtripStream data activity timeout (" << timeout_s_
-          << " s). Last data: " << data_active_s_
-          << ", Current time: " << current_time;
-    last_errno_ = ETIMEDOUT;  // Set timeout error
-    // Reconnect if timeout occurs. Reconnect handles its own state.
-    Reconnect();
-    // Reconnect updates is_login_ and status_.
-    // If reconnect fails, the next call to read will handle it.
-    // Return 0 bytes read for this timed-out call.
+  if (buffer == nullptr || max_length == 0) {
     return 0;
   }
 
-  // Return the number of bytes read (0 on timeout/would_block, >0 on data).
-  return ret;
+  const auto read_deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(timeout_s_);
+  constexpr uint32_t poll_interval_us = 10000;
+
+  while (true) {
+    std::unique_lock<std::timed_mutex> read_lock(read_mutex_);
+    std::unique_lock<std::mutex> lock(internal_mutex_);
+    if (!is_login_) {
+      lock.unlock();
+      read_lock.unlock();
+      Reconnect();
+      read_lock.lock();
+      lock.lock();
+      if (!is_login_) {
+        last_errno_ = ENOTCONN;
+        AERROR << "NtripStream read failed: Not connected after reconnect "
+                  "attempt.";
+        return 0;
+      }
+    }
+
+    if (!tcp_stream_) {
+      last_errno_ = EBADF;
+      status_ = Stream::Status::ERROR;
+      return 0;
+    }
+
+    if (pending_data_offset_ < pending_data_.size()) {
+      const size_t available = pending_data_.size() - pending_data_offset_;
+      const size_t bytes_to_copy = std::min(max_length, available);
+      std::memcpy(buffer, pending_data_.data() + pending_data_offset_,
+                  bytes_to_copy);
+      pending_data_offset_ += bytes_to_copy;
+      if (pending_data_offset_ == pending_data_.size()) {
+        pending_data_.clear();
+        pending_data_offset_ = 0;
+      }
+      data_active_s_ = cyber::Time::Now().ToSecond();
+      last_errno_ = 0;
+      return bytes_to_copy;
+    }
+
+    TcpStream* const tcp_stream = tcp_stream_.get();
+    lock.unlock();
+    const auto now = std::chrono::steady_clock::now();
+    const auto remaining =
+        std::chrono::duration_cast<std::chrono::microseconds>(read_deadline -
+                                                              now)
+            .count();
+    uint32_t wait_usec = poll_interval_us;
+    if (remaining <= 0) {
+      wait_usec = 0;
+    } else if (remaining < poll_interval_us) {
+      wait_usec = static_cast<uint32_t>(remaining);
+    }
+    int readiness_error = 0;
+    const bool readable = tcp_stream->Readable(wait_usec, &readiness_error);
+    lock.lock();
+
+    if (!readable) {
+      if (readiness_error != 0 && readiness_error != EINTR) {
+        last_errno_ = readiness_error;
+        tcp_stream->Disconnect();
+        is_login_ = false;
+        status_ = Stream::Status::ERROR;
+        lock.unlock();
+        read_lock.unlock();
+        throw std::runtime_error("NtripStream readiness check failed: " +
+                                 std::string(strerror(readiness_error)));
+      }
+
+      last_errno_ = readiness_error;
+      const double current_time = cyber::Time::Now().ToSecond();
+      if (current_time - data_active_s_ > timeout_s_) {
+        last_errno_ = ETIMEDOUT;
+        is_login_ = false;
+        status_ = Stream::Status::DISCONNECTED;
+        lock.unlock();
+        read_lock.unlock();
+        Reconnect();
+        return 0;
+      }
+      if (std::chrono::steady_clock::now() >= read_deadline) {
+        return 0;
+      }
+      lock.unlock();
+      read_lock.unlock();
+      continue;
+    }
+
+    last_errno_ = 0;
+    size_t ret = 0;
+    try {
+      ret = tcp_stream->read(buffer, max_length);
+      if (ret > 0) {
+        data_active_s_ = cyber::Time::Now().ToSecond();
+      } else {
+        last_errno_ = tcp_stream->get_last_error_code();
+      }
+    } catch (const std::exception& e) {
+      last_errno_ = tcp_stream->get_last_error_code();
+      AERROR << "NtripStream read failed from tcp_stream_: " << e.what()
+             << " (Underlying errno: " << last_errno_ << ", "
+             << strerror(last_errno_) << ").";
+      tcp_stream->Disconnect();
+      pending_data_.clear();
+      pending_data_offset_ = 0;
+      status_ = Stream::Status::ERROR;
+      is_login_ = false;
+      lock.unlock();
+      read_lock.unlock();
+      throw std::runtime_error("NtripStream read fatal error: " +
+                               std::string(e.what()));
+    }
+
+    if (cyber::Time::Now().ToSecond() - data_active_s_ > timeout_s_) {
+      last_errno_ = ETIMEDOUT;
+      is_login_ = false;
+      status_ = Stream::Status::DISCONNECTED;
+      lock.unlock();
+      read_lock.unlock();
+      Reconnect();
+      return 0;
+    }
+    return ret;
+  }
 }
 
 // Write data to the NTRIP stream (intended for NMEA commands).
@@ -548,7 +565,8 @@ size_t NtripStream::read(uint8_t* buffer, size_t max_length) {
 // Returns total bytes sent so far on timeout (EAGAIN/EWOULDBLOCK) or fatal
 // error during partial write. Returns 0 if not connected.
 size_t NtripStream::write(const uint8_t* buffer, size_t length) {
-  if (!tcp_stream_) {
+  std::unique_lock<std::timed_mutex> read_lock(read_mutex_, std::defer_lock);
+  if (!read_lock.try_lock_for(std::chrono::milliseconds(20))) {
     return 0;
   }
   std::unique_lock<std::mutex> lock(internal_mutex_, std::defer_lock);
@@ -557,7 +575,8 @@ size_t NtripStream::write(const uint8_t* buffer, size_t length) {
     return 0;
   }
 
-  if (!is_login_ || tcp_stream_->get_status() != Stream::Status::CONNECTED) {
+  if (!tcp_stream_ || !is_login_ ||
+      tcp_stream_->get_status() != Stream::Status::CONNECTED) {
     AERROR << "NtripStream write failed: Not connected or not logged in.";
     return 0;
   }

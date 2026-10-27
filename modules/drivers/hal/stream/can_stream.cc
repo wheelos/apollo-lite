@@ -18,6 +18,7 @@
 #include "modules/drivers/hal/stream/can_stream.h"
 
 #include "cyber/cyber.h"
+#include "modules/drivers/hal/stream/can_stream_utils.h"
 
 namespace apollo {
 namespace drivers {
@@ -68,18 +69,32 @@ void CanStream::open() {
     throw std::runtime_error("Failed to create CAN socket: " +
                              std::string(strerror(last_errno_)));
   }
+  const auto cleanup = [this](int error_code) {
+    ::close(fd_);
+    fd_ = -1;
+    last_errno_ = error_code;
+  };
 
   // 2. Enable CAN FD support if requested
   if (enable_can_fd_) {
     int enable_fd = 1;
     if (setsockopt(fd_, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &enable_fd,
                    sizeof(enable_fd)) < 0) {
-      last_errno_ = errno;
-      ::close(fd_);
+      const int error_code = errno;
+      cleanup(error_code);
       throw std::runtime_error("Failed to enable CAN FD frames on socket: " +
-                               std::string(strerror(last_errno_)));
+                               std::string(strerror(error_code)));
     }
     AINFO << "CAN FD frames enabled on socket.";
+  }
+
+  if (timeout_usec_ == 0) {
+    if (internal::SetCanSocketNonBlocking(fd_) < 0) {
+      const int error_code = errno;
+      cleanup(error_code);
+      throw std::runtime_error("Failed to make CAN socket non-blocking: " +
+                               std::string(strerror(error_code)));
+    }
   }
 
   // 3. Get the interface index
@@ -89,11 +104,11 @@ void CanStream::open() {
   ifr.ifr_name[IFNAMSIZ - 1] = '\0';  // Ensure null termination
 
   if (ioctl(fd_, SIOCGIFINDEX, &ifr) < 0) {
-    last_errno_ = errno;
-    ::close(fd_);
+    const int error_code = errno;
+    cleanup(error_code);
     throw std::runtime_error("Failed to get CAN interface index for '" +
                              interface_name_ +
-                             "': " + std::string(strerror(last_errno_)));
+                             "': " + std::string(strerror(error_code)));
   }
 
   // 4. Bind the socket to the interface index
@@ -103,11 +118,11 @@ void CanStream::open() {
   addr.can_ifindex = ifr.ifr_ifindex;
 
   if (bind(fd_, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0) {
-    last_errno_ = errno;
-    ::close(fd_);  // Clean up socket on error
+    const int error_code = errno;
+    cleanup(error_code);
     throw std::runtime_error("Failed to bind CAN socket to interface index " +
                              std::to_string(addr.can_ifindex) + ": " +
-                             std::string(strerror(last_errno_)));
+                             std::string(strerror(error_code)));
   }
 
   // 5. Set read/write timeouts (optional, based on timeout_usec_)
@@ -118,22 +133,19 @@ void CanStream::open() {
     };
 
     if (setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-      last_errno_ = errno;
-      ::close(fd_);
+      const int error_code = errno;
+      cleanup(error_code);
       throw std::runtime_error("Failed to set SO_RCVTIMEO on CAN socket: " +
-                               std::string(strerror(last_errno_)));
+                               std::string(strerror(error_code)));
     }
 
     if (setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0) {
-      last_errno_ = errno;
-      ::close(fd_);
+      const int error_code = errno;
+      cleanup(error_code);
       throw std::runtime_error("Failed to set SO_SNDTIMEO on CAN socket: " +
-                               std::string(strerror(last_errno_)));
+                               std::string(strerror(error_code)));
     }
   }
-  // TODO(zero): If timeout_usec_ == 0, read/write will be non-blocking
-  // (EAGAIN/EWOULDBLOCK on no data/buffer).
-
   // Socket is successfully created, bound, and configured
   last_errno_ = 0;
   status_ = Stream::Status::CONNECTED;
@@ -177,7 +189,9 @@ bool CanStream::Connect() {
           << interface_name_ << ", fd: " << fd_;
     return true;
   } catch (const std::exception &e) {
-    last_errno_ = (fd_ < 0 && errno != 0) ? errno : 0;
+    if (last_errno_ == 0) {
+      last_errno_ = errno;
+    }
     AERROR << "Failed to Connect to CAN interface " << interface_name_ << ": "
            << e.what();
     // fd_ is already -1 if open failed before setting it, or set to -1 by
@@ -219,7 +233,9 @@ size_t CanStream::read(uint8_t *buffer, size_t max_length) {
     return 0;
   }
 
-  // Determine frame size based on enabled mode
+  // CAN FD sockets may receive both classical CAN and CAN FD frames. Store
+  // every frame in a fixed-size slot so callers can index the returned buffer
+  // using get_frame_size(); classical frames are zero-padded in FD mode.
   const size_t frame_size = get_frame_size();
 
   // Ensure max_length is a multiple of frame size
@@ -236,15 +252,15 @@ size_t CanStream::read(uint8_t *buffer, size_t max_length) {
   size_t frames_read = 0;
   uint8_t *current_buffer_pos = buffer;
 
-  // Read loop to fill the buffer with as many frames as possible (up to
-  // max_frames) recv respects the timeout_usec_ set via SO_RCVTIMEO.
-  // TODO(zero): non-blocking (timeout_usec_ == 0), recv returns
-  // EAGAIN/EWOULDBLOCK immediately.
+  // Read up to max_frames; the socket timeout or non-blocking mode bounds recv.
   while (frames_read < max_frames) {
+    uint8_t frame_buffer[sizeof(struct canfd_frame)] = {};
+    const size_t receive_size =
+        enable_can_fd_ ? sizeof(struct canfd_frame) : sizeof(struct can_frame);
     ssize_t bytes_received;
     // Use recv specifically for sockets.
     do {
-      bytes_received = recv(fd_, current_buffer_pos, frame_size, 0);
+      bytes_received = recv(fd_, frame_buffer, receive_size, 0);
     } while (bytes_received < 0 && errno == EINTR);  // Handle EINTR
 
     if (bytes_received < 0) {
@@ -278,19 +294,21 @@ size_t CanStream::read(uint8_t *buffer, size_t max_length) {
       Disconnect();  // Clean up
       throw std::runtime_error("CanStream read connection lost.");
     } else {  // bytes_received > 0
-      // Successfully read data. Should be equal to frame_size for CAN_RAW.
-      if (static_cast<size_t>(bytes_received) != frame_size) {
-        // Received less than a full frame. This is unexpected for CAN_RAW recv.
+      const size_t received_frame_size = static_cast<size_t>(bytes_received);
+      const bool valid_frame_size =
+          internal::IsCanFrameSizeValid(received_frame_size, enable_can_fd_);
+      if (!valid_frame_size) {
         last_errno_ = EIO;  // I/O error
-        AERROR << "CanStream read failed: Received partial CAN frame. Expected "
-               << frame_size << " bytes, got " << bytes_received
-               << ". FD: " << fd_ << ", interface: " << interface_name_;
-        // This indicates a serious issue. Disconnect and throw.
+        AERROR << "CanStream read failed: Received invalid CAN frame size "
+               << bytes_received << ". FD: " << fd_
+               << ", interface: " << interface_name_;
         Disconnect();
         throw std::runtime_error(
-            "CanStream read fatal error: Received partial frame.");
+            "CanStream read fatal error: Received invalid frame size.");
       }
       // Successfully read one frame
+      internal::StoreCanFrame(current_buffer_pos, frame_size, frame_buffer,
+                              received_frame_size);
       frames_read++;
       current_buffer_pos += frame_size;
       last_errno_ = 0;  // Clear error on success

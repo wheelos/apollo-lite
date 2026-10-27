@@ -14,7 +14,10 @@ cc_library(
 cc_library(
     name = "can_stream",
     srcs = ["can_stream.cc"],
-    hdrs = ["can_stream.h"],
+    hdrs = [
+        "can_stream.h",
+        "can_stream_utils.h",
+    ],
     deps = [
         ":stream",
         "@core//cyber",
@@ -94,6 +97,36 @@ cc_test(
     srcs = ["tcp_stream_test.cc"],
     deps = [
         ":stream_factory",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "tcp_stream_regression_test",
+    srcs = ["tcp_stream_regression_test.cc"],
+    deps = [
+        ":tcp_stream",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "can_stream_regression_test",
+    srcs = ["can_stream_regression_test.cc"],
+    deps = [
+        ":can_stream",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ntrip_stream_test",
+    srcs = ["ntrip_stream_test.cc"],
+    deps = [
+        ":ntrip_stream",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],

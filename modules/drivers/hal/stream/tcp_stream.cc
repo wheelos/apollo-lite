@@ -256,7 +256,7 @@ size_t TcpStream::read(uint8_t* buffer, size_t max_length) {
   FD_SET(sockfd_, &readfds);
 
   timespec timeout_ts = {0, 0};
-  timespec* timeout_ptr = nullptr;
+  timespec* timeout_ptr = &timeout_ts;
   if (timeout_usec_ > 0) {
     timeout_ts.tv_sec = timeout_usec_ / 1000000;
     timeout_ts.tv_nsec = (timeout_usec_ % 1000000) * 1000;
@@ -332,7 +332,8 @@ size_t TcpStream::write(const uint8_t* buffer, size_t length) {
   while (total_sent < length) {
     ssize_t sent_bytes;
     do {
-      sent_bytes = ::send(sockfd_, buffer + total_sent, length - total_sent, 0);
+      sent_bytes = ::send(sockfd_, buffer + total_sent, length - total_sent,
+                          MSG_NOSIGNAL);
     } while (sent_bytes < 0 && errno == EINTR);
 
     if (sent_bytes < 0) {
@@ -343,7 +344,7 @@ size_t TcpStream::write(const uint8_t* buffer, size_t length) {
         FD_SET(sockfd_, &writefds);
 
         timespec timeout_ts = {0, 0};
-        timespec* timeout_ptr = nullptr;
+        timespec* timeout_ptr = &timeout_ts;
         if (timeout_usec_ > 0) {
           timeout_ts.tv_sec = timeout_usec_ / 1000000;
           timeout_ts.tv_nsec = (timeout_usec_ % 1000000) * 1000;
@@ -384,9 +385,12 @@ size_t TcpStream::write(const uint8_t* buffer, size_t length) {
   return total_sent;
 }
 
-bool TcpStream::Readable(uint32_t timeout_us) {
+bool TcpStream::Readable(uint32_t timeout_us, int* error_code) {
   if (sockfd_ < 0) {
     last_errno_ = ENOTCONN;
+    if (error_code != nullptr) {
+      *error_code = last_errno_;
+    }
     return false;
   }
 
@@ -401,10 +405,17 @@ bool TcpStream::Readable(uint32_t timeout_us) {
 
   if (r < 0) {
     last_errno_ = errno;
+    if (error_code != nullptr) {
+      *error_code = last_errno_;
+    }
     AERROR << "pselect failed in Readable(): " << strerror(last_errno_);
     return false;
   }
 
+  last_errno_ = 0;
+  if (error_code != nullptr) {
+    *error_code = 0;
+  }
   return (r > 0) && FD_ISSET(sockfd_, &readfds);
 }
 
