@@ -108,6 +108,8 @@ class MessageManager {
    */
   common::ErrorCode GetSensorData(SensorType *const sensor_data);
 
+  common::ErrorCode GetAndClearSensorData(SensorType *const sensor_data);
+
   /**
    * @brief get current latency of message
    *
@@ -278,6 +280,20 @@ ErrorCode MessageManager<SensorType>::GetSensorData(
   }
   std::lock_guard<std::mutex> lock(sensor_data_mutex_);
   sensor_data->CopyFrom(sensor_data_);
+  return ErrorCode::OK;
+}
+
+template <typename SensorType>
+ErrorCode MessageManager<SensorType>::GetAndClearSensorData(
+    SensorType *const sensor_data) {
+  if (sensor_data == nullptr) {
+    AERROR << "Failed to get sensor_data due to nullptr.";
+    return ErrorCode::CANBUS_ERROR;
+  }
+  std::lock_guard<std::mutex> lock(sensor_data_mutex_);
+  sensor_data->CopyFrom(sensor_data_);
+  sensor_data_.Clear();
+  has_new_data_ = false;
   return ErrorCode::OK;
 }
 

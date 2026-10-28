@@ -83,7 +83,7 @@ class SensorCanbus : public apollo::cyber::Component<> {
 
  private:
   bool Start();
-  void PublishSensorData();
+  void PublishSensorData(bool clear_after_read = false);
   void OnTimer();
   void DataTrigger();
   bool OnError(const std::string &error_msg);
@@ -183,18 +183,22 @@ void SensorCanbus<SensorType>::OnTimer() {
 template <typename SensorType>
 void SensorCanbus<SensorType>::DataTrigger() {
   while (sensor_message_manager_->WaitForData(data_trigger_running_)) {
-    PublishSensorData();
+    PublishSensorData(true);
   }
 }
 
 template <typename SensorType>
-void SensorCanbus<SensorType>::PublishSensorData() {
+void SensorCanbus<SensorType>::PublishSensorData(bool clear_after_read) {
   if (sensor_message_manager_ == nullptr || sensor_writer_ == nullptr) {
     AERROR << "Cannot publish sensor data before canbus initialization.";
     return;
   }
   SensorType sensor_data;
-  if (sensor_message_manager_->GetSensorData(&sensor_data) != ErrorCode::OK) {
+  const ErrorCode get_data_result =
+      clear_after_read
+          ? sensor_message_manager_->GetAndClearSensorData(&sensor_data)
+          : sensor_message_manager_->GetSensorData(&sensor_data);
+  if (get_data_result != ErrorCode::OK) {
     AERROR << "Failed to get sensor data for publication.";
     return;
   }
