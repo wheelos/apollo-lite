@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -61,7 +62,8 @@ class SenderMessage {
    *        which contains the content to send.
    */
   SenderMessage(const uint32_t message_id,
-                ProtocolData<SensorType> *protocol_data);
+                ProtocolData<SensorType> *protocol_data)
+      : SenderMessage(message_id, protocol_data, false) {}
 
   /**
    * @brief Constructor which takes message ID and protocol data and
@@ -73,7 +75,23 @@ class SenderMessage {
    *        the protocol data as one.
    */
   SenderMessage(const uint32_t message_id,
-                ProtocolData<SensorType> *protocol_data, bool init_with_one);
+                ProtocolData<SensorType> *protocol_data, bool init_with_one)
+      : message_id_(message_id), protocol_data_(protocol_data) {
+    if (init_with_one) {
+      for (int32_t i = 0; i < protocol_data->GetLength(); ++i) {
+        can_frame_to_update_.data[i] = 0xFF;
+      }
+    }
+    int32_t len = protocol_data_->GetLength();
+
+    can_frame_to_update_.id = message_id_;
+    can_frame_to_update_.len = static_cast<uint8_t>(len);
+
+    period_ = protocol_data_->GetPeriod();
+    curr_period_ = period_;
+
+    Update();
+  }
 
   /**
    * @brief Destructor.
@@ -192,7 +210,7 @@ class CanSender {
   bool NeedSend(const SenderMessage<SensorType> &msg,
                 const int32_t delta_period);
   bool is_init_ = false;
-  bool is_running_ = false;
+  std::atomic<bool> is_running_{false};
 
   CanClient *can_client_ = nullptr;  // Owned by global canbus.cc
   std::vector<SenderMessage<SensorType>> send_messages_;
@@ -206,32 +224,6 @@ const uint32_t kSenderInterval = 6000;
 
 template <typename SensorType>
 std::mutex SenderMessage<SensorType>::mutex_;
-
-template <typename SensorType>
-SenderMessage<SensorType>::SenderMessage(
-    const uint32_t message_id, ProtocolData<SensorType> *protocol_data)
-    : SenderMessage(message_id, protocol_data, false) {}
-
-template <typename SensorType>
-SenderMessage<SensorType>::SenderMessage(
-    const uint32_t message_id, ProtocolData<SensorType> *protocol_data,
-    bool init_with_one)
-    : message_id_(message_id), protocol_data_(protocol_data) {
-  if (init_with_one) {
-    for (int32_t i = 0; i < protocol_data->GetLength(); ++i) {
-      can_frame_to_update_.data[i] = 0xFF;
-    }
-  }
-  int32_t len = protocol_data_->GetLength();
-
-  can_frame_to_update_.id = message_id_;
-  can_frame_to_update_.len = static_cast<uint8_t>(len);
-
-  period_ = protocol_data_->GetPeriod();
-  curr_period_ = period_;
-
-  Update();
-}
 
 template <typename SensorType>
 void SenderMessage<SensorType>::UpdateCurrPeriod(const int32_t period_delta) {
@@ -286,7 +278,7 @@ void CanSender<SensorType>::PowerSendThreadFunc() {
 
   AINFO << "Can client sender thread starts.";
 
-  while (is_running_) {
+  while (is_running_.load()) {
     tm_start = cyber::Time::Now().ToNanosecond() / 1e3;
     new_delta_period = INIT_PERIOD;
 
@@ -358,11 +350,15 @@ void CanSender<SensorType>::AddMessage(uint32_t message_id,
 
 template <typename SensorType>
 common::ErrorCode CanSender<SensorType>::Start() {
-  if (is_running_) {
+  if (!is_init_) {
+    AERROR << "CanSender has not been initialized.";
+    return common::ErrorCode::CANBUS_ERROR;
+  }
+  if (is_running_.load()) {
     AERROR << "Cansender has already started.";
     return common::ErrorCode::CANBUS_ERROR;
   }
-  is_running_ = true;
+  is_running_.store(true);
   thread_.reset(new std::thread([this] { PowerSendThreadFunc(); }));
 
   return common::ErrorCode::OK;
@@ -377,9 +373,9 @@ void CanSender<SensorType>::Update() {
 
 template <typename SensorType>
 void CanSender<SensorType>::Stop() {
-  if (is_running_) {
+  if (is_running_.load()) {
     AINFO << "Stopping can sender ...";
-    is_running_ = false;
+    is_running_.store(false);
     if (thread_ != nullptr && thread_->joinable()) {
       thread_->join();
     }
@@ -393,7 +389,7 @@ void CanSender<SensorType>::Stop() {
 
 template <typename SensorType>
 bool CanSender<SensorType>::IsRunning() const {
-  return is_running_;
+  return is_running_.load();
 }
 
 template <typename SensorType>

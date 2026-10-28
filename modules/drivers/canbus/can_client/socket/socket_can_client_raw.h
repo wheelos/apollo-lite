@@ -21,7 +21,10 @@
 
 #pragma once
 
+#include <linux/can.h>
+#include <linux/can/raw.h>
 #include <net/if.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -32,9 +35,6 @@
 #include <cstring>
 #include <string>
 #include <vector>
-
-#include <linux/can.h>
-#include <linux/can/raw.h>
 
 #include "gflags/gflags.h"
 
@@ -110,7 +110,7 @@ class SocketCanClientRaw : public CanClient {
   std::string GetErrorString(const int32_t status) override;
 
  private:
-  int dev_handler_ = 0;
+  int dev_handler_ = -1;
   CANCardParameter::CANChannelId port_;
   CANCardParameter::CANInterface interface_;
   can_frame send_frames_[MAX_CAN_SEND_FRAME_LEN];

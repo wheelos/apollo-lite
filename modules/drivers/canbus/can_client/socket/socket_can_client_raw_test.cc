@@ -50,6 +50,16 @@ TEST(SocketCanClientRawTest, simple_test) {
   socket_can_client.Stop();
 }
 
+TEST(SocketCanClientRawTest, rejectsChannelAtPortCount) {
+  CANCardParameter param;
+  param.set_brand(CANCardParameter::SOCKET_CAN_RAW);
+  param.set_channel_id(CANCardParameter::CHANNEL_ID_ONE);
+  param.set_num_ports(1);
+
+  SocketCanClientRaw socket_can_client;
+  EXPECT_FALSE(socket_can_client.Init(param));
+}
+
 }  // namespace can
 }  // namespace canbus
 }  // namespace drivers

@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -89,6 +90,8 @@ class MessageManager {
   void ClearSensorData();
 
   std::condition_variable *GetMutableCVar();
+  bool WaitForData(const std::atomic<bool> &should_run);
+  void NotifyWaiters();
 
   /**
    * @brief get mutable protocol data by message id
@@ -152,6 +155,7 @@ class MessageManager {
   std::mutex sensor_data_mutex_;
   SensorType sensor_data_;
   bool is_received_on_time_ = false;
+  bool has_new_data_ = false;
 
   std::condition_variable cvar_;
 };
@@ -213,7 +217,9 @@ void MessageManager<SensorType>::Parse(const uint32_t message_id,
   {
     std::lock_guard<std::mutex> lock(sensor_data_mutex_);
     protocol_data->Parse(data, length, &sensor_data_);
+    has_new_data_ = true;
   }
+  cvar_.notify_one();
   received_ids_.insert(message_id);
   // check if need to check period
   const auto it = check_ids_.find(message_id);
@@ -241,6 +247,26 @@ void MessageManager<SensorType>::ClearSensorData() {
 template <typename SensorType>
 std::condition_variable *MessageManager<SensorType>::GetMutableCVar() {
   return &cvar_;
+}
+
+template <typename SensorType>
+bool MessageManager<SensorType>::WaitForData(
+    const std::atomic<bool> &should_run) {
+  std::unique_lock<std::mutex> lock(sensor_data_mutex_);
+  cvar_.wait(lock, [this, &should_run] {
+    return has_new_data_ || !should_run.load();
+  });
+  if (!should_run.load()) {
+    return false;
+  }
+  has_new_data_ = false;
+  return true;
+}
+
+template <typename SensorType>
+void MessageManager<SensorType>::NotifyWaiters() {
+  std::lock_guard<std::mutex> lock(sensor_data_mutex_);
+  cvar_.notify_all();
 }
 
 template <typename SensorType>

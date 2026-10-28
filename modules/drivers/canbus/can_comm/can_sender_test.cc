@@ -28,6 +28,11 @@ namespace apollo {
 namespace drivers {
 namespace canbus {
 
+TEST(CanSenderTest, StartRequiresInitialization) {
+  CanSender<::apollo::canbus::ChassisDetail> sender;
+  EXPECT_EQ(sender.Start(), common::ErrorCode::CANBUS_ERROR);
+}
+
 TEST(CanSenderTest, OneRunCase) {
   CanSender<::apollo::canbus::ChassisDetail> sender;
   can::FakeCanClient can_client;

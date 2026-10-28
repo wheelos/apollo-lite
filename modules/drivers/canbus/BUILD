@@ -34,6 +34,7 @@ cc_library(
         "//modules/drivers/canbus/can_comm:can_receiver",
         "//modules/drivers/canbus/can_comm:can_sender",
         "//modules/drivers/canbus/can_comm:message_manager_base",
+        "//modules/drivers/canbus/proto:sensor_canbus_conf_cc_proto",
     ],
     alwayslink = True,
 )
