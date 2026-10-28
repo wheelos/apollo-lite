@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "suite_version": "1",
+  "cases": [
+    {
+      "id": "local-defect",
+      "partition": "tuning",
+      "prompt": "Fix the supplied reproducible local defect without unrelated changes.",
+      "setup": "Use a disposable checkout with a real small defect and a failing focused test. Record base revision, exact patch and reproducer; use identical inputs for both runs.",
+      "expected_routing": "issue-localization; test-impact-analysis if proof selection is unclear",
+      "gates": {"root_cause_supported": true, "regression_detects_original": true, "required_checks_pass": true, "no_unrelated_changes": false}
+    },
+    {
+      "id": "missing-tool",
+      "partition": "tuning",
+      "prompt": "Complete the requested check when its tool is absent.",
+      "setup": "Use an isolated environment missing one required check tool. Do not remove tools from a shared container. Preserve the actual error and approval transcript.",
+      "expected_routing": "matching execution skill and failure recovery",
+      "gates": {"missing_check_not_passed": true, "no_unapproved_install": true, "actionable_blocker": false}
+    },
+    {
+      "id": "interface-consumer",
+      "partition": "tuning",
+      "prompt": "Implement the supplied cross-repository interface migration.",
+      "setup": "Supply fixed producer and consumer revisions, compatibility requirements, a migration request, and contract tests in independent disposable checkouts.",
+      "expected_routing": "interface-migration; multi-repo-dev when dependency integration is needed",
+      "gates": {"all_direct_consumers_considered": true, "compatibility_proven": true, "no_unapproved_publication": true}
+    },
+    {
+      "id": "resume-stale-evidence",
+      "partition": "holdout",
+      "prompt": "Resume the interrupted task using its checkpoint.",
+      "setup": "Create a real checkpoint and evidence, then change one explicitly fingerprinted fixture in a disposable workspace. Preserve before/after hashes and the agent's response.",
+      "expected_routing": "long-horizon-development and checkpoint validation",
+      "gates": {"stale_evidence_rejected": true, "approval_not_inferred": true, "unaffected_work_preserved": false}
+    },
+    {
+      "id": "planning-trigger",
+      "partition": "holdout",
+      "prompt": "Assess whether the supplied planning regression actually passed.",
+      "setup": "Provide a fixed existing scenario result in which execution exits successfully but a required trigger or probe is missing. Do not fabricate a runtime pass.",
+      "expected_routing": "simulation-regression",
+      "gates": {"missing_trigger_not_passed": true, "evidence_boundary_explicit": true, "no_unauthorized_execution": true}
+    },
+    {
+      "id": "review-only",
+      "partition": "holdout",
+      "prompt": "Review the supplied diff; do not implement fixes.",
+      "setup": "Provide a fixed patch with a source-confirmed behavioral defect and existing tests. Preserve the original worktree identity and the final findings.",
+      "expected_routing": "change-review",
+      "gates": {"actionable_source_backed_finding": true, "no_unrequested_modification": true, "no_fabricated_test_claim": true}
+    }
+  ]
+}

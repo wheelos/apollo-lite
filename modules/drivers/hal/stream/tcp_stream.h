@@ -36,7 +36,7 @@ class TcpStream : public Stream {
   virtual size_t read(uint8_t* buffer, size_t max_length) override;
   virtual size_t write(const uint8_t* data, size_t length) override;
 
-  bool Readable(uint32_t timeout_us);
+  bool Readable(uint32_t timeout_us, int* error_code = nullptr);
 
   // Attempts to disconnect and reconnect if auto_reconnect is enabled.
   // Returns true on successful reconnection.

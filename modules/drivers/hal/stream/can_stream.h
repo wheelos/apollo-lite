@@ -40,7 +40,9 @@ namespace hal {
 // Implements a Stream interface for CAN bus communication using Linux
 // SocketCAN. Reads and writes operate on raw struct can_frame or struct
 // canfd_frame structures depending on the enable_can_fd flag passed in the
-// constructor. max_length/length must be a multiple of the chosen frame size.
+// constructor. In CAN FD mode, reads return fixed-size canfd_frame slots;
+// classical CAN frames are zero-padded to the slot size. max_length/length must
+// be a multiple of the chosen frame size.
 class CanStream : public Stream {
  public:
   // Constructor takes CAN interface name (address), port (unused for basic
@@ -66,8 +68,9 @@ class CanStream : public Stream {
   // can_frame) or sizeof(struct canfd_frame)). max_length should be a multiple
   // of the chosen frame size. Returns number of bytes read (multiple of frame
   // size, >= 0). Returns 0 on timeout or non-blocking with no data
-  // (EAGAIN/EWOULDBLOCK). Throws std::runtime_error on fatal read errors or
-  // connection loss.
+  // (EAGAIN/EWOULDBLOCK). With CAN FD enabled, classical CAN frames are
+  // zero-padded to sizeof(canfd_frame). Throws std::runtime_error on fatal
+  // read errors or connection loss.
   size_t read(uint8_t *buffer, size_t max_length) override;
 
   // Writes CAN frames from the data buffer.

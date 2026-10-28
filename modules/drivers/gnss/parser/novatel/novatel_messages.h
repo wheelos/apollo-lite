@@ -14,14 +14,17 @@
  * limitations under the License.
  *****************************************************************************/
 
-// This defines enums and structures for parsing NovAtel binary messages. Please
-// refer to NovAtel's
-// documents for details about these messages.
+// Little-endian OEM binary payloads; sizes below exclude header and CRC.
+// OEM6 log definitions and the official OEM7 driver's IMU scales/IDs:
 //  http://www.novatel.com/assets/Documents/Manuals/om-20000129.pdf
 //  http://www.novatel.com/assets/Documents/Manuals/OM-20000144UM.pdf
+//  https://github.com/novatel/novatel_oem7_driver
+//  Revision 0c0e135b71c5920b845982358f6c7ec71a952b5e:
+//  src/novatel_oem7_driver/{include/.../oem7_imu.hpp,src/oem7_imu.cpp}.
 
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 #include <limits>
 
@@ -334,7 +337,7 @@ struct BestPos {
   float latitude_std_dev;        // latitude standard deviation (m)
   float longitude_std_dev;       // longitude standard deviation (m)
   float height_std_dev;          // height standard deviation (m)
-  char base_station_id[4];       // base station id
+  char base_station_id[4];       // fixed-width bytes, not a C string
   float differential_age;        // differential position age (sec)
   float solution_age;            // solution age (sec)
   uint8_t num_sats_tracked;      // number of satellites tracked
@@ -362,8 +365,11 @@ struct BestVel {
 };
 static_assert(sizeof(BestVel) == 44, "Incorrect size of BestVel");
 
-// IMU data corrected for gravity, the earth's rotation and estimated sensor
-// errors.
+// Legacy CORRIMUDATA(S)/IMURATECORRIMUS: integrated angle/velocity changes,
+// corrected for gravity, Earth rotation and estimated sensor errors. Multiply
+// by LOG ONTIME rate for CORRIMUDATA(S), or native rate for IMURATECORRIMUS.
+// Modern CORRIMUS also has 60 bytes but a different layout (imu_data_count,
+// six doubles, reserved); it must NOT be decoded with this structure.
 struct CorrImuData {
   uint32_t gps_week;
   double gps_seconds;  // seconds of week
@@ -380,13 +386,14 @@ static_assert(sizeof(CorrImuData) == 60, "Incorrect size of CorrImuData");
 
 struct InsCov {
   uint32_t gps_week;
-  double gps_seconds;             // seconds of week
+  double gps_seconds;  // seconds of week; must match PVA epoch
+  // Row-major: xx, xy, xz, yx, yy, yz, zx, zy, zz.
+  // Preserve legacy position/velocity axes; computational attitude X/Y/Z is
+  // mapped from pitch/roll/azimuth to roll/-pitch/-azimuth by the parser.
+  // Verify the axis contract for the deployed receiver/firmware.
   double position_covariance[9];  // Position covariance matrix [m^2]
-                                  // (xx,xy,xz,yz,yy,...)
   double attitude_covariance[9];  // Attitude covariance matrix [deg^2]
-                                  // (xx,xy,xz,yz,yy,...)
   double velocity_covariance[9];  // Velocity covariance matrix [(m/s)^2]
-                                  // (xx,xy,xz,yz,yy,...)
 };
 static_assert(sizeof(InsCov) == 228, "Incorrect size of InsCov");
 
@@ -423,7 +430,7 @@ struct InsPvaX {
   uint32_t pos_type;
   double latitude;   // in degrees
   double longitude;  // in degrees
-  double height;     // Ellipsoidal height - WGS84 (m)
+  double height;     // Height above mean sea level (m)
   float undulation;
 
   double north_velocity;  // velocity in a northerly direction (m/s)
@@ -448,30 +455,14 @@ struct InsPvaX {
 };
 static_assert(sizeof(InsPvaX) == 126, "Incorrect size of InsPvaX");
 
-// enum class ImuType : uint8_t {
-//   // We currently use the following IMUs. We'll extend this list when a new
-//   IMU
-//   // is introduced.
-//   IMAR_FSAS = 13,      // iMAR iIMU-FSAS
-//   ISA100C = 26,        // Northrop Grumman Litef ISA-100C
-//   ADIS16488 = 31,      // Analog Devices ADIS16488
-//   STIM300 = 32,        // Sensonor STIM300
-//   ISA100 = 34,         // Northrop Grumman Litef ISA-100
-//   ISA100_400HZ = 38,   // Northrop Grumman Litef ISA-100
-//   ISA100C_400HZ = 39,  // Northrop Grumman Litef ISA-100
-//   G320N = 40,          // EPSON G320N
-//   CPT_X25651 = 41,     // IMU@SPAN-CPT, and XingWangYuda 5651
-//   BMI055 = 42          // BOSCH BMI055 IMU
-// };
-
 struct RawImuX {
   uint8_t imu_error;  // Simple IMU error flag. 0 means IMU okay.
-  uint8_t imu_type;
+  uint8_t imu_type;   // OEM wire ID, NOT config::ImuType (vendor IDs overlap).
   uint16_t gps_week;
   double gps_seconds;  // Seconds of week.
   uint32_t imuStatus;  // Status of the IMU. The content varies with IMU type.
-  // All the measurements are in the IMU reference frame. Scale factors varies
-  // with IMU type.
+  // Enclosure-frame increments, not automatically vehicle-frame data.
+  // SI scale factors and native rate depend on the wire IMU model.
   int32_t z_velocity_change;      // change in velocity along z axis.
   int32_t y_velocity_change_neg;  // -change in velocity along y axis.
   int32_t x_velocity_change;      // change in velocity along x axis.
@@ -497,13 +488,13 @@ static_assert(sizeof(RawImu) == 40, "Incorrect size of RawImu");
 struct Heading {
   SolutionStatus solution_status;
   SolutionType position_type;
-  float length;
-  float heading;
-  float pitch;
+  float length;   // primary-to-secondary antenna baseline length [m]
+  float heading;  // baseline azimuth clockwise from north [degrees]
+  float pitch;    // baseline elevation [degrees]; not vehicle INS pitch
   float reserved;
   float heading_std_dev;
   float pitch_std_dev;
-  char station_id[4];            // station id
+  char station_id[4];            // fixed-width bytes, not a C string
   uint8_t num_sats_tracked;      // number of satellites tracked
   uint8_t num_sats_in_solution;  // number of satellites used in solution
   uint8_t num_sats_ele;
@@ -518,14 +509,17 @@ static_assert(sizeof(Heading) == 44, "Incorrect size of Heading");
 #pragma pack(pop)  // Back to whatever the previous packing mode was.
 
 struct ImuParameter {
-  double gyro_scale;
-  double accel_scale;
-  double sampling_rate_hz;
+  double gyro_scale;        // rad/count per native sample
+  double accel_scale;       // m/s/count per native sample
+  double sampling_rate_hz;  // supported native model rate, NOT LOG output rate
 };
 
 using ::apollo::drivers::gnss::config::ImuType;
 
 inline ImuParameter GetImuParameter(ImuType type) {
+  // Vendor-extension configuration values below are retained for explicitly
+  // configured legacy RAWIMU. They are not OEM7 wire IDs or proof that all
+  // receiver firmware/model/rate variants share these scale factors.
   switch (type) {
     case ImuType::IMAR_FSAS:
       // 0.1 * (2 ** -8) * (math.pi / 180 / 3600), (0.05 * (2 ** -15)
@@ -549,7 +543,10 @@ inline ImuParameter GetImuParameter(ImuType type) {
       return {1.0e-9, 2.0e-8, 400.0};
 
     case ImuType::G320N:
-      return {1.7044230976507124e-11, 2.3929443359375006e-10, 125.0};
+      // G320 reports instantaneous rate counts; convert to per-sample
+      // increments for the common decoder: 0.008 deg/s and 0.2 mG / 2^16.
+      return {(0.008 / 65536.0) * (M_PI / 180.0) / 125.0,
+              (0.2 / 65536.0) * (9.80665 / 1000.0) / 125.0, 125.0};
 
     case ImuType::CPT_XW5651:
       return {1.0850694444444445e-07, 1.52587890625e-06, 100.0};

@@ -140,4 +140,9 @@ message Config {
   // fields above are deprecated except config_base
   optional VanjeeDriverParam driver_param = 101;
   optional VanjeeMemsParam mems_param = 102;
+
+  // Required when driver_param.decoder_param.imu_enable is not -1.
+  optional string imu_channel = 103;
+  // Frame of the SDK output vectors, including its model-specific rotation.
+  optional string imu_frame_id = 104;
 }

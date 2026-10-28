@@ -15,21 +15,29 @@
  *****************************************************************************/
 #pragma once
 
+#include <atomic>
 #include <memory>
+#include <thread>
 
-#include <vanjee_driver/api/lidar_driver.hpp>
-#include <vanjee_driver/driver/driver_param.hpp>
-#include <vanjee_driver/msg/lidar_parameter_interface_msg.hpp>
+#include <vanjee_driver/msg/device_ctrl_msg.hpp>
+#include <vanjee_driver/msg/imu_packet.hpp>
 #include <vanjee_driver/msg/packet.hpp>
 #include <vanjee_driver/msg/point_cloud_msg.hpp>
 #include <vanjee_driver/msg/scan_data_msg.hpp>
+#include <vanjee_driver/utility/sync_queue.hpp>
 
 #include "modules/drivers/lidar/vanjeelidar/proto/vanjeelidar.pb.h"
 #include "modules/drivers/lidar/vanjeelidar/proto/vanjeelidar_config.pb.h"
 
 #include "modules/drivers/lidar/common/lidar_component_base.h"
 #include "modules/drivers/lidar/common/sync_buffering.h"
-#include "modules/drivers/lidar/common/util.h"
+
+namespace vanjee {
+namespace lidar {
+template <typename T_PointCloud>
+class LidarDriver;
+}  // namespace lidar
+}  // namespace vanjee
 
 namespace apollo {
 namespace drivers {
@@ -37,8 +45,6 @@ namespace lidar {
 
 typedef ::vanjee::lidar::PointXYZIRT PointT;
 typedef ::vanjee::lidar::PointCloudT<PointT> PointCloudMsg;
-
-using ::vanjee::lidar::InputType;
 
 class VanjeelidarComponent : public LidarComponentBase<vanjee::VanjeePacket> {
  public:
@@ -69,19 +75,18 @@ class VanjeelidarComponent : public LidarComponentBase<vanjee::VanjeePacket> {
   void VanjeeDeviceCtrlPutCallback(
       std::shared_ptr<::vanjee::lidar::DeviceCtrl> device_ctrl);
 
-  void PreparePointsMsg(PointCloud& msg);
-
   void ProcessCloud();
 
  private:
+  friend class VanjeelidarComponentTest;
+
   std::shared_ptr<::vanjee::lidar::LidarDriver<PointCloudMsg>> driver_ptr_;
   apollo::drivers::vanjee::Config conf_;
+  std::shared_ptr<cyber::Writer<vanjee::VanjeeImu>> imu_writer_;
 
   ::vanjee::lidar::SyncQueue<std::shared_ptr<PointCloudMsg>> cloud_queue_;
   ::vanjee::lidar::SyncQueue<std::shared_ptr<::vanjee::lidar::ScanData>>
       scan_queue_;
-  ::vanjee::lidar::SyncQueue<std::shared_ptr<::vanjee::lidar::ImuPacket>>
-      imu_queue_;
   ::vanjee::lidar::SyncQueue<std::shared_ptr<::vanjee::lidar::DeviceCtrl>>
       device_ctrl_queue_;
   std::shared_ptr<SyncBuffering<PointCloudMsg>> cloud_buffer_;
@@ -91,8 +96,7 @@ class VanjeelidarComponent : public LidarComponentBase<vanjee::VanjeePacket> {
       device_ctrl_buffer_;
 
   std::thread cloud_handle_thread_;
-
-  int seq_ = 0;
+  std::atomic<bool> running_{false};
 };
 CYBER_REGISTER_COMPONENT(VanjeelidarComponent)
 

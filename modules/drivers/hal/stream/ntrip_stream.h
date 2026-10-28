@@ -43,12 +43,8 @@ namespace hal {
 class NtripStream : public Stream {
  public:
   // Constructor takes NTRIP caster address, port, mountpoint, credentials, and
-  // a timeout. Timeout_s specifies the data activity timeout and handshake
-  // timeout. The underlying TcpStream will be configured with non-blocking
-  // reads/writes (timeout_usec = 0) unless a different behavior is desired for
-  // NTRIP data flow. Let's pass timeout_s converted to us for TcpStream? No,
-  // the original passed 0 to TcpStream. Let's keep TcpStream non-blocking and
-  // manage timeout in NtripStream.
+  // a timeout. Timeout_s specifies the data activity timeout and is also used
+  // as the underlying TCP timeout.
   NtripStream(const std::string& address, uint16_t port,
               const std::string& mountpoint, const std::string& user,
               const std::string& passwd, uint32_t timeout_s);
@@ -91,12 +87,12 @@ class NtripStream : public Stream {
  private:
   // Attempts to disconnect and reconnect the NTRIP stream.
   // Called internally on timeout or read/write errors.
-  // Assumes the caller holds the internal_mutex_ lock.
+  // Connection-state changes are serialized by both stream mutexes.
   void Reconnect();
 
   // Reads the HTTP response header from the TCP stream until "\r\n\r\n" or
   // timeout. Throws std::runtime_error on read error or timeout during
-  // handshake. Returns the received header string.
+  // handshake. Returns all bytes received with the header.
   std::string read_http_header_locked(uint32_t timeout_s);
 
  private:
@@ -110,7 +106,12 @@ class NtripStream : public Stream {
   uint32_t timeout_s_ = 60;     // Data activity timeout in seconds
   double data_active_s_ = 0.0;  // Timestamp (seconds) of last received data
 
+  // Bytes received after the handshake header are the beginning of the stream.
+  std::vector<uint8_t> pending_data_;
+  size_t pending_data_offset_ = 0;
+
   std::unique_ptr<TcpStream> tcp_stream_;  // Underlying TCP stream
+  std::timed_mutex read_mutex_;
   std::mutex internal_mutex_;
 };
 

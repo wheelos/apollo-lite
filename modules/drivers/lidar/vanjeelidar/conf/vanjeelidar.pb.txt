@@ -7,6 +7,9 @@ config_base {
   source_type: ONLINE_LIDAR
 }
 
+imu_channel: "/apollo/sensor/vanjeelidar/up/Imu"
+imu_frame_id: "vanjeelidar_up_imu"
+
 driver_param {
   # sample: "vanjee_720_16,vanjee_720_32"
   lidar_type: "vanjee_720_16"
@@ -26,6 +29,9 @@ driver_param {
     start_angle: 0
     end_angle: 360
     use_lidar_clock: false
+    use_offset_timestamp: true
+    imu_enable: 0
+    imu_orientation_enable: false
     dense_points: false
     wait_for_difop: true
     config_from_file: false

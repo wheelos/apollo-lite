@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
@@ -51,14 +51,14 @@ cc_library(
     deps = [
         ":parser",
         ":parser_factory",
-        "@wheelos_common//modules/common/adapters:adapter_gflags",
-        "@wheelos_common//modules/common/util:proj_helper",
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/gnss/proto:gnss_status_cc_proto",
         "//modules/drivers/gnss/util",
         "@core//cyber",
         "@eigen",
         "@proj",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:proj_helper",
+        "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:gps_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:imu_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_best_pose_cc_proto",
@@ -81,13 +81,36 @@ cc_library(
     ],
     copts = ["-Ithird_party/rtklib"],
     deps = [
-        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/drivers/gnss/parser/rtcm3:rtcm3_parser",
         "//modules/drivers/gnss/proto:config_cc_proto",
         "//modules/drivers/gnss/util",
         "//third_party/rtklib",
         "@core//cyber",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:gnss_raw_observation_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "data_parser_test",
+    size = "small",
+    srcs = ["data_parser_test.cc"],
+    data = [
+        "//modules/drivers/gnss:runtime_data",
+        "//modules/drivers/gnss:test_data_files",
+        "@core//cyber:cyber_conf",
+        "@proj//:proj_runtime_data",
+    ],
+    linkstatic = False,
+    deps = [
+        ":data_parser",
+        "//modules/drivers/gnss/parser/novatel:novatel_parser",
+        "//modules/drivers/gnss/proto:gnss_status_cc_proto",
+        "@com_google_googletest//:gtest",
+        "@core//cyber",
+        "@core//cyber/common:file",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
 )
 

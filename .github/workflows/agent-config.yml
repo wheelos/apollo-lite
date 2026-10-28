@@ -1,0 +1,36 @@
+name: Agent configuration
+
+on:
+  pull_request:
+    paths:
+      - AGENTS.md
+      - .agents/**
+      - .github/copilot-instructions.md
+      - .github/workflows/agent-config.yml
+      - ad_agents.repos
+      - scripts/agents/**
+  push:
+    branches: [main]
+    paths:
+      - AGENTS.md
+      - .agents/**
+      - .github/copilot-instructions.md
+      - .github/workflows/agent-config.yml
+      - ad_agents.repos
+      - scripts/agents/**
+
+permissions:
+  contents: read
+
+jobs:
+  configuration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Check portable configuration (external context not fetched)
+        run: python3 scripts/agents/check.py
+      - name: Test agent tooling contracts (not agent behavior)
+        run: python3 -m unittest discover -s scripts/agents/tests -v
