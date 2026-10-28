@@ -20,9 +20,8 @@
 
 #pragma once
 
-#include <condition_variable>
+#include <atomic>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <thread>
 #include <utility>
@@ -84,7 +83,7 @@ class SensorCanbus : public apollo::cyber::Component<> {
 
  private:
   bool Start();
-  void PublishSensorData();
+  void PublishSensorData(bool clear_after_read = false);
   void OnTimer();
   void DataTrigger();
   bool OnError(const std::string &error_msg);
@@ -99,8 +98,7 @@ class SensorCanbus : public apollo::cyber::Component<> {
   int64_t last_timestamp_ = 0;
   std::unique_ptr<cyber::Timer> timer_;
   common::monitor::MonitorLogBuffer monitor_logger_buffer_;
-  std::mutex mutex_;
-  volatile bool data_trigger_running_ = false;
+  std::atomic<bool> data_trigger_running_{false};
   std::shared_ptr<Writer<SensorType>> sensor_writer_;
 };
 
@@ -163,7 +161,7 @@ bool SensorCanbus<SensorType>::Start() {
                                   [this]() { this->OnTimer(); }, false));
     timer_->Start();
   } else {
-    data_trigger_running_ = true;
+    data_trigger_running_.store(true);
     thread_.reset(new std::thread([this] { DataTrigger(); }));
     if (thread_ == nullptr) {
       AERROR << "Unable to create data trigger thread.";
@@ -184,28 +182,45 @@ void SensorCanbus<SensorType>::OnTimer() {
 
 template <typename SensorType>
 void SensorCanbus<SensorType>::DataTrigger() {
-  std::condition_variable *cvar = sensor_message_manager_->GetMutableCVar();
-  while (data_trigger_running_) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    cvar->wait(lock);
-    PublishSensorData();
-    sensor_message_manager_->ClearSensorData();
+  while (sensor_message_manager_->WaitForData(data_trigger_running_)) {
+    PublishSensorData(true);
+  }
+}
+
+template <typename SensorType>
+void SensorCanbus<SensorType>::PublishSensorData(bool clear_after_read) {
+  if (sensor_message_manager_ == nullptr || sensor_writer_ == nullptr) {
+    AERROR << "Cannot publish sensor data before canbus initialization.";
+    return;
+  }
+  SensorType sensor_data;
+  const ErrorCode get_data_result =
+      clear_after_read
+          ? sensor_message_manager_->GetAndClearSensorData(&sensor_data)
+          : sensor_message_manager_->GetSensorData(&sensor_data);
+  if (get_data_result != ErrorCode::OK) {
+    AERROR << "Failed to get sensor data for publication.";
+    return;
+  }
+  if (!sensor_writer_->Write(sensor_data)) {
+    AERROR << "Failed to publish sensor data.";
   }
 }
 
 template <typename SensorType>
 SensorCanbus<SensorType>::~SensorCanbus() {
-  if (FLAGS_sensor_freq > 0) {
+  if (timer_ != nullptr) {
     timer_->Stop();
   }
 
   can_receiver_.Stop();
-  can_client_->Stop();
+  if (can_client_ != nullptr) {
+    can_client_->Stop();
+  }
 
-  if (data_trigger_running_) {
-    data_trigger_running_ = false;
+  if (data_trigger_running_.exchange(false)) {
     if (thread_ != nullptr && thread_->joinable()) {
-      sensor_message_manager_->GetMutableCVar()->notify_all();
+      sensor_message_manager_->NotifyWaiters();
       thread_->join();
     }
     thread_.reset();

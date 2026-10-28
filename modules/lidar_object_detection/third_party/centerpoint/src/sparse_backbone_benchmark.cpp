@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-#include "sparse_model.h"
+#include "wheelos/perception/model_io/sparse_model.h"
 #include "spconv/sparse_backbone.h"
 
 namespace {
@@ -92,7 +92,7 @@ int Run(const std::string& model, const std::string& list,
   csv.exceptions(std::ios::failbit | std::ios::badbit);
   csv << "pass,fixture,count,forward_wall_ms,hash\n";
   auto backbone = wheelos::perception::ops::spconv::CreateSparseBackbone(
-      LoadSparseModel(model));
+      wheelos::perception::model_io::LoadSparseModel(model));
   auto features_device = Allocate(160000 * 5 * sizeof(uint16_t));
   auto indices_device = Allocate(160000 * 4 * sizeof(int32_t));
   std::array<Stream, 2> streams;

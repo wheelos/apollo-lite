@@ -17,13 +17,16 @@
 #pragma once
 
 #include <atomic>
-#include <future>
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 
-#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/drivers/camera/proto/config.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 
 #include "cyber/cyber.h"
 #include "modules/common/util/rate_limiter.h"
@@ -35,12 +38,17 @@ namespace camera {
 
 class CameraComponent : public apollo::cyber::Component<> {
  public:
+  CameraComponent() = default;
+  explicit CameraComponent(CameraDevice::DeviceFactory device_factory)
+      : device_factory_(std::move(device_factory)) {}
   bool Init() override;
   ~CameraComponent();
 
  private:
+  void Clear() override;
   void Run();
 
+  CameraDevice::DeviceFactory device_factory_;
   std::shared_ptr<apollo::cyber::Writer<apollo::drivers::Image>> writer_;
   std::unique_ptr<CameraDevice> camera_device_;
   std::shared_ptr<config::Config> camera_config_;
@@ -52,8 +60,10 @@ class CameraComponent : public apollo::cyber::Component<> {
   uint32_t device_wait_ms_;
   int index_ = 0;
 
-  std::future<void> async_result_;
+  std::thread capture_thread_;
   std::atomic<bool> running_ = {false};
+  std::mutex stop_mutex_;
+  std::condition_variable stop_condition_;
   std::unique_ptr<apollo::cyber::common::TokenBucket> rate_limiter_;
 };
 

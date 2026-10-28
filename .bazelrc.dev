@@ -2,6 +2,8 @@
 # Remote registries in .bazelrc retain priority; this is a fallback for
 # module versions that have not been published there yet.
 common:dev --registry=file://%workspace%/pkgs/bazel-central-registry
+# Development must not rewrite the formal consumer's lockfile.
+common:dev --lockfile_mode=off
 
 # Module names, not repository aliases (for example, core), are required.
 common:dev --override_module=wheelos_common=%workspace%/pkgs/common

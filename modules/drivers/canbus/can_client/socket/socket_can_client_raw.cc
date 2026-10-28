@@ -22,6 +22,9 @@
 
 #include "modules/drivers/canbus/can_client/socket/socket_can_client_raw.h"
 
+#include <string>
+#include <vector>
+
 #include "absl/strings/str_cat.h"
 
 namespace apollo {
@@ -42,7 +45,7 @@ bool SocketCanClientRaw::Init(const CANCardParameter &parameter) {
   port_ = parameter.channel_id();
   interface_ = parameter.interface();
   auto num_ports = parameter.num_ports();
-  if (port_ > static_cast<int32_t>(num_ports) || port_ < 0) {
+  if (port_ >= static_cast<int32_t>(num_ports) || port_ < 0) {
     AERROR << "Can port number [" << port_ << "] is out of range [0, "
            << num_ports << ") !";
     return false;
@@ -51,17 +54,15 @@ bool SocketCanClientRaw::Init(const CANCardParameter &parameter) {
 }
 
 SocketCanClientRaw::~SocketCanClientRaw() {
-  if (dev_handler_) {
-    Stop();
-  }
+  Stop();
 }
 
 ErrorCode SocketCanClientRaw::Start() {
   if (is_started_) {
     return ErrorCode::OK;
   }
-  struct sockaddr_can addr;
-  struct ifreq ifr;
+  struct sockaddr_can addr = {};
+  struct ifreq ifr = {};
 
   // open device
   // guss net is the device minor number, if one card is 0,1
@@ -88,6 +89,7 @@ ErrorCode SocketCanClientRaw::Start() {
                      sizeof(filter));
     if (ret < 0) {
       AERROR << "add receive msg id filter error code: " << ret;
+      Stop();
       return ErrorCode::CAN_CLIENT_ERROR_BASE;
     }
   }
@@ -98,6 +100,7 @@ ErrorCode SocketCanClientRaw::Start() {
                      sizeof(enable));
   if (ret < 0) {
     AERROR << "enable reception of can frame error code: " << ret;
+    Stop();
     return ErrorCode::CAN_CLIENT_ERROR_BASE;
   }
 
@@ -114,6 +117,7 @@ ErrorCode SocketCanClientRaw::Start() {
   std::strncpy(ifr.ifr_name, can_name.c_str(), IFNAMSIZ);
   if (ioctl(dev_handler_, SIOCGIFINDEX, &ifr) < 0) {
     AERROR << "ioctl error";
+    Stop();
     return ErrorCode::CAN_CLIENT_ERROR_BASE;
   }
 
@@ -126,6 +130,7 @@ ErrorCode SocketCanClientRaw::Start() {
 
   if (ret < 0) {
     AERROR << "bind socket to network interface error code: " << ret;
+    Stop();
     return ErrorCode::CAN_CLIENT_ERROR_BASE;
   }
 
@@ -134,10 +139,10 @@ ErrorCode SocketCanClientRaw::Start() {
 }
 
 void SocketCanClientRaw::Stop() {
-  if (is_started_) {
-    is_started_ = false;
-
+  is_started_ = false;
+  if (dev_handler_ >= 0) {
     int ret = close(dev_handler_);
+    dev_handler_ = -1;
     if (ret < 0) {
       AERROR << "close error code:" << ret << ", " << GetErrorString(ret);
     } else {
@@ -182,6 +187,10 @@ ErrorCode SocketCanClientRaw::Send(const std::vector<CanFrame> &frames,
 // buf size must be 8 bytes, every time, we receive only one frame
 ErrorCode SocketCanClientRaw::Receive(std::vector<CanFrame> *const frames,
                                       int32_t *const frame_num) {
+  if (frames == nullptr || frame_num == nullptr) {
+    AERROR << "frames or frame_num pointer is null";
+    return ErrorCode::CAN_CLIENT_ERROR_BASE;
+  }
   if (!is_started_) {
     AERROR << "Nvidia can client is not init! Please init first!";
     return ErrorCode::CAN_CLIENT_ERROR_RECV_FAILED;
@@ -194,11 +203,30 @@ ErrorCode SocketCanClientRaw::Receive(std::vector<CanFrame> *const frames,
     return ErrorCode::CAN_CLIENT_ERROR_FRAME_NUM;
   }
 
-  for (int32_t i = 0; i < *frame_num && i < MAX_CAN_RECV_FRAME_LEN; ++i) {
+  const int32_t requested_frame_num = *frame_num;
+  *frame_num = 0;
+  frames->clear();
+
+  for (int32_t i = 0; i < requested_frame_num; ++i) {
+    struct pollfd poll_fd = {dev_handler_, POLLIN, 0};
+    const int poll_result = poll(&poll_fd, 1, 100);
+    if (poll_result == 0) {
+      return ErrorCode::OK;
+    }
+    if (poll_result < 0) {
+      AERROR << "poll for CAN frame failed, error code: " << poll_result;
+      return ErrorCode::CAN_CLIENT_ERROR_BASE;
+    }
+    if ((poll_fd.revents & POLLIN) == 0) {
+      AERROR << "CAN socket poll returned unexpected events: "
+             << poll_fd.revents;
+      return ErrorCode::CAN_CLIENT_ERROR_BASE;
+    }
+
     CanFrame cf;
     auto ret = read(dev_handler_, &recv_frames_[i], sizeof(recv_frames_[i]));
 
-    if (ret < 0) {
+    if (ret != static_cast<ssize_t>(sizeof(recv_frames_[i]))) {
       AERROR << "receive message failed, error code: " << ret;
       return ErrorCode::CAN_CLIENT_ERROR_BASE;
     }
@@ -214,6 +242,7 @@ ErrorCode SocketCanClientRaw::Receive(std::vector<CanFrame> *const frames,
     cf.len = recv_frames_[i].can_dlc;
     std::memcpy(cf.data, recv_frames_[i].data, recv_frames_[i].can_dlc);
     frames->push_back(cf);
+    ++(*frame_num);
   }
   return ErrorCode::OK;
 }

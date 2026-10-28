@@ -1,26 +1,43 @@
+// Copyright 2026 The WheelOS Team. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "modules/drivers/camera/backend/image_processor.h"
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <iomanip>
+#include <limits>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <opencv2/imgproc.hpp>
 
-#include "cyber/common/log.h"
-
-// FFmpeg headers must always be wrapped in extern "C" in C++
 extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libavutil/error.h>
-#include <libavutil/imgutils.h>
-#include <libswscale/swscale.h>
+#include "libavcodec/avcodec.h"
+#include "libavformat/avformat.h"
+#include "libavutil/error.h"
+#include "libavutil/imgutils.h"
+#include "libswscale/swscale.h"
 }
 
 #include "libavcodec/version.h"
+
+#include "cyber/common/log.h"
 #if LIBAVCODEC_VERSION_MAJOR < 55
 #define AV_CODEC_ID_MJPEG CODEC_ID_MJPEG
 #endif
@@ -249,28 +266,28 @@ inline void ThrowFFmpegError(int ret_code, const std::string& msg) {
 }
 }  // namespace MjpegUtil
 
-MjpegProcessor::MjpegProcessor(int width, int height)
-    : width_(width), height_(height) {
+MjpegProcessor::MjpegProcessor(int width, int height,
+                               YuvProcessor::OutputFormat output_format)
+    : width_(width), height_(height), output_format_(output_format) {
   // Basic validation for dimensions
-  if (width_ <= 0 || height_ <= 0) {
+  if (width_ <= 0 || height_ <= 0 ||
+      (output_format_ == YuvProcessor::OutputFormat::YUYV && width_ % 2 != 0)) {
     throw std::runtime_error(
         "MjpegProcessor: Invalid width or height provided.");
   }
 
-  InitDecoder();
-
-  frame_camera_ = av_frame_alloc();
-  av_packet_ = av_packet_alloc();
-  if (!frame_camera_ || !av_packet_) {
-    throw std::runtime_error("MjpegProcessor: AVFrame/AVPacket alloc failed");
-  }
-
-  // Must be called after InitDecoder to get actual pix_fmt
-  InitConverter();
-
-  frame_rgb_ = av_frame_alloc();
-  if (!frame_rgb_) {
-    throw std::runtime_error("MjpegProcessor: allocate RGB wrapper failed");
+  try {
+    InitDecoder();
+    frame_camera_ = av_frame_alloc();
+    av_packet_ = av_packet_alloc();
+    frame_output_ = av_frame_alloc();
+    if (!frame_camera_ || !av_packet_ || !frame_output_) {
+      throw std::runtime_error(
+          "MjpegProcessor: frame/packet allocation failed");
+    }
+  } catch (...) {
+    Cleanup();
+    throw;
   }
 
   AINFO << "MjpegProcessor initialized for " << width_ << "x" << height_;
@@ -295,17 +312,7 @@ void MjpegProcessor::InitDecoder() {
     MjpegUtil::ThrowFFmpegError(ret, "Could not open MJPEG decoder");
   }
 
-  AINFO << "Decoder opened, src pix_fmt="
-        << av_get_pix_fmt_name(codec_ctx_->pix_fmt);
-}
-
-void MjpegProcessor::InitConverter() {
-  sws_ctx_ =
-      sws_getContext(width_, height_, codec_ctx_->pix_fmt, width_, height_,
-                     AV_PIX_FMT_RGB24, SWS_BILINEAR, nullptr, nullptr, nullptr);
-  if (!sws_ctx_) {
-    throw std::runtime_error("Failed to create SwsContext");
-  }
+  AINFO << "MJPEG decoder opened.";
 }
 
 MjpegProcessor::~MjpegProcessor() { Cleanup(); }
@@ -324,9 +331,8 @@ void MjpegProcessor::Cleanup() {
     av_frame_free(&frame_camera_);
     frame_camera_ = nullptr;  // Set to nullptr after freeing
   }
-  if (frame_rgb_) {
-    av_frame_free(&frame_rgb_);
-    frame_rgb_ = nullptr;  // Set to nullptr after freeing
+  if (frame_output_) {
+    av_frame_free(&frame_output_);
   }
   if (av_packet_) {
     av_packet_free(&av_packet_);
@@ -336,15 +342,15 @@ void MjpegProcessor::Cleanup() {
 
 bool MjpegProcessor::DecodePacket(const uint8_t* data, int size) {
   av_packet_unref(av_packet_);
-  av_packet_->data = const_cast<uint8_t*>(data);
-  av_packet_->size = size;
-
-  int ret = avcodec_send_packet(codec_ctx_, av_packet_);
-  // 4. IMPORTANT: Immediately unref the packet AFTER sending it.
-  //    This is crucial for zero-copy. It tells FFmpeg to release any internal
-  //    references it might have had to the *external* data buffer.
-  //    Since MJPEG decoding is usually frame-by-frame and immediate,
-  //    the external buffer is no longer needed by FFmpeg after this point.
+  int ret = av_new_packet(av_packet_, size);
+  if (ret < 0) {
+    AERROR << "MjpegProcessor: packet allocation failed: "
+           << MjpegUtil::GetFFmpegErrorString(ret);
+    return false;
+  }
+  // FFmpeg requires zero padding after compressed input.
+  std::memcpy(av_packet_->data, data, size);
+  ret = avcodec_send_packet(codec_ctx_, av_packet_);
   av_packet_unref(av_packet_);
 
   if (ret < 0) {
@@ -362,39 +368,61 @@ bool MjpegProcessor::DecodePacket(const uint8_t* data, int size) {
   return true;
 }
 
-bool MjpegProcessor::ConvertToRGB(ImagePtr dest_pb) {
-  // Make sure dest_pb's buffer is correctly sized before filling.
-  // Image::mutable_data() should return a buffer that can be resized.
-  const size_t needed_size = size_t(width_) * height_ * 3;
+bool MjpegProcessor::ConvertFrame(ImagePtr dest_pb) {
+  if (frame_camera_->width != width_ || frame_camera_->height != height_) {
+    AERROR << "MJPEG frame dimensions differ from the negotiated camera size.";
+    return false;
+  }
+  const bool rgb_output = output_format_ == YuvProcessor::OutputFormat::RGB;
+  const auto pixel_format = rgb_output ? AV_PIX_FMT_RGB24 : AV_PIX_FMT_YUYV422;
+  sws_ctx_ = sws_getCachedContext(
+      sws_ctx_, width_, height_,
+      static_cast<AVPixelFormat>(frame_camera_->format), width_, height_,
+      pixel_format, SWS_BILINEAR, nullptr, nullptr, nullptr);
+  if (!sws_ctx_) {
+    AERROR << "Failed to create MJPEG conversion context.";
+    return false;
+  }
+  const size_t needed_size = size_t(width_) * height_ * (rgb_output ? 3 : 2);
   if (dest_pb->data().size() < needed_size) {
-    // Optionally resize the buffer if it's too small. This makes it more
-    // robust.
-    AERROR << "MjpegProcessor: Destination buffer too small for RGB output. "
+    AERROR << "MjpegProcessor: Destination buffer too small for output. "
               "Needed: "
            << needed_size << ", Actual: " << dest_pb->data().size();
     return false;
   }
 
-  // Prepare frame_rgb_ to point to the destination protobuf buffer
-  // av_image_fill_arrays is a utility to set data pointers and linesizes for an
-  // AVFrame. We are essentially making frame_rgb_ a "wrapper" around dest_pb's
-  // data.
-  auto* output_buffer = dest_pb->mutable_data();
-  int ret =
-      av_image_fill_arrays(frame_rgb_->data, frame_rgb_->linesize,
-                           reinterpret_cast<uint8_t*>(&(*output_buffer)[0]),
-                           AV_PIX_FMT_RGB24, width_, height_, 1);
-
-  if (ret < 0) {
-    AERROR << "MjpegProcessor: Failed to fill RGB frame arrays: "
-           << MjpegUtil::GetFFmpegErrorString(ret);
-    return false;
+  if (!frame_output_->data[0]) {
+    frame_output_->format = pixel_format;
+    frame_output_->width = width_;
+    frame_output_->height = height_;
+    const int ret = av_frame_get_buffer(frame_output_, 32);
+    if (ret < 0) {
+      AERROR << "MjpegProcessor: output frame allocation failed: "
+             << MjpegUtil::GetFFmpegErrorString(ret);
+      return false;
+    }
   }
 
   // Perform the scaling/color space conversion
-  sws_scale(sws_ctx_, (const uint8_t* const*)frame_camera_->data,
-            frame_camera_->linesize, 0, frame_camera_->height, frame_rgb_->data,
-            frame_rgb_->linesize);
+  const int rows = sws_scale(sws_ctx_, frame_camera_->data,
+                             frame_camera_->linesize, 0, frame_camera_->height,
+                             frame_output_->data, frame_output_->linesize);
+  if (rows != height_) {
+    AERROR << "Incomplete MJPEG conversion: " << rows << " rows.";
+    return false;
+  }
+  // libswscale may use aligned SIMD stores; do not write into packed protobuf
+  // storage directly, especially for small or unaligned image widths.
+  auto* output_buffer = dest_pb->mutable_data();
+  const int copied = av_image_copy_to_buffer(
+      reinterpret_cast<uint8_t*>(output_buffer->data()), needed_size,
+      frame_output_->data, frame_output_->linesize, pixel_format, width_,
+      height_, 1);
+  if (copied < 0) {
+    AERROR << "MjpegProcessor: output copy failed: "
+           << MjpegUtil::GetFFmpegErrorString(copied);
+    return false;
+  }
   return true;
 }
 
@@ -407,7 +435,8 @@ bool MjpegProcessor::Process(const void* src, size_t len,
     return false;
   }
 
-  if (src == nullptr || len == 0) {
+  if (src == nullptr || len == 0 ||
+      len > static_cast<size_t>(std::numeric_limits<int>::max())) {
     AERROR << "MjpegProcessor: Source MJPEG buffer is invalid.";
     return false;
   }
@@ -420,15 +449,13 @@ bool MjpegProcessor::Process(const void* src, size_t len,
     return false;
   }
 
-  // Decode the MJPEG packet from the external (Protobuf) memory
   if (!DecodePacket(static_cast<const uint8_t*>(src), static_cast<int>(len))) {
     AERROR << "MjpegProcessor: Failed to decode packet.";
     return false;
   }
 
-  // Convert the decoded frame (frame_camera_) to RGB and store in dest_pb
-  if (!ConvertToRGB(dest_pb)) {
-    AERROR << "MjpegProcessor: Failed to convert to RGB.";
+  if (!ConvertFrame(dest_pb)) {
+    AERROR << "MjpegProcessor: Failed to convert decoded frame.";
     return false;
   }
 

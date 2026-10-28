@@ -1,26 +1,26 @@
 # CenterPoint sparse convolution
 
 The reusable sparse-convolution graph executor is in the public
-`wheelos_perception_ops` package at `pkgs/perception_ops/ops/spconv`. Bazel
+`wheelos_common//perception/ops/spconv` package at `pkgs/common/perception/ops/spconv`. Bazel
 builds the generated spconv-backed operator target once for both consumers.
-The CenterPoint integration owns the ONNX graph parser and maps the validated
-graph into the package's model-neutral API. BEVFusion uses that parser target
+The common `perception/model_io/onnx` package owns the ONNX graph parser.
+CenterPoint maps its validated graph into the model-neutral API. BEVFusion uses that parser target
 and the same operator target; neither module carries a separate sparse engine.
 No prebuilt `libspconv.so` or backend-selection flag is needed.
 
 ## Registry dependency
 
-Apollo declares `spconv@2.3.8.bcr.1` in `MODULE.bazel`. With `--config=dev`,
-the entry in `pkgs/bazel-central-registry` supplies the fixed upstream archive
-and Bazel overlays. Common source preparation, version pins, source-tree
-validation, generated-code BUILD rules and licenses belong to that module;
-Apollo does not carry a second implementation of them.
+Apollo declares `spconv@2.3.8.bcr.3` in `MODULE.bazel`. With `--config=dev`,
+the entry in `pkgs/bazel-central-registry` supplies the fixed official upstream
+archive and pinned execution-phase generation tools with content-checked outputs.
+Version pins, source-tree validation, generated-code BUILD rules and licenses
+belong to that module; Apollo does not carry a second implementation of them.
 
 See the registry module's
-[`README.bazel.md`](../../../../pkgs/bazel-central-registry/modules/spconv/2.3.8.bcr.1/overlay/README.bazel.md)
-for generator dependencies and provenance constraints. This is an upstream
-archive module with an **explicit generation stage**, not a published
-generated-source archive or a binary-only distribution.
+[`README.bazel.md`](../../../../pkgs/bazel-central-registry/modules/spconv/2.3.8.bcr.3/overlay/README.bazel.md)
+for source provenance and packaging constraints. Bazel invokes the official
+generator before native compilation; no generated-source supplement or
+precompiled runtime library is used. It targets CUDA 12.8 / SM89 only.
 
 Upstream spconv provides code-generated operators, not a loader for NVIDIA's
 custom ONNX graph. The Apollo executor implements `SparseConvolution`, sparse
@@ -31,29 +31,16 @@ runtime deliberately forces FP16 execution and validates the underlying graph
 and initializers as FP16. Unknown precision hints, unsupported operators,
 shapes and weights are rejected. The operator package directly depends on
 `@spconv//:spconv`; model modules depend on
-`@wheelos_perception_ops//ops/spconv:spconv_backbone`. The executor does not
+`@wheelos_common//perception/ops/spconv:spconv_backbone`. The executor does not
 own voxelization, model weights, TensorRT heads or decode/NMS.
 
-As the mapped non-root user in the managed dev container, reuse its CUDA
-toolchain and the isolated Python 3.10 codegen environment through `PYTHONPATH`:
-
-```sh
-export CUMM_DISABLE_JIT=1 SPCONV_DISABLE_JIT=1
-bazel run --config=dev --lockfile_mode=off @spconv//:prepare_source -- \
-  --spconv="$SPCONV_CHECKOUT" \
-  --cumm="$CUMM_CHECKOUT" \
-  --output=/apollo/.cache/spconv-registry-source-2.3.8-sm89 \
-  --cuda-arch=8.9 --cuda-version=12.8
-```
-
-The output must not already exist. The module writes `spconv-source.json`.
-
-Build a precise target through `.bazelrc.dev` and the local registry:
+As the mapped non-root user in the managed dev container, build a precise
+target through `.bazelrc.dev` and the local registry. No Python codegen setup
+or `SPCONV_SOURCE_ROOT` is required:
 
 ```sh
 bazel build --config=dev --config=gpu --config=opt \
   --lockfile_mode=off \
-  --repo_env=SPCONV_SOURCE_ROOT=/apollo/.cache/spconv-registry-source-2.3.8-sm89 \
   --@rules_cuda//cuda:archs=sm_89 --jobs=4 \
   //modules/lidar_object_detection:libcenterpoint_runtime.so \
   //modules/bevfusion:libbevfusion_runtime.so
@@ -61,11 +48,12 @@ bazel build --config=dev --config=gpu --config=opt \
 
 Codegen architecture and Bazel architecture must match the target GPU.
 `@spconv//:spconv` supplies the generated C++/CUDA library, without a spconv
-shared library. Apollo's graph adapter uses the independent
-`//third_party/onnx:onnx_proto_cc` schemas. ONNX/Protobuf parsing uses the
+shared library. The common importer uses its own
+`//perception/model_io/onnx/schema:onnx_proto_cc` schemas inside common. ONNX/Protobuf parsing uses the
 host C++ compiler, not nvcc. The module installer stages the spconv and cumm licenses under
 `lidar_object_detection/share/licenses/spconv`.
-All CenterPoint runtime builds require a prepared source tree and CUDA.
+All CenterPoint runtime builds require CUDA; generation inputs are fetched
+through the registry rather than a mutable host directory.
 
 ## Runtime contract and validation
 
@@ -79,10 +67,14 @@ destruction. Persistent tuning and capacity-retaining workspaces are per
 instance; SubM index relations are cached only within one frame. The retained
 workspace cap is 1 GiB, excluding weights and upstream sorting scratch.
 
-`//modules/lidar_object_detection/third_party/centerpoint:sparse_model_test`
-checks supported and malformed ONNX graphs without requiring a GPU or model
-file. The public package contains only the CUDA executor; model parsing and
-its CPU-only test remain with the CenterPoint integration.
+From the `pkgs/common` module root,
+`//perception/model_io/onnx:sparse_model_test` checks supported and malformed ONNX graphs without
+requiring a GPU or model file.
+`//perception/ops/spconv:spconv_backbone_test` checks numerical
+execution against a small CPU reference, coordinate ordering, transpose,
+repeated inputs, invalid count/grid recovery and nondefault streams.
+Each package's `test_module` separately
+checks public consumption without depending on those tests.
 The test-only `sparse_backbone_benchmark` binary accepts:
 
 ```text

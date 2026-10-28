@@ -9,9 +9,9 @@ LiDAR voxelization and sparse backbone, BEV pooling, feature fusion, bounding
 box head, and their CUDA/TensorRT helpers. The standalone demo, image
 visualization, Python bindings, QAT/PTQ, training and export tools, cuOSD,
 STB, copied spconv parser, and duplicate ONNX protobuf schemas are not included.
-The sparse ONNX graph is parsed by the detector-owned
-`//modules/lidar_object_detection/third_party/centerpoint:sparse_model` target
-and executes through the public `wheelos_perception_ops` sparse-backbone
+The sparse ONNX graph is parsed by the common-owned
+`@wheelos_common//perception/model_io/onnx:sparse_model` target
+and executes through the public `wheelos_common//perception/ops/spconv:spconv_backbone`
 library, which directly depends on Bzlmod `@spconv//:spconv`. BEVFusion does
 not carry a second sparse-convolution implementation or NVIDIA's former parser
 library.

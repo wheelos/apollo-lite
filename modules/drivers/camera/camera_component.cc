@@ -16,6 +16,9 @@
 
 #include "modules/drivers/camera/camera_component.h"
 
+#include <memory>
+#include <string>
+
 namespace apollo {
 namespace drivers {
 namespace camera {
@@ -29,7 +32,8 @@ bool CameraComponent::Init() {
   }
 
   try {
-    camera_device_ = std::make_unique<CameraDevice>(camera_config_);
+    camera_device_ =
+        std::make_unique<CameraDevice>(camera_config_, device_factory_);
   } catch (const std::exception& e) {
     AERROR << "Failed to initialize CameraDevice: " << e.what();
     return false;
@@ -75,8 +79,12 @@ bool CameraComponent::Init() {
   }
 
   writer_ = node_->CreateWriter<Image>(camera_config_->channel_name());
+  if (!writer_) {
+    AERROR << "Failed to create camera image writer.";
+    return false;
+  }
   running_.store(true);
-  async_result_ = cyber::Async(&CameraComponent::Run, this);
+  capture_thread_ = std::thread(&CameraComponent::Run, this);
   return true;
 }
 
@@ -91,9 +99,8 @@ void CameraComponent::Run() {
     }
 
     if (probe_count == kBufferSize) {
-      AWARN_EVERY(100)
-          << "All camera buffers are busy, dropping this cycle.";
-      cyber::SleepFor(std::chrono::milliseconds(1));
+      AWARN_EVERY(100) << "All camera buffers are busy, dropping this cycle.";
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
       continue;
     }
 
@@ -101,11 +108,14 @@ void CameraComponent::Run() {
 
     // 1) Poll from camera device (blocking wait in driver layer)
     if (!camera_device_->Poll(pb_image)) {
-      cyber::SleepFor(std::chrono::milliseconds(device_wait_ms_));
+      std::unique_lock<std::mutex> lock(stop_mutex_);
+      stop_condition_.wait_for(lock, std::chrono::milliseconds(device_wait_ms_),
+                               [this] { return !running_.load(); });
       continue;
     }
 
-    // 2) Keep header timestamp aligned with the capture timestamp set by device.
+    // 2) Keep header timestamp aligned with the capture timestamp set by
+    // device.
     pb_image->mutable_header()->set_timestamp_sec(pb_image->measurement_time());
 
     // 3) Rate limiting
@@ -114,18 +124,28 @@ void CameraComponent::Run() {
       continue;
     }
 
-    writer_->Write(pb_image);
+    if (!writer_->Write(pb_image)) {
+      AERROR << "Failed to publish camera image.";
+    }
     index_ = (selected_index + 1) % kBufferSize;
   }
 }
 
-CameraComponent::~CameraComponent() {
-  if (running_.exchange(false)) {
-    if (async_result_.valid()) {
-      async_result_.wait();
-    }
+void CameraComponent::Clear() {
+  {
+    std::lock_guard<std::mutex> lock(stop_mutex_);
+    running_.store(false);
+    stop_condition_.notify_all();
+  }
+  if (camera_device_) {
+    camera_device_->Stop();
+  }
+  if (capture_thread_.joinable()) {
+    capture_thread_.join();
   }
 }
+
+CameraComponent::~CameraComponent() { Clear(); }
 
 }  // namespace camera
 }  // namespace drivers

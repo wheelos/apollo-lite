@@ -1,16 +1,33 @@
+// Copyright 2026 The WheelOS Team. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "modules/drivers/camera/backend/camera_device.h"
 
+#include <algorithm>
 #include <chrono>
 #include <iomanip>
 #include <map>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <system_error>
 #include <thread>
 #include <utility>
 
-#include <linux/videodev2.h>
+#include <linux/videodev2.h>  // NOLINT(build/include_order)
 
 extern "C" {
 #include <libavutil/pixfmt.h>
@@ -36,7 +53,8 @@ const std::map<std::string, uint32_t> PIXEL_FORMAT_MAP = {
     // alternative.
     {"yuvmono10", V4L2_PIX_FMT_Y10},
     // Add other formats as needed, e.g., V4L2_PIX_FMT_GREY for 8-bit mono
-    {"grey", V4L2_PIX_FMT_GREY}};
+    {"grey", V4L2_PIX_FMT_GREY},
+};
 
 /**
  * @brief Safely retrieves the V4L2 pixel format from its string representation.
@@ -160,8 +178,11 @@ bool CameraDevice::Init() {
     // output
     processor_.reset();
     if (actual_pixel_format == V4L2_PIX_FMT_MJPEG) {
-      processor_ =
-          std::make_unique<MjpegProcessor>(config_->width(), config_->height());
+      processor_ = std::make_unique<MjpegProcessor>(
+          config_->width(), config_->height(),
+          config_->output_type() == OutputType::RGB
+              ? YuvProcessor::OutputFormat::RGB
+              : YuvProcessor::OutputFormat::YUYV);
     } else {
       // Determine output format for YuvProcessor (RGB or YUYV passthrough)
       YuvProcessor::OutputFormat output_format;
@@ -188,6 +209,8 @@ bool CameraDevice::Init() {
       } else if (actual_pixel_format == V4L2_PIX_FMT_VYUY) {
         yuv_format = YuvProcessor::YuvFormat::VYUY;
         format_name = "VYUY";
+      } else {
+        throw std::runtime_error("Unsupported negotiated camera pixel format");
       }
       AINFO << "YuvProcessor input format: " << format_name;
 
@@ -303,6 +326,14 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     return false;
   }
 
+  if (stopping_.load()) {
+    return false;
+  }
+  if (state_ == State::RECONNECTING) {
+    Reconnect();
+    return false;
+  }
+
   if (device_ == nullptr || processor_ == nullptr) {
     AERROR << "Camera " << config_->camera_dev()
            << " is missing device or processor instance.";
@@ -319,21 +350,12 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     try {
       device_->QueueBuffer(v4l2_buf.index);
     } catch (const std::exception& queue_error) {
-      AERROR << "Failed to queue V4L2 buffer index " << v4l2_buf.index
-             << " on " << config_->camera_dev() << ": "
-             << queue_error.what();
+      AERROR << "Failed to queue V4L2 buffer index " << v4l2_buf.index << " on "
+             << config_->camera_dev() << ": " << queue_error.what();
       state_ = State::RECONNECTING;
     }
     has_dequeued_buffer = false;
   };
-
-  // If in reconnecting state, attempt to reconnect first
-  if (state_ == State::RECONNECTING) {
-    Reconnect();
-    // Always return false if we are reconnecting, as no valid image is produced
-    // in this cycle.
-    return false;
-  }
 
   // If not initialized, cannot poll. This state should theoretically be caught
   // by RECONNECTING.
@@ -349,7 +371,7 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     // Using a 2-second timeout to allow the system to respond to other tasks.
     int ready = device_->WaitForData(2, 0);  // (seconds, microseconds)
 
-    if (ready < 0) {  // An error occurred during select()
+    if (ready < 0) {      // An error occurred during select()
       if (ready == -2) {  // select() interrupted by signal
         return false;
       }
@@ -386,6 +408,11 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
 
     // 4. Frame rate control and timestamp check
     if (last_timestamp_ns_ != 0) {  // Skip for the very first frame
+      if (current_ts_ns <= last_timestamp_ns_) {
+        AWARN << "Dropping non-increasing camera timestamp.";
+        queue_buffer_if_needed();
+        return false;
+      }
       uint64_t interval = current_ts_ns - last_timestamp_ns_;
 
       // Drop frame if interval is too small (e.g., camera delivering frames too
@@ -425,8 +452,8 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     // 6. Process image data (decode/convert) using the image processor
     // Processor will write directly into pb_image->mutable_data()->data()
     if (!processor_->Process(v4l2_buf.start, v4l2_buf.length, pb_image)) {
-      AWARN_EVERY(50) << "Image processing failed on "
-                      << config_->camera_dev() << ", dropping frame.";
+      AWARN_EVERY(50) << "Image processing failed on " << config_->camera_dev()
+                      << ", dropping frame.";
       queue_buffer_if_needed();
       return false;
     }
@@ -435,8 +462,7 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
     queue_buffer_if_needed();
 
     // Image successfully processed and ready
-    return true;
-
+    return state_ == State::INITIALIZED;
   } catch (const std::system_error& e) {
     queue_buffer_if_needed();
     // EAGAIN/EINTR can happen transiently with non-blocking dequeue/read.
@@ -462,6 +488,12 @@ bool CameraDevice::Poll(std::shared_ptr<Image> pb_image) {
 }
 
 bool CameraDevice::IsCapturing() const { return state_ == State::INITIALIZED; }
+
+void CameraDevice::Stop() {
+  std::lock_guard<std::mutex> lock(stop_mutex_);
+  stopping_.store(true);
+  stop_condition_.notify_all();
+}
 
 uint64_t CameraDevice::GetMonotonicTimestamp(const V4L2Buffer& v4l2_buf) {
   // Prefer to use V4L2-provided monotonic timestamp from the buffer.
@@ -504,7 +536,13 @@ void CameraDevice::Reconnect() {
   uint64_t wait_ms = std::min(1000ULL * (1ULL << capped_attempts), 30000ULL);
   AINFO << "Waiting for " << wait_ms
         << " ms before next reconnection attempt for " << config_->camera_dev();
-  std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
+  {
+    std::unique_lock<std::mutex> lock(stop_mutex_);
+    if (stop_condition_.wait_for(lock, std::chrono::milliseconds(wait_ms),
+                                 [this] { return stopping_.load(); })) {
+      return;
+    }
+  }
 
   // Attempt to re-initialize the camera.
   if (Init()) {
@@ -515,8 +553,7 @@ void CameraDevice::Reconnect() {
     AERROR << "Reconnection to " << config_->camera_dev() << " failed (attempt "
            << reconnect_attempts_ + 1 << ").";
     reconnect_attempts_++;  // Increment retry count for the next attempt.
-    // 'state_' remains RECONNECTING or becomes UNINITIALIZED if init() fails.
-    // The poll() loop will continue to trigger reconnect() until successful.
+    state_ = State::RECONNECTING;
   }
 }
 

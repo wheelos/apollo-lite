@@ -8,13 +8,14 @@ This directory contains the upstream CenterPoint implementation and its CUDA
 kernels, with compatibility adaptations for the repository's CUDA/TensorRT
 toolchain. It is not a pristine source export. Keep Apollo's C ABI wrapper and
 resource lifecycle code under `modules/lidar_object_detection/inference/`;
-keep serialized-model schemas under `third_party/onnx/` and the reusable
-spconv library build in the registry module `spconv@2.3.8.bcr.1`.
+keep shared serialized-model import and schemas under
+`pkgs/common/perception/model_io/onnx` and the reusable spconv library build
+in the registry module `spconv@2.3.8.bcr.3`.
 
-`sparse_model.*` and their validation tools are Apollo integration additions,
-not NVIDIA upstream files. The ONNX parser remains with the detector
-integration; the model-neutral sparse graph API and CUDA executor live in
-`pkgs/perception_ops/ops/spconv`. `CenterPoint` maps the parsed graph into that
+The sparse ONNX parser and its tests were extracted into
+`wheelos_common//perception/model_io/onnx`; they are not NVIDIA upstream files.
+The model-neutral sparse graph API and CUDA executor live in
+`pkgs/common/perception/ops/spconv`. `CenterPoint` maps the parsed graph into that
 public API, whose sole backend compiles pinned spconv 2.3.8/cumm generated
 sources as described in [`SPCONV.md`](SPCONV.md). The NVIDIA sparse-engine
 wrapper, imported DSO, headers and parser are no longer used. NVIDIA

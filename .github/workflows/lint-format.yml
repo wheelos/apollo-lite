@@ -38,6 +38,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r docker/build/installers/lint_requirements.txt
 
+      - name: Check isolated Bzlmod consumer modes
+        run: python -m unittest discover -s scripts -p bzlmod_test.py -v
+
       - name: Set up Bazel
         uses: bazel-contrib/setup-bazel@0.15.0
         with:

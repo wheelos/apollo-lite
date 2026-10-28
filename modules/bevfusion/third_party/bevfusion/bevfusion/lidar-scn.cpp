@@ -23,7 +23,7 @@
 
 #include "lidar-scn.hpp"
 
-#include "sparse_model.h"
+#include "wheelos/perception/model_io/sparse_model.h"
 #include "spconv/sparse_backbone.h"
 
 namespace bevfusion {
@@ -37,7 +37,7 @@ class SCNImplement : public SCN {
     if (voxelization_ == nullptr) return false;
 
     native_scn_ = wheelos::perception::ops::spconv::CreateSparseBackbone(
-        LoadSparseModel(param_.model));
+        wheelos::perception::model_io::LoadSparseModel(param_.model));
     return native_scn_ != nullptr;
   }
 

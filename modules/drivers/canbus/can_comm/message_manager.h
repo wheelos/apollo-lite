@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -89,6 +90,8 @@ class MessageManager {
   void ClearSensorData();
 
   std::condition_variable *GetMutableCVar();
+  bool WaitForData(const std::atomic<bool> &should_run);
+  void NotifyWaiters();
 
   /**
    * @brief get mutable protocol data by message id
@@ -104,6 +107,8 @@ class MessageManager {
    * @param chassis_detail chassis_detail to be filled.
    */
   common::ErrorCode GetSensorData(SensorType *const sensor_data);
+
+  common::ErrorCode GetAndClearSensorData(SensorType *const sensor_data);
 
   /**
    * @brief get current latency of message
@@ -152,6 +157,7 @@ class MessageManager {
   std::mutex sensor_data_mutex_;
   SensorType sensor_data_;
   bool is_received_on_time_ = false;
+  bool has_new_data_ = false;
 
   std::condition_variable cvar_;
 };
@@ -213,7 +219,9 @@ void MessageManager<SensorType>::Parse(const uint32_t message_id,
   {
     std::lock_guard<std::mutex> lock(sensor_data_mutex_);
     protocol_data->Parse(data, length, &sensor_data_);
+    has_new_data_ = true;
   }
+  cvar_.notify_one();
   received_ids_.insert(message_id);
   // check if need to check period
   const auto it = check_ids_.find(message_id);
@@ -244,6 +252,26 @@ std::condition_variable *MessageManager<SensorType>::GetMutableCVar() {
 }
 
 template <typename SensorType>
+bool MessageManager<SensorType>::WaitForData(
+    const std::atomic<bool> &should_run) {
+  std::unique_lock<std::mutex> lock(sensor_data_mutex_);
+  cvar_.wait(lock, [this, &should_run] {
+    return has_new_data_ || !should_run.load();
+  });
+  if (!should_run.load()) {
+    return false;
+  }
+  has_new_data_ = false;
+  return true;
+}
+
+template <typename SensorType>
+void MessageManager<SensorType>::NotifyWaiters() {
+  std::lock_guard<std::mutex> lock(sensor_data_mutex_);
+  cvar_.notify_all();
+}
+
+template <typename SensorType>
 ErrorCode MessageManager<SensorType>::GetSensorData(
     SensorType *const sensor_data) {
   if (sensor_data == nullptr) {
@@ -252,6 +280,20 @@ ErrorCode MessageManager<SensorType>::GetSensorData(
   }
   std::lock_guard<std::mutex> lock(sensor_data_mutex_);
   sensor_data->CopyFrom(sensor_data_);
+  return ErrorCode::OK;
+}
+
+template <typename SensorType>
+ErrorCode MessageManager<SensorType>::GetAndClearSensorData(
+    SensorType *const sensor_data) {
+  if (sensor_data == nullptr) {
+    AERROR << "Failed to get sensor_data due to nullptr.";
+    return ErrorCode::CANBUS_ERROR;
+  }
+  std::lock_guard<std::mutex> lock(sensor_data_mutex_);
+  sensor_data->CopyFrom(sensor_data_);
+  sensor_data_.Clear();
+  has_new_data_ = false;
   return ErrorCode::OK;
 }
 

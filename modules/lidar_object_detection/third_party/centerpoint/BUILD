@@ -1,40 +1,17 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
-cc_library(
-    name = "sparse_model",
-    srcs = ["src/sparse_model.cpp"],
-    hdrs = ["include/sparse_model.h"],
-    includes = ["include"],
-    deps = [
-        "//third_party/onnx:onnx_proto_cc",
-        "@com_google_protobuf//:protobuf",
-        "@wheelos_perception_ops//ops/spconv:spconv_backbone_api",
-    ],
-)
-
-cc_test(
-    name = "sparse_model_test",
-    size = "small",
-    srcs = ["src/sparse_model_test.cpp"],
-    deps = [
-        ":sparse_model",
-        "//third_party/onnx:onnx_proto_cc",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_binary(
     name = "sparse_backbone_benchmark",
     testonly = True,
     srcs = ["src/sparse_backbone_benchmark.cpp"],
     deps = [
-        ":sparse_model",
-        "@wheelos_perception_ops//ops/spconv:spconv_backbone",
+        "@wheelos_common//perception/model_io/onnx:sparse_model",
+        "@wheelos_common//perception/ops/spconv:spconv_backbone",
     ],
 )
 
@@ -80,10 +57,10 @@ cc_library(
         "src",
     ],
     deps = [
-        ":sparse_model",
         "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
-        "@wheelos_perception_ops//ops/spconv:spconv_backbone",
+        "@wheelos_common//perception/model_io/onnx:sparse_model",
+        "@wheelos_common//perception/ops/spconv:spconv_backbone",
     ],
     alwayslink = True,
 )

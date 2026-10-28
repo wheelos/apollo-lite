@@ -1,3 +1,17 @@
+// Copyright 2026 The WheelOS Team. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <memory>
@@ -94,7 +108,7 @@ class YuvProcessor : public ImageProcessor {
 
 /**
  * @brief Processes MJPEG image data using FFmpeg.
- * Decodes MJPEG frames and converts them to RGB.
+ * Decodes MJPEG frames and converts them to RGB or packed YUYV.
  */
 class MjpegProcessor : public ImageProcessor {
  public:
@@ -103,36 +117,37 @@ class MjpegProcessor : public ImageProcessor {
    * @param width Expected width of the MJPEG frames.
    * @param height Expected height of the MJPEG frames.
    */
-  MjpegProcessor(int width, int height);
+  MjpegProcessor(int width, int height,
+                 YuvProcessor::OutputFormat output_format =
+                     YuvProcessor::OutputFormat::RGB);
 
   // Destructor for FFmpeg resource cleanup
   ~MjpegProcessor();
 
   /**
-   * @brief Decodes an MJPEG frame and writes the RGB data to the protobuf Image
-   * message.
+   * @brief Decodes an MJPEG frame into the configured output format.
    */
   bool Process(const void* src, size_t len, ImagePtr dest_pb) override;
 
  private:
   void InitDecoder();
-  void InitConverter();
   void Cleanup();
 
-  // Private helper for decoding. Uses zero-copy with external memory.
+  // Private helper for decoding padded compressed input.
   bool DecodePacket(const uint8_t* data, int size);
   // Private helper for conversion
-  bool ConvertToRGB(ImagePtr dest_pb);
+  bool ConvertFrame(ImagePtr dest_pb);
 
   // FFmpeg related members
   SwsContext* sws_ctx_ = nullptr;
   AVCodecContext* codec_ctx_ = nullptr;
   AVFrame* frame_camera_ = nullptr;  // Raw frame from decoder (typically YUV)
-  AVFrame* frame_rgb_ = nullptr;     // Frame for RGB output
-  AVPacket* av_packet_ = nullptr;    // For holding input MJPEG data
+  AVFrame* frame_output_ = nullptr;
+  AVPacket* av_packet_ = nullptr;  // For holding input MJPEG data
 
   int width_;
   int height_;
+  YuvProcessor::OutputFormat output_format_;
 
   std::mutex mutex_;  // Protects FFmpeg context during process calls
 };

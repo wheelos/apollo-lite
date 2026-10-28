@@ -1,9 +1,26 @@
+// Copyright 2026 The WheelOS Team. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <sys/time.h>
 
+#include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -68,6 +85,10 @@ class CameraDevice {
    */
   bool IsCapturing() const;
 
+  // Interrupts reconnect backoff; an in-flight capture wait remains bounded
+  // by CameraCaptureDevice::WaitForData's timeout.
+  void Stop();
+
  private:
   // Disallow copy constructor and assignment operator to prevent accidental
   // copying and ensure proper resource management (unique_ptr, file
@@ -116,6 +137,9 @@ class CameraDevice {
   uint32_t reconnect_attempts_ = 0;  // Counter for reconnection attempts
   uint32_t select_timeout_count_ =
       0;  // Counter for consecutive select() timeouts
+  std::atomic<bool> stopping_{false};
+  std::mutex stop_mutex_;
+  std::condition_variable stop_condition_;
 };
 
 }  // namespace camera

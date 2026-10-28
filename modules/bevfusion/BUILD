@@ -119,12 +119,11 @@ cc_library(
     includes = ["third_party/bevfusion"],
     deps = [
         ":bevfusion_cuda_kernels",
-        "//modules/lidar_object_detection/third_party/centerpoint:sparse_model",
-        "@com_google_protobuf//:protobuf",
         "@cuda//:cublas",
         "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
-        "@wheelos_perception_ops//ops/spconv:spconv_backbone",
+        "@wheelos_common//perception/model_io/onnx:sparse_model",
+        "@wheelos_common//perception/ops/spconv:spconv_backbone",
     ],
     alwayslink = True,
 )
