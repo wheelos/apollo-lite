@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "status": "evaluated_diagnostic_subset_not_production_acceptance",
+  "dataset": "nuScenes trainval validation subset",
+  "scenes": ["scene-0003", "scene-0012", "scene-0013"],
+  "keyframes_per_scene": 4,
+  "frames": 12,
+  "original_current_sweep_points": 416576,
+  "mode_cases": 48,
+  "wrong_sweep_injections": 12,
+  "coordinates": "official calibrated_sensor LIDAR_TOP to nuscenes_ego; verified official ego poses",
+  "detector": "cached actual CenterPoint 10-sweep runtime predictions, exact sample token and source identity",
+  "segmenter": "fresh RangeRet SemanticKITTI inference; cross-domain and beam-projection mismatch",
+  "evaluation": {
+    "official_nuscenes_metrics": false,
+    "classes": ["car", "truck", "bus", "pedestrian", "bicycle", "motorcycle"],
+    "ground_truth_box_frame_outputs": 131,
+    "matching": "score-descending class-aware one-to-one XY center distance <= 2 m",
+    "roi": "base-frame x,y in [-50,50); truth num_lidar_pts > 0",
+    "raw_detector_score_0_1": {
+      "tp": 120, "fp": 631, "fn": 11,
+      "precision": 0.15978695073235685, "recall": 0.916030534351145
+    },
+    "raw_detector_score_0_3": {
+      "tp": 106, "fp": 45, "fn": 25,
+      "precision": 0.7019867549668874, "recall": 0.8091603053435115
+    },
+    "accepted_detector": {
+      "tp": 107, "fp": 63, "fn": 24,
+      "precision": 0.6294117647058823, "recall": 0.816793893129771
+    },
+    "full_fusion": {
+      "tp": 107, "fp": 106, "fn": 24,
+      "precision": 0.5023474178403756, "recall": 0.816793893129771
+    }
+  },
+  "normal_frame_outputs": {
+    "objects_all_classes": 296,
+    "unknowns": 1379,
+    "class_conflicts": 60,
+    "consistency_repairs": 0,
+    "unverified_free_cells": 0
+  },
+  "findings": [
+    "Semantic recall adds 43 comparable-class predictions with no net increase in true positives.",
+    "Full fusion does not demonstrate a quality improvement over the 0.3 raw detector baseline.",
+    "Filtering confounds comparisons with the low 0.1 raw evidence threshold.",
+    "Ground support is partial; UNKNOWN and zero FREE do not establish drivable-area accuracy.",
+    "CPU fusion P50 806.3065 ms and P95 1254.453 ms are diagnostic shared-host timings, not controlled throughput."
+  ],
+  "verification": {
+    "python_regression_cases": 13,
+    "python_format_and_lint": "passed in managed dev",
+    "replay_build_and_cpp_lint": "passed in managed dev",
+    "raw_evidence_and_measured_occupancy_audits": "passed",
+    "browser": "Chrome offline navigation, layers, filters, evidence selection and playback passed",
+    "browser_runtime_exceptions": 0,
+    "browser_failed_resources": 0,
+    "external_viewer_requests": 0,
+    "legacy_compatibility": "Frozen original model evidence preserves four-mode counts; fresh PointPillars is not bit-repeatable. See local compatibility.json."
+  },
+  "local_artifacts": {
+    "root_relative_to_repository": ".cache/lidar-fusion-validation/nuscenes-v1",
+    "experiment": "experiment.json",
+    "viewer": "viewer/index.html",
+    "report": "viewer/report.json",
+    "frame_csv": "viewer/frames.csv",
+    "screenshot": "viewer/viewer-smoke.png",
+    "browser_evidence": "viewer/browser-smoke.json",
+    "bundle_hashes": "viewer/artifact-sha256.json",
+    "report_sha256": "1c6e56ba6d452f1e3978352da42c8561f746745cea28d34d7643249a2450683b",
+    "viewer_data_sha256": "c27c0f51ae1a657bb120be183bcccfbc1cbcece2b510673112fcc4ef79793546"
+  },
+  "not_established": [
+    "Full-validation or official nuScenes mAP/NDS",
+    "Semantic mIoU; no local lidarseg labels",
+    "Tracking accuracy or production continuous local ODOM",
+    "FREE precision, braking or driving readiness",
+    "Real-time 5-10 ms fusion acceptance"
+  ]
+}

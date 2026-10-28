@@ -1,0 +1,11 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/lidar_fusion/liblidar_fusion_component.so"
+  timer_components {
+    class_name: "LidarFusionComponent"
+    config {
+      name: "lidar_fusion"
+      config_file_path: "/apollo/modules/lidar_fusion/conf/lidar_fusion.pb.txt"
+      interval: 10
+    }
+  }
+}

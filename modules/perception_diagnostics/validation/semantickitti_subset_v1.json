@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "status": "evaluated_negative_quality_baseline_not_optimized",
+  "dataset": "/mnt/synology/dataset/semantickitti",
+  "sequence": "08",
+  "selection": {"starts": [0, 1000, 2000], "frames_per_block": 4},
+  "frames": 12,
+  "original_points": 1503107,
+  "valid_semantic_points": 1438941,
+  "mode_cases": 48,
+  "wrong_sweep_injections": 12,
+  "models": {
+    "detector": "fresh PointPillars 40k-pillar derivative; not equivalent to original engine",
+    "segmenter": "fresh RangeRet SemanticKITTI engine",
+    "intensity": "round(raw float remission * 255), both model scales 1/255",
+    "maximum_remission_absolute_error": 0.0019607843137254832,
+    "geometry": "native LiDAR identity transform; expected ground z=-1.73 diagnostic assumption"
+  },
+  "semantic": {
+    "accuracy": 0.8688834358045257,
+    "miou_17_present_union_classes": 0.5665444662343032,
+    "miou_19_zero_for_absent": 0.5069082066306922,
+    "official_leaderboard_result": false
+  },
+  "point_views_common_domain": {
+    "scope": "valid labels, x=[0,60), y=[-39.68,39.68)",
+    "semantic_thing": {"precision": 0.8514595824762572, "recall": 0.9573368762917036},
+    "object_points_thing": {"precision": 0.2039313534566699, "recall": 0.8244759374077355},
+    "ground_semantic_surface_proxy": {"precision": 0.9861549431131227, "recall": 0.3639167520866891},
+    "whole_sweep_thing_points_classified_as_ground": 52
+  },
+  "visible_instance_protocol": {
+    "amodal_box_ap": false,
+    "truth": "61 official nonzero point-instance IDs, >=5 visible points, CAR/PED/CYCLIST",
+    "scope": "x=[0,60), y=[-39.68,39.68), valid semantic labels",
+    "matching": "class-aware score-ordered one-to-one visible-point IoU >=0.5",
+    "candidate_points": "same geometric box-membership rule for every variant",
+    "raw_detector_0_3": {"tp": 50, "fp": 44, "fn": 11},
+    "accepted_detector": {"tp": 50, "fp": 315, "fn": 11},
+    "accepted_detector_0_3": {"tp": 50, "fp": 44, "fn": 11},
+    "full_fusion": {"tp": 50, "fp": 322, "fn": 11},
+    "full_fusion_det_0_3": {"tp": 50, "fp": 51, "fn": 11}
+  },
+  "findings": [
+    "Same frozen outputs: low-score DET acceptance adds 271 net FP with no net TP.",
+    "266 low-score CONFLICT DET and 8 low-score SUPPORT DET exist in all-ROI outputs; this scope differs from common-domain matching.",
+    "Semantic recall adds 7 net comparable-domain FP with no net TP.",
+    "Useful raw semantic THING evidence does not establish a pure object-points view.",
+    "Only INSUFFICIENT receives the existing unsupported-score gate; CONFLICT retains raw class and can claim background points.",
+    "P0: separate geometry/risk retention from classified-object acceptance and trusted foreground views without removing measured occupancy."
+  ],
+  "normal_frame_outputs": {
+    "objects_all_classes": 393,
+    "unknowns": 2749,
+    "conflicts": 292,
+    "consistency_repairs": 0,
+    "unverified_free_cells": 0
+  },
+  "verification": {
+    "diagnostics_unit_cases": 20,
+    "managed_python_format_and_lint": "passed",
+    "original_xyz_order_and_semantic_detection_evidence": "passed",
+    "independent_measured_occupancy_and_reference_audits": "passed",
+    "chrome_frame_controls_gt_mode_layers_filters_picking_playback": "passed",
+    "browser_runtime_exceptions": 0,
+    "browser_failed_resources": 0
+  },
+  "local_artifacts": {
+    "root_relative_to_repository": ".cache/lidar-fusion-validation/semantickitti-v1",
+    "manifest": "inputs/manifest.json",
+    "viewer": "viewer/index.html",
+    "report": "viewer/report.json",
+    "frame_csv": "viewer/frames.csv",
+    "browser_evidence": "viewer/browser-smoke.json",
+    "screenshot": "viewer/viewer-smoke.png",
+    "bundle_hashes": "viewer/artifact-sha256.json",
+    "report_sha256": "ad59e23b16919cdb87e8906da4d92a8652c2a82d9be8511a3dc3da76b2d96fd1",
+    "viewer_data_sha256": "d9828f1a9fe1d047b85d669a1435ab23204cf7fe5379ca5d7a3c0a8cf8d5140f"
+  },
+  "limitations": [
+    "Twelve selected sweeps, not complete sequence or independent quality acceptance",
+    "No amodal detection boxes or official detection AP",
+    "Geometric ground vs semantic surface is a proxy, not physical traversability",
+    "No validated local ODOM, per-ray origins, FREE or driving safety",
+    "No fusion-rule tuning or performance optimization in this validation"
+  ]
+}

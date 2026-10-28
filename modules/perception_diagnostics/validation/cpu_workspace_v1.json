@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "status": "cpu_execution_rewrite_verified_local_relation_option_default_false",
+  "production_defaults_changed": false,
+  "gpu_or_worker_backend_added": false,
+  "implemented": [
+    "Build default voxel membership and adjacency once per frame; recompute connected components on each layer's eligible subgraph.",
+    "Share a bounded slot-indexed touched-cell buffer across space construction, visibility and L6; publish cells once in deterministic order.",
+    "Use exact relation existence queries and lazy 128-point conservative block bounds with nonunit/extreme/boundary fallback.",
+    "Expose optional stage timing and voxel/edge/relation operation counts outside published model evidence.",
+    "Add CPU-only cached replay with excluded warm-ups, every measured sample, full normalized four-mode payloads, immutable-input/wrong-sweep checks and evaluator-ready normal output.",
+    "Support CPU cached replay in independent SemanticKITTI diagnostics without fabricated engine paths or weakening oracle gates.",
+    "Add opt-in local_object_relations to stop propagating object references across an entire scene-connected component."
+  ],
+  "performance": {
+    "build_flags": "--config=dev --lockfile_mode=off --per_file_copt=modules/lidar_fusion/.*@-O2",
+    "build_boundary": "Both variants optimize fusion module sources identically; cached dependencies retain their settings. Not a whole-stack release build.",
+    "runtime": "Existing isolated test container, mapped non-root user, shared i7-12700KF host; no inference, GPU fusion, affinity or frequency changes.",
+    "protocol": "Five interleaved AB/BA process pairs; each frame/mode excludes one warm-up and retains its measured sample. Separate opt-in profiling is not the timing comparison.",
+    "normal_median_ms": [
+      {"frame": "003000", "reference": 112.47, "selected": 77.59, "speedup": 1.450},
+      {"frame": "003500", "reference": 97.97, "selected": 72.74, "speedup": 1.347},
+      {"frame": "004000", "reference": 119.85, "selected": 79.69, "speedup": 1.504}
+    ],
+    "block_query_attribution": [
+      {"frame": "003000", "point_transforms_before_blocks": 342529, "point_transforms_after_blocks": 30409},
+      {"frame": "003500", "point_transforms_before_blocks": 256133, "point_transforms_after_blocks": 14868},
+      {"frame": "004000", "point_transforms_before_blocks": 361440, "point_transforms_after_blocks": 12123}
+    ],
+    "attribution_boundary": "Block counters compare the earlier exact workspace/existence-query version with the final block version, not the original unoptimized full-scan implementation.",
+    "sampled_process_peak_rss_median_bytes": {"reference": 113528832, "selected": 110899200},
+    "remaining_normal_stage_ranges_ms": {
+      "evidence_including_source_validation": [25.34, 29.98],
+      "voxel_graph_and_primary_components": [14.70, 16.39],
+      "candidate_building": [5.25, 6.50],
+      "relations": [1.78, 2.69],
+      "space_construction": [3.06, 5.32],
+      "views_unknown_support_and_visibility": [11.96, 14.27],
+      "output_check_and_publication": [6.08, 6.88]
+    },
+    "limitations": [
+      "The earlier seconds-scale fastbuild measurements are not this comparison's baseline; compiler optimization and architecture gains must not be conflated.",
+      "Per-frame repeated distributions on three development frames, not population P99, full-pipeline throughput or vehicle deadline acceptance.",
+      "Sampled RSS is not a guaranteed peak, memory-growth or leak result.",
+      "The 5-10ms design target remains unmet."
+    ]
+  },
+  "correctness": {
+    "frames": 51,
+    "datasets": {"semantickitti": 36, "nuscenes": 12, "sensor_rgb_record": 3},
+    "complete_four_mode_payloads_byte_equal_excluding_only_latency_ms": 204,
+    "all_frozen_source_hashes_unchanged": true,
+    "raw_evidence_measured_occupancy_classification_roles_and_conflicts_unchanged": true,
+    "final_replay_export_wrapper_additional_exact_development_payloads": 48,
+    "local_variant_before_after_block_optimization_exact_payloads": 48,
+    "cpp_contract_cases": 65,
+    "actual_cyber_component_cases": 2,
+    "python_diagnostic_cases": 25,
+    "targeted_cpp_python_bazel_format_and_lint": "passed",
+    "offline_browser_bundles": 2,
+    "browser_exceptions_and_failed_resources": 0
+  },
+  "local_relation_experiment": {
+    "scope": "12 development NORMAL frames; no ground or semantic-partition changes",
+    "default_enabled": false,
+    "references_before_after": [551, 262],
+    "classified_tp_fp_fn_before_after": [[87, 32, 18], [87, 32, 18]],
+    "all_candidate_tp_fp_fn_before_after": [[87, 67, 18], [87, 67, 18]],
+    "raw_point_evidence_and_measured_occupancy_unchanged": true,
+    "interpretation": "More local relationship representation with preserved development object metrics, not newly improved detection accuracy or physical unknown-relation truth."
+  },
+  "deferred_or_blocked": [
+    "Full point-evidence SoA conversion remains future work; the current pipeline still uses point protobuf fields internally.",
+    "No speculative CPU workers: only 3-5ms of measured space construction could overlap the current dependency chain without further dataflow changes.",
+    "GPU remains conditional on CPU/dataflow profiling rather than a substitute for reducing repeated work.",
+    "No new ground algorithm is enabled. The previous robust-ground option remains off because additional THING points were classified as ground.",
+    "Projection/ray-origin, physical ground-support, vehicle capability and continuous ODOM production contracts remain unresolved. FREE and production temporal integration are not enabled."
+  ],
+  "artifacts": {
+    "root": ".cache/lidar-fusion-validation/cpu-workspace-v1",
+    "evidence": "final-evidence.json",
+    "evidence_sha256": "b756d7c8d25992569d9c7548b53071058393d4edb746a499d0552f8179112508",
+    "protocol_sha256": "3234cf8447f465c9b0c909fb7e3218de9613edb88d9af40a4982357132b0a929",
+    "performance_report": "performance-final.json",
+    "performance_report_sha256": "83bf72832dc546663e8a5979b947fcefca6c6e66371d12d052bc613713bdf76a",
+    "stage_samples": "profile-final/stages.csv",
+    "stage_samples_sha256": "7efd2cdd56ffabd57c4a889709e384232fa9aac6596acd293f639bb5ff469918",
+    "selected_viewer": "selected-viewer/index.html",
+    "selected_viewer_report_sha256": "5eeeba84141f6a8a8e9d438c450ad29176276d72eb4adc44351349743b0ffc1e",
+    "local_variant_viewer": "local-viewer-selected/index.html",
+    "local_variant_viewer_report_sha256": "1a0232aaaafd562de46114a1b10d4611b3483d5edc2cd467cddfec3c8494a705",
+    "benchmark_tool_boundary": "The frozen selected timing executable predates only the added standard summary/model-copy export; final replay_cached uses identical fusion core and is separately checked against it on all 12 development frames in all four modes."
+  }
+}
