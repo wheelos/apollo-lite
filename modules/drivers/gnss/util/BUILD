@@ -16,16 +16,14 @@ cc_library(
     ],
 )
 
-# cc_test(
-#     name = "data_buffer_test",
-#     srcs = [
-#         "data_buffer_test.cc",
-#     ],
-#     deps = [
-#         ":data_buffer",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
+cc_test(
+    name = "data_buffer_test",
+    srcs = ["data_buffer_test.cc"],
+    deps = [
+        ":data_buffer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_library(
     name = "util",

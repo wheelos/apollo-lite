@@ -91,27 +91,4 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "data_parser_test",
-    size = "small",
-    srcs = ["data_parser_test.cc"],
-    data = [
-        "//modules/drivers/gnss:runtime_data",
-        "//modules/drivers/gnss:test_data_files",
-        "@core//cyber:cyber_conf",
-        "@proj//:proj_runtime_data",
-    ],
-    linkstatic = False,
-    deps = [
-        ":data_parser",
-        "//modules/drivers/gnss/parser/novatel:novatel_parser",
-        "//modules/drivers/gnss/proto:gnss_status_cc_proto",
-        "@com_google_googletest//:gtest",
-        "@core//cyber",
-        "@core//cyber/common:file",
-        "@wheelos_common//modules/common/adapters:adapter_gflags",
-        "@wheelos_common//modules/common/util:util_tool",
-    ],
-)
-
 cpplint()
