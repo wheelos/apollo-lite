@@ -266,17 +266,17 @@ repositories. The dependency boundary is:
 | Dependency | Source / management | Runtime requirement |
 | --- | --- | --- |
 | CenterPoint CUDA/TensorRT implementation | Pinned, MIT-licensed source snapshot in `third_party/centerpoint/` | CUDA toolkit/driver and a compatible TensorRT installation |
-| ONNX schemas and model loader | Shared schemas in `third_party/onnx/`, detector-owned `sparse_model` graph parser | Protobuf, no NVIDIA sparse-engine parser |
-| spconv 2.3.8 | Registry module `spconv@2.3.8.bcr.1`, with explicit pinned source generation | Sole sparse backbone, compiled into the runtime; no imported spconv DSO |
+| ONNX schemas and model loader | `@wheelos_common//perception/model_io/onnx:sparse_model`, including its owned schema snapshot | Protobuf, no CUDA headers or NVIDIA sparse-engine parser |
+| spconv 2.3.8 | Registry module `spconv@2.3.8.bcr.3`, official archive plus Bazel execution-phase CUDA 12.8 / SM89 generation | Sole sparse backbone, compiled into the runtime; no imported spconv DSO |
 | Model artifacts | Supplied by the deployment; not checked in | Matching SCN ONNX and TensorRT engine |
 
-Prepare the pinned generated tree as described in
-[`SPCONV.md`](third_party/centerpoint/SPCONV.md), then build/install with CUDA:
+Use the registry-managed source generation as described in
+[`SPCONV.md`](third_party/centerpoint/SPCONV.md), then build/install with CUDA.
+No local source preparation or `SPCONV_SOURCE_ROOT` is needed:
 
 ```sh
 bazel run --config=dev --config=gpu --config=opt --lockfile_mode=off \
-  --repo_env=SPCONV_SOURCE_ROOT=<prepared-source-tree> \
-  --@rules_cuda//cuda:archs=<matching-generated-GPU-architecture> \
+  --@rules_cuda//cuda:archs=sm_89 \
   //modules/lidar_object_detection:install -- /apollo/modules
 ```
 
@@ -290,14 +290,19 @@ prefix. Copy the matching `centerpoint.scn.onnx` and
 `/apollo/modules/lidar_object_detection-dev/local/model`; these model artifacts
 are not checked into the repository or bundled by the Bazel install target.
 CUDA driver support must be available in the target NVIDIA software image.
+For backend-specific deployment, use `:install_centerpoint` or
+`:install_pointpillars` instead of the aggregate `:install` target.
+Each stages the shared component and selected runtime; PointPillars-only
+installation does not build or install the CenterPoint/spconv runtime.
 The ONNX model and TensorRT engine are separate deployment artifacts; the
 component config must point to the exact model files used to build the engine.
 
 The runtime uses the shared
-`@wheelos_perception_ops//ops/spconv:spconv_backbone` target, backed by
+`@wheelos_common//perception/ops/spconv:spconv_backbone` target, backed by
 upstream spconv 2.3.8, as its only sparse implementation. The model-neutral
-CUDA executor lives under `pkgs/perception_ops/ops/spconv`; CenterPoint owns
-the custom ONNX parser and detector integration. The former NVIDIA spconv
+CUDA executor lives under `pkgs/common/perception/ops/spconv`; the shared
+ONNX importer and schemas live under `pkgs/common/perception/model_io/onnx`.
+CenterPoint owns only its model adapter and detector integration. The former NVIDIA spconv
 import and backend selection have been removed. This replaces only the sparse
 backbone; it retains the existing ONNX model, voxelizer, TensorRT head and
 postprocessing. The install target packages spconv/cumm licenses but no NVIDIA

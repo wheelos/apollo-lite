@@ -8,15 +8,20 @@ selection are recorded under `third_party/bevfusion/`.
 
 The first supported model is ResNet50 FP16. No models, TensorRT engines, datasets, training/QAT/PTQ tools, visualizer, demo
 assets, or spconv/ONNX schemas are included. Its sparse backbone uses the
-public `@wheelos_perception_ops//ops/spconv:spconv_backbone` target; the
-operator package directly depends on root Bzlmod `spconv@2.3.8.bcr.1`, so
+public `@wheelos_common//perception/ops/spconv:spconv_backbone` target; the
+common module directly depends on Bzlmod `spconv@2.3.8.bcr.3`, so
 CenterPoint and BEVFusion do not maintain separate sparse-convolution
-implementations. The shared custom sparse-ONNX parser remains in the
-detector-integration target
-`//modules/lidar_object_detection/third_party/centerpoint:sparse_model`;
+implementations. The shared custom sparse-ONNX parser is owned by
+`@wheelos_common//perception/model_io/onnx:sparse_model`;
 operator execution itself has no dependency on ONNX or detector modules.
+Both packages belong to the single `wheelos_common` module.
+BEVFusion no longer depends on CenterPoint
+source or its BUILD targets.
 TensorRT engines and the SCN ONNX must be generated for the target
 GPU/software stack and are not assumed portable.
+The local registry revision generates CUDA 12.8 / SM89 sources in Bazel;
+consumers no longer need a local `SPCONV_SOURCE_ROOT` or Python codegen step.
+Other GPU architectures require separately validated generated sources.
 The sparse ONNX graph and initializer tensors must be FP16. Legacy node
 `precision`/`output_precision` values of `int8` are engine-builder hints; the
 shared executor intentionally forces FP16 execution, matching the previous

@@ -127,6 +127,35 @@ yes | sudo bash docker/setup_host/setup_host.sh
 
 ## `@core` runtime (cyber tools)
 
+### Bzlmod consumer modes
+
+Run these commands in the managed container as the mapped non-root user:
+
+```bash
+# Local source integration; never updates the formal consumer lockfile.
+python3 scripts/bzlmod.py dev mod graph
+python3 scripts/bzlmod.py dev build @core//tools:mainboard
+
+# Candidate registry first, without developer or home rc files/source overrides.
+python3 scripts/bzlmod.py registry build @core//tools:mainboard
+
+# Remote registries only, with strict lockfile checking.
+python3 scripts/bzlmod.py release build @core//tools:mainboard
+
+# Only after every declared module is available from the formal registries:
+python3 scripts/bzlmod.py lock-update mod deps
+
+# Record revisions AND dirty state; this does not publish or freeze local edits.
+python3 scripts/bzlmod.py snapshot > .cache/bzlmod-provenance.json
+```
+
+Commit `MODULE.bazel.lock` only after formal registry resolution succeeds.
+Local source integration is not release acceptance. Perception operators and
+model I/O are packages in `wheelos_common`, not separate Bzlmod modules.
+Use registry mode to validate the local candidate while remote publication is
+pending; release checks must not fall back to `pkgs` sources or the local registry.
+Select GPU/manual tests explicitly; SM89 coverage does not establish Orin support.
+
 The production path is the Bazel module dependency `wheelos_core` (`@core//...`).
 Use the unified runtime entrypoint after building with the module dependency already resolved:
 

@@ -6,20 +6,24 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "pointpillars_runtime_api",
-    alwayslink = True,
     srcs = ["inference/pointpillars_runtime_api.cc"],
     hdrs = ["inference/pointpillars_runtime_api.h"],
     deps = [
-        "//modules/lidar_object_detection/third_party/pointpillars:pointpillars",
+        "//modules/lidar_object_detection/third_party/pointpillars",
         "@cuda//:cuda_runtime",
         "@local_config_tensorrt//:tensorrt",
     ],
+    alwayslink = True,
 )
 
 cc_binary(
     name = "libpointpillars_runtime.so",
     linkshared = True,
     linkstatic = True,
+    target_compatible_with = select({
+        "//tools/platform:use_gpu": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
     deps = [":pointpillars_runtime_api"],
 )
 
@@ -149,6 +153,10 @@ cc_binary(
     ],
     linkshared = True,
     linkstatic = True,
+    target_compatible_with = select({
+        "//tools/platform:use_gpu": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
     deps = [":centerpoint_runtime_api"],
 )
 
@@ -212,20 +220,41 @@ install_files(
 )
 
 install(
-    name = "install",
+    name = "install_component",
     data = [
         ":runtime_config",
-        "tools/run_pointpillars.py",
     ],
     data_dest = "lidar_object_detection",
     library_dest = "lidar_object_detection/lib",
     targets = [
         ":liblidar_object_detection_component.so",
-        ":libcenterpoint_runtime.so",
-        ":libpointpillars_runtime.so",
     ],
+)
+
+install(
+    name = "install_centerpoint",
+    library_dest = "lidar_object_detection/lib",
+    targets = [":libcenterpoint_runtime.so"],
     deps = [
         ":install_centerpoint_spconv_licenses",
+        ":install_component",
+    ],
+)
+
+install(
+    name = "install_pointpillars",
+    data = ["tools/run_pointpillars.py"],
+    data_dest = "lidar_object_detection",
+    library_dest = "lidar_object_detection/lib",
+    targets = [":libpointpillars_runtime.so"],
+    deps = [":install_component"],
+)
+
+install(
+    name = "install",
+    deps = [
+        ":install_centerpoint",
+        ":install_pointpillars",
     ],
 )
 

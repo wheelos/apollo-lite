@@ -38,7 +38,7 @@
 #include "NvInfer.h"
 #include "NvInferRuntime.h"
 #include "NvOnnxConfig.h"
-#include "sparse_model.h"
+#include "wheelos/perception/model_io/sparse_model.h"
 #include "timer.hpp"
 
 template <typename T>
@@ -61,7 +61,7 @@ CenterPoint::CenterPoint(const std::string &modelFile,
   post_.reset(new PostProcessCuda());
 
   scn_engine_ = wheelos::perception::ops::spconv::CreateSparseBackbone(
-      LoadSparseModel(scnModelFile));
+      wheelos::perception::model_io::LoadSparseModel(scnModelFile));
   if (scn_engine_ == nullptr) {
     throw std::runtime_error("Unable to load sparse-convolution ONNX: " +
                              scnModelFile);
