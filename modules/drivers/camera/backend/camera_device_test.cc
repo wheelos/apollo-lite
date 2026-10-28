@@ -17,10 +17,12 @@
 #include "modules/drivers/camera/backend/camera_device.h"
 
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
-#include <linux/videodev2.h>
+#include <linux/videodev2.h>  // NOLINT(build/include_order)
 
 #include "gtest/gtest.h"
 
@@ -47,7 +49,9 @@ class FakeCaptureDevice : public CameraCaptureDevice {
   bool SetParameter(uint32_t, int32_t) override { return true; }
   void StartStreaming() override {}
   void StopStreaming() noexcept override {}
-  int WaitForData(long, long) override { return state_->wait_result; }
+  int WaitForData(long, long) override {  // NOLINT(runtime/int)
+    return state_->wait_result;
+  }
 
   V4L2Buffer DequeueBuffer() override {
     V4L2Buffer buffer;
@@ -120,6 +124,21 @@ TEST(CameraDeviceTest, PollRejectsTruncatedFrameAndStillRequeuesBuffer) {
   auto image = std::make_shared<Image>();
   EXPECT_FALSE(camera.Poll(image));
   EXPECT_EQ(state->queued_indices, std::vector<uint32_t>({7}));
+}
+
+TEST(CameraDeviceTest, PollRetriesAfterInitialDeviceFailure) {
+  auto state = std::make_shared<FakeCaptureState>();
+  int attempts = 0;
+  CameraDevice camera(MakeConfig(), [&](CameraDevice::ConfPtr) {
+    if (++attempts == 1) {
+      throw std::runtime_error("simulated disconnect");
+    }
+    return std::make_unique<FakeCaptureDevice>(state);
+  });
+  ASSERT_FALSE(camera.IsCapturing());
+  EXPECT_FALSE(camera.Poll(std::make_shared<Image>()));
+  EXPECT_TRUE(camera.IsCapturing());
+  EXPECT_EQ(attempts, 2);
 }
 
 }  // namespace

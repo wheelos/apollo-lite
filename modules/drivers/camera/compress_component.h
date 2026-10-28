@@ -19,12 +19,13 @@
 #include <cstddef>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/drivers/camera/proto/config.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 
 #include "cyber/base/concurrent_object_pool.h"
 #include "cyber/cyber.h"

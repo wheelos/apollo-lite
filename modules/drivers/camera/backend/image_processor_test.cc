@@ -20,8 +20,11 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "gtest/gtest.h"
+
+#include "opencv2/imgcodecs.hpp"
 
 namespace apollo {
 namespace drivers {
@@ -97,6 +100,22 @@ TEST(YuvProcessorTest, RejectsIncompleteOrInvalidYuv422Frame) {
   const std::array<uint8_t, 6> odd_width_frame = {16, 128, 16, 128, 16, 128};
   EXPECT_FALSE(
       processor.Process(odd_width_frame.data(), odd_width_frame.size(), image));
+}
+
+TEST(MjpegProcessorTest, DecodesFirstFrameAndRejectsMismatchedDimensions) {
+  cv::Mat source(8, 8, CV_8UC3, cv::Scalar(40, 100, 180));
+  std::vector<uint8_t> jpeg;
+  ASSERT_TRUE(cv::imencode(".jpg", source, jpeg));
+  MjpegProcessor processor(8, 8);
+  auto image = MakeImage(8, 8, 8 * 8 * 3);
+  ASSERT_TRUE(processor.Process(jpeg.data(), jpeg.size(), image));
+  EXPECT_NEAR(static_cast<uint8_t>(image->data()[0]), 180, 5);
+  EXPECT_NEAR(static_cast<uint8_t>(image->data()[1]), 100, 5);
+  EXPECT_NEAR(static_cast<uint8_t>(image->data()[2]), 40, 5);
+
+  MjpegProcessor wrong_size(16, 8);
+  EXPECT_FALSE(wrong_size.Process(jpeg.data(), jpeg.size(),
+                                  MakeImage(16, 8, 16 * 8 * 3)));
 }
 
 }  // namespace
