@@ -20,6 +20,12 @@ TEST(CanStreamRegressionTest, FailedConnectCanBeRetried) {
   EXPECT_FALSE(stream.Connect());
 }
 
+TEST(CanStreamRegressionTest, RejectsInvalidInterfaceNames) {
+  EXPECT_THROW(CanStream("", 0), std::invalid_argument);
+  EXPECT_THROW(CanStream(std::string(IFNAMSIZ, 'x'), 0),
+               std::invalid_argument);
+}
+
 TEST(CanStreamRegressionTest, ZeroTimeoutEnablesNonBlockingSocket) {
   int sockets[2] = {-1, -1};
   ASSERT_EQ(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);

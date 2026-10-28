@@ -83,26 +83,6 @@ cc_library(
 )
 
 cc_test(
-    name = "udp_stream_test",
-    srcs = ["udp_stream_test.cc"],
-    deps = [
-        ":stream_factory",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "tcp_stream_test",
-    srcs = ["tcp_stream_test.cc"],
-    deps = [
-        ":stream_factory",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "tcp_stream_regression_test",
     srcs = ["tcp_stream_regression_test.cc"],
     deps = [
@@ -131,16 +111,5 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
-
-# TODO(zero): recover the test code for stream
-# cc_test(
-#     name = "can_stream_test",
-#     srcs = ["can_stream_test.cc"],
-#     deps = [
-#         ":can_stream",
-#         "@com_google_googletest//:gtest",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
 
 cpplint()
