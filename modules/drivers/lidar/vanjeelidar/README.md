@@ -79,14 +79,15 @@ clouds and invalid IMU samples are rejected with errors, not stamped with
 arrival time. Ring preservation and the FAST-LIO2 consumer adapter remain
 separate work; this change does not add ring to the shared PointCloud schema.
 
-Software regression targets:
+Core conversion unit test:
 
 ```sh
 bazel test --config=dev \
-  //modules/drivers/lidar/vanjeelidar:measurement_conversion_test \
-  //modules/drivers/lidar/vanjeelidar:vanjeelidar_component_test
+  //modules/drivers/lidar/vanjeelidar:measurement_conversion_test
 ```
 
 Run them as the mapped non-root user in the managed development container.
-These tests exercise conversion and SDK-callback-to-Cyber publication, not
+This target checks measurement conversion without starting Cyber transport.
+SDK-callback-to-Cyber publication is covered by `drivers/lidar` in the
+standalone `wheelos-service/integration_tests` repository. Neither test proves
 physical-device timing, SDK packet decoding, or complete FAST-LIO2 operation.

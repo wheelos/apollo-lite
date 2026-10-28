@@ -77,16 +77,4 @@ cc_library(
     alwayslink = True,
 )
 
-cc_test(
-    name = "vanjeelidar_component_test",
-    size = "small",
-    srcs = ["src/vanjeelidar_component_test.cc"],
-    data = ["@core//cyber:cyber_conf"],
-    deps = [
-        ":vanjeelidar_component_lib",
-        "@com_google_googletest//:gtest",
-        "@core//cyber",
-    ],
-)
-
 cpplint()
