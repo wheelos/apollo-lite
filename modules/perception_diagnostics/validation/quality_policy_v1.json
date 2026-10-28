@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "status": "limited_classified_consumer_quality_accepted_not_production",
+  "policy": {
+    "opt_in": true,
+    "deployment_defaults_changed": false,
+    "separate_weak_detections": true,
+    "compatible_margin": true,
+    "trusted_point_view": true,
+    "point_supported_unknown": true,
+    "separate_semantic_instances": false,
+    "semantic_identity_unverified": "false on qualified SemanticKITTI diagnostic; explicitly true on cross-domain nuScenes diagnostic",
+    "thresholds_or_models_changed": false,
+    "weak_hypotheses_removed_from_raw_evidence_or_measured_occupancy": false,
+    "consumer_contract": "full_fusion contains every published object candidate; classified_fusion selects CLASSIFICATION_CANDIDATE. IDENTITY_UNCERTAIN objects and RETAINED_WEAK hypotheses remain inspectable and are not calibrated truths.",
+    "unsupported_unknown_extent": "extent only; risk cells follow actual finite unknown points, gaps remain UNKNOWN"
+  },
+  "semantickitti_protocol": {
+    "sequence": "08",
+    "frames_per_block": 4,
+    "metric": "class-aware visible-instance point IoU >=0.5, >=5-point CAR/PED/CYCLIST GT, unchanged common front ROI",
+    "annotation_coverage_reported_separately": true,
+    "unmatched_prediction_not_necessarily_physical_false_object": true,
+    "gt_used_only_for_evaluation": true,
+    "same_sequence_not_independent_dataset": true,
+    "training_manifests_not_independently_audited": true
+  },
+  "semantickitti": [
+    {
+      "role": "original_regression",
+      "selection_starts": [0, 1000, 2000],
+      "frames": 12,
+      "raw_detector_ge_0_3": {"tp": 50, "fp": 44, "fn": 11},
+      "old_full_fusion": {"tp": 50, "fp": 322, "fn": 11},
+      "new_full_fusion": {"tp": 50, "fp": 63, "fn": 11},
+      "new_classified_fusion": {"tp": 50, "fp": 39, "fn": 11},
+      "strong_object_view_precision_recall_percent": [96.5868, 78.1173],
+      "old_geometric_view_precision_recall_percent": [20.39, 82.45],
+      "new_geometric_view_precision_recall_percent": [75.22, 81.25],
+      "unknown_risk_cell_frames_before_after": [403900, 121742],
+      "retained_weak_hypotheses": 266,
+      "identity_uncertain_objects": 26,
+      "report": ".cache/lidar-fusion-validation/quality-v1/baseline-verified/viewer/report.json",
+      "report_sha256": "77ce4cc3db747994c9b7466d3d9f55c24808c96fc3fd10be357487167f57ac6b"
+    },
+    {
+      "role": "development",
+      "selection_starts": [3000, 3500, 4000],
+      "frames": 12,
+      "raw_detector_ge_0_3": {"tp": 79, "fp": 54, "fn": 26},
+      "old_full_fusion": {"tp": 87, "fp": 250, "fn": 18},
+      "new_full_fusion": {"tp": 87, "fp": 67, "fn": 18},
+      "new_classified_fusion": {"tp": 87, "fp": 32, "fn": 18},
+      "exact_gt_gains_over_raw_retained": 8,
+      "strong_object_view_precision_recall_percent": [98.1869, 89.1984],
+      "old_geometric_view_precision_recall_percent": [41.81, 95.11],
+      "new_geometric_view_precision_recall_percent": [86.7533, 92.4061],
+      "unknown_risk_cell_frames_before_after": [363642, 96457],
+      "retained_weak_hypotheses": 189,
+      "identity_uncertain_objects": 35,
+      "report": ".cache/lidar-fusion-validation/quality-v1/development-final/viewer/report.json",
+      "report_sha256": "26b750c567b1ac68f2f4afb84e0e173c0732f92645e9a26fafd6e8f041ed91d3"
+    },
+    {
+      "role": "previously_unseen_test_no_retuning",
+      "selection_starts": [500, 1500, 2500],
+      "frames": 12,
+      "points": 1506027,
+      "selection_before_inference": true,
+      "algorithm_frozen_before_inference": true,
+      "raw_detector_ge_0_3": {"tp": 91, "fp": 49, "fn": 29},
+      "old_full_fusion": {"tp": 100, "fp": 315, "fn": 20},
+      "new_full_fusion": {"tp": 100, "fp": 65, "fn": 20},
+      "new_classified_fusion": {"tp": 100, "fp": 26, "fn": 20},
+      "exact_gt_gains_over_raw": 9,
+      "strong_object_view_precision_recall_percent": [98.6864, 84.0743],
+      "new_geometric_view_precision_recall_percent": [84.3779, 85.2911],
+      "unknown_risk_cell_frames_before_after": [450237, 108731],
+      "retained_weak_hypotheses": 254,
+      "identity_uncertain_objects": 39,
+      "blocks": [
+        {"start": 500, "raw": {"tp": 24, "fp": 14, "fn": 7}, "classified": {"tp": 27, "fp": 8, "fn": 4}},
+        {"start": 1500, "raw": {"tp": 17, "fp": 17, "fn": 11}, "classified": {"tp": 17, "fp": 14, "fn": 11}},
+        {"start": 2500, "raw": {"tp": 50, "fp": 18, "fn": 11}, "classified": {"tp": 56, "fp": 4, "fn": 5}}
+      ],
+      "report": ".cache/lidar-fusion-validation/quality-v1/test-final/viewer/report.json",
+      "report_sha256": "1dcf03aba2858091e0529339a6be03b369240052075a8f0fa7794aeb22d00547"
+    }
+  ],
+  "nuscenes": {
+    "frames": 12,
+    "scenes": ["scene-0003", "scene-0012", "scene-0013"],
+    "metric": "unchanged six-class 2m center distance diagnostic, not official mAP or NDS",
+    "semantic_identity_explicitly_unverified": true,
+    "raw_detector_ge_0_3": {"tp": 106, "fp": 45, "fn": 25},
+    "old_full_fusion": {"tp": 107, "fp": 106, "fn": 24},
+    "new_full_fusion": {"tp": 106, "fp": 45, "fn": 25},
+    "new_classified_fusion": {"tp": 106, "fp": 45, "fn": 25},
+    "exact_raw_gt_matches_preserved": true,
+    "previous_semantic_assisted_gain_not_claimed_retained": true,
+    "claim": "safe diagnostic fallback relative to raw classification, not demonstrated cross-domain fusion accuracy gain",
+    "report": ".cache/lidar-fusion-validation/quality-v1/nuscenes-verified-viewer/report.json",
+    "report_sha256": "b85953fb9f196d68517e9d83e2ee79c1e5b425679f5049c8b93a71f4e29ab456"
+  },
+  "rejected_experiments": [
+    {
+      "name": "semantic_isolated_clustering",
+      "original_classified": {"tp": 50, "fp": 98, "fn": 11},
+      "development_classified": {"tp": 88, "fp": 136, "fn": 17},
+      "reason": "more unvalidated instances, failing declared precision gate; not enabled in selected policy"
+    },
+    {
+      "name": "blind_cross_domain_semantic_identity",
+      "nuscenes_classified": {"tp": 98, "fp": 94, "fn": 33},
+      "reason": "unqualified semantic identity vetoed correct raw detections; replaced by explicit task-qualification contract"
+    }
+  ],
+  "acceptance": {
+    "all_three_semantickitti_batch_precision_recall_noninferior_to_raw": true,
+    "semantickitti_exact_raw_or_previous_fusion_gt_lost": 0,
+    "development_subblocks_with_one_extra_fp_vs_raw": [0, 3000],
+    "not_claiming_every_frame_or_block_strictly_improved": true,
+    "semantickitti_point_evidence_and_measured_occupancy_identical_frames": 36,
+    "nuscenes_point_evidence_and_measured_occupancy_identical_frames": 12,
+    "model_messages_byte_identical": 96,
+    "consistency_repairs": 0,
+    "free_space_disabled": true,
+    "unknown_risk_exact_actual_point_cells": true,
+    "strong_view_point_recall_tradeoff_explicit": true,
+    "cpp_cases": 47,
+    "diagnostics_python_cases": 22,
+    "final_viewer_bundles_browser_checked": 4,
+    "browser_exceptions": 0,
+    "browser_failed_resources": 0,
+    "current_binary_and_source_fingerprints_verified_for_all_selected_reports": true
+  },
+  "frozen_test_identity": {
+    "replay_sha256": "ec351696beaa032772470057e0a926f5872ac99c958369407e92ccbe034adcae",
+    "fusion_cc_sha256": "9790dba9e810288a724fdf1cf485152495c4749eee14821af88c895969dc86d8",
+    "spatial_cc_sha256": "afa435d2b3235104ddead044a07a48195c8ffe8e7c41409007aecc3470d4814a",
+    "proto_sha256": "56775b82542a9067f667bd449a9f586978c826d60e3f655edcb6695085754974",
+    "test_config_sha256": "4b6978ef2e99f9d709284a909ee35d84c0a5b35278cd102a0ae17f2afad84f4c",
+    "test_manifest_sha256": "acf8ca076f7a17b77da98a1329281a54f04af9b8a4ca65468f1ce678ea054ca9"
+  },
+  "local_evidence": {
+    "protocol": ".cache/lidar-fusion-validation/quality-v1/protocol.json",
+    "block_counts_exact_gt_sets_and_invariants": ".cache/lidar-fusion-validation/quality-v1/comparison.json",
+    "frozen_source_acceptance_audit": ".cache/lidar-fusion-validation/quality-v1/final-evidence.json"
+  },
+  "remaining_unaccepted": [
+    "ground coverage and giant mixed unknown instance segmentation",
+    "same-class touching-instance separation",
+    "physical occupancy and drivable FREE precision",
+    "production temporal quality and continuous local ODOM integration",
+    "independent sequences, domains and full-dataset confidence intervals",
+    "consumer migration, vehicle deployment and closed-loop braking behavior",
+    "5-10ms GPU fusion performance target"
+  ]
+}

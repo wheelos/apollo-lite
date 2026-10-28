@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "status": "architecture_contract_fixes_and_cpu_speedup_verified_ground_variant_not_selected",
+  "production_defaults_changed": false,
+  "production_deployment_or_free_enabled": false,
+  "architecture_fixes": [
+    "Temporal priors preserve uncertain classification, observed conflict and voted identity; geometry recovery cannot launder identity and retains weak ownership/risk.",
+    "Point-supported unknowns mask actual current/previous support in temporal history, never an unobserved extent interior; legacy footprints remain unchanged.",
+    "L6 repairs missing occupancy_unknown independently of measured/detector occupancy, preserving provenance and idempotence."
+  ],
+  "performance": {
+    "change": "Conservative actual-point AABB broadphase versus full-3D object bounds, reference bypass, roundoff guard and exact fallback; cache object rotation and support membership.",
+    "build": "same managed fastbuild flags on both executables, not release/GPU benchmark",
+    "workload": ["003000.cloud.pb", "003500.cloud.pb", "004000.cloud.pb"],
+    "models": "identical frozen detection and segmentation PBs; no inference",
+    "warmup_each": 1,
+    "repeats_each": 5,
+    "order": "alternating AB/BA",
+    "normal_median_ms": [
+      {"frame": "003000", "before": 2073.40, "after": 1670.70, "speedup": 1.2410366912072783},
+      {"frame": "003500", "before": 2226.89, "after": 1457.09, "speedup": 1.5283132819523846},
+      {"frame": "004000", "before": 2824.79, "after": 1727.31, "speedup": 1.6353694472908742}
+    ],
+    "whole_three_frame_four_mode_wrong_sweep_wall_median_seconds": {
+      "before": 33.174874856020324,
+      "after": 27.463035131979268
+    },
+    "sampled_peak_rss_median_bytes": {"before": 301056000, "after": 301408256},
+    "process_cpu_percent_median": {"before": 99.79453161944032, "after": 99.7098824306828},
+    "normal_full_payloads_equal_excluding_only_health_latency_ms": 36,
+    "all_four_mode_summary_rows_identical_excluding_timing": 144,
+    "limitations": [
+      "Shared host and scheduling variation; repeated per-frame distributions, not population P99.",
+      "No GEO_ONLY speedup promise or memory reduction claim.",
+      "Only NORMAL full payloads are serialized; degraded modes have summary and runner invariants, not full-message equality.",
+      "Not end-to-end inference throughput, optimized release performance, GPU fusion or 5-10ms target attainment."
+    ],
+    "report": ".cache/lidar-fusion-validation/next-iteration/performance-comparison/report.json",
+    "report_sha256": "7c7cc3d625cdfcef6371e00d830b69be9ae9c9c9a3ea2ce51a55e1174a843109"
+  },
+  "ground_experiment": {
+    "implemented_option": "quality.robust_ground",
+    "default": false,
+    "selected_for_accepted_quality_policy": false,
+    "algorithm": "Two deterministic initial estimates, at most three inlier refits each, existing height-band/minimum noncollinear support/slope/residual gates, configured majority >=0.7 by default. No neighbor/history extrapolation; semantic refinement cannot displace independent geometry beyond residual gate.",
+    "development_attribution": {
+      "semantic_ground_proxy_points": 359230,
+      "recalled": 131904,
+      "missed_residual_rejection": 191329,
+      "missed_insufficient_seeds": 31003,
+      "missed_slope": 3031,
+      "missed_on_supported_plane": 1963
+    },
+    "original_12": {
+      "ground_precision_recall_percent_before": [98.6155, 36.3917],
+      "ground_precision_recall_percent_after": [98.6675, 56.6044],
+      "thing_ground_errors_whole_sweep_before_after": [52, 158],
+      "classified_tp_fp_fn_before": [50, 39, 11],
+      "classified_tp_fp_fn_after": [50, 39, 11],
+      "largest_unknown_support_point_total_before_after": [816173, 567255],
+      "measured_cells_removed_added": [19944, 2]
+    },
+    "development_12": {
+      "ground_precision_recall_percent_before": [97.7371, 36.7185],
+      "ground_precision_recall_percent_after": [97.6399, 58.6424],
+      "thing_ground_errors_whole_sweep_before_after": [90, 446],
+      "classified_tp_fp_fn_before": [87, 32, 18],
+      "classified_tp_fp_fn_after": [87, 30, 18],
+      "largest_unknown_support_point_total_before_after": [716692, 447768],
+      "measured_cells_removed_added": [16915, 12]
+    },
+    "reason_not_selected": "Ground recall and mixed-component size improve, but additional THING points become geometric ground and measured occupancy changes. Preserved object matches do not establish point-level obstacle safety. No physical-ground/free-space labels justify enabling the tradeoff.",
+    "report": ".cache/lidar-fusion-validation/next-iteration/ground-comparison.json",
+    "report_sha256": "d9e1832bc3406831f38ae66a2a89845dc34ba7ceec75d972ea44deeb7ab101d0"
+  },
+  "new_frozen_test": {
+    "dataset": "SemanticKITTI official validation sequence08, same sequence not independent dataset",
+    "selection_starts": [750, 1750, 2750],
+    "frames_per_block": 4,
+    "frames": 12,
+    "points": 1499343,
+    "selection_before_inference": true,
+    "algorithm_and_variants_frozen_before_inference": true,
+    "retuning_after_test": false,
+    "previous_test_500_1500_2500_not_used_for_tuning": true,
+    "raw_detector_ge_0_3": {"tp": 65, "fp": 26, "fn": 18},
+    "prior_accepted_policy_and_new_selected_full_fusion": {"tp": 69, "fp": 41, "fn": 14},
+    "prior_accepted_policy_and_new_selected_classified_fusion": {"tp": 69, "fp": 22, "fn": 14},
+    "exact_raw_gt_lost": 0,
+    "extra_instance_frame_matches_over_raw": 4,
+    "attribution": "The existing accepted fusion policy supplies these gains; this iteration preserves exact single-frame outputs and makes them faster, not four newly caused TP gains.",
+    "strong_object_view_precision_recall_percent": [97.2998, 97.0327],
+    "ground_precision_recall_percent_selected": [99.2006, 25.1828],
+    "ground_precision_recall_percent_rejected_robust": [98.5350, 46.6429],
+    "thing_ground_errors_selected_rejected_robust": [71, 149],
+    "largest_unknown_support_point_total_selected_rejected_robust": [836759, 563709],
+    "rejected_robust_classified_fusion": {"tp": 69, "fp": 22, "fn": 14},
+    "blocks": [
+      {"start": 750, "raw_tp_fp_fn": [9, 3, 3], "classified_tp_fp_fn": [9, 1, 3]},
+      {"start": 1750, "raw_tp_fp_fn": [14, 6, 6], "classified_tp_fp_fn": [15, 3, 5]},
+      {"start": 2750, "raw_tp_fp_fn": [42, 17, 9], "classified_tp_fp_fn": [45, 18, 6]}
+    ],
+    "not_every_block_fp_improves": true,
+    "metric": "unchanged common ROI, class-aware visible-point IoU>=0.5 with >=5-point CAR/PED/CYCLIST GT; not box AP or physical occupancy accuracy",
+    "report": ".cache/lidar-fusion-validation/next-iteration/new-selected-viewer/report.json",
+    "report_sha256": "016c537fe67a7914161a8f7480887702dcc3abe526f9235b20faef23ed9609ca",
+    "rejected_robust_report": ".cache/lidar-fusion-validation/next-iteration/new-robust-viewer/report.json",
+    "rejected_robust_report_sha256": "74335f77d48c6c66c4f790ba36d41bf0fabbadc8de5a57e7b9298d7e21a47b87",
+    "historical_original_report_boundary": "Old preserved executable used fresh inference; current diagnostic source fingerprints reflect export-time tooling, not a claim old executable was compiled from new source."
+  },
+  "integrated_validation": {
+    "cpp_cases": 60,
+    "actual_cyber_component_cases": 2,
+    "diagnostics_python_cases": 24,
+    "targeted_build_cpplint_python_formatting": "passed",
+    "exact_normal_payload_regression_frames": 48,
+    "regression_datasets": "original12 + development12 + new12 + nuScenes12",
+    "raw_model_messages_byte_identical": 96,
+    "regression_four_mode_summary_rows_identical_excluding_timing": 192,
+    "selected_raw_evidence_and_measured_occupancy_unchanged": true,
+    "selected_consistency_repairs": 0,
+    "free_space_disabled": true,
+    "new_selected_and_rejected_viewers_browser_checked": 2,
+    "browser_exceptions": 0,
+    "browser_failed_resources": 0,
+    "frozen_current_source_and_binary_identities_verified": true,
+    "audit": ".cache/lidar-fusion-validation/next-iteration/final-evidence.json",
+    "audit_sha256": "e1f787187e42ac5ee7ac11e2af558f946cf7e721cae5b447811fbce712035555"
+  },
+  "remaining": [
+    "Ground recall remains low in selected conservative policy; robust experiment is not accepted for obstacle-point safety.",
+    "Giant mixed unknown components and same-class touching-instance separation remain.",
+    "Production ODOM, temporal accuracy, physical FREE, consumer migration and closed-loop vehicle behavior are unaccepted.",
+    "Further measured connectivity/ray and optimized/GPU work is needed for the5-10ms design target."
+  ]
+}
