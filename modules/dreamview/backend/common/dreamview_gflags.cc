@@ -145,9 +145,6 @@ DEFINE_string(resource_record_path, "/.apollo/resources/records/",
 DEFINE_string(cyber_recorder_stop_command, "pkill -9 cyber_recorder",
               "stop play recorder");
 
-DEFINE_string(vehicles_config_path, "/apollo/modules/calibration/data",
-              "Vehicles config path.");
-
 DEFINE_bool(sim_perfect_control_enable_noise, false,
             "Enable noise in sim perfect control. If true, the position will "
             "be perturbed by a Gaussian noise.");
