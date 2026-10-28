@@ -92,6 +92,4 @@ DECLARE_string(resource_record_path);
 
 DECLARE_string(cyber_recorder_stop_command);
 
-DECLARE_string(vehicles_config_path);
-
 DECLARE_bool(sim_perfect_control_enable_noise);
