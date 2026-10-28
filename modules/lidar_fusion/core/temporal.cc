@@ -27,6 +27,11 @@ namespace {
 namespace tracking = common::tracking;
 using Vector = Eigen::Vector3d;
 
+struct TemporalPrior {
+  GroundPrior ground;
+  ObjectPrior objects;
+};
+
 Vector V(const Vec3& p) { return {p.x(), p.y(), p.z()}; }
 void Set(const Vector& value, Vec3* p) {
   p->set_x(value.x());
@@ -234,8 +239,8 @@ struct StatefulFusion::Impl {
     active = false;
   }
 
-  FusionPrior Prior(double now, const Eigen::Isometry3d& t) const {
-    FusionPrior prior;
+  TemporalPrior Prior(double now, const Eigen::Isometry3d& t) const {
+    TemporalPrior prior;
     if (!active || !config.temporal().feedback()) {
       return prior;
     }
@@ -524,9 +529,9 @@ bool StatefulFusion::Process(const drivers::PointCloud& cloud,
     state.Reset();
     reset = true;
   }
-  const FusionPrior prior = valid ? state.Prior(now, t) : FusionPrior{};
+  const TemporalPrior prior = valid ? state.Prior(now, t) : TemporalPrior{};
   if (!state.single.Process(cloud, detection, segmentation, output, error,
-                            &prior)) {
+                            &prior.ground, &prior.objects)) {
     state.Reset();
     return false;
   }

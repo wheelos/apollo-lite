@@ -33,6 +33,16 @@ ObjectCandidate* AddBox(uint32_t id, double x, FusionOutput* out) {
   return object;
 }
 
+void Refine(const FusionConfig& config, FusionOutput* frame,
+            CandidateWork* work = nullptr) {
+  CandidateResult candidates;
+  candidates.objects.Swap(frame->mutable_object());
+  candidates.unknowns.Swap(frame->mutable_unknown());
+  RefineCandidates(config, frame->point_evidence(), &candidates, work);
+  candidates.objects.Swap(frame->mutable_object());
+  candidates.unknowns.Swap(frame->mutable_unknown());
+}
+
 TEST(CandidateTest, SeparatesTouchingClassesAndConnectsFarSparseReturns) {
   FusionConfig c;
   c.set_min_x(0);
@@ -58,7 +68,8 @@ TEST(CandidateTest, SeparatesTouchingClassesAndConnectsFarSparseReturns) {
   add(40.5, THING, CAR);
   add(2, THING, CAR);
   add(2.5, THING, CAR);
-  const auto clusters = CandidateComponents(c, out);
+  const auto clusters =
+      CandidateComponents(c, out.point_evidence(), out.point_decision());
   EXPECT_NE(clusters[0], clusters[1]);
   EXPECT_NE(clusters[1], clusters[2]);
   EXPECT_EQ(clusters[3], clusters[4]);
@@ -90,7 +101,7 @@ TEST(CandidateTest, FitsRotatedRecallAndConvexUnknownWithoutChangingEvidence) {
     }
   }
   const auto evidence = out.point_evidence(0).SerializeAsString();
-  RefineCandidates(c, &out);
+  Refine(c, &out);
   EXPECT_NEAR(object->box().size().x(), 4, 1e-8);
   EXPECT_NEAR(object->box().size().y(), 1, 1e-8);
   EXPECT_NEAR(object->box().qz(), std::sin(yaw / 2), 1e-8);
@@ -119,7 +130,7 @@ TEST(CandidateTest, UsesActualPointsAndExactThreeDimensionalAdjacencyBoundary) {
   far_vertical->add_point_id(AddPoint(0, 0, 1.625 + 1e-8, &out));
   far_vertical->add_polygon()->set_x(0);
   const auto evidence = out.point_evidence(0).SerializeAsString();
-  RefineCandidates(c, &out);
+  Refine(c, &out);
   ASSERT_EQ(out.unknown(0).relation_size(), 1);
   EXPECT_EQ(out.unknown(0).relation(0).kind(), RELATION_ADJACENT);
   EXPECT_EQ(out.unknown(0).related_object_id(0), 4);
@@ -140,7 +151,7 @@ TEST(CandidateTest, PreservesTheImmediatelyOutsideAdjacencyDecision) {
   for (double x : {1.5, std::nextafter(1.5, 2.)}) {
     out.add_unknown()->add_point_id(AddPoint(x, 0, 0, &out));
   }
-  RefineCandidates(c, &out);
+  Refine(c, &out);
   ASSERT_EQ(out.unknown(0).relation_size(), 1);
   EXPECT_EQ(out.unknown(0).relation(0).kind(), RELATION_ADJACENT);
   EXPECT_EQ(out.unknown(1).relation_size(), 0);
@@ -166,7 +177,7 @@ TEST(CandidateTest, PreservesSupportInsideYawAndFullThreeDimensionalRotations) {
       box->set_qz(std::sin(std::acos(-1) / 8));
       out.add_unknown()->add_point_id(AddPoint(2.5, 2.5, 0, &out));
     }
-    RefineCandidates(c, &out);
+    Refine(c, &out);
     ASSERT_EQ(out.unknown(0).relation_size(), 1);
     EXPECT_EQ(out.unknown(0).relation(0).kind(), RELATION_SUPPLEMENT);
   }
@@ -204,7 +215,7 @@ TEST(CandidateTest, RetainsReferencedKindsOrderingAndUnrelatedFields) {
   relation(7, RELATION_DUPLICATE);
   relation(8, RELATION_SUPPLEMENT);
   relation(6, RELATION_ADJACENT);
-  RefineCandidates(c, &out);
+  Refine(c, &out);
   EXPECT_EQ(out.SerializeAsString(), expected.SerializeAsString());
 }
 
@@ -214,7 +225,7 @@ TEST(CandidateTest, ReferencesCreatedByEarlierDuplicateIdsBypassCulling) {
   AddBox(42, 0, &out);
   AddBox(42, 100, &out)->set_class_conflict(true);
   out.add_unknown()->add_point_id(AddPoint(0, 0, 0, &out));
-  RefineCandidates(c, &out);
+  Refine(c, &out);
   ASSERT_EQ(out.unknown(0).relation_size(), 2);
   EXPECT_EQ(out.unknown(0).relation(0).kind(), RELATION_SUPPLEMENT);
   EXPECT_EQ(out.unknown(0).relation(1).kind(), RELATION_AMBIGUOUS);
@@ -231,7 +242,7 @@ TEST(CandidateTest, RetainsEmptyDegenerateAndNonUnitQuaternionBehavior) {
   out.add_unknown()->add_related_object_id(5);
   out.add_unknown()->add_point_id(AddPoint(0, 0, 0, &out));
   out.add_unknown()->add_point_id(AddPoint(0.5, 0, 0, &out));
-  RefineCandidates(c, &out);
+  Refine(c, &out);
   EXPECT_EQ(out.unknown(0).relation_size(), 0);
   ASSERT_EQ(out.unknown(1).relation_size(), 1);
   EXPECT_EQ(out.unknown(1).relation(0).kind(), RELATION_ADJACENT);
@@ -245,7 +256,7 @@ TEST(CandidateTest, RetainsEmptyDegenerateAndNonUnitQuaternionBehavior) {
   object->mutable_box()->set_qw(0);
   object->mutable_box()->set_qx(std::sqrt(0.5));
   out.add_unknown()->add_point_id(AddPoint(0, 100, 0, &out));
-  RefineCandidates(c, &out);
+  Refine(c, &out);
   ASSERT_EQ(out.unknown(0).relation_size(), 1);
   EXPECT_EQ(out.unknown(0).relation(0).kind(), RELATION_SUPPLEMENT);
 }
@@ -258,7 +269,7 @@ TEST(CandidateTest, ExtremeFiniteCoordinatesRetainExactQuaternionArithmetic) {
   object->mutable_box()->set_qx(1);
   const double large = std::numeric_limits<double>::max();
   out.add_unknown()->add_point_id(AddPoint(large, large, large, &out));
-  RefineCandidates(c, &out);
+  Refine(c, &out);
   ASSERT_EQ(out.unknown(0).relation_size(), 1);
   EXPECT_EQ(out.unknown(0).relation(0).kind(), RELATION_SUPPLEMENT);
 }
@@ -276,7 +287,7 @@ TEST(CandidateTest, RelationExistenceQueriesStopWithoutScanningDistantSupport) {
   }
   CandidateWork work;
   const auto evidence = out.point_evidence(0).SerializeAsString();
-  RefineCandidates(c, &out, &work);
+  Refine(c, &out, &work);
   ASSERT_EQ(unknown->relation_size(), 2);
   EXPECT_EQ(unknown->relation(0).kind(), RELATION_SUPPLEMENT);
   EXPECT_EQ(unknown->relation(1).kind(), RELATION_AMBIGUOUS);
@@ -298,7 +309,7 @@ TEST(CandidateTest, PointBlocksCullRemoteSupportButRetainLateBoundaryPoint) {
   }
   unknown->add_point_id(AddPoint(1.5, 0, 0, &out));
   CandidateWork work;
-  RefineCandidates(c, &out, &work);
+  Refine(c, &out, &work);
   ASSERT_EQ(unknown->relation_size(), 2);
   EXPECT_EQ(unknown->relation(0).kind(), RELATION_ADJACENT);
   EXPECT_EQ(unknown->relation(1).kind(), RELATION_ADJACENT);

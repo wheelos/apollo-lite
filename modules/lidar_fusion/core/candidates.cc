@@ -27,11 +27,12 @@ struct PointBounds {
   bool valid = false;
 };
 
-PointBounds ActualBounds(const FusionOutput& frame,
-                         const google::protobuf::RepeatedField<uint32_t>& ids) {
+PointBounds ActualBounds(
+    const google::protobuf::RepeatedPtrField<PointEvidence>& evidence,
+    const google::protobuf::RepeatedField<uint32_t>& ids) {
   PointBounds bounds;
   for (uint32_t id : ids) {
-    const auto& p = frame.point_evidence(id).position();
+    const auto& p = evidence.Get(id).position();
     const Eigen::Vector3d point(p.x(), p.y(), p.z());
     if (!point.allFinite()) {
       return PointBounds{};
@@ -49,8 +50,9 @@ struct PointBlock {
   PointBounds bounds;
 };
 
-std::vector<PointBlock> PointBlocks(const FusionOutput& frame,
-                                    const UnknownCandidate& unknown) {
+std::vector<PointBlock> PointBlocks(
+    const google::protobuf::RepeatedPtrField<PointEvidence>& evidence,
+    const UnknownCandidate& unknown) {
   std::vector<PointBlock> blocks;
   for (int begin = 0; begin < unknown.point_id_size(); begin += 128) {
     PointBlock block;
@@ -58,7 +60,7 @@ std::vector<PointBlock> PointBlocks(const FusionOutput& frame,
     block.end = std::min(begin + 128, unknown.point_id_size());
     bool finite = true;
     for (int i = block.begin; i < block.end; ++i) {
-      const auto& p = frame.point_evidence(unknown.point_id(i)).position();
+      const auto& p = evidence.Get(unknown.point_id(i)).position();
       const Eigen::Vector3d point(p.x(), p.y(), p.z());
       finite &= point.allFinite();
       block.bounds.low = block.bounds.low.cwiseMin(point);
@@ -154,12 +156,12 @@ std::vector<XY> Hull(std::vector<XY> points) {
   return result;
 }
 
-std::vector<XY> Points(const FusionOutput& frame,
-                       const google::protobuf::RepeatedField<uint32_t>& ids,
-                       double pad) {
+std::vector<XY> Points(
+    const google::protobuf::RepeatedPtrField<PointEvidence>& evidence,
+    const google::protobuf::RepeatedField<uint32_t>& ids, double pad) {
   std::vector<XY> points;
   for (uint32_t id : ids) {
-    const auto& p = frame.point_evidence(id).position();
+    const auto& p = evidence.Get(id).position();
     for (double dx : {-pad, pad}) {
       for (double dy : {-pad, pad}) {
         points.emplace_back(p.x() + dx, p.y() + dy);
@@ -169,9 +171,10 @@ std::vector<XY> Points(const FusionOutput& frame,
   return points;
 }
 
-void Fit(const FusionConfig& config, const FusionOutput& frame,
+void Fit(const FusionConfig& config,
+         const google::protobuf::RepeatedPtrField<PointEvidence>& evidence,
          ObjectCandidate* object) {
-  const auto points = Points(frame, object->point_id(), 0);
+  const auto points = Points(evidence, object->point_id(), 0);
   double best = std::numeric_limits<double>::infinity();
   double best_yaw = 0;
   XY low, high;
@@ -227,9 +230,11 @@ bool ValidateCandidates(const FusionConfig& c) {
            o.far_connectivity_size() <= c.connectivity_size() * 4));
 }
 
-std::vector<int> CandidateComponents(const FusionConfig& c,
-                                     const FusionOutput& frame) {
-  const int count = frame.point_evidence_size();
+std::vector<int> CandidateComponents(
+    const FusionConfig& c,
+    const google::protobuf::RepeatedPtrField<PointEvidence>& evidence,
+    const google::protobuf::RepeatedPtrField<PointDecision>& decisions) {
+  const int count = evidence.size();
   std::vector<int> parent(count, -1);
   std::map<Voxel, std::vector<int>> voxels;
   const double size = c.connectivity_size();
@@ -254,9 +259,9 @@ std::vector<int> CandidateComponents(const FusionConfig& c,
     return id;
   };
   for (int i = 0; i < count; ++i) {
-    const auto& p = frame.point_evidence(i);
+    const auto& p = evidence.Get(i);
     const auto& q = p.position();
-    const auto state = frame.point_decision(i).explanation();
+    const auto state = decisions.Get(i).explanation();
     if (!p.finite() || q.x() < c.min_x() || q.x() >= c.max_x() ||
         q.y() < c.min_y() || q.y() >= c.max_y() ||
         (p.ground_valid() &&
@@ -280,7 +285,7 @@ std::vector<int> CandidateComponents(const FusionConfig& c,
             continue;
           }
           for (int j : it->second) {
-            const auto& other = frame.point_evidence(j);
+            const auto& other = evidence.Get(j);
             if (options.separate_semantic_instances() &&
                 ((p.group() == THING) != (other.group() == THING) ||
                  (p.group() == THING &&
@@ -307,29 +312,31 @@ std::vector<int> CandidateComponents(const FusionConfig& c,
   return parent;
 }
 
-void RefineCandidates(const FusionConfig& c, FusionOutput* frame,
-                      CandidateWork* work) {
+void RefineCandidates(
+    const FusionConfig& c,
+    const google::protobuf::RepeatedPtrField<PointEvidence>& evidence,
+    CandidateResult* candidates, CandidateWork* work) {
   if (work != nullptr) {
     *work = CandidateWork{};
   }
-  for (auto& object : *frame->mutable_object()) {
+  for (auto& object : candidates->objects) {
     if (c.candidates().oriented_recall() && object.source() == SEG_RECALL &&
         !object.point_id().empty()) {
-      Fit(c, *frame, &object);
+      Fit(c, evidence, &object);
     }
   }
-  if (frame->unknown().empty()) {
+  if (candidates->unknowns.empty()) {
     return;
   }
   std::vector<ObjectSupport, Eigen::aligned_allocator<ObjectSupport>> support;
-  support.reserve(frame->object_size());
-  for (const auto& object : frame->object()) {
+  support.reserve(candidates->objects.size());
+  for (const auto& object : candidates->objects) {
     support.emplace_back(object);
   }
-  for (auto& unknown : *frame->mutable_unknown()) {
+  for (auto& unknown : candidates->unknowns) {
     if (c.candidates().convex_unknown() && !unknown.point_id().empty()) {
       const auto hull =
-          Hull(Points(*frame, unknown.point_id(), c.resolution() * 0.5));
+          Hull(Points(evidence, unknown.point_id(), c.resolution() * 0.5));
       unknown.clear_polygon();
       for (const auto& xy : hull) {
         auto* p = unknown.add_polygon();
@@ -341,10 +348,10 @@ void RefineCandidates(const FusionConfig& c, FusionOutput* frame,
     unknown.clear_relation();
     std::set<uint32_t> references(unknown.related_object_id().begin(),
                                   unknown.related_object_id().end());
-    const PointBounds points = ActualBounds(*frame, unknown.point_id());
+    const PointBounds points = ActualBounds(evidence, unknown.point_id());
     std::vector<PointBlock> blocks;
-    for (int i = 0; i < frame->object_size(); ++i) {
-      const auto& object = frame->object(i);
+    for (int i = 0; i < candidates->objects.size(); ++i) {
+      const auto& object = candidates->objects.Get(i);
       const auto& cached = support[i];
       if (references.count(object.id()) == 0 &&
           cached.Separated(points, c.candidates().adjacent_distance())) {
@@ -363,7 +370,7 @@ void RefineCandidates(const FusionConfig& c, FusionOutput* frame,
       double distance = std::numeric_limits<double>::infinity();
       if (!(referenced && (object.class_conflict() || duplicate))) {
         if (blocks.empty()) {
-          blocks = PointBlocks(*frame, unknown);
+          blocks = PointBlocks(evidence, unknown);
         }
         bool decided = false;
         for (const auto& block : blocks) {
@@ -379,7 +386,7 @@ void RefineCandidates(const FusionConfig& c, FusionOutput* frame,
             if (work != nullptr) {
               ++work->point_transforms;
             }
-            const auto& p = frame->point_evidence(id).position();
+            const auto& p = evidence.Get(id).position();
             const Eigen::Vector3d local =
                 cached.rotation * Eigen::Vector3d(p.x() - b.center().x(),
                                                   p.y() - b.center().y(),

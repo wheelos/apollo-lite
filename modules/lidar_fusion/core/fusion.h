@@ -20,10 +20,8 @@ using SemanticFrame = segmentation::LidarSemanticSegmentationResult;
 
 bool SameSweep(const drivers::PointCloud& cloud, const common::Header& header);
 
-struct FusionPrior {
-  std::vector<ObjectCandidate> objects;
-  std::vector<Vec3> ground;
-};
+using GroundPrior = std::vector<Vec3>;
+using ObjectPrior = std::vector<ObjectCandidate>;
 
 struct FusionWork {
   // Evidence, components, association, candidates, relations, space,
@@ -42,7 +40,8 @@ class SingleFrameFusion {
   bool Process(const drivers::PointCloud& cloud,
                const DetectionFrame* detection,
                const SemanticFrame* segmentation, FusionOutput* output,
-               std::string* error, const FusionPrior* prior = nullptr,
+               std::string* error, const GroundPrior* ground_prior = nullptr,
+               const ObjectPrior* object_prior = nullptr,
                FusionWork* work = nullptr) const;
 
  private:

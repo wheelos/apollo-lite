@@ -122,11 +122,14 @@ class FusionTest : public testing::Test {
   }
 
   void Run(const DetectionFrame* d, const SemanticFrame* s,
-           const FusionPrior* prior = nullptr) {
+           const GroundPrior* ground_prior = nullptr,
+           const ObjectPrior* object_prior = nullptr) {
     SingleFrameFusion fusion;
     std::string error;
     ASSERT_TRUE(fusion.Init(config, &error)) << error;
-    ASSERT_TRUE(fusion.Process(cloud, d, s, &output, &error, prior)) << error;
+    ASSERT_TRUE(fusion.Process(cloud, d, s, &output, &error, ground_prior,
+                               object_prior))
+        << error;
   }
 
   FusionConfig config;
@@ -140,17 +143,45 @@ TEST_F(FusionTest, GroundHistoryCannotEraseCurrentMeasuredObstacle) {
   Obstacle(9);
   Run(nullptr, &seg);
   const auto baseline = output.space_map().SerializeAsString();
-  FusionPrior prior;
+  GroundPrior prior;
   for (const auto& p : output.point_evidence()) {
     auto ground = p.position();
     ground.set_z(0.8);
-    prior.ground.push_back(ground);
+    prior.push_back(ground);
   }
   Run(nullptr, &seg, &prior);
   EXPECT_EQ(output.space_map().SerializeAsString(), baseline);
   ASSERT_TRUE(output.point_evidence(6).has_ground_prior_z());
   EXPECT_FALSE(output.point_evidence(6).ground_prior_consistent());
   EXPECT_FALSE(output.point_evidence(6).is_ground_geo());
+}
+
+TEST_F(FusionTest, IndependentGroundPriorDoesNotChangeObjectPriorRecovery) {
+  Obstacle(0);
+  Box();
+  Run(&det, &seg);
+  ASSERT_EQ(output.object_size(), 1);
+  const ObjectPrior objects{output.object(0)};
+  const auto prediction = objects.front().SerializeAsString();
+  GroundPrior ground;
+  for (const auto& point : output.point_evidence()) {
+    auto sample = point.position();
+    sample.set_z(0);
+    ground.push_back(sample);
+  }
+  Run(nullptr, &seg, nullptr, &objects);
+  ASSERT_EQ(output.object_size(), 1);
+  EXPECT_EQ(output.object(0).source(), TRACK_PRIOR);
+  EXPECT_FALSE(output.point_evidence(6).has_ground_prior_z());
+  const auto recovered = output.object(0).SerializeAsString();
+  const auto space = output.space_map().SerializeAsString();
+
+  Run(nullptr, &seg, &ground, &objects);
+  ASSERT_EQ(output.object_size(), 1);
+  EXPECT_EQ(output.object(0).SerializeAsString(), recovered);
+  EXPECT_EQ(output.space_map().SerializeAsString(), space);
+  EXPECT_TRUE(output.point_evidence(6).has_ground_prior_z());
+  EXPECT_EQ(objects.front().SerializeAsString(), prediction);
 }
 
 TEST_F(FusionTest, RemapsShuffledLabelsWithoutChangingInputs) {

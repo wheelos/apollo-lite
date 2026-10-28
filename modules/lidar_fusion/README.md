@@ -79,6 +79,18 @@ retain object references rather than silently being absorbed.
 adds independent stable `track_id` fields; the original `id` and `object_ref`
 remain frame-local. History and predictions never stand in for current points.
 
+Candidate generation explicitly updates point decisions and produces a
+`CandidateResult` containing only object and unknown candidates. Refinement
+reads const point evidence and modifies only that result; it has no access to
+health, raw detections or the space map. The orchestrator transfers candidates
+back to the frame before spatial construction. Unknown risk rasterization
+remains a spatial responsibility.
+
+`SingleFrameFusion::Process` accepts independent `GroundPrior` and `ObjectPrior`
+inputs. Only L2 receives ground history and only L3 receives predicted objects;
+the temporal adapter owns construction of both. Neither prior can mutate the
+other stage's input.
+
 ### CPU execution workspace
 
 The six logical layers share frame-owned computation, not mutable evidence:

@@ -107,14 +107,15 @@ int Run(int argc, char** argv) {
       for (int iteration = 0; iteration <= repeats; ++iteration) {
         fusion::FusionOutput result;
         fusion::FusionWork work;
-        Require(core.Process(
-                    cloud,
-                    mode == fusion::NO_DET || mode == fusion::GEO_ONLY ? nullptr
-                                                                       : &det,
-                    mode == fusion::NO_SEG || mode == fusion::GEO_ONLY ? nullptr
-                                                                       : &seg,
-                    &result, &error, nullptr, profile ? &work : nullptr),
-                error);
+        Require(
+            core.Process(
+                cloud,
+                mode == fusion::NO_DET || mode == fusion::GEO_ONLY ? nullptr
+                                                                   : &det,
+                mode == fusion::NO_SEG || mode == fusion::GEO_ONLY ? nullptr
+                                                                   : &seg,
+                &result, &error, nullptr, nullptr, profile ? &work : nullptr),
+            error);
         Require(result.health().mode() == mode, "wrong degraded mode");
         csv << item.first << ',' << mode << ',' << iteration << ','
             << (iteration == 0) << ',' << result.health().latency_ms() << '\n';

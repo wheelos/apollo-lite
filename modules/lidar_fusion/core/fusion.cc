@@ -494,7 +494,7 @@ bool SemanticCompatible(const PointEvidence& point, UnifiedClass cls,
 void BuildEvidence(const drivers::PointCloud& cloud,
                    const SemanticFrame* segmentation, const FusionConfig& c,
                    std::vector<Eigen::Vector3d>* positions, SpatialIndex* index,
-                   FusionOutput* out, const FusionPrior* prior) {
+                   FusionOutput* out, const GroundPrior* prior) {
   const auto& t = c.sensor_to_base();
   const auto rotation = Rotation(t.roll(), t.pitch(), t.yaw());
   const Eigen::Vector3d translation(t.x(), t.y(), t.z());
@@ -537,7 +537,7 @@ void BuildEvidence(const drivers::PointCloud& cloud,
   SpatialIndex semantic_seeds;
   std::map<CellKey, double> prior_ground;
   if (prior != nullptr) {
-    for (const auto& p : prior->ground) {
+    for (const auto& p : *prior) {
       prior_ground[Key(p.x(), p.y(), c.ground_tile_size())] = p.z();
     }
   }
@@ -651,12 +651,12 @@ void BuildEvidence(const drivers::PointCloud& cloud,
 
 bool ObstacleHeight(const PointEvidence& p, const FusionConfig& c);
 
-void AssociatePrior(const FusionPrior* prior, const FusionConfig& c,
+void AssociatePrior(const ObjectPrior* prior, const FusionConfig& c,
                     FusionOutput* out) {
   if (prior == nullptr) {
     return;
   }
-  for (const auto& prediction : prior->objects) {
+  for (const auto& prediction : *prior) {
     const auto& b = prediction.box();
     const Eigen::Quaterniond rotation(b.qw(), b.qx(), b.qy(), b.qz());
     std::vector<int> points;
@@ -933,21 +933,23 @@ std::vector<OrientedBox> Associate(
   return boxes;
 }
 
-void BuildCandidates(const std::vector<Eigen::Vector3d>& positions,
-                     const std::vector<int>& scene_components,
-                     const ConnectedVoxels& voxels, const FusionConfig& c,
-                     FusionOutput* out) {
+void BuildCandidates(
+    const std::vector<Eigen::Vector3d>& positions,
+    const std::vector<int>& scene_components, const ConnectedVoxels& voxels,
+    const FusionConfig& c,
+    const google::protobuf::RepeatedPtrField<PointEvidence>& evidence,
+    google::protobuf::RepeatedPtrField<PointDecision>* decisions,
+    CandidateResult* candidates) {
   std::map<int, std::set<uint32_t>> scene_objects;
-  for (int i = 0; i < out->point_decision_size(); ++i) {
-    if (scene_components[i] >= 0 && out->point_decision(i).has_object_id()) {
-      scene_objects[scene_components[i]].insert(
-          out->point_decision(i).object_id());
+  for (int i = 0; i < decisions->size(); ++i) {
+    if (scene_components[i] >= 0 && decisions->Get(i).has_object_id()) {
+      scene_objects[scene_components[i]].insert(decisions->Get(i).object_id());
     }
   }
   std::vector<bool> eligible(positions.size(), false);
-  for (int i = 0; i < out->point_evidence_size(); ++i) {
-    const auto& p = out->point_evidence(i);
-    const auto explanation = out->point_decision(i).explanation();
+  for (int i = 0; i < evidence.size(); ++i) {
+    const auto& p = evidence.Get(i);
+    const auto explanation = decisions->Get(i).explanation();
     eligible[i] =
         p.finite() && InRoi(positions[i], c) && ObstacleHeight(p, c) &&
         (explanation == UNEXPLAINED || explanation == EXPL_OBJECT_WEAK ||
@@ -956,7 +958,7 @@ void BuildCandidates(const std::vector<Eigen::Vector3d>& positions,
   }
   const auto components = c.candidates().separate_semantic_instances() ||
                                   c.candidates().has_far_connectivity_size()
-                              ? CandidateComponents(c, *out)
+                              ? CandidateComponents(c, evidence, *decisions)
                               : voxels.Components(eligible);
   std::map<int, std::vector<int>> clusters;
   for (std::size_t i = 0; i < components.size(); ++i) {
@@ -975,8 +977,8 @@ void BuildCandidates(const std::vector<Eigen::Vector3d>& positions,
     for (int id : cluster.second) {
       low = low.cwiseMin(positions[id]);
       high = high.cwiseMax(positions[id]);
-      const auto& p = out->point_evidence(id);
-      const auto& d = out->point_decision(id);
+      const auto& p = evidence.Get(id);
+      const auto& d = decisions->Get(id);
       corridor |= p.in_corridor();
       all_thing &= p.group() == THING &&
                    p.semantic_probability() >= c.semantic_min_confidence();
@@ -1002,8 +1004,8 @@ void BuildCandidates(const std::vector<Eigen::Vector3d>& positions,
                         size.head<2>().maxCoeff() >= c.recall_min_size() &&
                         size.maxCoeff() <= c.recall_max_size();
     if (recall) {
-      auto* object = out->add_object();
-      object->set_id(out->object_size());
+      auto* object = candidates->objects.Add();
+      object->set_id(candidates->objects.size());
       object->set_source(SEG_RECALL);
       object->set_classification_use(CLASSIFICATION_CANDIDATE);
       object->add_reason(SEMANTIC_RECALL);
@@ -1019,7 +1021,7 @@ void BuildCandidates(const std::vector<Eigen::Vector3d>& positions,
              object->mutable_box());
       for (int id : cluster.second) {
         object->add_point_id(id);
-        auto* decision = out->mutable_point_decision(id);
+        auto* decision = decisions->Mutable(id);
         decision->set_object_id(object->id());
         decision->set_explanation(EXPL_OBJECT);
         decision->set_source(SEG_RECALL);
@@ -1030,10 +1032,10 @@ void BuildCandidates(const std::vector<Eigen::Vector3d>& positions,
     if (!corridor && cluster.second.size() < c.unknown_min_points()) {
       continue;
     }
-    auto* unknown = out->add_unknown();
+    auto* unknown = candidates->unknowns.Add();
     unknown->set_point_supported_footprint(
         c.quality().point_supported_unknown());
-    unknown->set_id(out->unknown_size());
+    unknown->set_id(candidates->unknowns.size());
     unknown->set_source(GEOMETRY);
     unknown->set_in_corridor(corridor);
     unknown->set_z_min(low.z());
@@ -1309,7 +1311,8 @@ bool SingleFrameFusion::Process(const drivers::PointCloud& cloud,
                                 const DetectionFrame* detection,
                                 const SemanticFrame* segmentation,
                                 FusionOutput* output, std::string* error,
-                                const FusionPrior* prior,
+                                const GroundPrior* ground_prior,
+                                const ObjectPrior* object_prior,
                                 FusionWork* work) const {
   if (work != nullptr) {
     *work = FusionWork{};
@@ -1368,7 +1371,7 @@ bool SingleFrameFusion::Process(const drivers::PointCloud& cloud,
   std::vector<Eigen::Vector3d> positions;
   SpatialIndex index;
   BuildEvidence(cloud, segmentation, config_, &positions, &index, &frame,
-                prior);
+                ground_prior);
   stage(0);
   std::vector<bool> eligible(positions.size(), false);
   for (int i = 0; i < frame.point_evidence_size(); ++i) {
@@ -1384,12 +1387,20 @@ bool SingleFrameFusion::Process(const drivers::PointCloud& cloud,
   stage(1);
   const auto boxes =
       Associate(detection, config_, positions, index, components, &frame);
-  AssociatePrior(prior, config_, &frame);
+  AssociatePrior(object_prior, config_, &frame);
   stage(2);
-  BuildCandidates(positions, components, voxels, config_, &frame);
+  CandidateResult candidates;
+  candidates.objects.Swap(frame.mutable_object());
+  candidates.unknowns.Swap(frame.mutable_unknown());
+  BuildCandidates(positions, components, voxels, config_,
+                  frame.point_evidence(), frame.mutable_point_decision(),
+                  &candidates);
   stage(3);
   CandidateWork relation_work;
-  RefineCandidates(config_, &frame, work == nullptr ? nullptr : &relation_work);
+  RefineCandidates(config_, frame.point_evidence(), &candidates,
+                   work == nullptr ? nullptr : &relation_work);
+  candidates.objects.Swap(frame.mutable_object());
+  candidates.unknowns.Swap(frame.mutable_unknown());
   if (work != nullptr) {
     work->relation_pairs = relation_work.pairs;
     work->relation_point_transforms = relation_work.point_transforms;
