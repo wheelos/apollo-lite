@@ -13,7 +13,9 @@ from types import SimpleNamespace
 import numpy as np
 from nuscenes import box, in_roi, match
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lidar_fusion" / "tools"))
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[2] / "lidar_fusion" / "tools")
+)
 from prepare_nuscenes import category, records, rotation  # noqa: E402
 
 
