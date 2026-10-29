@@ -13,7 +13,9 @@ from pathlib import Path
 import numpy as np
 from google.protobuf import text_format
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "perception_diagnostics"))
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[2] / "tools" / "perception_diagnostics")
+)
 from proto import Reader  # noqa: E402
 
 

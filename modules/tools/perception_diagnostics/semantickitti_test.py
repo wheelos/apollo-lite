@@ -20,7 +20,9 @@ from semantickitti import (
     visible_instances,
 )
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lidar_fusion" / "tools"))
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[2] / "lidar_fusion" / "tools")
+)
 from prepare_semantickitti import quantize_remission  # noqa: E402
 
 
