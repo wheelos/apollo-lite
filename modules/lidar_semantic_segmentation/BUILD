@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install")
 
@@ -30,6 +31,131 @@ cc_library(
         "//modules/lidar_semantic_segmentation/proto:lidar_semantic_segmentation_cc_proto",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "cylinder_projection",
+    srcs = ["types/cylinder_projection.cc"],
+    hdrs = ["types/cylinder_projection.h"],
+    deps = ["@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto"],
+)
+
+config_setting(
+    name = "cylinder_spconv_enabled",
+    define_values = {
+        "CYLINDER3D_SPCONV": "true",
+        "USE_GPU": "true",
+    },
+)
+
+cc_library(
+    name = "cylinder_sparse",
+    srcs = ["inference/cylinder_sparse.cc"] + select({
+        ":cylinder_spconv_enabled": ["inference/cylinder_spconv.cc"],
+        "//conditions:default": [],
+    }),
+    hdrs = [
+        "inference/cylinder_sparse.h",
+        "inference/cylinder_spconv.h",
+    ],
+    local_defines = select({
+        ":cylinder_spconv_enabled": ["CYLINDER3D_WITH_SPCONV=1"],
+        "//conditions:default": [],
+    }),
+    deps = [
+        ":cylinder_projection",
+    ] + select({
+        "//tools/platform:use_gpu": ["@libtorch_gpu"],
+        "//conditions:default": ["@libtorch_cpu"],
+    }) + select({
+        ":cylinder_spconv_enabled": ["@spconv"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
+    name = "cylinder_batch_norm",
+    srcs = ["inference/cylinder_batch_norm.cc"],
+    hdrs = ["inference/cylinder_batch_norm.h"],
+    deps = select({
+        "//tools/platform:use_gpu": [
+            ":cylinder_batch_norm_cuda",
+            "@libtorch_gpu",
+        ],
+        "//conditions:default": ["@libtorch_cpu"],
+    }),
+)
+
+cuda_library(
+    name = "cylinder_batch_norm_cuda",
+    srcs = ["inference/cylinder_batch_norm.cu"],
+    hdrs = ["inference/cylinder_batch_norm.h"],
+    copts = ["-std=c++17"],
+    deps = [
+        "@cuda//:cuda_runtime",
+        "@libtorch_gpu",
+    ],
+)
+
+cc_library(
+    name = "cylinder3d",
+    srcs = ["inference/cylinder3d.cc"],
+    hdrs = ["inference/cylinder3d.h"],
+    deps = [
+        ":cylinder_batch_norm",
+        ":cylinder_projection",
+        ":cylinder_sparse",
+        "//modules/lidar_semantic_segmentation/proto:lidar_semantic_segmentation_cc_proto",
+        "@com_github_nlohmann_json//:json",
+    ] + select({
+        "//tools/platform:use_gpu": ["@libtorch_gpu"],
+        "//conditions:default": ["@libtorch_cpu"],
+    }),
+)
+
+cc_library(
+    name = "cylinder3d_component",
+    srcs = ["component/cylinder3d_component.cc"],
+    hdrs = ["component/cylinder3d_component.h"],
+    deps = [
+        ":cylinder3d",
+        "@core//cyber",
+    ],
+    alwayslink = True,
+)
+
+cc_binary(
+    name = "libcylinder3d_component_plugin.so",
+    linkshared = True,
+    linkstatic = False,
+    deps = [":cylinder3d_component"],
+)
+
+cc_test(
+    name = "cylinder3d_test",
+    size = "small",
+    srcs = ["inference/cylinder3d_test.cc"],
+    deps = [
+        ":cylinder3d",
+        ":cylinder_batch_norm",
+        ":cylinder_projection",
+        ":cylinder_sparse",
+        "@com_github_nlohmann_json//:json",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "cylinder3d_component_test",
+    size = "small",
+    srcs = ["component/cylinder3d_component_test.cc"],
+    tags = ["manual"],
+    deps = [
+        ":cylinder3d_component",
+        "@com_google_googletest//:gtest",
+        "@com_google_protobuf//:protobuf",
+        "@core//cyber",
     ],
 )
 
@@ -81,6 +207,15 @@ cc_test(
     ],
 )
 
+cc_binary(
+    name = "evaluate_cylinder3d",
+    srcs = ["tools/evaluate_cylinder3d.cc"],
+    deps = [
+        ":cylinder3d",
+        "@com_github_nlohmann_json//:json",
+    ],
+)
+
 filegroup(
     name = "runtime_config",
     srcs = glob([
@@ -94,7 +229,14 @@ install(
     data = [":runtime_config"],
     data_dest = "lidar_semantic_segmentation",
     library_dest = "lidar_semantic_segmentation/lib",
-    targets = [":liblidar_semantic_segmentation_component_plugin.so"],
+    targets = [
+        ":libcylinder3d_component_plugin.so",
+        ":liblidar_semantic_segmentation_component_plugin.so",
+    ],
 )
 
-cpplint()
+cpplint(extra_srcs = [
+    "inference/cylinder_batch_norm.cu",
+    "inference/cylinder_sparse.cc",
+    "inference/cylinder_spconv.cc",
+])
