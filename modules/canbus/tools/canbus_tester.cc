@@ -14,17 +14,19 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include <memory>
 #include <thread>
+
+#include "gflags/gflags.h"
+
+#include "wheelos_msgs/control_msgs/control_cmd.pb.h"
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "cyber/cyber.h"
 #include "cyber/time/rate.h"
-
-#include "gflags/gflags.h"
 #include "modules/canbus/common/canbus_gflags.h"
 #include "modules/common/adapters/adapter_gflags.h"
-#include "wheelos_msgs/control_msgs/control_cmd.pb.h"
 
 using apollo::control::ControlCommand;
 using apollo::cyber::Rate;
@@ -35,6 +37,11 @@ int main(int32_t argc, char **argv) {
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr = true;
+
+  if (FLAGS_canbus_test_file.empty()) {
+    AERROR << "Set --canbus_test_file to a ControlCommand protobuf text file.";
+    return -1;
+  }
 
   // init cyber framework
   apollo::cyber::Init("testing_canbus_tester");

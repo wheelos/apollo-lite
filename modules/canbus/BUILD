@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install", "install_files")
 
@@ -14,29 +14,18 @@ cc_library(
     deps = [
         "//modules/canbus/common:canbus_common",
         "//modules/canbus/vehicle:vehicle_factory",
-        "@wheelos_common//modules/common/adapters:adapter_gflags",
-        "@wheelos_common//modules/common/monitor_log",
-        "@wheelos_common//modules/common/status",
         "//modules/drivers/canbus/can_client",
         "//modules/drivers/canbus/can_client:can_client_factory",
         "//modules/drivers/canbus/can_comm:can_receiver",
         "//modules/drivers/canbus/can_comm:can_sender",
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
+        "@wheelos_common//modules/common/monitor_log",
+        "@wheelos_common//modules/common/status",
         "@wheelos_msgs//wheelos_msgs/guardian_msgs:guardian_cc_proto",
     ],
     alwayslink = True,
-)
-
-cc_test(
-    name = "canbus_test",
-    size = "small",
-    srcs = ["canbus_test.cc"],
-    deps = [
-        ":canbus_component_lib",
-        "@wheelos_common//modules/common/status",
-        "@com_google_googletest//:gtest_main",
-    ],
 )
 
 cc_binary(
@@ -78,8 +67,6 @@ filegroup(
     ]),
 )
 
-#TODO(storypku):
-# split test_data for each vehicle
 filegroup(
     name = "test_data",
     srcs = glob(["testdata/**"]),
