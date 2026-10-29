@@ -140,3 +140,6 @@ bazel_dep(name = "livox-sdk", version = "2.3.0")
 bazel_dep(name = "osqp", version = "1.0.0.bcr.2")
 bazel_dep(name = "zstd", version = "1.5.7.bcr.1")
 bazel_dep(name = "mujoco", version = "3.10.0.bcr.1")
+bazel_dep(name = "openloc", version = "0.1.0")
+
+include("//modules/localization:openloc.MODULE.bazel")

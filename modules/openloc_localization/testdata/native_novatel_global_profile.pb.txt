@@ -1,0 +1,45 @@
+# Synthetic wiring example, NOT a vehicle calibration or production profile.
+odometry_topic: "/openloc/diagnostic/odometry"
+gnss_topic: "/apollo/sensor/gnss/best_pose"
+output_topic: "/openloc/diagnostic/novatel_global"
+reference_id: "synthetic-utm50n"
+reference_version: "v1"
+calibration_id: "synthetic-not-vehicle"
+content_id: "synthetic-utm-grid"
+journal: "novatel-global.csv"
+assume_gravity_aligned_odom: true
+recorded_input: false
+diagnostic_position_sigma_m: 0.1
+diagnostic_rotation_sigma_rad: 0.01
+maximum_odometry_age_ms: 200
+structured_gnss {
+  # Example GPS -> Unix for an explicitly verified 18 s GPS-UTC difference.
+  # September Unix-timestamped records require zero instead.
+  measurement_to_unix_offset_s: 315964782
+  utm_zone: 50
+  northern_hemisphere: true
+  origin_easting_m: 500000
+  origin_northing_m: 4427757.218738374
+  lever_x: 0
+  lever_y: 0
+  lever_z: 0
+  preparation_id: "synthetic-novatel-example"
+  minimum_satellites: 12
+  maximum_horizontal_std_m: 0.3
+  maximum_differential_age_s: 3
+  fixed_stability_ns: 2000000000
+  maximum_gap_ns: 1500000000
+  maximum_measurement_age_ns: 2000000000
+  heading {
+    topic: "/apollo/sensor/gnss/heading"
+    baseline_x: 1
+    baseline_y: 0
+    baseline_z: 0
+    true_north_yaw_rad: 1.5707963267948966
+    maximum_std_rad: 0.035
+    maximum_baseline_error_m: 0.02
+    minimum_satellites: 12
+    fixed_stability_ns: 2000000000
+    maximum_gap_ns: 1500000000
+  }
+}

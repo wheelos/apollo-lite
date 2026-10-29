@@ -1,0 +1,13 @@
+odometry_topic: "/openloc/diagnostic/odometry"
+gnss_topic: "/openloc/diagnostic/prepared_gnss_xy"
+output_topic: "/openloc/diagnostic/global_horizontal"
+reference_id: "synthetic-site"
+reference_version: "v1"
+calibration_id: "synthetic-calibration"
+content_id: "synthetic-xy-frame-contract"
+journal: "global-owner.csv"
+assume_gravity_aligned_odom: true
+recorded_input: false
+diagnostic_position_sigma_m: 0.1
+diagnostic_rotation_sigma_rad: 0.01
+maximum_odometry_age_ms: 200
