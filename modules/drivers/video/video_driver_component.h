@@ -16,15 +16,17 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <thread>
 
+#include "modules/drivers/video/proto/video_h265cfg.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
+
 #include "cyber/base/concurrent_object_pool.h"
 #include "cyber/cyber.h"
-#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/drivers/video/driver.h"
-#include "modules/drivers/video/proto/video_h265cfg.pb.h"
 
 namespace apollo {
 namespace drivers {
@@ -37,19 +39,16 @@ using apollo::drivers::video::config::CameraH265Config;
 
 class CompCameraH265Compressed : public Component<> {
  public:
-  ~CompCameraH265Compressed() {
-    if (video_thread_->joinable()) {
-      video_thread_->join();
-    }
-  }
-  bool Init();
+  ~CompCameraH265Compressed() override { Clear(); }
+  bool Init() override;
 
  private:
+  void Clear() override;
   void VideoPoll();
 
   std::shared_ptr<apollo::cyber::Writer<CompressedImage>> writer_;
   std::shared_ptr<std::thread> video_thread_;
-  volatile bool runing_;
+  std::atomic<bool> running_{false};
   std::unique_ptr<CameraDriver> camera_deivce_;
   std::string record_folder_;
   std::shared_ptr<CompressedImage> pb_image_ = nullptr;

@@ -18,6 +18,9 @@
 
 #include <sys/stat.h>
 
+#include <cstdio>
+#include <memory>
+
 #include "cyber/common/file.h"
 
 namespace apollo {
@@ -37,7 +40,9 @@ bool CompCameraH265Compressed::Init() {
   AINFO << "Velodyne config: " << video_config.DebugString();
 
   camera_deivce_.reset(new CameraDriver(&video_config));
-  camera_deivce_->Init();
+  if (!camera_deivce_->Init()) {
+    return false;
+  }
 
   if (camera_deivce_->Record()) {
     // Use current directory to save record file if H265_SAVE_FOLDER environment
@@ -51,18 +56,28 @@ bool CompCameraH265Compressed::Init() {
       AINFO_IF(ret) << "Record folder is created successfully.";
     }
   }
-  pb_image_.reset(new CompressedImage);
-  pb_image_->mutable_data()->reserve(1920 * 1080 * 4);
-
   writer_ = node_->CreateWriter<CompressedImage>(
       video_config.compress_conf().output_channel());
+  if (!writer_) {
+    AERROR << "Failed to create video image writer";
+    return false;
+  }
 
-  runing_ = true;
+  running_.store(true);
   video_thread_ = std::shared_ptr<std::thread>(
       new std::thread(std::bind(&CompCameraH265Compressed::VideoPoll, this)));
-  video_thread_->detach();
-
   return true;
+}
+
+void CompCameraH265Compressed::Clear() {
+  running_.store(false);
+  if (camera_deivce_) {
+    camera_deivce_->Stop();
+  }
+  if (video_thread_ && video_thread_->joinable()) {
+    video_thread_->join();
+  }
+  camera_deivce_.reset();
 }
 
 void CompCameraH265Compressed::VideoPoll() {
@@ -78,8 +93,13 @@ void CompCameraH265Compressed::VideoPoll() {
     }
   }
   int poll_failure_number = 0;
-  while (!apollo::cyber::IsShutdown()) {
+  while (running_.load() && !apollo::cyber::IsShutdown()) {
+    // Cyber readers may retain the shared message after Write returns.
+    pb_image_ = std::make_shared<CompressedImage>();
     if (!camera_deivce_->Poll(pb_image_)) {
+      if (!running_.load()) {
+        break;
+      }
       AERROR << "H265 poll failed on port: " << camera_deivce_->Port();
       static constexpr int kTolerance = 256;
       if (++poll_failure_number > kTolerance) {
@@ -87,6 +107,9 @@ void CompCameraH265Compressed::VideoPoll() {
         break;
       }
       continue;
+    }
+    if (!running_.load()) {
+      break;
     }
     poll_failure_number = 0;
     pb_image_->mutable_header()->set_timestamp_sec(
