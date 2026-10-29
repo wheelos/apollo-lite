@@ -19,10 +19,11 @@
 #include <memory>
 #include <string>
 
-#include <google/protobuf/message.h>
-#include <portaudio.h>
-#include "cyber/cyber.h"
+#include "portaudio.h"  // NOLINT(build/include_subdir)
+
 #include "modules/drivers/microphone/proto/microphone_config.pb.h"
+
+#include "cyber/cyber.h"
 
 namespace apollo {
 namespace drivers {
@@ -35,20 +36,21 @@ using apollo::drivers::microphone::config::MicrophoneConfig;
  */
 class Stream {
  private:
-  PaStream *pastream_ptr_;
-  PaStreamParameters *input_parameters_ptr_;
+  PaStream *pastream_ptr_ = nullptr;
 
  public:
   Stream() {}
   ~Stream();
-  void init_stream(int rate, int channels, int chunk, int input_device_index,
+  bool init_stream(int rate, int channels, int chunk, int input_device_index,
                    PaSampleFormat format);
-  void read_stream(int n_frames, char *buffer) const;
+  bool read_stream(int n_frames, char *buffer) const;
+  void Stop();
 };
 
 class Respeaker {
  private:
   std::unique_ptr<Stream> stream_ptr_;
+  bool initialized_ = false;
   const PaDeviceInfo *get_device_info(const PaDeviceIndex index) const;
   const PaDeviceIndex host_api_device_index_to_device_index(
       const PaHostApiIndex host_api, const int host_api_device_index) const;
@@ -60,8 +62,9 @@ class Respeaker {
  public:
   Respeaker() {}
   ~Respeaker();
-  void init(const std::shared_ptr<const MicrophoneConfig> &microphone_config);
-  void read_stream(int n_frames, char *buffer) const;
+  bool init(const std::shared_ptr<const MicrophoneConfig> &microphone_config);
+  bool read_stream(int n_frames, char *buffer) const;
+  void Stop();
 };
 
 }  // namespace microphone
