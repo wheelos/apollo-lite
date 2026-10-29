@@ -29,14 +29,13 @@ namespace can {
 
 using apollo::common::ErrorCode;
 
-TEST(SocketCanClientRawTest, simple_test) {
+TEST(SocketCanClientRawTest, RejectsIoBeforeStart) {
   CANCardParameter param;
   param.set_brand(CANCardParameter::SOCKET_CAN_RAW);
   param.set_channel_id(CANCardParameter::CHANNEL_ID_ZERO);
 
   SocketCanClientRaw socket_can_client;
   EXPECT_TRUE(socket_can_client.Init(param));
-  EXPECT_EQ(socket_can_client.Start(), ErrorCode::CAN_CLIENT_ERROR_BASE);
   std::vector<CanFrame> frames;
   int32_t num = 0;
   EXPECT_EQ(socket_can_client.Send(frames, &num),

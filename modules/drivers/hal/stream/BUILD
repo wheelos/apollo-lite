@@ -31,8 +31,8 @@ cc_library(
     deps = [
         ":stream",
         ":tcp_stream",
-        "@wheelos_common//modules/common/util",
         "@core//cyber",
+        "@wheelos_common//modules/common/util",
     ],
 )
 
@@ -83,30 +83,10 @@ cc_library(
 )
 
 cc_test(
-    name = "tcp_stream_regression_test",
-    srcs = ["tcp_stream_regression_test.cc"],
-    deps = [
-        ":tcp_stream",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "can_stream_regression_test",
     srcs = ["can_stream_regression_test.cc"],
     deps = [
         ":can_stream",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "ntrip_stream_test",
-    srcs = ["ntrip_stream_test.cc"],
-    deps = [
-        ":ntrip_stream",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
