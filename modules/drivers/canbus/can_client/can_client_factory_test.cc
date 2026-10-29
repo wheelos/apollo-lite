@@ -24,11 +24,21 @@ namespace apollo {
 namespace drivers {
 namespace canbus {
 
-TEST(CanClientFactoryTest, CreateCanClient) {
+TEST(CanClientFactoryTest, OnlyCompiledBackendsAreRegistered) {
   auto can_factory = CanClientFactory::Instance();
-  EXPECT_NE(can_factory, nullptr);
+  ASSERT_NE(can_factory, nullptr);
 
   can_factory->RegisterCanClients();
+#ifdef CANBUS_WITH_FAKE
+  EXPECT_TRUE(can_factory->Contains(CANCardParameter::FAKE_CAN));
+#else
+  EXPECT_FALSE(can_factory->Contains(CANCardParameter::FAKE_CAN));
+#endif
+#ifdef CANBUS_WITH_SOCKET
+  EXPECT_TRUE(can_factory->Contains(CANCardParameter::SOCKET_CAN_RAW));
+#else
+  EXPECT_FALSE(can_factory->Contains(CANCardParameter::SOCKET_CAN_RAW));
+#endif
 }
 
 }  // namespace canbus

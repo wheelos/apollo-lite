@@ -5,7 +5,7 @@ set -e
 # Container lifecycle and runtime environment initialization belong elsewhere.
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-source "${TOP_DIR}/scripts/apollo.bashrc"
+APOLLO_BUILD_PHASE=1 source "${TOP_DIR}/scripts/apollo.bashrc"
 
 ARCH="$(uname -m)"
 SUPPORTED_ARCHS=" x86_64 aarch64 "
@@ -14,7 +14,7 @@ APOLLO_ENV=""
 
 : ${STAGE:=dev}
 
-AVAILABLE_COMMANDS="config build build_dbg build_opt build_cpu build_gpu build_opt_gpu test coverage lint \
+AVAILABLE_COMMANDS="profiles config build build_dbg build_opt build_cpu build_gpu build_opt_gpu test coverage lint \
                     buildify check build_fe build_teleop build_prof doc clean format usage -h --help"
 
 function check_architecture_support() {
@@ -102,14 +102,23 @@ function build_test_and_lint() {
 function _usage() {
     echo -e "\n${RED}Usage${NO_COLOR}:
     .${BOLD}/apollo.sh${NO_COLOR} [OPTION]"
+    echo -e "\n${RED}Product builds (inside the managed dev container)${NO_COLOR}:
+    bash apollo.sh profiles
+    bash apollo.sh build --product=devkit-x86 --show
+    bash apollo.sh build --product=devkit-x86
+    Custom: build --hardware=hw_x86_devkit --modules=rtk_localization,open_space_planning,control --compute=cpu
+    Options: --mode=opt|dbg --jobs=N --cpus=N --rams=MB
+    build --all: explicitly build all modules; legacy bare build also builds all.
+    Product presets are build inventories, not deployment qualification.
+    Migration guide: tools/products/README.md#legacy-command-migration
+    Advanced/legacy commands follow."
     echo -e "\n${RED}Options${NO_COLOR}:
-    ${BLUE}config [options]${NO_COLOR}: show guidance for local Bazel overrides (.custom.bazelrc).
+    ${BLUE}config${NO_COLOR}: show guidance for local Bazel overrides (.bazelrc.user); read-only.
     ${BLUE}build [module]${NO_COLOR}: run build for cyber (<module> = cyber, includes @core runtime tools) or modules/<module>.  If <module> unspecified, build all.
-    ${BLUE}build_dbg [module]${NO_COLOR}: run debug build.
-    ${BLUE}build_opt [module]${NO_COLOR}: run optimized build.
-    ${BLUE}build_cpu [module]${NO_COLOR}: build in CPU mode. Equivalent to 'bazel build --config=cpu'
-    ${BLUE}build_gpu [module]${NO_COLOR}: run build in GPU mode. Equivalent to 'bazel build --config=gpu'
-    ${BLUE}build_opt_gpu [module]${NO_COLOR}: optimized build in GPU mode. Equivalent to 'bazel build --config=opt --config=gpu'
+    ${BLUE}build hardware --config=<profile>${NO_COLOR}: build only selected hardware (see tools/hardware/README.md).
+    ${BLUE}build hardware_package --config=<profile>${NO_COLOR}: package the selected hardware overlay.
+    ${BLUE}build algorithms --config=<profile>${NO_COLOR}: build selected algorithm modules (see tools/modules/README.md).
+    ${BLUE}build_{opt,dbg,cpu,gpu,opt_cpu,dbg_cpu,opt_gpu,dbg_gpu} [module]${NO_COLOR}: legacy mode aliases; module directories remain recursive.
     ${BLUE}test [module]${NO_COLOR}: run unittest for cyber (module='cyber') or modules/<module>. If unspecified, test all.
     ${BLUE}coverage [module]${NO_COLOR}: run coverage test for cyber (module='cyber') or modules/<module>. If unspecified, coverage all.
     ${BLUE}lint${NO_COLOR}: run code style check
@@ -136,13 +145,12 @@ function _check_command() {
 }
 
 function _config_bazel_local_override() {
-    local local_bazelrc="${APOLLO_ROOT_DIR}/.custom.bazelrc"
+    local local_bazelrc="${APOLLO_ROOT_DIR}/.bazelrc.user"
     local opt="${1:-}"
 
-    if [[ "${opt}" == "--clean" ]]; then
-        rm -f "${local_bazelrc}"
-        success "Removed local override file: ${local_bazelrc}"
-        return 0
+    if [[ -n "${opt}" ]]; then
+        error "config is read-only. Edit ${local_bazelrc} explicitly; no files were removed."
+        return 2
     fi
 
     info "Project Bazel defaults are in .bazelrc"
@@ -160,6 +168,36 @@ function main() {
 
     local cmd="$1"
     shift
+    case "${cmd}" in
+        -h|--help|usage) _usage; return ;;
+        profiles)
+            python3 "${TOP_DIR}/scripts/ci/apollo_product.py" --list "$@"
+            return
+            ;;
+        config) _config_bazel_local_override "$@"; return ;;
+        build)
+            local arg
+            for arg in "$@"; do
+                case "${arg}" in
+                    -h|--help) _usage; return ;;
+                    --product|--product=*|--hardware|--hardware=*|--modules|--modules=*|--compute|--compute=*|--mode|--mode=*|--all|--show)
+                        python3 "${TOP_DIR}/scripts/ci/apollo_product.py" "$@"
+                        return
+                        ;;
+                esac
+            done
+            if [[ "$#" -eq 0 ]]; then
+                warning "Bare build compiles ALL modules. Prefer build --product=<name>; use build --all to request a full build explicitly."
+            fi
+            ;;
+    esac
+    local option
+    for option in "$@"; do
+        if [[ "${option}" == --product || "${option}" == --product=* ]]; then
+            error "--product is supported by 'build' only. Use explicit module tests; product testing and standalone packaging are not available."
+            return 2
+        fi
+    done
     apollo_env_setup
 
     local build_sh="${APOLLO_ROOT_DIR}/scripts/ci/apollo_build.sh"
@@ -174,41 +212,17 @@ function main() {
     fi
 
     case "${cmd}" in
-        config)
-            _config_bazel_local_override "$@"
-            ;;
         build)
             env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" "${jetson_orin_args[@]}" "$@"
             ;;
-        build_opt)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt "${jetson_orin_args[@]}" "$@"
-            ;;
-        build_dbg)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg "${jetson_orin_args[@]}" "$@"
-            ;;
-        build_cpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=cpu "${jetson_orin_args[@]}" "$@"
-            ;;
-        build_dbg_cpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=cpu "${jetson_orin_args[@]}" "$@"
-            ;;
-        build_opt_cpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=cpu "${jetson_orin_args[@]}" "$@"
-            ;;
-        build_gpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=gpu "${jetson_orin_args[@]}" "$@"
-            ;;
-        build_dbg_gpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=dbg --config=gpu "${jetson_orin_args[@]}" "$@"
-            ;;
-        build_opt_gpu)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=opt --config=gpu "${jetson_orin_args[@]}" "$@"
-            ;;
-        build_prof)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=prof "${jetson_orin_args[@]}" "$@"
-            ;;
-        build_teleop)
-            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" --config=teleop "${jetson_orin_args[@]}" "$@"
+        build_opt|build_dbg|build_cpu|build_dbg_cpu|build_opt_cpu|build_gpu|build_dbg_gpu|build_opt_gpu|build_prof|build_teleop)
+            local -a modes=() mode_args=()
+            local mode
+            IFS=_ read -r -a modes <<< "${cmd#build_}"
+            for mode in "${modes[@]}"; do
+                mode_args+=("--config=${mode}")
+            done
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" "${mode_args[@]}" "${jetson_orin_args[@]}" "$@"
             ;;
         build_fe)
             build_dreamview_frontend
@@ -248,12 +262,6 @@ function main() {
             ;;
         format)
             env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_format.sh" "$@"
-            ;;
-        usage)
-            _usage
-            ;;
-        -h|--help)
-            _usage
             ;;
         *)
             _check_command "${cmd}"

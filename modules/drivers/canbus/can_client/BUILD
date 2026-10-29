@@ -1,8 +1,17 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
+load("//tools/hardware:defs.bzl", "enabled")
 load("//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
+
+CAN_DEFINES = enabled(
+    "with_canbus_fake",
+    ["CANBUS_WITH_FAKE"],
+) + enabled(
+    "with_canbus_socket",
+    ["CANBUS_WITH_SOCKET"],
+)
 
 install(
     name = "install",
@@ -16,15 +25,24 @@ cc_library(
     name = "can_client_factory",
     srcs = ["can_client_factory.cc"],
     hdrs = ["can_client_factory.h"],
+    local_defines = CAN_DEFINES,
     deps = [
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/drivers/canbus/can_client",
-        "//modules/drivers/canbus/can_client/fake:fake_can_client",
-        "//modules/drivers/canbus/can_client/socket:socket_can_client_raw",
         "//modules/drivers/canbus/common:canbus_common",
         "@core//cyber",
+        "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
-    ],
+    ] + enabled(
+        "with_canbus_fake",
+        [
+            "//modules/drivers/canbus/can_client/fake:fake_can_client",
+        ],
+    ) + enabled(
+        "with_canbus_socket",
+        [
+            "//modules/drivers/canbus/can_client/socket:socket_can_client_raw",
+        ],
+    ),
     alwayslink = True,
 )
 
@@ -32,8 +50,8 @@ cc_library(
     name = "can_client",
     hdrs = ["can_client.h"],
     deps = [
-        "@wheelos_common//modules/common/util",
         "//modules/drivers/canbus/common:canbus_common",
+        "@wheelos_common//modules/common/util",
         "@wheelos_msgs//wheelos_msgs/drivers_msgs:can_card_parameter_cc_proto",
     ],
     alwayslink = True,
@@ -54,6 +72,7 @@ cc_test(
     name = "can_client_factory_test",
     size = "small",
     srcs = ["can_client_factory_test.cc"],
+    local_defines = CAN_DEFINES,
     deps = [
         "//modules/drivers/canbus/can_client:can_client_factory",
         "@com_google_googletest//:gtest_main",

@@ -16,19 +16,10 @@
 
 #pragma once
 
-#include <functional>
 #include <memory>
-#include <string>
-#include <unordered_map>
-#include <vector>
 
 #include "modules/drivers/gnss/proto/config.pb.h"
 
-#include "cyber/common/log.h"
-#include "modules/drivers/gnss/parser/forsense/forsense_binary_parser.h"
-#include "modules/drivers/gnss/parser/forsense/forsense_nmea_parser.h"
-#include "modules/drivers/gnss/parser/huace/huace_parser.h"
-#include "modules/drivers/gnss/parser/novatel/novatel_parser.h"
 #include "modules/drivers/gnss/parser/parser.h"
 
 namespace apollo {
@@ -37,42 +28,7 @@ namespace gnss {
 
 class ParserFactory {
  public:
-  static std::unique_ptr<Parser> Create(const config::Config &config) {
-    static const std::unordered_map<
-        config::Stream::Format,
-        std::function<std::unique_ptr<Parser>(const config::Config &)>>
-        parser_factories = {
-            {config::Stream::NOVATEL_BINARY,
-             [](const config::Config &cfg) {
-               return std::make_unique<NovatelParser>(cfg);
-             }},
-            {config::Stream::HUACE_TEXT,
-             [](const config::Config &cfg) {
-               return std::make_unique<HuaceParser>(cfg);
-             }},
-            {config::Stream::FORSENSE_TEXT,
-             [](const config::Config &cfg) {
-               return std::make_unique<ForsenseNmeaParser>(cfg);
-             }},
-            {config::Stream::FORSENSE_BINARY,
-             [](const config::Config &cfg) {
-               return std::make_unique<ForsenseBinaryParser>(cfg);
-             }},
-            // Add more parser types here by mapping config::Stream to a lambda
-            // that creates the corresponding derived parser instance.
-        };
-
-    auto factory_it = parser_factories.find(config.data().format());
-    if (factory_it != parser_factories.end()) {
-      AINFO << "Creating parser for format: "
-            << config::Stream::Format_Name(config.data().format());
-      return factory_it->second(config);
-    }
-
-    AERROR << "Unsupported data format: "
-           << static_cast<int>(config.data().format());
-    return nullptr;
-  }
+  static std::unique_ptr<Parser> Create(const config::Config& config);
 };
 
 }  // namespace gnss

@@ -20,14 +20,15 @@ set -e
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 source "${TOP_DIR}/scripts/apollo.bashrc"
-source "${TOP_DIR}/scripts/apollo_base.sh"
+# Bazel tests use their own runfiles, not a previously built runtime's libraries.
+APOLLO_BUILD_PHASE=1 source "${TOP_DIR}/scripts/apollo_base.sh"
 source "${TOP_DIR}/scripts/cyber_targets.sh"
 
 ARCH="$(uname -m)"
 
 USE_GPU=-1
 
-CMDLINE_OPTIONS=
+CMDLINE_OPTIONS=()
 SHORTHAND_TARGETS=
 DISABLED_TARGETS=
 
@@ -96,7 +97,9 @@ function determine_test_targets() {
 
   for component in $@; do
     local test_targets
-    if [ "${component}" = "cyber" ]; then
+    if [ "${component}" = "hardware" ]; then
+      test_targets="//tools/hardware:tests"
+    elif [ "${component}" = "cyber" ]; then
       test_targets="$(cyber_core_target)"
     elif [ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]; then
       test_targets="//modules/${component}/..."
@@ -136,7 +139,7 @@ function _chk_n_set_gpu_arg() {
 }
 
 function parse_cmdline_arguments() {
-  local known_options=""
+  local -a known_options=()
   local remained_args=""
 
   for ((pos = 1; pos <= $#; pos++)); do #do echo "$#" "$i" "${!i}"; done
@@ -146,19 +149,27 @@ function parse_cmdline_arguments() {
     case "${opt}" in
       --config=*)
         optarg="${opt#*=}"
-        known_options="${known_options} ${opt}"
+        known_options+=("${opt}")
         _chk_n_set_gpu_arg "${optarg}"
         ;;
-      --config)
+      --config|-c|--define|--platforms)
         ((++pos))
         optarg="${!pos}"
-        known_options="${known_options} ${opt} ${optarg}"
-        _chk_n_set_gpu_arg "${optarg}"
+        if [[ -z "${optarg}" ]]; then
+          error "Missing value for ${opt}"
+          exit 2
+        fi
+        known_options+=("${opt}" "${optarg}")
+        if [[ "${opt}" == "--config" ]]; then
+          _chk_n_set_gpu_arg "${optarg}"
+        fi
         ;;
-      -c)
-        ((++pos))
-        optarg="${!pos}"
-        known_options="${known_options} ${opt} ${optarg}"
+      --*=*)
+        known_options+=("${opt}")
+        ;;
+      --*)
+        error "Use --option=value for Bazel options: ${opt}"
+        exit 2
         ;;
       *)
         remained_args="${remained_args} ${opt}"
@@ -166,19 +177,18 @@ function parse_cmdline_arguments() {
     esac
   done
   # Strip leading whitespaces
-  known_options="$(echo "${known_options}" | sed -e 's/^[[:space:]]*//')"
   remained_args="$(echo "${remained_args}" | sed -e 's/^[[:space:]]*//')"
 
-  CMDLINE_OPTIONS="${known_options}"
+  CMDLINE_OPTIONS=("${known_options[@]}")
   SHORTHAND_TARGETS="${remained_args}"
 }
 
 function determine_cpu_or_gpu_test() {
   if [ "${USE_GPU}" -lt 0 ]; then
     if [ "${USE_GPU_TARGET}" -eq 0 ]; then
-      CMDLINE_OPTIONS="--config=cpu ${CMDLINE_OPTIONS}"
+      CMDLINE_OPTIONS=(--config=cpu "${CMDLINE_OPTIONS[@]}")
     else
-      CMDLINE_OPTIONS="--config=gpu ${CMDLINE_OPTIONS}"
+      CMDLINE_OPTIONS=(--config=gpu "${CMDLINE_OPTIONS[@]}")
     fi
     # USE_GPU unset, defaults to USE_GPU_TARGET
     USE_GPU="${USE_GPU_TARGET}"
@@ -203,8 +213,6 @@ function format_bazel_targets() {
 
 function run_bazel_test() {
 
-  CMDLINE_OPTIONS="$(echo ${CMDLINE_OPTIONS} | xargs)"
-
   local test_targets
   test_targets="$(determine_test_targets ${SHORTHAND_TARGETS})"
 
@@ -218,12 +226,14 @@ function run_bazel_test() {
 
   info "Test Overview: "
   info "${TAB}USE_GPU: ${USE_GPU}  [ 0 for CPU, 1 for GPU ]"
-  info "${TAB}Test Options: ${GREEN}${CMDLINE_OPTIONS}${NO_COLOR}"
+  info "${TAB}Test Options: ${GREEN}${CMDLINE_OPTIONS[*]}${NO_COLOR}"
   info "${TAB}Test Targets: ${GREEN}${test_targets}${NO_COLOR}"
   info "${TAB}Disabled:     ${YELLOW}${disabled_targets}${NO_COLOR}"
 
-  local job_args="--jobs=$(nproc) --local_resources=memory=HOST_RAM*0.7"
-  bazel test ${CMDLINE_OPTIONS} ${job_args} -- ${formatted_targets}
+  local -a job_args=("--jobs=$(nproc)" "--local_resources=memory=HOST_RAM*0.7")
+  local -a target_args=()
+  read -r -a target_args <<< "${formatted_targets}"
+  bazel test "${job_args[@]}" "${CMDLINE_OPTIONS[@]}" -- "${target_args[@]}"
 }
 
 function main() {

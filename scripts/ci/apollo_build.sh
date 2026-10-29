@@ -30,7 +30,9 @@ ARCH="$(uname -m)"
 
 USE_GPU=-1
 
-CMDLINE_OPTIONS=
+CMDLINE_OPTIONS=()
+SHOW_ONLY=0
+EXPLICIT_SELECTION=0
 SHORTHAND_TARGETS=
 DISABLED_TARGETS=
 CUSTOM_JOBS=${CUSTOM_JOBS:-""}
@@ -108,7 +110,15 @@ function determine_build_targets_and_defines() {
     targets_all="//modules/... union $(cyber_runtime_targets)"
   else
     for component in "$@"; do
-      if [[ "$component" == "cyber" ]]; then
+      local selected_target=""
+      case "${component}" in
+        hardware) selected_target="//tools/hardware:hardware" ;;
+        hardware_package) selected_target="//tools/hardware:install" ;;
+        algorithms) selected_target="//tools/modules:algorithms" ;;
+      esac
+      if [[ -n "${selected_target}" ]]; then
+        targets_all+=" ${selected_target}"
+      elif [[ "$component" == "cyber" ]]; then
         if [[ "${HOST_OS}" == "Linux" ]]; then
           targets_all+=" $(cyber_runtime_targets) //modules/tools/visualizer/..."
         else
@@ -118,8 +128,7 @@ function determine_build_targets_and_defines() {
         targets_all+=" //modules/${component}/... union $(cyber_runtime_targets)"
       elif [[ -d "${APOLLO_ROOT_DIR}/${component}" ]]; then
         targets_all+=" //${component}/..."
-      elif [[ $component =~ ^@ ]]; then
-        # keep target of deps
+      elif [[ $component == @* || $component == //* ]]; then
         targets_all+=" ${component}"
       else
         error "Directory ${APOLLO_ROOT_DIR}/modules/${component} not found. Exiting ..."
@@ -157,7 +166,7 @@ function _chk_n_set_gpu_arg() {
 }
 
 function parse_cmdline_arguments() {
-  local known_options=""
+  local -a known_options=()
   local remained_args=""
 
   for ((pos = 1; pos <= $#; pos++)); do #do echo "$#" "$i" "${!i}"; done
@@ -165,47 +174,51 @@ function parse_cmdline_arguments() {
     local optarg
 
     case "${opt}" in
+      --show)
+        SHOW_ONLY=1
+        ;;
+      --explicit-selection)
+        EXPLICIT_SELECTION=1
+        ;;
       --config=*)
         optarg="${opt#*=}"
-        known_options="${known_options} ${opt}"
+        known_options+=("${opt}")
         _chk_n_set_gpu_arg "${optarg}"
         ;;
-      --config)
+      --config|-c|--define|--platforms)
         ((++pos))
         optarg="${!pos}"
-        known_options="${known_options} ${opt} ${optarg}"
-        _chk_n_set_gpu_arg "${optarg}"
+        if [[ -z "${optarg}" ]]; then
+          error "Missing value for ${opt}"
+          exit 2
+        fi
+        known_options+=("${opt}" "${optarg}")
+        if [[ "${opt}" == "--config" ]]; then
+          _chk_n_set_gpu_arg "${optarg}"
+        fi
         ;;
-      --jobs|--jobs=*)
-        set -x
+      --jobs|--jobs=*|--cpus|--cpus=*|--rams|--rams=*)
         optarg="${opt#*=}"
         if [[ "${optarg}" == "" || "${optarg}" == "${opt}" ]]; then
           ((++pos))
           optarg="${!pos}"
         fi
-        CUSTOM_JOBS="${optarg}"
-        set +x
-        ;;
-      --cpus|--cpus=*)
-        optarg="${opt#*=}"
-        if [[ "${optarg}" == "" || "${optarg}" == "${opt}" ]]; then
-          ((++pos))
-          optarg="${!pos}"
+        if [[ -z "${optarg}" ]]; then
+          error "Missing value for ${opt}"
+          exit 2
         fi
-        CUSTOM_CPUS="${optarg}"
+        case "${opt%%=*}" in
+          --jobs) known_options+=("--jobs=${optarg}") ;;
+          --cpus) known_options+=("--local_resources=cpu=${optarg}") ;;
+          --rams) known_options+=("--local_resources=memory=${optarg}") ;;
+        esac
         ;;
-      --rams|--rams=*)
-        optarg="${opt#*=}"
-        if [[ "${optarg}" == "" || "${optarg}" == "${opt}" ]]; then
-          ((++pos))
-          optarg="${!pos}"
-        fi
-        CUSTOM_RAMS="${optarg}"
+      --*=*)
+        known_options+=("${opt}")
         ;;
-      -c)
-        ((++pos))
-        optarg="${!pos}"
-        known_options="${known_options} ${opt} ${optarg}"
+      --*)
+        error "Use --option=value for Bazel options: ${opt}"
+        exit 2
         ;;
       *)
         remained_args="${remained_args} ${opt}"
@@ -213,19 +226,18 @@ function parse_cmdline_arguments() {
     esac
   done
   # Strip leading whitespaces
-  known_options="$(echo "${known_options}" | sed -e 's/^[[:space:]]*//')"
   remained_args="$(echo "${remained_args}" | sed -e 's/^[[:space:]]*//')"
 
-  CMDLINE_OPTIONS="${known_options}"
+  CMDLINE_OPTIONS=("${known_options[@]}")
   SHORTHAND_TARGETS="${remained_args}"
 }
 
 function determine_cpu_or_gpu_build() {
   if [ "${USE_GPU}" -lt 0 ]; then
     if [ "${USE_GPU_TARGET}" -eq 0 ]; then
-      CMDLINE_OPTIONS="--config=cpu ${CMDLINE_OPTIONS}"
+      CMDLINE_OPTIONS=(--config=cpu "${CMDLINE_OPTIONS[@]}")
     else
-      CMDLINE_OPTIONS="--config=gpu ${CMDLINE_OPTIONS}"
+      CMDLINE_OPTIONS=(--config=gpu "${CMDLINE_OPTIONS[@]}")
     fi
     # USE_GPU unset, defaults to USE_GPU_TARGET
     USE_GPU="${USE_GPU_TARGET}"
@@ -296,8 +308,6 @@ function _read_cgroup_cpu_limit() {
 }
 
 function run_bazel_build() {
-  CMDLINE_OPTIONS="$(echo ${CMDLINE_OPTIONS} | xargs)"
-
   local build_targets
   build_targets="$(determine_build_targets_and_defines ${SHORTHAND_TARGETS})"
 
@@ -309,9 +319,25 @@ function run_bazel_build() {
   # bazel build ${CMDLINE_OPTIONS} ${job_args} $(bazel query ${build_targets})
   local formatted_targets="$(format_bazel_targets ${build_targets} ${disabled_targets})"
 
+  local -a target_args=()
+  read -r -a target_args <<< "${formatted_targets}"
+  if [[ "${SHOW_ONLY}" -eq 1 ]]; then
+    local query="set(${target_args[*]})"
+    if [[ " ${target_args[*]} " == *" //tools/hardware:hardware "* ]]; then
+      query+=" union //tools/hardware:manifest"
+    fi
+    bazel cquery "${CMDLINE_OPTIONS[@]}" --output=starlark \
+      "--starlark:file=${TOP_DIR}/tools/products/describe.bzl" "${query}"
+    return
+  fi
+
   info "Build Overview: "
-  info "${TAB}USE_GPU: ${USE_GPU}  [ 0 for CPU, 1 for GPU ]"
-  info "${TAB}Bazel Options: ${GREEN}${CMDLINE_OPTIONS}${NO_COLOR}"
+  if [[ "${EXPLICIT_SELECTION}" -eq 0 ]]; then
+    info "${TAB}USE_GPU: ${USE_GPU}  [ 0 for CPU, 1 for GPU ]"
+  else
+    info "${TAB}Compute mode: explicit Bazel configuration (see analyzed preview)"
+  fi
+  info "${TAB}Bazel Options: ${GREEN}${CMDLINE_OPTIONS[*]}${NO_COLOR}"
   info "${TAB}Build Targets: ${GREEN}${build_targets}${NO_COLOR}"
   info "${TAB}Disabled:      ${YELLOW}${disabled_targets}${NO_COLOR}"
 
@@ -352,14 +378,12 @@ function run_bazel_build() {
     rams_args="--local_resources=memory=${CUSTOM_RAMS}"
   fi
 
-  local copts_args=""
-  if [[ "$(uname -m)" == "aarch64" ]]; then
-    local copts_args="--copt=-march=native --host_copt=-march=native --copt=-fPIC --host_copt=-fPIC"
-  else
-    local copts_args=""
+  local -a copts_args=()
+  if [[ "${EXPLICIT_SELECTION}" -eq 0 && "$(uname -m)" == "aarch64" ]]; then
+    copts_args=(--copt=-march=native --host_copt=-march=native --copt=-fPIC --host_copt=-fPIC)
   fi
-  build_args="${copts_args} ${jobs_args} ${cpus_args} ${rams_args}"
-  info "${TAB}Build Command: bazel build ${CMDLINE_OPTIONS} ${build_args} -- ${formatted_targets}"
+  local -a build_args=("${copts_args[@]}" "${jobs_args}" "${cpus_args}" "${rams_args}")
+  info "${TAB}Build Command: bazel build ${build_args[*]} ${CMDLINE_OPTIONS[*]} -- ${formatted_targets}"
 
   local bazel_cache_root="${BAZEL_CACHE_DIR:-${APOLLO_CACHE_DIR}/bazel}"
   local repository_cache="${bazel_cache_root}/repo_cache"
@@ -379,7 +403,7 @@ function run_bazel_build() {
     "--disk_cache=${disk_cache}"
   )
 
-  bazel build ${CMDLINE_OPTIONS} ${build_args} "${bazel_cache_args[@]}" -- ${formatted_targets}
+  bazel build "${build_args[@]}" "${CMDLINE_OPTIONS[@]}" "${bazel_cache_args[@]}" -- "${target_args[@]}"
 }
 
 function main() {
@@ -388,7 +412,11 @@ function main() {
     exit 1
   fi
   parse_cmdline_arguments "$@"
-  determine_cpu_or_gpu_build
+  if [[ "${EXPLICIT_SELECTION}" -eq 0 ]]; then
+    determine_cpu_or_gpu_build
+  else
+    info "Using explicit build configuration; no host GPU/Orin inference."
+  fi
 
   run_bazel_build
 
@@ -396,7 +424,9 @@ function main() {
     SHORTHAND_TARGETS="apollo"
   fi
 
-  success "Done building ${SHORTHAND_TARGETS}. Enjoy!"
+  if [[ "${SHOW_ONLY}" -eq 0 ]]; then
+    success "Done building ${SHORTHAND_TARGETS}. Enjoy!"
+  fi
 }
 
 main "$@"

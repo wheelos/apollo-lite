@@ -59,6 +59,18 @@ install_files(
 )
 
 filegroup(
+    name = "profile_runtime_data",
+    srcs = glob(
+        [
+            "conf/**",
+            "dag/*.dag",
+            "launch/*.launch",
+        ],
+        exclude = ["conf/canbus_conf.pb.txt"],
+    ),
+)
+
+filegroup(
     name = "runtime_data",
     srcs = glob([
         "conf/**",
