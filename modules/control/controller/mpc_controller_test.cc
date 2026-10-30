@@ -16,16 +16,25 @@
 
 #include "modules/control/controller/mpc_controller.h"
 
-#include "cyber/common/file.h"
-#include "cyber/common/log.h"
+#include <cmath>
+#include <memory>
+#include <string>
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include "cyber/time/clock.h"
-#include "modules/control/common/control_gflags.h"
+#include "gflags/gflags.h"
+
 #include "modules/control/proto/control_conf.pb.h"
-#include "modules/common/configs/config_gflags.h"
 #include "wheelos_msgs/planning_msgs/planning.pb.h"
+
+#include "cyber/common/file.h"
+#include "cyber/common/log.h"
+#include "cyber/time/clock.h"
+#include "modules/common/configs/config_gflags.h"
+#include "modules/common/configs/vehicle_config_helper.h"
+#include "modules/control/common/control_gflags.h"
+#include "modules/control/controller/controller_agent.h"
 
 namespace apollo {
 namespace control {
@@ -37,16 +46,9 @@ using ChassisPb = canbus::Chassis;
 
 class MPCControllerTest : public ::testing::Test, MPCController {
  public:
-  virtual void SetupTestCase() {
-    FLAGS_v = 4;
-    FLAGS_control_conf_file =
-        "/apollo/modules//control/testdata/mpc_controller_test/"
-        "control_conf.pb.txt ";
-    ControlConf control_conf;
-    ACHECK(cyber::common::GetProtoFromFile(FLAGS_control_conf_file,
-                                           &control_conf));
-    mpc_conf_ = control_conf.mpc_controller_conf();
-
+  void SetUp() override {
+    FLAGS_enable_map_reference_unify = false;
+    FLAGS_enable_gain_scheduler = false;
     timestamp_ = Clock::NowInSeconds();
   }
 
@@ -84,10 +86,87 @@ class MPCControllerTest : public ::testing::Test, MPCController {
     return planning_trajectory_pb;
   }
 
-  MPCControllerConf mpc_conf_;
+  void PrepareStraightCommandCase() {
+    common::VehicleConfig vehicle_config;
+    ASSERT_TRUE(cyber::common::GetProtoFromFile(
+        "modules/global_config/vehicle_param.pb.txt", &vehicle_config));
+    common::VehicleConfigHelper::Init(vehicle_config);
+    ASSERT_TRUE(cyber::common::GetProtoFromFile(
+        "modules/control/conf/control_conf.pb.txt", &command_conf_));
+    command_conf_.clear_active_controllers();
+    command_conf_.add_active_controllers(ControlConf::MPC_CONTROLLER);
+    auto *pose = localization_.mutable_pose();
+    pose->mutable_position()->set_x(0.0);
+    pose->mutable_position()->set_y(0.0);
+    pose->mutable_position()->set_z(0.0);
+    pose->set_heading(0.0);
+    pose->mutable_orientation()->set_qz(-std::sqrt(0.5));
+    pose->mutable_orientation()->set_qw(std::sqrt(0.5));
+    pose->mutable_angular_velocity()->set_z(0.0);
+    pose->mutable_linear_acceleration()->set_y(0.0);
+    chassis_.set_speed_mps(2.0);
+    chassis_.set_gear_location(ChassisPb::GEAR_DRIVE);
+    chassis_.set_driving_mode(ChassisPb::COMPLETE_AUTO_DRIVE);
+    injector_ = std::make_shared<DependencyInjector>();
+    ASSERT_TRUE(injector_->UpdateVehicleState(localization_, chassis_).ok());
 
+    trajectory_.mutable_header()->set_timestamp_sec(timestamp_);
+    trajectory_.set_gear(ChassisPb::GEAR_DRIVE);
+    trajectory_.set_trajectory_type(PlanningTrajectoryPb::NORMAL);
+    for (int i = 0; i <= 20; ++i) {
+      auto *point = trajectory_.add_trajectory_point();
+      point->mutable_path_point()->set_x(0.3 * i);
+      point->mutable_path_point()->set_y(0.0);
+      point->mutable_path_point()->set_s(0.3 * i);
+      point->mutable_path_point()->set_theta(0.0);
+      point->set_v(3.0);
+      point->set_a(0.0);
+      point->set_relative_time(0.1 * i);
+    }
+  }
+
+  gflags::FlagSaver flag_saver_;
+  ControlConf command_conf_;
+  LocalizationPb localization_;
+  ChassisPb chassis_;
+  PlanningTrajectoryPb trajectory_;
+  std::shared_ptr<DependencyInjector> injector_;
   double timestamp_ = 0.0;
 };
+
+TEST_F(MPCControllerTest, ComputesAccelerationWithUnboundedStates) {
+  ASSERT_NO_FATAL_FAILURE(PrepareStraightCommandCase());
+  ControllerAgent agent;
+  ASSERT_TRUE(agent.Init(injector_, &command_conf_).ok());
+  ControlCommand command;
+  const auto status = agent.ComputeControlCommand(&localization_, &chassis_,
+                                                  &trajectory_, &command);
+  ASSERT_TRUE(status.ok()) << status.ToString();
+  const double feedback =
+      command.debug().simple_mpc_debug().acceleration_cmd_closeloop();
+  EXPECT_TRUE(std::isfinite(feedback));
+  EXPECT_GT(feedback, 0.0);
+  EXPECT_LE(feedback, common::VehicleConfigHelper::GetConfig()
+                          .vehicle_param()
+                          .max_acceleration());
+  EXPECT_NEAR(command.steering_target(), 0.0, 1e-6);
+}
+
+TEST_F(MPCControllerTest, PropagatesSolverFailureWithoutPublishingCommand) {
+  ASSERT_NO_FATAL_FAILURE(PrepareStraightCommandCase());
+  command_conf_.mutable_mpc_controller_conf()->set_max_iteration(1);
+  ControllerAgent agent;
+  ASSERT_TRUE(agent.Init(injector_, &command_conf_).ok());
+  ControlCommand command;
+  command.set_acceleration(0.25);
+  command.set_steering_target(7.0);
+  const auto original = command.SerializeAsString();
+  const auto status = agent.ComputeControlCommand(&localization_, &chassis_,
+                                                  &trajectory_, &command);
+  EXPECT_EQ(status.code(), common::ErrorCode::CONTROL_COMPUTE_ERROR);
+  EXPECT_EQ(status.error_message(), "MPC OSQP solver failed");
+  EXPECT_EQ(command.SerializeAsString(), original);
+}
 
 TEST_F(MPCControllerTest, ComputeLateralErrors) {
   auto localization_pb = LoadLocalizaionPb(
@@ -98,7 +177,7 @@ TEST_F(MPCControllerTest, ComputeLateralErrors) {
   FLAGS_enable_map_reference_unify = false;
   auto injector = std::make_shared<DependencyInjector>();
   ASSERT_TRUE(injector->UpdateVehicleState(localization_pb, chassis_pb).ok());
-  const auto& vehicle_state = injector->vehicle_state();
+  const auto &vehicle_state = injector->vehicle_state();
 
   auto planning_trajectory_pb = LoadPlanningTrajectoryPb(
       "/apollo/modules//control/testdata/mpc_controller_test/"

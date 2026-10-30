@@ -17,7 +17,7 @@
 #include "modules/control/controller/mpc_controller.h"
 
 #include <algorithm>
-#include <limits>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -336,15 +336,17 @@ Status MPCController::ComputeControlCommand(
   Matrix upper_bound(controls_, 1);
   upper_bound << wheel_single_direction_max_degree_, max_acceleration_;
 
-  const double max = std::numeric_limits<double>::max();
+  // DBL_MAX can overflow during OSQP scaling and make the duality gap NaN.
+  constexpr double kUnboundedState = OSQP_INFTY;
   Matrix lower_state_bound(basic_state_size_, 1);
   Matrix upper_state_bound(basic_state_size_, 1);
 
   // lateral_error, lateral_error_rate, heading_error, heading_error_rate
   // station_error, station_error_rate
-  lower_state_bound << -1.0 * max, -1.0 * max, -1.0 * M_PI, -1.0 * max,
-      -1.0 * max, -1.0 * max;
-  upper_state_bound << max, max, M_PI, max, max, max;
+  lower_state_bound << -kUnboundedState, -kUnboundedState, -M_PI,
+      -kUnboundedState, -kUnboundedState, -kUnboundedState;
+  upper_state_bound << kUnboundedState, kUnboundedState, M_PI, kUnboundedState,
+      kUnboundedState, kUnboundedState;
 
   double mpc_start_timestamp = Clock::NowInSeconds();
   double steer_angle_feedback = 0.0;
@@ -364,11 +366,11 @@ Status MPCController::ComputeControlCommand(
       mpc_eps_);
   if (!mpc_osqp.Solve(&control_cmd)) {
     AERROR << "MPC OSQP solver failed";
-  } else {
-    ADEBUG << "MPC OSQP problem solved! ";
-    control[0](0, 0) = control_cmd.at(0);
-    control[0](1, 0) = control_cmd.at(1);
+    return Status(ErrorCode::CONTROL_COMPUTE_ERROR, "MPC OSQP solver failed");
   }
+  ADEBUG << "MPC OSQP problem solved! ";
+  control[0](0, 0) = control_cmd.at(0);
+  control[0](1, 0) = control_cmd.at(1);
 
   steer_angle_feedback = Wheel2SteerPct(control[0](0, 0));
   acc_feedback = control[0](1, 0);
