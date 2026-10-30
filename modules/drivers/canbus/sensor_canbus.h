@@ -27,9 +27,11 @@
 #include <utility>
 #include <vector>
 
+#include "modules/drivers/canbus/proto/sensor_canbus_conf.pb.h"
+#include "wheelos_msgs/drivers_msgs/can_card_parameter.pb.h"
+
 #include "cyber/common/file.h"
 #include "cyber/component/component.h"
-
 #include "cyber/time/time.h"
 #include "modules/common/monitor_log/monitor_log_buffer.h"
 #include "modules/common/util/util.h"
@@ -37,8 +39,6 @@
 #include "modules/drivers/canbus/can_client/can_client_factory.h"
 #include "modules/drivers/canbus/can_comm/can_receiver.h"
 #include "modules/drivers/canbus/can_comm/message_manager.h"
-#include "wheelos_msgs/drivers_msgs/can_card_parameter.pb.h"
-#include "modules/drivers/canbus/proto/sensor_canbus_conf.pb.h"
 #include "modules/drivers/canbus/sensor_gflags.h"
 
 /**
@@ -82,6 +82,8 @@ class SensorCanbus : public apollo::cyber::Component<> {
   bool Init() override;
 
  private:
+  friend class SensorCanbusTestPeer;
+
   bool Start();
   void PublishSensorData(bool clear_after_read = false);
   void OnTimer();
@@ -157,8 +159,9 @@ bool SensorCanbus<SensorType>::Start() {
   // no need for timer.
   if (FLAGS_sensor_freq > 0) {
     double duration_ms = 1000.0 / FLAGS_sensor_freq;
-    timer_.reset(new cyber::Timer(static_cast<uint32_t>(duration_ms),
-                                  [this]() { this->OnTimer(); }, false));
+    timer_.reset(new cyber::Timer(
+        static_cast<uint32_t>(duration_ms), [this]() { this->OnTimer(); },
+        false));
     timer_->Start();
   } else {
     data_trigger_running_.store(true);

@@ -51,6 +51,8 @@ class MultiBatchInference : public Inference {
 
   bool Init(const std::map<std::string, std::vector<int>>& shapes) override;
   void Infer() override;
+  // Success means this invocation completed and its output tensors are valid.
+  virtual bool InferWithStatus();
   std::shared_ptr<apollo::perception::base::Blob<float>> get_blob(
       const std::string& name) override;
 

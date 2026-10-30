@@ -14,6 +14,8 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include "modules/drivers/video/socket_input.h"
+
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -21,12 +23,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <array>
 #include <cerrno>
 #include <memory>
 
 #include "cyber/cyber.h"
-#include "modules/drivers/video/input.h"
-#include "modules/drivers/video/socket_input.h"
 
 namespace apollo {
 namespace drivers {
@@ -41,49 +42,49 @@ namespace video {
  *  @param private_nh private node handle for driver
  *  @param udpport UDP port number to connect
  */
-SocketInput::SocketInput() : sockfd_(-1), port_(0) {
-  pkg_num_ = 0;
-  bytes_num_ = 0;
-  frame_id_ = 0;
-}
+SocketInput::SocketInput() : sockfd_(-1), port_(0) {}
 
 /** @brief destructor */
-SocketInput::~SocketInput() {
-  if (buf_) {
-    delete[] buf_;
-  }
-  if (pdu_) {
-    delete[] pdu_;
-  }
-  (void)close(sockfd_);
-}
+SocketInput::~SocketInput() { (void)close(sockfd_); }
 
-void SocketInput::Init(uint32_t port) {
+bool SocketInput::Init(uint32_t port) {
+  running_.store(false);
   if (sockfd_ != -1) {
     (void)close(sockfd_);
+    sockfd_ = -1;
+  }
+  if (port > 65535) {
+    AERROR << "Invalid camera UDP port: " << port;
+    return false;
   }
 
   sockfd_ = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockfd_ < 0) {
     AERROR << "Failed to create socket fd.";
-    return;
+    return false;
   }
 
   // Connect to camera UDP port
-  AINFO << "Opening UDP socket on port: " << uint16_t(port);
+  AINFO << "Opening UDP socket on port: " << port;
   port_ = port;
   sockaddr_in my_addr;
   memset(&my_addr, '\0', sizeof(my_addr));
   my_addr.sin_family = AF_INET;
-  my_addr.sin_port = htons(uint16_t(port));
+  my_addr.sin_port = htons(static_cast<uint16_t>(port));
   my_addr.sin_addr.s_addr = INADDR_ANY;
   if (bind(sockfd_, reinterpret_cast<sockaddr *>(&my_addr),
            sizeof(sockaddr_in)) < 0) {
     AERROR << "Failed to bind socket on local address.";
+    (void)close(sockfd_);
+    sockfd_ = -1;
+    return false;
   }
 
   if (fcntl(sockfd_, F_SETFL, O_NONBLOCK | FASYNC) < 0) {
     AERROR << "Failed to enable non-blocking I/O.";
+    (void)close(sockfd_);
+    sockfd_ = -1;
+    return false;
   }
 
   const int rbuf = 4 * 1024 * 1024;
@@ -96,114 +97,41 @@ void SocketInput::Init(uint32_t port) {
     AERROR << "Failed to enable socket reuseable address.";
   }
 
-  buf_ = new uint8_t[H265_FRAME_PACKAGE_SIZE];
-  if (!buf_) {
-    AERROR << "Failed to allocate H265 frame package buffer.";
-  }
-  pdu_ = new uint8_t[H265_PDU_SIZE];
-  if (!pdu_) {
-    AERROR << "Failed to allocate H265 PDU buffer.";
-  }
-  // _metric_controller->Init();
   AINFO << "Camera socket fd: " << sockfd_ << ", port: " << port_;
+  running_.store(true);
+  return true;
 }
 
 /** @brief Get one camera packet. */
 int SocketInput::GetFramePacket(std::shared_ptr<CompressedImage> h265Pb) {
-  uint8_t *frame_data = &buf_[0];
-  uint8_t *pdu_data = &pdu_[0];
-  int total = 0;
-  int pkg_len = 0;
-  size_t frame_len = 0;
-  uint16_t pre_seq = 0;
+  std::array<uint8_t, H265_PDU_SIZE> packet;
+  assembler_.Reset();
 
-  do {
+  while (running_.load()) {
     if (!InputAvailable(POLL_TIMEOUT)) {
       return SOCKET_TIMEOUT;
     }
     // Receive packets that should now be available from the socket using
     // a blocking read.
-    ssize_t pdu_len = recvfrom(sockfd_, pdu_data, H265_PDU_SIZE, 0, NULL, NULL);
+    const ssize_t pdu_len = recvfrom(sockfd_, packet.data(), packet.size(),
+                                     MSG_TRUNC, nullptr, nullptr);
     if (pdu_len < 0) {
-      if (errno != EWOULDBLOCK) {
-        AERROR << "Failed to receive package from port: " << port_;
-        return RECEIVE_FAIL;
+      if (errno == EWOULDBLOCK || errno == EINTR) {
+        continue;
       }
+      AERROR << "Failed to receive package from port: " << port_;
+      return RECEIVE_FAIL;
     }
 
-    AINFO << "Received pdu length: " << pdu_len << " from port: " << port_;
-    HwPduPacket *pdu_pkg = reinterpret_cast<HwPduPacket *>(&pdu_[0]);
-    uint16_t local_seq = ntohs(pdu_pkg->rtp_header.seq);
-    AINFO << "Package seq number: " << local_seq;
-    if (local_seq - pre_seq != 1 && pre_seq > 1 && local_seq > 0) {
-      AERROR << "Error! port: " << port_
-             << ", package sequence is wrong. curent/pre " << local_seq << "/"
-             << pre_seq;
+    if (assembler_.AddPacket(packet.data(), static_cast<size_t>(pdu_len),
+                             h265Pb.get())) {
+      return 0;
     }
-    pre_seq = local_seq;
-
-    if (ntohl(pdu_pkg->header.magic0) == HW_CAMERA_MAGIC0 &&
-        ntohl(pdu_pkg->header.magic1) == HW_CAMERA_MAGIC1) {
-      // Receive camera frame head
-      if (total) {
-        AERROR << "Error! lost package for last frame, left bytes: " << total;
-      }
-      AINFO << "Received new frame from port: " << port_;
-
-      uint32_t frame_id = ntohl(pdu_pkg->header.frame_id);
-      if (frame_id - frame_id_ != 1 && frame_id_ > 1 && frame_id > 1) {
-        AERROR << "Error! port: " << port_
-               << ", lose Frame. pre_frame_id/frame_id " << frame_id_ << "/"
-               << frame_id;
-      }
-      frame_id_ = frame_id;
-
-      cyber::Time image_time(ntohl(pdu_pkg->header.ts_sec),
-                             1000 * ntohl(pdu_pkg->header.ts_usec));
-      // AINFO << "image_time second: " << ntohl(pdu_pkg->header.ts_sec) <<
-      // " usec: " << ntohl(pdu_pkg->header.ts_usec);
-      uint64_t camera_timestamp = image_time.ToNanosecond();
-      h265Pb->mutable_header()->set_camera_timestamp(camera_timestamp);
-      h265Pb->set_measurement_time(image_time.ToSecond());
-      h265Pb->set_format("h265");
-      h265Pb->set_frame_type(static_cast<int>(pdu_pkg->header.frame_type));
-      AINFO << "Port: " << port_
-            << ", received frame size: " << ntohl(pdu_pkg->header.frame_size)
-            << ", frame type: " << static_cast<int>(pdu_pkg->header.frame_type)
-            << ", PhyNo: " << static_cast<int>(pdu_pkg->header.PhyNo)
-            << ", frame id: " << frame_id;
-
-      frame_len = ntohl(pdu_pkg->header.frame_size);
-      total = static_cast<int>(frame_len);
-      frame_data = &buf_[0];
-      continue;
-    }
-    // Receive camera frame data
-    if (total > 0) {
-      pkg_len = static_cast<int>(pdu_len - sizeof(RtpHeader));
-      memcpy(frame_data, pdu_data + sizeof(RtpHeader), pkg_len);
-      total -= pkg_len;
-      frame_data += pkg_len;
-      // AINFO << "receive pkg data " << pkg_len << "/" << total << "/"
-      // << frame_len;
-    }
-    if (total <= 0) {
-      total = 0;
-      // AINFO << "receive frame data " << pkg_len << "/" << total << "/"
-      // << frame_len;
-      if (frame_len > 0) {
-        h265Pb->set_data(buf_, frame_len);
-        break;
-      }
-      AERROR << "Error! frame info is wrong. frame length: " << frame_len;
-    }
-  } while (true);
-
-  return 0;
+  }
+  return RECEIVE_FAIL;
 }
 
 bool SocketInput::InputAvailable(int timeout) {
-  (void)timeout;
   struct pollfd fds[1];
   fds[0].fd = sockfd_;
   fds[0].events = POLLIN;
@@ -224,7 +152,7 @@ bool SocketInput::InputAvailable(int timeout) {
 
   // poll() until input available
   do {
-    int ret = poll(fds, 1, POLL_TIMEOUT);
+    int ret = poll(fds, 1, timeout);
     if (ret < 0) {
       if (errno != EINTR) {
         AERROR << "H265 camera port: " << port_

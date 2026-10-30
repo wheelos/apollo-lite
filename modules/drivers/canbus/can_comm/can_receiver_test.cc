@@ -18,8 +18,9 @@
 
 #include "gtest/gtest.h"
 
-#include "wheelos_msgs/chassis_msgs/chassis_detail.pb.h"
 #include "wheelos_msgs/basic_msgs/error_code.pb.h"
+#include "wheelos_msgs/chassis_msgs/chassis_detail.pb.h"
+
 #include "modules/drivers/canbus/can_client/fake/fake_can_client.h"
 #include "modules/drivers/canbus/can_comm/message_manager.h"
 
@@ -27,7 +28,7 @@ namespace apollo {
 namespace drivers {
 namespace canbus {
 
-TEST(CanReceiverTest, ReceiveOne) {
+TEST(CanReceiverTest, StartsAndStopsReceiverThread) {
   cyber::Init("can_receiver_test");
   can::FakeCanClient can_client;
   MessageManager<::apollo::canbus::ChassisDetail> pm;
@@ -38,7 +39,7 @@ TEST(CanReceiverTest, ReceiveOne) {
   EXPECT_TRUE(receiver.IsRunning());
   receiver.Stop();
   EXPECT_FALSE(receiver.IsRunning());
-  // cyber::Clear();
+  cyber::Clear();
 }
 
 }  // namespace canbus

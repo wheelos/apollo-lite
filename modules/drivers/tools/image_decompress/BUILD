@@ -26,15 +26,26 @@ filegroup(
 )
 
 cc_library(
+    name = "image_decoder",
+    srcs = ["image_decoder.cc"],
+    hdrs = ["image_decoder.h"],
+    deps = [
+        "@core//cyber",
+        "@opencv//:imgcodecs",
+        "@opencv//:imgproc",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
+    ],
+)
+
+cc_library(
     name = "image_decompress_lib",
     srcs = ["image_decompress.cc"],
     hdrs = ["image_decompress.h"],
     copts = ['-DMODULE_NAME=\\"image_decompress\\"'],
     deps = [
+        ":image_decoder",
         "//modules/drivers/tools/image_decompress/proto:config_cc_proto",
         "@core//cyber",
-        "@opencv//:imgcodecs",
-        "@opencv//:imgproc",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
@@ -47,8 +58,9 @@ cc_test(
     size = "small",
     srcs = ["image_decompress_test.cc"],
     deps = [
-        ":image_decompress_lib",
+        ":image_decoder",
         "@com_google_googletest//:gtest_main",
+        "@opencv//:imgcodecs",
     ],
 )
 

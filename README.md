@@ -182,6 +182,23 @@ Then build the cyber runtime targets from this workspace:
 
 This builds the stable `@core//cyber` runtime surface: `cyber_core`, `mainboard`, and the `cyber_tools` binaries used by the repo.
 
+## Selected product builds
+
+Inside the managed development container, select a product instead of recursively
+building every module:
+
+```bash
+bash apollo.sh profiles
+bash apollo.sh build --product=devkit-x86 --show
+bash apollo.sh build --product=devkit-x86
+```
+
+`--show` displays the effective Bazel configuration and outputs without compiling.
+See [product builds](tools/products/README.md) for custom hardware/module selection
+and resource limits. The presets are example build inventories, not qualified
+runtime deployments. Legacy commands remain available; `build --all` explicitly
+requests a full build.
+
 ---
 
 ## Copyright and License

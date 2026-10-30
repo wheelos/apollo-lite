@@ -24,6 +24,8 @@
 
 #include "gtest/gtest.h"
 
+#include "modules/simulation/backend/kinematic_backend.h"
+
 namespace apollo {
 namespace simulation {
 namespace {
@@ -224,6 +226,70 @@ TEST(SimulationEngineTest, RejectsInvalidPhysicsDt) {
   EXPECT_TRUE(engine.SetPhysicsDt(0.001));
 }
 
+TEST(KinematicBackendTest, RejectsNonFiniteStep) {
+  KinematicBackend backend;
+  ASSERT_TRUE(backend.Init(""));
+
+  EXPECT_FALSE(backend.Step(std::numeric_limits<double>::quiet_NaN()));
+  EXPECT_FALSE(backend.Step(std::numeric_limits<double>::infinity()));
+  EXPECT_DOUBLE_EQ(backend.SimulationTime(), 0.0);
+}
+
+TEST(KinematicBackendTest, ReverseRollingResistanceSlowsTheVehicle) {
+  KinematicBackend backend;
+  ASSERT_TRUE(backend.Init(""));
+  InitialVehicleState initial_state;
+  initial_state.longitudinal_speed_mps = -20.0;
+  ASSERT_TRUE(backend.Reset(initial_state));
+
+  ASSERT_TRUE(backend.Step(0.02));
+  VehicleState state{};
+  ASSERT_TRUE(backend.GetVehicleState(&state));
+  EXPECT_GT(state.linear_velocity_mps, -20.0);
+}
+
+TEST(KinematicBackendTest, ReverseBrakeReducesSpeedMagnitude) {
+  KinematicBackend backend;
+  ASSERT_TRUE(backend.Init(""));
+  InitialVehicleState initial_state;
+  initial_state.longitudinal_speed_mps = -5.0;
+  ASSERT_TRUE(backend.Reset(initial_state));
+
+  VehicleActuation actuation;
+  actuation.brake_torque_nm = {600.0, 600.0, 600.0, 600.0};
+  ASSERT_TRUE(backend.ApplyActuation(actuation));
+  ASSERT_TRUE(backend.Step(0.02));
+
+  VehicleState state{};
+  ASSERT_TRUE(backend.GetVehicleState(&state));
+  EXPECT_GT(state.linear_velocity_mps, -5.0);
+  EXPECT_LT(state.linear_velocity_mps, 0.0);
+}
+
+TEST(SimulationEngineTest, RejectsOutOfRangePhysicsState) {
+  SimulationEngine engine;
+  ASSERT_TRUE(engine.Init("kinematic", ""));
+  InitialVehicleState initial_state;
+  initial_state.longitudinal_speed_mps = 100.0;
+  ASSERT_TRUE(engine.Reset(initial_state));
+
+  VehicleCommand command{};
+  command.throttle = 1.0;
+  command.gear = VehicleCommand::Gear::GEAR_DRIVE;
+  EXPECT_FALSE(engine.Step(command, 0.02));
+}
+
+TEST(SimulationEngineTest, RejectsNonIntegralControlStepWithoutAdvancing) {
+  SimulationEngine engine;
+  ASSERT_TRUE(engine.Init("kinematic", ""));
+
+  VehicleCommand command{};
+  ASSERT_FALSE(engine.Step(command, 0.021));
+  EXPECT_DOUBLE_EQ(engine.Backend()->SimulationTime(), 0.0);
+  ASSERT_TRUE(engine.Step(command, 0.02));
+  EXPECT_DOUBLE_EQ(engine.Backend()->SimulationTime(), 0.02);
+}
+
 TEST(SimulationEngineTest, AppliesFailsafeAfterCommandTimeout) {
   SimulationEngine engine;
   ASSERT_TRUE(engine.Init("kinematic", ""));
@@ -241,6 +307,11 @@ TEST(SimulationEngineTest, AppliesFailsafeAfterCommandTimeout) {
   ASSERT_TRUE(engine.GetVehicleState(&state));
   EXPECT_DOUBLE_EQ(state.throttle_percentage, 0.0);
   EXPECT_DOUBLE_EQ(state.brake_percentage, 50.0);
+
+  ASSERT_TRUE(engine.Step(cmd, 0.02, true));
+  ASSERT_TRUE(engine.GetVehicleState(&state));
+  EXPECT_DOUBLE_EQ(state.throttle_percentage, 80.0);
+  EXPECT_DOUBLE_EQ(state.brake_percentage, 0.0);
 }
 
 }  // namespace simulation

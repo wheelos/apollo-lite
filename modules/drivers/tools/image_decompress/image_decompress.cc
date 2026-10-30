@@ -16,10 +16,9 @@
 
 #include "modules/drivers/tools/image_decompress/image_decompress.h"
 
-#include <vector>
+#include <memory>
 
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/imgproc.hpp"
+#include "modules/drivers/tools/image_decompress/image_decoder.h"
 
 namespace apollo {
 namespace image_decompress {
@@ -33,31 +32,27 @@ bool ImageDecompressComponent::Init() {
   }
   AINFO << "Decompress config: \n" << config_.DebugString();
   writer_ = node_->CreateWriter<Image>(config_.channel_name());
+  if (!writer_) {
+    AERROR << "Failed to create decompressed image writer.";
+    return false;
+  }
   return true;
 }
 
 bool ImageDecompressComponent::Proc(
     const std::shared_ptr<apollo::drivers::CompressedImage>& compressed_image) {
   auto image = std::make_shared<Image>();
-  image->mutable_header()->CopyFrom(compressed_image->header());
-  if (compressed_image->has_measurement_time()) {
-    image->set_measurement_time(compressed_image->measurement_time());
-  } else {
-    image->set_measurement_time(compressed_image->header().timestamp_sec());
+  if (!compressed_image) {
+    AERROR << "Missing compressed image.";
+    return false;
   }
-  std::vector<uint8_t> compressed_raw_data(compressed_image->data().begin(),
-                                           compressed_image->data().end());
-  cv::Mat mat_image = cv::imdecode(compressed_raw_data, cv::IMREAD_COLOR);
-  cv::cvtColor(mat_image, mat_image, cv::COLOR_BGR2RGB);
-  image->set_width(mat_image.cols);
-  image->set_height(mat_image.rows);
-  // Now olny rgb
-  image->set_encoding("rgb8");
-  image->set_step(3 * image->width());
-
-  auto size = mat_image.step * mat_image.rows;
-  image->set_data(&(mat_image.data[0]), size);
-  writer_->Write(image);
+  if (!DecodeImage(*compressed_image, image.get())) {
+    return false;
+  }
+  if (!writer_ || !writer_->Write(image)) {
+    AERROR << "Failed to publish decompressed image.";
+    return false;
+  }
   return true;
 }
 

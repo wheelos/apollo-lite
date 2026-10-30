@@ -16,11 +16,16 @@
 
 #include "modules/drivers/canbus/can_client/can_client_factory.h"
 
-#include "modules/drivers/canbus/can_client/fake/fake_can_client.h"
+#include <memory>
 
 #include "cyber/common/log.h"
 #include "modules/common/util/util.h"
+#ifdef CANBUS_WITH_FAKE
+#include "modules/drivers/canbus/can_client/fake/fake_can_client.h"
+#endif
+#ifdef CANBUS_WITH_SOCKET
 #include "modules/drivers/canbus/can_client/socket/socket_can_client_raw.h"
+#endif
 
 namespace apollo {
 namespace drivers {
@@ -30,10 +35,14 @@ CanClientFactory::CanClientFactory() {}
 
 void CanClientFactory::RegisterCanClients() {
   AINFO << "CanClientFactory::RegisterCanClients";
+#ifdef CANBUS_WITH_FAKE
   Register(CANCardParameter::FAKE_CAN,
            []() -> CanClient* { return new can::FakeCanClient(); });
+#endif
+#ifdef CANBUS_WITH_SOCKET
   Register(CANCardParameter::SOCKET_CAN_RAW,
            []() -> CanClient* { return new can::SocketCanClientRaw(); });
+#endif
 }
 
 std::unique_ptr<CanClient> CanClientFactory::CreateCANClient(

@@ -33,9 +33,8 @@ DEFINE_int64(min_cmd_interval, 5, "Minimum control command interval in ms.");
 DEFINE_bool(enable_chassis_detail_pub, false, "Chassis Detail message publish");
 
 // canbus test files
-DEFINE_string(canbus_test_file,
-              "/apollo/modules/canbus/testdata/canbus_test.pb.txt",
-              "canbus tester input test file, in ControlCommand pb format.");
+DEFINE_string(canbus_test_file, "",
+              "ControlCommand protobuf text file published by canbus_tester.");
 
 // enable receiving guardian command
 // TODO(QiL) : depreciate this after test

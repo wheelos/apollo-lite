@@ -17,88 +17,51 @@
 
 #include "modules/drivers/gnss/util/data_buffer.h"
 
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
 #include "gtest/gtest.h"
 
 namespace apollo {
 namespace drivers {
 namespace gnss {
 
-TEST(DataBufferTest, ConstructorDefaultCapacity) {
-  DataBuffer buffer;
-  EXPECT_EQ(buffer.Capacity(), 1024);
-  EXPECT_EQ(buffer.Size(), 0);
+TEST(DataBufferTest, AppendsSearchesAndRetrievesBytes) {
+  DataBuffer buffer(8);
+  buffer.Append("abc");
+
+  EXPECT_EQ("abc", buffer.Peek());
+  const auto match = buffer.Find("bc");
+  ASSERT_TRUE(match.has_value());
+  EXPECT_EQ(1u, *match);
+  EXPECT_FALSE(buffer.Find(""));
+  const auto first = buffer.Poll();
+  ASSERT_TRUE(first.has_value());
+  EXPECT_EQ('a', *first);
+  EXPECT_EQ((std::vector<uint8_t>{'b', 'c'}), buffer.RetrieveAsVector(2));
   EXPECT_TRUE(buffer.IsEmpty());
+  EXPECT_FALSE(buffer.Poll().has_value());
 }
 
-TEST(DataBufferTest, ConstructorCustomCapacity) {
-  DataBuffer buffer(512);
-  EXPECT_EQ(buffer.Capacity(), 512);
-  EXPECT_EQ(buffer.Size(), 0);
-  EXPECT_TRUE(buffer.IsEmpty());
+TEST(DataBufferTest, PreservesUnreadBytesWhenCompactingAndGrowing) {
+  DataBuffer buffer(8);
+  buffer.Append("abcdefgh");
+  buffer.Drain(4);
+  buffer.Append("ijk");
+  EXPECT_EQ("efghijk", buffer.Peek());
+
+  buffer.Append("lmnopqrst");
+  EXPECT_EQ("efghijklmnopqrst", buffer.Peek());
 }
 
-TEST(DataBufferTest, AppendString) {
-  DataBuffer buffer(10);
-  EXPECT_TRUE(buffer.Append("hello"));
-  EXPECT_EQ(buffer.Size(), 5);
-  EXPECT_FALSE(buffer.IsEmpty());
-  EXPECT_TRUE(buffer.Append(" world"));
-  EXPECT_EQ(buffer.Size(), 10);
-  EXPECT_FALSE(buffer.Append("!"));  // Capacity reached
-  EXPECT_EQ(buffer.Size(), 10);
-}
-
-TEST(DataBufferTest, Capacity) {
-  DataBuffer buffer1;
-  EXPECT_EQ(buffer1.Capacity(), 1024);
-  DataBuffer buffer2(256);
-  EXPECT_EQ(buffer2.Capacity(), 256);
-}
-
-TEST(DataBufferTest, IsEmpty) {
-  DataBuffer buffer;
-  EXPECT_TRUE(buffer.IsEmpty());
-  buffer.Append("data");
-  EXPECT_FALSE(buffer.IsEmpty());
-  buffer.Read(new uint8_t[4], 4);
-  EXPECT_TRUE(buffer.IsEmpty());
-}
-
-TEST(DataBufferTest, CanAppend) {
-  DataBuffer buffer(10);
-  EXPECT_TRUE(buffer.CanAppend(5));
-  EXPECT_TRUE(buffer.CanAppend(10));
-  buffer.Append("abcdef");
-  EXPECT_TRUE(buffer.CanAppend(4));
-  EXPECT_FALSE(buffer.CanAppend(5));
-}
-
-TEST(DataBufferTest, FetchSuccess) {
-  DataBuffer buffer;
-  buffer.Append("abcdef");
-  uint8_t output[3];
-  EXPECT_TRUE(buffer.Read(output, 3));
-  EXPECT_EQ(std::string(output, output + 3), "abc");
-  EXPECT_EQ(buffer.Size(), 3);
-  uint8_t remaining_output[3];
-  EXPECT_TRUE(buffer.Read(remaining_output, 3));
-  EXPECT_EQ(std::string(remaining_output, remaining_output + 3), "def");
-  EXPECT_TRUE(buffer.IsEmpty());
-}
-
-TEST(DataBufferTest, FetchNotEnoughData) {
+TEST(DataBufferTest, RejectsOverreadWithoutChangingData) {
   DataBuffer buffer;
   buffer.Append("abc");
-  uint8_t output[4];
-  EXPECT_FALSE(buffer.Read(output, 4));
-  EXPECT_EQ(buffer.Size(), 3);
-}
 
-TEST(DataBufferTest, FetchEmptyBuffer) {
-  DataBuffer buffer;
-  uint8_t output[1];
-  EXPECT_FALSE(buffer.Read(output, 1));
-  EXPECT_TRUE(buffer.IsEmpty());
+  EXPECT_THROW(buffer.RetrieveAsVector(4), std::out_of_range);
+  EXPECT_EQ("abc", buffer.Peek());
 }
 
 }  // namespace gnss

@@ -31,10 +31,10 @@
 #include "Eigen/Eigen"
 
 #include "modules/drivers/lidar/proto/lidar_unified_component_config.pb.h"
+#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
 #include "cyber/cyber.h"
 #include "modules/drivers/lidar/processor/common/pod_pointcloud_view.h"
-#include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 
 #ifndef FRIEND_TEST
 #define FRIEND_TEST(test_case_name, test_name) \
@@ -57,8 +57,7 @@ namespace lidar {
 class LidarUnifiedComponent
     : public apollo::cyber::Component<::apollo::drivers::PointCloud> {
  public:
-  using PointCloudConstPtr =
-      std::shared_ptr<const PointCloudView>;
+  using PointCloudConstPtr = std::shared_ptr<const PointCloudView>;
   using PointCloudMessage = ::apollo::drivers::PointCloud;
   LidarUnifiedComponent() = default;
   ~LidarUnifiedComponent() override;
@@ -83,13 +82,7 @@ class LidarUnifiedComponent
   FRIEND_TEST(LidarUnifiedComponentTest,
               UpdatesLargeFixedDelayWhenInnovationIsWithinLimit);
   FRIEND_TEST(LidarUnifiedComponentTest,
-              CollectNearestFramesSkipsLowQualityAuxiliary);
-  FRIEND_TEST(LidarUnifiedComponentTest,
-              CollectNearestFramesMatchesThreeSensors);
-  FRIEND_TEST(LidarUnifiedComponentTest,
-              CollectNearestFramesAllowsMissingAuxiliary);
-  FRIEND_TEST(LidarUnifiedComponentTest,
-              CollectNearestFramesFailsStrictMissingAuxiliary);
+              CollectNearestFramesHonorsAuxiliaryPolicy);
   FRIEND_TEST(LidarUnifiedComponentTest, RejectsDuplicateAuxiliaryTopics);
   FRIEND_TEST(LidarUnifiedComponentTest, RejectsImpossibleScanDurations);
   FRIEND_TEST(LidarUnifiedComponentTest, DoesNotPublishEmptyFusedPointCloud);

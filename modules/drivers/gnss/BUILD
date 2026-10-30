@@ -53,6 +53,14 @@ filegroup(
 )
 
 filegroup(
+    name = "profile_runtime_data",
+    srcs = glob([
+        "dag/*.dag",
+        "launch/*.launch",
+    ]),
+)
+
+filegroup(
     name = "runtime_data",
     srcs = glob([
         "conf/*.txt",

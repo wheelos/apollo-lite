@@ -17,16 +17,17 @@
 #pragma once
 
 #include <atomic>
-#include <cmath>
-#include <future>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
+
+#include "modules/drivers/microphone/proto/audio.pb.h"
+#include "modules/drivers/microphone/proto/microphone_config.pb.h"
 
 #include "cyber/cyber.h"
 #include "modules/common/util/message_util.h"
-#include "modules/drivers/microphone/proto/audio.pb.h"
-#include "modules/drivers/microphone/proto/microphone_config.pb.h"
+#include "modules/drivers/microphone/audio_assembler.h"
 #include "modules/drivers/microphone/respeaker.h"
 
 namespace apollo {
@@ -48,21 +49,16 @@ class MicrophoneComponent : public Component<> {
 
  private:
   void run();
-  void fill_channel_data(int chunk_i);
-
-  // Configuration
-  int n_chunks_, n_channels_, chunk_, chunk_size_, n_chunk_,
-      sample_width_;
+  void Clear() override;
 
   // class data
-  std::shared_ptr<AudioData> audio_data_ptr_;
+  AudioAssembler assembler_;
   std::shared_ptr<Writer<AudioData>> writer_ptr_;
   std::unique_ptr<Respeaker> microphone_device_ptr_;
-  std::vector<std::string *> channel_data_ptrs_;
   std::shared_ptr<MicrophoneConfig> microphone_config_ptr_;
-  char *buffer_;
+  std::vector<char> buffer_;
 
-  std::future<void> async_result_;
+  std::thread capture_thread_;
   std::atomic<bool> running_ = {false};
 };
 

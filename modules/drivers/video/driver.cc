@@ -48,9 +48,9 @@ bool CameraDriver::PollByFrame(std::shared_ptr<CompressedImage> h265Pb) {
   return true;
 }
 
-void CameraDriver::Init() {
+bool CameraDriver::Init() {
   input_.reset(new SocketInput());
-  input_->Init(config_.udp_port());
+  return input_->Init(config_.udp_port());
 }
 
 }  // namespace video

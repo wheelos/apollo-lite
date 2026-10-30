@@ -30,14 +30,14 @@ Quality policy, local object relations, robust ground and temporal processing
 are not enabled implicitly. Full candidates, classification-use candidates and
 measured occupancy must continue to be evaluated separately.
 
-The checked-in [CPU workspace snapshot](../perception_diagnostics/validation/cpu_workspace_v1.json)
+The checked-in [CPU workspace snapshot](../tools/perception_diagnostics/validation/cpu_workspace_v1.json)
 records 51 frames / 204 four-mode payloads unchanged except latency, 65 C++
 contract cases, two Cyber cases and 25 diagnostic Python cases. With identical
 module `-O2` settings, three development-frame NORMAL medians decreased from
 97.97-119.85 ms to 72.74-79.69 ms. These are fusion-only measurements, not
 inference time, population P99 or a vehicle deadline guarantee. Earlier
 negative quality baselines and subsequent opt-in results remain in the
-[independent diagnostics](../perception_diagnostics/README.md).
+[independent diagnostics](../tools/perception_diagnostics/README.md).
 
 Large datasets, engines, replay payloads and viewer bundles are local evidence,
 not part of this source baseline. Their fingerprints and locations are retained
@@ -119,7 +119,7 @@ This is a separate behavior experiment, not an equivalent execution switch;
 it neither enables semantic partitioning nor changes the ground estimator.
 
 The CPU architecture regression and controlled comparison are recorded in
-[`../perception_diagnostics/validation/cpu_workspace_v1.json`](../perception_diagnostics/validation/cpu_workspace_v1.json).
+[`../tools/perception_diagnostics/validation/cpu_workspace_v1.json`](../tools/perception_diagnostics/validation/cpu_workspace_v1.json).
 The benchmark optimizes fusion sources with `-O2`, keeping cached dependency
 settings fixed; it is not a whole-stack release or model-inference benchmark.
 
@@ -404,7 +404,7 @@ bazel-bin/modules/lidar_fusion/replay \
   /path/to/new-inputs /path/to/new-results \
   /path/to/pointpillar.plan /path/to/rangeret.engine \
   0.00392156862745098 0.00392156862745098
-python3 modules/perception_diagnostics/summarize_replay.py \
+python3 modules/tools/perception_diagnostics/summarize_replay.py \
   --input /path/to/new-inputs --results /path/to/new-results \
   --output /path/to/new-report.json
 ```
@@ -433,7 +433,7 @@ protobufs, a CSV for all four modes, frozen arguments and configuration. It chec
 input immutability, point mapping, source health, occupied/free consistency,
 conflict flags and deliberate wrong-sweep rejection. Outputs refuse overwrite.
 Visualization and independent evaluation now belong to
-[`perception_diagnostics`](../perception_diagnostics/README.md); the inference
+[`perception_diagnostics`](../tools/perception_diagnostics/README.md); the inference
 runner no longer renders graphics. Historical baseline SVGs remain unchanged.
 The summarizer verifies complete sample/mode coverage and freezes source,
 input, executable, engines and result hashes.
@@ -493,7 +493,7 @@ runner now saves `.single.pb` as the same-candidate-config, no-history reference
 alongside clean `.temporal.pb` and detector-dropout `.dropout.pb` outputs.
 Its CSV records all three fusion times and object/unknown counts.
 
-`../perception_diagnostics/evaluate_baseline.py` audits saved protobufs independently of the fusion
+`../tools/perception_diagnostics/evaluate_baseline.py` audits saved protobufs independently of the fusion
 implementation: raw semantic/detection preservation, current-point-derived
 measured occupancy, references, conflicts, no unverified FREE, complete mode
 coverage and identical measured occupancy across temporal/dropout variants.
@@ -507,12 +507,12 @@ protoc -I . -I pkgs/wheelos_msgs --include_imports \
   modules/lidar_fusion/proto/lidar_fusion.proto \
   modules/lidar_semantic_segmentation/proto/lidar_semantic_segmentation.proto \
   pkgs/wheelos_msgs/wheelos_msgs/sensor_msgs/pointcloud.proto
-python3 modules/perception_diagnostics/evaluate_baseline.py \
+python3 modules/tools/perception_diagnostics/evaluate_baseline.py \
   --input /path/to/full-inputs --results /path/to/full-results \
   --temporal-input /path/to/consecutive-inputs \
   --temporal-results /path/to/temporal-results \
   --schema /path/to/schema.pb --output /path/to/new-report
-python3 -m unittest discover -s modules/perception_diagnostics \
+python3 -m unittest discover -s modules/tools/perception_diagnostics \
   -p evaluate_baseline_test.py -v
 ```
 

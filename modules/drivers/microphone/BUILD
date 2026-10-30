@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools:cpplint.bzl", "cpplint")
 load("//tools/install:install.bzl", "install")
 
@@ -51,11 +51,12 @@ cc_library(
     hdrs = ["microphone_component.h"],
     copts = MICROPHONE_COPTS,
     deps = [
-        "@wheelos_common//modules/common/util:util_tool",
+        ":audio_assembler",
         "//modules/drivers/microphone:respeaker",
         "//modules/drivers/microphone/proto:audio_cc_proto",
         "//modules/drivers/microphone/proto:microphone_config_cc_proto",
         "@core//cyber",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
     alwayslink = True,
 )
@@ -69,6 +70,27 @@ cc_library(
         "//modules/drivers/microphone/proto:microphone_config_cc_proto",
         "@core//cyber",
         "@portaudio",
+    ],
+)
+
+cc_library(
+    name = "audio_assembler",
+    srcs = ["audio_assembler.cc"],
+    hdrs = ["audio_assembler.h"],
+    deps = [
+        "//modules/drivers/microphone/proto:audio_cc_proto",
+        "//modules/drivers/microphone/proto:microphone_config_cc_proto",
+        "@core//cyber",
+    ],
+)
+
+cc_test(
+    name = "audio_assembler_test",
+    size = "small",
+    srcs = ["audio_assembler_test.cc"],
+    deps = [
+        ":audio_assembler",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

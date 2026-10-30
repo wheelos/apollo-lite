@@ -90,6 +90,7 @@ cc_library(
     ]),
     includes = ["tensorrt/include"],
     linkstatic = 0,
+    deps = ["@cuda//:cuda_runtime"],
 )
 """
     repository_ctx.file("BUILD", build_content)
@@ -138,6 +139,7 @@ cc_library(
     ]),
     includes = ["tensorrt/include"],
     linkstatic = 0,
+    deps = ["@cuda//:cuda_runtime"],
 )
 """
     repository_ctx.file("BUILD", build_content)
