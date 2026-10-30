@@ -100,7 +100,7 @@ bool KinematicBackend::ApplyActuation(const VehicleActuation& actuation) {
 }
 
 bool KinematicBackend::Step(double dt_sec) {
-  if (dt_sec <= 0.0) {
+  if (!std::isfinite(dt_sec) || dt_sec <= 0.0) {
     return false;
   }
 
@@ -123,9 +123,9 @@ bool KinematicBackend::Step(double dt_sec) {
   const double rolling_friction_coeff = 0.015;
   const double g = 9.81;
   const double aero_drag_coeff = 0.35;
-  double resistance =
+  const double resistance =
       mass_kg_ * g * rolling_friction_coeff +
-      0.5 * aero_drag_coeff * 1.225 * speed_mps_ * std::abs(speed_mps_);
+      0.5 * aero_drag_coeff * 1.225 * speed_mps_ * speed_mps_;
 
   double net_force = drive_force;
   if (speed_mps_ > 0.0) {

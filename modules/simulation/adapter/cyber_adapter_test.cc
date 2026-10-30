@@ -17,6 +17,9 @@
 
 #include "modules/simulation/adapter/cyber_adapter.h"
 
+#include <cmath>
+#include <limits>
+
 #include "gtest/gtest.h"
 
 #include "modules/common/configs/config_gflags.h"
@@ -24,6 +27,45 @@
 
 namespace apollo {
 namespace simulation {
+
+TEST(CyberAdapterTest, ConvertsControlCommandUnitsAndGear) {
+  apollo::control::ControlCommand message;
+  message.mutable_header()->set_timestamp_sec(12.5);
+  message.mutable_header()->set_sequence_num(7);
+  message.set_throttle(50.0);
+  message.set_brake(25.0);
+  message.set_steering_target(-50.0);
+  message.set_steering_rate(20.0);
+  message.set_acceleration(1.5);
+  message.set_speed(4.0);
+  message.set_gear_location(apollo::canbus::Chassis::GEAR_REVERSE);
+
+  VehicleCommand command;
+  CyberAdapter::FromControlCommand(message, &command, 0.6);
+
+  EXPECT_DOUBLE_EQ(command.timestamp_sec, 12.5);
+  EXPECT_EQ(command.sequence_num, 7U);
+  EXPECT_DOUBLE_EQ(command.throttle, 0.5);
+  EXPECT_DOUBLE_EQ(command.brake, 0.25);
+  EXPECT_DOUBLE_EQ(command.front_steering_rad, -0.3);
+  EXPECT_DOUBLE_EQ(command.steering_rate_radps, 0.12);
+  EXPECT_DOUBLE_EQ(command.target_acceleration_mps2, 1.5);
+  EXPECT_DOUBLE_EQ(command.target_speed_mps, 4.0);
+  EXPECT_EQ(command.gear, VehicleCommand::Gear::GEAR_REVERSE);
+  EXPECT_FALSE(command.emergency_stop);
+}
+
+TEST(CyberAdapterTest, InvalidControlCommandRequestsEmergencyBrake) {
+  apollo::control::ControlCommand message;
+  message.set_throttle(std::numeric_limits<double>::quiet_NaN());
+
+  VehicleCommand command;
+  CyberAdapter::FromControlCommand(message, &command);
+
+  EXPECT_TRUE(command.emergency_stop);
+  EXPECT_DOUBLE_EQ(command.throttle, 0.0);
+  EXPECT_DOUBLE_EQ(command.brake, 1.0);
+}
 
 TEST(CyberAdapterTest, FeedsCommonVehicleStateFromGroundTruth) {
   const bool previous_map_reference_mode = FLAGS_enable_map_reference_unify;
@@ -63,6 +105,18 @@ TEST(CyberAdapterTest, FeedsCommonVehicleStateFromGroundTruth) {
   EXPECT_NEAR(common_state.y(), -3.0, 1e-12);
 
   FLAGS_enable_map_reference_unify = previous_map_reference_mode;
+}
+
+TEST(CyberAdapterTest, ConvertsOrientationToApolloVehicleFrame) {
+  VehicleState state;
+  state.qw = 1.0;
+
+  apollo::localization::LocalizationEstimate localization;
+  CyberAdapter::ToLocalization(state, &localization);
+
+  const double sqrt_half = std::sqrt(0.5);
+  EXPECT_NEAR(localization.pose().orientation().qw(), sqrt_half, 1e-12);
+  EXPECT_NEAR(localization.pose().orientation().qz(), -sqrt_half, 1e-12);
 }
 
 }  // namespace simulation

@@ -88,7 +88,10 @@ bool SimulationEngine::Init(const std::string& backend_type,
     return false;
   }
 
-  Reset(0.0, 0.0, 0.0);
+  if (!Reset(InitialVehicleState{})) {
+    AERROR << "Failed to reset backend to its initial state.";
+    return false;
+  }
   return true;
 }
 
@@ -197,19 +200,6 @@ bool SimulationEngine::Step(const VehicleCommand& cmd, double control_dt_sec,
     }
   }
 
-  current_state_.sequence_num = ++step_count_;
-  odometer_m_ += std::hypot(current_state_.x - last_position_x_,
-                            current_state_.y - last_position_y_);
-  last_position_x_ = current_state_.x;
-  last_position_y_ = current_state_.y;
-  current_state_.odometer_m = odometer_m_;
-  current_state_.current_gear = active_cmd.gear;
-  current_state_.steering_percentage_cmd =
-      active_cmd.front_steering_rad / max_steer_angle_rad_ * 100.0;
-  current_state_.throttle_percentage = active_cmd.throttle * 100.0;
-  current_state_.throttle_percentage_cmd = current_state_.throttle_percentage;
-  current_state_.brake_percentage = active_cmd.brake * 100.0;
-  current_state_.brake_percentage_cmd = current_state_.brake_percentage;
   if (current_state_.is_collision) {
     AWARN_EVERY(100) << "Simulation collision detected at t="
                      << current_state_.timestamp_sec << ", position=("
@@ -229,7 +219,21 @@ bool SimulationEngine::Step(const VehicleCommand& cmd, double control_dt_sec,
            << ", " << current_state_.y << ", " << current_state_.z
            << "), velocity=" << current_state_.linear_velocity_mps
            << ", yaw_rate=" << current_state_.angular_velocity_yaw_radps;
+    return false;
   }
+  current_state_.sequence_num = ++step_count_;
+  odometer_m_ += std::hypot(current_state_.x - last_position_x_,
+                            current_state_.y - last_position_y_);
+  last_position_x_ = current_state_.x;
+  last_position_y_ = current_state_.y;
+  current_state_.odometer_m = odometer_m_;
+  current_state_.current_gear = active_cmd.gear;
+  current_state_.steering_percentage_cmd =
+      active_cmd.front_steering_rad / max_steer_angle_rad_ * 100.0;
+  current_state_.throttle_percentage = active_cmd.throttle * 100.0;
+  current_state_.throttle_percentage_cmd = current_state_.throttle_percentage;
+  current_state_.brake_percentage = active_cmd.brake * 100.0;
+  current_state_.brake_percentage_cmd = current_state_.brake_percentage;
   if (FLAGS_sim_debug_log && FLAGS_sim_debug_log_interval > 0 &&
       step_count_ % FLAGS_sim_debug_log_interval == 0) {
     AINFO << "Simulation debug: t=" << current_state_.timestamp_sec

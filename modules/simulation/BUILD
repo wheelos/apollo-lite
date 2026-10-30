@@ -176,31 +176,6 @@ cc_test(
     ],
 )
 
-cc_test(
-    name = "simulation_control_test",
-    size = "small",
-    srcs = ["simulation_control_test.cc"],
-    copts = SIMULATION_COPTS,
-    data = [
-        ":runtime_data",
-        "//modules/control:test_data",
-    ],
-    deps = [
-        ":cyber_adapter",
-        ":simulation_engine",
-        "@wheelos_common//modules/common/configs:config_gflags",
-        "//modules/control/common:control_gflags",
-        "//modules/control/common:dependency_injector",
-        "//modules/control/controller:controller_agent",
-        "//modules/control/proto:control_conf_cc_proto",
-        "@com_google_googletest//:gtest_main",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
-    ],
-)
-
 filegroup(
     name = "runtime_data",
     srcs = glob([

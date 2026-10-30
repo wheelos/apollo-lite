@@ -150,9 +150,11 @@ bazel test \
   //modules/simulation:ackermann_model_test \
   //modules/simulation:mujoco_backend_test \
   //modules/simulation:cyber_adapter_test \
-  //modules/simulation:simulation_engine_test \
-  //modules/simulation:simulation_control_test
+  //modules/simulation:simulation_engine_test
 ```
+
+Cyber topic and controller-to-vehicle end-to-end coverage lives in the
+standalone `integration_tests/simulation` repository.
 
 ## Troubleshooting
 
