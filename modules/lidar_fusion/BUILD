@@ -60,12 +60,24 @@ cc_library(
 )
 
 cc_library(
+    name = "pod_publication",
+    srcs = ["publication/pod.cc"],
+    hdrs = ["publication/pod.h"],
+    deps = [
+        "//modules/lidar_fusion/proto:lidar_fusion_cc_proto",
+        "@com_google_protobuf//:protobuf",
+        "@core//cyber",
+    ],
+)
+
+cc_library(
     name = "lidar_fusion_component_lib",
     srcs = ["component/lidar_fusion_component.cc"],
     hdrs = ["component/lidar_fusion_component.h"],
     copts = ['-DMODULE_NAME=\\"lidar_fusion\\"'],
     deps = [
         ":frame_buffer",
+        ":pod_publication",
         ":temporal",
         "@core//cyber",
     ],
@@ -78,6 +90,16 @@ cc_binary(
     deps = [
         ":fusion",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_binary(
+    name = "publication_probe",
+    srcs = ["tools/publication_probe.cc"],
+    tags = ["manual"],
+    deps = [
+        ":pod_publication",
+        "@core//cyber",
     ],
 )
 
@@ -162,6 +184,17 @@ cc_test(
     deps = [
         ":frame_buffer",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "pod_publication_test",
+    size = "small",
+    srcs = ["publication/pod_test.cc"],
+    deps = [
+        ":pod_publication",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

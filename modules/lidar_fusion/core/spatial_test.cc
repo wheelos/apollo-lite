@@ -44,6 +44,27 @@ TEST(SpatialTest, RequiresVisibilityAndExplicitVehicleLimits) {
   EXPECT_FALSE(ValidateSpatial(c, &error));
 }
 
+TEST(SpatialTest, UnknownViewPreservesPointOrderAndSparseMembership) {
+  auto out = Map();
+  for (uint32_t id : {2U, 999U, 1U, 0U}) {
+    auto* p = out.add_point_evidence();
+    p->set_point_id(id);
+    p->set_finite(true);
+    out.add_point_decision()->set_point_id(id);
+  }
+  auto* unknown = out.add_unknown();
+  for (uint32_t id : {1U, 999U, 1U}) {
+    unknown->add_point_id(id);
+  }
+  FusionConfig c;
+  c.mutable_spatial()->set_point_views(true);
+  EnrichSpatial(c, &out);
+  const auto& view = out.point_view(UNKNOWN_POINTS);
+  ASSERT_EQ(view.point_id_size(), 2);
+  EXPECT_EQ(view.point_id(0), 999U);
+  EXPECT_EQ(view.point_id(1), 1U);
+}
+
 TEST(SpatialTest, RayStopsAtOccluderAndApproximationNeverEnablesFree) {
   auto out = Map();
   auto* wall = out.mutable_space_map()->add_cell();

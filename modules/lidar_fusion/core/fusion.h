@@ -20,6 +20,13 @@ using SemanticFrame = segmentation::LidarSemanticSegmentationResult;
 
 bool SameSweep(const drivers::PointCloud& cloud, const common::Header& header);
 
+// Project only after full consistency/temporal processing. Does not mutate
+// full.
+bool ProjectFunctionalOutput(const FusionConfig& config,
+                             const drivers::PointCloud& cloud,
+                             const FusionOutput& full, FusionOutput* output,
+                             std::string* error);
+
 using GroundPrior = std::vector<Vec3>;
 using ObjectPrior = std::vector<ObjectCandidate>;
 

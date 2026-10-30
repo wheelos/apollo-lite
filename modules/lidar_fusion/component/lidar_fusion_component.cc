@@ -7,6 +7,9 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <utility>
+
+#include "google/protobuf/arena.h"
 
 #include "cyber/common/log.h"
 
@@ -18,6 +21,12 @@ double SteadySeconds() {
   return std::chrono::duration<double>(
              std::chrono::steady_clock::now().time_since_epoch())
       .count();
+}
+
+std::shared_ptr<FusionOutput> MakeOutput() {
+  auto arena = std::make_shared<google::protobuf::Arena>();
+  auto* output = google::protobuf::Arena::Create<FusionOutput>(arena.get());
+  return std::shared_ptr<FusionOutput>(arena, output);
 }
 
 }  // namespace
@@ -48,7 +57,38 @@ bool LidarFusionComponent::Init() {
       return false;
     }
   }
-  writer_ = node_->CreateWriter<FusionOutput>(config_.output_channel());
+  const auto& publication = config_.publication();
+  if (publication.transport() == CORE_POD) {
+    const auto create = [&](const std::string& channel) {
+      auto writer = node_->CreateWriter<cyber::transport::PodMessage>(channel);
+      return writer == nullptr
+                 ? nullptr
+                 : std::make_unique<FusionPodPublisher>(
+                       std::move(writer), publication.max_pod_frame_bytes());
+    };
+    pod_writer_ = create(config_.output_channel());
+    if (pod_writer_ == nullptr) {
+      return false;
+    }
+    if (!publication.diagnostic_channel().empty()) {
+      pod_diagnostic_writer_ = create(publication.diagnostic_channel());
+      if (pod_diagnostic_writer_ == nullptr) {
+        return false;
+      }
+    }
+  } else {
+    writer_ = node_->CreateWriter<FusionOutput>(config_.output_channel());
+    if (writer_ == nullptr) {
+      return false;
+    }
+    if (!publication.diagnostic_channel().empty()) {
+      diagnostic_writer_ =
+          node_->CreateWriter<FusionOutput>(publication.diagnostic_channel());
+      if (diagnostic_writer_ == nullptr) {
+        return false;
+      }
+    }
+  }
   cloud_reader_ = node_->CreateReader<drivers::PointCloud>(
       config_.pointcloud_channel(),
       [this](const std::shared_ptr<drivers::PointCloud>& message) {
@@ -75,7 +115,7 @@ bool LidarFusionComponent::Init() {
         }
       });
   return cloud_reader_ != nullptr && detection_reader_ != nullptr &&
-         segmentation_reader_ != nullptr && writer_ != nullptr;
+         segmentation_reader_ != nullptr;
 }
 
 void LidarFusionComponent::Clear() {
@@ -92,6 +132,19 @@ void LidarFusionComponent::Clear() {
   if (pose_reader_ != nullptr) {
     pose_reader_->Shutdown();
   }
+}
+
+bool LidarFusionComponent::PublishMain(
+    const std::shared_ptr<FusionOutput>& output) {
+  if (pod_writer_ == nullptr) {
+    return writer_->Write(output);
+  }
+  std::string error;
+  if (pod_writer_->Publish(*output, &error) == PodPublishResult::REJECTED) {
+    AERROR << "LiDAR fusion POD publication failed: " << error;
+    return false;
+  }
+  return true;
 }
 
 bool LidarFusionComponent::Proc() {
@@ -124,7 +177,7 @@ bool LidarFusionComponent::Proc() {
       poses_.pop_front();
     }
   }
-  auto output = std::make_shared<FusionOutput>();
+  auto output = MakeOutput();
   std::string error;
   if (!fusion_.Process(*ready.cloud, ready.detection.get(),
                        ready.segmentation.get(), pose.get(), output.get(),
@@ -138,7 +191,27 @@ bool LidarFusionComponent::Proc() {
   if (queue_overflows > 0) {
     output->add_risk_event(INPUT_QUEUE_OVERFLOW);
   }
-  return writer_->Write(output);
+  if (config_.publication().detail() == FUNCTIONAL_SCENE) {
+    auto scene = MakeOutput();
+    if (!ProjectFunctionalOutput(config_, *ready.cloud, *output, scene.get(),
+                                 &error)) {
+      AERROR << "LiDAR fusion publication rejected: " << error;
+      return false;
+    }
+    const bool published = PublishMain(scene);
+    if (diagnostic_writer_ != nullptr && diagnostic_writer_->HasReader() &&
+        !diagnostic_writer_->Write(output)) {
+      AWARN << "LiDAR fusion diagnostic publication failed";
+    }
+    if (pod_diagnostic_writer_ != nullptr &&
+        pod_diagnostic_writer_->HasReader() &&
+        pod_diagnostic_writer_->Publish(*output, &error) ==
+            PodPublishResult::REJECTED) {
+      AWARN << "LiDAR fusion POD diagnostic publication failed: " << error;
+    }
+    return published;
+  }
+  return PublishMain(output);
 }
 
 }  // namespace lidar_fusion

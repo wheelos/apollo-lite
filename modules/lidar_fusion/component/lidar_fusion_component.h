@@ -10,6 +10,7 @@
 #include "cyber/component/timer_component.h"
 #include "modules/lidar_fusion/core/frame_buffer.h"
 #include "modules/lidar_fusion/core/temporal.h"
+#include "modules/lidar_fusion/publication/pod.h"
 
 namespace apollo {
 namespace lidar_fusion {
@@ -21,6 +22,7 @@ class LidarFusionComponent final : public cyber::TimerComponent {
 
  private:
   void Clear() override;
+  bool PublishMain(const std::shared_ptr<FusionOutput>& output);
   FusionConfig config_;
   StatefulFusion fusion_;
   std::unique_ptr<FrameBuffer> buffer_;
@@ -32,6 +34,9 @@ class LidarFusionComponent final : public cyber::TimerComponent {
   std::shared_ptr<cyber::Reader<LocalPose>> pose_reader_;
   std::deque<std::shared_ptr<const LocalPose>> poses_;
   std::shared_ptr<cyber::Writer<FusionOutput>> writer_;
+  std::shared_ptr<cyber::Writer<FusionOutput>> diagnostic_writer_;
+  std::unique_ptr<FusionPodPublisher> pod_writer_;
+  std::unique_ptr<FusionPodPublisher> pod_diagnostic_writer_;
 };
 
 CYBER_REGISTER_COMPONENT(LidarFusionComponent)
