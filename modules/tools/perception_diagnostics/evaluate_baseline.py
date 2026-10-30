@@ -12,7 +12,7 @@ import statistics
 from collections import Counter
 from pathlib import Path
 
-from proto import Reader
+from proto import Reader, require_full_evidence
 
 
 def require(condition, message):
@@ -67,6 +67,7 @@ def coverage(manifest, rows):
 
 
 def audit_frame(out, config):
+    require_full_evidence(out)
     points, decisions = out.point_evidence, out.point_decision
     require(len(points) == len(decisions), "point/decision size mismatch")
     object_ids = {item.id for item in out.object}
@@ -215,6 +216,7 @@ def main():
         require(digest(args.input / name) == sample["sha256"], "changed cloud")
         frame_path = args.results / (name + ".fusion.pb")
         out = reader.read(frame_path, prefix + "FusionOutput")
+        require_full_evidence(out)
         require(
             out.health.mode == 0 and out.health.det_valid and out.health.seg_valid,
             "NORMAL frame source invalid",
@@ -296,6 +298,7 @@ def main():
         for index, sample in enumerate(temporal_manifest["samples"]):
             path = args.temporal_results / (sample["file"] + suffix)
             out = reader.read(path, prefix + "FusionOutput")
+            require_full_evidence(out)
             if variant != "single":
                 require(
                     out.health.temporal_enabled

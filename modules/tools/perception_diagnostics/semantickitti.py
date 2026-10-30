@@ -13,8 +13,17 @@ from pathlib import Path
 
 import numpy as np
 from evaluate_baseline import audit_frame, coverage, digest, distribution, require
-from nuscenes import UNIFIED, box, enum_names, rates
-from proto import Reader
+from nuscenes import (
+    UNIFIED,
+    box,
+    enum_names,
+    native_fields,
+    object_view,
+    ranking_score,
+    rates,
+    unknown_view,
+)
+from proto import Reader, require_full_evidence
 
 # Official semantic-kitti-api/config/semantic-kitti.yaml learning_map.
 LEARNING_MAP = {
@@ -223,7 +232,7 @@ def instance_counts(candidates, instances, valid):
     available = set(range(len(instances)))
     result = Counter(tp=0, fp=0, fn=0)
     matched = []
-    for candidate in sorted(candidates, key=lambda p: -p["score"]):
+    for candidate in sorted(candidates, key=lambda p: -ranking_score(p)):
         indices = np.flatnonzero(candidate["mask"] & valid)
         best, value = None, 0.0
         for j in sorted(available):
@@ -254,18 +263,26 @@ def instance_counts(candidates, instances, valid):
 
 
 def replay_caches(arguments):
-    if len(arguments) == 7:
-        return None
-    if len(arguments) == 9:
-        return Path(arguments[7]), Path(arguments[8])
-    require(len(arguments) in (4, 5, 6), "unsupported replay arguments")
-    if len(arguments) >= 5:
+    options = arguments[4:]
+    flags = {"--profile", "--shadow-partitions"}
+    cached = len(arguments) in (4, 5, 6) or any(option in flags for option in options)
+    if not cached:
+        if len(arguments) == 7:
+            return None
+        if len(arguments) == 9:
+            return Path(arguments[7]), Path(arguments[8])
+    require(cached and 4 <= len(arguments) <= 7, "unsupported cached replay arguments")
+    if options and not options[0].startswith("--"):
         require(
-            arguments[4].isdigit() and 1 <= int(arguments[4]) <= 100,
+            options[0].isdigit() and 1 <= int(options[0]) <= 100,
             "invalid cached replay repeats",
         )
-    if len(arguments) == 6:
-        require(arguments[5] == "--profile", "invalid cached replay profile option")
+        options = options[1:]
+    require(
+        all(option in flags for option in options)
+        and len(set(options)) == len(options),
+        "invalid cached replay options",
+    )
     return Path(arguments[2]), Path(arguments[2])
 
 
@@ -320,7 +337,8 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
     ]:
         hashes[str(path)] = digest(path)
     labels = {
-        n: enum_names(reader, n) for n in ("Group", "Explanation", "Source", "Reason")
+        n: enum_names(reader, n)
+        for n in ("Group", "UnifiedClass", "Explanation", "Source", "Reason")
     }
     protocol = {
         "semantic": (
@@ -343,6 +361,7 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
         ],
     }
     viewer = {
+        "projection_version": 2,
         "title": "LiDAR fusion: SemanticKITTI sequence 08 diagnostics",
         "banner": (
             "Labeled subset. Green = visible-point enclosure, NOT amodal GT. "
@@ -405,6 +424,7 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
         cloud = reader.read(inputs / name, "apollo.drivers.PointCloud")
         out_path = results / (name + ".fusion.pb")
         out = reader.read(out_path, prefix + "FusionOutput")
+        require_full_evidence(out)
         require(
             out.health.mode == 0 and out.health.det_valid and out.health.seg_valid,
             "NORMAL source invalid",
@@ -527,6 +547,7 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
                     "id": h.detection_index,
                     "score": h.raw_detection.score,
                     "source": "raw PointPillars",
+                    "evidence": native_fields(h),
                 }
             )
             raw.append(item)
@@ -534,24 +555,12 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
                 {**item, "class_id": h.unified_class, "mask": inside_box(points, item)}
             )
         for obj in out.object:
-            item = box(obj)
-            item.update(
-                {
-                    "class": UNIFIED.get(obj.unified_class, "other"),
-                    "id": obj.id,
-                    "source": labels["Source"][obj.source],
-                    "score": obj.raw_score if obj.HasField("raw_score") else 1.0,
-                    "conflict": obj.class_conflict,
-                    "classification_use": obj.classification_use,
-                    "points": len(obj.point_id),
-                    "reason": [labels["Reason"][r] for r in obj.reason],
-                }
-            )
+            item = object_view(obj, labels)
             objects.append(item)
             state = ("INSUFFICIENT", "SUPPORT", "CONFLICT")[obj.consistency]
             score_bin = (
                 "score_lt_0_3"
-                if item["score"] < config.unsupported_score_min
+                if ranking_score(item) < config.unsupported_score_min
                 else "score_ge_0_3"
             )
             candidate_audit[f"{item['source']}:{state}:{score_bin}"] += 1
@@ -569,7 +578,7 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
                 p
                 for p in items
                 if p["class_id"] in (1, 4, 5)
-                and p["score"] >= threshold
+                and ranking_score(p) >= threshold
                 and 0 <= p["center"][0] < 60
                 and -39.68 <= p["center"][1] < 39.68
             ]
@@ -590,7 +599,7 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
                     c
                     for c in candidates
                     if c["source"] != "DET"
-                    or c["score"] >= config.unsupported_score_min
+                    or ranking_score(c) >= config.unsupported_score_min
                 ],
                 0,
             ),
@@ -670,6 +679,8 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
                         int(truth[i]),
                         int(i in trusted_ids),
                         int(identity[i]),
+                        native_fields(p),
+                        native_fields(d),
                     ]
                 )
         viewer["frames"].append(
@@ -684,17 +695,9 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
                 "raw": raw,
                 "objects": objects,
                 "truth": outlines,
-                "unknowns": [
-                    {
-                        "id": u.id,
-                        "polygon": [[v.x, v.y] for v in u.polygon],
-                        "points": len(u.point_id),
-                        "related": list(u.related_object_id),
-                        "source": labels["Source"][u.source],
-                        "reason": [labels["Reason"][r] for r in u.reason],
-                        "point_supported_footprint": u.point_supported_footprint,
-                    }
-                    for u in out.unknown
+                "unknowns": [unknown_view(u, labels) for u in out.unknown],
+                "shadow_partitions": [
+                    native_fields(p) for p in getattr(out, "shadow_partition", ())
                 ],
                 "cells": [
                     [
@@ -723,6 +726,11 @@ def export(inputs, results, schema, output, allow_semantic_oracle=False):
                 },
                 "audit": audit,
                 "detection_model_revision": det.model_revision,
+                "health": native_fields(out.health),
+                "semantic_identity_qualified": (
+                    out.health.seg_valid
+                    and not config.quality.semantic_identity_unverified
+                ),
             }
         )
         for path in (source, label_path, inputs / name, out_path, det_path, seg_path):

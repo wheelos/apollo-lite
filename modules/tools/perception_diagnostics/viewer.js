@@ -25,15 +25,63 @@
     if (fill) { ctx.fillStyle = color + "20"; ctx.fill(); }
   }
   function drawBox(b, color, layer) {
+    const value = {layer, ...b};
+    if (layer === "fused") {
+      value.hypotheses = frame().raw
+        .filter(h => h.evidence && h.evidence.object_id === b.id)
+        .map(h => h.evidence);
+      const evidence = value.hypotheses.map(h => h.association?.semantic_evidence)
+        .filter(s => s !== undefined);
+      value.cross_thing_disagreement = evidence.length
+        ? evidence.some(s => s.cross_thing_disagreement === true) : null;
+      if (value.cross_thing_disagreement && !b.conflict) color = "#c084fc";
+    }
     const [x, y] = b.center, [l, w] = b.size;
     const c = Math.cos(b.yaw), s = Math.sin(b.yaw);
     polygon([[l/2,w/2], [l/2,-w/2], [-l/2,-w/2], [-l/2,w/2]].map(
       ([a, d]) => [x + a*c - d*s, y + a*s + d*c]), color);
-    const p = xy(x, y), nose = xy(x + l/2*c, y + l/2*s);
-    ctx.beginPath(); ctx.moveTo(...p); ctx.lineTo(...nose); ctx.stroke();
+    const p = xy(x, y);
+    if (b.orientation_reliable === true) {
+      const nose = xy(x + l/2*c, y + l/2*s);
+      ctx.beginPath(); ctx.moveTo(...p); ctx.lineTo(...nose); ctx.stroke();
+    }
     ctx.fillStyle = color; ctx.font = "10px sans-serif";
-    ctx.fillText(`${b.class}${b.id !== undefined ? ":" + b.id : ""}`, p[0] + 3, p[1] - 3);
-    hits.push({p, value: {layer, ...b}});
+    ctx.fillText(`${b.class}${b.id !== undefined ? ":" + b.id : ""}${value.cross_thing_disagreement ? " [cross-THING]" : ""}`, p[0] + 3, p[1] - 3);
+    hits.push({p, value});
+  }
+  function drawSupports(f) {
+    const supports = [];
+    if (enabled("partitions")) for (const p of f.shadow_partitions || [])
+      supports.push({layer: "shadow_partition", ...p});
+    if (enabled("alternatives")) for (const raw of f.raw) {
+      const h = raw.evidence, semantic = h?.association?.semantic_evidence;
+      if (!semantic?.cross_thing_disagreement) continue;
+      for (const support of semantic.thing_support || []) {
+        if (support.unified_class === h.unified_class) continue;
+        supports.push({layer: "alternative_thing_support", ...support,
+          detection_index: h.detection_index, detection_class: h.unified_class,
+          core_points: h.association.n_core, identity_qualified: semantic.identity_qualified,
+          source_available: semantic.source_available});
+      }
+    }
+    if (!supports.length) return;
+    const displayed = new Map(f.points.map(p => [p[6], p]));
+    for (const value of supports) {
+      const points = (value.point_id || []).map(id => displayed.get(id)).filter(Boolean);
+      value.displayed_support_points = points.length;
+      value.display_stride = f.stride;
+      const thing = value.layer === "alternative_thing_support" ||
+        value.kind === "PARTITION_THING_SUPPORT";
+      const names = thing ? data.labels.UnifiedClass || {} : data.labels.Group;
+      const label = thing ? value.unified_class : value.group;
+      const color = Object.keys(names).find(id => names[id] === label);
+      ctx.fillStyle = palette[color === undefined ? 0 : Number(color) % palette.length];
+      for (const p of points) {
+        const pos = xy(p[0], p[1]);
+        ctx.fillRect(pos[0] - 1, pos[1] - 1, 3.2, 3.2);
+        hits.push({p: pos, value});
+      }
+    }
   }
   function accept(p) {
     const filter = byId("filter").value;
@@ -75,6 +123,7 @@
       ctx.fillStyle = mode === 2 ? `hsl(${Math.max(0, Math.min(240, 180-p[2]*30))},80%,65%)` : palette[p[mode] % palette.length];
       ctx.fillRect(pos[0], pos[1], 1.6, 1.6);
     }
+    drawSupports(f);
     if (enabled("truth")) for (const b of f.truth) drawBox(b, "#4ade80", "ground_truth");
     if (enabled("raw")) for (const b of f.raw) drawBox(b, "#60a5fa", "raw_detector");
     if (enabled("objects")) for (const b of f.objects) {
@@ -99,7 +148,14 @@
     text("skew", f.camera ? `CAM_FRONT skew ${f.camera_skew === null ? "unknown" : f.camera_skew.toFixed(4) + " s"}` : "No camera in this export");
     text("stats", {sample_token: f.sample_token, display_points: f.points.length,
       original_points: f.original_points, display_stride: f.stride,
-      detection_model_revision: f.detection_model_revision, ...f.audit, accuracy: f.accuracy});
+      detection_model_revision: f.detection_model_revision, health: f.health ?? null,
+      semantic_identity_qualified: f.semantic_identity_qualified ?? null,
+      semantic_core_assessments: f.raw.filter(h =>
+        h.evidence?.association?.semantic_evidence).length,
+      strong_cross_thing_disagreements: f.raw.filter(h =>
+        h.evidence?.association?.semantic_evidence?.cross_thing_disagreement).length,
+      shadow_partitions: (f.shadow_partitions || []).length,
+      ...f.audit, accuracy: f.accuracy});
     text("labels", {group: data.labels.Group, explanation: data.labels.Explanation,
       mapped_semantic: data.semantic_labels});
   }
@@ -126,11 +182,15 @@
       if (!enabled("points") || !accept(p)) continue;
       const pos = xy(p[0], p[1]), d = Math.hypot(pos[0]-at[0], pos[1]-at[1]);
       if (d < distance) {
-        distance = d; best = {point_id: p[6], xyz: p.slice(0,3), raw_semantic: p[3],
+        distance = d; best = {point_id: p[6], xyz: p.slice(0,3),
+          raw_semantic: p[14] ? (p[14].raw_semantic_label ?? null) : p[3],
           group: data.labels.Group[p[4]], explanation: data.labels.Explanation[p[5]],
-          semantic_probability: p[7], object_id: p[8], source: data.labels.Source[p[10]],
+          semantic_probability: p[14] ? (p[14].semantic_probability ?? null) : p[7],
+          object_id: p[8], source: data.labels.Source[p[10]],
           reason: p[9].map(r => data.labels.Reason[r]),
-          mapped_semantic_truth: p[11], visible_instance_id: p[12]};
+          mapped_semantic_truth: p[11] ?? null, trusted: p.length > 12 ? p[12] === 1 : null,
+          visible_instance_id: p[13] ?? null,
+          evidence: p[14] ?? null, decision: p[15] ?? null};
       }
     }
     text("detail", best || "No displayed evidence near this click.");

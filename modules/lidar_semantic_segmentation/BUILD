@@ -208,6 +208,15 @@ cc_test(
 )
 
 cc_binary(
+    name = "project_semantickitti",
+    srcs = ["tools/project_semantickitti.cc"],
+    deps = [
+        ":range_projection",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",
+    ],
+)
+
+cc_binary(
     name = "evaluate_cylinder3d",
     srcs = ["tools/evaluate_cylinder3d.cc"],
     deps = [
