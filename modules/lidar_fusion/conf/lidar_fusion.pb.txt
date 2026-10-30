@@ -3,7 +3,17 @@
 pointcloud_channel: ""
 detection_channel: ""
 segmentation_channel: ""
-output_channel: "/apollo/perception/lidar_fusion"
+output_channel: "/apollo/perception/lidar_fusion/pod"
+# New configurations publish functional scene layers. Older configurations
+# without this block retain the FULL_EVIDENCE wire contract.
+publication {
+  detail: FUNCTIONAL_SCENE
+  transport: CORE_POD
+  max_pod_frame_bytes: 67108864
+  # Subscribers must use the POD adapter, not Reader<FusionOutput>.
+  # Optional full point ledger, published only while a reader is present:
+  # diagnostic_channel: "/apollo/perception/lidar_fusion/pod/diagnostic"
+}
 sensor_frame: ""
 base_frame: "base_link"
 sensor_to_base {

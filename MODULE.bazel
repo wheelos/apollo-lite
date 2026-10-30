@@ -145,3 +145,6 @@ bazel_dep(name = "wheelos_transform", version = "0.1.0")
 bazel_dep(name = "hardware.camera_gst", version = "0.1.0")
 bazel_dep(name = "hardware.image_decompress", version = "0.1.0")
 bazel_dep(name = "hardware.hal", version = "0.1.0")
+bazel_dep(name = "openloc", version = "0.1.0")
+
+include("//modules/localization:openloc.MODULE.bazel")

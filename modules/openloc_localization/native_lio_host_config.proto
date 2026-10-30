@@ -1,0 +1,53 @@
+syntax = "proto2";
+
+package apollo.localization.openloc_diagnostic;
+
+import "wheelos_msgs/basic_msgs/geometry.proto";
+
+message NativeLioParameter {
+  required string name = 1;
+  required double value = 2;
+}
+
+message NativeLioHostConfig {
+  required string imu_topic = 1;
+  required string lidar_topic = 2;
+  required string session = 3;
+  required double imu_measurement_to_unix_offset = 4;
+  required double lidar_measurement_to_unix_offset = 5;
+  required string lidar_frame = 6;
+  required string calibration_id = 7;
+  required apollo.common.Point3D imu_from_lidar_translation = 8;
+  required apollo.common.Quaternion imu_from_lidar_rotation = 9;
+  required double bootstrap_voxel_m = 10;
+  required bool allow_imu_only_initialization = 11;
+  required string journal = 12;
+  // Exactly the numeric profile keys used by the frozen native LIO replay.
+  repeated NativeLioParameter parameter = 13;
+  // Zero preserves synchronous diagnostic parity; otherwise require [5,100].
+  optional uint32 lidar_commit_delay_ms = 14 [default = 0];
+  // Opt-in recorded-data diagnostics only: original bag receive time is
+  // carried in each sensor message header. Never use for live admission.
+  optional bool recorded_receive_time_from_header = 15 [default = false];
+  // Zero preserves synchronous startup; otherwise bound isolated startup [1,500].
+  optional uint32 startup_task_timeout_ms = 16 [default = 0];
+  // Live single-producer streams only. Require consecutive original Header
+  // sequence_num after the first observed baseline; modulo uint32 rollover.
+  // Fails explicitly on a gap/duplicate/regression rather than renumbering it.
+  optional bool require_live_source_sequences = 17 [default = false];
+  optional NativeLioGraphConfig graph = 18;
+}
+
+message NativeLioGraphConfig {
+  required string output_topic = 1;
+  required string motion_error_model_id = 2;
+  required double imu_sample_period_s = 3;
+  required uint32 maximum_error_dimension = 4;
+  required uint32 maximum_memory_rows = 5;
+  required uint32 maximum_snapshots = 6;
+  required double history_duration_s = 7;
+  // Scan reference/commit frontiers are exported regardless of this stride.
+  required uint32 odometry_stride = 8;
+  // Offline graph replay only; ordinary ODOM retains wall freshness.
+  optional bool recorded_source_clock = 9 [default = false];
+}

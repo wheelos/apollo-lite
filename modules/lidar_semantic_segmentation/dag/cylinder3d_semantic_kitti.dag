@@ -1,0 +1,14 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/lidar_semantic_segmentation/libcylinder3d_component_plugin.so"
+  components {
+    class_name: "Cylinder3DComponent"
+    config {
+      name: "cylinder3d_semantic_kitti"
+      config_file_path: "/apollo/modules/lidar_semantic_segmentation/conf/cylinder3d_semantic_kitti.pb.txt"
+      readers {
+        channel: "/apollo/sensor/velodyne64/compensator/PointCloud2"
+        pending_queue_size: 1
+      }
+    }
+  }
+}

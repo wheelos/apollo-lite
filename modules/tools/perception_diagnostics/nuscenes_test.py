@@ -11,7 +11,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
-from nuscenes import box, in_roi, match
+from google.protobuf import descriptor_pb2, descriptor_pool, message_factory
+from nuscenes import box, in_roi, match, object_view
 
 sys.path.insert(
     0, str(Path(__file__).resolve().parents[2] / "lidar_fusion" / "tools")
@@ -21,6 +22,50 @@ from prepare_nuscenes import category, records, rotation  # noqa: E402
 
 def candidate(x=0.0, cls="car", score=0.8):
     return {"center": [x, 0, 0], "class": cls, "score": score}
+
+
+def projection_object():
+    schema = descriptor_pb2.FileDescriptorProto(
+        name="projection.proto", syntax="proto2"
+    )
+    field = descriptor_pb2.FieldDescriptorProto
+    definitions = {
+        "Vec3": [(n, field.TYPE_DOUBLE, None, False) for n in ("x", "y", "z")],
+        "Box": [
+            ("center", field.TYPE_MESSAGE, ".Vec3", False),
+            ("size", field.TYPE_MESSAGE, ".Vec3", False),
+            *[(n, field.TYPE_DOUBLE, None, False) for n in ("qx", "qy", "qz", "qw")],
+        ],
+        "Object": [
+            ("id", field.TYPE_UINT32, None, False),
+            ("box", field.TYPE_MESSAGE, ".Box", False),
+            ("unified_class", field.TYPE_UINT32, None, False),
+            ("source", field.TYPE_UINT32, None, False),
+            ("raw_score", field.TYPE_DOUBLE, None, False),
+            ("class_conflict", field.TYPE_BOOL, None, False),
+            ("classification_use", field.TYPE_UINT32, None, False),
+            ("orientation_reliable", field.TYPE_BOOL, None, False),
+            ("point_id", field.TYPE_UINT32, None, True),
+            ("reason", field.TYPE_UINT32, None, True),
+        ],
+    }
+    for name, fields in definitions.items():
+        message = schema.message_type.add(name=name)
+        for number, (name, kind, message_type, repeated) in enumerate(fields, 1):
+            entry = message.field.add(
+                name=name, number=number, type=kind, label=3 if repeated else 1
+            )
+            if message_type:
+                entry.type_name = message_type
+    pool = descriptor_pool.DescriptorPool()
+    pool.Add(schema)
+    obj = message_factory.GetMessageClass(pool.FindMessageTypeByName("Object"))()
+    obj.box.size.x, obj.box.size.y, obj.box.size.z = 4, 2, 1.5
+    obj.box.qw = 1
+    obj.source = 2
+    obj.classification_use = 1
+    obj.point_id.extend([3, 5])
+    return obj
 
 
 class MatchingTest(unittest.TestCase):
@@ -51,6 +96,40 @@ class MatchingTest(unittest.TestCase):
         config = SimpleNamespace(min_x=-50, max_x=50, min_y=-50, max_y=50)
         self.assertTrue(in_roi(candidate(-50), config))
         self.assertFalse(in_roi(candidate(50), config))
+
+    def test_absent_display_score_retains_historical_matching_order(self):
+        legacy = [candidate(score=1.0), candidate(1, score=0.9)]
+        displayed = [{**legacy[0], "score": None, "ranking_score": 1.0}, legacy[1]]
+        self.assertEqual(match(displayed, [candidate()]), match(legacy, [candidate()]))
+
+
+class ProjectionTest(unittest.TestCase):
+    def test_unknown_candidate_preserves_absence_support_and_orientation(self):
+        obj = projection_object()
+        obj.unified_class = 0
+        item = object_view(obj, {"Source": {2: "SEG_RECALL"}, "Reason": {}})
+        self.assertEqual(item["class"], "unknown")
+        self.assertIsNone(item["score"])
+        self.assertFalse(item["score_present"])
+        self.assertEqual(item["ranking_score"], 1.0)
+        self.assertFalse(item["orientation_reliable"])
+        self.assertEqual(item["evidence"]["point_id"], [3, 5])
+        self.assertNotIn("raw_score", item["evidence"])
+        self.assertNotIn("orientation_reliable", item["evidence"])
+        self.assertEqual(item["quaternion"], [0, 0, 0, 1])
+
+    def test_present_zero_score_and_other_vehicle_are_not_replaced(self):
+        obj = projection_object()
+        obj.unified_class = 7
+        obj.raw_score = 0
+        obj.orientation_reliable = True
+        item = object_view(obj, {"Source": {2: "SEG_RECALL"}, "Reason": {}})
+        self.assertEqual(item["class"], "other_vehicle")
+        self.assertTrue(item["score_present"])
+        self.assertEqual(item["score"], 0)
+        self.assertEqual(item["ranking_score"], 0)
+        self.assertTrue(item["orientation_reliable"])
+        self.assertIn("raw_score", item["evidence"])
 
 
 class CoordinateTest(unittest.TestCase):

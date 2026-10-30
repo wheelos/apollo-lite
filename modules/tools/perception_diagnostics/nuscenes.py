@@ -12,17 +12,20 @@ from collections import Counter
 from pathlib import Path
 
 from evaluate_baseline import audit_frame, coverage, digest, distribution, require
+from google.protobuf.json_format import MessageToDict
 from PIL import Image
-from proto import Reader
+from proto import Reader, require_full_evidence
 
 CLASSES = ("car", "truck", "bus", "pedestrian", "bicycle", "motorcycle")
 UNIFIED = {
+    0: "unknown",
     1: "car",
     2: "truck",
     3: "bus",
     4: "pedestrian",
     5: "bicycle",
     6: "motorcycle",
+    7: "other_vehicle",
 }
 RAW = (
     "car",
@@ -44,7 +47,7 @@ def match(predictions, truth, distance=2.0):
     available = set(range(len(truth)))
     assignments = []
     for i in sorted(
-        range(len(predictions)), key=lambda i: (-predictions[i]["score"], i)
+        range(len(predictions)), key=lambda i: (-ranking_score(predictions[i]), i)
     ):
         pred = predictions[i]
         candidates = [
@@ -86,6 +89,51 @@ def box(item):
         "center": [b.center.x, b.center.y, b.center.z],
         "size": [b.size.x, b.size.y, b.size.z],
         "yaw": yaw,
+        "quaternion": [b.qx, b.qy, b.qz, b.qw],
+    }
+
+
+def native_fields(item):
+    return MessageToDict(item, preserving_proto_field_name=True)
+
+
+def ranking_score(item):
+    return item["ranking_score"] if "ranking_score" in item else item["score"]
+
+
+def object_view(obj, labels):
+    present = obj.HasField("raw_score")
+    return {
+        **box(obj),
+        "id": obj.id,
+        "class": UNIFIED.get(obj.unified_class, f"unified_{obj.unified_class}"),
+        "class_id": obj.unified_class,
+        "score": obj.raw_score if present else None,
+        "score_present": present,
+        "score_calibration": "not_provided",
+        "ranking_score": obj.raw_score if present else 1.0,
+        "source": labels["Source"][obj.source],
+        "conflict": obj.class_conflict,
+        "classification_use": obj.classification_use,
+        "orientation_reliable": obj.orientation_reliable,
+        "points": len(obj.point_id),
+        "reason": [labels["Reason"][r] for r in obj.reason],
+        "evidence": native_fields(obj),
+    }
+
+
+def unknown_view(unknown, labels):
+    return {
+        "id": unknown.id,
+        "polygon": [[v.x, v.y] for v in unknown.polygon],
+        "points": len(unknown.point_id),
+        "related": list(unknown.related_object_id),
+        "corridor": unknown.in_corridor,
+        "confirmed": unknown.confirmed,
+        "reason": [labels["Reason"][r] for r in unknown.reason],
+        "source": labels["Source"][unknown.source],
+        "point_supported_footprint": unknown.point_supported_footprint,
+        "evidence": native_fields(unknown),
     }
 
 
@@ -164,7 +212,12 @@ def export(experiment_path, schema, output, max_points=8000):
         name: enum_names(reader, name)
         for name in ("Group", "Explanation", "Source", "Reason", "UnifiedClass")
     }
-    viewer = {"frames": [], "labels": labels, "protocol": report["protocol"]}
+    viewer = {
+        "projection_version": 2,
+        "frames": [],
+        "labels": labels,
+        "protocol": report["protocol"],
+    }
     summaries = []
     excluded = Counter()
     for run in experiment["runs"]:
@@ -219,6 +272,7 @@ def export(experiment_path, schema, output, max_points=8000):
             )
             out_path = results / (name + ".fusion.pb")
             out = reader.read(out_path, prefix + "FusionOutput")
+            require_full_evidence(out)
             require(
                 out.health.det_valid and out.health.seg_valid and out.health.mode == 0,
                 "invalid NORMAL inputs",
@@ -269,24 +323,12 @@ def export(experiment_path, schema, output, max_points=8000):
                         "class": RAW[h.raw_detection.class_id],
                         "score": h.raw_detection.score,
                         "id": h.detection_index,
+                        "evidence": native_fields(h),
                     }
                 )
                 raw.append(item)
             for obj in out.object:
-                item = box(obj)
-                item.update(
-                    {
-                        "id": obj.id,
-                        "class": UNIFIED.get(obj.unified_class, "other"),
-                        "score": obj.raw_score if obj.HasField("raw_score") else 1.0,
-                        "source": labels["Source"][obj.source],
-                        "conflict": obj.class_conflict,
-                        "classification_use": obj.classification_use,
-                        "points": len(obj.point_id),
-                        "reason": [labels["Reason"][r] for r in obj.reason],
-                    }
-                )
-                objects.append(item)
+                objects.append(object_view(obj, labels))
             gt = truth_frames[name]
             truth = [
                 b for b in gt["boxes"] if b["class"] in CLASSES and in_roi(b, config)
@@ -298,7 +340,7 @@ def export(experiment_path, schema, output, max_points=8000):
                     for b in raw
                     if b["class"] in CLASSES
                     and in_roi(b, config)
-                    and b["score"] >= config.evidence_score_min
+                    and ranking_score(b) >= config.evidence_score_min
                 ],
                 "raw_detector_standard": [
                     b
@@ -313,7 +355,7 @@ def export(experiment_path, schema, output, max_points=8000):
                     if b["source"] == "DET"
                     and b["class"] in CLASSES
                     and in_roi(b, config)
-                    and b["score"] >= config.evidence_score_min
+                    and ranking_score(b) >= config.evidence_score_min
                 ],
                 "classified_fusion": [
                     b
@@ -328,7 +370,8 @@ def export(experiment_path, schema, output, max_points=8000):
                     if b["class"] in CLASSES
                     and in_roi(b, config)
                     and (
-                        b["source"] != "DET" or b["score"] >= config.evidence_score_min
+                        b["source"] != "DET"
+                        or ranking_score(b) >= config.evidence_score_min
                     )
                 ],
             }
@@ -389,6 +432,9 @@ def export(experiment_path, schema, output, max_points=8000):
                             d.source,
                             None,
                             int(p.point_id in trusted_ids),
+                            None,
+                            native_fields(p),
+                            native_fields(d),
                         ]
                     )
             cells = [
@@ -404,20 +450,7 @@ def export(experiment_path, schema, output, max_points=8000):
                 ]
                 for c in out.space_map.cell
             ]
-            unknowns = [
-                {
-                    "id": u.id,
-                    "polygon": [[v.x, v.y] for v in u.polygon],
-                    "points": len(u.point_id),
-                    "related": list(u.related_object_id),
-                    "corridor": u.in_corridor,
-                    "confirmed": u.confirmed,
-                    "reason": [labels["Reason"][r] for r in u.reason],
-                    "source": labels["Source"][u.source],
-                    "point_supported_footprint": u.point_supported_footprint,
-                }
-                for u in out.unknown
-            ]
+            unknowns = [unknown_view(u, labels) for u in out.unknown]
             camera = None
             if gt["camera"]:
                 camera = f"camera/{len(viewer['frames']):04d}.jpg"
@@ -437,6 +470,9 @@ def export(experiment_path, schema, output, max_points=8000):
                     "objects": objects,
                     "truth": gt["boxes"],
                     "unknowns": unknowns,
+                    "shadow_partitions": [
+                        native_fields(p) for p in getattr(out, "shadow_partition", ())
+                    ],
                     "cells": cells,
                     "grid": {
                         "x": out.space_map.origin_x,
@@ -448,6 +484,11 @@ def export(experiment_path, schema, output, max_points=8000):
                     "accuracy": metrics,
                     "audit": audit,
                     "detection_model_revision": det.model_revision,
+                    "health": native_fields(out.health),
+                    "semantic_identity_qualified": (
+                        out.health.seg_valid
+                        and not config.quality.semantic_identity_unverified
+                    ),
                 }
             )
             for path in (inputs / name, out_path, det_path, seg_path, cached_path):

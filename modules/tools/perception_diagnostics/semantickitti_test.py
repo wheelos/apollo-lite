@@ -32,6 +32,13 @@ class SemanticAuditTest(unittest.TestCase):
         expected = (Path("models"), Path("models"))
         self.assertEqual(replay_caches(args), expected)
         self.assertEqual(replay_caches(args + ["3", "--profile"]), expected)
+        for options in (
+            ["--shadow-partitions"],
+            ["3", "--shadow-partitions"],
+            ["3", "--profile", "--shadow-partitions"],
+            ["--shadow-partitions", "--profile"],
+        ):
+            self.assertEqual(replay_caches(args + options), expected)
         self.assertEqual(
             replay_caches(
                 ["replay", "clouds", "out", "-", "-", "1", "1", "det", "seg"]
@@ -41,7 +48,14 @@ class SemanticAuditTest(unittest.TestCase):
         self.assertIsNone(
             replay_caches(["replay", "clouds", "out", "a", "b", "1", "1"])
         )
-        for extra in (["0"], ["101"], ["-1"], ["2", "--unknown"]):
+        for extra in (
+            ["0"],
+            ["101"],
+            ["-1"],
+            ["2", "--unknown"],
+            ["--shadow-partitions", "--shadow-partitions"],
+            ["3", "--profile", "--unknown"],
+        ):
             with self.assertRaisesRegex(ValueError, "cached replay"):
                 replay_caches(args + extra)
 
@@ -140,6 +154,23 @@ class InstanceAuditTest(unittest.TestCase):
             np.ones(12, dtype=bool),
         )
         self.assertEqual(counts, {"tp": 0, "fp": 1, "fn": 1})
+
+    def test_unavailable_display_score_does_not_change_instance_ranking(self):
+        truth = [{"id": 2, "class_id": 1, "indices": np.arange(6)}]
+        first = {
+            "id": 10,
+            "class_id": 1,
+            "score": 1.0,
+            "mask": np.ones(6, dtype=bool),
+        }
+        second = {**first, "id": 11, "score": 0.9}
+        valid = np.ones(6, dtype=bool)
+        self.assertEqual(
+            instance_counts(
+                [{**first, "score": None, "ranking_score": 1.0}, second], truth, valid
+            ),
+            instance_counts([first, second], truth, valid),
+        )
 
 
 if __name__ == "__main__":

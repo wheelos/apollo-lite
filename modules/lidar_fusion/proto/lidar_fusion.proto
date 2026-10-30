@@ -88,6 +88,8 @@ enum Reason {
   TRACK_RECOVERY = 25;
   WEAK_CLASS_HYPOTHESIS = 26;
   SEMANTIC_IDENTITY_UNVERIFIED = 27;
+  FOREGROUND_SUBSET_RECALL = 28;
+  ASSOCIATED_SUPPORT_EXTENT = 29;
 }
 
 enum Traversability {
@@ -135,6 +137,25 @@ message Calibration {
   optional double roll = 5;
   optional double pitch = 6;
   optional double yaw = 7;
+}
+
+enum OutputDetail {
+  FULL_EVIDENCE = 0;
+  FUNCTIONAL_SCENE = 1;
+}
+
+enum PublicationTransport {
+  PROTOBUF = 0;
+  CORE_POD = 1;
+}
+
+message PublicationOptions {
+  optional OutputDetail detail = 1 [default = FULL_EVIDENCE];
+  // Optional complete trace alongside FUNCTIONAL_SCENE, not a second sensor.
+  optional string diagnostic_channel = 2;
+  optional PublicationTransport transport = 3 [default = PROTOBUF];
+  // Both primary and diagnostic streams use this bounded POD frame budget.
+  optional uint32 max_pod_frame_bytes = 4 [default = 67108864];
 }
 
 message FusionConfig {
@@ -189,6 +210,7 @@ message FusionConfig {
   optional CandidateOptions candidates = 49;
   optional TemporalOptions temporal = 50;
   optional QualityOptions quality = 51;
+  optional PublicationOptions publication = 52;
 }
 
 // Opt-in quality migration; absent options preserve historical behavior.
@@ -212,6 +234,13 @@ message CandidateOptions {
   optional double adjacent_distance = 6 [default = 0.5];
   // Do not propagate references across an entire scene-connected component.
   optional bool local_object_relations = 7 [default = false];
+  // Recall a connected confident foreground subset; retain the mixed unknown.
+  // Uses the default voxel graph, not separate/far candidate connectivity.
+  optional bool recall_confident_foreground = 8 [default = false];
+  // Extend supported DET boxes within their margin, fixing center/orientation.
+  optional bool extend_detection_support = 9 [default = false];
+  // Read-only semantic support partitions; never candidates or spatial inputs.
+  optional bool shadow_semantic_partitions = 10 [default = false];
 }
 
 message TemporalOptions {
@@ -308,6 +337,31 @@ message AssociationStats {
   optional double ratio_same_class = 3;
   optional double ratio_static_vegetation = 4;
   optional uint32 n_unconnected_margin = 5;
+  optional SemanticEvidence semantic_evidence = 6;
+}
+
+message SemanticClassSupport {
+  optional UnifiedClass unified_class = 1;
+  // Eligible core returns, not an independent instance or a solid envelope.
+  repeated uint32 point_id = 2 [packed = true];
+}
+
+message SemanticGroupSupport {
+  optional Group group = 1;
+  optional uint32 n_points = 2;
+}
+
+message SemanticEvidence {
+  optional bool source_available = 1;
+  optional bool identity_qualified = 2;
+  // Confident raw subsets remain inspectable even when identity is unqualified.
+  repeated SemanticClassSupport thing_support = 3;
+  repeated SemanticGroupSupport group_support = 4;
+  optional uint32 n_low_confidence = 5;
+  optional uint32 n_unavailable = 6;
+  // A single alternative THING reaches existing core/conflict thresholds.
+  // Descriptive only: does not select a class or change candidate policy.
+  optional bool cross_thing_disagreement = 7 [default = false];
 }
 
 message DetHypothesis {
@@ -373,6 +427,23 @@ message UnknownCandidate {
   repeated ObjectRelation relation = 12;
   // Polygon is extent only; occupancy_unknown is supported by point_id cells.
   optional bool point_supported_footprint = 13 [default = false];
+}
+
+enum PartitionKind {
+  PARTITION_UNEXPLAINED = 0;
+  PARTITION_THING_SUPPORT = 1;
+  PARTITION_GROUP_SUPPORT = 2;
+}
+
+// Confident same-semantic connected subsets and an unexplained remainder.
+// Neither the subsets nor their parent establish physical instance boundaries.
+message ShadowPartition {
+  optional uint32 id = 1;  // Frame-local, not an object/track ID.
+  optional uint32 parent_unknown_id = 2;
+  optional PartitionKind kind = 3;
+  optional Group group = 4;
+  optional UnifiedClass unified_class = 5;
+  repeated uint32 point_id = 6 [packed = true];
 }
 
 enum RelationKind {
@@ -451,6 +522,19 @@ message PointView {
   repeated uint32 point_id = 2 [packed = true];
 }
 
+message PublicationContext {
+  optional OutputDetail detail = 1 [default = FULL_EVIDENCE];
+  optional uint32 source_point_count = 2;
+  optional apollo.common.Header source_header = 3;
+  optional double source_measurement_time = 4;
+  optional string source_pointcloud_channel = 5;
+  // All point IDs index this exact unfiltered source sweep, before this transform.
+  optional Calibration sensor_to_base = 6;
+  optional SpatialOptions spatial_options = 7;
+  optional string diagnostic_channel = 8;
+  optional bool shadow_partitions_enabled = 9 [default = false];
+}
+
 message FusionOutput {
   optional apollo.common.Header header = 1;
   optional string calibration_version = 2;
@@ -468,6 +552,10 @@ message FusionOutput {
   repeated TrackedObject track = 13;
   repeated HistoryCell history_cell = 14;
   optional string odom_frame = 15;
+  repeated ShadowPartition shadow_partition = 16;
+  // Absent means legacy FULL_EVIDENCE. Functional output intentionally omits
+  // point_evidence/point_decision; it does not mean either source was missing.
+  optional PublicationContext publication = 17;
 }
 
 message TrackedObject {

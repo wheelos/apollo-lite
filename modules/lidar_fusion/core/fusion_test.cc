@@ -156,6 +156,101 @@ TEST_F(FusionTest, GroundHistoryCannotEraseCurrentMeasuredObstacle) {
   EXPECT_FALSE(output.point_evidence(6).is_ground_geo());
 }
 
+TEST_F(FusionTest, FunctionalScenePreservesAllNonDiagnosticFieldsInEveryMode) {
+  Obstacle();
+  Box();
+  config.mutable_spatial()->set_point_views(true);
+  config.mutable_candidates()->set_shadow_semantic_partitions(true);
+  config.mutable_publication()->set_detail(FUNCTIONAL_SCENE);
+  config.mutable_publication()->set_diagnostic_channel("/test/full");
+  for (int mode = 0; mode < 4; ++mode) {
+    Run(mode == 2 || mode == 3 ? nullptr : &det,
+        mode == 1 || mode == 3 ? nullptr : &seg);
+    EXPECT_EQ(output.health().mode(), static_cast<Mode>(mode));
+    output.set_odom_frame("fixture_odom");
+    output.add_track()->set_id(42);
+    output.add_history_cell()->set_log_odds(0.7);
+    output.add_shadow_partition()->set_parent_unknown_id(31);
+    const auto original = output.SerializeAsString();
+    FusionOutput scene;
+    std::string error;
+    ASSERT_TRUE(ProjectFunctionalOutput(config, cloud, output, &scene, &error))
+        << error;
+    EXPECT_EQ(output.SerializeAsString(), original);
+    EXPECT_EQ(scene.point_evidence_size(), 0);
+    EXPECT_EQ(scene.point_decision_size(), 0);
+    const auto& context = scene.publication();
+    EXPECT_EQ(context.detail(), FUNCTIONAL_SCENE);
+    EXPECT_EQ(context.source_point_count(), cloud.point_size());
+    EXPECT_EQ(context.source_header().SerializeAsString(),
+              cloud.header().SerializeAsString());
+    EXPECT_EQ(context.source_measurement_time(), cloud.measurement_time());
+    EXPECT_EQ(context.source_pointcloud_channel(), config.pointcloud_channel());
+    EXPECT_EQ(context.sensor_to_base().SerializeAsString(),
+              config.sensor_to_base().SerializeAsString());
+    EXPECT_TRUE(context.spatial_options().point_views());
+    EXPECT_EQ(context.diagnostic_channel(), "/test/full");
+    EXPECT_EQ(context.shadow_partitions_enabled(), mode == 0 || mode == 2);
+    auto expected = output;
+    expected.clear_point_evidence();
+    expected.clear_point_decision();
+    scene.clear_publication();
+    EXPECT_EQ(scene.SerializeAsString(), expected.SerializeAsString());
+  }
+}
+
+TEST_F(FusionTest, FunctionalProjectionRejectsWrongSweepAndAliasing) {
+  Obstacle();
+  Box();
+  Run(&det, &seg);
+  const auto complete = output.SerializeAsString();
+  FusionOutput scene;
+  scene.set_odom_frame("unchanged-on-error");
+  const auto before = scene.SerializeAsString();
+  auto wrong = cloud;
+  wrong.mutable_header()->set_lidar_timestamp(cloud.header().lidar_timestamp() +
+                                              1);
+  std::string error;
+  EXPECT_FALSE(ProjectFunctionalOutput(config, wrong, output, &scene, &error));
+  EXPECT_EQ(scene.SerializeAsString(), before);
+  EXPECT_FALSE(ProjectFunctionalOutput(config, cloud, output, &output, &error));
+  EXPECT_EQ(output.SerializeAsString(), complete);
+  ASSERT_TRUE(ProjectFunctionalOutput(config, cloud, output, &scene, &error));
+  EXPECT_FALSE(ProjectFunctionalOutput(config, cloud, scene, &output, &error));
+  EXPECT_EQ(output.SerializeAsString(), complete);
+}
+
+TEST_F(FusionTest, DiagnosticPublicationRequiresDistinctFunctionalChannel) {
+  SingleFrameFusion fusion;
+  std::string error;
+  config.mutable_publication()->set_diagnostic_channel("/test/full");
+  EXPECT_FALSE(fusion.Init(config, &error));
+  config.mutable_publication()->set_detail(FUNCTIONAL_SCENE);
+  EXPECT_TRUE(fusion.Init(config, &error)) << error;
+  for (const auto& channel :
+       {config.pointcloud_channel(), config.detection_channel(),
+        config.segmentation_channel(), config.output_channel()}) {
+    config.mutable_publication()->set_diagnostic_channel(channel);
+    EXPECT_FALSE(fusion.Init(config, &error));
+  }
+}
+
+TEST_F(FusionTest, PodTransportIsOptInAndRejectsUnboundedFrameBudgets) {
+  SingleFrameFusion fusion;
+  std::string error;
+  EXPECT_EQ(config.publication().transport(), PROTOBUF);
+  EXPECT_TRUE(fusion.Init(config, &error)) << error;
+  config.mutable_publication()->set_transport(CORE_POD);
+  for (auto detail : {FULL_EVIDENCE, FUNCTIONAL_SCENE}) {
+    config.mutable_publication()->set_detail(detail);
+    EXPECT_TRUE(fusion.Init(config, &error)) << error;
+  }
+  for (uint32_t limit : {0u, 0x80000000u, 0xffffffffu}) {
+    config.mutable_publication()->set_max_pod_frame_bytes(limit);
+    EXPECT_FALSE(fusion.Init(config, &error));
+  }
+}
+
 TEST_F(FusionTest, IndependentGroundPriorDoesNotChangeObjectPriorRecovery) {
   Obstacle(0);
   Box();
@@ -206,6 +301,165 @@ TEST_F(FusionTest, RemapsShuffledLabelsWithoutChangingInputs) {
   EXPECT_EQ(raw_det, det.SerializeAsString());
   EXPECT_EQ(output.header().frame_id(), "base_link");
   EXPECT_DOUBLE_EQ(output.header().timestamp_sec(), 100);
+  const auto& semantic = output.hypothesis(0).association().semantic_evidence();
+  EXPECT_TRUE(semantic.source_available());
+  EXPECT_TRUE(semantic.identity_qualified());
+  EXPECT_FALSE(semantic.cross_thing_disagreement());
+  ASSERT_EQ(semantic.thing_support_size(), 1);
+  EXPECT_EQ(semantic.thing_support(0).unified_class(), CAR);
+  EXPECT_EQ(semantic.thing_support(0).point_id_size(), 6);
+}
+
+TEST_F(FusionTest, CrossThingEvidencePreservesLegacyClassAndConsumerPolicy) {
+  auto* mapping = config.add_semantic_mapping();
+  mapping->set_raw_id(2);
+  mapping->set_group(THING);
+  mapping->set_unified_class(PEDESTRIAN);
+  Obstacle(2);
+  Box();
+  Run(&det, &seg);
+  const auto& hypothesis = output.hypothesis(0);
+  const auto& semantic = hypothesis.association().semantic_evidence();
+  ASSERT_TRUE(semantic.cross_thing_disagreement());
+  EXPECT_EQ(hypothesis.consistency(), INSUFFICIENT);
+  EXPECT_TRUE(hypothesis.existence_supported());
+  EXPECT_FALSE(hypothesis.identity_supported());
+  ASSERT_EQ(semantic.thing_support_size(), 1);
+  EXPECT_EQ(semantic.thing_support(0).unified_class(), PEDESTRIAN);
+  EXPECT_EQ(semantic.thing_support(0).point_id_size(), 6);
+  ASSERT_EQ(output.object_size(), 1);
+  EXPECT_EQ(output.object(0).unified_class(), CAR);
+  EXPECT_FALSE(output.object(0).class_conflict());
+  EXPECT_EQ(output.object(0).classification_use(), CLASSIFICATION_CANDIDATE);
+  EXPECT_EQ(hypothesis.raw_detection().SerializeAsString(),
+            det.detection(0).SerializeAsString());
+}
+
+TEST_F(FusionTest, DisagreementIgnoresMarginAndCannotAcceptWeakDetection) {
+  auto* mapping = config.add_semantic_mapping();
+  mapping->set_raw_id(2);
+  mapping->set_group(THING);
+  mapping->set_unified_class(PEDESTRIAN);
+  Obstacle(2);
+  Add(2.35, 1.4, 0.8, 2);
+  Add(2.5, 1.4, 0.8, 1);
+  Sync();
+  Box(0.2F);
+  Run(&det, &seg);
+  const auto& hypothesis = output.hypothesis(0);
+  const auto& association = hypothesis.association();
+  const auto& semantic = association.semantic_evidence();
+  ASSERT_EQ(association.n_core(), 7U);
+  ASSERT_EQ(association.n_margin(), 1U);
+  EXPECT_TRUE(semantic.cross_thing_disagreement());
+  ASSERT_EQ(semantic.thing_support_size(), 1);
+  EXPECT_EQ(semantic.thing_support(0).point_id_size(), 7);
+  const auto& ids = semantic.thing_support(0).point_id();
+  EXPECT_EQ(std::find(ids.begin(), ids.end(), 13U), ids.end());
+  EXPECT_EQ(hypothesis.consistency(), INSUFFICIENT);
+  EXPECT_EQ(hypothesis.decision(), BELOW_INSTANCE_THRESHOLD);
+  EXPECT_FALSE(hypothesis.has_object_id());
+  EXPECT_TRUE(std::none_of(
+      output.object().begin(), output.object().end(),
+      [](const ObjectCandidate& object) { return object.source() == DET; }));
+}
+
+TEST_F(FusionTest, SemanticEvidenceSeparatesMissingWeakAndUnqualifiedInput) {
+  Obstacle();
+  Box();
+  Run(&det, nullptr);
+  auto semantic = output.hypothesis(0).association().semantic_evidence();
+  EXPECT_FALSE(semantic.source_available());
+  EXPECT_FALSE(semantic.identity_qualified());
+  EXPECT_EQ(semantic.n_unavailable(), 6U);
+  EXPECT_EQ(semantic.thing_support_size(), 0);
+
+  config.mutable_quality()->set_semantic_identity_unverified(true);
+  Run(&det, &seg);
+  semantic = output.hypothesis(0).association().semantic_evidence();
+  EXPECT_TRUE(semantic.source_available());
+  EXPECT_FALSE(semantic.identity_qualified());
+  EXPECT_EQ(semantic.n_unavailable(), 0U);
+  ASSERT_EQ(semantic.thing_support_size(), 1);
+  EXPECT_EQ(semantic.thing_support(0).point_id_size(), 6);
+  EXPECT_FALSE(semantic.cross_thing_disagreement());
+
+  config.mutable_quality()->set_semantic_identity_unverified(false);
+  for (int i = 6; i < seg.point_label_size(); ++i) {
+    seg.mutable_point_label(i)->set_confidence(0.49F);
+  }
+  Run(&det, &seg);
+  semantic = output.hypothesis(0).association().semantic_evidence();
+  EXPECT_TRUE(semantic.source_available());
+  EXPECT_TRUE(semantic.identity_qualified());
+  EXPECT_EQ(semantic.n_low_confidence(), 6U);
+  EXPECT_EQ(semantic.thing_support_size(), 0);
+  EXPECT_EQ(semantic.group_support_size(), 0);
+}
+
+TEST_F(FusionTest, SparseOrMixedAlternativesRemainExplicitButNotStrong) {
+  auto* mapping = config.add_semantic_mapping();
+  mapping->set_raw_id(2);
+  mapping->set_group(THING);
+  mapping->set_unified_class(PEDESTRIAN);
+  Obstacle(2);
+  Box();
+  for (int i = 6; i < 9; ++i) {
+    seg.mutable_point_label(i)->set_semantic_label(1);
+  }
+  Run(&det, &seg);
+  auto semantic = output.hypothesis(0).association().semantic_evidence();
+  ASSERT_EQ(semantic.thing_support_size(), 2);
+  EXPECT_FALSE(semantic.cross_thing_disagreement());
+  EXPECT_EQ(semantic.thing_support(0).point_id_size(), 3);
+  EXPECT_EQ(semantic.thing_support(1).point_id_size(), 3);
+
+  for (int i = 0; i < 3; ++i) {
+    cloud.mutable_point()->RemoveLast();
+    seg.mutable_point_label()->RemoveLast();
+  }
+  for (int i = 6; i < seg.point_label_size(); ++i) {
+    seg.mutable_point_label(i)->set_semantic_label(2);
+  }
+  Sync();
+  Run(&det, &seg);
+  semantic = output.hypothesis(0).association().semantic_evidence();
+  EXPECT_FALSE(output.hypothesis(0).existence_supported());
+  EXPECT_FALSE(semantic.cross_thing_disagreement());
+  ASSERT_EQ(semantic.thing_support_size(), 1);
+  EXPECT_EQ(semantic.thing_support(0).point_id_size(), 3);
+}
+
+TEST_F(FusionTest, ShadowPartitionsAreReadOnlyAndRequireQualifiedSemantics) {
+  Obstacle();
+  for (double x : {2.2, 2.3, 2.4, 2.5}) {
+    for (double y : {1.3, 1.4, 1.5}) {
+      Add(x, y, 0.8, 15);
+    }
+  }
+  Sync();
+  for (bool qualified : {false, true}) {
+    config.mutable_quality()->set_semantic_identity_unverified(!qualified);
+    for (int mode = NORMAL; mode <= GEO_ONLY; ++mode) {
+      const auto* detection =
+          mode == NO_DET || mode == GEO_ONLY ? nullptr : &det;
+      const auto* semantic =
+          mode == NO_SEG || mode == GEO_ONLY ? nullptr : &seg;
+      config.mutable_candidates()->set_shadow_semantic_partitions(false);
+      Run(detection, semantic);
+      ASSERT_GT(output.unknown_size(), 0);
+      ASSERT_EQ(output.shadow_partition_size(), 0);
+      auto control = output;
+      control.mutable_health()->clear_latency_ms();
+      config.mutable_candidates()->set_shadow_semantic_partitions(true);
+      Run(detection, semantic);
+      EXPECT_EQ(output.shadow_partition_size() > 0,
+                qualified && semantic != nullptr);
+      output.clear_shadow_partition();
+      output.mutable_health()->clear_latency_ms();
+      EXPECT_EQ(output.SerializeAsString(), control.SerializeAsString());
+    }
+  }
 }
 
 TEST_F(FusionTest, ReadOnlyViewsPreserveEvidenceAndBackgroundOccupancy) {
@@ -402,6 +656,80 @@ TEST_F(FusionTest, SemanticRecallDoesNotTreatBackgroundConnectivityAsIdentity) {
   ASSERT_EQ(output.object_size(), 2);
   EXPECT_EQ(output.object(1).source(), SEG_RECALL);
   EXPECT_EQ(output.object(1).point_id_size(), 6);
+}
+
+TEST_F(FusionTest, ConfidentForegroundRecallRetainsMixedUnknownRisk) {
+  for (double x : {5.0, 5.1, 5.2}) {
+    for (double y : {1.3, 1.4}) {
+      Add(x, y, 0.8, 1);
+    }
+  }
+  for (double x : {5.25, 5.3, 5.35}) {
+    Add(x, 1.35, 0.8, 9);
+  }
+  Sync();
+  Run(nullptr, &seg);
+  ASSERT_EQ(output.object_size(), 0);
+  ASSERT_EQ(output.unknown_size(), 1);
+  const auto baseline = output;
+  config.mutable_candidates()->set_recall_confident_foreground(true);
+  Run(nullptr, &seg);
+  ASSERT_EQ(output.object_size(), 1);
+  EXPECT_EQ(output.object(0).source(), SEG_RECALL);
+  EXPECT_EQ(output.object(0).point_id_size(), 6);
+  EXPECT_NE(
+      std::find(output.object(0).reason().begin(),
+                output.object(0).reason().end(), FOREGROUND_SUBSET_RECALL),
+      output.object(0).reason().end());
+  ASSERT_EQ(output.unknown_size(), 1);
+  ASSERT_EQ(output.unknown(0).point_id_size(),
+            baseline.unknown(0).point_id_size());
+  for (int i = 0; i < output.unknown(0).point_id_size(); ++i) {
+    EXPECT_EQ(output.unknown(0).point_id(i), baseline.unknown(0).point_id(i));
+  }
+  for (int i = 0; i < output.point_evidence_size(); ++i) {
+    EXPECT_EQ(output.point_evidence(i).SerializeAsString(),
+              baseline.point_evidence(i).SerializeAsString());
+    EXPECT_EQ(output.point_decision(i).has_object_id(), i >= 6 && i < 12);
+  }
+  for (const auto& cell : baseline.space_map().cell()) {
+    if (!cell.occupancy_obs() && !cell.occupancy_unknown()) {
+      continue;
+    }
+    const auto found =
+        std::find_if(output.space_map().cell().begin(),
+                     output.space_map().cell().end(), [&](const auto& current) {
+                       return current.x_index() == cell.x_index() &&
+                              current.y_index() == cell.y_index();
+                     });
+    ASSERT_NE(found, output.space_map().cell().end());
+    EXPECT_EQ(found->occupancy_obs(), cell.occupancy_obs());
+    EXPECT_EQ(found->occupancy_unknown(), cell.occupancy_unknown());
+  }
+  config.mutable_quality()->set_semantic_identity_unverified(true);
+  Run(nullptr, &seg);
+  EXPECT_EQ(output.object_size(), 0);
+  EXPECT_EQ(output.unknown_size(), 1);
+  config.mutable_quality()->set_semantic_identity_unverified(false);
+  config.set_unknown_min_points(10);
+  config.set_corridor_half_width(0.1);
+  Run(nullptr, &seg);
+  EXPECT_EQ(output.object_size(), 0);
+  EXPECT_EQ(output.unknown_size(), 0);
+}
+
+TEST_F(FusionTest, ForegroundRecallCannotConnectThroughRemovedBackground) {
+  for (double x : {5.05, 5.15, 5.25, 5.85, 5.95, 6.05}) {
+    Add(x, 1.3, 0.8, 1);
+  }
+  Add(5.45, 1.3, 0.8, 9);
+  Add(5.65, 1.3, 0.8, 9);
+  Sync();
+  config.mutable_candidates()->set_recall_confident_foreground(true);
+  Run(nullptr, &seg);
+  EXPECT_EQ(output.object_size(), 0);
+  ASSERT_EQ(output.unknown_size(), 1);
+  EXPECT_EQ(output.unknown(0).point_id_size(), 8);
 }
 
 TEST_F(FusionTest, DuplicateInstancesMergeWithoutChangingRawHypotheses) {
@@ -601,6 +929,27 @@ TEST_F(FusionTest, SharedVoxelGraphRecomputesConnectivityAfterOwnershipMask) {
   EXPECT_EQ(output.unknown(0).point_id_size(), 6);
 }
 
+TEST_F(FusionTest, VoxelAdjacencyRetainsDiagonalAndReverseConnections) {
+  cloud.clear_point();
+  seg.clear_point_label();
+  config.set_min_x(-4);
+  config.set_unknown_min_points(1);
+  // The lexicographically first voxel reaches the second through the last.
+  Add(-0.1, -0.1, 0.9, 0);
+  Add(-0.3, 0.1, 0.7, 0);
+  Add(-0.3, -0.3, 0.7, 0);
+  Add(1.1, 2.1, 0.9, 0);
+  Sync();
+  Run(nullptr, nullptr);
+  ASSERT_EQ(output.unknown_size(), 2);
+  ASSERT_EQ(output.unknown(0).point_id_size(), 3);
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_EQ(output.unknown(0).point_id(i), i);
+  }
+  ASSERT_EQ(output.unknown(1).point_id_size(), 1);
+  EXPECT_EQ(output.unknown(1).point_id(0), 3U);
+}
+
 TEST_F(FusionTest, LocalRelationsDoNotInheritWholeSceneReferences) {
   config.set_resolution(0.05);
   config.set_association_margin(0);
@@ -668,6 +1017,76 @@ TEST_F(FusionTest, RaisedSemanticRoadIsNotGroundOrFree) {
   EXPECT_EQ(output.point_decision(6).explanation(), UNEXPLAINED);
   ASSERT_EQ(output.unknown_size(), 1);
   EXPECT_EQ(output.unknown(0).reason(0), SEM_GEO_CONFLICT);
+}
+
+TEST_F(FusionTest, NearGroundThingKeepsEvidenceWithoutInventingOccupancy) {
+  config.mutable_spatial()->set_point_views(true);
+  const int index = cloud.point_size();
+  Add(2, 1.4, 0.125, 1);
+  Sync();
+  Run(nullptr, &seg);
+  const auto& point = output.point_evidence(index);
+  ASSERT_TRUE(point.ground_valid());
+  EXPECT_FALSE(point.is_ground_geo());
+  EXPECT_NEAR(point.height_above_ground(), 0.125, 1e-6);
+  EXPECT_EQ(point.unified_class(), CAR);
+  EXPECT_EQ(output.point_decision(index).explanation(), UNEXPLAINED);
+  EXPECT_FALSE(output.point_decision(index).has_object_id());
+  EXPECT_EQ(output.object_size(), 0);
+  EXPECT_EQ(output.unknown_size(), 0);
+  const uint32_t x =
+      std::floor((point.position().x() - config.min_x()) / config.resolution());
+  const uint32_t y =
+      std::floor((point.position().y() - config.min_y()) / config.resolution());
+  const auto& cells = output.space_map().cell();
+  const auto found =
+      std::find_if(cells.begin(), cells.end(), [&](const SpaceCell& cell) {
+        return cell.x_index() == x && cell.y_index() == y;
+      });
+  ASSERT_NE(found, cells.end());
+  EXPECT_TRUE(found->endpoint_observed());
+  EXPECT_FALSE(found->occupancy_obs());
+  EXPECT_FALSE(found->occupancy_det());
+  EXPECT_FALSE(found->occupancy_unknown());
+  EXPECT_EQ(found->traversability(), UNKNOWN);
+  const auto& risk = output.point_view(CORRIDOR_RISK_POINTS).point_id();
+  EXPECT_NE(std::find(risk.begin(), risk.end(), index), risk.end());
+}
+
+TEST_F(FusionTest, NearGroundEndpointCannotEraseSameCellMeasuredObstacle) {
+  Add(2, 1.4, 0, 9);
+  Sync();
+  const auto ground_cloud = cloud;
+  const auto ground_seg = seg;
+  std::string space;
+  for (bool obstacle_first : {true, false}) {
+    cloud = ground_cloud;
+    seg = ground_seg;
+    for (double height :
+         {obstacle_first ? 0.8 : 0.0625, obstacle_first ? 0.0625 : 0.8}) {
+      Add(2, 1.4, height, 1);
+    }
+    Sync();
+    Run(nullptr, &seg);
+    const int low = ground_cloud.point_size() + (obstacle_first ? 1 : 0);
+    EXPECT_TRUE(output.point_evidence(low).is_ground_geo());
+    int observed = 0;
+    for (const auto& cell : output.space_map().cell()) {
+      if (cell.occupancy_obs()) {
+        ++observed;
+        EXPECT_TRUE(cell.ground_supported());
+        EXPECT_EQ(cell.traversability(), OCCUPIED);
+        EXPECT_FALSE(cell.reachable());
+        EXPECT_FALSE(cell.physically_traversable());
+      }
+    }
+    EXPECT_EQ(observed, 1);
+    if (obstacle_first) {
+      space = output.space_map().SerializeAsString();
+    } else {
+      EXPECT_EQ(output.space_map().SerializeAsString(), space);
+    }
+  }
 }
 
 TEST_F(FusionTest, FullRigidCalibrationTransformsPointsBoxesAndVelocity) {

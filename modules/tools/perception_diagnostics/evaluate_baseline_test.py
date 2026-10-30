@@ -92,6 +92,13 @@ class OccupancyAuditTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "dangling cell"):
             audit_frame(self.out, self.config)
 
+    def test_functional_projection_cannot_masquerade_as_a_full_trace(self):
+        self.out.publication = SimpleNamespace(detail=1)
+        self.out.point_evidence = []
+        self.out.point_decision = []
+        with self.assertRaisesRegex(ValueError, "FULL_EVIDENCE diagnostic"):
+            audit_frame(self.out, self.config)
+
 
 if __name__ == "__main__":
     unittest.main()

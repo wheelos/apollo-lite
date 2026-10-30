@@ -1,0 +1,11 @@
+module_config {
+  module_library: "/apollo/bazel-bin/modules/localization/liblocalization_component.so"
+  timer_components {
+    class_name: "OpenLocLocalizationComponent"
+    config {
+      name: "openloc_localization"
+      config_file_path: "/apollo/modules/localization/conf/localization.pb.txt"
+      interval: 10
+    }
+  }
+}

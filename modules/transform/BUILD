@@ -114,6 +114,7 @@ cc_library(
     visibility = [
         "//modules/dreamview/backend/point_cloud:__pkg__",
         "//modules/drivers/lidar/fusion:__pkg__",
+        "//modules/localization:__pkg__",
         "//modules/ndt_localization:__pkg__",
         "//modules/perception/onboard/transform_wrapper:__pkg__",
     ],

@@ -36,8 +36,10 @@ UNKNOWN is not FREE. Display subsampling never changes inference.</div>
 <label><input id="truth" type="checkbox" checked>GT</label>
 <label><input id="raw" type="checkbox">Raw detector</label>
 <label><input id="objects" type="checkbox" checked>Fused objects</label>
-<label><input id="classified" type="checkbox">Classified candidates only</label>
+<label><input id="classified" type="checkbox">Classification-use candidates only</label>
 <label><input id="unknowns" type="checkbox">Unknown candidates</label>
+<label><input id="alternatives" type="checkbox">Alternative THING supports</label>
+<label><input id="partitions" type="checkbox">Shadow semantic supports</label>
 <label><input id="cells" type="checkbox">Measured occupancy</label>
 <label><input id="inferred" type="checkbox">Inferred occupancy</label>
 <label><input id="risk" type="checkbox">Unknown risk</label>
@@ -46,7 +48,9 @@ UNKNOWN is not FREE. Display subsampling never changes inference.</div>
 <label>Zoom <input id="zoom" type="range" min="20" max="120" value="105"></label>
 </nav>
 <div class="legend">
-GT green; raw detector blue; fused cyan; class conflict red; unknown amber.
+GT green; raw detector blue; fused cyan; legacy class conflict red; cross-THING disagreement purple; unknown amber.
+Heading marks require an explicit reliable-orientation flag. Missing raw scores are unavailable, not probability 1.
+Support overlays show sampled measured returns, not fitted boxes or verified instances. Click them for full support IDs and parent links.
 BEV: ego +X up, +Y left; gray background = UNKNOWN/unshown.
 Click boxes, polygons or points for immutable source/decision details.
 </div>

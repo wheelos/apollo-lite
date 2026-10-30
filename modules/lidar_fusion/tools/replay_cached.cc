@@ -37,19 +37,33 @@ Message Proto(const fs::path& path) {
 }
 
 int Run(int argc, char** argv) {
-  Require(argc >= 4 && argc <= 6,
-          "usage: replay_cached CLOUD_DIR MODEL_DIR NEW_OUTPUT_DIR [REPEATS "
-          "[--profile]]");
+  Require(argc >= 4 && argc <= 7,
+          "usage: replay_cached CLOUD_DIR MODEL_DIR NEW_OUTPUT_DIR [REPEATS] "
+          "[--profile] [--shadow-partitions]");
   const fs::path clouds(argv[1]), models(argv[2]), output(argv[3]);
-  const int repeats = argc >= 5 ? std::stoi(argv[4]) : 1;
-  const bool profile = argc == 6;
-  Require(!profile || std::string(argv[5]) == "--profile",
-          "expected --profile");
+  int next = 4;
+  const int repeats = next < argc && std::string(argv[next]).rfind("--", 0) != 0
+                          ? std::stoi(argv[next++])
+                          : 1;
+  bool profile = false, shadow = false;
+  for (; next < argc; ++next) {
+    const std::string option(argv[next]);
+    if (option == "--profile" && !profile) {
+      profile = true;
+    } else if (option == "--shadow-partitions" && !shadow) {
+      shadow = true;
+    } else {
+      Require(false, "unknown or duplicate option " + option);
+    }
+  }
   Require(repeats > 0 && repeats <= 100, "repeats must be in [1,100]");
   fusion::FusionConfig config;
   Require(google::protobuf::TextFormat::ParseFromString(
               Read(clouds / "fusion.pb.txt"), &config),
           "invalid config");
+  if (shadow) {
+    config.mutable_candidates()->set_shadow_semantic_partitions(true);
+  }
   fusion::SingleFrameFusion core;
   std::string error;
   Require(core.Init(config, &error), error);

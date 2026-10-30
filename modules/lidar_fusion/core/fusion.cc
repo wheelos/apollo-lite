@@ -20,6 +20,7 @@
 
 #include "Eigen/Geometry"
 #include "Eigen/QR"
+#include "google/protobuf/arena.h"
 
 #include "modules/lidar_fusion/core/candidates.h"
 #include "modules/lidar_fusion/core/spatial.h"
@@ -30,7 +31,8 @@ namespace {
 
 using CellKey = std::pair<int, int>;
 using VoxelKey = std::tuple<int, int, int>;
-using SpatialIndex = std::map<CellKey, std::vector<int>>;
+
+using SpatialIndex = PointIndex;
 
 bool Fail(const std::string& message, std::string* error) {
   if (error != nullptr) {
@@ -244,6 +246,8 @@ struct GroundPlane {
   uint32_t count = 0;
 };
 
+using GroundPlanes = std::unordered_map<CellKey, GroundPlane, CellHash>;
+
 bool SolveGround(const Eigen::MatrixXd& design, const Eigen::VectorXd& heights,
                  const std::vector<int>& rows, const FusionConfig& config,
                  GroundPlane* plane) {
@@ -308,10 +312,11 @@ bool RobustGround(const Eigen::MatrixXd& design, const Eigen::VectorXd& heights,
   return true;
 }
 
-std::map<CellKey, GroundPlane> FitGround(
-    const std::vector<Eigen::Vector3d>& positions,
-    const SpatialIndex& seed_tiles, const FusionConfig& config) {
-  std::map<CellKey, GroundPlane> planes;
+GroundPlanes FitGround(const std::vector<Eigen::Vector3d>& positions,
+                       const SpatialIndex& seed_tiles,
+                       const FusionConfig& config) {
+  GroundPlanes planes;
+  planes.reserve(seed_tiles.size());
   for (const auto& tile : seed_tiles) {
     if (tile.second.size() < config.ground_min_points()) {
       continue;
@@ -370,7 +375,7 @@ class ConnectedVoxels {
     std::sort(sorted.begin(), sorted.end());
     for (const auto& entry : sorted) {
       if (buckets_.empty() || buckets_.back().key != entry.first) {
-        buckets_.push_back({entry.first, ids_.size(), ids_.size(), {}});
+        buckets_.push_back({entry.first, ids_.size(), ids_.size(), 0, 0});
       }
       ids_.push_back(entry.second);
       buckets_.back().end = ids_.size();
@@ -380,21 +385,41 @@ class ConnectedVoxels {
     for (std::size_t i = 0; i < buckets_.size(); ++i) {
       lookup.emplace(buckets_[i].key, i);
     }
-    for (auto& bucket : buckets_) {
-      const auto [x, y, z] = bucket.key;
-      for (int dx = -1; dx <= 1; ++dx) {
+    std::vector<std::pair<int, int>> edges;
+    edges.reserve(buckets_.size());
+    for (std::size_t i = 0; i < buckets_.size(); ++i) {
+      const auto [x, y, z] = buckets_[i].key;
+      for (int dx = 0; dx <= 1; ++dx) {
         for (int dy = -1; dy <= 1; ++dy) {
           for (int dz = -1; dz <= 1; ++dz) {
-            if (dx == 0 && dy == 0 && dz == 0) {
+            if (dx == 0 && (dy < 0 || (dy == 0 && dz <= 0))) {
               continue;
             }
             const auto found = lookup.find({x + dx, y + dy, z + dz});
             if (found != lookup.end()) {
-              bucket.neighbors.push_back(found->second);
+              edges.emplace_back(i, found->second);
+              ++buckets_[i].neighbor_end;
+              ++buckets_[found->second].neighbor_end;
             }
           }
         }
       }
+    }
+    std::size_t neighbor_count = 0;
+    for (auto& bucket : buckets_) {
+      bucket.neighbor_begin = neighbor_count;
+      neighbor_count += bucket.neighbor_end;
+      bucket.neighbor_end = bucket.neighbor_begin;
+    }
+    neighbors_.resize(neighbor_count);
+    for (const auto& edge : edges) {
+      neighbors_[buckets_[edge.first].neighbor_end++] = edge.second;
+      neighbors_[buckets_[edge.second].neighbor_end++] = edge.first;
+    }
+    // Query each undirected edge once, retaining the original neighbor order.
+    for (auto& bucket : buckets_) {
+      std::sort(neighbors_.begin() + bucket.neighbor_begin,
+                neighbors_.begin() + bucket.neighbor_end);
     }
   }
 
@@ -420,7 +445,10 @@ class ConnectedVoxels {
       pending.clear();
       pending.push_back(i);
       for (std::size_t j = 0; j < pending.size(); ++j) {
-        for (int next : buckets_[pending[j]].neighbors) {
+        const auto& bucket = buckets_[pending[j]];
+        for (std::size_t k = bucket.neighbor_begin; k < bucket.neighbor_end;
+             ++k) {
+          const int next = neighbors_[k];
           if (labels[next] == -2) {
             labels[next] = component;
             pending.push_back(next);
@@ -443,9 +471,7 @@ class ConnectedVoxels {
   void Count(FusionWork* work) const {
     if (work != nullptr) {
       work->voxels = buckets_.size();
-      for (const auto& bucket : buckets_) {
-        work->neighbor_edges += bucket.neighbors.size();
-      }
+      work->neighbor_edges += neighbors_.size();
     }
   }
 
@@ -464,11 +490,13 @@ class ConnectedVoxels {
     VoxelKey key;
     std::size_t begin;
     std::size_t end;
-    std::vector<int> neighbors;
+    std::size_t neighbor_begin;
+    std::size_t neighbor_end;
   };
   std::size_t count_;
   std::vector<int> ids_;
   std::vector<Bucket> buckets_;
+  std::vector<int> neighbors_;
 };
 
 std::pair<CellKey, CellKey> BoxRange(const OrientedBox& box,
@@ -776,6 +804,14 @@ std::vector<OrientedBox> Associate(
     }
     auto* stats = hypothesis->mutable_association();
     stats->set_n_core(core.size());
+    auto* semantic = stats->mutable_semantic_evidence();
+    semantic->set_source_available(out->health().seg_valid());
+    semantic->set_identity_qualified(
+        out->health().seg_valid() &&
+        !c.quality().semantic_identity_unverified());
+    std::map<UnifiedClass, std::vector<uint32_t>> class_support;
+    std::map<Group, uint32_t> group_support;
+    uint32_t unavailable = 0, low_confidence = 0;
     int same = 0;
     int conflict = 0;
     for (int id : core) {
@@ -783,6 +819,31 @@ std::vector<OrientedBox> Associate(
       same += SemanticCompatible(p, hypothesis->unified_class(), c);
       conflict += (p.group() == STATIC_STRUCT || p.group() == VEGETATION) &&
                   p.semantic_probability() >= c.semantic_min_confidence();
+      if (!semantic->source_available()) {
+        ++unavailable;
+      } else if (p.semantic_probability() < c.semantic_min_confidence()) {
+        ++low_confidence;
+      } else {
+        ++group_support[p.group()];
+        if (p.group() == THING && p.unified_class() != CLASS_UNKNOWN) {
+          class_support[p.unified_class()].push_back(p.point_id());
+        }
+      }
+    }
+    semantic->set_n_unavailable(unavailable);
+    semantic->set_n_low_confidence(low_confidence);
+    for (auto& entry : class_support) {
+      auto* support = semantic->add_thing_support();
+      support->set_unified_class(entry.first);
+      std::sort(entry.second.begin(), entry.second.end());
+      for (uint32_t id : entry.second) {
+        support->add_point_id(id);
+      }
+    }
+    for (const auto& entry : group_support) {
+      auto* support = semantic->add_group_support();
+      support->set_group(entry.first);
+      support->set_n_points(entry.second);
     }
     if (!core.empty()) {
       stats->set_ratio_same_class(static_cast<double>(same) / core.size());
@@ -799,8 +860,18 @@ std::vector<OrientedBox> Associate(
     }
     const bool enough = stats->n_core() >= c.core_min_points();
     hypothesis->set_existence_supported(enough);
-    const bool identity_available = out->health().seg_valid() &&
-                                    !c.quality().semantic_identity_unverified();
+    const bool identity_available = semantic->identity_qualified();
+    bool disagreement = false;
+    if (identity_available && enough && hypothesis->group() == THING &&
+        hypothesis->unified_class() != CLASS_UNKNOWN) {
+      for (const auto& support : semantic->thing_support()) {
+        disagreement |=
+            support.unified_class() != hypothesis->unified_class() &&
+            static_cast<double>(support.point_id_size()) / stats->n_core() >=
+                c.conflict_ratio();
+      }
+    }
+    semantic->set_cross_thing_disagreement(disagreement);
     if (c.quality().semantic_identity_unverified()) {
       hypothesis->add_reason(SEMANTIC_IDENTITY_UNVERIFIED);
     }
@@ -933,6 +1004,92 @@ std::vector<OrientedBox> Associate(
   return boxes;
 }
 
+ObjectCandidate* AddRecallCandidate(
+    const FusionConfig& c, const std::vector<int>& ids,
+    const Eigen::Vector3d& low, const Eigen::Vector3d& high, UnifiedClass cls,
+    google::protobuf::RepeatedPtrField<PointDecision>* decisions,
+    CandidateResult* candidates) {
+  auto* object = candidates->objects.Add();
+  object->set_id(candidates->objects.size());
+  object->set_source(SEG_RECALL);
+  object->set_classification_use(CLASSIFICATION_CANDIDATE);
+  object->add_reason(SEMANTIC_RECALL);
+  object->set_consistency(SUPPORT);
+  object->set_unified_class(cls);
+  object->set_group(THING);
+  SetBox({(low + high) * 0.5,
+          (high - low).cwiseMax(Eigen::Vector3d::Constant(c.resolution())),
+          Eigen::Matrix3d::Identity()},
+         object->mutable_box());
+  for (int id : ids) {
+    object->add_point_id(id);
+    auto* decision = decisions->Mutable(id);
+    decision->set_object_id(object->id());
+    decision->set_explanation(EXPL_OBJECT);
+    decision->set_source(SEG_RECALL);
+    decision->add_reason(SEMANTIC_RECALL);
+  }
+  return object;
+}
+
+void RecallForeground(
+    const FusionConfig& c, const std::vector<int>& ids,
+    const std::vector<Eigen::Vector3d>& positions,
+    const google::protobuf::RepeatedPtrField<PointEvidence>& evidence,
+    google::protobuf::RepeatedPtrField<PointDecision>* decisions,
+    CandidateResult* candidates) {
+  std::map<UnifiedClass, std::vector<int>> foreground;
+  for (int id : ids) {
+    const auto& p = evidence.Get(id);
+    if (p.group() == THING &&
+        p.semantic_probability() >= c.semantic_min_confidence()) {
+      foreground[p.unified_class()].push_back(id);
+    }
+  }
+  const auto dominant = std::max_element(
+      foreground.begin(), foreground.end(), [](const auto& a, const auto& b) {
+        return a.second.size() < b.second.size();
+      });
+  if (dominant == foreground.end() ||
+      dominant->second.size() < c.recall_min_points() ||
+      dominant->second.size() < c.support_ratio() * ids.size()) {
+    return;
+  }
+  std::vector<Eigen::Vector3d> points;
+  points.reserve(dominant->second.size());
+  for (int id : dominant->second) {
+    points.push_back(positions[id]);
+  }
+  const std::vector<bool> eligible(points.size(), true);
+  const ConnectedVoxels voxels(points, eligible, c.connectivity_size());
+  const auto components = voxels.Components(eligible);
+  std::map<int, std::vector<int>> clusters;
+  for (std::size_t i = 0; i < components.size(); ++i) {
+    clusters[components[i]].push_back(dominant->second[i]);
+  }
+  for (const auto& cluster : clusters) {
+    if (cluster.second.size() < c.recall_min_points()) {
+      continue;
+    }
+    Eigen::Vector3d low = positions[cluster.second.front()], high = low;
+    for (int id : cluster.second) {
+      low = low.cwiseMin(positions[id]);
+      high = high.cwiseMax(positions[id]);
+    }
+    const Eigen::Vector3d size = high - low;
+    if (size.head<2>().maxCoeff() < c.recall_min_size() ||
+        size.maxCoeff() > c.recall_max_size()) {
+      continue;
+    }
+    auto* object = AddRecallCandidate(c, cluster.second, low, high,
+                                      dominant->first, decisions, candidates);
+    object->add_reason(FOREGROUND_SUBSET_RECALL);
+    for (int id : cluster.second) {
+      decisions->Mutable(id)->add_reason(FOREGROUND_SUBSET_RECALL);
+    }
+  }
+}
+
 void BuildCandidates(
     const std::vector<Eigen::Vector3d>& positions,
     const std::vector<int>& scene_components, const ConnectedVoxels& voxels,
@@ -1004,32 +1161,23 @@ void BuildCandidates(
                         size.head<2>().maxCoeff() >= c.recall_min_size() &&
                         size.maxCoeff() <= c.recall_max_size();
     if (recall) {
-      auto* object = candidates->objects.Add();
-      object->set_id(candidates->objects.size());
-      object->set_source(SEG_RECALL);
-      object->set_classification_use(CLASSIFICATION_CANDIDATE);
-      object->add_reason(SEMANTIC_RECALL);
-      object->set_consistency(SUPPORT);
       const auto vote = std::max_element(
           votes.begin(), votes.end(),
           [](const auto& a, const auto& b) { return a.second < b.second; });
-      object->set_unified_class(vote->first);
-      object->set_group(THING);
-      SetBox({(low + high) * 0.5,
-              size.cwiseMax(Eigen::Vector3d::Constant(c.resolution())),
-              Eigen::Matrix3d::Identity()},
-             object->mutable_box());
-      for (int id : cluster.second) {
-        object->add_point_id(id);
-        auto* decision = decisions->Mutable(id);
-        decision->set_object_id(object->id());
-        decision->set_explanation(EXPL_OBJECT);
-        decision->set_source(SEG_RECALL);
-        decision->add_reason(SEMANTIC_RECALL);
-      }
+      AddRecallCandidate(c, cluster.second, low, high, vote->first, decisions,
+                         candidates);
       continue;
     }
-    if (!corridor && cluster.second.size() < c.unknown_min_points()) {
+    const bool retain_unknown =
+        corridor || cluster.second.size() >= c.unknown_min_points();
+    if (c.candidates().recall_confident_foreground() && retain_unknown &&
+        !all_thing && related.empty() &&
+        !c.quality().semantic_identity_unverified()) {
+      RecallForeground(c, cluster.second, positions, evidence, decisions,
+                       candidates);
+      // The mixed component remains an independent unknown risk.
+    }
+    if (!retain_unknown) {
       continue;
     }
     auto* unknown = candidates->unknowns.Add();
@@ -1139,7 +1287,10 @@ SpaceCells BuildSpace(const FusionConfig& c, const FusionOutput& frame,
     Rasterize(detection_boxes[i], c, frame.hypothesis(i).object_id(), &cells);
   }
   for (const auto& object : frame.object()) {
-    if (object.source() == SEG_RECALL || object.source() == TRACK_PRIOR) {
+    if (object.source() == SEG_RECALL || object.source() == TRACK_PRIOR ||
+        (object.source() == DET &&
+         std::find(object.reason().begin(), object.reason().end(),
+                   ASSOCIATED_SUPPORT_EXTENT) != object.reason().end())) {
       Rasterize({Vector(object.box().center()), Vector(object.box().size()),
                  Eigen::Quaterniond(object.box().qw(), object.box().qx(),
                                     object.box().qy(), object.box().qz())
@@ -1302,6 +1453,24 @@ bool SingleFrameFusion::Init(const FusionConfig& c, std::string* error) {
   if (!ValidateCandidates(c)) {
     return Fail("invalid candidate options", error);
   }
+  if (c.publication().transport() == CORE_POD &&
+      (c.publication().max_pod_frame_bytes() == 0 ||
+       c.publication().max_pod_frame_bytes() >
+           static_cast<uint32_t>(std::numeric_limits<int>::max()))) {
+    return Fail("CORE_POD frame byte limit must be in [1, INT_MAX]", error);
+  }
+  const auto& diagnostic = c.publication().diagnostic_channel();
+  if (!diagnostic.empty() &&
+      (c.publication().detail() != FUNCTIONAL_SCENE ||
+       diagnostic == c.pointcloud_channel() ||
+       diagnostic == c.detection_channel() ||
+       diagnostic == c.segmentation_channel() ||
+       diagnostic == c.output_channel() ||
+       (c.temporal().enabled() && diagnostic == c.temporal().pose_channel()))) {
+    return Fail(
+        "diagnostic channel needs FUNCTIONAL_SCENE and a distinct topic",
+        error);
+  }
   config_ = c;
   initialized_ = true;
   return true;
@@ -1344,7 +1513,11 @@ bool SingleFrameFusion::Process(const drivers::PointCloud& cloud,
       last_stage = now;
     }
   };
-  FusionOutput frame;
+  FusionOutput heap_frame;
+  FusionOutput& frame =
+      output->GetArena() == nullptr
+          ? heap_frame
+          : *google::protobuf::Arena::Create<FusionOutput>(output->GetArena());
   *frame.mutable_header() = cloud.header();
   frame.mutable_header()->set_timestamp_sec(cloud.measurement_time());
   frame.mutable_header()->set_frame_id(config_.base_frame());
@@ -1398,7 +1571,7 @@ bool SingleFrameFusion::Process(const drivers::PointCloud& cloud,
   stage(3);
   CandidateWork relation_work;
   RefineCandidates(config_, frame.point_evidence(), &candidates,
-                   work == nullptr ? nullptr : &relation_work);
+                   work == nullptr ? nullptr : &relation_work, &index);
   candidates.objects.Swap(frame.mutable_object());
   candidates.unknowns.Swap(frame.mutable_unknown());
   if (work != nullptr) {
@@ -1413,11 +1586,83 @@ bool SingleFrameFusion::Process(const drivers::PointCloud& cloud,
   stage(6);
   CheckOutput(config_, &frame, &cells);
   cells.Publish(frame.mutable_space_map());
+  if (config_.candidates().shadow_semantic_partitions() &&
+      health->seg_valid() &&
+      !config_.quality().semantic_identity_unverified()) {
+    PartitionUnknowns(config_, frame.point_evidence(), frame.unknown(),
+                      frame.mutable_shadow_partition());
+  }
   stage(7);
   health->set_latency_ms(std::chrono::duration<double, std::milli>(
                              std::chrono::steady_clock::now() - start)
                              .count());
   *output = std::move(frame);
+  return true;
+}
+
+bool ProjectFunctionalOutput(const FusionConfig& config,
+                             const drivers::PointCloud& cloud,
+                             const FusionOutput& full, FusionOutput* output,
+                             std::string* error) {
+  if (output == nullptr || output == &full ||
+      full.publication().detail() != FULL_EVIDENCE || !full.has_health() ||
+      !full.header().has_timestamp_sec() ||
+      full.header().timestamp_sec() != cloud.measurement_time() ||
+      full.point_evidence_size() != cloud.point_size() ||
+      full.point_decision_size() != cloud.point_size() ||
+      cloud.point_size() == 0 || !SameSweep(cloud, full.header()) ||
+      cloud.frame_id() != config.sensor_frame() ||
+      full.header().frame_id() != config.base_frame() ||
+      full.calibration_version() != config.sensor_to_base().version()) {
+    return Fail(
+        "functional projection needs the complete matching source frame",
+        error);
+  }
+  FusionOutput heap_scene;
+  FusionOutput& scene =
+      output->GetArena() == nullptr
+          ? heap_scene
+          : *google::protobuf::Arena::Create<FusionOutput>(output->GetArena());
+  *scene.mutable_header() = full.header();
+  scene.set_calibration_version(full.calibration_version());
+  if (full.has_detection_model_revision()) {
+    scene.set_detection_model_revision(full.detection_model_revision());
+  }
+  scene.mutable_hypothesis()->CopyFrom(full.hypothesis());
+  scene.mutable_object()->CopyFrom(full.object());
+  scene.mutable_unknown()->CopyFrom(full.unknown());
+  if (full.has_space_map()) {
+    *scene.mutable_space_map() = full.space_map();
+  }
+  if (full.has_health()) {
+    *scene.mutable_health() = full.health();
+  }
+  scene.mutable_risk_event()->CopyFrom(full.risk_event());
+  scene.mutable_point_view()->CopyFrom(full.point_view());
+  scene.mutable_track()->CopyFrom(full.track());
+  scene.mutable_history_cell()->CopyFrom(full.history_cell());
+  if (full.has_odom_frame()) {
+    scene.set_odom_frame(full.odom_frame());
+  }
+  scene.mutable_shadow_partition()->CopyFrom(full.shadow_partition());
+  auto* context = scene.mutable_publication();
+  context->set_detail(FUNCTIONAL_SCENE);
+  context->set_source_point_count(cloud.point_size());
+  *context->mutable_source_header() = cloud.header();
+  context->set_source_measurement_time(cloud.measurement_time());
+  context->set_source_pointcloud_channel(config.pointcloud_channel());
+  *context->mutable_sensor_to_base() = config.sensor_to_base();
+  if (config.has_spatial()) {
+    *context->mutable_spatial_options() = config.spatial();
+  }
+  if (!config.publication().diagnostic_channel().empty()) {
+    context->set_diagnostic_channel(config.publication().diagnostic_channel());
+  }
+  context->set_shadow_partitions_enabled(
+      config.candidates().shadow_semantic_partitions() &&
+      full.health().seg_valid() &&
+      !config.quality().semantic_identity_unverified());
+  output->Swap(&scene);
   return true;
 }
 

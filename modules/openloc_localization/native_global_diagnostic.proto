@@ -1,0 +1,319 @@
+syntax = "proto2";
+
+package apollo.localization.openloc_diagnostic;
+
+message NativeGlobalHostConfig {
+  required string odometry_topic = 1;
+  required string gnss_topic = 2;
+  required string output_topic = 3;
+  required string reference_id = 4;
+  required string reference_version = 5;
+  required string calibration_id = 6;
+  required string content_id = 7;
+  required string journal = 8;
+  required bool assume_gravity_aligned_odom = 9;
+  required bool recorded_input = 10;
+  required double diagnostic_position_sigma_m = 11;
+  required double diagnostic_rotation_sigma_rad = 12;
+  required uint32 maximum_odometry_age_ms = 13;
+  // No map reader unless explicitly configured; never a production channel.
+  optional string map_topic = 14;
+  // When present, gnss_topic carries RawData NMEA instead of prepared XY.
+  optional NativeRawGgaConfig raw_gga = 15;
+  // Opt-in explicit alignment reset, never a local ODOM reset or CRS change.
+  optional string reset_topic = 16;
+  optional string alignment_session = 17;
+  repeated string reset_consumers = 18;
+  // Raw point cloud mode is exclusive with prepared map_topic.
+  optional NativeOnlineMapConfig online_map = 19;
+  // Presence selects the sole fixed-lag owner and joint ODOM wire type.
+  // Absence preserves the separate legacy diagnostic owner.
+  optional NativeTargetGraphConfig target_graph = 20;
+  // Exclusive with raw_gga and prepared GNSS. The GNSS topic carries BestPose.
+  optional NativeStructuredGnssConfig structured_gnss = 21;
+}
+
+message NativeStructuredGnssConfig {
+  // Explicit source contract: zero for Unix records; GPS epoch conversion
+  // includes the declared leap-second offset. Never infer from wall time.
+  required double measurement_to_unix_offset_s = 1;
+  required uint32 utm_zone = 2;
+  required bool northern_hemisphere = 3;
+  required double origin_easting_m = 4;
+  required double origin_northing_m = 5;
+  required double lever_x = 6;
+  required double lever_y = 7;
+  required double lever_z = 8;
+  required string preparation_id = 9;
+  required uint32 minimum_satellites = 10;
+  required double maximum_horizontal_std_m = 11;
+  required double maximum_differential_age_s = 12;
+  required int64 fixed_stability_ns = 13;
+  required int64 maximum_gap_ns = 14;
+  required int64 maximum_measurement_age_ns = 15;
+  optional NativeDualAntennaConfig heading = 16;
+  optional NativeGlobalGnssInput.Dependency gnss_map_construction = 17;
+  optional NativeGraphSourceQualification position_graph_qualification = 18;
+  optional NativeGraphSourceQualification heading_graph_qualification = 19;
+}
+
+message NativeDualAntennaConfig {
+  required string topic = 1;
+  // Primary -> secondary in the same IMU/base frame as local ODOM.
+  required double baseline_x = 2;
+  required double baseline_y = 3;
+  required double baseline_z = 4;
+  // True north angle CCW from map +X; includes grid convergence if applicable.
+  required double true_north_yaw_rad = 5;
+  required double maximum_std_rad = 6;
+  required double maximum_baseline_error_m = 7;
+  required uint32 minimum_satellites = 8;
+  required int64 fixed_stability_ns = 9;
+  required int64 maximum_gap_ns = 10;
+}
+
+message NativeTargetGraphConfig {
+  required string motion_error_model_id = 1;
+  required uint32 maximum_error_dimension = 2;
+  required uint32 history_duration_ms = 3;
+  required uint32 maximum_observation_age_ms = 4;
+  required uint32 maximum_states = 5;
+  required double solve_budget_ms = 6;
+  required uint32 verification_frames = 7;
+  required bool allow_uncalibrated_inputs = 8;
+  // Required for shared ICP: the versioned map is conditioned on as fixed.
+  // This is not survey/construction uncertainty qualification.
+  required bool assume_deterministic_map = 9;
+  required double scan_voxel_m = 10;
+  required uint32 minimum_scan_points = 11;
+  required uint32 normal_neighbors = 12;
+  // Sufficient stochastic motion-model declaration, separate from calibration.
+  required bool motion_error_model_qualified = 13;
+  optional bool recorded_source_clock = 14 [default = false];
+}
+
+message NativeGraphLocalCorrelation {
+  required string motion_error_model_id = 1;
+  required string conditional_independence_evidence_id = 2;
+  required uint64 odometry_sequence = 3;
+  required int64 conditioning_ns = 4;
+  required uint32 dimension = 5;
+  repeated double cross_covariance = 6 [packed = true];
+  required bool conditional_model_qualified = 7;
+  required bool residual_independent_of_history_and_sources = 8;
+}
+
+message NativeGraphSourceQualification {
+  required string uncertainty_model_id = 1;
+  required string independence_evidence_id = 2;
+  required bool quality_valid = 3;
+  required bool uncertainty_qualified = 4;
+  required bool independent_of_local = 5;
+  required bool independent_of_graph_sources = 6;
+  optional NativeGraphLocalCorrelation local_correlation = 7;
+}
+
+message NativeOnlineMapConfig {
+  required string cloud_topic = 1;
+  required string lidar_frame = 2;
+  required string map_pcd = 3;
+  required string map_sha256 = 4;
+  required NativeGlobalPose imu_from_lidar = 5;
+  // Explicit diagnostic hypothesis, not an absolute seed for native ODOM.
+  optional NativeGlobalPose initial_map_from_odom = 6;
+  optional int64 hypothesis_minimum_ns = 7;
+  optional int64 hypothesis_maximum_ns = 8;
+  required double window_radius_m = 9;
+  required double window_cell_m = 10;
+  required uint32 task_deadline_ms = 11;
+  required string preparation_id = 12;
+  optional NativeGlobalGnssInput.Dependency gnss_map_construction = 13;
+  optional string hypothesis_odometry_session = 14;
+  optional uint64 hypothesis_odometry_generation = 15;
+  // Exclusive with all explicit hypothesis fields. Declared region/tilt/coverage.
+  optional string regional_policy_csv = 16;
+  optional string regional_policy_sha256 = 17;
+  // Recorded-only idempotent enqueue ACK, not a live delivery/match guarantee.
+  optional string recorded_ack_session = 18;
+}
+
+message NativeGlobalResetRequest {
+  required string alignment_session = 1;
+  required uint64 expected_alignment_generation = 2;
+  required uint64 sequence = 3;
+  required string reason = 4;
+}
+
+// Sent only after the named consumer has retired all prior-generation state.
+message NativeGlobalResetAck {
+  required string alignment_session = 1;
+  required uint64 alignment_generation = 2;
+  required uint64 sequence = 3;
+  required string consumer_id = 4;
+}
+
+message NativeRawGgaConfig {
+  required uint32 utm_zone = 1;
+  required bool northern_hemisphere = 2;
+  required double origin_easting_m = 3;
+  required double origin_northing_m = 4;
+  required double lever_x = 5;
+  required double lever_y = 6;
+  required double lever_z = 7;
+  required double diagnostic_sigma_m = 8;
+  required string preparation_id = 9;
+  required uint32 minimum_satellites = 10;
+  required double maximum_hdop = 11;
+  required double maximum_differential_age_s = 12;
+  required int64 fixed_stability_ns = 13;
+  required int64 maximum_gap_ns = 14;
+  optional NativeGlobalGnssInput.Dependency gnss_map_construction = 15;
+  // External stochastic-model declaration, never inferred from RTK FIX or
+  // configured sigma. Receiver quality/dwell admission is still mandatory.
+  optional NativeGraphSourceQualification graph_qualification = 16;
+}
+
+// Prepared antenna XY, not raw GGA or receiver accuracy. The source adapter
+// owns projection, receiver quality/dwell admission and calibration evidence.
+message NativeGlobalGnssInput {
+  enum Dependency {
+    UNKNOWN = 0;
+    ABSENT = 1;
+    PRESENT = 2;
+  }
+  required string session = 1;
+  required uint64 generation = 2;
+  required uint64 sequence = 3;
+  required int64 measurement_ns = 4;
+  required int64 receive_ns = 5;
+  required string reference_id = 6;
+  required string reference_version = 7;
+  required string calibration_id = 8;
+  required string content_id = 9;
+  required double x = 10;
+  required double y = 11;
+  required double covariance_xx = 12;
+  required double covariance_xy = 13;
+  required double covariance_yy = 14;
+  required double lever_x = 15;
+  required double lever_y = 16;
+  required double lever_z = 17;
+  required string preparation_id = 18;
+  required bool receiver_admitted = 19;
+  required bool recorded_input = 20;
+  required bool diagnostic_only = 21;
+  required string covariance_source = 22;
+  optional Dependency gnss_map_construction = 23 [default = UNKNOWN];
+  optional string alignment_session = 24;
+  optional uint64 alignment_generation = 25;
+  optional NativeGraphSourceQualification graph_qualification = 26;
+}
+
+message NativeGlobalPose {
+  required double x = 1;
+  required double y = 2;
+  required double z = 3;
+  required double qx = 4;
+  required double qy = 5;
+  required double qz = 6;
+  required double qw = 7;
+}
+
+// Prepared scan-to-map result at the IMU origin, not a local ODOM reset.
+// Covariance chart: translation_map, left rotation_map; matrices row-major.
+message NativeGlobalMapInput {
+  enum Kind {
+    FULL_POSE = 0;
+    PROJECTED_POSE = 1;
+  }
+  required string session = 1;
+  required uint64 generation = 2;
+  required uint64 sequence = 3;
+  required int64 measurement_ns = 4;
+  required int64 receive_ns = 5;
+  required string reference_id = 6;
+  required string reference_version = 7;
+  required string calibration_id = 8;
+  required string content_id = 9;
+  required string preparation_id = 10;
+  required string covariance_source = 11;
+  required bool recorded_input = 12;
+  required bool diagnostic_only = 13;
+  required NativeGlobalPose map_from_imu = 14;
+  required Kind kind = 15;
+  // Full pose: exactly 36 values; no projection fields.
+  repeated double covariance = 16 [packed = true];
+  // Projected pose: rank in [1,5], rank*6 projection and rank*rank covariance.
+  optional uint32 rank = 17;
+  repeated double projection = 18 [packed = true];
+  repeated double projected_covariance = 19 [packed = true];
+  required bool ambiguous = 20;
+  required bool recovery = 21;
+  optional NativeGlobalGnssInput.Dependency odometry_initialization = 22;
+  optional NativeGlobalGnssInput.Dependency odometry_deskew = 23;
+  optional NativeGlobalGnssInput.Dependency shared_local_scans = 24;
+  optional NativeGlobalGnssInput.Dependency gnss_map_construction = 25;
+  optional string alignment_session = 26;
+  optional uint64 alignment_generation = 27;
+  optional NativeGraphSourceQualification graph_qualification = 28;
+}
+
+message NativeGlobalDiagnostic {
+  optional uint64 publication_sequence = 1;
+  optional double publication_time = 2;
+  optional string session = 3;
+  optional uint64 generation = 4;
+  optional uint64 odometry_sequence = 5;
+  optional int64 measurement_ns = 6;
+  optional int64 source_receive_ns = 7;
+  optional bool usable = 8;
+  optional bool new_measurement = 9;
+  optional bool epoch_changed = 10;
+  optional uint64 correction_id = 11;
+  optional double x = 12;
+  optional double y = 13;
+  optional double alignment_x = 14;
+  optional double alignment_y = 15;
+  optional double alignment_yaw = 16;
+  optional int64 last_gnss_measurement_ns = 17;
+  optional bool diagnostic_only = 18 [default = true];
+  optional bool trusted = 19 [default = false];
+  optional bool full_pose_available = 20 [default = false];
+  optional bool target_graph_available = 21 [default = false];
+  optional bool recorded_input = 22;
+  optional string reason = 23;
+  optional double odometry_age_s = 24;
+  optional string reference_id = 25;
+  optional string reference_version = 26;
+  optional string calibration_id = 27;
+  optional string content_id = 28;
+  // Present only while full map evidence AND local ODOM are fresh.
+  optional NativeGlobalPose map_from_imu = 29;
+  optional NativeGlobalPose map_from_odom = 30;
+  optional int64 last_full_pose_measurement_ns = 31;
+  // Owner-event watermark, including rejects; not a sensor observation count.
+  optional uint64 processed_events = 32;
+  optional string alignment_session = 33;
+  optional uint64 alignment_generation = 34;
+  // Sticky last accepted request identity, including after reacquisition.
+  optional uint64 reset_sequence = 35;
+  optional bool reset_pending = 36;
+  repeated string pending_reset_consumers = 37;
+  optional string reset_reason = 38;
+  optional uint64 map_tasks_completed = 39;
+  optional string selected_owner = 40;
+  optional string motion_error_model_id = 41;
+  optional string graph_assessment_reason = 42;
+  optional bool recorded_source_clock = 43 [default = false];
+  optional double local_processing_delay_s = 44;
+}
+
+// Test/diagnostic completion evidence, not a delivery protocol or live deadline
+// guarantee. No automatic retries or acceptance of duplicate measurements.
+message NativeGlobalProcessed {
+  required string kind = 1;
+  required uint64 sequence = 2;
+  required string session = 3;
+  required uint64 generation = 4;
+  required int32 status = 5;
+}

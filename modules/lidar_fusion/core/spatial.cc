@@ -106,9 +106,16 @@ void Views(const FusionConfig& config, FusionOutput* out) {
   for (const auto& object : out->object()) {
     objects[object.id()] = &object;
   }
-  std::set<uint32_t> unknown;
+  std::vector<bool> unknown(out->point_evidence_size(), false);
+  std::set<uint32_t> sparse_unknown;
   for (const auto& cluster : out->unknown()) {
-    unknown.insert(cluster.point_id().begin(), cluster.point_id().end());
+    for (uint32_t id : cluster.point_id()) {
+      if (id < unknown.size()) {
+        unknown[id] = true;
+      } else {
+        sparse_unknown.insert(id);
+      }
+    }
   }
   for (int i = 0; i < out->point_evidence_size(); ++i) {
     const auto& p = out->point_evidence(i);
@@ -137,7 +144,9 @@ void Views(const FusionConfig& config, FusionOutput* out) {
     if (p.group() == STATIC_STRUCT || p.group() == VEGETATION) {
       out->mutable_point_view(STRUCTURE_POINTS)->add_point_id(p.point_id());
     }
-    if (unknown.count(p.point_id()) != 0) {
+    if (p.point_id() < unknown.size()
+            ? unknown[p.point_id()]
+            : sparse_unknown.count(p.point_id()) != 0) {
       out->mutable_point_view(UNKNOWN_POINTS)->add_point_id(p.point_id());
     }
     if (p.in_corridor() && !p.is_ground_geo() &&

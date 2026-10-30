@@ -1,0 +1,58 @@
+syntax = "proto2";
+
+package apollo.localization.openloc_diagnostic;
+
+import "wheelos_msgs/basic_msgs/geometry.proto";
+import "wheelos_msgs/transform_msgs/transform.proto";
+
+// The owner's actual nominal 15D error covariance, not configured diagnostic
+// sigmas or proof of sufficient stochastic state. Chart:
+// [position_odom, velocity_odom, right_attitude_imu, gyro_bias, accel_bias].
+message NativeLocalErrorState {
+  repeated double covariance = 1 [packed = true];  // 15x15, row-major.
+  required bool covariance_model_valid = 2;
+  required bool uncertainty_qualified = 3;
+  required apollo.common.Point3D gyro_bias = 4;
+  required apollo.common.Point3D accel_bias = 5;
+  required apollo.common.Point3D angular_velocity = 6;
+}
+
+// Not LocalizationEstimate: native ODOM is not ENU or a rear-axle pose.
+message NativeOdometryDiagnostic {
+  optional uint64 publication_sequence = 1;
+  optional double publication_time = 2;
+  optional double measurement_time = 3;
+  optional double receive_time = 4;
+  optional uint64 source_sequence = 5;
+  optional string session = 6;
+  optional uint64 generation = 7;
+  optional bool usable = 8;
+  optional bool new_measurement = 9;
+  optional bool epoch_changed = 10;
+  optional bool diagnostic_only = 11 [default = true];
+  optional bool trusted = 12 [default = false];
+  optional string reason = 13;
+  optional string detail = 14;
+  optional double measurement_age = 15;
+  optional double maximum_age = 16;
+  optional apollo.transform.TransformStamped odom_from_imu = 17;
+  optional apollo.common.Point3D velocity_in_odom = 18;
+  optional int64 publication_steady_ns = 19;
+  optional int64 publication_interval_ns = 20;
+  optional int64 requested_period_ns = 21;
+  optional bool recorded_input = 22 [default = false];
+  // Same immutable source snapshot as pose/velocity. Absent while unavailable
+  // and for legacy senders; absence must never be treated as a qualified model.
+  optional NativeLocalErrorState native_error_state = 23;
+  // Explicit offline graph replay: age uses original receive/measurement time.
+  // Never live freshness. Actual wall handoff delay remains separately visible.
+  optional bool recorded_source_clock = 24 [default = false];
+  optional double processing_delay_s = 25;
+}
+
+// Recorded-diagnostic input admission only, not estimator commit or delivery
+// acknowledgement for live localization.
+message NativeRecordedIngressAck {
+  required string session = 1;
+  required uint64 source_sequence = 2;
+}

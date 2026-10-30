@@ -1,0 +1,34 @@
+syntax = "proto2";
+
+package apollo.localization.openloc;
+
+import "native_global_diagnostic.proto";
+import "native_lio_host_config.proto";
+
+message LocalizationConfig {
+  // Deployment acknowledgement, not an accuracy/uncertainty qualification.
+  optional bool deployment_configured = 1 [default = false];
+  required apollo.localization.openloc_diagnostic.NativeLioHostConfig local = 2;
+  required apollo.localization.openloc_diagnostic.NativeGlobalHostConfig global = 3;
+  // Resolved from the selected common registry, not deployment input.
+  required string imu_frame = 4;
+  reserved 5;
+  reserved "imu_from_vrp";
+  // Map PCD XY is UTM minus the structured GNSS origin; Z uses this datum.
+  required double utm_origin_height_m = 6;
+  required string vertical_datum = 7;
+  optional string localization_topic = 8 [default = "/apollo/localization/pose"];
+  optional string status_topic = 9 [default = "/apollo/localization/msf_status"];
+  optional string parent_frame = 10 [default = "map"];
+  optional string child_frame = 11 [default = "base_link"];
+  required string imu_sensor = 12;
+  required string lidar_sensor = 13;
+  required string gnss_sensor = 14;
+  optional string secondary_gnss_sensor = 15;
+  // Resolved static TFs; both source frames use FLU axes.
+  required apollo.localization.openloc_diagnostic.NativeGlobalPose imu_from_base = 16;
+  required apollo.localization.openloc_diagnostic.NativeGlobalPose imu_from_vrp_flu = 17;
+  // Rear-axle frame; select a calibrated static frame if base_link differs.
+  optional string vrp_frame = 18 [default = "base_link"];
+  optional float static_tf_timeout_s = 19 [default = 1.0];
+}

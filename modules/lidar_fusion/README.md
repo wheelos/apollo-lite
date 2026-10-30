@@ -118,10 +118,231 @@ ownership, exact local relations and L6 shared-cell references still apply.
 This is a separate behavior experiment, not an equivalent execution switch;
 it neither enables semantic partitioning nor changes the ground estimator.
 
+Two additional candidate experiments also default to false:
+`candidates.recall_confident_foreground` recalls connected, confident same-class
+subsets of retained mixed unknowns only when their fraction reaches `support_ratio`
+and the existing recall limits hold. Connectivity is recomputed after removing
+background; the entire mixed unknown and its risk remain. It uses the default
+voxel graph and rejects combinations with separate/far candidate connectivity.
+`candidates.extend_detection_support` extends only supported, classification-use
+DET candidates using their own confident same-class assigned points, anchored
+by at least `core_min_points` such points inside the original box. Center and
+orientation are fixed: one-sided visible support cannot relocate an amodal
+detector hypothesis. No face moves beyond the original `association_margin`; raw
+hypotheses are unchanged. The extension has an explicit reason and contributes
+only additional inferred occupancy, never erasing measured occupancy. Neither
+experiment uses semantically unverified identity or establishes amodal box
+accuracy.
+
+Extension also checks all local evidence in the newly enclosed shell, including
+unassigned points. It rejects a proposal when confident static/vegetation votes
+reach the existing `conflict_ratio` among those votes and confident same-class
+THING support. Geometric ground, out-of-height-band points and low-confidence
+semantics do not vote. This reuses the frame's spatial index; it does not scan
+the whole cloud per production candidate or change the original detector box.
+
 The CPU architecture regression and controlled comparison are recorded in
 [`../tools/perception_diagnostics/validation/cpu_workspace_v1.json`](../tools/perception_diagnostics/validation/cpu_workspace_v1.json).
 The benchmark optimizes fusion sources with `-O2`, keeping cached dependency
 settings fixed; it is not a whole-stack release or model-inference benchmark.
+For timing budgets, verify generated protobuf and runtime dependency flags too:
+core-only `-O2` with fastbuild dependencies is a distinct baseline from
+`--config=opt` (`-c opt` for precise targets). A build-mode improvement is not
+an algorithm or source-code speedup.
+
+Legacy configurations hand the complete `FusionOutput` to the Cyber writer.
+The explicit functional publication mode below separates the dense trace.
+Core computation, projection, message sizing/serialization and actual
+queue/transport costs are separate measurement boundaries; an isolated
+serialization result is not production end-to-end latency.
+
+### Functional publication
+
+`publication.detail` defaults to `FULL_EVIDENCE` for existing configurations.
+The unconfigured deployment template explicitly selects `FUNCTIONAL_SCENE`;
+configure/migrate its consumers before using it. The core and optional temporal
+adapter still compute and check the complete evidence frame. Projection happens
+only at the component publication boundary, not inside fusion decisions.
+
+| Function | Published scene fields |
+| --- | --- |
+| Object fusion | `object`, complete `hypothesis`, association semantic ledger, raw detector hypotheses/scores and conflict/classification roles |
+| Unknown and topology | `unknown`, relations and enabled `shadow_partition`; partitions remain support subsets, not verified instances |
+| Spatial risk and gated traversability | Complete `space_map`, including independent measured, inferred and unknown risk and all existing FREE gates |
+| Background/foreground filtering | Enabled `point_view` original-ID lists; filtering a view never clears occupancy |
+| Temporal and degradation | `track`, `history_cell`, `odom_frame`, `health`, `risk_event` and frame/calibration/model identity |
+
+Only the dense `point_evidence` and `point_decision` arrays are omitted from
+`FUNCTIONAL_SCENE`. `publication` explicitly identifies the profile and includes
+the original cloud header, measurement time, channel, point count and exact
+sensor-to-base transform. Every point ID in objects, unknowns, partitions,
+semantic support and views indexes that **same unfiltered source sweep**.
+Consumers needing positions must join that exact cloud and apply the supplied
+transform; an unavailable/stale cloud is not empty space. Published positions,
+boxes and cells otherwise keep their existing base-frame contracts.
+Configured spatial options and semantic-partition availability remain explicit.
+No new view, partition, FREE or temporal feature is implicitly enabled.
+
+Set `publication.diagnostic_channel` to a distinct channel to retain the complete
+frame alongside the functional scene. The diagnostic writer sends only while
+a reader is present; its failure does not invalidate an already published scene.
+Without that explicit diagnostic subscription, the omitted trace is not retained
+for later retrieval. It is intentional output detail, **not SOURCE_MISSING**.
+Do not run full-frame `CheckOutput` or dense GT exporters on a functional scene;
+checks run before projection, and exporters require the full diagnostic channel
+or unchanged complete cached replay outputs. Omitted profile metadata means the
+legacy complete contract, never a new compact payload.
+
+The manual `//modules/lidar_fusion:publication_probe` target measures a real
+writer and callback in two separate processes using an already saved full or
+functional `FusionOutput`. In the managed test runtime, set `CYBER_IP=127.0.0.1`
+and an isolated `CYBER_DOMAIN_ID`, create a new empty receipt directory, then run:
+
+```text
+publication_probe receive EXPECTED_PB /test/lidar_fusion_publication/CASE RECEIPTS COUNT
+publication_probe send EXPECTED_PB /test/lidar_fusion_publication/CASE RECEIPTS WARMUPS REPEATS NEW_CSV
+```
+
+`COUNT` must equal `WARMUPS + REPEATS`. Discovery and each sample are bounded.
+An untimed same-channel bootstrap marker confirms a real data callback: topology
+discovery alone does not establish a matched volatile RTPS endpoint. Setup markers
+are separate from the exact frames; timed publications are never retried.
+The receiver verifies complete bytes before acknowledging. CSV separates writer
+wall/CPU time and publication-to-callback time; receipt polling is outside the
+callback interval. This excludes fusion, input queues and model inference.
+Transport depends on the resolved Cyber SDK and runtime configuration: ordinary
+protobufs fall back from configured cross-process ICEORYX to RTPS in the current
+SDK. Do not infer zero-copy or shared-memory delivery from configuration alone.
+
+### Core POD publication
+
+`publication.transport` is independent of output detail. Absent transport keeps
+the legacy `PROTOBUF` writer and message type. The unconfigured, fail-closed
+template explicitly selects `CORE_POD` on a separate `/pod` topic; both its
+primary output and optional diagnostic channel use `PodMessage`. Existing
+`Reader<FusionOutput>` consumers must not subscribe to those topics.
+
+The adapter calls core `Writer<PodMessage>::Loan` and serializes the original
+`FusionOutput` protobuf directly into the borrowed memory before moving each
+loan into `Publish`. It never constructs an owned `PodMessage` or falls back to
+copied `Write`/RTPS. This is **transport zero-copy**, not a typed end-to-end
+zero-copy scene: protobuf encoding, decoding and fusion allocation/release
+remain. The functional projection and all fusion policies are unchanged.
+
+The current core chunk capacity is `8 MiB - 256` bytes, including the POD
+header. A functional scene typically fits one chunk; complete roughly 10 MB
+diagnostics require two. The adapter streams across canonical fragments without
+an intermediate full-frame string. All loans are acquired before any fragment
+is submitted. `max_pod_frame_bytes` defaults to 64 MiB and bounds accepted frame
+size, not available memory: the SDK's outstanding-loan limit, pool pressure or
+held consumer samples can still reject a smaller frame.
+
+The wire contract uses the existing version-1 `PodChunkHeader`, payload kind
+`UNKNOWN` (not an image/point-cloud layout), and application discriminator
+`schema_hash = 0x46555331` (`FUS1`, not a checksum). `timestamp_ns` preserves the
+original LiDAR timestamp. `frame_id` is the publisher's monotonic wire-message
+ID, not the source sequence. `reserved[0..3]` carry publisher epoch, total
+protobuf bytes, fragment byte offset, and packed `(count << 32) | index`.
+The original source/frame/calibration metadata remains in the protobuf payload.
+
+Consumers use `ConfigureFusionPodReader` to provision the local pending queue
+and ICEORYX subscriber depth for a complete bounded frame, then pass each
+`shared_ptr<PodMessage>` to a `FusionPodAssembler` owned by that reader. The
+assembler retains borrowed owners and parses their views through protobuf
+streams without a reassembly copy. Do not copy `PodMessage` by value: core
+deep-copies even a borrowed message. One ordered publisher stream is supported
+per assembler; restart epochs are explicit. Release/reset the assembler and
+reader when stopping consumption.
+
+Only `COMPLETE` delivers a decoded frame. Invalid schema, sizes, timestamps,
+reordered/missing fragments and byte-budget violations never emit a partial or
+default empty scene. A new complete frame can replace an incomplete one;
+consumers must still monitor freshness rather than interpret missing delivery
+as free space. A writer result is submission, not callback acknowledgement.
+With no readers, publication explicitly skips encoding/loans. Same-process
+INTRA readers or mixed/remote routes cannot use this loan path and fail visibly;
+use an explicit protobuf configuration where those routes are required.
+
+Recording is also a consumer migration. The current generic `cyber_recorder`
+constructs `RawMessage` readers, so its POD capture/replay path is **not
+qualified** here. Use a POD-aware decoder/retention consumer or the legacy
+protobuf path; do not feed a saved POD chunk directly to a dense protobuf/GT
+exporter. No existing records or SDK configuration are rewritten.
+
+Append `--core-pod` to **both** publication-probe commands above to require real
+borrowed callbacks. CSV additionally separates sizing, loans, direct encoding,
+publish and decoded-ready callback time. POD callback entry alone precedes
+protobuf decoding and is not comparable to a decoded protobuf callback.
+The probe retains chunks across subsequent publications and verifies them after
+reader shutdown/release. Optional sender `--pool-pressure` exercises a
+multi-fragment frame with only enough outstanding-loan capacity for its prefix:
+the whole submission must reject without exposing a fragment, then recover
+after releasing the held loans. It characterizes loan-resource pressure, not
+the total global mempool capacity.
+
+For offline codec regression only, `publication_probe codec-matrix PATHS_TXT
+NEW_CSV` checks every listed complete protobuf twice through heap-backed borrowed
+fragment views. This does not initialize Cyber or claim a runtime zero-copy
+test; the separate two-process probe provides that evidence.
+
+### Frame allocation and ownership
+
+The component allocates each published protobuf on its own frame-owned Arena.
+Aliasing `shared_ptr` ownership retains that Arena until the last writer/reader
+reference is released, including after the processing callback or component
+has stopped. Complete diagnostics and functional scenes have independent
+owners: retaining a functional scene does not pin its omitted dense trace.
+There is no cross-frame Arena reset/reuse while consumers hold a message.
+
+Core processing and projection construct their temporary message on the
+destination's Arena to avoid a hidden cross-Arena deep copy. Ordinary heap
+callers remain supported. This changes allocation and release, not evidence,
+fusion decisions, field availability or the transport codec.
+
+### Evidence-preserving diagnostics
+
+`hypothesis.association.semantic_evidence` describes the original eligible
+**core**, excluding margin and final candidate membership. It distinguishes
+source availability, qualified semantic identity, confident coarse-group counts,
+confident known-THING point-ID subsets, low-confidence points and unavailable
+semantics. Raw subsets remain inspectable when identity is unqualified; they do
+not become qualified votes. Counts and top-1 confidence are not calibrated
+existence probabilities.
+
+`cross_thing_disagreement` requires qualified identity, `core_min_points`, a
+known THING detection, and one different known THING class reaching the existing
+`conflict_ratio` over all core points. Different alternative classes are not
+pooled. A false flag does not exclude weak or mixed opposing evidence. This
+additive description does **not** change legacy `consistency`, `class_conflict`,
+candidate admission, classification-use role, ownership or geometry. Both the
+raw detector box and exact semantic support subsets remain available; neither
+source is declared correct.
+
+`candidates.shadow_semantic_partitions` defaults to false. With valid, qualified
+segmentation, it adds read-only `shadow_partition` records for retained unknown
+parents containing confident known-THING support. Known classes and confident
+non-generic coarse groups are clustered separately using the existing
+`CandidateComponents` L-infinity distance test at `connectivity_size`, without
+far-range expansion. Low-confidence/generic points and geometrically ineligible
+seeds remain in an unexplained remainder. Per parent, disjoint child point-ID
+sets exactly cover its support set; the original parent is retained unchanged.
+There is no boundary growth, minimum-instance-size claim, fitted box, heading,
+score, object promotion or spatial-risk reduction. Touching same-class instances
+may still be merged and partial surfaces may fragment. These are semantic
+support partitions, **not verified instances**.
+
+Clustering uses original-point index views rather than copying protobuf points.
+Verified voxel cliques skip redundant comparisons only when their actual bounds
+and semantic compatibility guarantee connectivity. Neighbor lookup and union
+order stay deterministic; all remaining edges retain the exact distance test.
+This changes neither the connectivity radius nor the partitioning policy.
+
+All additions coexist with old serialized payloads. Old consumers may ignore
+the new fields but must not assume that an old payload computed these
+diagnostics. Shadow output is built after spatial checks and never enters
+candidate or occupancy construction; its compute is included in latency and the
+optional output-stage timing. No production switch or downstream driving policy
+is enabled by this diagnostic work.
 
 ## Input and calibration contract
 
@@ -297,8 +518,16 @@ warm-up and the requested measured repeats. `timing.csv` retains every sample;
 `summary.csv` uses the last measured sample, with model timing unavailable (-1).
 Normalized `*.cloud.pb.{0,1,2,3}.pb` retain complete four-mode payloads except
 `health.latency_ms`, and repeats must be byte-identical. Wrong-sweep rejection
-and immutable input checks also execute. Optional final `--profile` additionally
-writes `stages.csv`; use an unprofiled run for performance comparisons.
+and immutable input checks also execute. Optional `--profile` additionally writes
+`stages.csv`; use an unprofiled run for performance comparisons.
+`--shadow-partitions` explicitly enables read-only semantic partitions in the
+saved run configuration. Both flags may follow the optional repeat count:
+
+```sh
+bazel-bin/modules/lidar_fusion/replay_cached \
+  /path/to/inputs /path/to/frozen-model-results /path/to/new-shadow-results \
+  1 --profile --shadow-partitions
+```
 
 The normal `*.fusion.pb`, exact cached model copies, configuration and arguments
 can feed the independent SemanticKITTI exporter directly. It still requires the
@@ -307,8 +536,8 @@ overwritten; this runner is a diagnostic/benchmark tool, not a production
 scheduler or a deadline guarantee.
 
 After supplying a sensor-matched deployment configuration, the opt-in DAG is
-`dag/lidar_fusion.dag`; it publishes one `FusionOutput` channel for all three
-representations and diagnostic evidence. The DAG uses source-tree build paths;
+`dag/lidar_fusion.dag`; it publishes the configured `FusionOutput` scene profile
+and optionally a separate complete diagnostic channel. The DAG uses source-tree build paths;
 adjust those paths for an installed package. The `:install` target packages the
 plugin, configuration and DAG, not model files or a runnable vehicle setup.
 

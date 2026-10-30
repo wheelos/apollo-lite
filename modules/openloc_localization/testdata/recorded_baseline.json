@@ -1,0 +1,38 @@
+{
+  "schema": "openloc.local-cyber-baseline.v1",
+  "scope": "diagnostic local ODOM, recorded admission-confirmed Cyber replay",
+  "bootstrap_voxel_m": 0.2,
+  "lidar_commit_delay_ms": 50,
+  "optimization_minimum_repeats": 3,
+  "optimization_minimum_median_p95_lateness_reduction_fraction": 0.2,
+  "reference_root": ".agents/notes/native_timer_output_validation_20261023_v1/public_startup",
+  "captures": [
+    {
+      "id": "20261012103814",
+      "input": ".agents/notes/native_gnss_e2e_20261023_v1/20261012103814/inputs",
+      "manifest_sha256": "4362ca3c8413b7649c937601c44196998e0f7382b539813262c56e4c75c733e0",
+      "odometry_sha256": "a61010977c71c0edb5ae0c58df9ba8f44b85ff8897340d643203fd0ac228eff2",
+      "lidar_sha256": "97886f654c81d968ad49520e054439ec0e5548064d1fc6c90f2a669d5294da3c",
+      "imu_samples": 6000,
+      "scans": 300
+    },
+    {
+      "id": "20261012105149",
+      "input": ".agents/notes/native_corrected_startup_20261023/20261012105149/inputs",
+      "manifest_sha256": "9512826a261e9041bb1cceefdb5ac83174bd40c303668f9336d3617ef66d7a1d",
+      "odometry_sha256": "b82a3b6ba8b8bbf080deb0a8994d02f9e911de97edef5098267cf70ff5ad7c9e",
+      "lidar_sha256": "55e5b9fe22e2287ca5416fccbea2922402eab94ba1668264cd446c7c9b0c5bd8",
+      "imu_samples": 6000,
+      "scans": 300
+    },
+    {
+      "id": "20261015185840",
+      "input": ".agents/notes/native_corrected_startup_20261023/20261015185840/inputs",
+      "manifest_sha256": "ca6876026a3d31405668b644042bbe25c22f3907b7ccdbcc58f3331fdde54130",
+      "odometry_sha256": "aa3800b5438a4dd7277f65190400f3ce25a3a51e681e2e10e722642d3c3f20fd",
+      "lidar_sha256": "db9edf202f4757d294e7570951a46bd34e18317972e0e85fafeb061591bf04ac",
+      "imu_samples": 5999,
+      "scans": 300
+    }
+  ]
+}

@@ -6,6 +6,15 @@
 from google.protobuf import descriptor_pb2, descriptor_pool, message_factory
 
 
+def require_full_evidence(message):
+    publication = getattr(message, "publication", None)
+    if publication is not None and publication.detail == 1:
+        raise ValueError(
+            "FUNCTIONAL_SCENE omits the dense point trace; "
+            "use the FULL_EVIDENCE diagnostic channel or cached replay output"
+        )
+
+
 class Reader:
     def __init__(self, schema):
         descriptors = descriptor_pb2.FileDescriptorSet.FromString(schema.read_bytes())

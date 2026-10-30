@@ -23,3 +23,4 @@ common:dev --override_module=wheelos_transform=%workspace%/pkgs/transform
 common:dev --override_module=hardware.camera_gst=%workspace%/pkgs/hardware/camera_gst
 common:dev --override_module=hardware.image_decompress=%workspace%/pkgs/hardware/image_decompress
 common:dev --override_module=hardware.hal=%workspace%/pkgs/hardware/hal
+common:dev --override_module=openloc=%workspace%/pkgs/openloc

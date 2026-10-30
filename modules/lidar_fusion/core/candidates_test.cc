@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "modules/lidar_fusion/core/candidates.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
+#include <set>
+#include <vector>
 
 #include "gtest/gtest.h"
 
@@ -34,11 +37,11 @@ ObjectCandidate* AddBox(uint32_t id, double x, FusionOutput* out) {
 }
 
 void Refine(const FusionConfig& config, FusionOutput* frame,
-            CandidateWork* work = nullptr) {
+            CandidateWork* work = nullptr, const PointIndex* index = nullptr) {
   CandidateResult candidates;
   candidates.objects.Swap(frame->mutable_object());
   candidates.unknowns.Swap(frame->mutable_unknown());
-  RefineCandidates(config, frame->point_evidence(), &candidates, work);
+  RefineCandidates(config, frame->point_evidence(), &candidates, work, index);
   candidates.objects.Swap(frame->mutable_object());
   candidates.unknowns.Swap(frame->mutable_unknown());
 }
@@ -74,6 +77,281 @@ TEST(CandidateTest, SeparatesTouchingClassesAndConnectsFarSparseReturns) {
   EXPECT_NE(clusters[1], clusters[2]);
   EXPECT_EQ(clusters[3], clusters[4]);
   EXPECT_NE(clusters[5], clusters[6]);
+}
+
+TEST(CandidateTest, ShadowPartitionsSeparateSeedsWithoutCrossingBackground) {
+  FusionConfig c;
+  c.set_connectivity_size(0.2);
+  c.mutable_candidates()->set_shadow_semantic_partitions(true);
+  c.mutable_candidates()->set_far_connectivity_size(0.6);
+  c.mutable_candidates()->set_far_distance(1);
+  FusionOutput out;
+  auto* unknown = out.add_unknown();
+  unknown->set_id(71);
+  auto add = [&](double x, Group group, UnifiedClass cls, float confidence) {
+    const auto id = AddPoint(x, 1, 1, &out);
+    auto* p = out.mutable_point_evidence(id);
+    p->set_group(group);
+    p->set_unified_class(cls);
+    p->set_semantic_probability(confidence);
+    unknown->add_point_id(id);
+  };
+  add(1, THING, CAR, 0.95F);
+  add(1.1, THING, CAR, 0.95F);
+  add(1.26, STATIC_STRUCT, CLASS_UNKNOWN, 0.95F);
+  add(1.45, THING, CAR, 0.95F);
+  add(1.35, STATIC_STRUCT, CLASS_UNKNOWN, 0.95F);
+  add(1.5, THING, PEDESTRIAN, 0.95F);
+  add(1.6, VEGETATION, CLASS_UNKNOWN, 0.95F);
+  add(1.2, THING, CAR, 0.4F);
+  add(1.7, GENERIC_OBS, CLASS_UNKNOWN, 0.95F);
+  const auto original = out.SerializeAsString();
+  PartitionUnknowns(c, out.point_evidence(), out.unknown(),
+                    out.mutable_shadow_partition());
+  ASSERT_EQ(out.shadow_partition_size(), 6);
+  std::set<uint32_t> all;
+  std::vector<int> cars;
+  for (const auto& partition : out.shadow_partition()) {
+    EXPECT_EQ(partition.parent_unknown_id(), 71U);
+    for (uint32_t id : partition.point_id()) {
+      EXPECT_TRUE(all.insert(id).second);
+    }
+    if (partition.kind() == PARTITION_THING_SUPPORT &&
+        partition.unified_class() == CAR) {
+      cars.push_back(partition.point_id_size());
+    }
+    if (partition.kind() == PARTITION_UNEXPLAINED) {
+      EXPECT_EQ(partition.point_id_size(), 2);
+    }
+  }
+  std::sort(cars.begin(), cars.end());
+  EXPECT_EQ(cars, (std::vector<int>{1, 2}));
+  EXPECT_EQ(all, (std::set<uint32_t>{0, 1, 2, 3, 4, 5, 6, 7, 8}));
+  out.clear_shadow_partition();
+  EXPECT_EQ(out.SerializeAsString(), original);
+}
+
+TEST(CandidateTest, ShadowResidualRetainsGeometricallyRejectedSupport) {
+  FusionConfig c;
+  c.mutable_candidates()->set_shadow_semantic_partitions(true);
+  FusionOutput out;
+  auto* unknown = out.add_unknown();
+  unknown->set_id(1);
+  for (int i = 0; i < 4; ++i) {
+    const auto id = AddPoint(1 + i * 0.1, 1, 1, &out);
+    auto* p = out.mutable_point_evidence(id);
+    p->set_group(THING);
+    p->set_unified_class(CAR);
+    p->set_semantic_probability(0.95F);
+    unknown->add_point_id(id);
+  }
+  out.mutable_point_evidence(1)->set_finite(false);
+  out.mutable_point_evidence(2)->set_ground_valid(true);
+  out.mutable_point_evidence(2)->set_height_above_ground(0);
+  out.mutable_point_evidence(3)->mutable_position()->set_x(c.max_x());
+  PartitionUnknowns(c, out.point_evidence(), out.unknown(),
+                    out.mutable_shadow_partition());
+  ASSERT_EQ(out.shadow_partition_size(), 2);
+  EXPECT_EQ(out.shadow_partition(0).kind(), PARTITION_THING_SUPPORT);
+  EXPECT_EQ(out.shadow_partition(0).point_id_size(), 1);
+  EXPECT_EQ(out.shadow_partition(1).kind(), PARTITION_UNEXPLAINED);
+  EXPECT_EQ(out.shadow_partition(1).point_id_size(), 3);
+  EXPECT_EQ(out.shadow_partition(1).unified_class(), CLASS_UNKNOWN);
+  c.mutable_candidates()->set_shadow_semantic_partitions(false);
+  PartitionUnknowns(c, out.point_evidence(), out.unknown(),
+                    out.mutable_shadow_partition());
+  EXPECT_EQ(out.shadow_partition_size(), 0);
+}
+
+TEST(CandidateTest, DetectionExtentUsesOnlyConfidentAssociatedClassSupport) {
+  FusionConfig c;
+  c.set_core_min_points(2);
+  c.set_semantic_min_confidence(0.8);
+  c.set_association_margin(0.3);
+  FusionOutput out;
+  auto* object = AddBox(1, 0, &out);
+  object->set_source(DET);
+  object->set_group(THING);
+  object->set_unified_class(CAR);
+  object->set_consistency(SUPPORT);
+  object->set_classification_use(CLASSIFICATION_CANDIDATE);
+  auto add = [&](double x, Group group, UnifiedClass cls, double probability,
+                 bool associated) {
+    const auto id = AddPoint(x, 0, 0, &out);
+    auto* p = out.mutable_point_evidence(id);
+    p->set_group(group);
+    p->set_unified_class(cls);
+    p->set_semantic_probability(probability);
+    if (associated) {
+      object->add_point_id(id);
+    }
+  };
+  add(-0.5, THING, CAR, 0.9, true);
+  add(0.5, THING, CAR, 0.9, true);
+  add(1.2, THING, CAR, 0.9, true);
+  add(-1.25, THING, PEDESTRIAN, 0.9, true);
+  add(-1.29, SURFACE, CAR, 0.9, true);
+  add(-1.28, THING, CAR, 0.7, true);
+  add(-1.31, THING, CAR, 0.9, true);
+  add(1.49, THING, CAR, 0.9, true);
+  add(-1.2, THING, CAR, 0.9, false);
+  const auto original_box = object->box().SerializeAsString();
+  Refine(c, &out);
+  EXPECT_EQ(object->box().SerializeAsString(), original_box);
+  c.mutable_candidates()->set_extend_detection_support(true);
+  Refine(c, &out);
+  EXPECT_DOUBLE_EQ(object->box().center().x(), 0);
+  EXPECT_NEAR(object->box().size().x(), 2.4, 1e-12);
+  EXPECT_DOUBLE_EQ(object->box().size().y(), 2);
+  EXPECT_DOUBLE_EQ(object->box().size().z(), 2);
+  ASSERT_EQ(object->reason_size(), 1);
+  EXPECT_EQ(object->reason(0), ASSOCIATED_SUPPORT_EXTENT);
+  const auto refined = object->SerializeAsString();
+  Refine(c, &out);
+  EXPECT_EQ(object->SerializeAsString(), refined);
+}
+
+TEST(CandidateTest, DetectionExtentPreservesYawAndRequiresSupportedIdentity) {
+  FusionConfig c;
+  c.set_core_min_points(2);
+  c.mutable_candidates()->set_extend_detection_support(true);
+  for (bool supported : {false, true}) {
+    FusionOutput out;
+    auto* object = AddBox(1, 0, &out);
+    object->set_source(DET);
+    object->set_group(THING);
+    object->set_unified_class(CAR);
+    object->set_classification_use(CLASSIFICATION_CANDIDATE);
+    object->set_consistency(supported ? SUPPORT : INSUFFICIENT);
+    const double yaw = std::acos(-1) / 4;
+    object->mutable_box()->set_qz(std::sin(yaw / 2));
+    object->mutable_box()->set_qw(std::cos(yaw / 2));
+    for (double x : {-0.5, 0.5, 1.2}) {
+      const auto id = AddPoint(std::cos(yaw) * x, std::sin(yaw) * x, 0, &out);
+      auto* point = out.mutable_point_evidence(id);
+      point->set_group(THING);
+      point->set_unified_class(CAR);
+      point->set_semantic_probability(0.95);
+      object->add_point_id(id);
+    }
+    const auto original = object->SerializeAsString();
+    c.mutable_quality()->set_semantic_identity_unverified(true);
+    Refine(c, &out);
+    EXPECT_EQ(object->SerializeAsString(), original);
+    c.mutable_quality()->set_semantic_identity_unverified(false);
+    Refine(c, &out);
+    EXPECT_DOUBLE_EQ(object->box().qz(), std::sin(yaw / 2));
+    EXPECT_DOUBLE_EQ(object->box().qw(), std::cos(yaw / 2));
+    if (supported) {
+      EXPECT_DOUBLE_EQ(object->box().center().x(), 0);
+      EXPECT_DOUBLE_EQ(object->box().center().y(), 0);
+      EXPECT_NEAR(object->box().size().x(), 2.4, 1e-12);
+    } else {
+      EXPECT_EQ(object->SerializeAsString(), original);
+    }
+  }
+}
+
+TEST(CandidateTest, DetectionExtentRejectsUnassignedBackgroundShell) {
+  FusionConfig c;
+  c.set_min_x(-5);
+  c.set_max_x(5);
+  c.set_min_y(-5);
+  c.set_max_y(5);
+  c.set_core_min_points(2);
+  c.set_semantic_min_confidence(0.8);
+  c.set_conflict_ratio(0.7);
+  c.mutable_candidates()->set_extend_detection_support(true);
+  for (Group background : {STATIC_STRUCT, VEGETATION}) {
+    for (double yaw : {0., std::acos(-1) / 4}) {
+      FusionOutput out;
+      auto* object = AddBox(1, 0, &out);
+      object->set_source(DET);
+      object->set_group(THING);
+      object->set_unified_class(CAR);
+      object->set_consistency(SUPPORT);
+      object->set_classification_use(CLASSIFICATION_CANDIDATE);
+      object->mutable_box()->set_qz(std::sin(yaw / 2));
+      object->mutable_box()->set_qw(std::cos(yaw / 2));
+      auto add = [&](double x, double y, Group group, bool associated) {
+        const auto id =
+            AddPoint(std::cos(yaw) * x - std::sin(yaw) * y,
+                     std::sin(yaw) * x + std::cos(yaw) * y, 0, &out);
+        auto* point = out.mutable_point_evidence(id);
+        point->set_group(group);
+        point->set_unified_class(group == THING ? CAR : CLASS_UNKNOWN);
+        point->set_semantic_probability(0.95);
+        if (associated) {
+          object->add_point_id(id);
+        }
+      };
+      for (double x : {-0.5, 0.5, 1.2}) {
+        add(x, 0, THING, true);
+      }
+      for (double y : {-0.2, 0., 0.2}) {
+        add(1.1, y, background, false);
+      }
+      const auto original = object->SerializeAsString();
+      PointIndex index;
+      for (const auto& point : out.point_evidence()) {
+        index[{static_cast<int>(
+                   std::floor(point.position().x() / c.resolution())),
+               static_cast<int>(
+                   std::floor(point.position().y() / c.resolution()))}]
+            .push_back(point.point_id());
+      }
+      Refine(c, &out);
+      EXPECT_EQ(object->SerializeAsString(), original);
+      Refine(c, &out, nullptr, &index);
+      EXPECT_EQ(object->SerializeAsString(), original);
+    }
+  }
+}
+
+TEST(CandidateTest, DetectionExtentIgnoresExistingOrNonVotingBackground) {
+  FusionConfig c;
+  c.set_core_min_points(2);
+  c.set_semantic_min_confidence(0.8);
+  c.mutable_candidates()->set_extend_detection_support(true);
+  FusionOutput out;
+  auto* object = AddBox(1, 0, &out);
+  object->set_source(DET);
+  object->set_group(THING);
+  object->set_unified_class(CAR);
+  object->set_consistency(SUPPORT);
+  object->set_classification_use(CLASSIFICATION_CANDIDATE);
+  for (double x : {-0.5, 0.5, 1.2}) {
+    const auto id = AddPoint(x, 0, 0, &out);
+    auto* point = out.mutable_point_evidence(id);
+    point->set_group(THING);
+    point->set_unified_class(CAR);
+    point->set_semantic_probability(0.95);
+    object->add_point_id(id);
+  }
+  for (double x : {0.5, 1.1, 1.3}) {
+    const auto id = AddPoint(x, 0, 0, &out);
+    auto* point = out.mutable_point_evidence(id);
+    point->set_group(STATIC_STRUCT);
+    point->set_semantic_probability(x == 1.1 ? 0.7 : 0.95);
+  }
+  const auto ground = AddPoint(1.1, 0, 0, &out);
+  out.mutable_point_evidence(ground)->set_group(STATIC_STRUCT);
+  out.mutable_point_evidence(ground)->set_semantic_probability(0.95);
+  out.mutable_point_evidence(ground)->set_is_ground_geo(true);
+  Refine(c, &out);
+  EXPECT_NEAR(object->box().size().x(), 2.4, 1e-12);
+  EXPECT_EQ(object->reason(0), ASSOCIATED_SUPPORT_EXTENT);
+}
+
+TEST(CandidateTest, ForegroundRecallRejectsAlternativeConnectivity) {
+  FusionConfig c;
+  c.mutable_candidates()->set_recall_confident_foreground(true);
+  EXPECT_TRUE(ValidateCandidates(c));
+  c.mutable_candidates()->set_separate_semantic_instances(true);
+  EXPECT_FALSE(ValidateCandidates(c));
+  c.mutable_candidates()->set_separate_semantic_instances(false);
+  c.mutable_candidates()->set_far_connectivity_size(c.connectivity_size());
+  EXPECT_FALSE(ValidateCandidates(c));
 }
 
 TEST(CandidateTest, FitsRotatedRecallAndConvexUnknownWithoutChangingEvidence) {

@@ -43,6 +43,24 @@ resized camera context with timestamp skew, not calibrated projected overlays.
 `--max-points` bounds **display-only** stride sampling (default 8000 per frame);
 the replay and metrics use all original points.
 
+Projection version 2 preserves full native object/unknown/hypothesis evidence,
+point evidence/decisions and optional-field presence. A missing raw score is
+displayed as `null`; separate `ranking_score` retains historical matching order,
+including the uncalibrated 1.0 ordering placeholder. Heading marks require
+`orientation_reliable=true`; an enclosure axis is not a physical heading.
+SemanticKITTI point inspection keeps trusted membership (`p[12]`) separate from
+GT instance identity (`p[13]`); nuScenes has no such point-instance GT.
+
+With the current fusion schema, strong cross-THING disagreement is purple and
+independent of the legacy red conflict/consumer role. “Alternative THING
+supports” draws original semantic core subsets, not replacement boxes. An
+explicit shadow-partition replay also enables “Shadow semantic supports”:
+click measured-support points for the full native point-ID set, parent unknown,
+kind and semantic class/group. These overlays use display-sampled returns;
+their counts and IDs retain the full subset. They do not fit boxes, establish
+instance boundaries, or clear the retained parent's risk. Older payloads lack
+these diagnostics; absence is not evidence that no contradiction exists.
+
 `report.json` and `frames.csv` contain labeled fixed-operating-point results,
 independent occupancy/reference/source audits, mode distributions and artifact
 hashes. Matching uses score-descending, class-aware, one-to-one nearest XY
@@ -189,8 +207,8 @@ matching counts.
 
 Point metrics include `trusted_object_points_thing`, separate from the original
 geometric `object_points_thing`; always compare its precision **and** recall.
-In the viewer use “Semantic-supported object points” or “Classified candidates
-only”. Unknown polygons marked `point_supported_footprint` are drawn as unfilled
+In the viewer use “Semantic-supported object points” or “Classification-use
+candidates only”. Unknown polygons marked `point_supported_footprint` are drawn as unfilled
 extents; the “Unknown risk” grid shows actual supported risk instead.
 
 The opt-in policy's frozen development and previously unseen test results are

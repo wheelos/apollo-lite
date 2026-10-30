@@ -1,0 +1,8 @@
+common --enable_bzlmod
+common --registry=https://bcr.wheelos.cn/
+common --registry=https://bcr.bazel.build/
+build --repository_cache=/apollo/.cache/bazel/repo_cache
+build --disk_cache=/apollo/.cache/bazel/disk_cache
+build --cxxopt=-std=c++17
+test --test_output=errors
+import %workspace%/.bazelrc.dev

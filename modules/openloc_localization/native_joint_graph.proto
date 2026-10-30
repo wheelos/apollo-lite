@@ -1,0 +1,39 @@
+syntax = "proto2";
+
+package apollo.localization.openloc_diagnostic;
+
+import "native_odometry_diagnostic.proto";
+
+message NativeJointSource {
+  required string source = 1;
+  required uint64 sequence = 2;
+}
+
+// All matrices are row-major. The native producer exports an orthonormal
+// unit-driving-variable basis, not a default covariance inferred by a reader.
+message NativeJointOdometryInput {
+  required NativeOdometryDiagnostic odometry = 1;
+  required string error_model_id = 2;
+  required bool model_available = 3;
+  required string model_detail = 4;
+  required int64 measurement_ns = 5;
+  required int64 receive_ns = 6;
+  optional uint32 dimension = 7;
+  optional bool unit_covariance_basis = 8;
+  // Observer's projected 15x15 marginal, not the nominal diagnostic covariance.
+  repeated double covariance = 9 [packed = true];
+  repeated double output_jacobian = 10 [packed = true];  // 15 x dimension.
+  optional int64 previous_ns = 11;
+  optional uint64 previous_sequence = 12;
+  optional uint32 previous_dimension = 13;
+  repeated double cross_covariance = 14 [packed = true];  // 15x15.
+  repeated double joint_cross_covariance = 15 [packed = true];
+  repeated NativeJointSource sources = 16;
+  // Original LIO-consumed deskewed points; never a separately decoded cloud.
+  optional uint64 scan_sequence = 17;
+  optional int64 scan_reference_ns = 18;
+  optional uint64 lidar_revision = 19;
+  repeated double scan_points = 20 [packed = true];  // point count x 3.
+  repeated double scan_jacobians = 21 [packed = true];  // point count x 3 x N.
+  optional int64 scan_receive_ns = 22;
+}
