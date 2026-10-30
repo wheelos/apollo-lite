@@ -10,3 +10,16 @@ common:dev --override_module=wheelos_common=%workspace%/pkgs/common
 common:dev --override_module=wheelos_map=%workspace%/pkgs/map
 common:dev --override_module=wheelos_core=%workspace%/pkgs/core
 common:dev --override_module=wheelos_msgs=%workspace%/pkgs/wheelos_msgs
+common:dev --override_module=hardware.camera=%workspace%/pkgs/hardware/camera
+common:dev --override_module=hardware.canbus=%workspace%/pkgs/hardware/canbus
+common:dev --override_module=hardware.vehicle=%workspace%/pkgs/hardware/vehicle
+common:dev --override_module=hardware.lidar=%workspace%/pkgs/hardware/lidar
+common:dev --override_module=hardware.radar=%workspace%/pkgs/hardware/radar
+common:dev --override_module=hardware.gnss=%workspace%/pkgs/hardware/gnss
+common:dev --override_module=hardware.audio=%workspace%/pkgs/hardware/audio
+common:dev --override_module=hardware.video=%workspace%/pkgs/hardware/video
+common:dev --override_module=hardware.build=%workspace%/pkgs/hardware/build
+common:dev --override_module=wheelos_transform=%workspace%/pkgs/transform
+common:dev --override_module=hardware.camera_gst=%workspace%/pkgs/hardware/camera_gst
+common:dev --override_module=hardware.image_decompress=%workspace%/pkgs/hardware/image_decompress
+common:dev --override_module=hardware.hal=%workspace%/pkgs/hardware/hal

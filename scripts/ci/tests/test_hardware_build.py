@@ -57,12 +57,12 @@ class BuildWrapperTest(unittest.TestCase):
         args = self.run_wrapper(
             "hardware",
             "--config=hw_x86_devkit",
-            "--//tools/hardware:gnss=novatel",
+            "--@hardware.build//tools/hardware:gnss=novatel",
             "--define",
             "vehicle=devkit",
             "--profile=/tmp/profile with spaces.gz",
         )
-        self.assertIn("--//tools/hardware:gnss=novatel", args)
+        self.assertIn("--@hardware.build//tools/hardware:gnss=novatel", args)
         self.assertIn("--profile=/tmp/profile with spaces.gz", args)
         self.assertEqual(args[args.index("--define") + 1], "vehicle=devkit")
         self.assertEqual(args[args.index("--") + 1 :], ["//tools/hardware:hardware"])
@@ -145,21 +145,51 @@ class BuildWrapperTest(unittest.TestCase):
         args = self.run_wrapper(
             "hardware",
             "--config=hw_x86_devkit",
-            "--//tools/hardware:gnss=huace",
+            "--@hardware.build//tools/hardware:gnss=huace",
             "--jobs=4",
             command="test",
         )
-        self.assertIn("--//tools/hardware:gnss=huace", args)
+        self.assertIn("--@hardware.build//tools/hardware:gnss=huace", args)
         self.assertEqual(args[args.index("--") + 1 :], ["//tools/hardware:tests"])
 
     def test_legacy_module_remains_recursive(self):
         args = self.run_wrapper("canbus")
-        self.assertIn("//modules/canbus/...", args)
+        self.assertIn("@hardware.vehicle//...", args)
+
+    def test_extracted_module_shorthands_route_builds_and_tests(self):
+        for component, targets in [
+            (
+                "drivers",
+                [
+                    f"@hardware.{name}//..."
+                    for name in (
+                        "camera",
+                        "camera_gst",
+                        "image_decompress",
+                        "hal",
+                        "canbus",
+                        "lidar",
+                        "radar",
+                        "gnss",
+                        "audio",
+                        "video",
+                    )
+                ],
+            ),
+            ("canbus", ["@hardware.vehicle//..."]),
+            ("transform", ["@wheelos_transform//modules/transform/..."]),
+        ]:
+            for command in ["build", "test"]:
+                with self.subTest(component=component, command=command):
+                    args = self.run_wrapper(component, command=command)
+                    for target in targets:
+                        self.assertIn(target, args)
 
     def test_direct_label_is_not_interpreted_as_directory(self):
-        args = self.run_wrapper("//modules/canbus:libcanbus_component.so")
+        args = self.run_wrapper("@hardware.vehicle//:component")
         self.assertEqual(
-            args[args.index("--") + 1 :], ["//modules/canbus:libcanbus_component.so"]
+            args[args.index("--") + 1 :],
+            ["@hardware.vehicle//:component"],
         )
 
 

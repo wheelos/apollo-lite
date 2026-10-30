@@ -19,3 +19,7 @@ repositories:
     type: git
     url: git@github.com:wheelos/map.git
     version: main
+  hardware:
+    type: git
+    url: git@github.com:wheelos/hardware.git
+    version: main

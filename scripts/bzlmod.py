@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,9 +29,15 @@ def snapshot(root):
         )
     result = {}
     for path in checkouts:
-        revision = subprocess.check_output(
-            ["git", "-C", str(path), "rev-parse", "HEAD"], text=True
-        ).strip()
+        head = subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "--verify", "--quiet", "HEAD"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if head.returncode not in (0, 1):
+            head.check_returncode()
+        revision = head.stdout.strip() if head.returncode == 0 else None
         changes = subprocess.check_output(
             ["git", "-C", str(path), "status", "--porcelain"], text=True
         ).splitlines()
@@ -112,6 +119,7 @@ def main():
     print(
         f"Bzlmod mode={args.mode}, Bazel={version}, rc={RC_FILES[args.mode]}",
         flush=True,
+        file=sys.stderr,
     )
     return subprocess.call(argv, cwd=ROOT)
 

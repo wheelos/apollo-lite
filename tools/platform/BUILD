@@ -16,13 +16,14 @@ config_setting(
     },
 )
 
-constraint_setting(
+alias(
     name = "camera_gst_platform",
+    actual = "@hardware.build//tools/platform:camera_gst_platform",
 )
 
-constraint_value(
+alias(
     name = "jetson_orin",
-    constraint_setting = ":camera_gst_platform",
+    actual = "@hardware.build//tools/platform:jetson_orin",
 )
 
 platform(

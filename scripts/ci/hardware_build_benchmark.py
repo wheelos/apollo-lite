@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -25,7 +26,9 @@ def main():
         parser.error("run as the mapped non-root user in the managed container")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     common = [
-        "bazel",
+        sys.executable,
+        "scripts/bzlmod.py",
+        "dev",
         "build",
         "--config=cpu",
         "--config=opt",
@@ -38,8 +41,17 @@ def main():
     variants = {
         "recursive": [
             "--",
-            "//modules/drivers/...",
-            "//modules/canbus/...",
+            "@hardware.camera//...",
+            "@hardware.camera_gst//...",
+            "@hardware.image_decompress//...",
+            "@hardware.canbus//...",
+            "@hardware.lidar//...",
+            "@hardware.radar//...",
+            "@hardware.gnss//...",
+            "@hardware.hal//...",
+            "@hardware.audio//...",
+            "@hardware.video//...",
+            "@hardware.vehicle//...",
         ],
         "selected": ["--config=hw_x86_devkit", "--", "//tools/hardware:hardware"],
     }
@@ -67,7 +79,7 @@ def main():
             if sample == "rebuild":
                 probe += 1
                 rebuild_options = [
-                    "--per_file_copt=modules/(drivers|canbus)/.*@"
+                    "--per_file_copt=external/hardware[.][^/]+[+]/.*@"
                     f"-DHARDWARE_PROFILE_TIMING_PROBE={probe}"
                 ]
             command = (

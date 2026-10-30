@@ -1,5 +1,6 @@
 """Tests for isolation of local and registry-based consumers."""
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -54,6 +55,16 @@ class ConsumerModeTest(unittest.TestCase):
             bzlmod.command(self.root, "bazelisk", "registry", ["mod", "graph"])
         with self.assertRaises(ValueError):
             bzlmod.command(self.root, "bazelisk", "release", [])
+
+    def test_snapshot_marks_uncommitted_new_checkouts_explicitly(self):
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        hardware = self.root / "pkgs/hardware"
+        hardware.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(hardware)], check=True)
+        (hardware / "MODULE.bazel").write_text('module(name = "hardware")\n')
+        result = bzlmod.snapshot(self.root)
+        self.assertIsNone(result["pkgs/hardware"]["revision"])
+        self.assertTrue(result["pkgs/hardware"]["dirty"])
 
 
 if __name__ == "__main__":

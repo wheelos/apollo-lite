@@ -1,43 +1,30 @@
 """Hardware selection and resolved product manifest."""
 
-load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("@hardware.build//tools/hardware:defs.bzl", _VEHICLES = "VEHICLES")
+load(":runtime_paths.bzl", "deployment_path")
 
 HardwareSelectionInfo = provider(fields = ["choices"])
-
-VEHICLES = [
-    "ch",
-    "devkit",
-    "ge3",
-    "gem",
-    "lexus",
-    "lincoln",
-    "mk_mini",
-    "neolix_edu",
-    "transit",
-    "wey",
-    "yunle",
-    "zhongyun",
-]
+VEHICLES = _VEHICLES
 
 LIDARS = {
-    "hesai": ["//modules/drivers/lidar/hesai:libhesai_component.so"],
-    "livox": ["//modules/drivers/lidar/livox:liblivox_component.so"],
-    "lslidar": ["//modules/drivers/lidar/lslidar:liblslidar_component.so"],
-    "rslidar": ["//modules/drivers/lidar/rslidar:librslidar_component.so"],
-    "seyond": ["//modules/drivers/lidar/seyond:libseyond_component.so"],
-    "vanjeelidar": ["//modules/drivers/lidar/vanjeelidar:libvanjeelidar_component.so"],
+    "hesai": ["@hardware.lidar//hesai:libhesai_component.so"],
+    "livox": ["@hardware.lidar//livox:liblivox_component.so"],
+    "lslidar": ["@hardware.lidar//lslidar:liblslidar_component.so"],
+    "rslidar": ["@hardware.lidar//rslidar:librslidar_component.so"],
+    "seyond": ["@hardware.lidar//seyond:libseyond_component.so"],
+    "vanjeelidar": ["@hardware.lidar//vanjeelidar:libvanjeelidar_component.so"],
     "velodyne": [
-        "//modules/drivers/lidar/velodyne/compensator:libvelodyne_compensator_component.so",
-        "//modules/drivers/lidar/velodyne/driver:libvelodyne_driver_component.so",
-        "//modules/drivers/lidar/velodyne/fusion:libvelodyne_fusion_component.so",
-        "//modules/drivers/lidar/velodyne/parser:libvelodyne_convert_component.so",
+        "@hardware.lidar//velodyne/compensator:libvelodyne_compensator_component.so",
+        "@hardware.lidar//velodyne/driver:libvelodyne_driver_component.so",
+        "@hardware.lidar//velodyne/fusion:libvelodyne_fusion_component.so",
+        "@hardware.lidar//velodyne/parser:libvelodyne_convert_component.so",
     ],
 }
 
 def enabled(name, targets):
     return select({
-        "//tools/hardware:" + name: targets,
+        "@hardware.build//tools/hardware:" + name: targets,
         "//conditions:default": [],
     })
 
@@ -46,25 +33,9 @@ def lidar_targets(runtime = False):
     for brand, targets in LIDARS.items():
         result += enabled(
             "with_lidar_" + brand,
-            ["//modules/drivers/lidar/" + brand + ":runtime_data"] if runtime else targets,
+            ["@hardware.lidar//" + brand + ":runtime_data"] if runtime else targets,
         )
     return result
-
-def vehicle_selection(name):
-    """Keep the legacy define while accepting a typed vehicle choice."""
-    native.config_setting(
-        name = name + "_legacy",
-        define_values = {"vehicle": name.removeprefix("with_")},
-        flag_values = {"//tools/hardware:vehicle": "legacy"},
-    )
-    native.config_setting(
-        name = name + "_profile",
-        flag_values = {"//tools/hardware:vehicle": name.removeprefix("with_")},
-    )
-    selects.config_setting_group(
-        name = name,
-        match_any = [":" + name + "_legacy", ":" + name + "_profile"],
-    )
 
 def _manifest_impl(ctx):
     choices = {
@@ -76,7 +47,7 @@ def _manifest_impl(ctx):
     if vehicle == "legacy":
         vehicle = legacy_vehicle or "none"
     elif legacy_vehicle and legacy_vehicle != vehicle:
-        fail("Conflicting vehicle selections: --define=vehicle={} and --//tools/hardware:vehicle={}".format(legacy_vehicle, vehicle))
+        fail("Conflicting vehicle selections: --define=vehicle={} and --@hardware.build//tools/hardware:vehicle={}".format(legacy_vehicle, vehicle))
     if vehicle not in VEHICLES + ["none"]:
         fail("Unknown vehicle: " + vehicle)
     if vehicle != "none" and choices["canbus"] == "none":
@@ -126,9 +97,13 @@ enable_sender_log: false
         "profile": ctx.attr.profile[BuildSettingInfo].value,
         "choices": choices,
         "components": [str(target.label) for target in ctx.attr.components],
+        "component_files": [
+            "bazel-bin/" + deployment_path(f)
+            for f in ctx.files.components
+        ],
         "runtime_files": sorted([f.short_path for f in ctx.files.runtime_data]),
         "generated_examples": [f.basename for f in gnss_config + vehicle_config],
-        "scope": "hardware overlay for the matching Apollo runtime, not a standalone distribution",
+        "scope": "matched hardware and mainboard runtime; target-system libraries and deployment resources required",
     }
     output = ctx.actions.declare_file(ctx.label.name + ".json")
     ctx.actions.write(output, json.encode_indent(result, indent = "  ") + "\n")
@@ -144,7 +119,7 @@ enable_sender_log: false
 hardware_manifest = rule(
     implementation = _manifest_impl,
     attrs = {
-        "components": attr.label_list(),
+        "components": attr.label_list(allow_files = True),
         "profile": attr.label(mandatory = True),
         "runtime_data": attr.label_list(allow_files = True),
         "settings": attr.label_keyed_string_dict(),

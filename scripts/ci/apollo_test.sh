@@ -99,6 +99,12 @@ function determine_test_targets() {
     local test_targets
     if [ "${component}" = "hardware" ]; then
       test_targets="//tools/hardware:tests"
+    elif [ "${component}" = "drivers" ]; then
+      test_targets="@hardware.camera//... union @hardware.camera_gst//... union @hardware.image_decompress//... union @hardware.canbus//... union @hardware.lidar//... union @hardware.radar//... union @hardware.gnss//... union @hardware.hal//... union @hardware.audio//... union @hardware.video//..."
+    elif [ "${component}" = "canbus" ]; then
+      test_targets="@hardware.vehicle//..."
+    elif [ "${component}" = "transform" ]; then
+      test_targets="@wheelos_transform//modules/transform/..."
     elif [ "${component}" = "cyber" ]; then
       test_targets="$(cyber_core_target)"
     elif [ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]; then

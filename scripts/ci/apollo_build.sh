@@ -115,6 +115,9 @@ function determine_build_targets_and_defines() {
         hardware) selected_target="//tools/hardware:hardware" ;;
         hardware_package) selected_target="//tools/hardware:install" ;;
         algorithms) selected_target="//tools/modules:algorithms" ;;
+        drivers) selected_target="@hardware.camera//... @hardware.camera_gst//... @hardware.image_decompress//... @hardware.canbus//... @hardware.lidar//... @hardware.radar//... @hardware.gnss//... @hardware.hal//... @hardware.audio//... @hardware.video//..." ;;
+        canbus) selected_target="@hardware.vehicle//..." ;;
+        transform) selected_target="@wheelos_transform//modules/transform/..." ;;
       esac
       if [[ -n "${selected_target}" ]]; then
         targets_all+=" ${selected_target}"

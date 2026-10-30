@@ -1,18 +1,18 @@
 # Sensor inventory is explicit and independent of the build host.
-build:hw_x86_devkit --//tools/hardware:profile=hw_x86_devkit
+build:hw_x86_devkit --@hardware.build//tools/hardware:profile=hw_x86_devkit
 build:hw_x86_devkit --platforms=//tools/hardware:linux_x86_64
 build:hw_x86_devkit --workspace_status_command="bash scripts/hardware_workspace_status.sh"
-build:hw_x86_devkit --//tools/hardware:camera=camera
-build:hw_x86_devkit --//tools/hardware:canbus=socket
-build:hw_x86_devkit --//tools/hardware:gnss=huace
-build:hw_x86_devkit --//tools/hardware:vehicle=devkit
-build:hw_x86_devkit --//tools/hardware:lidar_hesai=true
+build:hw_x86_devkit --@hardware.build//tools/hardware:camera=camera
+build:hw_x86_devkit --@hardware.build//tools/hardware:canbus=socket
+build:hw_x86_devkit --@hardware.build//tools/hardware:gnss=huace
+build:hw_x86_devkit --@hardware.build//tools/hardware:vehicle=devkit
+build:hw_x86_devkit --@hardware.build//tools/hardware:lidar_hesai=true
 
 build:hw_orin_devkit --config=jetson_orin
-build:hw_orin_devkit --//tools/hardware:profile=hw_orin_devkit
+build:hw_orin_devkit --@hardware.build//tools/hardware:profile=hw_orin_devkit
 build:hw_orin_devkit --workspace_status_command="bash scripts/hardware_workspace_status.sh"
-build:hw_orin_devkit --//tools/hardware:camera=camera_gst
-build:hw_orin_devkit --//tools/hardware:canbus=socket
-build:hw_orin_devkit --//tools/hardware:gnss=huace
-build:hw_orin_devkit --//tools/hardware:vehicle=devkit
-build:hw_orin_devkit --//tools/hardware:lidar_hesai=true
+build:hw_orin_devkit --@hardware.build//tools/hardware:camera=camera_gst
+build:hw_orin_devkit --@hardware.build//tools/hardware:canbus=socket
+build:hw_orin_devkit --@hardware.build//tools/hardware:gnss=huace
+build:hw_orin_devkit --@hardware.build//tools/hardware:vehicle=devkit
+build:hw_orin_devkit --@hardware.build//tools/hardware:lidar_hesai=true
