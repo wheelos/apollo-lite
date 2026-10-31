@@ -22,8 +22,8 @@ cc_binary(
     srcs = ["live_pointcloud_viewer.cc"],
     deps = [
         "//modules/dreamview/backend/handlers:websocket_handler",
-        "//modules/transform:buffer",
-        "//modules/transform:transform_query",
+        "@wheelos_transform//modules/transform:buffer",
+        "@wheelos_transform//modules/transform:transform_query",
         "@civetweb//:civetserver",
         "@com_github_gflags_gflags//:gflags",
         "@com_github_nlohmann_json//:json",

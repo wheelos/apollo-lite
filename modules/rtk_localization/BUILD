@@ -34,7 +34,7 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"localization\\\""],
     deps = [
         ":rtk_localization_lib",
-        "//modules/transform:transform_broadcaster",
+        "@wheelos_transform//modules/transform:transform_broadcaster",
         "@core//cyber",
     ],
     alwayslink = True,

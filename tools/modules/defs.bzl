@@ -20,7 +20,7 @@ MODULE_TARGETS = {
     "rtk_localization": "//modules/rtk_localization:librtk_localization_component.so",
     "storytelling": "//modules/storytelling:libstorytelling_component.so",
     "traffic_light": "//modules/traffic_light:libtraffic_light_component.so",
-    "transform": "//modules/transform:libstatic_transform_component.so",
+    "transform": "@wheelos_transform//modules/transform:libstatic_transform_component.so",
 }
 
 def selected_targets():

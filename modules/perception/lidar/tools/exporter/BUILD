@@ -8,8 +8,8 @@ cc_library(
     deps = [
         "//modules/perception/lidar/common:pcl_util",
         "//modules/perception/onboard/transform_wrapper",
-        "//modules/transform:buffer",
-        "//modules/transform:transform_query",
+        "@wheelos_transform//modules/transform:buffer",
+        "@wheelos_transform//modules/transform:transform_query",
         "@com_google_absl//absl/strings",
         "@core//cyber",
         "@opencv//:imgcodecs",

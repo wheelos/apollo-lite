@@ -11,8 +11,8 @@ cc_library(
     deps = [
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/proto:camera_update_cc_proto",
-        "//modules/transform:buffer",
-        "//modules/transform:transform_query",
+        "@wheelos_transform//modules/transform:buffer",
+        "@wheelos_transform//modules/transform:transform_query",
         "@core//cyber",
         "@eigen",
         "@opencv//:imgcodecs",

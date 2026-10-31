@@ -11,14 +11,18 @@ import time
 from pathlib import Path
 
 
-def verify(runtime):
+def verify(runtime, component_files=None):
     runtime = runtime.resolve()
-    manifest = json.loads((runtime / "hardware/manifest.json").read_text())
-    plugins = [
-        runtime / path for path in manifest["component_files"] if path.endswith(".so")
-    ]
+    if component_files is None:
+        manifest = json.loads((runtime / "hardware/manifest.json").read_text())
+        component_files = manifest["component_files"]
+    plugins = [runtime / path for path in component_files if path.endswith(".so")]
     if not plugins:
         raise ValueError("Select at least one plugin for the loader smoke check")
+    for plugin in plugins:
+        plugin.resolve().relative_to(runtime)
+        if not plugin.is_file():
+            raise FileNotFoundError(plugin)
     environment = dict(os.environ)
     environment.pop("LD_LIBRARY_PATH", None)
     environment.pop("RUNFILES_DIR", None)
@@ -65,7 +69,11 @@ def verify(runtime):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("runtime", type=Path)
-    verify(parser.parse_args().runtime)
+    parser.add_argument(
+        "--plugin", action="append", help="Runtime-relative plugin path"
+    )
+    args = parser.parse_args()
+    verify(args.runtime, args.plugin)
 
 
 if __name__ == "__main__":

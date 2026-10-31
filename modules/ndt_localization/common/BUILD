@@ -18,7 +18,7 @@ cc_library(
     srcs = ["rigid_transform_helper.cc"],
     hdrs = ["rigid_transform_helper.h"],
     deps = [
-        "//modules/transform:transform_query",
+        "@wheelos_transform//modules/transform:transform_query",
         "@core//cyber",
         "@eigen",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:pointcloud_cc_proto",

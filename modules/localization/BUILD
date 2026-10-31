@@ -41,11 +41,11 @@ cc_library(
     hdrs = ["localization_config.h"],
     deps = [
         ":localization_adapter",
-        "//modules/transform:transform_query",
         "@com_google_protobuf//:protobuf",
         "@wheelos_common//modules/common/configs:config_gflags",
         "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/vehicle_calibration:registry",
+        "@wheelos_transform//modules/transform:transform_query",
     ],
 )
 
@@ -63,9 +63,9 @@ cc_library(
     deps = [
         ":localization_config",
         ":localization_runtime",
-        "//modules/transform:buffer",
-        "//modules/transform:transform_broadcaster",
         "@core//cyber",
+        "@wheelos_transform//modules/transform:buffer",
+        "@wheelos_transform//modules/transform:transform_broadcaster",
     ],
     alwayslink = True,
 )
@@ -85,11 +85,11 @@ cc_test(
     deps = [
         ":localization_adapter",
         ":localization_config",
-        "//modules/transform:buffer",
-        "//modules/transform:buffer_test_peer",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
         "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
+        "@wheelos_transform//modules/transform:buffer",
+        "@wheelos_transform//modules/transform:buffer_test_peer",
     ],
 )
 
