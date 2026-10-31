@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "required": ["schema_version", "check_id", "candidate_fingerprint", "executed", "command", "exit_code", "criteria_met", "metrics", "artifacts"],
+  "properties": {
+    "schema_version": {"type": "integer", "enum": [1]},
+    "check_id": {"type": "string"},
+    "candidate_fingerprint": {"type": "string"},
+    "executed": {"type": "boolean"},
+    "command": {"type": "string"},
+    "exit_code": {"type": ["integer", "null"]},
+    "criteria_met": {"type": "boolean"},
+    "status": {"type": "string", "enum": ["PASS", "FAIL", "INCONCLUSIVE"]},
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "value", "unit"],
+        "properties": {
+          "name": {"type": "string"}, "value": {"type": "number"}, "unit": {"type": "string"}
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256"],
+        "properties": {"path": {"type": "string"}, "sha256": {"type": "string"}}
+      }
+    }
+  }
+}

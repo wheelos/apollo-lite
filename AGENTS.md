@@ -63,6 +63,15 @@ read its `SKILL.md`. Select by `name`/`description`; load only what is needed.
 
 Use the [skill index](.agents/skills/README.md) to route engineering tasks.
 
+## Workflow routing
+
+Use [workflow specifications](.agents/workflows/README.md) only for explicitly
+requested orchestration or substantial multi-stage collaboration. Small tasks
+remain single-agent tasks with the relevant skill. The foreground agent owns
+scope, approvals, handoffs, and acceptance; a workflow does not grant permissions.
+Copilot's [execution adapter](.github/extensions/autonomous-driving-workflows/README.md)
+implements these specifications; other tools must supply their own adapter.
+
 ## Environment
 
 Enter the development environment: `bash docker/scripts/whl.sh enter dev`.
