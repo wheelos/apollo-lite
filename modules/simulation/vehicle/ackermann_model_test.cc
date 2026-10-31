@@ -94,6 +94,24 @@ TEST(AckermannModelTest, AppliesGearAndBrakeSemantics) {
   EXPECT_DOUBLE_EQ(brake_actuation.brake_torque_nm[3], 480.0);
 }
 
+TEST(AckermannModelTest, MapsSignedAccelerationForReverseGear) {
+  AckermannModel model;
+
+  VehicleCommand reverse_acceleration;
+  reverse_acceleration.target_acceleration_mps2 = -1.0;
+  reverse_acceleration.gear = VehicleCommand::Gear::GEAR_REVERSE;
+  const VehicleActuation reverse_drive =
+      model.ComputeActuation(reverse_acceleration, VehicleState{}, 0.02);
+  EXPECT_LT(reverse_drive.drive_torque_nm[0], 0.0);
+  EXPECT_DOUBLE_EQ(reverse_drive.brake_torque_nm[0], 0.0);
+
+  reverse_acceleration.target_acceleration_mps2 = 1.0;
+  const VehicleActuation reverse_brake =
+      model.ComputeActuation(reverse_acceleration, VehicleState{}, 0.02);
+  EXPECT_DOUBLE_EQ(reverse_brake.drive_torque_nm[0], 0.0);
+  EXPECT_GT(reverse_brake.brake_torque_nm[0], 0.0);
+}
+
 TEST(AckermannModelTest, ClampsSteeringAndAppliesParkingBrake) {
   AckermannModel model;
   model.SetMaxFrontSteerAngle(0.50);

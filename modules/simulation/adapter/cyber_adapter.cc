@@ -49,6 +49,11 @@ bool CyberAdapter::Init(const std::shared_ptr<cyber::Node>& node) {
       [this](const std::shared_ptr<apollo::control::ControlCommand>& msg) {
         OnControlCommand(msg);
       });
+  if (!chassis_writer_ || !chassis_detail_writer_ || !localization_writer_ ||
+      !control_reader_) {
+    AERROR << "Failed to create one or more simulation Cyber channels.";
+    return false;
+  }
 
   AINFO << "CyberAdapter initialized. Subscribing to: "
         << FLAGS_control_command_topic
@@ -240,10 +245,12 @@ void CyberAdapter::ToLocalization(
   pose->mutable_position()->set_z(state.z);
 
   // Orientation
-  pose->mutable_orientation()->set_qx(state.qx);
-  pose->mutable_orientation()->set_qy(state.qy);
-  pose->mutable_orientation()->set_qz(state.qz);
-  pose->mutable_orientation()->set_qw(state.qw);
+  // Convert internal forward/left/up axes to Apollo right/forward/up axes.
+  constexpr double kSqrtHalf = 0.7071067811865476;
+  pose->mutable_orientation()->set_qx(kSqrtHalf * (state.qx - state.qy));
+  pose->mutable_orientation()->set_qy(kSqrtHalf * (state.qx + state.qy));
+  pose->mutable_orientation()->set_qz(kSqrtHalf * (state.qz - state.qw));
+  pose->mutable_orientation()->set_qw(kSqrtHalf * (state.qw + state.qz));
   pose->set_heading(state.yaw);
   pose->mutable_euler_angles()->set_x(state.pitch);
   pose->mutable_euler_angles()->set_y(state.roll);

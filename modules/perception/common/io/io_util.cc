@@ -15,8 +15,12 @@
  *****************************************************************************/
 #include "modules/perception/common/io/io_util.h"
 
-#include <boost/filesystem.hpp>
+#include <cmath>
 #include <fstream>
+#include <string>
+#include <vector>
+
+#include <boost/filesystem.hpp>
 
 #include "absl/strings/match.h"
 #include "yaml-cpp/yaml.h"
@@ -30,12 +34,6 @@ namespace perception {
 namespace common {
 
 using cyber::common::PathExists;
-
-namespace {
-
-constexpr char kTransformConfDir[] = "/apollo/modules/transform/conf";
-
-}  // namespace
 
 bool ReadPoseFile(const std::string &filename, Eigen::Affine3d *pose,
                   int *frame_id, double *time_stamp) {
@@ -69,27 +67,43 @@ bool LoadBrownCameraIntrinsic(const std::string &yaml_file,
     return false;
   }
 
-  YAML::Node node = YAML::LoadFile(yaml_file);
-  if (node.IsNull()) {
-    AINFO << "Load " << yaml_file << " failed! please check!";
-    return false;
-  }
-
   float camera_width = 0.0f;
   float camera_height = 0.0f;
   Eigen::VectorXf params(9 + 5);
   try {
+    const YAML::Node node = YAML::LoadFile(yaml_file);
     camera_width = node["width"].as<float>();
     camera_height = node["height"].as<float>();
+    if (!std::isfinite(camera_width) || !std::isfinite(camera_height) ||
+        camera_width <= 0 || camera_height <= 0 || camera_width > 100000 ||
+        camera_height > 100000 || std::floor(camera_width) != camera_width ||
+        std::floor(camera_height) != camera_height || !node["K"].IsSequence() ||
+        node["K"].size() != 9 || !node["D"].IsSequence() ||
+        node["D"].size() != 5) {
+      AERROR << "Invalid Brown camera dimensions or parameter count: "
+             << yaml_file;
+      return false;
+    }
     for (size_t i = 0; i < 9; ++i) {
       params(i) = node["K"][i].as<float>();
     }
     for (size_t i = 0; i < 5; ++i) {
       params(9 + i) = node["D"][i].as<float>();
     }
-
-    model->set_params(static_cast<size_t>(camera_width),
-                      static_cast<size_t>(camera_height), params);
+    if (!params.allFinite() || params(0) <= 0 || params(4) <= 0 ||
+        std::abs(params(1)) > 1e-6f || std::abs(params(3)) > 1e-6f ||
+        std::abs(params(6)) > 1e-6f || std::abs(params(7)) > 1e-6f ||
+        std::abs(params(8) - 1.0f) > 1e-6f) {
+      AERROR << "Invalid Brown camera intrinsics: " << yaml_file;
+      return false;
+    }
+    params(1) = params(3) = params(6) = params(7) = 0.0f;
+    params(8) = 1.0f;
+    if (!model->set_params(static_cast<size_t>(camera_width),
+                           static_cast<size_t>(camera_height), params)) {
+      AERROR << "Failed to construct Brown camera model: " << yaml_file;
+      return false;
+    }
   } catch (YAML::Exception &e) {
     AERROR << "load camera intrisic file " << yaml_file
            << " with error, YAML exception: " << e.what();
@@ -167,16 +181,8 @@ bool LoadOmnidirectionalCameraIntrinsics(
   return true;
 }
 
-std::string GetTransformExtrinsicPath(const std::string &file_name) {
-  return std::string(kTransformConfDir) + "/" + file_name;
-}
-
 std::string ResolveExtrinsicPath(const std::string &params_dir,
                                  const std::string &file_name) {
-  const std::string canonical_path = GetTransformExtrinsicPath(file_name);
-  if (PathExists(canonical_path)) {
-    return canonical_path;
-  }
   if (params_dir.empty()) {
     return file_name;
   }

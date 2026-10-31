@@ -124,3 +124,12 @@ py_proto_library(
     name = "fusion_camera_detection_component_py_pb2",
     deps = [":fusion_camera_detection_component_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

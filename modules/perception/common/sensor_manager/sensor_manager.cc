@@ -24,7 +24,6 @@
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
 #include "modules/perception/common/io/io_util.h"
-#include "modules/perception/lib/config_manager/config_manager.h"
 
 namespace apollo {
 namespace perception {
@@ -44,32 +43,55 @@ bool SensorManager::Init() {
     return true;
   }
 
-  sensor_info_map_.clear();
-  distort_model_map_.clear();
-  undistort_model_map_.clear();
-
-  const std::string raw_file_path = cyber::common::GetAbsolutePath(
-      lib::ConfigManager::Instance()->work_root(), FLAGS_obs_sensor_meta_path);
-  const std::string file_path =
-      transform::CalibrationRegistry::ResolveFilePath(raw_file_path);
-
-  MultiSensorMeta sensor_list_proto;
-  if (!GetProtoFromASCIIFile(file_path, &sensor_list_proto)) {
-    AERROR << "Invalid MultiSensorMeta file: " << FLAGS_obs_sensor_meta_path;
+  if (registry_.sensors().empty() && !registry_.LoadFromEnvironment()) {
+    AERROR << "Failed to load vehicle calibration for SensorManager.";
     return false;
   }
+  decltype(sensor_info_map_) sensor_info_map;
+  decltype(distort_model_map_) distort_model_map;
+  decltype(undistort_model_map_) undistort_model_map;
 
-  auto AddSensorInfo = [this](const SensorMeta& sensor_meta_proto) {
+  for (const auto& selected : registry_.sensors()) {
+    const auto& calibration = selected.calibration;
+    namespace vc = apollo::common::vehicle_calibration;
+    if (calibration.sensor_type() == vc::IMU ||
+        calibration.sensor_type() == vc::GNSS) {
+      continue;
+    }
+    SensorMeta sensor_meta_proto;
+    const std::string measurement_frame =
+        calibration.sensor_type() == vc::CAMERA ? calibration.optical_frame_id()
+                                                : calibration.frame_id();
+    if (selected.resolved_metadata_file.empty() ||
+        !GetProtoFromASCIIFile(selected.resolved_metadata_file,
+                               &sensor_meta_proto) ||
+        sensor_meta_proto.name() != calibration.sensor_id() ||
+        sensor_meta_proto.frame_id() != measurement_frame ||
+        !sensor_meta_proto.has_type() || !sensor_meta_proto.has_orientation()) {
+      AERROR << "Missing or inconsistent selected sensor metadata: "
+             << calibration.sensor_id();
+      return false;
+    }
     SensorInfo sensor_info;
     sensor_info.name = sensor_meta_proto.name();
     sensor_info.type = static_cast<SensorType>(sensor_meta_proto.type());
     sensor_info.orientation =
         static_cast<SensorOrientation>(sensor_meta_proto.orientation());
-    sensor_info.frame_id = sensor_meta_proto.has_frame_id()
-                   ? sensor_meta_proto.frame_id()
-                   : sensor_meta_proto.name();
+    sensor_info.frame_id = measurement_frame;
+    const bool type_matches =
+        (calibration.sensor_type() == vc::LIDAR && IsLidar(sensor_info.type)) ||
+        (calibration.sensor_type() == vc::CAMERA &&
+         IsCamera(sensor_info.type)) ||
+        (calibration.sensor_type() == vc::RADAR && IsRadar(sensor_info.type)) ||
+        (calibration.sensor_type() == vc::ULTRASONIC &&
+         IsUltrasonic(sensor_info.type));
+    if (!type_matches) {
+      AERROR << "Perception metadata type disagrees with manifest: "
+             << calibration.sensor_id();
+      return false;
+    }
 
-    auto pair = sensor_info_map_.insert(
+    auto pair = sensor_info_map.insert(
         make_pair(sensor_meta_proto.name(), sensor_info));
     if (!pair.second) {
       AERROR << "Duplicate sensor name error.";
@@ -79,27 +101,33 @@ bool SensorManager::Init() {
     if (this->IsCamera(sensor_info.type)) {
       std::shared_ptr<BrownCameraDistortionModel> distort_model(
           new BrownCameraDistortionModel());
-      auto intrinsic_file = IntrinsicPath(sensor_info.name);
+      const auto& intrinsic_file = selected.resolved_intrinsic_file;
       if (!LoadBrownCameraIntrinsic(intrinsic_file, distort_model.get())) {
         AERROR << "Failed to load camera intrinsic:" << intrinsic_file;
         return false;
       }
-      distort_model_map_.insert(make_pair(
+      const auto camera_model = distort_model->get_camera_model();
+      if ((calibration.has_camera_model() &&
+           calibration.camera_model() != "brown") ||
+          (calibration.has_image_width() &&
+           calibration.image_width() != camera_model->get_width()) ||
+          (calibration.has_image_height() &&
+           calibration.image_height() != camera_model->get_height())) {
+        AERROR << "Camera model or resolution disagrees with manifest: "
+               << sensor_info.name;
+        return false;
+      }
+      distort_model_map.insert(make_pair(
           sensor_meta_proto.name(),
           std::dynamic_pointer_cast<BaseCameraDistortionModel>(distort_model)));
-      undistort_model_map_.insert(make_pair(sensor_meta_proto.name(),
-                                            distort_model->get_camera_model()));
-    }
-    return true;
-  };
-
-  for (const SensorMeta& sensor_meta_proto : sensor_list_proto.sensor_meta()) {
-    if (!AddSensorInfo(sensor_meta_proto)) {
-      AERROR << "Failed to add sensor_info: " << sensor_meta_proto.name();
-      return false;
+      undistort_model_map.insert(
+          make_pair(sensor_meta_proto.name(), camera_model));
     }
   }
 
+  sensor_info_map_ = std::move(sensor_info_map);
+  distort_model_map_ = std::move(distort_model_map);
+  undistort_model_map_ = std::move(undistort_model_map);
   inited_ = true;
   AINFO << "Init sensor_manager success.";
   return true;
@@ -228,7 +256,18 @@ bool SensorManager::IsUltrasonic(const SensorType& type) const {
 
 std::string SensorManager::GetFrameId(const std::string& name) const {
   const auto& itr = sensor_info_map_.find(name);
-  return itr == sensor_info_map_.end() ? std::string("") : itr->second.frame_id;
+  if (itr != sensor_info_map_.end()) {
+    return itr->second.frame_id;
+  }
+  for (const auto& selected : registry_.sensors()) {
+    const auto info = sensor_info_map_.find(selected.calibration.sensor_id());
+    if (info != sensor_info_map_.end() &&
+        (selected.calibration.frame_id() == name ||
+         info->second.frame_id == name)) {
+      return info->second.frame_id;
+    }
+  }
+  return "";
 }
 
 }  // namespace common

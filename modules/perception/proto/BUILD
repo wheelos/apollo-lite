@@ -114,3 +114,12 @@ py_proto_library(
     name = "perception_config_schema_py_pb2",
     deps = [":perception_config_schema_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

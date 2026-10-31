@@ -1,0 +1,5 @@
+/bazel-*
+/MODULE.bazel.lock
+/.agents/notes/
+/native_*.INFO
+/native_*.log.INFO.*

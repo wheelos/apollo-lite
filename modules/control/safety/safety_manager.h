@@ -26,6 +26,7 @@
 #include "boost/container/static_vector.hpp"
 
 #include "wheelos_msgs/control_msgs/control_cmd.pb.h"
+#include "wheelos_msgs/control_msgs/safety_stop.pb.h"
 #include "modules/control/proto/control_conf.pb.h"
 #include "modules/control/proto/local_view.pb.h"
 #include "modules/control/proto/safety_status.pb.h"
@@ -62,6 +63,17 @@ class SafetyManager {
 
   // Manual Reset Interface
   void TryReset(const PadMessage& pad_msg);
+  apollo::control::SafetyExecutionIdentity LatchExternalStop(
+      const apollo::control::SafetyOperationIdentity& request_identity,
+      apollo::control::SafetyStopPolicy policy,
+      const std::string& control_epoch);
+  bool ResetExternalStop(
+      const apollo::control::SafetyExecutionIdentity& expected_identity,
+      bool stationary);
+  bool HasExternalStop() const;
+  bool GetExternalStopState(
+      apollo::control::SafetyExecutionIdentity* identity,
+      apollo::control::SafetyStopPolicy* policy) const;
 
   SafetyState GetState() const { return current_state_; }
 
@@ -82,6 +94,12 @@ class SafetyManager {
 
   ControlConf conf_;
   SafetyState current_state_ = SafetyState::kNormal;
+  bool external_stop_active_ = false;
+  apollo::control::SafetyOperationIdentity external_stop_request_identity_;
+  apollo::control::SafetyExecutionIdentity external_stop_identity_;
+  apollo::control::SafetyStopPolicy external_stop_policy_ =
+      apollo::control::SAFETY_STOP_POLICY_UNKNOWN;
+  uint64_t external_stop_generation_ = 0;
 
   // Fixed-size container for deterministic memory usage
   boost::container::static_vector<FaultEvent, 16> active_faults_;

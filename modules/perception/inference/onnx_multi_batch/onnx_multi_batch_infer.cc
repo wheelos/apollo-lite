@@ -24,7 +24,11 @@
 
 #include <algorithm>
 #include <fstream>
+#include <map>
+#include <memory>
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include "cyber/common/log.h"
 #include "modules/perception/inference/onnx_multi_batch/onnx_multi_batch_infer.h"
@@ -68,6 +72,20 @@ static bool CudaOk(cudaError_t err, const char* what) {
   if (err == cudaSuccess) return true;
   AERROR << "CUDA error: " << cudaGetErrorString(err) << " @ " << what;
   return false;
+}
+
+static bool MatchesBlobShape(
+    const nvinfer1::Dims& dims,
+    const apollo::perception::base::Blob<float>& blob) {
+  if (dims.nbDims <= 0 || dims.nbDims != blob.num_axes()) {
+    return false;
+  }
+  for (int i = 0; i < dims.nbDims; ++i) {
+    if (dims.d[i] <= 0 || dims.d[i] != blob.shape(i)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 MultiBatchInference::~MultiBatchInference() {
@@ -237,7 +255,7 @@ void MultiBatchInference::SetOnnxOptimizationProfile(
               nv_input_dims.d[j] == it->second->shape(j));
         nv_input_dims.d[j] = it->second->shape(j);
       } else {
-        CHECK(nv_input_dims.d[j] > 0);
+        CHECK_GT(nv_input_dims.d[j], 0);
       }
     }
 
@@ -469,68 +487,123 @@ bool MultiBatchInference::OnnxToTRTModel(const std::string& model_file) {
 }
 
 void MultiBatchInference::Infer() {
-  if (!CudaOk(cudaSetDevice(gpu_id_), "cudaSetDevice")) {
-    return;
+  if (!InferWithStatus()) {
+    AERROR << "Multi-batch inference failed; output tensors must not be used";
   }
-  cudaStreamSynchronize(stream_);
+}
 
-  CHECK(!input_names_.empty());
-  auto input_shape = blobs_[input_names_[0]]->shape();
+bool MultiBatchInference::InferWithStatus() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (context_ == nullptr || engine_ == nullptr || input_names_.empty() ||
+      output_names_.empty()) {
+    AERROR << "Multi-batch inference is not initialized";
+    return false;
+  }
+  if (!CudaOk(cudaSetDevice(gpu_id_), "cudaSetDevice")) {
+    return false;
+  }
+  if (!CudaOk(cudaStreamSynchronize(stream_),
+              "pre-inference synchronization")) {
+    return false;
+  }
+
+  const auto input = get_blob(input_names_[0]);
+  if (input == nullptr || input->num_axes() == 0) {
+    AERROR << "Missing multi-batch inference input tensor";
+    return false;
+  }
+  auto input_shape = input->shape();
   int batch_size = input_shape[0];
-  if (batch_size == 0) {
-    AINFO << "Batch size is zero.";
-    return;
+  if (batch_size <= 0) {
+    AERROR << "Invalid inference batch size: " << batch_size;
+    return false;
   }
 
 #if NV_TENSORRT_MAJOR >= 10
   for (const auto& name : input_names_) {
     auto blob = get_blob(name);
-    if (blob == nullptr) continue;
+    if (blob == nullptr || blob->num_axes() <= 0 ||
+        blob->num_axes() > nvinfer1::Dims::MAX_DIMS ||
+        engine_->getTensorIOMode(name.c_str()) !=
+            nvinfer1::TensorIOMode::kINPUT ||
+        engine_->getTensorDataType(name.c_str()) !=
+            nvinfer1::DataType::kFLOAT ||
+        engine_->getTensorFormat(name.c_str()) !=
+            nvinfer1::TensorFormat::kLINEAR) {
+      AERROR << "Missing or incompatible TensorRT input tensor " << name;
+      return false;
+    }
     nvinfer1::Dims dims;
     dims.nbDims = blob->num_axes();
     for (int i = 0; i < dims.nbDims; ++i) {
       dims.d[i] = blob->shape(i);
     }
-    if (!context_->setInputShape(name.c_str(), dims)) {
+    if (!MatchesBlobShape(dims, *blob) ||
+        !context_->setInputShape(name.c_str(), dims)) {
       AERROR << "TensorRT 10: Failed to set input shape for " << name;
-      return;
+      return false;
     }
     if (!context_->setTensorAddress(name.c_str(),
                                     const_cast<float*>(blob->gpu_data()))) {
       AERROR << "TensorRT 10: Failed to set input address for " << name;
-      return;
+      return false;
     }
   }
 
   for (const auto& name : output_names_) {
     auto blob = get_blob(name);
-    if (blob == nullptr) continue;
+    if (blob == nullptr ||
+        engine_->getTensorIOMode(name.c_str()) !=
+            nvinfer1::TensorIOMode::kOUTPUT ||
+        engine_->getTensorDataType(name.c_str()) !=
+            nvinfer1::DataType::kFLOAT ||
+        engine_->getTensorFormat(name.c_str()) !=
+            nvinfer1::TensorFormat::kLINEAR ||
+        !MatchesBlobShape(context_->getTensorShape(name.c_str()), *blob)) {
+      AERROR << "Missing or incompatible TensorRT output tensor " << name;
+      return false;
+    }
     blob->mutable_gpu_data();
     if (!context_->setTensorAddress(name.c_str(), blob->mutable_gpu_data())) {
       AERROR << "TensorRT 10: Failed to set output address for " << name;
-      return;
+      return false;
     }
   }
 
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!context_->enqueueV3(stream_)) {
-      AERROR << "TensorRT 10: enqueueV3 failed";
-      return;
-    }
+  if (!context_->enqueueV3(stream_)) {
+    AERROR << "TensorRT 10: enqueueV3 failed";
+    return false;
   }
 #else
   for (const auto& name : input_names_) {
     auto blob = get_blob(name);
     if (blob != nullptr) {
       int32_t index = engine_->getBindingIndex(name.c_str());
-      batch_size = blob->shape(0);
+      if (index < 0 || static_cast<size_t>(index) >= buffers_.size() ||
+          !engine_->bindingIsInput(index) ||
+          engine_->getBindingDataType(index) != nvinfer1::DataType::kFLOAT ||
+          engine_->getBindingFormat(index) != nvinfer1::TensorFormat::kLINEAR ||
+          blob->num_axes() <= 0 ||
+          blob->num_axes() > nvinfer1::Dims::MAX_DIMS) {
+        AERROR << "Invalid TensorRT input binding " << name;
+        return false;
+      }
       buffers_[index] = const_cast<float*>(blob->gpu_data());
 
-      nvinfer1::Dims dims = network_->getInput(0)->getDimensions();
-      dims.d[0] = batch_size;
-      context_->setOptimizationProfile(0);
-      context_->setBindingDimensions(index, dims);
+      nvinfer1::Dims dims;
+      dims.nbDims = blob->num_axes();
+      for (int i = 0; i < dims.nbDims; ++i) {
+        dims.d[i] = blob->shape(i);
+      }
+      if (!MatchesBlobShape(dims, *blob) ||
+          !context_->setOptimizationProfile(0) ||
+          !context_->setBindingDimensions(index, dims)) {
+        AERROR << "Failed to configure TensorRT input binding " << name;
+        return false;
+      }
+    } else {
+      AERROR << "Missing TensorRT input tensor " << name;
+      return false;
     }
   }
 
@@ -539,23 +612,37 @@ void MultiBatchInference::Infer() {
     if (blob != nullptr) {
       blob->mutable_gpu_data();
       int32_t index = engine_->getBindingIndex(name.c_str());
+      if (index < 0 || static_cast<size_t>(index) >= buffers_.size() ||
+          engine_->bindingIsInput(index) ||
+          engine_->getBindingDataType(index) != nvinfer1::DataType::kFLOAT ||
+          engine_->getBindingFormat(index) != nvinfer1::TensorFormat::kLINEAR ||
+          !MatchesBlobShape(context_->getBindingDimensions(index), *blob)) {
+        AERROR << "Invalid TensorRT output binding " << name;
+        return false;
+      }
       buffers_[index] = blob->mutable_gpu_data();
+    } else {
+      AERROR << "Missing TensorRT output tensor " << name;
+      return false;
     }
   }
 
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    context_->enqueueV2(&buffers_[0], stream_, nullptr);
+  if (!context_->enqueueV2(buffers_.data(), stream_, nullptr)) {
+    AERROR << "TensorRT: enqueueV2 failed";
+    return false;
   }
 #endif
 
-  cudaStreamSynchronize(stream_);
+  if (!CudaOk(cudaStreamSynchronize(stream_), "inference synchronization")) {
+    return false;
+  }
   for (const auto& name : output_names_) {
     auto blob = get_blob(name);
     if (blob != nullptr) {
       blob->mutable_gpu_data();
     }
   }
+  return true;
 }
 
 }  // namespace inference

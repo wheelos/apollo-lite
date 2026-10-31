@@ -136,7 +136,7 @@ When at least one target is admitted, the HiVT path performs one bounded scene
 inference for the frame, not one model call per target. The engine admits up to
 64 actors including ego and 1024 lane-vector segments; at most 63 caution
 targets can be selected. See the
-[HiVT migration and validation record](../../wheelos-service/context/modules/prediction/knowledge/hivt-migration-and-scene-quality-analysis.md)
+[HiVT migration and validation record](../../ad_agents/context/modules/prediction/knowledge/hivt-migration-and-scene-quality-analysis.md)
 for admission policy, replay contracts, and detailed evidence.
 
 ### Current measured baseline

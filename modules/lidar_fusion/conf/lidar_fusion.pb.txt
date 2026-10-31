@@ -1,0 +1,98 @@
+# Deployment template: fill all empty fields. Init rejects this unconfigured file.
+# Both upstream models MUST consume the exact same pointcloud channel/frame.
+pointcloud_channel: ""
+detection_channel: ""
+segmentation_channel: ""
+output_channel: "/apollo/perception/lidar_fusion/pod"
+# New configurations publish functional scene layers. Older configurations
+# without this block retain the FULL_EVIDENCE wire contract.
+publication {
+  detail: FUNCTIONAL_SCENE
+  transport: CORE_POD
+  max_pod_frame_bytes: 67108864
+  # Subscribers must use the POD adapter, not Reader<FusionOutput>.
+  # Optional full point ledger, published only while a reader is present:
+  # diagnostic_channel: "/apollo/perception/lidar_fusion/pod/diagnostic"
+}
+sensor_frame: ""
+base_frame: "base_link"
+sensor_to_base {
+  version: ""
+  x: 0
+  y: 0
+  z: 0
+  roll: 0
+  pitch: 0
+  yaw: 0
+}
+
+# Example taxonomy: CenterPoint nuScenes zero-based class IDs.
+# Replace detection_backend AND mappings together for PointPillars/KITTI.
+detection_backend: LIDAR_OBJECT_DETECTION_BACKEND_CENTERPOINT
+detection_mapping { raw_id: 0 group: THING unified_class: CAR }
+detection_mapping { raw_id: 1 group: THING unified_class: TRUCK }
+detection_mapping { raw_id: 2 group: THING unified_class: OTHER_VEHICLE }
+detection_mapping { raw_id: 3 group: THING unified_class: BUS }
+detection_mapping { raw_id: 4 group: THING unified_class: OTHER_VEHICLE }
+detection_mapping { raw_id: 5 group: GENERIC_OBS }
+detection_mapping { raw_id: 6 group: THING unified_class: MOTORCYCLE }
+detection_mapping { raw_id: 7 group: THING unified_class: CYCLIST }
+detection_mapping { raw_id: 8 group: THING unified_class: PEDESTRIAN }
+detection_mapping { raw_id: 9 group: GENERIC_OBS }
+
+# RangeRet SemanticKITTI learning labels, NOT original SemanticKITTI raw IDs.
+semantic_mapping { raw_id: 0 group: GENERIC_OBS }
+semantic_mapping { raw_id: 1 group: THING unified_class: CAR }
+semantic_mapping { raw_id: 2 group: THING unified_class: CYCLIST }
+semantic_mapping { raw_id: 3 group: THING unified_class: MOTORCYCLE }
+semantic_mapping { raw_id: 4 group: THING unified_class: TRUCK }
+semantic_mapping { raw_id: 5 group: THING unified_class: OTHER_VEHICLE }
+semantic_mapping { raw_id: 6 group: THING unified_class: PEDESTRIAN }
+semantic_mapping { raw_id: 7 group: THING unified_class: CYCLIST }
+semantic_mapping { raw_id: 8 group: THING unified_class: MOTORCYCLE }
+semantic_mapping { raw_id: 9 group: SURFACE }
+semantic_mapping { raw_id: 10 group: SURFACE }
+semantic_mapping { raw_id: 11 group: SURFACE_SOFT }
+semantic_mapping { raw_id: 12 group: SURFACE_SOFT }
+semantic_mapping { raw_id: 13 group: STATIC_STRUCT }
+semantic_mapping { raw_id: 14 group: STATIC_STRUCT }
+semantic_mapping { raw_id: 15 group: VEGETATION }
+semantic_mapping { raw_id: 16 group: VEGETATION }
+semantic_mapping { raw_id: 17 group: SURFACE_SOFT }
+semantic_mapping { raw_id: 18 group: STATIC_STRUCT }
+semantic_mapping { raw_id: 19 group: STATIC_STRUCT }
+
+wait_ms: 150
+queue_capacity: 8
+resolution: 0.25
+ground_tile_size: 4
+expected_ground_z: 0
+ground_seed_band: 0.3
+ground_min_points: 6
+ground_max_slope: 0.3
+ground_max_residual: 0.08
+ground_tolerance: 0.1
+obstacle_min_height: 0.15
+clearance_height: 2.5
+core_min_points: 5
+support_ratio: 0.5
+conflict_ratio: 0.7
+evidence_score_min: 0.1
+unsupported_score_min: 0.3
+semantic_min_confidence: 0.5
+noise_corridor_confidence: 0.85
+noise_outside_confidence: 0.6
+association_margin: 0.3
+connectivity_size: 0.3
+unknown_min_points: 6
+recall_min_points: 5
+
+# Opt-in quality migration; absent/false preserves the historical policy.
+# Enable only with a sensor-matched configuration and labeled validation.
+# quality {
+#   separate_weak_detections: true
+#   compatible_margin: true
+#   trusted_point_view: true
+#   point_supported_unknown: true
+# }
+# candidates { separate_semantic_instances: true }

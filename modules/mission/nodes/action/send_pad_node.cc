@@ -31,12 +31,11 @@ BT::NodeStatus SendPadNode::tick() {
   }
 
   if (!MissionContext::Instance()->SendPlanningPad(pad_action)) {
-    AERROR << "SendPadNode: Failed to publish " << action
-           << " to /apollo/planning/pad";
+    AERROR << "SendPadNode: Failed to submit mission action " << action;
     return BT::NodeStatus::FAILURE;
   }
 
-  AINFO << "SendPadNode: Published " << action << " to /apollo/planning/pad";
+  AINFO << "SendPadNode: Submitted mission action " << action;
   return BT::NodeStatus::SUCCESS;
 }
 

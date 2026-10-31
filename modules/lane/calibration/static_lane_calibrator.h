@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <array>
+
 #include "modules/lane/types/lane_types.h"
 
 namespace apollo {
@@ -29,6 +31,7 @@ struct StaticCameraCalibration {
   float principal_y = 0.0F;
   float camera_height_meters = 0.0F;
   float pitch_radians = 0.0F;
+  std::array<float, 3> radial_distortion = {};
 };
 
 class StaticLaneCalibrator {
@@ -38,7 +41,10 @@ class StaticLaneCalibrator {
 
  private:
   bool ProjectToGround(const ImagePoint& image_point,
+                       float pitch_radians,
                        CameraPoint* camera_point) const;
+  bool EstimatePitchFromLanePoints(const LaneDetectionResult& result,
+                                   float* pitch_radians) const;
   static bool FitCameraCurve(LaneLineResult* lane);
 
   StaticCameraCalibration calibration_;

@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -13,16 +13,29 @@ cc_binary(
     deps = [":perception_component_inner_camera"],
 )
 
-install(
-    name = "install",
-    library_dest = "perception/onboard/component",
-    targets = [
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [
         ":libperception_component_camera.so",
         ":libperception_component_lidar.so",
     ],
-    deps = [
-        "//modules/perception/production:install",
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "perception/onboard/component",
+    strip_prefix = strip_prefix.from_root("modules/perception/onboard/component"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_libraries",
+        "//modules/perception/production:package_files",
     ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
 )
 
 cc_library(
@@ -47,8 +60,6 @@ cc_library(
     copts = PERCEPTION_COPTS,
     linkopts = ["-lleveldb"],
     deps = [
-        "@wheelos_common//modules/common/math",
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/camera/app:cipv_camera",
         "//modules/perception/camera/app:lane_camera_perception",
@@ -71,8 +82,10 @@ cc_library(
         "//modules/perception/onboard/proto:lane_perception_component_cc_proto",
         "//modules/perception/onboard/proto:trafficlights_perception_component_cc_proto",
         "//modules/perception/onboard/transform_wrapper",
+        "//modules/perception/onboard/transform_wrapper:sensor_calibration",
         "//modules/perception/pipeline/proto:traffic_light_config_cc_proto",
-        "//modules/transform:transform_query",
+        "@wheelos_transform//modules/transform:buffer",
+        "@wheelos_transform//modules/transform:transform_query",
         "@boost.algorithm",
         "@boost.circular_buffer",
         "@boost.format",
@@ -81,6 +94,8 @@ cc_library(
         "@opencv//:highgui",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util:util_tool",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:error_code_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:header_cc_proto",
@@ -128,7 +143,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
         "//modules/perception/lidar/app:lidar_obstacle_detection",
@@ -149,6 +163,7 @@ cc_library(
         "//modules/perception/onboard/transform_wrapper",
         "@core//cyber",
         "@eigen",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
     alwayslink = True,
 )
@@ -195,7 +210,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
@@ -224,6 +238,7 @@ cc_library(
         "//modules/perception/radar/lib/tracker/filter:adaptive_kalman_filter",
         "//modules/perception/radar/lib/tracker/matcher:hm_matcher",
         "@core//cyber",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
     alwayslink = True,
 )
@@ -240,7 +255,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@wheelos_common//modules/common/util:util_tool",
         "//modules/perception/base",
         "//modules/perception/common/sensor_manager",
         "//modules/perception/lib/registerer",
@@ -253,6 +267,7 @@ cc_library(
         "//modules/perception/onboard/inner_component_messages:lidar_inner_component_messages",
         "//modules/perception/onboard/proto:lidar_component_config_cc_proto",
         "@core//cyber",
+        "@wheelos_common//modules/common/util:util_tool",
     ],
     alwayslink = True,
 )
@@ -276,4 +291,20 @@ cc_library(
     alwayslink = True,
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

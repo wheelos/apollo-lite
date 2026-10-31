@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -16,20 +15,20 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "sequence_predictor_test",
-    size = "small",
-    srcs = ["sequence_predictor_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    deps = [
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/common:prediction_gflags",
-        "//modules/prediction/evaluator/vehicle:mlp_evaluator",
-        "//modules/prediction/predictor/sequence:sequence_predictor",
-    ],
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

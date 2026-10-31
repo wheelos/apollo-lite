@@ -1,15 +1,27 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
-install(
-    name = "install",
-    runtime_dest = "tools/roadlog",
-    targets = [
-        ":smart_recorder",
-    ],
+pkg_files(
+    name = "package_files_binaries",
+    srcs = [":smart_recorder"],
+    attributes = pkg_attributes(mode = "0755"),
+    include_runfiles = True,
+    prefix = "tools/roadlog",
+    strip_prefix = strip_prefix.from_root("modules/tools/roadlog"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [":package_files_binaries"],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
 )
 
 cc_binary(
@@ -30,5 +42,3 @@ cc_library(
         "@com_github_gflags_gflags//:gflags",
     ],
 )
-
-cpplint()

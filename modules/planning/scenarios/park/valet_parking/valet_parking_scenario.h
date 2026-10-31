@@ -50,12 +50,13 @@ class ValetParkingScenario : public Scenario {
       : Scenario(config, context, injector) {}
 
   void Init() override;
+  void OnEnter(Frame* frame) override;
 
   std::unique_ptr<Stage> CreateStage(
       const ScenarioConfig::StageConfig& stage_config,
       const std::shared_ptr<DependencyInjector>& injector) override;
 
-  ScenarioGrade Grade() const override { return ScenarioGrade::MISSION; }
+  ScenarioGrade Grade() const override { return ScenarioGrade::MANEUVER; }
 
   static bool SupportsDirectParkingEntry(const ScenarioConfig& config);
   static bool HasParkingRoutingCommand(

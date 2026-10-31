@@ -1,6 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("@rules_cuda//cuda:defs.bzl", "cuda_library", "requires_cuda")
-load("//tools:cpplint.bzl", "cpplint")
 load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
@@ -296,6 +295,7 @@ cc_test(
     copts = PLANNING_FOPENMP,
     linkopts = ["-lgomp"],
     linkstatic = True,
+    target_compatible_with = requires_cuda(),
     deps = [
         ":distance_approach_ipopt_cuda_interface",
         "@com_google_googletest//:gtest_main",
@@ -365,4 +365,20 @@ cc_test(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

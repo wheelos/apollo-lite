@@ -20,13 +20,13 @@
 #include <string>
 #include <vector>
 
-#include "wheelos_msgs/perception_msgs/perception_camera.pb.h"
-#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
-#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 #include "modules/perception/camera/app/proto/perception.pb.h"
 #include "modules/perception/onboard/proto/fusion_camera_detection_component.pb.h"
 #include "modules/perception/pipeline/proto/pipeline_config.pb.h"
 #include "modules/perception/proto/motion_service.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_camera.pb.h"
+#include "wheelos_msgs/perception_msgs/perception_obstacle.pb.h"
+#include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
 
 #include "cyber/component/component.h"
 #include "modules/common/util/eigen_defs.h"
@@ -86,7 +86,7 @@ class CameraBevDetectionComponent
   void SetCameraHeightAndPitch();
   void OnMotionService(const MotionServiceMsgType& message);
 
-  void FillCamMessage(const std::shared_ptr<apollo::drivers::Image>& in_message,
+  bool FillCamMessage(const std::shared_ptr<apollo::drivers::Image>& in_message,
                       const std::string& camera_name,
                       apollo::perception::camera::CameraFrame* camera_frame);
 

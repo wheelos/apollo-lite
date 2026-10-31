@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -39,15 +38,12 @@ cc_library(
         "//modules/planning/tasks/deciders/path_bounds_decider",
         "//modules/planning/tasks/deciders/path_decider",
         "//modules/planning/tasks/deciders/path_lane_borrow_decider",
-        "//modules/planning/tasks/deciders/path_reference_decider",
         "//modules/planning/tasks/deciders/path_reuse_decider",
         "//modules/planning/tasks/deciders/rss_decider",
         "//modules/planning/tasks/deciders/rule_based_stop_decider",
         "//modules/planning/tasks/deciders/speed_bounds_decider",
         "//modules/planning/tasks/deciders/speed_decider",
         "//modules/planning/tasks/deciders/st_bounds_decider",
-        "//modules/planning/tasks/learning_model:learning_model_inference_task",
-        "//modules/planning/tasks/learning_model:learning_model_inference_trajectory_task",
         "//modules/planning/tasks/optimizers/open_space_trajectory_generation:open_space_trajectory_provider",
         "//modules/planning/tasks/optimizers/open_space_trajectory_partition",
         "//modules/planning/tasks/optimizers/path_time_heuristic:path_time_heuristic_optimizer",
@@ -57,4 +53,20 @@ cc_library(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,14 +8,15 @@ cc_library(
     hdrs = ["perception_camera_updater.h"],
     copts = ['-DMODULE_NAME=\\"dreamview\\"'],
     deps = [
-        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "//modules/dreamview/backend/handlers:websocket_handler",
         "//modules/dreamview/proto:camera_update_cc_proto",
-        "//modules/transform:transform_query",
+        "@wheelos_transform//modules/transform:buffer",
+        "@wheelos_transform//modules/transform:transform_query",
         "@core//cyber",
         "@eigen",
         "@opencv//:imgcodecs",
         "@opencv//:imgproc",
+        "@wheelos_common//modules/common/adapters:adapter_gflags",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
         "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
@@ -27,11 +27,26 @@ cc_test(
     name = "perception_camera_updater_test",
     size = "small",
     srcs = ["perception_camera_updater_test.cc"],
-    linkstatic = True,
     deps = [
         ":perception_camera_updater",
         "@com_google_googletest//:gtest_main",
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

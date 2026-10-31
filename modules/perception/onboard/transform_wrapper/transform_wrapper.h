@@ -21,6 +21,7 @@
 #include "Eigen/Geometry"
 #include "gflags/gflags.h"
 
+#include "modules/transform/buffer.h"
 #include "modules/transform/timed_transform_resolver.h"
 #include "modules/transform/transform_query.h"
 
@@ -34,7 +35,11 @@ DECLARE_string(obs_vehicle2world_tf2_child_frame_id);
 
 class TransformWrapper {
  public:
-  TransformWrapper() : timed_transform_resolver_(&transform_query_) {}
+  TransformWrapper()
+      : TransformWrapper(apollo::transform::Buffer::Instance()) {}
+  explicit TransformWrapper(apollo::transform::BufferInterface* buffer)
+      : transform_query_(buffer),
+        timed_transform_resolver_(&transform_query_) {}
   ~TransformWrapper() = default;
 
   void Init(const std::string& sensor2vehicle_tf2_child_frame_id);
@@ -58,14 +63,19 @@ class TransformWrapper {
                                const std::string& to_sensor_id,
                                Eigen::Affine3d* trans);
 
+  bool QueryStaticTrans(const std::string& frame_id,
+                        const std::string& child_frame_id,
+                        Eigen::Affine3d* trans);
+
+  bool QueryGroundTrans(const std::string& reference_frame,
+                        double reference_height,
+                        const std::string& source_frame,
+                        Eigen::Affine3d* trans);
+
  protected:
   bool QueryTrans(double timestamp, apollo::transform::StampedTransform* trans,
                   const std::string& frame_id,
                   const std::string& child_frame_id);
-
-  bool QueryStaticTrans(const std::string& frame_id,
-                        const std::string& child_frame_id,
-                        Eigen::Affine3d* trans);
 
   bool EnsureSensor2VehicleExtrinsics();
 

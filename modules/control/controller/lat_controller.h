@@ -31,6 +31,7 @@
 #include "modules/common/filters/digital_filter.h"
 #include "modules/common/filters/digital_filter_coefficients.h"
 #include "modules/common/filters/mean_filter.h"
+#include "modules/control/common/terminal_control_helper.h"
 #include "modules/control/common/interpolation_1d.h"
 #include "modules/control/common/leadlag_controller.h"
 #include "modules/control/common/mrac_controller.h"
@@ -125,6 +126,10 @@ class LatController : public Controller {
   void LogInitParameters();
   void ProcessLogs(const SimpleLateralDebug* debug,
                    const common::VehicleState& vehicle_state);
+  TerminalLateralControlAdjustment BuildTerminalLateralAdjustment(
+      const localization::LocalizationEstimate* localization,
+      const planning::ADCTrajectory& planning_published_trajectory,
+      double current_heading) const;
 
   // vehicle
   const ControlConf* control_conf_ = nullptr;

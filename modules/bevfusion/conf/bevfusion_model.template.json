@@ -1,0 +1,12 @@
+{
+  "gpu_device_id": 0,
+  "runtime_library_path": "",
+  "camera_backbone_engine_path": "",
+  "lidar_scn_onnx_path": "",
+  "camera_vtransform_engine_path": "",
+  "transfusion_engine_path": "",
+  "bbox_engine_path": "",
+  "model_revision": "",
+  "confidence_threshold": null,
+  "max_input_point_count": 300000
+}

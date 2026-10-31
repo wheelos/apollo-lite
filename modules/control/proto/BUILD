@@ -160,6 +160,7 @@ proto_library(
     name = "control_conf_proto",
     srcs = ["control_conf.proto"],
     deps = [
+        ":pid_conf_proto",
         ":diff_drive_lat_controller_conf_proto",
         ":lat_controller_conf_proto",
         ":lon_controller_conf_proto",
@@ -287,4 +288,13 @@ proto_library(
 py_proto_library(
     name = "preprocessor_py_pb2",
     deps = [":preprocessor_proto"],
+)
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
 )

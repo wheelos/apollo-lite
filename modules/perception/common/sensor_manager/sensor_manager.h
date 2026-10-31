@@ -18,13 +18,14 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "cyber/common/macros.h"
+#include "modules/common/vehicle_calibration/registry.h"
 #include "modules/perception/base/camera.h"
 #include "modules/perception/base/distortion_model.h"
 #include "modules/perception/base/sensor_meta.h"
 #include "modules/perception/common/perception_gflags.h"
-#include "modules/transform/calibration_registry.h"
 
 namespace apollo {
 namespace perception {
@@ -35,7 +36,13 @@ using apollo::perception::base::BaseCameraModel;
 
 class SensorManager {
  public:
+  explicit SensorManager(apollo::common::vehicle_calibration::Registry registry)
+      : registry_(std::move(registry)) {}
+
   bool Init();
+  const apollo::common::vehicle_calibration::Registry& calibration() const {
+    return registry_;
+  }
 
   bool IsSensorExist(const std::string& name) const;
 
@@ -67,12 +74,7 @@ class SensorManager {
   std::string GetFrameId(const std::string& name) const;
 
  private:
-  inline std::string IntrinsicPath(const std::string& sensor_name) {
-    return transform::CalibrationRegistry::ResolveIntrinsicPath(
-        sensor_name, FLAGS_obs_sensor_intrinsic_path);
-  }
-
- private:
+  apollo::common::vehicle_calibration::Registry registry_;
   std::mutex mutex_;
   bool inited_ = false;
 

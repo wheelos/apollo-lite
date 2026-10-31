@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LiDAR perception diagnostics</title>
+<style>
+body { margin: 0; background: #101721; color: #e2e8f0; font: 14px system-ui, sans-serif; }
+header, nav { padding: 8px 14px; background: #1d2939; }
+h1 { font-size: 19px; margin: 0 0 6px; }
+button, select, input { vertical-align: middle; margin: 3px; }
+button, select { background: #334155; color: white; border: 1px solid #64748b; padding: 5px; }
+label { white-space: nowrap; margin-right: 10px; }
+#layout { display: grid; grid-template-columns: minmax(500px, 1fr) 360px; }
+canvas { width: 100%; height: 76vh; display: block; cursor: crosshair; }
+aside { padding: 10px; overflow: auto; max-height: 78vh; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+img { width: 100%; }
+.warn { color: #fbbf24; }
+.legend { font-size: 12px; padding: 5px 14px; }
+@media(max-width: 900px) { #layout { display: block; } canvas { height: 65vh; } }
+</style>
+</head>
+<body>
+<header>
+<h1 id="page-title">LiDAR fusion: nuScenes labeled diagnostic subset</h1>
+<div id="banner" class="warn">Not official mAP/NDS. Cached CenterPoint + fresh cross-domain RangeRet.
+UNKNOWN is not FREE. Display subsampling never changes inference.</div>
+</header>
+<nav>
+<button id="prev">Previous</button><button id="play">Play</button><button id="next">Next</button>
+<input id="frame" type="range" min="0" value="0" aria-label="Frame"><span id="title"></span><br>
+<label>Points <select id="color"><option value="4">Semantic group</option><option value="3">Raw semantic label</option><option value="5">Explanation</option><option value="2">Height</option></select></label>
+<label>View <select id="filter"><option value="all">All</option><option value="ground">Ground</option><option value="non_ground">Non-ground</option><option value="object">Assigned object points</option><option value="trusted">Semantic-supported object points</option><option value="unknown">Unknown points</option></select></label>
+<label><input id="points" type="checkbox" checked>Points</label>
+<label><input id="truth" type="checkbox" checked>GT</label>
+<label><input id="raw" type="checkbox">Raw detector</label>
+<label><input id="objects" type="checkbox" checked>Fused objects</label>
+<label><input id="classified" type="checkbox">Classification-use candidates only</label>
+<label><input id="unknowns" type="checkbox">Unknown candidates</label>
+<label><input id="alternatives" type="checkbox">Alternative THING supports</label>
+<label><input id="partitions" type="checkbox">Shadow semantic supports</label>
+<label><input id="cells" type="checkbox">Measured occupancy</label>
+<label><input id="inferred" type="checkbox">Inferred occupancy</label>
+<label><input id="risk" type="checkbox">Unknown risk</label>
+<label><input id="visibility" type="checkbox">Diagnostic visibility</label>
+<label><input id="ground" type="checkbox">Ground support</label>
+<label>Zoom <input id="zoom" type="range" min="20" max="120" value="105"></label>
+</nav>
+<div class="legend">
+GT green; raw detector blue; fused cyan; legacy class conflict red; cross-THING disagreement purple; unknown amber.
+Heading marks require an explicit reliable-orientation flag. Missing raw scores are unavailable, not probability 1.
+Support overlays show sampled measured returns, not fitted boxes or verified instances. Click them for full support IDs and parent links.
+BEV: ego +X up, +Y left; gray background = UNKNOWN/unshown.
+Click boxes, polygons or points for immutable source/decision details.
+</div>
+<div id="layout">
+<canvas id="bev" aria-label="Interactive bird's eye view"></canvas>
+<aside><img id="camera" alt="Context camera"><div id="skew"></div>
+<h3>Frame diagnostics</h3><pre id="stats"></pre>
+<h3>Selected evidence</h3><pre id="detail">Click the BEV to inspect evidence.</pre>
+<h3>Labels</h3><pre id="labels"></pre></aside>
+</div>
+<script src="data.js"></script><script src="viewer.js"></script>
+</body>
+</html>

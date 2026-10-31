@@ -24,7 +24,6 @@
 #include "modules/planning/common/ego_info.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/history.h"
-#include "modules/planning/common/learning_based_data.h"
 #include "modules/planning/common/planning_context.h"
 
 namespace apollo {
@@ -52,8 +51,6 @@ class DependencyInjector {
   const apollo::common::VehicleModel& vehicle_model() const {
     return *vehicle_model_;
   }
-  LearningBasedData* learning_based_data() { return &learning_based_data_; }
-
  private:
   PlanningContext planning_context_;
   FrameHistory frame_history_;
@@ -61,7 +58,6 @@ class DependencyInjector {
   EgoInfo ego_info_;
   apollo::common::VehicleStateProvider vehicle_state_;
   std::unique_ptr<apollo::common::VehicleModel> vehicle_model_;
-  LearningBasedData learning_based_data_;
 };
 
 }  // namespace planning

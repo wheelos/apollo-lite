@@ -1,0 +1,13 @@
+module_config {
+  module_library: "/apollo/modules/bevfusion-dev/local/lib/libbevfusion_component_plugin.so"
+  components {
+    class_name: "BevFusionComponent"
+    config {
+      name: "BevFusion"
+      config_file_path: "/apollo/modules/bevfusion-dev/local/conf/bevfusion_component.pb.txt"
+      readers {
+        channel: ""
+      }
+    }
+  }
+}

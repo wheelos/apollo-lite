@@ -27,6 +27,7 @@
 #include "modules/common/util/util.h"
 #include "modules/planning/common/util/util.h"
 #include "modules/planning/common/planning_context.h"
+#include "modules/planning/planning_runtime_context.h"
 #include "modules/planning/scenarios/cruise/lane_follow/lane_follow_scenario.h"
 #include "modules/planning/scenarios/cruise/lane_keeping/lane_keeping_scenario.h"
 #include "modules/planning/scenarios/deciders/cruise_decider.h"
@@ -44,7 +45,6 @@
 #include "modules/planning/scenarios/intersection/traffic_light/unprotected_left_turn/traffic_light_unprotected_left_turn_scenario.h"
 #include "modules/planning/scenarios/intersection/traffic_light/unprotected_right_turn/traffic_light_unprotected_right_turn_scenario.h"
 #include "modules/planning/scenarios/intersection/yield_sign/yield_sign_scenario.h"
-#include "modules/planning/scenarios/learning_model/learning_model_sample_scenario.h"
 #include "modules/planning/scenarios/maneuver/deadend_turnaround/deadend_turnaround_scenario.h"
 #include "modules/planning/scenarios/maneuver/escape/escape_scenario.h"
 #include "modules/planning/scenarios/maneuver/narrow_street/narrow_street_scenario.h"
@@ -57,6 +57,10 @@
 namespace {
 
 using apollo::planning::ScenarioType;
+
+bool HasReferenceLineContext(const apollo::planning::Frame& frame) {
+  return !frame.reference_line_info().empty();
+}
 
 bool IsTrafficLightScenario(const ScenarioType& type) {
   return type == ScenarioType::TRAFFIC_LIGHT_PROTECTED ||
@@ -118,14 +122,7 @@ void ScenarioManager::RegisterScenarios() {
     ACHECK(Scenario::LoadConfig(file, &config_map_[type]));
   };
 
-  if (planning_config_.learning_mode() == PlanningConfig::HYBRID ||
-      planning_config_.learning_mode() == PlanningConfig::HYBRID_TEST) {
-    load_conf(ScenarioType::LANE_FOLLOW,
-              FLAGS_scenario_lane_follow_hybrid_config_file);
-  } else {
-    load_conf(ScenarioType::LANE_FOLLOW,
-              FLAGS_scenario_lane_follow_config_file);
-  }
+  load_conf(ScenarioType::LANE_FOLLOW, FLAGS_scenario_lane_follow_config_file);
 
   // --- Basic and intersection categories ---
   load_conf(ScenarioType::BARE_INTERSECTION_UNPROTECTED,
@@ -163,9 +160,6 @@ void ScenarioManager::RegisterScenarios() {
   // --- Line following and starting classes ---
   load_conf(ScenarioType::PARK_AND_GO, FLAGS_scenario_park_and_go_config_file);
 
-  // --- learning ---
-  load_conf(ScenarioType::LEARNING_MODEL_SAMPLE,
-            FLAGS_scenario_learning_model_sample_config_file);
 }
 
 void ScenarioManager::RegisterDeciders() {
@@ -204,8 +198,6 @@ void ScenarioManager::Update(const common::TrajectoryPoint& ego_point,
                              const Frame& frame) {
   const bool direct_valet_parking = ShouldEnterDirectValetParking(frame);
   if (!direct_valet_parking) {
-    ACHECK(!frame.reference_line_info().empty());
-
     // 1. Observe (Build lookup map) - Pass const ref
     Observe(frame);
 
@@ -227,6 +219,9 @@ void ScenarioManager::Update(const common::TrajectoryPoint& ego_point,
 
 void ScenarioManager::Observe(const Frame& frame) {
   first_encountered_overlap_map_.clear();
+  if (!HasReferenceLineContext(frame)) {
+    return;
+  }
   const auto& reference_line_info = frame.reference_line_info().front();
   const auto& first_encountered_overlaps =
       reference_line_info.FirstEncounteredOverlaps();
@@ -244,17 +239,6 @@ void ScenarioManager::Observe(const Frame& frame) {
 void ScenarioManager::ScenarioDispatch(const Frame& frame) {
   CHECK_NOTNULL(current_scenario_.get());
 
-  // E2E / Learning Mode Handling
-  if (planning_config_.learning_mode() == PlanningConfig::E2E ||
-      planning_config_.learning_mode() == PlanningConfig::E2E_TEST) {
-    // Assuming ScenarioDispatchLearning is also updated to take const Frame&
-    ScenarioType learning_type = ScenarioDispatchLearning(frame);
-    if (learning_type != current_scenario_->Type()) {
-      SwitchToScenario(learning_type, frame);
-    }
-    return;
-  }
-
   const auto current_type = current_scenario_->Type();
   const auto current_status = current_scenario_->GetStatus();
 
@@ -269,6 +253,9 @@ void ScenarioManager::ScenarioDispatch(const Frame& frame) {
   DeciderContext context;
   context.frame = &frame;
   context.current_scenario = current_scenario_.get();
+  context.planning_command = frame.local_view().planning_command.get();
+  context.capability_set = frame.local_view().capability_set.get();
+  context.planning_state = frame.local_view().planning_state.get();
   context.first_encountered_overlaps = &first_encountered_overlap_map_;
 
   // 3. Bidding
@@ -276,6 +263,17 @@ void ScenarioManager::ScenarioDispatch(const Frame& frame) {
     auto decision = decider->MakeDecision(context);
 
     if (!decision.IsValid()) continue;
+
+    const bool has_parent_mission_session =
+        context.planning_state != nullptr &&
+        context.planning_state->mission_session_state !=
+            MISSION_SESSION_UNKNOWN;
+    if (has_parent_mission_session && !IsLocalScenarioGrade(decision.grade)) {
+      AERROR << "Flat ScenarioManager rejected MISSION-grade candidate "
+             << ScenarioType_Name(decision.type)
+             << " while a parent Mission session is active";
+      continue;
+    }
 
     AINFO_EVERY(100) << decision.DebugString();
 
@@ -403,11 +401,6 @@ std::unique_ptr<Scenario> ScenarioManager::CreateScenario(
       return std::make_unique<mission_idle::MissionIdleScenario>(
           config, nullptr, injector_);
 
-    // --- Learning Model ---
-    case ScenarioType::LEARNING_MODEL_SAMPLE:
-      return std::make_unique<learning_model::LearningModelSampleScenario>(
-          config, nullptr, injector_);
-
     default:
       AERROR << "Unknown scenario type: " << ScenarioType_Name(scenario_type);
       return nullptr;
@@ -418,9 +411,30 @@ void ScenarioManager::UpdatePlanningContext(const Frame& frame,
                                             const ScenarioType& type) {
   ScenarioType current_running_type = current_scenario_->Type();
 
-  UpdateContextBareIntersection(type, current_running_type);
   UpdateContextEmergencyStop(type);
   UpdateContextPullOver(frame, type);
+
+  if (!HasReferenceLineContext(frame)) {
+    injector_->planning_context()
+        ->mutable_planning_status()
+        ->mutable_bare_intersection()
+        ->Clear();
+    injector_->planning_context()
+        ->mutable_planning_status()
+        ->mutable_stop_sign()
+        ->Clear();
+    injector_->planning_context()
+        ->mutable_planning_status()
+        ->mutable_traffic_light()
+        ->Clear();
+    injector_->planning_context()
+        ->mutable_planning_status()
+        ->mutable_yield_sign()
+        ->Clear();
+    return;
+  }
+
+  UpdateContextBareIntersection(type, current_running_type);
   UpdateContextStopSign(type, current_running_type);
   UpdateContextTrafficLight(frame, type, current_running_type);
   UpdateContextYieldSign(type, current_running_type);
@@ -576,10 +590,8 @@ void ScenarioManager::UpdateContextPullOver(const Frame& frame,
 
   if (pull_over->has_position()) {
     const auto& routing = frame.local_view().routing;
-    if (!routing) {
-      return;
-    }
-    if (routing->routing_request().waypoint_size() >= 2) {
+    if (routing != nullptr && routing->routing_request().waypoint_size() >= 2 &&
+        HasReferenceLineContext(frame)) {
       const auto& reference_line_info = frame.reference_line_info().front();
       const auto& reference_line = reference_line_info.reference_line();
 
@@ -608,11 +620,6 @@ void ScenarioManager::UpdateContextEmergencyStop(const ScenarioType& type) {
         ->mutable_emergency_stop()
         ->Clear();
   }
-}
-
-ScenarioType ScenarioManager::ScenarioDispatchLearning(const Frame& frame) {
-  ScenarioType scenario_type = ScenarioType::LEARNING_MODEL_SAMPLE;
-  return scenario_type;
 }
 
 }  // namespace scenario

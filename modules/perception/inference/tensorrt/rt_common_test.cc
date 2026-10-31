@@ -28,7 +28,7 @@ TEST(RTReshapeDimsTest, test) {
 
   dims.d[2] = -1;
   dims.d[1] = 0;
-  dims.d[0] = 3;
+  dims.d[0] = 4;
 
   input_dims.d[0] = 2;
   input_dims.d[1] = 3;
@@ -36,7 +36,7 @@ TEST(RTReshapeDimsTest, test) {
 
   auto outdims = apollo::perception::inference::ReshapeDims(dims, input_dims);
 
-  EXPECT_EQ(outdims.d[0], 2);
+  EXPECT_EQ(outdims.d[0], 4);
   EXPECT_EQ(outdims.d[1], 3);
   EXPECT_EQ(outdims.d[2], 2);
 }

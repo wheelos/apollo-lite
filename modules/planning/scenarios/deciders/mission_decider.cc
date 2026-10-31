@@ -58,12 +58,22 @@ ScenarioDecisionResult MissionDecider::CheckMissionIdle(
     const DeciderContext& context) {
   const auto& frame = context.frame;
 
+  if (context.planning_command != nullptr) {
+    const auto& command = *context.planning_command;
+    if (command.has_action() && command.action() != COMMAND_CANCEL &&
+        command.has_requested_scene() &&
+        command.requested_scene() != SCENE_UNKNOWN &&
+        command.requested_scene() != SCENE_LANE_CRUISE) {
+      return ScenarioDecisionResult();
+    }
+  }
+
   // Safe check for routing availability
   if (!frame->local_view().routing ||
       frame->local_view().routing->routing_request().waypoint().empty()) {
     // If we have no routing, or routing is empty, we are Idle.
     return ScenarioDecisionResult(ScenarioType::MISSION_IDLE,
-                                  ScenarioGrade::MISSION, kScoreMissionIdle,
+                                  ScenarioGrade::CRUISE, kScoreMissionIdle,
                                   "Routing Empty or Finished");
   }
 
@@ -76,7 +86,7 @@ ScenarioDecisionResult MissionDecider::CheckMissionIdle(
   bool is_at_destination = IsCloseToDestination(frame);
   if (is_stopped && is_at_destination) {
     return ScenarioDecisionResult(ScenarioType::MISSION_IDLE,
-                                  ScenarioGrade::MISSION, kScoreMissionIdle,
+                                  ScenarioGrade::CRUISE, kScoreMissionIdle,
                                   "Destination");
   }
 
@@ -121,7 +131,7 @@ ScenarioDecisionResult MissionDecider::CheckNarrowStreet(
   double buffer = lane_left_width + lane_right_width - vehicle_width;
   if (buffer > 0.0 && buffer < kNarrowStreetWidthThreshold) {
     return ScenarioDecisionResult(ScenarioType::NARROW_STREET_MANEUVER,
-                                  ScenarioGrade::MISSION, kScoreNarrowStreet,
+                                  ScenarioGrade::MANEUVER, kScoreNarrowStreet,
                                   "Narrow Lane Detected (<2.8m)");
   }
   return ScenarioDecisionResult();

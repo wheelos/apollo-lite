@@ -1,0 +1,10 @@
+model_path: "/mnt/synology/models/cylinder3d/apollo-baseline-20261029/runtime/pvkd-half.ts"
+# CPU reference default. Measured GPU baseline: device_id: 0, use_spconv: true
+# with --config=gpu --define=CYLINDER3D_SPCONV=true.
+device_id: -1
+sensor_name: "HDL64"
+source_topic: "/apollo/sensor/velodyne64/compensator/PointCloud2"
+output_channel: "/perception/lidar_semantic_segmentation"
+max_points: 150000
+intensity_scale: 0.00392156863
+flip_tta: false

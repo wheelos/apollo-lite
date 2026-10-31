@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -54,6 +53,7 @@ cc_library(
         "//modules/control/common:interpolation_1d",
         "//modules/control/common:leadlag_controller",
         "//modules/control/common:mrac_controller",
+        "//modules/control/common:terminal_control_helper",
         "//modules/control/common:trajectory_analyzer",
         "//modules/control/proto:calibration_table_cc_proto",
         "//modules/control/proto:control_conf_cc_proto",
@@ -85,6 +85,7 @@ cc_library(
         "//modules/control/common:interpolation_2d",
         "//modules/control/common:leadlag_controller",
         "//modules/control/common:pid_controller",
+        "//modules/control/common:terminal_control_helper",
         "//modules/control/common:trajectory_analyzer",
         "//modules/control/proto:calibration_table_cc_proto",
         "//modules/control/proto:control_conf_cc_proto",
@@ -93,7 +94,6 @@ cc_library(
         "//modules/control/proto:lon_controller_conf_cc_proto",
         "//modules/control/proto:mpc_controller_conf_cc_proto",
         "//modules/control/proto:mrac_conf_cc_proto",
-        "//modules/localization/common:localization_gflags",
         "@com_google_absl//absl/strings",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
@@ -114,10 +114,10 @@ cc_library(
         "//modules/control/common:control_gflags",
         "//modules/control/common:leadlag_controller",
         "//modules/control/common:pid_controller",
+        "//modules/control/common:terminal_control_helper",
         "//modules/control/common:trajectory_analyzer",
         "//modules/control/proto:control_conf_cc_proto",
         "//modules/control/proto:lon_controller_conf_cc_proto",
-        "//modules/localization/common:localization_gflags",
         "@com_google_absl//absl/strings",
         "@core//cyber",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
@@ -132,10 +132,6 @@ cc_library(
     copts = CONTROL_COPTS,
     deps = [
         ":controller_interface",
-        "@wheelos_common//modules/common/configs:vehicle_config_helper",
-        "@wheelos_common//modules/common/filters",
-        "@wheelos_common//modules/common/math",
-        "@wheelos_common//modules/common/status",
         "//modules/control/common:control_gflags",
         "//modules/control/common:interpolation_1d",
         "//modules/control/common:interpolation_2d",
@@ -149,6 +145,11 @@ cc_library(
         "//modules/control/proto:mrac_conf_cc_proto",
         "@core//cyber",
         "@eigen",
+        "@osqp",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/filters",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/status",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:geometry_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
         "@wheelos_msgs//wheelos_msgs/control_msgs:input_debug_cc_proto",
@@ -160,6 +161,7 @@ cc_library(
     name = "controller",
     copts = CONTROL_COPTS,
     deps = [
+        ":controller_profile_manager",
         ":controller_agent",
         ":controller_interface",
         ":diff_drive_lat_controller",
@@ -168,6 +170,21 @@ cc_library(
         ":lon_speed_controller",
         ":mpc_controller",
         "@eigen",
+    ],
+)
+
+cc_library(
+    name = "controller_profile_manager",
+    srcs = ["controller_profile_manager.cc"],
+    hdrs = ["controller_profile_manager.h"],
+    copts = CONTROL_COPTS,
+    deps = [
+        ":controller_agent",
+        "//modules/control/proto:control_conf_cc_proto",
+        "//modules/control/proto:pid_conf_cc_proto",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_runtime_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
     ],
 )
 
@@ -211,6 +228,23 @@ cc_test(
 )
 
 cc_test(
+    name = "controller_profile_manager_test",
+    size = "small",
+    srcs = ["controller_profile_manager_test.cc"],
+    copts = ["-fno-access-control"],
+    deps = [
+        ":controller_agent",
+        ":controller_interface",
+        ":controller_profile_manager",
+        "//modules/control/proto:control_conf_cc_proto",
+        "@com_google_googletest//:gtest_main",
+        "@core//cyber",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:control_runtime_status_cc_proto",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:motion_execution_cc_proto",
+    ],
+)
+
+cc_test(
     name = "lat_controller_test",
     size = "small",
     srcs = ["lat_controller_test.cc"],
@@ -232,15 +266,39 @@ cc_test(
     size = "small",
     srcs = ["mpc_controller_test.cc"],
     copts = ["-fno-access-control"],
-    data = ["//modules/control:test_data"],
+    data = [
+        "//modules/control:conf/control_conf.pb.txt",
+        "//modules/control:test_data",
+        "//modules/global_config:vehicle_config_data",
+    ],
     deps = [
+        ":controller_agent",
         ":mpc_controller",
-        "@wheelos_common//modules/common/util",
-        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/control/common:control_gflags",
+        "@com_github_gflags_gflags//:gflags",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
+        "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/configs:vehicle_config_helper",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

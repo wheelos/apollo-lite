@@ -1,6 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("@rules_cuda//cuda:defs.bzl", "cuda_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -8,7 +7,16 @@ licenses(["notice"])
 
 cc_library(
     name = "perception_inference_tensorrt_plugins",
-    hdrs = glob(["*.h"]),
+    hdrs = [
+        "argmax_plugin.h",
+        "dfmb_psroi_align_plugin.h",
+        "kernels.h",
+        "leakyReLU_plugin.h",
+        "rcnn_proposal_plugin.h",
+        "rpn_proposal_ssd_plugin.h",
+        "slice_plugin.h",
+        "softmax_plugin.h",
+    ],
     deps = [
         ":dfmb_psroi_align_plugin",
         ":perception_inference_tensorrt_plugins_argmax_cuda",
@@ -146,4 +154,20 @@ cc_test(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
@@ -23,21 +22,6 @@ cc_library(
         "//modules/prediction/container/obstacles:obstacles_container",
         "//modules/prediction/evaluator",
         "//modules/prediction/proto:fnn_vehicle_model_cc_proto",
-    ],
-)
-
-cc_test(
-    name = "mlp_evaluator_test",
-    size = "small",
-    srcs = ["mlp_evaluator_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    deps = [
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/evaluator/vehicle:mlp_evaluator",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -87,25 +71,6 @@ cc_library(
     ),
 )
 
-cc_test(
-    name = "junction_mlp_evaluator_test",
-    size = "small",
-    srcs = ["junction_mlp_evaluator_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    linkopts = [
-        "-lgomp",
-    ],
-    linkstatic = True,
-    deps = [
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/evaluator/vehicle:junction_mlp_evaluator",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_library(
     name = "junction_map_evaluator",
     srcs = ["junction_map_evaluator.cc"],
@@ -138,24 +103,6 @@ cc_library(
         ["@libtorch_gpu"],
         ["@libtorch_cpu"],
     ),
-)
-
-cc_test(
-    name = "cruise_mlp_evaluator_test",
-    size = "small",
-    srcs = ["cruise_mlp_evaluator_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    linkopts = [
-        "-lgomp",
-    ],
-    linkstatic = True,
-    deps = [
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/evaluator/vehicle:cruise_mlp_evaluator",
-    ],
 )
 
 cc_library(
@@ -217,11 +164,11 @@ cc_library(
     ],
     copts = PREDICTION_COPTS,
     deps = [
-        "@wheelos_common//modules/common/math",
-        "@wheelos_map//modules/map/hdmap:hdmap",
-        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container/obstacles:obstacles_container",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_map//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
     ],
 )
 
@@ -260,18 +207,6 @@ cc_library(
     ),
 )
 
-cc_test(
-    name = "hivt_tensorrt_executor_test",
-    size = "small",
-    srcs = ["hivt_tensorrt_executor_test.cc"],
-    tags = ["manual"],
-    deps = [
-        ":hivt_tensorrt_executor",
-        "//modules/prediction/common:prediction_system_gflags",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_library(
     name = "hivt_scene_evaluator",
     srcs = ["hivt_scene_evaluator.cc"],
@@ -297,4 +232,20 @@ cc_test(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 cc_library(
     name = "msgexporterlib",
@@ -8,7 +7,8 @@ cc_library(
     deps = [
         "//modules/perception/lidar/common:pcl_util",
         "//modules/perception/onboard/transform_wrapper",
-        "//modules/transform:transform_query",
+        "@wheelos_transform//modules/transform:buffer",
+        "@wheelos_transform//modules/transform:transform_query",
         "@com_google_absl//absl/strings",
         "@core//cyber",
         "@opencv//:imgcodecs",
@@ -39,4 +39,20 @@ cc_binary(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

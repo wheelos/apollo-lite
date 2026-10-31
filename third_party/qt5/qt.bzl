@@ -1,3 +1,5 @@
+"""Qt C++ rules using tools from the selected local Qt SDK."""
+
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
 def _file_name(filePathName):
@@ -10,14 +12,27 @@ def _base_name(fileName):
     return fileName.split(".")[0]
 
 def qt_cc_library(name, srcs, hdrs, copts = [], uis = [], res = [], res_srcs = [], normal_hdrs = [], deps = None, **kwargs):
+    """Builds a library with generated Qt meta-object, UI, and resource sources.
+
+    Args:
+        name: Library target name.
+        srcs: C++ sources, extended with generated Qt sources.
+        hdrs: Headers to process with moc, extended with generated UI headers.
+        copts: Additional C++ compiler options.
+        uis: UI files to process with uic.
+        res: Resource collections to process with rcc.
+        res_srcs: Files referenced by the resource collections.
+        normal_hdrs: Headers that do not require moc.
+        deps: C++ library dependencies.
+        **kwargs: Additional cc_library attributes.
+    """
     dep_labels = deps if deps != None else []
     resource_inputs = res_srcs if res_srcs != None else []
     for hItem in hdrs:
         base_name = _base_name(_file_name(hItem))
         cmd = """
         if grep -q Q_OBJECT $(location %s); then \
-            if [ -x /usr/local/qt5/bin/moc ]; then QT_MOC=/usr/local/qt5/bin/moc; else QT_MOC=moc; fi; \
-            $$QT_MOC $(location %s) -o $@ -f'%s'; \
+            $(execpath @qt//:bin/moc) $(location %s) -o $@ -f'%s'; \
         else \
             echo '' > $@ ; \
         fi""" % (hItem, hItem, "%s/%s" % (native.package_name(), hItem))
@@ -25,6 +40,7 @@ def qt_cc_library(name, srcs, hdrs, copts = [], uis = [], res = [], res_srcs = [
             name = "%s_moc" % base_name,
             srcs = [hItem],
             outs = ["moc_%s.cpp" % base_name],
+            tools = ["@qt//:bin/moc"],
             cmd = cmd,
         )
         srcs.append("moc_%s.cpp" % base_name)
@@ -35,7 +51,8 @@ def qt_cc_library(name, srcs, hdrs, copts = [], uis = [], res = [], res_srcs = [
             name = "%s_ui" % base_name,
             srcs = [uitem],
             outs = ["ui_%s.h" % base_name],
-            cmd = "if [ -x /usr/local/qt5/bin/uic ]; then QT_UIC=/usr/local/qt5/bin/uic; else QT_UIC=uic; fi; $$QT_UIC $(locations %s) -o $@" % uitem,
+            cmd = "$(execpath @qt//:bin/uic) $(locations %s) -o $@" % uitem,
+            tools = ["@qt//:bin/uic"],
         )
         hdrs.append("ui_%s.h" % base_name)
 
@@ -45,7 +62,8 @@ def qt_cc_library(name, srcs, hdrs, copts = [], uis = [], res = [], res_srcs = [
             name = "%s_res" % base_name,
             srcs = [ritem] + resource_inputs,
             outs = ["res_%s.cpp" % base_name],
-            cmd = "if [ -x /usr/local/qt5/bin/rcc ]; then QT_RCC=/usr/local/qt5/bin/rcc; else QT_RCC=rcc; fi; $$QT_RCC --name res --output $(OUTS) $(location %s)" % ritem,
+            cmd = "$(execpath @qt//:bin/rcc) --name res --output $(OUTS) $(location %s)" % ritem,
+            tools = ["@qt//:bin/rcc"],
         )
         srcs.append("res_%s.cpp" % base_name)
 
@@ -59,4 +77,3 @@ def qt_cc_library(name, srcs, hdrs, copts = [], uis = [], res = [], res_srcs = [
         alwayslink = 1,
         **kwargs
     )
-

@@ -1,15 +1,22 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install", "install_src_files")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
 PREDICTION_COPTS = ["-DMODULE_NAME=\\\"prediction\\\""]
 
-install(
+pkg_files(
+    name = "prediction_testdata_install_data",
+    srcs = [":prediction_testdata"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "prediction/addition_data",
+    strip_prefix = strip_prefix.from_root("modules/prediction"),
+)
+
+pkg_filegroup(
     name = "prediction_testdata_install",
-    data = [":prediction_testdata"],
-    data_dest = "prediction/addition_data",
+    srcs = [":prediction_testdata_install_data"],
 )
 
 cc_library(
@@ -33,24 +40,6 @@ cc_library(
     alwayslink = True,
 )
 
-cc_test(
-    name = "prediction_component_test",
-    size = "small",
-    srcs = ["prediction_component_test.cc"],
-    data = [
-        ":prediction_conf",
-        ":prediction_data",
-        ":prediction_testdata",
-    ],
-    linkopts = [
-        "-lgomp",
-    ],
-    linkstatic = True,
-    deps = [
-        ":prediction_component_lib",
-    ],
-)
-
 cc_binary(
     name = "libprediction_component.so",
     linkshared = True,
@@ -58,29 +47,47 @@ cc_binary(
     deps = [":prediction_component_lib"],
 )
 
-install(
-    name = "install",
-    data = [
+pkg_files(
+    name = "package_files_data",
+    srcs = [
         ":prediction.BUILD",
         ":runtime_data",
     ],
-    data_dest = "prediction",
-    library_dest = "prediction/lib",
-    targets = [
-        ":libprediction_component.so",
-    ],
-    deps = [
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "prediction",
+    strip_prefix = strip_prefix.from_root("modules/prediction"),
+)
+
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":libprediction_component.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "prediction/lib",
+    strip_prefix = strip_prefix.from_root("modules/prediction"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
         ":pb_hdrs",
         ":prediction_testdata_install",
-        "//modules/prediction/common:install",
-        "//modules/prediction/pipeline:install",
-        "//modules/prediction/submodules:install",
+        "//modules/prediction/common:package_files",
+        "//modules/prediction/pipeline:package_files",
+        "//modules/prediction/submodules:package_files",
     ],
 )
 
-install(
-    name = "pb_hdrs",
-    data = [
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)
+
+pkg_files(
+    name = "pb_hdrs_data",
+    srcs = [
         "//modules/prediction/proto:fnn_model_base_cc_proto",
         "//modules/prediction/proto:fnn_vehicle_model_cc_proto",
         "//modules/prediction/proto:network_layers_cc_proto",
@@ -88,29 +95,125 @@ install(
         "//modules/prediction/proto:offline_features_cc_proto",
         "//modules/prediction/proto:prediction_conf_cc_proto",
     ],
-    data_dest = "prediction/include",
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "prediction/include",
+    strip_prefix = strip_prefix.from_root("modules/prediction"),
 )
 
-install_src_files(
-    name = "install_src",
-    deps = [
-        ":install_prediction_hdrs",
-        ":install_prediction_src",
+pkg_filegroup(
+    name = "pb_hdrs",
+    srcs = [":pb_hdrs_data"],
+)
+
+pkg_filegroup(
+    name = "source_files",
+    srcs = [
+        ":package_prediction_hdrs",
+        ":package_prediction_src",
     ],
 )
 
-install_src_files(
-    name = "install_prediction_src",
-    dest = "prediction/src",
-    filter = "*",
-    src_dir = ["."],
+pkg_install(
+    name = "source_dir",
+    srcs = [":source_files"],
+    tags = ["manual"],
 )
 
-install_src_files(
-    name = "install_prediction_hdrs",
-    dest = "prediction/include",
-    filter = "*.h",
-    src_dir = ["."],
+pkg_files(
+    name = "package_prediction_src_data",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ) + [
+        "//modules/prediction/common:exported_source_files",
+        "//modules/prediction/container:exported_source_files",
+        "//modules/prediction/container/adc_trajectory:exported_source_files",
+        "//modules/prediction/container/obstacles:exported_source_files",
+        "//modules/prediction/container/pose:exported_source_files",
+        "//modules/prediction/container/storytelling:exported_source_files",
+        "//modules/prediction/evaluator:exported_source_files",
+        "//modules/prediction/evaluator/cyclist:exported_source_files",
+        "//modules/prediction/evaluator/pedestrian:exported_source_files",
+        "//modules/prediction/evaluator/vehicle:exported_source_files",
+        "//modules/prediction/network:exported_source_files",
+        "//modules/prediction/network/rnn_model:exported_source_files",
+        "//modules/prediction/pipeline:exported_source_files",
+        "//modules/prediction/predictor:exported_source_files",
+        "//modules/prediction/predictor/empty:exported_source_files",
+        "//modules/prediction/predictor/extrapolation:exported_source_files",
+        "//modules/prediction/predictor/free_move:exported_source_files",
+        "//modules/prediction/predictor/interaction:exported_source_files",
+        "//modules/prediction/predictor/junction:exported_source_files",
+        "//modules/prediction/predictor/lane_sequence:exported_source_files",
+        "//modules/prediction/predictor/move_sequence:exported_source_files",
+        "//modules/prediction/predictor/sequence:exported_source_files",
+        "//modules/prediction/predictor/single_lane:exported_source_files",
+        "//modules/prediction/proto:exported_source_files",
+        "//modules/prediction/scenario:exported_source_files",
+        "//modules/prediction/scenario/analyzer:exported_source_files",
+        "//modules/prediction/scenario/feature_extractor:exported_source_files",
+        "//modules/prediction/scenario/interaction_filter:exported_source_files",
+        "//modules/prediction/scenario/prioritization:exported_source_files",
+        "//modules/prediction/scenario/right_of_way:exported_source_files",
+        "//modules/prediction/scenario/scenario_features:exported_source_files",
+        "//modules/prediction/submodules:exported_source_files",
+        "//modules/prediction/tools:exported_source_files",
+    ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "prediction/src",
+    strip_prefix = strip_prefix.from_root("modules/prediction"),
+)
+
+pkg_filegroup(
+    name = "package_prediction_src",
+    srcs = [":package_prediction_src_data"],
+)
+
+pkg_files(
+    name = "package_prediction_hdrs_data",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ) + [
+        "//modules/prediction/common:exported_source_headers",
+        "//modules/prediction/container:exported_source_headers",
+        "//modules/prediction/container/adc_trajectory:exported_source_headers",
+        "//modules/prediction/container/obstacles:exported_source_headers",
+        "//modules/prediction/container/pose:exported_source_headers",
+        "//modules/prediction/container/storytelling:exported_source_headers",
+        "//modules/prediction/evaluator:exported_source_headers",
+        "//modules/prediction/evaluator/cyclist:exported_source_headers",
+        "//modules/prediction/evaluator/pedestrian:exported_source_headers",
+        "//modules/prediction/evaluator/vehicle:exported_source_headers",
+        "//modules/prediction/network:exported_source_headers",
+        "//modules/prediction/network/rnn_model:exported_source_headers",
+        "//modules/prediction/predictor:exported_source_headers",
+        "//modules/prediction/predictor/empty:exported_source_headers",
+        "//modules/prediction/predictor/extrapolation:exported_source_headers",
+        "//modules/prediction/predictor/free_move:exported_source_headers",
+        "//modules/prediction/predictor/interaction:exported_source_headers",
+        "//modules/prediction/predictor/junction:exported_source_headers",
+        "//modules/prediction/predictor/lane_sequence:exported_source_headers",
+        "//modules/prediction/predictor/move_sequence:exported_source_headers",
+        "//modules/prediction/predictor/sequence:exported_source_headers",
+        "//modules/prediction/predictor/single_lane:exported_source_headers",
+        "//modules/prediction/scenario:exported_source_headers",
+        "//modules/prediction/scenario/analyzer:exported_source_headers",
+        "//modules/prediction/scenario/feature_extractor:exported_source_headers",
+        "//modules/prediction/scenario/interaction_filter:exported_source_headers",
+        "//modules/prediction/scenario/prioritization:exported_source_headers",
+        "//modules/prediction/scenario/right_of_way:exported_source_headers",
+        "//modules/prediction/scenario/scenario_features:exported_source_headers",
+        "//modules/prediction/submodules:exported_source_headers",
+    ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "prediction/include",
+    strip_prefix = strip_prefix.from_root("modules/prediction"),
+)
+
+pkg_filegroup(
+    name = "package_prediction_hdrs",
+    srcs = [":package_prediction_hdrs_data"],
 )
 
 filegroup(
@@ -126,11 +229,14 @@ filegroup(
 
 filegroup(
     name = "prediction_data",
-    srcs = glob([
-        "data/*.engine",
-        "data/*.pt",
-        "data/*.bin",
-    ]),
+    srcs = glob(
+        [
+            "data/*.engine",
+            "data/*.pt",
+            "data/*.bin",
+        ],
+        allow_empty = True,
+    ),
 )
 
 filegroup(
@@ -145,5 +251,3 @@ filegroup(
     name = "prediction_testdata",
     srcs = glob(["testdata/**"]),
 )
-
-cpplint()

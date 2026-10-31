@@ -17,6 +17,9 @@
 
 #include "modules/control/safety/safety_manager.h"
 
+#include <cstdlib>
+#include <cstdio>
+
 #include <cmath>
 
 #include <gtest/gtest.h>
@@ -278,5 +281,57 @@ TEST_F(SafetyManagerTest, PostCheckFreezesOnNonFiniteOutput) {
   EXPECT_TRUE(res.need_freeze);
 }
 
+TEST_F(SafetyManagerTest, ExternalStopRequiresExactStationaryReset) {
+  SafetyOperationIdentity request_identity;
+  request_identity.set_requester_epoch("mission-epoch");
+  request_identity.set_request_id("stop-1");
+
+  const auto safety_identity = safety_manager_.LatchExternalStop(
+      request_identity, SAFETY_STOP_CONTROLLED, "control-epoch");
+  ASSERT_TRUE(safety_identity.has_generation());
+  EXPECT_TRUE(safety_manager_.HasExternalStop());
+
+  const auto duplicate_identity = safety_manager_.LatchExternalStop(
+      request_identity, SAFETY_STOP_CONTROLLED, "control-epoch");
+  EXPECT_EQ(duplicate_identity.SerializeAsString(),
+            safety_identity.SerializeAsString());
+  EXPECT_FALSE(safety_manager_
+                   .LatchExternalStop(request_identity, SAFETY_STOP_HARD_ESTOP,
+                                      "control-epoch")
+                   .has_generation());
+  SafetyExecutionIdentity active_identity;
+  SafetyStopPolicy active_policy = SAFETY_STOP_POLICY_UNKNOWN;
+  ASSERT_TRUE(safety_manager_.GetExternalStopState(
+      &active_identity, &active_policy));
+  EXPECT_EQ(active_identity.SerializeAsString(),
+            safety_identity.SerializeAsString());
+  EXPECT_EQ(active_policy, SAFETY_STOP_CONTROLLED);
+
+  ControlCommand command;
+  safety_manager_.ApplySafetyPolicy(&command);
+  EXPECT_EQ(command.brake(), 20.0);
+  EXPECT_EQ(safety_manager_.GetState(), SafetyState::kSoftStop);
+  EXPECT_FALSE(safety_manager_.ResetExternalStop(safety_identity, false));
+
+  auto mismatched_identity = safety_identity;
+  mismatched_identity.set_generation(safety_identity.generation() + 1);
+  EXPECT_FALSE(safety_manager_.ResetExternalStop(mismatched_identity, true));
+  EXPECT_FALSE(safety_manager_.ResetExternalStop(safety_identity, false));
+
+  EXPECT_TRUE(safety_manager_.ResetExternalStop(safety_identity, true));
+  EXPECT_FALSE(safety_manager_.HasExternalStop());
+  command.Clear();
+  safety_manager_.ApplySafetyPolicy(&command);
+  EXPECT_EQ(safety_manager_.GetState(), SafetyState::kNormal);
+  EXPECT_FALSE(command.has_brake());
+}
+
 }  // namespace control
 }  // namespace apollo
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  const int result = RUN_ALL_TESTS();
+  std::fflush(nullptr);
+  _Exit(result);
+}

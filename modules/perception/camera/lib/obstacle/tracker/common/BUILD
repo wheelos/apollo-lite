@@ -1,12 +1,10 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@rules_cuda//cuda:defs.bzl", "cuda_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
-cuda_library(
+cc_library(
     name = "similar_cuda",
-    srcs = ["similar.cu"],
+    srcs = ["similar.cc"],
     hdrs = ["similar.h"],
     deps = [
         "//modules/perception/camera/common:camera_frame",
@@ -19,15 +17,12 @@ cuda_library(
 
 cc_library(
     name = "similar",
-    srcs = [
-        "similar.cc",
-        ":similar_cuda",
-    ],
     hdrs = ["similar.h"],
     copts = [
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
+        ":similar_cuda",
         "//modules/perception/base",
         "//modules/perception/camera/common",
         "@eigen",
@@ -72,4 +67,20 @@ cc_library(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

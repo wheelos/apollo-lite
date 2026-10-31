@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install", "install_src_files")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -34,50 +34,97 @@ cc_binary(
     ],
 )
 
-install(
-    name = "install",
-    data = [
+pkg_files(
+    name = "package_files_data",
+    srcs = [
         ":guardian.BUILD",
         ":runtime_data",
     ],
-    data_dest = "guardian",
-    library_dest = "guardian/lib",
-    targets = [
-        ":libguardian_component.so",
-    ],
-    deps = [
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "guardian",
+    strip_prefix = strip_prefix.from_root("modules/guardian"),
+)
+
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":libguardian_component.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "guardian/lib",
+    strip_prefix = strip_prefix.from_root("modules/guardian"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
         ":pb_hdrs",
     ],
 )
 
-install(
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)
+
+pkg_files(
+    name = "pb_hdrs_data",
+    srcs = ["//modules/guardian/proto:guardian_conf_cc_proto"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "guardian/include",
+    strip_prefix = strip_prefix.from_root("modules/guardian"),
+)
+
+pkg_filegroup(
     name = "pb_hdrs",
-    data = [
-        "//modules/guardian/proto:guardian_conf_cc_proto",
-    ],
-    data_dest = "guardian/include",
+    srcs = [":pb_hdrs_data"],
 )
 
-install_src_files(
-    name = "install_src",
-    deps = [
-        ":install_guardian_hdrs",
-        ":install_guardian_src",
+pkg_filegroup(
+    name = "source_files",
+    srcs = [
+        ":package_guardian_hdrs",
+        ":package_guardian_src",
     ],
 )
 
-install_src_files(
-    name = "install_guardian_src",
-    dest = "guardian/src",
-    filter = "*",
-    src_dir = ["."],
+pkg_install(
+    name = "source_dir",
+    srcs = [":source_files"],
+    tags = ["manual"],
 )
 
-install_src_files(
-    name = "install_guardian_hdrs",
-    dest = "guardian/include",
-    filter = "*.h",
-    src_dir = ["."],
+pkg_files(
+    name = "package_guardian_src_data",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ) + ["//modules/guardian/proto:exported_source_files"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "guardian/src",
+    strip_prefix = strip_prefix.from_root("modules/guardian"),
+)
+
+pkg_filegroup(
+    name = "package_guardian_src",
+    srcs = [":package_guardian_src_data"],
+)
+
+pkg_files(
+    name = "package_guardian_hdrs_data",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "guardian/include",
+    strip_prefix = strip_prefix.from_root("modules/guardian"),
+)
+
+pkg_filegroup(
+    name = "package_guardian_hdrs",
+    srcs = [":package_guardian_hdrs_data"],
 )
 
 filegroup(
@@ -88,5 +135,3 @@ filegroup(
         "launch/*.launch",
     ]),
 )
-
-cpplint()

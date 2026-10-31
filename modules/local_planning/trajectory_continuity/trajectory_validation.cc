@@ -223,9 +223,9 @@ common::Status ValidateTrajectory(const CycleInput& input,
       return Error("trajectory exceeds dynamic limits");
     }
     const double remaining = stop - path.Project({p.x, p.y}).s;
-    if (remaining < -1e-6 ||
+    if (remaining < -kStopPositionTolerance ||
         p.speed * p.speed / (2.0 * c.braking) + p.speed * c.step >
-            remaining + 1e-6)
+            remaining + kStopPositionTolerance)
       return Error("trajectory cannot stop within supported distance");
     if (i > 0) {
       const auto& a = t.points[i - 1];

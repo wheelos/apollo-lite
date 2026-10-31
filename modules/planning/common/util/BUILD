@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -30,7 +29,7 @@ cc_test(
     copts = PLANNING_COPTS,
     deps = [
         ":util_lib",
-        "//modules/planning/testing:gtest_exit_main",
+        "//modules/planning/common:gtest_exit_main",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
     ],
 )
@@ -68,4 +67,20 @@ cc_library(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

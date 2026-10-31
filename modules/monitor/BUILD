@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install", "install_src_files")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -49,39 +49,89 @@ filegroup(
     ]),
 )
 
-install(
-    name = "install",
-    data = [
+pkg_files(
+    name = "package_files_data",
+    srcs = [
         ":monitor.BUILD",
         ":runtime_data",
     ],
-    data_dest = "monitor",
-    library_dest = "monitor/lib",
-    targets = [
-        ":libmonitor.so",
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "monitor",
+    strip_prefix = strip_prefix.from_root("modules/monitor"),
+)
+
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":libmonitor.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "monitor/lib",
+    strip_prefix = strip_prefix.from_root("modules/monitor"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
     ],
 )
 
-install_src_files(
-    name = "install_src",
-    deps = [
-        ":install_monitor_hdrs",
-        ":install_monitor_src",
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)
+
+pkg_filegroup(
+    name = "source_files",
+    srcs = [
+        ":package_monitor_hdrs",
+        ":package_monitor_src",
     ],
 )
 
-install_src_files(
-    name = "install_monitor_src",
-    dest = "monitor/src",
-    filter = "*",
-    src_dir = ["."],
+pkg_install(
+    name = "source_dir",
+    srcs = [":source_files"],
+    tags = ["manual"],
 )
 
-install_src_files(
-    name = "install_monitor_hdrs",
-    dest = "monitor/include",
-    filter = "*.h",
-    src_dir = ["."],
+pkg_files(
+    name = "package_monitor_src_data",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ) + [
+        "//modules/monitor/common:exported_source_files",
+        "//modules/monitor/hardware:exported_source_files",
+        "//modules/monitor/software:exported_source_files",
+    ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "monitor/src",
+    strip_prefix = strip_prefix.from_root("modules/monitor"),
 )
 
-cpplint()
+pkg_filegroup(
+    name = "package_monitor_src",
+    srcs = [":package_monitor_src_data"],
+)
+
+pkg_files(
+    name = "package_monitor_hdrs_data",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ) + [
+        "//modules/monitor/common:exported_source_headers",
+        "//modules/monitor/hardware:exported_source_headers",
+        "//modules/monitor/software:exported_source_headers",
+    ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "monitor/include",
+    strip_prefix = strip_prefix.from_root("modules/monitor"),
+)
+
+pkg_filegroup(
+    name = "package_monitor_hdrs",
+    srcs = [":package_monitor_hdrs_data"],
+)

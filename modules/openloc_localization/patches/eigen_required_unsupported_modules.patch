@@ -1,0 +1,11 @@
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -53,8 +53,5 @@ HDRS = glob(
+         # We don't want any documentation files.
+         "**/*.md",
+         "**/*.txt",
+-        "unsupported/Eigen/NonLinearOptimization",
+-        "unsupported/Eigen/MatrixFunctions",
+-        "unsupported/Eigen/Polynomials",
+     ],
+ )

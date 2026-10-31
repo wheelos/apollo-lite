@@ -32,7 +32,6 @@ TEST_F(FeatureOutputTest, get_ready) {
 }
 
 TEST_F(FeatureOutputTest, insertion) {
-  Feature feature;
   for (int i = 0; i < 3; ++i) {
     Feature feature;
     FeatureOutput::InsertFeatureProto(feature);
@@ -41,7 +40,6 @@ TEST_F(FeatureOutputTest, insertion) {
 }
 
 TEST_F(FeatureOutputTest, clear) {
-  Feature feature;
   for (int i = 0; i < 3; ++i) {
     Feature feature;
     FeatureOutput::InsertFeatureProto(feature);

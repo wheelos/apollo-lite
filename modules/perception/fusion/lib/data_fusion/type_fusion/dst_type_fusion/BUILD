@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -31,6 +30,7 @@ cc_test(
     name = "dst_type_fusion_test",
     size = "small",
     srcs = ["dst_type_fusion_test.cc"],
+    data = glob(["testdata/**"]),
     # Workaround for gold linker bug on aarch64: disable Cortex-A53 erratum 843419
     # fix to avoid internal error in update_erratum_insn/try_fix_erratum.
     #
@@ -55,8 +55,26 @@ cc_test(
         "//modules/perception/base:base_type",
         "//modules/perception/base:frame",
         "//modules/perception/common:perception_gflags",
+        "@bazel_tools//tools/cpp/runfiles",
         "@com_google_googletest//:gtest_main",
+        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

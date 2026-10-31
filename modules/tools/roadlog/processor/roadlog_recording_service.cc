@@ -16,11 +16,17 @@
 
 #include "modules/tools/roadlog/processor/roadlog_recording_service.h"
 
+#include <cstdlib>
+#include <memory>
+#include <set>
+#include <string>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "cyber/common/log.h"
 #include "cyber/record/header_builder.h"
+#include "modules/common/vehicle_calibration/registry.h"
 
 namespace apollo {
 namespace data {
@@ -28,8 +34,8 @@ namespace data {
 namespace {
 
 using cyber::record::HeaderBuilder;
-using cyber::record::Recorder;
 using cyber::record::PolicyRule;
+using cyber::record::Recorder;
 using cyber::record::SelectorAction;
 using cyber::record::SelectorMatchType;
 using cyber::record::TopicPolicy;
@@ -53,8 +59,8 @@ bool RoadlogRecordingService::Init(
     AERROR << "invalid recorder policy for trigger channels: " << error;
     return false;
   }
-  recorder_ = std::make_shared<Recorder>(
-      options.output_path, options.header, options.recorder_config_bundle);
+  recorder_ = std::make_shared<Recorder>(options.output_path, options.header,
+                                         options.recorder_config_bundle);
   return true;
 }
 
@@ -168,6 +174,35 @@ bool RoadlogRecordingService::BuildRecorderOptions(
 
   if (!ValidateChannelPolicies(recorder_policy, *options, error)) {
     return false;
+  }
+
+  auto* metadata = options->header.mutable_metadata();
+  if (std::getenv("WHEELOS_VEHICLE_PROFILE_KEY") == nullptr &&
+      std::getenv("WHEELOS_CALIBRATION_MANIFEST_SHA256") == nullptr) {
+    (*metadata)["wheelos.calibration.status"] = "not_selected";
+    AWARN << "Recording without selected vehicle calibration; "
+             "record metadata is marked not_selected.";
+  } else {
+    apollo::common::vehicle_calibration::Registry calibration;
+    if (!calibration.LoadFromEnvironment()) {
+      if (error != nullptr) {
+        *error =
+            "Selected vehicle calibration is invalid; "
+            "see calibration diagnostics.";
+      }
+      return false;
+    }
+    (*metadata)["wheelos.calibration.status"] = "selected";
+    (*metadata)["wheelos.calibration.vehicle_id"] =
+        calibration.profile().vehicle_id();
+    (*metadata)["wheelos.calibration.version"] =
+        calibration.profile().calibration_version();
+    (*metadata)["wheelos.calibration.manifest_sha256"] =
+        calibration.manifest_sha256();
+    (*metadata)["wheelos.calibration.schema_version"] =
+        std::to_string(calibration.manifest().schema_version());
+    (*metadata)["wheelos.calibration.test_only"] =
+        calibration.profile().test_only() ? "true" : "false";
   }
 
   return true;

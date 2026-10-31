@@ -1,114 +1,82 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_import", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "qt_core",
-    hdrs = glob(["**/*"]),
-    copts = [
-        "-I.",
-    ],
+    hdrs = glob(["QtCore/**"]),
     includes = [
         ".",
         "QtCore",
     ],
-    linkopts = select({
-        "@platforms//cpu:aarch64": [
-            "-L/lib/aarch64-linux-gnu",
-            "-Wl,-rpath,/lib/aarch64-linux-gnu",
-        ],
-        "//conditions:default": [
-            "-L/usr/local/qt5/lib",
-            "-Wl,-rpath,/usr/local/qt5/lib",
-        ],
-    }) + [
-        "-lQt5Core",
-    ],
-    visibility = ["//visibility:public"],
+    deps = [":qt_core_shared"],
 )
 
 cc_library(
     name = "qt_widgets",
-    hdrs = glob(["**/*"]),
-    copts = [
-        "-I.",
-    ],
+    hdrs = glob(["QtWidgets/**"]),
     includes = [
         ".",
         "QtWidgets",
     ],
-    linkopts = select({
-        "@platforms//cpu:aarch64": [
-            "-L/lib/aarch64-linux-gnu",
-            "-Wl,-rpath,/lib/aarch64-linux-gnu",
-        ],
-        "//conditions:default": [
-            "-L/usr/local/qt5/lib",
-            "-Wl,-rpath,/usr/local/qt5/lib",
-        ],
-    }) + [
-        "-lQt5Widgets",
+    deps = [
+        ":qt_core",
+        ":qt_widgets_shared",
     ],
-    visibility = ["//visibility:public"],
-    deps = [":qt_core"],
 )
 
 cc_library(
     name = "qt_gui",
-    hdrs = glob(["**/*"]),
-    copts = [
-        "-I.",
-    ],
+    hdrs = glob(["QtGui/**"]),
     includes = [
         ".",
         "QtGui",
     ],
-    linkopts = select({
-        "@platforms//cpu:aarch64": [
-            "-L/lib/aarch64-linux-gnu",
-            "-Wl,-rpath,/lib/aarch64-linux-gnu",
-        ],
-        "//conditions:default": [
-            "-L/usr/local/qt5/lib",
-            "-Wl,-rpath,/usr/local/qt5/lib",
-        ],
-    }) + [
-        "-lQt5Gui",
-    ],
-    visibility = ["//visibility:public"],
     deps = [
         ":qt_core",
+        ":qt_gui_shared",
         ":qt_widgets",
     ],
 )
 
 cc_library(
     name = "qt_opengl",
-    hdrs = glob(["**/*"]),
-    copts = [
-        "-I.",
-    ],
+    hdrs = glob(["QtOpenGL/**"]),
     includes = [
         ".",
         "QtOpenGL",
     ],
-    linkopts = select({
-        "@platforms//cpu:aarch64": [
-            "-L/lib/aarch64-linux-gnu",
-            "-Wl,-rpath,/lib/aarch64-linux-gnu",
-        ],
-        "//conditions:default": [
-            "-L/usr/local/qt5/lib",
-            "-Wl,-rpath,/usr/local/qt5/lib",
-        ],
-    }) + [
-        "-lQt5OpenGL",
-        "-lGL",
-    ],
-    visibility = ["//visibility:public"],
+    linkopts = ["-lGL"],
     deps = [
         ":qt_core",
         ":qt_gui",
+        ":qt_opengl_shared",
         ":qt_widgets",
-        #"@opengl",
     ],
 )
 
+cc_import(
+    name = "qt_core_shared",
+    shared_library = "lib/libQt5Core.so",
+)
+
+cc_import(
+    name = "qt_widgets_shared",
+    shared_library = "lib/libQt5Widgets.so",
+)
+
+cc_import(
+    name = "qt_gui_shared",
+    shared_library = "lib/libQt5Gui.so",
+)
+
+cc_import(
+    name = "qt_opengl_shared",
+    shared_library = "lib/libQt5OpenGL.so",
+)
+
+exports_files([
+    "bin/moc",
+    "bin/uic",
+    "bin/rcc",
+])

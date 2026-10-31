@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -31,6 +31,10 @@ cc_library(
     name = "tensorrt_executor",
     srcs = ["inference/tensorrt_executor.cc"],
     hdrs = ["inference/tensorrt_executor.h"],
+    target_compatible_with = select({
+        "//tools/platform:use_gpu": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
     deps = [
         ":ufldv2",
         "@core//cyber",
@@ -46,12 +50,19 @@ cc_library(
     deps = [":lane_types"],
 )
 
+cc_binary(
+    name = "static_lane_projection_point",
+    srcs = ["calibration/static_lane_projection_point.cc"],
+    deps = [":static_lane_calibrator"],
+)
+
 cc_library(
     name = "lane_transform_adapter",
     srcs = ["component/lane_transform_adapter.cc"],
     hdrs = ["component/lane_transform_adapter.h"],
     deps = [
-        "//modules/transform:transform_query",
+        "@wheelos_transform//modules/transform:buffer",
+        "@wheelos_transform//modules/transform:transform_query",
         "@core//cyber/time",
         "@eigen",
     ],
@@ -105,6 +116,17 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "static_lane_calibrator_test",
+    size = "small",
+    srcs = ["calibration/static_lane_calibrator_test.cc"],
+    deps = [
+        ":lane_types",
+        ":static_lane_calibrator",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 filegroup(
     name = "runtime_config",
     srcs = glob([
@@ -113,11 +135,32 @@ filegroup(
     ]),
 )
 
-install(
-    name = "install",
-    data = [":runtime_config"],
-    data_dest = "lane",
-    targets = [":lane_component_plugin"],
+pkg_files(
+    name = "package_files_data",
+    srcs = [":runtime_config"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "lane",
+    strip_prefix = strip_prefix.from_root("modules/lane"),
 )
 
-cpplint()
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":lane_component_plugin"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "modules-lane/lib",
+    strip_prefix = strip_prefix.from_root("modules/lane"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
+    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)

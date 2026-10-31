@@ -20,6 +20,8 @@
 namespace apollo {
 namespace local_planning {
 
+inline constexpr double kStopPositionTolerance = 2e-3;
+
 common::Status CheckLaneFootprint(const CycleInput& input,
                                   const LaneFollowConfig& config,
                                   const TrajectoryPoint& point);

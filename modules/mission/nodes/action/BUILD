@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -8,6 +7,7 @@ cc_library(
     deps = [
         ":charge_node",
         ":move_to_node",
+        ":park_in_node",
         ":send_pad_node",
         ":station_wait_node",
     ],
@@ -48,6 +48,18 @@ cc_library(
 )
 
 cc_library(
+    name = "park_in_node",
+    srcs = ["park_in_node.cc"],
+    hdrs = ["park_in_node.h"],
+    deps = [
+        "//modules/mission/common:bt_type_converters",
+        "//modules/mission/common:mission_context",
+        "@behaviortree_cpp",
+        "@core//cyber",
+    ],
+)
+
+cc_library(
     name = "station_wait_node",
     srcs = ["station_wait_node.cc"],
     hdrs = ["station_wait_node.h"],
@@ -57,5 +69,3 @@ cc_library(
         "@core//cyber",
     ],
 )
-
-cpplint()

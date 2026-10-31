@@ -10,17 +10,16 @@ export PREFIX_DIR=/opt/apollo/neo/packages/
 LIST_ONLY=0
 RESOLVE_DEPS=0
 PRE_CLEAN=0
-BAZEL_OPTS=" -c opt --copt=-mavx2 --host_copt=-mavx2 --jobs=$(nproc) --local_resources=memory=HOST_RAM*0.5"
+BAZEL_OPTS=" -c opt --jobs=$(nproc) --local_resources=memory=HOST_RAM*0.5"
 SHORTHAND_TARGETS=
 CMDLINE_OPTIONS=
-INSTALL_OPTIONS=
 USE_GPU=-1
 
 function _usage() {
     info "Usage: $0 <module>(Can be empty) [Options]"
     info "Options:"
     info "${TAB} -p, --prefix <DIR> Use absolute path <DIR> as install prefix instead of '/apollo/output'"
-    info "${TAB} -l, --list         Print the list of installed files; don't install anything"
+    info "${TAB} -l, --list         List declared package destinations; directory outputs remain directories"
     info "${TAB} -c, --clean        Ensure clean install by removing prefix dir if exist before installing"
     info "${TAB} -r, --resolve      Also resolve APT packages on which this release build depends"
     info "${TAB} -h, --help         Show this message and exit"
@@ -97,8 +96,6 @@ function determine_cpu_or_gpu_build() {
 
   if [ "${USE_GPU}" -eq 1 ]; then
     CMDLINE_OPTIONS="--config=gpu ${CMDLINE_OPTIONS}"
-    INSTALL_OPTIONS=" --gpu ${INSTALL_OPTIONS}"
-
     ok "Running GPU build."
   else
     CMDLINE_OPTIONS="--config=cpu ${CMDLINE_OPTIONS}"
@@ -109,7 +106,7 @@ function determine_cpu_or_gpu_build() {
 function determine_release_targets() {
     local targets_all
     if [[ "$#" -eq 0 ]]; then
-        targets_all="//:install"
+        targets_all="//:install_dir"
         echo "${targets_all}"
         return
     fi
@@ -117,9 +114,11 @@ function determine_release_targets() {
     for component in $@; do
         local release_targets
         if [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
-            release_targets="//modules/${component}:install"
+            release_targets="//modules/${component}:install_dir"
+        elif [[ "${component}" = "hardware" || "${component}" = "transform" ]]; then
+            release_targets="//tools/${component}:install_dir"
         elif [ "${component}" = "scripts" ]; then
-            release_targets="//docker/scripts:install union //scripts:install"
+            release_targets="//docker/scripts:install_dir //scripts:install_dir"
         else
             error "Unknown option: ${component}"
             _usage
@@ -128,7 +127,7 @@ function determine_release_targets() {
         if [ -z "${targets_all}" ]; then
           targets_all="${release_targets}"
         else
-          targets_all="${targets_all} union ${release_targets}"
+          targets_all="${targets_all} ${release_targets}"
         fi
     done
     echo "${targets_all}"
@@ -215,14 +214,35 @@ function resolve_directory_path() {
 }
 
 function run_install() {
+    local components=()
+    read -r -a components <<< "${SHORTHAND_TARGETS}"
     local install_targets
-    install_targets="$(determine_release_targets ${SHORTHAND_TARGETS})"
-    bazel run ${BAZEL_OPTS} ${CMDLINE_OPTIONS} ${install_targets} \
-        -- ${install_opts} ${INSTALL_OPTIONS} "${PREFIX_DIR}"
-
-    # install files copy from source code.
-    bazel run ${BAZEL_OPTS} ${CMDLINE_OPTIONS} //:install_src \
-        -- ${install_opts} ${INSTALL_OPTIONS} "${PREFIX_DIR}"
+    install_targets="$(determine_release_targets "${components[@]}")"
+    local targets=()
+    local bazel_options=()
+    local config_options=()
+    read -r -a targets <<< "${install_targets}"
+    read -r -a bazel_options <<< "${BAZEL_OPTS}"
+    read -r -a config_options <<< "${CMDLINE_OPTIONS}"
+    local target
+    for target in "${targets[@]}"; do
+        if [[ "${LIST_ONLY}" -gt 0 ]]; then
+            info "Declared package mappings (directory outputs are not expanded): ${target}"
+            python3 "${TOP_DIR}/scripts/bzlmod.py" dev cquery \
+                "${bazel_options[@]}" "${config_options[@]}" \
+                "${target%:install_dir}:package_files" --output=starlark \
+                --starlark:expr='"\n".join(sorted([dest for provider in providers(target).values() if hasattr(provider, "pkg_files") for files, origin in provider.pkg_files for dest in files.dest_src_map]))'
+        else
+            local installer_args=(--destdir "${PREFIX_DIR}")
+            if [[ "${PRE_CLEAN}" -gt 0 ]]; then
+                installer_args+=(--wipe_destdir)
+            fi
+            python3 "${TOP_DIR}/scripts/bzlmod.py" dev run \
+                "${bazel_options[@]}" "${config_options[@]}" "${target}" \
+                -- "${installer_args[@]}"
+            PRE_CLEAN=0
+        fi
+    done
 }
 
 function export_python_path() {
@@ -233,14 +253,6 @@ function export_python_path() {
 
 function main() {
     parse_cmdline_args "$@"
-
-    local install_opts=
-    if [[ "${LIST_ONLY}" -gt 0 ]]; then
-        install_opts="${install_opts} --list"
-    fi
-    if [[ "${PRE_CLEAN}" -gt 0 ]]; then
-        install_opts="${install_opts} --pre_clean"
-    fi
 
     determine_cpu_or_gpu_build
 

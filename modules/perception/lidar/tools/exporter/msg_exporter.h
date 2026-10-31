@@ -21,11 +21,13 @@
 
 #include "Eigen/Dense"
 
-#include "cyber/cyber.h"
 #include "wheelos_msgs/sensor_msgs/pointcloud.pb.h"
 #include "wheelos_msgs/sensor_msgs/sensor_image.pb.h"
+
+#include "cyber/cyber.h"
 #include "modules/perception/lidar/common/pcl_util.h"
 #include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
+#include "modules/transform/buffer.h"
 #include "modules/transform/transform_query.h"
 
 namespace apollo {
@@ -75,7 +77,8 @@ class MsgExporter {
   std::vector<std::string> _channels;
   std::vector<std::string> _child_frame_ids;
   std::string _localization_method;
-  apollo::transform::TransformQuery transform_query_;
+  apollo::transform::TransformQuery transform_query_{
+      apollo::transform::Buffer::Instance()};
 };
 
 }  // namespace lidar

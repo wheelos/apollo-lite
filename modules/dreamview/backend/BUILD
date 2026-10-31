@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 load("//tools/platform:build_defs.bzl", "copts_if_teleop", "if_teleop")
 
 package(default_visibility = ["//visibility:public"])
@@ -40,12 +40,50 @@ cc_library(
     ] + if_teleop(["//modules/dreamview/backend/teleop"]),
 )
 
-install(
-    name = "install",
-    data = ["//modules/dreamview/backend/testdata"],
-    data_dest = "dreamview/addition_data/backend",
-    library_dest = "dreamview/lib",
-    targets = [":backend"],
+pkg_files(
+    name = "package_files_data",
+    srcs = ["//modules/dreamview/backend/testdata"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "dreamview/addition_data/backend",
+    strip_prefix = strip_prefix.from_root("modules/dreamview/backend"),
 )
 
-cpplint()
+pkg_files(
+    name = "package_files_archives",
+    srcs = [":backend"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "lib",
+    strip_prefix = strip_prefix.from_root("modules/dreamview/backend"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_archives",
+        ":package_files_data",
+    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

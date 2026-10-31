@@ -59,3 +59,12 @@ py_proto_library(
     name = "sim_control_internal_py_pb2",
     deps = [":sim_control_internal_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

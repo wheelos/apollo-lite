@@ -1,0 +1,138 @@
+# TEMPLATE ONLY. Fill every vehicle/site-specific value, then explicitly enable.
+# Numeric LIO values below are a synthetic starting profile, not calibration.
+deployment_configured: false
+imu_sensor: ""
+lidar_sensor: ""
+gnss_sensor: ""
+# Sensor IDs/frames come from WHEELOS_VEHICLE_PROFILE_KEY. Start static TF first.
+# Default TF follows common: map -> base_link (FLU).
+# If base_link is not at the rear axle, select its calibrated FLU frame here.
+vrp_frame: "base_link"
+vertical_datum: ""
+utm_origin_height_m: 0
+
+local {
+  imu_topic: "/apollo/sensor/gnss/imu"
+  lidar_topic: ""
+  # Use RAW timed points in the LiDAR frame, not already deskewed/transformed
+  # compensator output. Fill this with the driver's raw topic.
+  session: ""
+  imu_measurement_to_unix_offset: 0
+  lidar_measurement_to_unix_offset: 0
+  bootstrap_voxel_m: 0.2
+  allow_imu_only_initialization: false
+  # Fresh, writable path per process run. Existing journals are never replaced.
+  journal: ""
+  require_live_source_sequences: true
+  lidar_commit_delay_ms: 20
+  startup_task_timeout_ms: 100
+  parameter { name: "gyro_noise" value: 0.01 }
+  parameter { name: "accel_noise" value: 0.1 }
+  parameter { name: "gyro_bias_noise" value: 0.0001 }
+  parameter { name: "accel_bias_noise" value: 0.001 }
+  parameter { name: "point_noise_std" value: 0.01 }
+  parameter { name: "plane_noise_std" value: 0.01 }
+  parameter { name: "voxel_size" value: 1 }
+  parameter { name: "max_voxels" value: 20000 }
+  parameter { name: "max_scans" value: 10 }
+  parameter { name: "min_points_per_plane" value: 5 }
+  parameter { name: "min_correspondences" value: 20 }
+  parameter { name: "max_points" value: 12000 }
+  parameter { name: "max_correspondence_distance" value: 0.3 }
+  parameter { name: "observed_singular_value" value: 1 }
+  parameter { name: "innovation_gate" value: 100 }
+  parameter { name: "max_scan_age" value: 0.2 }
+  parameter { name: "translation_correction_rate" value: 0.2 }
+  parameter { name: "rotation_correction_rate" value: 0.1 }
+  parameter { name: "velocity_correction_acceleration" value: 0.3 }
+  parameter { name: "anchor_variance_scale" value: 1 }
+  parameter { name: "correction_variance_scale" value: 2 }
+  parameter { name: "max_translation_correction" value: 2 }
+  parameter { name: "max_rotation_correction" value: 0.5 }
+  parameter { name: "max_velocity_correction" value: 2 }
+  parameter { name: "max_update_iterations" value: 2 }
+  parameter { name: "process_noise_psd_tolerance" value: 1e-12 }
+  parameter { name: "rotation_length" value: 1 }
+  graph {
+    # Internal owner handoff identity only; no public ODOM writer in this module.
+    output_topic: "/openloc/diagnostic/native_graph"
+    motion_error_model_id: ""
+    imu_sample_period_s: 0
+    maximum_error_dimension: 1024
+    maximum_memory_rows: 16384
+    maximum_snapshots: 512
+    history_duration_s: 2
+    odometry_stride: 10
+  }
+}
+global {
+  odometry_topic: "/openloc/diagnostic/native_graph"
+  gnss_topic: "/apollo/sensor/gnss/best_pose"
+  output_topic: "/openloc/diagnostic/global"
+  reference_version: ""
+  content_id: ""
+  journal: ""
+  assume_gravity_aligned_odom: true
+  recorded_input: false
+  # Required by reused host; NOT substituted for native graph covariance.
+  diagnostic_position_sigma_m: 0.1
+  diagnostic_rotation_sigma_rad: 0.01
+  maximum_odometry_age_ms: 200
+  structured_gnss {
+    # Declare actual source time. GPS seconds need the verified epoch/leap offset.
+    measurement_to_unix_offset_s: 0
+    utm_zone: 0
+    northern_hemisphere: true
+    origin_easting_m: 0
+    origin_northing_m: 0
+    preparation_id: ""
+    minimum_satellites: 12
+    maximum_horizontal_std_m: 0.3
+    maximum_differential_age_s: 3
+    fixed_stability_ns: 2000000000
+    maximum_gap_ns: 1500000000
+    maximum_measurement_age_ns: 2000000000
+    gnss_map_construction: UNKNOWN
+    position_graph_qualification {
+      uncertainty_model_id: ""
+      independence_evidence_id: ""
+      quality_valid: true
+      uncertainty_qualified: false
+      independent_of_local: false
+      independent_of_graph_sources: false
+    }
+  }
+  target_graph {
+    motion_error_model_id: ""
+    maximum_error_dimension: 1024
+    history_duration_ms: 2000
+    maximum_observation_age_ms: 1000
+    maximum_states: 100
+    solve_budget_ms: 20
+    verification_frames: 3
+    allow_uncalibrated_inputs: true
+    assume_deterministic_map: false
+    scan_voxel_m: 0.2
+    minimum_scan_points: 20
+    normal_neighbors: 6
+    # Sufficient-model declaration needs evidence; not statistical calibration.
+    motion_error_model_qualified: false
+  }
+  online_map {
+    cloud_topic: ""
+    # Relative to common MapSelection's selected directory, never an absolute path.
+    map_pcd: ""
+    map_sha256: ""
+    initial_map_from_odom { x: 0 y: 0 z: 0 qx: 0 qy: 0 qz: 0 qw: 1 }
+    # Explicit global-only search seed, valid at the actual startup time.
+    hypothesis_minimum_ns: 0
+    hypothesis_maximum_ns: 0
+    hypothesis_odometry_session: ""
+    hypothesis_odometry_generation: 1
+    window_radius_m: 20
+    window_cell_m: 5
+    task_deadline_ms: 100
+    preparation_id: ""
+    gnss_map_construction: UNKNOWN
+  }
+}

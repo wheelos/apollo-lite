@@ -1,6 +1,5 @@
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -29,8 +28,6 @@ cc_library(
     ],
 )
 
-cpplint()
-
 cc_test(
     name = "graph_segmentation_test",
     size = "small",
@@ -39,4 +36,22 @@ cc_test(
         ":graph_segmentation",
         "@com_google_googletest//:gtest_main",
     ],
+)
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
 )

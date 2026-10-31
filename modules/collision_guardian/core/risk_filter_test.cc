@@ -7,6 +7,9 @@ namespace collision_guardian {
 
 TEST(RiskFilterTest, ConfirmsAndReleasesWithHysteresis) {
   RiskFilterConfig config;
+  config.hit_probability = 0.9;
+  config.miss_probability = 0.1;
+  config.temporal_decay = 0.0;
   config.min_confirmation_frames = 3;
   config.min_release_frames = 2;
   RiskFilter filter(config);
@@ -35,12 +38,12 @@ TEST(RiskFilterTest, BlendsObservationsWithoutSaturating) {
   RiskFilter filter(config);
 
   double probability = 0.0;
-  for (int i = 0; i < 20; ++i) {
+  for (int i = 0; i < 200; ++i) {
     probability = filter.Update(true, true).probability;
   }
   EXPECT_NEAR(probability, config.hit_probability, 1.0e-6);
 
-  for (int i = 0; i < 20; ++i) {
+  for (int i = 0; i < 200; ++i) {
     probability = filter.Update(false, true).probability;
   }
   EXPECT_NEAR(probability, config.miss_probability, 1.0e-6);

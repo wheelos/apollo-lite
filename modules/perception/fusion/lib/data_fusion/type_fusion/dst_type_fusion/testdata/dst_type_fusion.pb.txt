@@ -1,0 +1,11 @@
+camera_params {
+  name: "camera_smartereye"
+  valid_dist: 110
+  reliability: 0.95
+  reliability_for_unknown: 0.2
+}
+lidar_params {
+  name: "velodyne_64"
+  reliability: 0.5
+  reliability_for_unknown: 0.5
+}

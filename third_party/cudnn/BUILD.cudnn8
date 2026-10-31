@@ -1,3 +1,5 @@
+load("@rules_cc//cc:defs.bzl", "cc_import", "cc_library")
+
 package(default_visibility = ["//visibility:private"])
 
 # cudnn_headers simply serve as a dummy target by adding
@@ -21,9 +23,9 @@ cc_library(
     name = "cudnn_adv",
     visibility = ["//visibility:public"],
     deps = [
-        ":cudnn_headers",
         ":cudnn_adv_infer_so",
         ":cudnn_adv_train_so",
+        ":cudnn_headers",
     ],
 )
 
@@ -31,9 +33,9 @@ cc_library(
     name = "cudnn_cnn",
     visibility = ["//visibility:public"],
     deps = [
-        ":cudnn_headers",
         ":cudnn_cnn_infer_so",
         ":cudnn_cnn_train_so",
+        ":cudnn_headers",
     ],
 )
 

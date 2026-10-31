@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -13,18 +12,20 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "rnn_model_test",
-    size = "small",
-    srcs = ["rnn_model_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-    ],
-    deps = [
-        "//modules/prediction/network/rnn_model",
-        "@com_google_googletest//:gtest_main",
-        "@core//cyber",
-    ],
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,10 +16,10 @@ cc_library(
         "@wheelos_common//modules/common/math",
         "@wheelos_common//modules/common/monitor_log",
         "@wheelos_common//modules/common/util:util_tool",
-        "//modules/localization/common:localization_gflags",
-        "//modules/localization/msf/common/util",
-        "//modules/localization/msf/local_pyramid_map/ndt_map",
-        "//modules/localization/msf/local_pyramid_map/ndt_map:ndt_map_pool",
+        "//modules/ndt_localization/common:localization_gflags",
+        "//modules/ndt_localization/common/util",
+        "//modules/ndt_localization/map/ndt_map",
+        "//modules/ndt_localization/map/ndt_map:ndt_map_pool",
         "@com_github_google_glog//:glog",
         "@com_github_jbeder_yaml_cpp//:yaml-cpp",
         "@core//cyber",
@@ -39,7 +38,7 @@ cc_test(
     data = ["//modules/ndt_localization:test_data"],
     deps = [
         ":ndt_lidar_locator",
-        "//modules/localization/msf/common/io:common_io",
+        "//modules/ndt_localization/common/io:common_io",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
     ],
@@ -53,10 +52,8 @@ cc_test(
     data = ["//modules/ndt_localization:test_data"],
     deps = [
         ":ndt_lidar_locator",
-        "//modules/localization/msf/common/io:common_io",
+        "//modules/ndt_localization/common/io:common_io",
         "@com_google_googletest//:gtest_main",
         "@core//cyber",
     ],
 )
-
-cpplint()

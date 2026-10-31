@@ -1,39 +1,48 @@
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(
     default_visibility = ["//visibility:public"],
 )
 
-install(
-    name = "install_scripts",
-    data = [
+pkg_files(
+    name = "package_scripts_data",
+    srcs = [
         ":apollo_base",
         ":bootstrap",
-        ":bridge",
         ":docker_utils",
-        ":map_generation",
         ":recorder",
         ":tools",
     ],
-    data_dest = "scripts/src",
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "scripts/src",
+    strip_prefix = strip_prefix.from_root("scripts"),
 )
 
-install(
-    name = "install",
-    data = [":cyberfile.xml"],
-    data_dest = "scripts",
-    deps = ["install_scripts"],
+pkg_filegroup(
+    name = "package_scripts",
+    srcs = [":package_scripts_data"],
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        "package_scripts",
+    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
 )
 
 filegroup(
     name = "tools",
     srcs = [
-        "localization_online_visualizer.sh",
-        "msf_simple_map_creator.sh",
         "record_message.py",
-        "record_message.sh",
-        "rtk_player.sh",
-        "rtk_recorder.sh",
+        "record_map_data.py",
+        "record_play_pnc.sh",
     ],
 )
 
@@ -41,24 +50,15 @@ filegroup(
     name = "bootstrap",
     srcs = [
         "bootstrap.sh",
-        "bootstrap_lgsvl.sh",
-        "dreamview.sh",
-        "monitor.sh",
+        "cyber_launch.sh",
+        "runtime_env.sh",
     ],
 )
 
 filegroup(
     name = "recorder",
     srcs = [
-        "cyberfile.xml",
         "recording_launcher.py",
-    ],
-)
-
-filegroup(
-    name = "bridge",
-    srcs = [
-        "bridge.sh",
     ],
 )
 
@@ -66,15 +66,6 @@ filegroup(
     name = "docker_utils",
     srcs = [
         ":docker_start_user.sh",
-    ],
-)
-
-filegroup(
-    name = "map_generation",
-    srcs = [
-        ":create_map_from_mobileye.sh",
-        ":create_map_from_xy.sh",
-        ":generate_routing_topo_graph.sh",
     ],
 )
 

@@ -57,6 +57,14 @@ TEST_F(PredictorManagerTest, General) {
   EXPECT_TRUE(ret_load_conf);
   EXPECT_TRUE(adapter_conf_.IsInitialized());
 
+  auto* obstacle_conf = prediction_conf_.add_obstacle_conf();
+  obstacle_conf->set_obstacle_type(
+      apollo::perception::PerceptionObstacle::VEHICLE);
+  obstacle_conf->set_obstacle_status(ObstacleConf::ON_LANE);
+  obstacle_conf->set_priority_type(ObstaclePriority::NORMAL);
+  obstacle_conf->set_evaluator_type(ObstacleConf::COST_EVALUATOR);
+  obstacle_conf->set_predictor_type(ObstacleConf::EXTRAPOLATION_PREDICTOR);
+
   container_manager_->Init(adapter_conf_);
   evaluator_manager_->Init(prediction_conf_);
   predictor_manager_->Init(prediction_conf_);

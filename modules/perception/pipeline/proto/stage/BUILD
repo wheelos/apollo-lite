@@ -722,3 +722,12 @@ py_proto_library(
     name = "omt_py_pb2",
     deps = [":omt_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

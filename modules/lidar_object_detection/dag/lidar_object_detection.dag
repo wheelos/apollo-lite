@@ -1,0 +1,13 @@
+module_config {
+  module_library: "/apollo/modules/lidar_object_detection-dev/local/lib/liblidar_object_detection_component.so"
+  components {
+    class_name: "LidarObjectDetectionComponent"
+    config {
+      name: "LidarObjectDetection"
+      config_file_path: "/apollo/modules/lidar_object_detection-dev/local/conf/lidar_object_detection_component.pb.txt"
+      readers {
+        channel: "/apollo/sensor/vanjeelidar/left_front/PointCloud2"
+      }
+    }
+  }
+}

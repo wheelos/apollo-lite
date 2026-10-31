@@ -64,6 +64,8 @@ class LonControllerTest : public ::testing::Test, LonController {
                                              debug);
   }
 
+  void CaptureVehicleStateForTest() { CaptureVehicleState(injector_); }
+
   common::Status Init(const ControlConf *control_conf) {
     return LonController::Init(injector_, control_conf);
   }
@@ -118,6 +120,7 @@ TEST_F(LonControllerTest, ComputeLongitudinalErrors) {
   double preview_time = longitudinal_conf_.preview_window() * ts;
 
   SimpleLongitudinalDebug debug;
+  CaptureVehicleStateForTest();
   ComputeLongitudinalErrors(&trajectory_analyzer, preview_time, ts, &debug);
 
   double station_reference_expected = 0.16716666937000002;

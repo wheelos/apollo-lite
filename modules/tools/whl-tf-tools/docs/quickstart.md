@@ -2,19 +2,25 @@
 
 This guide covers common use cases for all tools.
 
+Runtime calibration now comes from a selected vehicle bundle; Transform ships
+no sample `conf/` or `params/` assets. Supply explicit extrinsic YAMLs for offline
+inspection. The `-c` examples below refer only to user-supplied historical
+pb.txt inventories, not current vehicle manifests. These tools do not validate
+bundle identity; use `//modules/tools/vehicle_calibration:validate_calibration`.
+
 **Note**: All commands assume you are in the **project root directory**.
 
 ## whl-tf-show - Visualize TF Configurations
 
 ```bash
 # Visualize all TF configs in a directory
-./modules/tools/whl-tf-tools/whl_tf_show.py modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py /path/to/extrinsics/*.yaml
 
 # Save to PNG
-./modules/tools/whl-tf-tools/whl_tf_show.py -s output.png modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -s output.png /path/to/extrinsics/*.yaml
 
 # Custom axis length
-./modules/tools/whl-tf-tools/whl_tf_show.py -l 1.0 modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -l 1.0 /path/to/extrinsics/*.yaml
 ```
 
 ## whl-tf-query - Query Transforms
@@ -22,16 +28,16 @@ This guide covers common use cases for all tools.
 ```bash
 # Query transform from Apollo config
 ./modules/tools/whl-tf-tools/whl_tf_query.py query \
-    -c modules/transform/conf/static_transform_conf.pb.txt \
+    -c /path/to/offline/static_transform_conf.pb.txt \
     imu rslidar_main_front
 
 # Interactive mode
 ./modules/tools/whl-tf-tools/whl_tf_query.py interactive \
-    -c modules/transform/conf/static_transform_conf.pb.txt
+    -c /path/to/offline/static_transform_conf.pb.txt
 
 # Save and reuse graph
 ./modules/tools/whl-tf-tools/whl_tf_query.py load \
-    -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+    -c /path/to/offline/static_transform_conf.pb.txt -o graph.pkl
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu localization
 ```
 

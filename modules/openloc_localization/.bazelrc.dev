@@ -1,0 +1,4 @@
+# Independent diagnostic consumer; never changes the product MODULE graph.
+common:dev --override_module=openloc=../../pkgs/openloc
+common:dev --override_module=wheelos_core=../../pkgs/core
+common:dev --override_module=wheelos_msgs=../../pkgs/wheelos_msgs

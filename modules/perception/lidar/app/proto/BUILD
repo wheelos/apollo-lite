@@ -39,3 +39,12 @@ py_proto_library(
     name = "lidar_obstacle_tracking_config_py_pb2",
     deps = [":lidar_obstacle_tracking_config_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

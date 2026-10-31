@@ -81,10 +81,9 @@ DEFINE_double(system_status_lifetime_seconds, 30,
               "replay message if the timestamp is old, where we should ignore "
               "the status change.");
 
-DEFINE_string(lidar_height_yaml,
-              "/apollo/modules/localization/msf/params/velodyne_params/"
-              "velodyne64_height.yaml",
-              "The yaml file for reading height of lidar w.r.t. ground.");
+DEFINE_string(
+    dreamview_calibration_sensor, "",
+    "Point-cloud calibration sensor ID/frame; empty requires one LiDAR.");
 
 DEFINE_int32(monitor_msg_pending_queue_size, 10,
              "Max monitor message pending queue size");
@@ -145,9 +144,6 @@ DEFINE_string(resource_record_path, "/.apollo/resources/records/",
 
 DEFINE_string(cyber_recorder_stop_command, "pkill -9 cyber_recorder",
               "stop play recorder");
-
-DEFINE_string(vehicles_config_path, "/apollo/modules/calibration/data",
-              "Vehicles config path.");
 
 DEFINE_bool(sim_perfect_control_enable_noise, false,
             "Enable noise in sim perfect control. If true, the position will "

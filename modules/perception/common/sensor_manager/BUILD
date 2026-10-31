@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -20,8 +19,8 @@ cc_library(
         "//modules/perception/lib/thread",
         "//modules/perception/proto:perception_config_schema_cc_proto",
         "//modules/perception/proto:sensor_meta_schema_cc_proto",
-        "//modules/transform:calibration_registry",
         "@core//cyber",
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
     ],
 )
 
@@ -29,13 +28,27 @@ cc_test(
     name = "sensor_manager_test",
     size = "small",
     srcs = ["sensor_manager_test.cc"],
-    data = [
-        "//modules/perception:perception_testdata",
-    ],
     deps = [
         ":sensor_manager",
         "@com_google_googletest//:gtest_main",
+        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

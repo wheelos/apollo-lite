@@ -15,6 +15,8 @@
  *****************************************************************************/
 #include "modules/map/tools/map_datachecker/server/pose_collection.h"
 
+#include <memory>
+
 namespace apollo {
 namespace hdmap {
 

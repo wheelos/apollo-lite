@@ -15,8 +15,11 @@
  *****************************************************************************/
 #include "modules/perception/fusion/base/sensor_data_manager.h"
 
+#include <vector>
+
 #include "gtest/gtest.h"
 
+#include "modules/common/vehicle_calibration/test_bundle.h"
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
 
 namespace apollo {
@@ -24,11 +27,12 @@ namespace perception {
 namespace fusion {
 
 TEST(SensorDataManagerTest, test) {
-  FLAGS_work_root = "/apollo/modules/perception/testdata/fusion/base";
-  FLAGS_obs_sensor_meta_path = "./data/sensor_meta.pt";
-  FLAGS_obs_sensor_intrinsic_path =
-      "/apollo/modules/perception/testdata/"
-      "fusion/base/params";
+  apollo::common::vehicle_calibration::TestBundle calibration;
+  calibration.AddSensor(apollo::common::vehicle_calibration::LIDAR,
+                        "velodyne64", "velodyne64");
+  calibration.AddSensor(apollo::common::vehicle_calibration::CAMERA,
+                        "camera_smartereye", "camera_smartereye");
+  ASSERT_TRUE(calibration.Publish());
 
   SensorDataManager* sensor_data_manager = SensorDataManager::Instance();
   base::SensorInfo sensor_info_1;

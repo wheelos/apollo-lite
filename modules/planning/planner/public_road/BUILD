@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,10 +8,6 @@ cc_library(
     hdrs = ["public_road_planner.h"],
     copts = ["-DMODULE_NAME=\\\"planning\\\""],
     deps = [
-        "@wheelos_common//modules/common/status",
-        "@wheelos_common//modules/common/util",
-        "@wheelos_common//modules/common/util:util_tool",
-        "@wheelos_map//modules/map/hdmap:hdmap",
         "//modules/planning/common:planning_common",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/constraint_checker",
@@ -29,6 +24,10 @@ cc_library(
         "@com_github_gflags_gflags//:gflags",
         "@core//cyber",
         "@eigen",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/util:util_tool",
+        "@wheelos_map//modules/map/hdmap",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
     ],
@@ -46,4 +45,20 @@ cc_test(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

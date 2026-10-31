@@ -140,10 +140,16 @@ VehicleActuation VehicleModelBase::BuildActuation(
     const double requested_torque = kVehicleMassKg *
                                     command.target_acceleration_mps2 *
                                     config_.wheel_radius_m;
-    if (requested_torque > 0.0) {
-      drive_torque = std::min(requested_torque, config_.max_drive_torque_nm);
+    const bool accelerating_in_gear =
+        command.gear == VehicleCommand::Gear::GEAR_REVERSE
+            ? requested_torque < 0.0
+            : requested_torque > 0.0;
+    if (accelerating_in_gear) {
+      drive_torque =
+          std::min(std::abs(requested_torque), config_.max_drive_torque_nm);
     } else {
-      brake_torque = std::min(-requested_torque, config_.max_brake_torque_nm);
+      brake_torque =
+          std::min(std::abs(requested_torque), config_.max_brake_torque_nm);
     }
   }
   if (command.gear == VehicleCommand::Gear::GEAR_REVERSE) {

@@ -43,3 +43,12 @@ py_proto_library(
     name = "ncut_param_py_pb2",
     deps = [":ncut_param_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

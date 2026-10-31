@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -14,6 +13,7 @@ cc_library(
         "@core//cyber/proto:record_cc_proto",
         "@core//cyber/record:header_builder",
         "@core//cyber/tools/cyber_recorder:recorder",
+        "@wheelos_common//modules/common/vehicle_calibration:registry",
     ],
 )
 
@@ -24,6 +24,7 @@ cc_test(
     deps = [
         ":roadlog_recording_service",
         "//modules/planning/common:gtest_exit_main",
+        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
     ],
 )
 
@@ -104,5 +105,3 @@ cc_library(
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:smart_recorder_status_cc_proto",
     ],
 )
-
-cpplint()

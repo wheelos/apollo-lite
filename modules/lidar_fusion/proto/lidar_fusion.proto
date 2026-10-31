@@ -1,0 +1,580 @@
+syntax = "proto2";
+
+package apollo.lidar_fusion;
+
+import "wheelos_msgs/basic_msgs/header.proto";
+import "modules/lidar_object_detection/proto/lidar_object_detection.proto";
+
+enum Group {
+  GENERIC_OBS = 0;
+  THING = 1;
+  SURFACE = 2;
+  SURFACE_SOFT = 3;
+  BOUNDARY = 4;
+  STATIC_STRUCT = 5;
+  VEGETATION = 6;
+  NOISE = 7;
+}
+
+enum UnifiedClass {
+  CLASS_UNKNOWN = 0;
+  CAR = 1;
+  TRUCK = 2;
+  BUS = 3;
+  PEDESTRIAN = 4;
+  CYCLIST = 5;
+  MOTORCYCLE = 6;
+  OTHER_VEHICLE = 7;
+}
+
+enum Mode {
+  NORMAL = 0;
+  NO_SEG = 1;
+  NO_DET = 2;
+  GEO_ONLY = 3;
+}
+
+enum Consistency {
+  INSUFFICIENT = 0;
+  SUPPORT = 1;
+  CONFLICT = 2;
+}
+
+enum Explanation {
+  UNEXPLAINED = 0;
+  EXPL_GROUND = 1;
+  EXPL_NOISE = 2;
+  EXPL_OBJECT = 3;
+  EXPL_OBJECT_WEAK = 4;
+  EXPL_STATIC = 5;
+  EXPL_VEG_HIGH = 6;
+  INVALID_POINT = 7;
+}
+
+enum Source {
+  GEOMETRY = 0;
+  DET = 1;
+  SEG_RECALL = 2;
+  TRACK_PRIOR = 3;
+  PROMOTED_UNKNOWN = 4;
+}
+
+enum Reason {
+  NO_REASON = 0;
+  SOURCE_MISSING = 1;
+  SOURCE_MISALIGNED = 2;
+  SOURCE_INVALID = 3;
+  GROUND_UNSUPPORTED = 4;
+  SEM_GEO_CONFLICT = 5;
+  DET_CLASS_CONFLICT = 6;
+  SPARSE_DETECTION = 7;
+  ASSOCIATION_COMPETITION = 8;
+  CORRIDOR_SMALL_CLUSTER = 9;
+  AMBIGUOUS_OBJECT_RELATION = 10;
+  INPUT_QUEUE_OVERFLOW = 11;
+  GEO_GROUND = 12;
+  CONFIDENT_NOISE = 13;
+  SEMANTIC_RECALL = 14;
+  MODEL_HYPOTHESIS = 15;
+  UNEXPLAINED_GEOMETRY = 16;
+  SEMANTIC_STRUCTURE = 17;
+  OUTSIDE_CLEARANCE = 18;
+  INVALID_GEOMETRY = 19;
+  MISSING_VISIBILITY = 20;
+  VEHICLE_CONSTRAINT = 21;
+  OUTPUT_REPAIRED = 22;
+  TEMPORAL_RESET = 23;
+  POSE_UNAVAILABLE = 24;
+  TRACK_RECOVERY = 25;
+  WEAK_CLASS_HYPOTHESIS = 26;
+  SEMANTIC_IDENTITY_UNVERIFIED = 27;
+  FOREGROUND_SUBSET_RECALL = 28;
+  ASSOCIATED_SUPPORT_EXTENT = 29;
+}
+
+enum Traversability {
+  UNKNOWN = 0;
+  OCCUPIED = 1;
+  FREE = 2;
+  FREE_SOFT = 3;
+  BOUNDARY_CELL = 4;
+}
+
+message SpatialOptions {
+  optional bool point_views = 1 [default = false];
+  optional bool trace_rays = 2 [default = false];
+  // Only for returns genuinely measured from this rigid origin at frame time.
+  optional bool verified_single_origin = 3 [default = false];
+  optional double band_min_z = 4 [default = 0.15];
+  optional double band_max_z = 5 [default = 2.5];
+  optional uint32 height_bands = 6 [default = 4];
+  optional bool traversability = 7 [default = false];
+  optional double vehicle_length = 8;
+  optional double vehicle_width = 9;
+  optional double vehicle_height = 10;
+  optional double safety_margin = 11;
+  optional double max_slope = 12;
+  optional double max_step = 13;
+  optional double max_roughness = 14;
+  // Reachability starts only at an actually FREE observed cell, never ego holes.
+  optional double seed_x = 15;
+  optional double seed_y = 16;
+  optional double ground_clearance = 17;
+}
+
+message ClassMapping {
+  optional uint32 raw_id = 1;
+  optional Group group = 2;
+  optional UnifiedClass unified_class = 3;
+}
+
+// Rigid sensor-to-base transform: Rz(yaw) * Ry(pitch) * Rx(roll), metres/radians.
+message Calibration {
+  optional string version = 1;
+  optional double x = 2;
+  optional double y = 3;
+  optional double z = 4;
+  optional double roll = 5;
+  optional double pitch = 6;
+  optional double yaw = 7;
+}
+
+enum OutputDetail {
+  FULL_EVIDENCE = 0;
+  FUNCTIONAL_SCENE = 1;
+}
+
+enum PublicationTransport {
+  PROTOBUF = 0;
+  CORE_POD = 1;
+}
+
+message PublicationOptions {
+  optional OutputDetail detail = 1 [default = FULL_EVIDENCE];
+  // Optional complete trace alongside FUNCTIONAL_SCENE, not a second sensor.
+  optional string diagnostic_channel = 2;
+  optional PublicationTransport transport = 3 [default = PROTOBUF];
+  // Both primary and diagnostic streams use this bounded POD frame budget.
+  optional uint32 max_pod_frame_bytes = 4 [default = 67108864];
+}
+
+message FusionConfig {
+  optional string pointcloud_channel = 1;
+  optional string detection_channel = 2;
+  optional string segmentation_channel = 3;
+  optional string output_channel = 4;
+  optional string sensor_frame = 5;
+  optional string base_frame = 6 [default = "base_link"];
+  optional Calibration sensor_to_base = 7;
+  optional apollo.lidar_object_detection.LidarObjectDetectionBackend detection_backend = 8;
+  repeated ClassMapping detection_mapping = 9;
+  repeated ClassMapping semantic_mapping = 10;
+  optional uint32 max_points = 11 [default = 300000];
+  optional uint32 max_detections = 12 [default = 1024];
+  optional uint32 queue_capacity = 13 [default = 8];
+  optional double wait_ms = 14 [default = 150];
+  optional double resolution = 15 [default = 0.25];
+  optional double min_x = 16 [default = -20];
+  optional double max_x = 17 [default = 60];
+  optional double min_y = 18 [default = -30];
+  optional double max_y = 19 [default = 30];
+  optional double ground_tile_size = 20 [default = 4];
+  optional double expected_ground_z = 21 [default = 0];
+  optional double ground_seed_band = 22 [default = 0.3];
+  optional uint32 ground_min_points = 23 [default = 6];
+  optional double ground_max_slope = 24 [default = 0.3];
+  optional double ground_max_residual = 25 [default = 0.08];
+  optional double ground_tolerance = 26 [default = 0.1];
+  optional double obstacle_min_height = 27 [default = 0.15];
+  optional double clearance_height = 28 [default = 2.5];
+  optional double corridor_min_x = 29 [default = 0];
+  optional double corridor_max_x = 30 [default = 30];
+  optional double corridor_half_width = 31 [default = 2];
+  optional double semantic_min_confidence = 32 [default = 0.5];
+  optional double noise_corridor_confidence = 33 [default = 0.85];
+  optional double noise_outside_confidence = 34 [default = 0.6];
+  optional double association_margin = 35 [default = 0.3];
+  optional double connectivity_size = 36 [default = 0.3];
+  optional uint32 core_min_points = 37 [default = 5];
+  optional double support_ratio = 38 [default = 0.5];
+  optional double conflict_ratio = 39 [default = 0.7];
+  optional double evidence_score_min = 40 [default = 0.1];
+  optional double unsupported_score_min = 41 [default = 0.3];
+  optional uint32 unknown_min_points = 42 [default = 6];
+  optional uint32 recall_min_points = 43 [default = 5];
+  optional double recall_min_size = 44 [default = 0.1];
+  optional double recall_max_size = 45 [default = 15];
+  optional double dedup_point_overlap = 46 [default = 0.9];
+  optional double dedup_bev_iou = 47 [default = 0.7];
+  optional SpatialOptions spatial = 48;
+  optional CandidateOptions candidates = 49;
+  optional TemporalOptions temporal = 50;
+  optional QualityOptions quality = 51;
+  optional PublicationOptions publication = 52;
+}
+
+// Opt-in quality migration; absent options preserve historical behavior.
+message QualityOptions {
+  optional bool separate_weak_detections = 1 [default = false];
+  optional bool compatible_margin = 2 [default = false];
+  optional bool trusted_point_view = 3 [default = false];
+  optional bool point_supported_unknown = 4 [default = false];
+  // Cross-domain/unvalidated semantic identity may not accept/reject instances.
+  optional bool semantic_identity_unverified = 5 [default = false];
+  optional bool robust_ground = 6 [default = false];
+  optional double ground_inlier_ratio = 7 [default = 0.7];
+}
+
+message CandidateOptions {
+  optional bool oriented_recall = 1 [default = false];
+  optional bool convex_unknown = 2 [default = false];
+  optional bool separate_semantic_instances = 3 [default = false];
+  optional double far_connectivity_size = 4;
+  optional double far_distance = 5 [default = 30];
+  optional double adjacent_distance = 6 [default = 0.5];
+  // Do not propagate references across an entire scene-connected component.
+  optional bool local_object_relations = 7 [default = false];
+  // Recall a connected confident foreground subset; retain the mixed unknown.
+  // Uses the default voxel graph, not separate/far candidate connectivity.
+  optional bool recall_confident_foreground = 8 [default = false];
+  // Extend supported DET boxes within their margin, fixing center/orientation.
+  optional bool extend_detection_support = 9 [default = false];
+  // Read-only semantic support partitions; never candidates or spatial inputs.
+  optional bool shadow_semantic_partitions = 10 [default = false];
+}
+
+message TemporalOptions {
+  optional bool enabled = 1 [default = false];
+  optional string pose_channel = 2;
+  optional string odom_frame = 3;
+  optional double pose_tolerance = 4 [default = 0.02];
+  optional double max_dt = 5 [default = 0.5];
+  optional double match_distance = 6 [default = 3];
+  optional double measurement_variance = 7 [default = 0.25];
+  optional double initial_velocity_variance = 8 [default = 4];
+  optional double process_variance = 9 [default = 1];
+  optional uint32 confirmation_hits = 10 [default = 3];
+  optional double lost_seconds = 11 [default = 1];
+  optional uint32 class_window = 12 [default = 7];
+  optional uint32 conflict_frames = 13 [default = 3];
+  optional uint32 max_tracks = 14 [default = 512];
+  optional bool static_map = 15 [default = false];
+  optional double history_seconds = 16 [default = 2];
+  optional uint32 max_history_cells = 17 [default = 100000];
+  optional double occupied_log_odds = 18 [default = 0.7];
+  optional double free_log_odds = 19 [default = -0.4];
+  optional double max_log_odds = 20 [default = 4];
+  optional double dynamic_speed = 21 [default = 0.3];
+  optional bool feedback = 22 [default = false];
+  optional double max_pose_translation_step = 23 [default = 5];
+  optional double max_pose_rotation_step = 24 [default = 0.5];
+}
+
+// Explicit continuous local ODOM contract. Never feed an absolute localization
+// pose here without an independently established continuity/reset adapter.
+message LocalPose {
+  optional double stamp = 1;
+  optional string odom_frame = 2;
+  optional string base_frame = 3;
+  optional uint64 epoch = 4;
+  optional Vec3 translation = 5;
+  optional double qx = 6;
+  optional double qy = 7;
+  optional double qz = 8;
+  optional double qw = 9 [default = 1];
+  optional bool valid = 10 [default = false];
+  optional bool diagnostic_only = 11 [default = false];
+}
+
+message Vec3 {
+  optional double x = 1;
+  optional double y = 2;
+  optional double z = 3;
+}
+
+message Box {
+  optional Vec3 center = 1;
+  optional Vec3 size = 2;
+  optional double qx = 3;
+  optional double qy = 4;
+  optional double qz = 5;
+  optional double qw = 6 [default = 1];
+}
+
+message PointEvidence {
+  optional uint32 point_id = 1;
+  optional Vec3 position = 2;
+  optional bool finite = 3;
+  optional uint32 raw_semantic_label = 4;
+  optional float semantic_probability = 5;
+  optional Group group = 6;
+  optional UnifiedClass unified_class = 7;
+  optional bool ground_valid = 8;
+  optional double z_ground = 9;
+  optional double height_above_ground = 10;
+  optional bool is_ground_geo = 11;
+  optional bool in_corridor = 12;
+  optional double ground_slope = 13;
+  optional double ground_residual = 14;
+  optional uint32 ground_seed_count = 15;
+  optional double ground_prior_z = 16;
+  optional bool ground_prior_consistent = 17;
+  // Entropy is deliberately absent: the upstream message has only top-1 confidence.
+}
+
+message PointDecision {
+  optional uint32 point_id = 1;
+  optional Explanation explanation = 2;
+  optional uint32 object_id = 3;
+  optional bool competition = 4;
+  repeated Reason reason = 5;
+  optional Source source = 6;
+}
+
+message AssociationStats {
+  optional uint32 n_core = 1;
+  optional uint32 n_margin = 2;
+  optional double ratio_same_class = 3;
+  optional double ratio_static_vegetation = 4;
+  optional uint32 n_unconnected_margin = 5;
+  optional SemanticEvidence semantic_evidence = 6;
+}
+
+message SemanticClassSupport {
+  optional UnifiedClass unified_class = 1;
+  // Eligible core returns, not an independent instance or a solid envelope.
+  repeated uint32 point_id = 2 [packed = true];
+}
+
+message SemanticGroupSupport {
+  optional Group group = 1;
+  optional uint32 n_points = 2;
+}
+
+message SemanticEvidence {
+  optional bool source_available = 1;
+  optional bool identity_qualified = 2;
+  // Confident raw subsets remain inspectable even when identity is unqualified.
+  repeated SemanticClassSupport thing_support = 3;
+  repeated SemanticGroupSupport group_support = 4;
+  optional uint32 n_low_confidence = 5;
+  optional uint32 n_unavailable = 6;
+  // A single alternative THING reaches existing core/conflict thresholds.
+  // Descriptive only: does not select a class or change candidate policy.
+  optional bool cross_thing_disagreement = 7 [default = false];
+}
+
+message DetHypothesis {
+  optional uint32 detection_index = 1;
+  optional apollo.lidar_object_detection.LidarObjectDetection raw_detection = 2;
+  optional Box box = 3;
+  optional UnifiedClass unified_class = 4;
+  optional AssociationStats association = 5;
+  optional Consistency consistency = 6;
+  optional bool existence_supported = 7;
+  optional bool identity_supported = 8;
+  optional uint32 object_id = 9;
+  optional Group group = 10;
+  optional HypothesisDecision decision = 11;
+  repeated Reason reason = 12;
+}
+
+enum HypothesisDecision {
+  HYPOTHESIS_UNASSESSED = 0;
+  INSTANCE_ACCEPTED = 1;
+  RETAINED_WEAK = 2;
+  BELOW_INSTANCE_THRESHOLD = 3;
+}
+
+enum ClassificationUse {
+  CLASSIFICATION_UNASSESSED = 0;
+  CLASSIFICATION_CANDIDATE = 1;
+  IDENTITY_UNCERTAIN = 2;
+}
+
+message ObjectCandidate {
+  optional uint32 id = 1;  // Frame-local, not a track ID.
+  optional Box box = 2;
+  optional UnifiedClass unified_class = 3;
+  optional Source source = 4;
+  optional double raw_score = 5;
+  optional Consistency consistency = 6;
+  optional bool class_conflict = 7;
+  repeated uint32 point_id = 8;
+  repeated Reason reason = 9;
+  optional Vec3 velocity = 10;  // Absent if the detector has no velocity.
+  optional bool orientation_reliable = 11 [default = false];
+  optional Group group = 12;
+  optional uint64 track_id = 13;
+  optional UnifiedClass temporal_class = 14;
+  optional bool track_confirmed = 15;
+  // Consumer role, not a calibrated probability or ground-truth assertion.
+  optional ClassificationUse classification_use = 16;
+}
+
+message UnknownCandidate {
+  optional uint32 id = 1;  // Frame-local; stable identity is track_id.
+  repeated Vec3 polygon = 2;
+  optional double z_min = 3;
+  optional double z_max = 4;
+  repeated uint32 point_id = 5;
+  optional bool confirmed = 6 [default = false];
+  repeated uint32 related_object_id = 7;
+  repeated Reason reason = 8;
+  optional Source source = 9;
+  optional bool in_corridor = 10;
+  optional uint64 track_id = 11;
+  repeated ObjectRelation relation = 12;
+  // Polygon is extent only; occupancy_unknown is supported by point_id cells.
+  optional bool point_supported_footprint = 13 [default = false];
+}
+
+enum PartitionKind {
+  PARTITION_UNEXPLAINED = 0;
+  PARTITION_THING_SUPPORT = 1;
+  PARTITION_GROUP_SUPPORT = 2;
+}
+
+// Confident same-semantic connected subsets and an unexplained remainder.
+// Neither the subsets nor their parent establish physical instance boundaries.
+message ShadowPartition {
+  optional uint32 id = 1;  // Frame-local, not an object/track ID.
+  optional uint32 parent_unknown_id = 2;
+  optional PartitionKind kind = 3;
+  optional Group group = 4;
+  optional UnifiedClass unified_class = 5;
+  repeated uint32 point_id = 6 [packed = true];
+}
+
+enum RelationKind {
+  RELATION_AMBIGUOUS = 0;
+  RELATION_SUPPLEMENT = 1;
+  RELATION_ADJACENT = 2;
+  RELATION_DUPLICATE = 3;
+}
+
+message ObjectRelation {
+  optional uint32 object_id = 1;
+  optional RelationKind kind = 2;
+}
+
+message SpaceCell {
+  optional uint32 x_index = 1;
+  optional uint32 y_index = 2;
+  optional bool endpoint_observed = 3;
+  optional bool ground_supported = 4;
+  optional double ground_z = 5;
+  optional bool occupancy_obs = 6;
+  optional bool occupancy_det = 7;
+  optional Group semantic = 8;
+  repeated uint32 object_ref = 9;
+  optional Traversability traversability = 10 [default = UNKNOWN];
+  optional double ground_slope = 11;
+  optional double ground_residual = 12;
+  optional uint32 visibility_mask = 13;
+  optional bool visibility_approximate = 14;
+  optional bool physically_traversable = 15;
+  optional bool reachable = 16;
+  repeated Reason reason = 17;
+  optional bool occupancy_unknown = 18;
+}
+
+message SpaceMap {
+  optional double resolution = 1;
+  optional double origin_x = 2;
+  optional double origin_y = 3;
+  optional uint32 width = 4;
+  optional uint32 height = 5;
+  // Sparse cells: omitted cells are UNKNOWN, never FREE.
+  repeated SpaceCell cell = 6;
+}
+
+message Health {
+  optional bool det_valid = 1;
+  optional bool seg_valid = 2;
+  optional Mode mode = 3;
+  optional Reason det_reason = 4;
+  optional Reason seg_reason = 5;
+  optional double latency_ms = 6;
+  optional bool temporal_enabled = 7 [default = false];
+  optional uint64 dropped_clouds = 8;
+  optional uint64 dropped_results = 9;
+  optional uint64 queue_overflows = 10;
+  optional uint32 consistency_repairs = 11;
+  optional bool pose_valid = 12;
+  optional uint64 temporal_epoch = 13;
+  optional bool diagnostic_pose = 14;
+}
+
+enum ViewKind {
+  GROUND_POINTS = 0;
+  NON_GROUND_POINTS = 1;
+  OBJECT_POINTS = 2;
+  STRUCTURE_POINTS = 3;
+  UNKNOWN_POINTS = 4;
+  CORRIDOR_RISK_POINTS = 5;
+  // Assigned THING points agreeing with object class and semantic confidence.
+  TRUSTED_OBJECT_POINTS = 6;
+}
+
+message PointView {
+  optional ViewKind kind = 1;
+  repeated uint32 point_id = 2 [packed = true];
+}
+
+message PublicationContext {
+  optional OutputDetail detail = 1 [default = FULL_EVIDENCE];
+  optional uint32 source_point_count = 2;
+  optional apollo.common.Header source_header = 3;
+  optional double source_measurement_time = 4;
+  optional string source_pointcloud_channel = 5;
+  // All point IDs index this exact unfiltered source sweep, before this transform.
+  optional Calibration sensor_to_base = 6;
+  optional SpatialOptions spatial_options = 7;
+  optional string diagnostic_channel = 8;
+  optional bool shadow_partitions_enabled = 9 [default = false];
+}
+
+message FusionOutput {
+  optional apollo.common.Header header = 1;
+  optional string calibration_version = 2;
+  optional string detection_model_revision = 3;
+  repeated PointEvidence point_evidence = 4;
+  repeated PointDecision point_decision = 5;
+  repeated DetHypothesis hypothesis = 6;
+  repeated ObjectCandidate object = 7;
+  repeated UnknownCandidate unknown = 8;
+  optional SpaceMap space_map = 9;
+  optional Health health = 10;
+  // Sensor degradation and conflicts are inspectable independently of instances.
+  repeated Reason risk_event = 11;
+  repeated PointView point_view = 12;
+  repeated TrackedObject track = 13;
+  repeated HistoryCell history_cell = 14;
+  optional string odom_frame = 15;
+  repeated ShadowPartition shadow_partition = 16;
+  // Absent means legacy FULL_EVIDENCE. Functional output intentionally omits
+  // point_evidence/point_decision; it does not mean either source was missing.
+  optional PublicationContext publication = 17;
+}
+
+message TrackedObject {
+  optional uint64 id = 1;
+  optional Box box = 2;  // Current base frame, not ODOM.
+  optional Vec3 velocity = 3;  // Physical velocity rotated into current base.
+  optional UnifiedClass unified_class = 4;
+  optional bool confirmed = 5;
+  optional bool observed = 6;
+  optional bool unknown = 7;
+  optional double last_observed_stamp = 8;
+  optional Source source = 9;
+  optional bool class_conflict = 10;
+}
+
+message HistoryCell {
+  optional sint32 x_index = 1;  // Fixed ODOM grid; resolution from space_map.
+  optional sint32 y_index = 2;
+  optional double log_odds = 3;
+  optional double last_observed_stamp = 4;
+  optional double ground_z = 5;
+}

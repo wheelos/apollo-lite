@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,6 +10,7 @@ cc_binary(
     ],
     deps = [
         "@wheelos_common//modules/common/configs:config_gflags",
+        "@wheelos_common//modules/common/map:map_selection",
         "@wheelos_common//modules/common/math",
         "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/prediction/common:prediction_gflags",
@@ -22,4 +22,11 @@ cc_binary(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

@@ -1,5 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -58,8 +57,9 @@ cc_library(
         ":scenario",
         ":transition_guard",
         "@wheelos_common//modules/common/status",
-        "//modules/planning/common:dependency_injector",
+        "//modules/planning:planning_runtime_context",
         "//modules/planning/common:frame",
+        "//modules/planning/common:dependency_injector",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/scenarios/cruise/lane_follow:lane_follow_scenario",
         "//modules/planning/scenarios/cruise/lane_keeping:lane_keeping_scenario",
@@ -72,7 +72,6 @@ cc_library(
         "//modules/planning/scenarios/intersection/traffic_light/unprotected_left_turn:traffic_light_unprotected_left_turn_scenario",
         "//modules/planning/scenarios/intersection/traffic_light/unprotected_right_turn:traffic_light_unprotected_right_turn_scenario",
         "//modules/planning/scenarios/intersection/yield_sign:yield_sign_scenario",
-        "//modules/planning/scenarios/learning_model:learning_model_sample_scenario",
         "//modules/planning/scenarios/maneuver/deadend_turnaround:deadend_turnaround_scenario",
         "//modules/planning/scenarios/maneuver/escape:escape_scenario",
         "//modules/planning/scenarios/maneuver/narrow_street:narrow_street_scenario",
@@ -84,4 +83,31 @@ cc_library(
     ],
 )
 
-cpplint()
+cc_test(
+    name = "scenario_grade_test",
+    size = "small",
+    srcs = ["scenario_grade_test.cc"],
+    linkopts = ["-fopenmp"],
+    deps = [
+        ":scenario",
+        "//modules/planning/common:gtest_exit_main",
+    ],
+)
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

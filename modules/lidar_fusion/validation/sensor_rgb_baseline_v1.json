@@ -1,0 +1,138 @@
+{
+  "baseline_id": "sensor-rgb-functional-v1",
+  "date": "2026-10-28",
+  "scope": "Frozen unlabeled open-loop software baseline, not perception accuracy or production acceptance.",
+  "code": {
+    "repository_head": "417ab0f15b538600932001912ce534814ca356eb",
+    "worktree": "Uncommitted module; exact source hashes are in the detailed report.",
+    "neural_replay_sha256": "2c8050322fec7073f32825280fa2d3c5b9fc573efe1d2beff9f39bc82d04114d",
+    "temporal_replay_sha256": "e5c01395d8345ff2d1becc12cbab59be650d0e87c1b9ab8f8837e5c165d25cc8"
+  },
+  "dataset": {
+    "record": "/mnt/synology/apollo/sensor_rgb.record",
+    "record_sha256": "202f28f4bbbe251fc132d3fa3fd7bca87c1ddc646f4db116cc456388df806969",
+    "frames": 587,
+    "points": 59176522,
+    "payload_span_seconds": 59.931556940078735,
+    "max_frame_gap_seconds": 1.4007229804992676,
+    "max_gap_after_ordinal": 559,
+    "actual_tf_parent": "novatel",
+    "base_link_equivalence": "Explicit user assertion, not inferred.",
+    "temporal_subset": "First 60 consecutive frames, fixed before evaluating outputs.",
+    "temporal_payload_span_seconds": 5.903059959411621
+  },
+  "models_and_contracts": {
+    "detector": "PointPillars local 40000-pillar diagnostic derivative",
+    "detector_engine_sha256": "62f1c10a6231630a4dad24814e60ad8bf3698a68e134e22be002ea3145d97334",
+    "segmenter": "RangeRet KITTI engine",
+    "segmenter_engine_sha256": "fde3b36892cb8f98e59be03ffe45948b5e4e58b5b34a3c18a9e19a5594853e8d",
+    "intensity_scales": [0.00392156862745098, 0.00392156862745098],
+    "single_config_sha256": "ab3a3d88240ed311def22bc885239c22b3db609f791015c5f1a33333e4680a64",
+    "temporal_config_sha256": "32d25bdbd44be2b4d0751e8309d9a5c7d28e3eadaea71c9c6e69727be8be611b",
+    "limitations": [
+      "Expanded engine is not numerically equivalent to original 10000-pillar engine.",
+      "Detector intensity normalization and ground reference z=0 remain diagnostic assumptions.",
+      "Relative recorded localization is diagnostic-only, not a verified continuous ODOM source.",
+      "Compensated per-ray origins and vehicle capabilities are not established; FREE disabled.",
+      "Thresholds and models were not tuned after observing evaluation results."
+    ]
+  },
+  "full_record_single_frame": {
+    "candidate_options": "Default, enhancements off; temporal disabled.",
+    "count_unit": "Object/unknown frame outputs, not unique ground-truth objects.",
+    "raw_detection_frame_outputs": 27652,
+    "NORMAL": {"objects": 10039, "unknowns": 62259, "conflicts": 6685},
+    "NO_SEG": {"objects": 3304, "unknowns": 75045, "conflicts": 0},
+    "NO_DET": {"objects": 652, "unknowns": 59777, "conflicts": 0},
+    "GEO_ONLY": {"objects": 0, "unknowns": 75062, "conflicts": 0},
+    "normal_provenance": {"DET": 9447, "SEG_RECALL": 592},
+    "hypothesis_consistency": {"SUPPORT": 271, "CONFLICT": 6685, "INSUFFICIENT": 20696},
+    "roi_ground_fit_support_fraction": 0.23211111408689963,
+    "mean_ground_view_points": 17976.84838160136,
+    "mean_structure_view_points": 32583.14139693356,
+    "corridor_unknown_frame_outputs": 5375,
+    "small_corridor_unknown_frame_outputs": 1644
+  },
+  "continuous_60_frame_comparison": {
+    "configuration": "Same enhanced candidates for all three variants; only temporal state and deliberate detector availability differ.",
+    "no_history": {"objects": 592, "unknowns": 10530},
+    "normal_temporal": {
+      "objects": 649, "unknowns": 10480,
+      "continued_track_frame_outputs": 11248,
+      "confirmed_track_frame_outputs": 10186,
+      "confirmed_unknown_frame_outputs": 7981,
+      "new_track_ids": 1771,
+      "point_supported_recovery_frame_outputs": 60
+    },
+    "detector_dropout_temporal": {
+      "objects": 558, "unknowns": 10413,
+      "new_track_ids": 1776,
+      "point_supported_recovery_frame_outputs": 110
+    },
+    "injected_frames_only": {
+      "count": 15,
+      "pattern": "Zero-based indices 3,7,11,...,59.",
+      "normal_temporal_object_frame_outputs": 153,
+      "dropout_object_frame_outputs": 46,
+      "dropout_point_supported_recovery_frame_outputs": 43,
+      "frames_with_recovery": 15,
+      "interpretation": "Only partial instance preservation; these counts are not recall."
+    },
+    "candidate_ablation_on_same_60_frames": {
+      "default_no_history": {"objects": 581, "unknowns": 6318},
+      "enhanced_no_history": {"objects": 592, "unknowns": 10530},
+      "interpretation": "More candidate fragments, not demonstrated accuracy or false-positive improvement."
+    }
+  },
+  "functional_audit": {
+    "four_mode_frame_cases": 2348,
+    "wrong_sweep_injections": 587,
+    "normal_raw_semantics_and_detections_preserved": true,
+    "normal_point_derived_measured_occupancy_exact": true,
+    "temporal_clean_dropout_measured_occupancy_identical": true,
+    "dangling_references_or_unflagged_conflicts": 0,
+    "consistency_repairs_all_modes": 0,
+    "FREE_cells_all_modes": 0,
+    "temporal_reset_events": 0
+  },
+  "diagnostic_visibility": {
+    "frames_with_unknown_risk_covering_sensor_origin": 587,
+    "nonorigin_visibility_cells_across_all_frames": 0,
+    "interpretation": "Every ray stops at an unknown-risk-obstructed origin cell. Meaningful real-record visibility was not achieved; FREE=0 is not a free-space success."
+  },
+  "observed_offline_time_ms": {
+    "conditions": "One run, dev/fastbuild, first inference included, init/serialization/queue excluded. Full and temporal replay workers overlap on a shared i7-12700KF/RTX4060 host. Not controlled throughput or optimization evidence.",
+    "PointPillars": {"p50": 22.9978, "p95": 27.481},
+    "RangeRet": {"p50": 115.527, "p95": 139.641},
+    "NORMAL_fusion": {"p50": 1864.37, "p95": 2548.257},
+    "NO_SEG_fusion": {"p50": 1465.27, "p95": 1852.656},
+    "NO_DET_fusion": {"p50": 1074.85, "p95": 1421.125},
+    "GEO_ONLY_fusion": {"p50": 1159.85, "p95": 1226.957},
+    "enhanced_no_history_60": {"p50": 6416.42, "p95": 6881.1845},
+    "enhanced_temporal_60": {"p50": 7027.29, "p95": 7551.132},
+    "interpretation": "The CPU reference is far above the 5-10ms design target in this run; no performance optimization was applied."
+  },
+  "not_evaluable_without_ground_truth": [
+    "AP, detection/unknown recall and precision, false-positive or duplicate rate.",
+    "MOTA, IDF1, identity switches or physical velocity error.",
+    "FREE precision, vehicle traversability, braking or closed-loop safety."
+  ],
+  "key_findings": [
+    "6685 of 10039 normal object-frame outputs carry class conflict; model agreement is weak, not evidence of improved accuracy.",
+    "Enhanced candidates increase unknown outputs from 6318 to 10530 on identical 60 frames; fragmentation needs labeled review.",
+    "Intentional detector dropout preserves only 46 versus 153 normal object-frame outputs, despite recovery triggering on all 15 frames.",
+    "Visibility degenerates at the sensor origin on every frame; no useful drivable-area result is established."
+  ],
+  "artifacts": {
+    "root": ".cache/lidar-fusion-validation",
+    "detailed_report": "baseline-v1-report/baseline.json",
+    "detailed_report_sha256": "fb996a4808925f872483aa15b60265d89722841fb98d520b6382c296b883ceb5",
+    "visibility_audit": "baseline-v1-report/visibility-audit.json",
+    "visibility_audit_sha256": "d24279be3ff3d3bb364cee1d4d7b1a9d2be4310b3d92c959a5a6d372dc30e125",
+    "single_frame_detail": "baseline-v1-report/single-detail.csv",
+    "temporal_detail": "baseline-v1-report/temporal-detail.csv",
+    "four_mode_csv": "baseline-v1-single/summary.csv",
+    "temporal_csv": "baseline-v1-temporal/temporal.csv",
+    "diagnostic_visualizations": "baseline-v1-single/*.svg"
+  }
+}

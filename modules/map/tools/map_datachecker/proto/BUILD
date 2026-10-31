@@ -77,3 +77,12 @@ py_proto_library(
     name = "collection_check_message_py_pb2",
     deps = [":collection_check_message_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

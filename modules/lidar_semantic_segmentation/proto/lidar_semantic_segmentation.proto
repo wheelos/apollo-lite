@@ -33,6 +33,19 @@ message LidarSemanticSegmentationComponentConfig {
   optional TensorConfig tensor = 7;
 }
 
+message Cylinder3DComponentConfig {
+  optional string model_path = 1;
+  optional int32 device_id = 2 [default = -1];
+  optional string sensor_name = 3;
+  optional string source_topic = 4;
+  optional string output_channel = 5
+      [default = "/perception/lidar_semantic_segmentation"];
+  optional uint32 max_points = 6 [default = 150000];
+  optional float intensity_scale = 7 [default = 0.00392156863];
+  optional bool flip_tta = 8 [default = false];
+  optional bool use_spconv = 9 [default = false];
+}
+
 enum SemanticLabel {
   SEMANTIC_LABEL_UNKNOWN = 0;
   SEMANTIC_LABEL_CAR = 1;

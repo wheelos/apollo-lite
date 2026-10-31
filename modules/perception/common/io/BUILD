@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -24,6 +23,18 @@ cc_library(
 )
 
 cc_test(
+    name = "brown_camera_intrinsic_test",
+    size = "small",
+    srcs = ["brown_camera_intrinsic_test.cc"],
+    deps = [
+        ":io_util",
+        "@com_google_googletest//:gtest_main",
+        "@eigen",
+        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
+    ],
+)
+
+cc_test(
     name = "io_util_test",
     size = "small",
     srcs = ["io_util_test.cc"],
@@ -37,4 +48,20 @@ cc_test(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

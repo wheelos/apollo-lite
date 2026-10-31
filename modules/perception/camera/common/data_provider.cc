@@ -15,17 +15,26 @@
  *****************************************************************************/
 #include "modules/perception/camera/common/data_provider.h"
 
+#include <cstddef>
+#include <cstring>
+#include <string>
+
 #if USE_GPU == 1
 #include <nppi.h>
 #endif
 
 #include "cyber/common/log.h"
+#include "modules/perception/camera/common/image_input_validation.h"
 
 namespace apollo {
 namespace perception {
 namespace camera {
 
 bool DataProvider::Init(const DataProvider::InitOptions &options) {
+  if (options.image_height <= 0 || options.image_width <= 0) {
+    AERROR << "DataProvider requires positive calibrated image dimensions.";
+    return false;
+  }
   src_height_ = options.image_height;
   src_width_ = options.image_width;
   sensor_name_ = options.sensor_name;
@@ -113,83 +122,76 @@ bool DataProvider::Init(const DataProvider::InitOptions &options) {
   return true;
 }
 
+bool DataProvider::FillImageData(const drivers::Image &image) {
+  if (!ValidateImageInput(image, src_height_, src_width_)) {
+    gray_ready_ = rgb_ready_ = bgr_ready_ = false;
+    return false;
+  }
+  return FillImageData(src_height_, src_width_,
+                       reinterpret_cast<const uint8_t *>(image.data().data()),
+                       image.encoding());
+}
+
 bool DataProvider::FillImageData(int rows, int cols, const uint8_t *data,
                                  const std::string &encoding) {
+  gray_ready_ = false;
+  rgb_ready_ = false;
+  bgr_ready_ = false;
+  if (data == nullptr || rows <= 0 || cols <= 0 || rows != src_height_ ||
+      cols != src_width_) {
+    AERROR << "Image buffer must match initialized calibration dimensions.";
+    return false;
+  }
+  base::Image8U *output = nullptr;
+  base::Image8U *original = nullptr;
+  bool *ready = nullptr;
+  if (encoding == "rgb8") {
+    output = rgb_.get();
+    original = ori_rgb_.get();
+    ready = &rgb_ready_;
+  } else if (encoding == "bgr8") {
+    output = bgr_.get();
+    original = ori_bgr_.get();
+    ready = &bgr_ready_;
+  } else if (encoding == "gray" || encoding == "y") {
+    output = gray_.get();
+    original = ori_gray_.get();
+    ready = &gray_ready_;
+  } else {
+    AERROR << "Unrecognized image encoding: " << encoding;
+    return false;
+  }
+  if (output == nullptr || (handler_ != nullptr && original == nullptr)) {
+    AERROR << "DataProvider image storage is not initialized.";
+    return false;
+  }
   if (cudaSetDevice(device_id_) != cudaSuccess) {
     AERROR << "Failed to set device to: " << device_id_;
     return false;
   }
-
-  gray_ready_ = false;
-  rgb_ready_ = false;
-  bgr_ready_ = false;
-
-  bool success = false;
-
-#if USE_GPU == 0  // copy to host memory
-  AINFO << "Fill in CPU mode ...";
+#if USE_GPU == 0
   if (handler_ != nullptr) {
     AERROR << "Undistortion DO NOT support CPU mode!";
     return false;
   }
-  if (encoding == "rgb8") {
-    memcpy(rgb_->mutable_cpu_data(), data, rgb_->count() * sizeof(data[0]));
-    rgb_ready_ = true;
-    success = true;
-  } else if (encoding == "bgr8") {
-    memcpy(bgr_->mutable_cpu_data(), data, bgr_->count() * sizeof(data[0]));
-    bgr_ready_ = true;
-    success = true;
-  } else if (encoding == "gray" || encoding == "y") {
-    memcpy(gray_->mutable_cpu_data(), data, gray_->count() * sizeof(data[0]));
-    gray_ready_ = true;
-    success = true;
-  } else {
-    AERROR << "Unrecognized image encoding: " << encoding;
+  std::memcpy(output->mutable_cpu_data(), data, output->count());
+#else
+  base::Image8U *destination = handler_ != nullptr ? original : output;
+  const size_t bytes =
+      static_cast<size_t>(destination->rows()) * destination->width_step();
+  const auto result = cudaMemcpy(destination->mutable_gpu_data(), data, bytes,
+                                 cudaMemcpyDefault);
+  if (result != cudaSuccess) {
+    AERROR << "Failed to copy image: " << cudaGetErrorString(result);
+    return false;
   }
-#else  // copy to device memory directly
-  AINFO << "Fill in GPU mode ...";
-  if (encoding == "rgb8") {
-    if (handler_ != nullptr) {
-      cudaMemcpy(ori_rgb_->mutable_gpu_data(), data,
-                 ori_rgb_->rows() * ori_rgb_->width_step(), cudaMemcpyDefault);
-      success = handler_->Handle(*ori_rgb_, rgb_.get());
-    } else {
-      cudaMemcpy(rgb_->mutable_gpu_data(), data,
-                 rgb_->rows() * rgb_->width_step(), cudaMemcpyDefault);
-      success = true;
-    }
-    rgb_ready_ = true;
-  } else if (encoding == "bgr8") {
-    if (handler_ != nullptr) {
-      cudaMemcpy(ori_bgr_->mutable_gpu_data(), data,
-                 ori_bgr_->rows() * ori_bgr_->width_step(), cudaMemcpyDefault);
-      success = handler_->Handle(*ori_bgr_, bgr_.get());
-    } else {
-      cudaMemcpy(bgr_->mutable_gpu_data(), data,
-                 bgr_->rows() * bgr_->width_step(), cudaMemcpyDefault);
-      success = true;
-    }
-    bgr_ready_ = true;
-  } else if (encoding == "gray" || encoding == "y") {
-    if (handler_ != nullptr) {
-      cudaMemcpy(ori_gray_->mutable_gpu_data(), data,
-                 ori_gray_->rows() * ori_gray_->width_step(),
-                 cudaMemcpyDefault);
-      success = handler_->Handle(*ori_gray_, gray_.get());
-    } else {
-      cudaMemcpy(gray_->mutable_gpu_data(), data,
-                 gray_->rows() * gray_->width_step(), cudaMemcpyDefault);
-      success = true;
-    }
-    gray_ready_ = true;
-  } else {
-    AERROR << "Unrecognized image encoding: " << encoding;
+  if (handler_ != nullptr && !handler_->Handle(*original, output)) {
+    AERROR << "Failed to undistort image for sensor: " << sensor_name_;
+    return false;
   }
 #endif
-
-  AINFO << "Done! (" << success << ")";
-  return success;
+  *ready = true;
+  return true;
 }
 
 #if 0

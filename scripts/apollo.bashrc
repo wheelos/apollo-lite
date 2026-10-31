@@ -311,7 +311,7 @@ function setup_gpu_support() {
   fi
 }
 
-if ${APOLLO_IN_DOCKER} ; then
+if ${APOLLO_IN_DOCKER} && [[ "${APOLLO_BUILD_PHASE:-0}" != "1" ]]; then
     setup_gpu_support
 fi
 

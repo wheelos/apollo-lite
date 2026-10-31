@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,10 +10,6 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
-        "@wheelos_common//modules/common/math",
-        "@wheelos_common//modules/common/util:util_tool",
-        "@wheelos_map//modules/map/hdmap:hdmap",
-        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/perception/base:base_type",
         "//modules/perception/base:blob",
         "//modules/perception/base:common",
@@ -29,6 +24,10 @@ cc_library(
         "//modules/perception/common/geometry:common",
         "//modules/perception/lib/config_manager",
         "@core//cyber",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_common//modules/common/util:util_tool",
+        "@wheelos_map//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
     ],
 )
 
@@ -46,4 +45,20 @@ cc_library(
 #    ],
 #)
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

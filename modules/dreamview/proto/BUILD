@@ -210,3 +210,12 @@ py_proto_library(
     name = "scenario_py_pb2",
     deps = [":scenario_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

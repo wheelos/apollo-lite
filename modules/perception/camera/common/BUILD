@@ -1,5 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -33,6 +32,25 @@ cc_library(
 )
 
 cc_library(
+    name = "image_input_validation",
+    srcs = ["image_input_validation.cc"],
+    hdrs = ["image_input_validation.h"],
+    deps = [
+        "@core//cyber/common:log",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "image_input_validation_test",
+    srcs = ["image_input_validation_test.cc"],
+    deps = [
+        ":image_input_validation",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "data_provider",
     srcs = ["data_provider.cc"],
     hdrs = ["data_provider.h"],
@@ -40,10 +58,12 @@ cc_library(
         '-DMODULE_NAME=\\"perception\\"',
     ],
     deps = [
+        ":image_input_validation",
         ":undistortion_handler",
         "//modules/perception/base",
         "@core//cyber",
         "@cuda//:npp",
+        "@wheelos_msgs//wheelos_msgs/sensor_msgs:sensor_image_cc_proto",
     ],
 )
 
@@ -174,4 +194,20 @@ cc_library(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

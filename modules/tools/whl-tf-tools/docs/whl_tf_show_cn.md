@@ -2,6 +2,9 @@
 
 可视化 TF (transform) 配置文件，以交互式 3D 可视化展示坐标系关系。
 
+离线检查请显式传入外参 YAML；Transform 不再附带 `params/` 或 `conf/`
+标定资产。历史 `-c` 清单不是当前车辆 manifest，也不能证明 bundle 有效。
+
 ## 功能特性
 
 - 加载多个 TF 配置 YAML 文件
@@ -24,7 +27,7 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 ### 基本用法
 
 ```bash
-./modules/tools/whl-tf-tools/whl_tf_show.py modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py /path/to/extrinsics/*.yaml
 ```
 
 ### 命令行选项
@@ -42,16 +45,16 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 ./modules/tools/whl-tf-tools/whl_tf_show.py imu_to_localization.yaml main_front_to_imu.yaml
 
 # 使用指定的根坐标系
-./modules/tools/whl-tf-tools/whl_tf_show.py -r localization modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -r localization /path/to/extrinsics/*.yaml
 
 # 自定义坐标轴长度
-./modules/tools/whl-tf-tools/whl_tf_show.py -l 1.0 modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -l 1.0 /path/to/extrinsics/*.yaml
 
 # 保存为 PNG 文件
-./modules/tools/whl-tf-tools/whl_tf_show.py -s output.png modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -s output.png /path/to/extrinsics/*.yaml
 
 # 保存为高分辨率 PDF
-./modules/tools/whl-tf-tools/whl_tf_show.py -s output.pdf modules/transform/params/*.yaml
+./modules/tools/whl-tf-tools/whl_tf_show.py -s output.pdf /path/to/extrinsics/*.yaml
 ```
 
 ## TF 配置文件格式

@@ -76,14 +76,23 @@ sudo bash docker/setup_host/setup_host.sh
 
 ```bash
 # start in dev mode
-whl start
+whl start dev
 
 # enter the dev container (starts it if needed)
-whl enter
+whl enter dev
+
+# stop the dev container but preserve it for a later start
+whl stop dev
+
+# stop and remove the container and its Compose network
+whl rm dev
+
+# pull the configured image, update the container, and wait for initialization
+whl pull dev
 ```
 
 ### Notes about interactive system configuration
-- `config_system.sh` (invoked by `setup_host.sh`) is interactive: for each optional system tuning step (NTP/ptp/udev/uvcvideo/CAN/Jetson tuning/headless/autostart) it will ask you whether to apply it (Y/n). Hardware-related tuning defaults to conservative choices.
+- `config_system.sh` (invoked by `setup_host.sh`) is interactive: for each optional system tuning step (NTP/PTP/udev/uvcvideo/CAN/Jetson tuning/headless/container and Dreamview boot services) it will ask whether to apply it (Y/n). Hardware-related tuning defaults to conservative choices.
 
 ### Automation / non-interactive runs
 - `config_system.sh` and `setup_host.sh` detect non-interactive stdin and use sensible defaults. To run unattended and accept defaults, redirect stdin from `/dev/null`:
@@ -104,13 +113,48 @@ yes | sudo bash docker/setup_host/setup_host.sh
 - Generated env files used by `whl` are `docker/.env.dev.local`, `docker/.env.test.local`, and `docker/.env.prod.local`. `whl` regenerates the requested mode file on every run from `.env.global` plus host auto-detection before launching.
 - Each mode also gets its own Compose project name, so `dev` and `test` can run side by side without recreating or stopping each other.
 - Container names are deterministic (`apollo_<mode>_<user>_<project-hash>`) and are intentionally not user-configurable.
-- `whl start <mode>` and `whl stop <mode>` are symmetric. Use `whl stop all` to tear down all managed modes.
+- `whl start <mode>` starts using an image already available locally and waits for container initialization; it never pulls. Run `whl pull <mode>` first if the image is not present.
+- `whl stop <mode>` stops and preserves the container for a later start. Use `whl rm <mode>` to stop and remove a container and its Compose network, or `whl rm all` for all configured modes. Host bind mounts are preserved.
+- `whl pull <mode>` pulls the configured image, updates/recreates the container, and waits for initialization. This does not start or verify autonomous-driving services.
+- `whl exec <mode> -- <command>` runs a non-interactive command as the mapped host user in a running, healthy container. It does not start the container.
+- `whl-container.service` manages only the `prod` container. `whl-dreamview.service` is a separate optional application unit; it requests Dreamview launch start/stop through the existing `scripts/cyber_launch.sh` lifecycle helper.
+- To manage the units manually, use `systemctl start|stop|status whl-container.service` and `systemctl start|stop|status whl-dreamview.service`. Dreamview requires the container unit. Host setup asks separately whether to enable each service at boot; enabling Dreamview also enables its container dependency.
+- The Dreamview unit uses `Type=oneshot` with `RemainAfterExit=yes`: its start/stop script waits for the Dreamview process transition, but systemd does not supervise ongoing process health. This is not autonomous-driving readiness. The full autonomous-driving module graph still requires a profile-aware runtime supervisor.
 - Host-ready marker: `/etc/wheelos_setup_host.done`
 - `whl` helper location: `/usr/local/bin/whl`
 
 ---
 
 ## `@core` runtime (cyber tools)
+
+### Bzlmod consumer modes
+
+Run these commands in the managed container as the mapped non-root user:
+
+```bash
+# Local source integration; never updates the formal consumer lockfile.
+python3 scripts/bzlmod.py dev mod graph
+python3 scripts/bzlmod.py dev build @core//tools:mainboard
+
+# Candidate registry first, without developer or home rc files/source overrides.
+python3 scripts/bzlmod.py registry build @core//tools:mainboard
+
+# Remote registries only, with strict lockfile checking.
+python3 scripts/bzlmod.py release build @core//tools:mainboard
+
+# Only after every declared module is available from the formal registries:
+python3 scripts/bzlmod.py lock-update mod deps
+
+# Record revisions AND dirty state; this does not publish or freeze local edits.
+python3 scripts/bzlmod.py snapshot > .cache/bzlmod-provenance.json
+```
+
+Commit `MODULE.bazel.lock` only after formal registry resolution succeeds.
+Local source integration is not release acceptance. Perception operators and
+model I/O are packages in `wheelos_common`, not separate Bzlmod modules.
+Use registry mode to validate the local candidate while remote publication is
+pending; release checks must not fall back to `pkgs` sources or the local registry.
+Select GPU/manual tests explicitly; SM89 coverage does not establish Orin support.
 
 The production path is the Bazel module dependency `wheelos_core` (`@core//...`).
 Use the unified runtime entrypoint after building with the module dependency already resolved:
@@ -137,6 +181,23 @@ Then build the cyber runtime targets from this workspace:
 ```
 
 This builds the stable `@core//cyber` runtime surface: `cyber_core`, `mainboard`, and the `cyber_tools` binaries used by the repo.
+
+## Selected product builds
+
+Inside the managed development container, select a product instead of recursively
+building every module:
+
+```bash
+bash apollo.sh profiles
+bash apollo.sh build --product=devkit-x86 --show
+bash apollo.sh build --product=devkit-x86
+```
+
+`--show` displays the effective Bazel configuration and outputs without compiling.
+See [product builds](tools/products/README.md) for custom hardware/module selection
+and resource limits. The presets are example build inventories, not qualified
+runtime deployments. Legacy commands remain available; `build --all` explicitly
+requests a full build.
 
 ---
 

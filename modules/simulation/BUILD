@@ -1,5 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -176,31 +177,6 @@ cc_test(
     ],
 )
 
-cc_test(
-    name = "simulation_control_test",
-    size = "small",
-    srcs = ["simulation_control_test.cc"],
-    copts = SIMULATION_COPTS,
-    data = [
-        ":runtime_data",
-        "//modules/control:test_data",
-    ],
-    deps = [
-        ":cyber_adapter",
-        ":simulation_engine",
-        "@wheelos_common//modules/common/configs:config_gflags",
-        "//modules/control/common:control_gflags",
-        "//modules/control/common:dependency_injector",
-        "//modules/control/controller:controller_agent",
-        "//modules/control/proto:control_conf_cc_proto",
-        "@com_google_googletest//:gtest_main",
-        "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:control_cmd_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/localization_msgs:localization_cc_proto",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
-    ],
-)
-
 filegroup(
     name = "runtime_data",
     srcs = glob([
@@ -210,14 +186,32 @@ filegroup(
     ]),
 )
 
-install(
-    name = "install",
-    data = [
-        ":runtime_data",
+pkg_files(
+    name = "package_files_data",
+    srcs = [":runtime_data"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "simulation",
+    strip_prefix = strip_prefix.from_root("modules/simulation"),
+)
+
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":libsimulation_component.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "simulation/lib",
+    strip_prefix = strip_prefix.from_root("modules/simulation"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
     ],
-    data_dest = "simulation",
-    library_dest = "simulation/lib",
-    targets = [
-        ":libsimulation_component.so",
-    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
 )

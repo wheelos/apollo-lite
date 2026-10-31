@@ -19,7 +19,7 @@
 #include "cyber/time/clock.h"
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/common/math/quaternion.h"
-#include "modules/localization/common/localization_gflags.h"
+#include "modules/ndt_localization/common/localization_gflags.h"
 
 namespace apollo {
 namespace localization {
@@ -54,9 +54,7 @@ bool NDTLocalizationComponent::InitConfig() {
   odometry_status_topic_ = FLAGS_ins_stat_topic;
   localization_status_topic_ = FLAGS_localization_msf_status;
 
-  localization_->Init();
-
-  return true;
+  return localization_->Init();
 }
 
 bool NDTLocalizationComponent::InitIO() {

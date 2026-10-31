@@ -15,11 +15,14 @@
  *****************************************************************************/
 #include "modules/perception/onboard/component/fusion_camera_detection_component.h"
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 
 #include "absl/strings/str_cat.h"
-#include "yaml-cpp/yaml.h"
 
 #include "cyber/common/file.h"
 #include "cyber/common/log.h"
@@ -30,13 +33,14 @@
 #include "modules/perception/common/sensor_manager/sensor_manager.h"
 #include "modules/perception/onboard/common_flags/common_flags.h"
 #include "modules/perception/onboard/component/camera_perception_viz_message.h"
+#include "modules/perception/onboard/transform_wrapper/sensor_calibration.h"
 
 namespace apollo {
 namespace perception {
 namespace onboard {
 
-using ::apollo::cyber::Clock;
 using apollo::common::EigenMap;
+using ::apollo::cyber::Clock;
 using apollo::cyber::common::GetAbsolutePath;
 
 static void fill_lane_msg(const base::LaneLineCubicCurve &curve_coord,
@@ -66,67 +70,11 @@ static int GetGpuId(const camera::CameraPerceptionInitOptions &options) {
   return perception_param.gpu_id();
 }
 
-static bool QueryStaticTransform(TransformWrapper *transform_wrapper,
-                                 const std::string &frame_id,
-                                 const std::string &child_frame_id,
-                                 Eigen::Matrix4d *transform) {
-  if (transform_wrapper == nullptr || transform == nullptr) {
-    return false;
-  }
-
-  Eigen::Affine3d affine = Eigen::Affine3d::Identity();
-  if (!transform_wrapper->GetTrans(0.0, &affine, frame_id, child_frame_id)) {
-    AERROR << "failed to query static transform from " << child_frame_id
-           << " to " << frame_id;
-    return false;
-  }
-  *transform = affine.matrix();
-  return true;
-}
-
-static bool SetCameraHeight(TransformWrapper *transform_wrapper,
-                            const std::string &lidar_frame_id,
-                            const std::string &camera_frame_id,
-                            const std::string &params_dir,
-                            const std::string &lidar_sensor_name,
-                            float default_camera_height,
-                            float *camera_height) {
-  float base_h = default_camera_height;
-  float camera_offset = 0.0f;
-  try {
-    YAML::Node lidar_height =
-        YAML::LoadFile(
-          params_dir + "/" + lidar_sensor_name + "_height.yaml");
-    base_h = lidar_height["vehicle"]["parameters"]["height"].as<float>();
-    AINFO << base_h;
-    Eigen::Matrix4d camera2lidar = Eigen::Matrix4d::Identity();
-    if (!QueryStaticTransform(transform_wrapper, lidar_frame_id,
-                              camera_frame_id, &camera2lidar)) {
-      return false;
-    }
-    camera_offset = static_cast<float>(camera2lidar(2, 3));
-    AINFO << camera_offset;
-    *camera_height = base_h + camera_offset;
-  } catch (YAML::InvalidNode &in) {
-    AERROR << "load camera extrisic file error, YAML::InvalidNode exception";
-    return false;
-  } catch (YAML::TypedBadConversion<float> &bc) {
-    AERROR << "load camera extrisic file error, "
-           << "YAML::TypedBadConversion exception";
-    return false;
-  } catch (YAML::Exception &e) {
-    AERROR << "load camera extrisic file "
-           << " error, YAML exception:" << e.what();
-    return false;
-  }
-  return true;
-}
-
 // @description: get project matrix
 static bool GetProjectMatrix(
-      const std::vector<std::string> &camera_names,
-      const EigenMap<std::string, Eigen::Matrix4d> &extrinsic_map,
-      const EigenMap<std::string, Eigen::Matrix3f> &intrinsic_map,
+    const std::vector<std::string> &camera_names,
+    const EigenMap<std::string, Eigen::Matrix4d> &extrinsic_map,
+    const EigenMap<std::string, Eigen::Matrix3f> &intrinsic_map,
     Eigen::Matrix3d *project_matrix, double *pitch_diff = nullptr) {
   // TODO(techoe): This condition should be removed.
   if (camera_names.size() != 2) {
@@ -202,13 +150,13 @@ bool FusionCameraDetectionComponent::Init() {
   double pitch_adj_degree = 0.0;
   double yaw_adj_degree = 0.0;
   double roll_adj_degree = 0.0;
-    // Query the lidar-to-vehicle transform from the TF buffer.
-    Eigen::Matrix4d ex_lidar2body = Eigen::Matrix4d::Identity();
-    ACHECK(QueryStaticTransform(
+  // Query the lidar-to-vehicle transform from the TF buffer.
+  Eigen::Matrix4d ex_lidar2body = Eigen::Matrix4d::Identity();
+  ACHECK(QueryStaticTransform(
       camera2world_trans_wrapper_map_.at(visual_camera_).get(),
       FLAGS_obs_sensor2vehicle_tf2_frame_id, FLAGS_lidar_sensor_name,
       &ex_lidar2body));
-    AINFO << "lidar to vehicle extrinsic from TF: " << ex_lidar2body;
+  AINFO << "lidar to vehicle extrinsic from TF: " << ex_lidar2body;
 
   ACHECK(visualize_.Init_all_info_single_camera(
       camera_names_, visual_camera_, intrinsic_map_, extrinsic_map_,
@@ -219,12 +167,12 @@ bool FusionCameraDetectionComponent::Init() {
   camera_obstacle_pipeline_->SetIm2CarHomography(homography_im2car_);
 
   if (enable_cipv_) {
-    camera::BaseCipv* cipv = camera::BaseCipvRegisterer::
-        GetInstanceByName(cipv_name_);
+    camera::BaseCipv *cipv =
+        camera::BaseCipvRegisterer::GetInstanceByName(cipv_name_);
     CHECK_NOTNULL(cipv);
     cipv_.reset(cipv);
     ACHECK(cipv_->Init(homography_im2car_, cipv_init_options_))
-               << "camera cipv init error";
+        << "camera cipv init error";
   }
 
   if (enable_visualization_) {
@@ -443,11 +391,10 @@ int FusionCameraDetectionComponent::InitSensorInfo() {
     camera2world_trans_wrapper_map_[camera_names_[i]] = trans_wrapper;
   }
 
-  // assume all camera have same image size
-  base::BaseCameraModelPtr camera_model_ptr =
-      sensor_manager->GetUndistortCameraModel(camera_names_[0]);
-  image_width_ = static_cast<int>(camera_model_ptr->get_width());
-  image_height_ = static_cast<int>(camera_model_ptr->get_height());
+  if (!GetCommonCameraImageSize(*sensor_manager, camera_names_, &image_width_,
+                                &image_height_)) {
+    return cyber::FAIL;
+  }
 
   std::string format_str = R"(
       camera_names: %s %s
@@ -521,9 +468,9 @@ int FusionCameraDetectionComponent::InitCameraFrames() {
           << intrinsic_map_[camera_name];
     Eigen::Matrix4d extrinsic;
     ACHECK(QueryStaticTransform(
-      camera2world_trans_wrapper_map_.at(camera_name).get(),
-      FLAGS_lidar_sensor_name, tf_camera_frame_id_map_.at(camera_name),
-      &extrinsic));
+        camera2world_trans_wrapper_map_.at(camera_name).get(),
+        FLAGS_lidar_sensor_name, tf_camera_frame_id_map_.at(camera_name),
+        &extrinsic));
     extrinsic_map_[camera_name] = extrinsic;
     AINFO << "#extrinsics of " << camera_name << ": "
           << extrinsic_map_[camera_name];
@@ -532,12 +479,10 @@ int FusionCameraDetectionComponent::InitCameraFrames() {
   // Init camera height
   for (const auto &camera_name : camera_names_) {
     float height = 0.0f;
-    ACHECK(SetCameraHeight(camera2world_trans_wrapper_map_.at(camera_name).get(),
-                           FLAGS_lidar_sensor_name,
-                           tf_camera_frame_id_map_.at(camera_name),
-                           FLAGS_obs_sensor_intrinsic_path,
-                           FLAGS_lidar_sensor_name, default_camera_height_,
-                           &height));
+    ACHECK(
+        SetCameraHeight(camera2world_trans_wrapper_map_.at(camera_name).get(),
+                        FLAGS_lidar_sensor_name,
+                        tf_camera_frame_id_map_.at(camera_name), &height));
     camera_height_map_[camera_name] = height;
   }
 
@@ -680,10 +625,11 @@ int FusionCameraDetectionComponent::InternalProc(
   // frame_size != 0, see InitCameraFrames()
   camera_frame.camera2world_pose = camera2world_trans;
   camera_frame.data_provider = data_providers_map_[camera_name].get();
-  camera_frame.data_provider->FillImageData(
-      image_height_, image_width_,
-      reinterpret_cast<const uint8_t *>(in_message->data().data()),
-      in_message->encoding());
+  if (!camera_frame.data_provider->FillImageData(*in_message)) {
+    *error_code = apollo::common::ErrorCode::PERCEPTION_ERROR_UNKNOWN;
+    prefused_message->error_code_ = *error_code;
+    return cyber::FAIL;
+  }
 
   camera_frame.frame_id = frame_id_;
   camera_frame.timestamp = msg_timestamp;

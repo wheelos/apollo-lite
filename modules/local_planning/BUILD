@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -31,11 +30,11 @@ cc_library(
     hdrs = ["lane_follow_planner.h"],
     deps = [
         ":scenario",
-        "//modules/local_planning/trajectory_continuity:trajectory_continuity",
-        "//modules/local_planning/trajectory_continuity:trajectory_validation",
         "//modules/local_planning/planning_context:environment_geometry",
         "//modules/local_planning/planning_context:planning_input_builder",
         "//modules/local_planning/planning_context:trajectory_geometry",
+        "//modules/local_planning/trajectory_continuity",
+        "//modules/local_planning/trajectory_continuity:trajectory_validation",
         "@wheelos_common//modules/common/math:geometry",
         "@wheelos_common//modules/common/status",
     ],
@@ -108,5 +107,3 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
-
-cpplint()
