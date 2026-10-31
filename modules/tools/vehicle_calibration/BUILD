@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,10 +26,22 @@ cc_test(
     ],
 )
 
-install(
-    name = "install",
-    runtime_dest = "tools/vehicle_calibration",
-    targets = [":validate_calibration"],
+pkg_files(
+    name = "package_files_binaries",
+    srcs = [":validate_calibration"],
+    attributes = pkg_attributes(mode = "0755"),
+    include_runfiles = True,
+    prefix = "tools/vehicle_calibration",
+    strip_prefix = strip_prefix.from_root("modules/tools/vehicle_calibration"),
 )
 
-cpplint()
+pkg_filegroup(
+    name = "package_files",
+    srcs = [":package_files_binaries"],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)

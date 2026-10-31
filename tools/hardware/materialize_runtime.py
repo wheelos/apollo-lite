@@ -57,9 +57,35 @@ def materialize(spec, output):
 
 
 def main():
+    if len(sys.argv) == 4 and sys.argv[1] == "--package":
+        split_package(Path(sys.argv[2]), Path(sys.argv[3]))
+        return
     if len(sys.argv) != 3:
         raise SystemExit("usage: materialize_runtime.py SPEC OUTPUT")
     materialize(json.loads(Path(sys.argv[1]).read_text()), sys.argv[2])
+
+
+def split_package(runtime, output):
+    directories = {
+        "bin": 0o755,
+        "lib": 0o755,
+        "bazel-bin": 0o755,
+        "modules": 0o644,
+        "conf": 0o644,
+        "hardware": 0o644,
+    }
+    for directory in directories:
+        (output / directory).mkdir(parents=True, exist_ok=True)
+    for source in runtime.rglob("*"):
+        if not source.is_file():
+            continue
+        relative = source.relative_to(runtime)
+        if relative.parts[0] not in directories:
+            raise ValueError(f"Unknown runtime package directory: {relative}")
+        destination = output / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
+        destination.chmod(directories[relative.parts[0]])
 
 
 if __name__ == "__main__":

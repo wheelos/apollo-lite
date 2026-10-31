@@ -25,3 +25,12 @@ py_proto_library(
     name = "guardian_conf_py_pb2",
     deps = [":guardian_conf_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

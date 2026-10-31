@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -25,13 +25,24 @@ cc_library(
     ],
 )
 
-install(
-    name = "install",
-    library_dest = "ndt_localization/lib",
-    targets = [
+pkg_files(
+    name = "package_files_archives",
+    srcs = [
         ":localization_gflags",
         ":rigid_transform_helper",
     ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "lib",
+    strip_prefix = strip_prefix.from_root("modules/ndt_localization/common"),
 )
 
-cpplint()
+pkg_filegroup(
+    name = "package_files",
+    srcs = [":package_files_archives"],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)

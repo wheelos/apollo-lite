@@ -2,12 +2,152 @@
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+class LintWrapperTest(unittest.TestCase):
+    def test_cpp_lint_runs_standalone_and_propagates_failure(self):
+        for exit_code in (0, 1):
+            with (
+                self.subTest(exit_code=exit_code),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                capture = root / "arguments.json"
+                cpp = "pkgs/hardware/camera/camera_component.cc"
+                git = root / "git"
+                git.write_text(
+                    "#!/usr/bin/env python3\n"
+                    "import os, sys\n"
+                    "if sys.argv[1] == 'diff':\n"
+                    f"    print({cpp!r})\n"
+                    "else:\n"
+                    f"    os.execv({shutil.which('git')!r}, ['git', *sys.argv[1:]])\n"
+                )
+                git.chmod(0o755)
+                cpplint = root / "cpplint"
+                cpplint.write_text(
+                    "#!/usr/bin/env python3\n"
+                    "import json, os, sys\n"
+                    "with open(os.environ['LINT_ARGUMENTS'], 'w') as stream:\n"
+                    "    json.dump(sys.argv[1:], stream)\n"
+                    f"sys.exit({exit_code})\n"
+                )
+                cpplint.chmod(0o755)
+                bazel = root / "bazel"
+                bazel.write_text(
+                    "#!/bin/sh\n" f"touch {str(root / 'bazel-invoked')!r}\n" "exit 1\n"
+                )
+                bazel.chmod(0o755)
+                env = dict(os.environ)
+                env.update(
+                    PATH=f"{root}:{env['PATH']}",
+                    LINT_ARGUMENTS=str(capture),
+                    USE_GPU_TARGET="0",
+                )
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "scripts/ci/apollo_lint.sh",
+                        "--cpp-lint",
+                        "--diff",
+                        "HEAD",
+                    ],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(
+                    result.returncode, exit_code, result.stdout + result.stderr
+                )
+                self.assertEqual(
+                    json.loads(capture.read_text()),
+                    [
+                        "--extensions=c,cc,cpp,h,hpp",
+                        "--repository=pkgs/hardware/camera",
+                        cpp,
+                    ],
+                )
+                self.assertFalse((root / "bazel-invoked").exists())
+
+
+class ReleaseWrapperTest(unittest.TestCase):
+    def run_release(self, *args):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            capture = root / "arguments.jsonl"
+            bazel = root / "bazel"
+            bazel.write_text(
+                "#!/usr/bin/env python3\n"
+                "import json, os, sys\n"
+                "if sys.argv[1:] == ['--version']:\n"
+                f"    print('bazel {(ROOT / '.bazelversion').read_text().strip()}')\n"
+                "    sys.exit(0)\n"
+                "args = sys.argv[1:]\n"
+                "args = args[args.index('cquery' if 'cquery' in args else 'run'):]\n"
+                "with open(os.environ['BAZEL_ARGUMENTS'], 'a') as stream:\n"
+                "    stream.write(json.dumps(args) + '\\n')\n"
+            )
+            bazel.chmod(0o755)
+            (root / "bazelisk").symlink_to(bazel)
+            (root / ".bashrc").write_text("")
+            env = dict(os.environ)
+            env.update(
+                PATH=f"{root}:{env['PATH']}",
+                HOME=str(root),
+                BAZEL_ARGUMENTS=str(capture),
+                USE_GPU_TARGET="0",
+            )
+            result = subprocess.run(
+                [
+                    "bash",
+                    "scripts/ci/apollo_release.sh",
+                    "--cpu",
+                    "--prefix",
+                    str(root / "output"),
+                    *args,
+                ],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return [json.loads(line) for line in capture.read_text().splitlines()]
+
+    def test_release_uses_official_installer_arguments_and_cleans_only_once(self):
+        calls = self.run_release("hardware", "transform", "--clean")
+        self.assertEqual(len(calls), 2)
+        for call, module in zip(calls, ("hardware", "transform")):
+            self.assertIn("--config=dev", call)
+            self.assertIn(f"//tools/{module}:install_dir", call)
+            self.assertEqual(call[call.index("--") + 1], "--destdir")
+            self.assertNotIn("--pre_clean", call)
+            self.assertNotIn("--gpu", call)
+        self.assertIn("--wipe_destdir", calls[0])
+        self.assertNotIn("--wipe_destdir", calls[1])
+
+    def test_release_listing_uses_package_providers_without_installing(self):
+        calls = self.run_release("control", "--list")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], "cquery")
+        self.assertIn("//modules/control:package_files", calls[0])
+        self.assertNotIn("run", calls[0])
+
+    def test_script_installers_are_run_separately(self):
+        calls = self.run_release("scripts", "--list")
+        self.assertEqual(len(calls), 2)
+        self.assertIn("//docker/scripts:package_files", calls[0])
+        self.assertIn("//scripts:package_files", calls[1])
 
 
 class BuildWrapperTest(unittest.TestCase):
@@ -69,7 +209,7 @@ class BuildWrapperTest(unittest.TestCase):
 
     def test_package_uses_selected_root(self):
         args = self.run_wrapper("hardware_package", "--config", "hw_x86_devkit")
-        self.assertEqual(args[args.index("--") + 1 :], ["//tools/hardware:install"])
+        self.assertEqual(args[args.index("--") + 1 :], ["//tools/hardware:package"])
 
     def test_algorithm_and_hardware_roots_can_be_combined(self):
         args = self.run_wrapper(

@@ -117,7 +117,7 @@ labels. System packages below are deliberate exceptions or image tools:
 | --- | --- | --- |
 | Bazel/Bazelisk | `install_bazel.sh`, `.bazelversion` | Reuses the workspace Bazel version |
 | Buildifier | `install_buildifier.sh` | Version 10.1.0, SHA256-verified amd64/arm64 binaries; CI uses the same installer |
-| C++/shell/Python lint | `install_llvm_clang.sh`, `install_lint_deps.sh`, `lint_requirements.txt`, `MODULE.bazel` | Clang-Format, ShellCheck, shared CI/image pins for Black/isort/Flake8, and Bazel-managed cpplint; no separate OS cpplint package |
+| C++/shell/Python lint | `install_llvm_clang.sh`, `install_lint_deps.sh`, `lint_requirements.txt` | Clang-Format, ShellCheck, shared CI/image pins for Black/isort/Flake8/cpplint; standalone lint is independent of Bazel compilation |
 | FFmpeg | `install_modules_base.sh` → `install_ffmpeg.sh` | Source installation under `/opt/apollo/sysroot`, including headers and shared libraries |
 | GStreamer/GLib | `install_minimal_environment.sh`, `install_gstreamer_deps.sh` | `pkg-config`, core/app/video development packages, and runtime base/good/bad plugins; the NVIDIA L4T plugins are supplied by the Orin base image |
 | pcap/OpenSSL | `install_drivers_deps.sh` | Explicit driver development dependencies; do not rely on a GPU base's transitive OpenSSL installation |

@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install", "install_src_files")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -33,50 +33,104 @@ cc_binary(
     deps = [":storytelling_lib"],
 )
 
-install(
-    name = "install",
-    data = [
+pkg_files(
+    name = "package_files_data",
+    srcs = [
         ":runtime_data",
         ":storytelling.BUILD",
     ],
-    data_dest = "storytelling",
-    library_dest = "storytelling/lib",
-    targets = [
-        ":libstorytelling_component.so",
-    ],
-    deps = [
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "storytelling",
+    strip_prefix = strip_prefix.from_root("modules/storytelling"),
+)
+
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":libstorytelling_component.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "storytelling/lib",
+    strip_prefix = strip_prefix.from_root("modules/storytelling"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
         ":pb_hdrs",
     ],
 )
 
-install(
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)
+
+pkg_files(
+    name = "pb_hdrs_data",
+    srcs = ["//modules/storytelling/proto:storytelling_config_cc_proto"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "storytelling/include",
+    strip_prefix = strip_prefix.from_root("modules/storytelling"),
+)
+
+pkg_filegroup(
     name = "pb_hdrs",
-    data = [
-        "//modules/storytelling/proto:storytelling_config_cc_proto",
-    ],
-    data_dest = "storytelling/include",
+    srcs = [":pb_hdrs_data"],
 )
 
-install_src_files(
-    name = "install_src",
-    deps = [
-        ":install_storytelling_hdrs",
-        ":install_storytelling_src",
+pkg_filegroup(
+    name = "source_files",
+    srcs = [
+        ":package_storytelling_hdrs",
+        ":package_storytelling_src",
     ],
 )
 
-install_src_files(
-    name = "install_storytelling_src",
-    dest = "storytelling/src",
-    filter = "*",
-    src_dir = ["."],
+pkg_install(
+    name = "source_dir",
+    srcs = [":source_files"],
+    tags = ["manual"],
 )
 
-install_src_files(
-    name = "install_storytelling_hdrs",
-    dest = "storytelling/include",
-    filter = "*.h",
-    src_dir = ["."],
+pkg_files(
+    name = "package_storytelling_src_data",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ) + [
+        "//modules/storytelling/common:exported_source_files",
+        "//modules/storytelling/proto:exported_source_files",
+        "//modules/storytelling/story_tellers:exported_source_files",
+    ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "storytelling/src",
+    strip_prefix = strip_prefix.from_root("modules/storytelling"),
+)
+
+pkg_filegroup(
+    name = "package_storytelling_src",
+    srcs = [":package_storytelling_src_data"],
+)
+
+pkg_files(
+    name = "package_storytelling_hdrs_data",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ) + [
+        "//modules/storytelling/common:exported_source_headers",
+        "//modules/storytelling/story_tellers:exported_source_headers",
+    ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "storytelling/include",
+    strip_prefix = strip_prefix.from_root("modules/storytelling"),
+)
+
+pkg_filegroup(
+    name = "package_storytelling_hdrs",
+    srcs = [":package_storytelling_hdrs_data"],
 )
 
 filegroup(
@@ -87,5 +141,3 @@ filegroup(
         "launch/*.launch",
     ]),
 )
-
-cpplint()

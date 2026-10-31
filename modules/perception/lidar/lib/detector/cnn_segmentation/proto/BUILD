@@ -39,3 +39,12 @@ py_proto_library(
     name = "cnnseg_param_py_pb2",
     deps = [":cnnseg_param_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

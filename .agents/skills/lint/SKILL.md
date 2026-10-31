@@ -36,8 +36,19 @@ Use this when checking source formatting or lint before submitting changes.
   base to `HEAD`, not uncommitted working-tree changes. Use `--all` to include
   local edits.
 - The full check covers Python formatting/lint (Black, isort, Flake8), shell
-  lint (ShellCheck), C++ formatting (Clang-Format), Bazel cpplint, and Bazel
+  lint (ShellCheck), C++ formatting (Clang-Format), standalone cpplint, and Bazel
   formatting (Buildifier).
+- C++ lint is an explicit review operation, never a compilation dependency.
+  For a small uncommitted change, run standalone cpplint directly in the container,
+  for example:
+
+  ```bash
+  cpplint --repository=pkgs/hardware/camera pkgs/hardware/camera/camera_component.cc
+  ```
+
+  Using the source directory keeps logical
+  Bazel include prefixes from being mistaken for missing self-headers.
+  Diagnose and fix reported issues rather than suppressing whole categories.
 - The wrapper invokes check-only modes. Review reported changes and make
   formatting edits only when they are within the requested scope.
 

@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -54,14 +54,44 @@ cc_test(
     ],
 )
 
-install(
-    name = "install",
-    library_dest = "perception/lib",
-    targets = [
-        ":transform_wrapper",
+pkg_files(
+    name = "package_files_archives",
+    srcs = [
         ":sensor_calibration",
+        ":transform_wrapper",
     ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "lib",
+    strip_prefix = strip_prefix.from_root("modules/perception/onboard/transform_wrapper"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [":package_files_archives"],
     visibility = ["//visibility:public"],
 )
 
-cpplint()
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

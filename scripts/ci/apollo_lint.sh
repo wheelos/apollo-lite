@@ -279,68 +279,41 @@ function run_buildifier_check() {
 }
 
 function run_cpp_lint() {
-  info "::group::Running C++ Lint (Bazel cpplint)"
-  if ! command -v bazel &>/dev/null; then
-    error "Bazel is not installed. Please set it up correctly."
+  info "::group::Running C++ Lint (standalone cpplint)"
+  local cpplint_cmd="${CPPLINT_CMD:-cpplint}"
+  if ! command -v "${cpplint_cmd}" &>/dev/null; then
+    error "cpplint not found. Install the shared lint_requirements.txt tooling."
     return 1
   fi
 
+  local files_to_check=()
   if [[ "${DIFF_MODE}" -eq 1 ]]; then
-    local changed_cpp_files=()
-    mapfile -t changed_cpp_files < <(
+    mapfile -t files_to_check < <(
       get_changed_files_by_pattern '.*\.(c|cc|cpp|h|hpp)'
     )
-    if [[ "${#changed_cpp_files[@]}" -eq 0 ]]; then
-      info "No C++ changes detected for Bazel cpplint."
-      info "::endgroup::"
-      return 0
-    fi
+  else
+    local find_exclude_args=()
+    read -r -a find_exclude_args < <(get_find_exclude_args)
+    mapfile -t files_to_check < <(
+      find . -type f \( -name "*.c" -o -name "*.cc" -o -name "*.cpp" \
+        -o -name "*.h" -o -name "*.hpp" \) "${find_exclude_args[@]}"
+    )
   fi
-
-  pushd "${APOLLO_ROOT_DIR}" >/dev/null
-  local cpp_dirs=("modules")
-  if [[ ! -d "${cpp_dirs[0]}" ]]; then
-    warning "Repository C++ directory is missing: ${cpp_dirs[0]}"
-    popd >/dev/null
+  if [[ "${#files_to_check[@]}" -eq 0 ]]; then
+    info "No C++ files selected for lint."
     info "::endgroup::"
     return 0
   fi
 
-  if [[ "${#cpp_dirs[@]}" -gt 0 ]]; then
-    find "${cpp_dirs[@]}" -name BUILD -print0 | while IFS= read -r -d '' prey; do
-      if grep -q -E 'cc_library|cc_test|cc_binary|cuda_library' "${prey}" && \
-         ! grep -q 'cpplint()' "${prey}"; then
-        warning "BUILD file missing cpplint(): ${prey}"
-      fi
-    done
-  fi
-  popd >/dev/null
-
-  local bazel_targets=("//modules/...")
-
-  local cache_root="${APOLLO_CACHE_DIR:-${APOLLO_ROOT_DIR}/.cache}"
-  if ! mkdir -p \
-    "${cache_root}/distdir" \
-    "${cache_root}/bazel/repo_cache" \
-    "${cache_root}/bazel/disk_cache"; then
-    cache_root="${TMPDIR:-/tmp}/apollo-cache"
-    mkdir -p \
-      "${cache_root}/distdir" \
-      "${cache_root}/bazel/repo_cache" \
-      "${cache_root}/bazel/disk_cache"
-    warning "APOLLO_CACHE_DIR is not writable; using ${cache_root} for Bazel caches."
-  fi
-
-  info "Running Bazel cpplint test on targets: ${bazel_targets[*]}"
-  bazel test \
-    --config=cpplint \
-    --distdir="${cache_root}/distdir" \
-    --repository_cache="${cache_root}/bazel/repo_cache" \
-    --disk_cache="${cache_root}/bazel/disk_cache" \
-    "${bazel_targets[@]}" || {
-    error "C++ lint issues found by Bazel cpplint. Please review the errors above."
-    return 1
-  }
+  info "Checking ${#files_to_check[@]} C++ files without invoking Bazel."
+  local file
+  for file in "${files_to_check[@]}"; do
+    "${cpplint_cmd}" --extensions=c,cc,cpp,h,hpp \
+      --repository="$(dirname "${file}")" "${file}" || {
+      error "C++ lint issues found by cpplint: ${file}"
+      return 1
+    }
+  done
   info "C++ lint passed."
   info "::endgroup::"
 }
@@ -360,7 +333,7 @@ Options:
   --py                 Run Python format (Black) and lint (Flake8) checks.
   --sh                 Run Shell script lint (Shellcheck) check.
   --cpp-format         Run C++ format (Clang-Format) check.
-  --cpp-lint           Run C++ lint (Bazel cpplint) check.
+  --cpp-lint           Run standalone C++ lint (never invoked by compilation).
   --lint               Run all lint and format checks in check-only mode.
   --bazel              Run Bazel file format (Buildifier) check.
   -a, --all            Run all available checks.
@@ -369,6 +342,7 @@ Options:
   
 Environment variables:
   CLANG_FORMAT_CMD                Override clang-format executable (e.g. /usr/bin/clang-format).
+  CPPLINT_CMD                     Override standalone cpplint executable.
 EOF
 }
 

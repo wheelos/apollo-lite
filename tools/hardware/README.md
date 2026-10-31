@@ -90,7 +90,7 @@ configuration; they are not validated by this loader-only check.
 
 ```bash
 python3 scripts/bzlmod.py dev build --config=cpu --config=opt \
-  --config=hw_x86_devkit //tools/hardware:install
+  --config=hw_x86_devkit //tools/hardware:package
 ```
 
 Only this explicit package request runs `pkg_tar`. Extraction yields the same
@@ -98,6 +98,29 @@ runtime directory contents and `bin/mainboard-hardware` entrypoint; it does not
 recompile a second variant or perform an implicit host installation.
 For a published product, repeat through the registry/release mode with immutable
 module versions and no source overrides.
+
+The old `:install` label has been removed. Use `:package` for the archive
+(still named `install.tar.gz`) or the official directory installer explicitly:
+
+```bash
+python3 scripts/bzlmod.py dev run --config=cpu --config=opt \
+  --config=hw_x86_devkit //tools/hardware:install_dir \
+  -- --destdir /absolute/path/to/hardware-runtime
+```
+
+`pkg_install` consumes standard package providers from `:package_files`. A small
+shared mapping action separates executable directories and configuration into
+explicit directory outputs so that official install/archive rules apply `0755` and
+`0644` respectively; Bazel normalizes source directory output permissions.
+This action runs only for installation or packaging, not source runtime builds.
+Building the installer only builds its executable; filesystem installation happens
+only when it is run. Module SDK consumers now use direct official
+`pkg_files`/`pkg_filegroup` mappings and `install_dir` targets. There is no
+legacy installation API or compatibility provider.
+
+`apollo.sh release hardware` uses the same official installer through the pinned
+development Bzlmod wrapper. Its `--list` option lists declared package mappings;
+directory outputs are listed as directories, not recursively expanded files.
 
 ## Outputs and limits
 

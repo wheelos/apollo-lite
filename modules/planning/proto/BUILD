@@ -214,3 +214,12 @@ py_proto_library(
     name = "lattice_structure_py_pb2",
     deps = [":lattice_structure_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

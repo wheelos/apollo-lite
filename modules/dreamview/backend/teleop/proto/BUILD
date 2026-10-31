@@ -65,3 +65,12 @@ py_proto_library(
     name = "modem_info_py_pb2",
     deps = [":modem_info_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

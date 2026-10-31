@@ -33,6 +33,20 @@ class ConsumerModeTest(unittest.TestCase):
         argv = bzlmod.command(self.root, "bazelisk", "lock-update", ["mod", "deps"])
         self.assertIn("--lockfile_mode=update", argv)
 
+    def test_run_preserves_installer_arguments_and_consumer_isolation(self):
+        arguments = [
+            "run",
+            "//tools/transform:install_dir",
+            "--",
+            "--destdir",
+            "/tmp/out",
+        ]
+        for mode in ("dev", "registry", "release"):
+            with self.subTest(mode=mode):
+                argv = bzlmod.command(self.root, "bazelisk", mode, arguments)
+                self.assertEqual(argv[-4:], arguments[-4:])
+                self.assertEqual("--config=dev" in argv, mode == "dev")
+
     def test_rejects_source_or_registry_injection(self):
         for flag in (
             "--override_module=wheelos_core=/tmp/core",

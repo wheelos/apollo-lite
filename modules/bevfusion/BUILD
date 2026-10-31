@@ -2,8 +2,8 @@ load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
 load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("@rules_cuda//cuda:defs.bzl", "cuda_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install", "install_files")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -212,22 +212,49 @@ filegroup(
     ]),
 )
 
-install_files(
-    name = "install_bevfusion_spconv_licenses",
-    dest = "bevfusion/share/licenses/spconv",
-    files = ["@spconv//:licenses"],
+pkg_files(
+    name = "package_bevfusion_spconv_licenses_data",
+    srcs = ["@spconv//:licenses"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "bevfusion/share/licenses/spconv",
+    strip_prefix = strip_prefix.from_pkg(),
 )
 
-install(
-    name = "install",
-    data = [":runtime_config"],
-    data_dest = "bevfusion",
-    library_dest = "bevfusion/lib",
-    targets = [
+pkg_filegroup(
+    name = "package_bevfusion_spconv_licenses",
+    srcs = [":package_bevfusion_spconv_licenses_data"],
+)
+
+pkg_files(
+    name = "package_files_data",
+    srcs = [":runtime_config"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "bevfusion",
+    strip_prefix = strip_prefix.from_root("modules/bevfusion"),
+)
+
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [
         ":libbevfusion_component_plugin.so",
         ":libbevfusion_runtime.so",
     ],
-    deps = [":install_bevfusion_spconv_licenses"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "bevfusion/lib",
+    strip_prefix = strip_prefix.from_root("modules/bevfusion"),
 )
 
-cpplint()
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_bevfusion_spconv_licenses",
+        ":package_files_data",
+        ":package_files_libraries",
+    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)

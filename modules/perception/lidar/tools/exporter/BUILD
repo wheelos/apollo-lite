@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 cc_library(
     name = "msgexporterlib",
@@ -40,4 +39,20 @@ cc_binary(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

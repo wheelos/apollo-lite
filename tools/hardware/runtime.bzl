@@ -1,6 +1,6 @@
 """Materialize one runtime layout for source development and binary packaging."""
 
-load("@rules_pkg//pkg:providers.bzl", "PackageFilesInfo")
+load("@rules_pkg//pkg:providers.bzl", "PackageFilegroupInfo", "PackageFilesInfo")
 load(":runtime_paths.bzl", "deployment_path")
 
 def _repository_path(file):
@@ -80,6 +80,51 @@ runtime_layout = rule(
             default = "@core//cyber:cyber_conf",
             allow_files = True,
         ),
+        "_materializer": attr.label(
+            default = "//tools/hardware:materialize_runtime",
+            executable = True,
+            cfg = "exec",
+        ),
+    },
+)
+
+def _runtime_package_impl(ctx):
+    executable_dirs = ["bin", "lib", "bazel-bin"]
+    data_dirs = ["modules", "conf", "hardware"]
+    trees = {
+        directory: ctx.actions.declare_directory(ctx.label.name + "/" + directory)
+        for directory in executable_dirs + data_dirs
+    }
+    ctx.actions.run(
+        executable = ctx.executable._materializer,
+        arguments = [
+            "--package",
+            ctx.file.runtime.path,
+            trees["bin"].dirname,
+        ],
+        inputs = [ctx.file.runtime],
+        outputs = trees.values(),
+        mnemonic = "RuntimePackageMapping",
+    )
+    return [
+        DefaultInfo(files = depset(trees.values())),
+        PackageFilegroupInfo(
+            pkg_files = [
+                (PackageFilesInfo(
+                    dest_src_map = {directory: trees[directory] for directory in directories},
+                    attributes = {"mode": mode},
+                ), ctx.label)
+                for directories, mode in [(executable_dirs, "0755"), (data_dirs, "0644")]
+            ],
+            pkg_dirs = [],
+            pkg_symlinks = [],
+        ),
+    ]
+
+runtime_package = rule(
+    implementation = _runtime_package_impl,
+    attrs = {
+        "runtime": attr.label(mandatory = True, allow_single_file = True),
         "_materializer": attr.label(
             default = "//tools/hardware:materialize_runtime",
             executable = True,

@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -53,10 +52,10 @@ cc_library(
     srcs = ["park_in_node.cc"],
     hdrs = ["park_in_node.h"],
     deps = [
-        "@core//cyber",
-        "//modules/mission/common:mission_context",
         "//modules/mission/common:bt_type_converters",
-        "@behaviortree_cpp//:behaviortree_cpp",
+        "//modules/mission/common:mission_context",
+        "@behaviortree_cpp",
+        "@core//cyber",
     ],
 )
 
@@ -70,5 +69,3 @@ cc_library(
         "@core//cyber",
     ],
 )
-
-cpplint()

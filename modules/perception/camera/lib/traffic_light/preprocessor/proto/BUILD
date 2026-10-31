@@ -22,3 +22,12 @@ py_proto_library(
     name = "tl_preprocess_py_pb2",
     deps = [":tl_preprocess_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

@@ -15,7 +15,11 @@ fingerprint="$(
     for checkout in pkgs/hardware pkgs/transform; do
       git -C "${checkout}" ls-files --cached --others --exclude-standard -z |
         while IFS= read -r -d '' path; do
-          sha256sum "${checkout}/${path}"
+          if [[ -e "${checkout}/${path}" ]]; then
+            sha256sum "${checkout}/${path}"
+          else
+            printf 'deleted %s/%s\0' "${checkout}" "${path}"
+          fi
         done
     done
   } | sha256sum

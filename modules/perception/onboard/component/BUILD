@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -13,16 +13,29 @@ cc_binary(
     deps = [":perception_component_inner_camera"],
 )
 
-install(
-    name = "install",
-    library_dest = "perception/onboard/component",
-    targets = [
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [
         ":libperception_component_camera.so",
         ":libperception_component_lidar.so",
     ],
-    deps = [
-        "//modules/perception/production:install",
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "perception/onboard/component",
+    strip_prefix = strip_prefix.from_root("modules/perception/onboard/component"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_libraries",
+        "//modules/perception/production:package_files",
     ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
 )
 
 cc_library(
@@ -278,4 +291,20 @@ cc_library(
     alwayslink = True,
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

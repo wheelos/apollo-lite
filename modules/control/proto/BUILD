@@ -289,3 +289,12 @@ py_proto_library(
     name = "preprocessor_py_pb2",
     deps = [":preprocessor_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

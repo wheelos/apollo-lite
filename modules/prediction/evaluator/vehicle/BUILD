@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
@@ -217,11 +216,11 @@ cc_library(
     ],
     copts = PREDICTION_COPTS,
     deps = [
-        "@wheelos_common//modules/common/math",
-        "@wheelos_map//modules/map/hdmap:hdmap",
-        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "//modules/prediction/common:prediction_gflags",
         "//modules/prediction/container/obstacles:obstacles_container",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_map//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
     ],
 )
 
@@ -297,4 +296,20 @@ cc_test(
     ],
 )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

@@ -19,3 +19,12 @@ filegroup(
     name = "algorithms",
     srcs = [":include"] + selected_targets(),
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

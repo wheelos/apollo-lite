@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install", "install_files")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -212,50 +212,107 @@ filegroup(
     ],
 )
 
-install_files(
-    name = "install_centerpoint_spconv_licenses",
-    dest = "lidar_object_detection/share/licenses/spconv",
-    files = ["@spconv//:licenses"],
-    strip_prefix = ["third_party/**"],
+pkg_files(
+    name = "package_centerpoint_spconv_licenses_data",
+    srcs = ["@spconv//:licenses"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "lidar_object_detection/share/licenses/spconv",
+    strip_prefix = strip_prefix.files_only(),
 )
 
-install(
-    name = "install_component",
-    data = [
-        ":runtime_config",
-    ],
-    data_dest = "lidar_object_detection",
-    library_dest = "lidar_object_detection/lib",
-    targets = [
-        ":liblidar_object_detection_component.so",
-    ],
+pkg_filegroup(
+    name = "package_centerpoint_spconv_licenses",
+    srcs = [":package_centerpoint_spconv_licenses_data"],
 )
 
-install(
-    name = "install_centerpoint",
-    library_dest = "lidar_object_detection/lib",
-    targets = [":libcenterpoint_runtime.so"],
-    deps = [
-        ":install_centerpoint_spconv_licenses",
-        ":install_component",
-    ],
+pkg_files(
+    name = "package_component_data",
+    srcs = [":runtime_config"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "lidar_object_detection",
+    strip_prefix = strip_prefix.from_root("modules/lidar_object_detection"),
 )
 
-install(
-    name = "install_pointpillars",
-    data = ["tools/run_pointpillars.py"],
-    data_dest = "lidar_object_detection",
-    library_dest = "lidar_object_detection/lib",
-    targets = [":libpointpillars_runtime.so"],
-    deps = [":install_component"],
+pkg_files(
+    name = "package_component_libraries",
+    srcs = [":liblidar_object_detection_component.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "lidar_object_detection/lib",
+    strip_prefix = strip_prefix.from_root("modules/lidar_object_detection"),
 )
 
-install(
-    name = "install",
-    deps = [
-        ":install_centerpoint",
-        ":install_pointpillars",
+pkg_filegroup(
+    name = "package_component",
+    srcs = [
+        ":package_component_data",
+        ":package_component_libraries",
     ],
 )
 
-cpplint()
+pkg_files(
+    name = "package_centerpoint_libraries",
+    srcs = [":libcenterpoint_runtime.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "lidar_object_detection/lib",
+    strip_prefix = strip_prefix.from_root("modules/lidar_object_detection"),
+)
+
+pkg_filegroup(
+    name = "package_centerpoint",
+    srcs = [
+        ":package_centerpoint_libraries",
+        ":package_centerpoint_spconv_licenses",
+        ":package_component",
+    ],
+)
+
+pkg_files(
+    name = "package_pointpillars_data",
+    srcs = ["tools/run_pointpillars.py"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "lidar_object_detection",
+    strip_prefix = strip_prefix.from_root("modules/lidar_object_detection"),
+)
+
+pkg_files(
+    name = "package_pointpillars_libraries",
+    srcs = [":libpointpillars_runtime.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "lidar_object_detection/lib",
+    strip_prefix = strip_prefix.from_root("modules/lidar_object_detection"),
+)
+
+pkg_filegroup(
+    name = "package_pointpillars",
+    srcs = [
+        ":package_component",
+        ":package_pointpillars_data",
+        ":package_pointpillars_libraries",
+    ],
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_centerpoint",
+        ":package_pointpillars",
+    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)
+
+pkg_install(
+    name = "centerpoint_dir",
+    srcs = [":package_centerpoint"],
+    tags = ["manual"],
+)
+
+pkg_install(
+    name = "pointpillars_dir",
+    srcs = [":package_pointpillars"],
+    tags = ["manual"],
+)

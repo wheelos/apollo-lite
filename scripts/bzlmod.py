@@ -53,6 +53,7 @@ def command(root, bazel, mode, arguments):
     if not arguments or arguments[0] not in {
         "build",
         "test",
+        "run",
         "query",
         "cquery",
         "aquery",
@@ -60,7 +61,7 @@ def command(root, bazel, mode, arguments):
         "fetch",
         "info",
     }:
-        raise ValueError("Specify a Bazel build/test/query/mod/fetch/info command.")
+        raise ValueError("Specify a Bazel build/test/run/query/mod/fetch/info command.")
     if mode != "dev":
         forbidden = {
             "--override_module",

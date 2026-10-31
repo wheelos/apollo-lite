@@ -1,5 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -185,14 +186,32 @@ filegroup(
     ]),
 )
 
-install(
-    name = "install",
-    data = [
-        ":runtime_data",
+pkg_files(
+    name = "package_files_data",
+    srcs = [":runtime_data"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "simulation",
+    strip_prefix = strip_prefix.from_root("modules/simulation"),
+)
+
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":libsimulation_component.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "simulation/lib",
+    strip_prefix = strip_prefix.from_root("modules/simulation"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
     ],
-    data_dest = "simulation",
-    library_dest = "simulation/lib",
-    targets = [
-        ":libsimulation_component.so",
-    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
 )

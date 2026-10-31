@@ -113,7 +113,7 @@ function determine_build_targets_and_defines() {
       local selected_target=""
       case "${component}" in
         hardware) selected_target="//tools/hardware:hardware" ;;
-        hardware_package) selected_target="//tools/hardware:install" ;;
+        hardware_package) selected_target="//tools/hardware:package" ;;
         algorithms) selected_target="//tools/modules:algorithms" ;;
         drivers) selected_target="@hardware.camera//... @hardware.camera_gst//... @hardware.image_decompress//... @hardware.canbus//... @hardware.lidar//... @hardware.radar//... @hardware.gnss//... @hardware.hal//... @hardware.audio//... @hardware.video//..." ;;
         canbus) selected_target="@hardware.vehicle//..." ;;

@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -32,63 +32,130 @@ filegroup(
     ]),
 )
 
-install(
-    name = "install",
-    data = [
+pkg_files(
+    name = "package_files_data",
+    srcs = [
         ":routing.BUILD",
         ":runtime_data",
     ],
-    data_dest = "routing",
-    library_dest = "routing/lib",
-    targets = [
-        ":routing_service",
-    ],
-    deps = [
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "routing",
+    strip_prefix = strip_prefix.from_root("modules/routing"),
+)
+
+pkg_files(
+    name = "package_files_archives",
+    srcs = [":routing_service"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "lib",
+    strip_prefix = strip_prefix.from_root("modules/routing"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_archives",
+        ":package_files_data",
         ":pb_hdrs",
         ":pb_routing",
-        "//modules/routing/tools:install",
-        "//modules/routing/tools/routing_tester:install",
-        "//modules/routing/topo_creator:install",
+        "//modules/routing/tools:package_files",
+        "//modules/routing/tools/routing_tester:package_files",
+        "//modules/routing/topo_creator:package_files",
     ],
 )
 
-install(
-    name = "pb_hdrs",
-    data = [
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)
+
+pkg_files(
+    name = "pb_hdrs_data",
+    srcs = [
         "//modules/routing/proto:routing_config_cc_proto",
         "//modules/routing/proto:topo_graph_cc_proto",
     ],
-    data_dest = "routing/include",
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "routing/include",
+    strip_prefix = strip_prefix.from_root("modules/routing"),
 )
 
-install_files(
+pkg_filegroup(
+    name = "pb_hdrs",
+    srcs = [":pb_hdrs_data"],
+)
+
+pkg_files(
+    name = "pb_routing_data",
+    srcs = ["@wheelos_msgs//wheelos_msgs/routing_msgs:routing_py_pb2"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "routing",
+    strip_prefix = strip_prefix.from_pkg(),
+)
+
+pkg_filegroup(
     name = "pb_routing",
-    dest = "routing",
-    files = [
-        "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_py_pb2",
+    srcs = [":pb_routing_data"],
+)
+
+pkg_filegroup(
+    name = "source_files",
+    srcs = [
+        ":package_routing_hdrs",
+        ":package_routing_src",
     ],
 )
 
-install_src_files(
-    name = "install_src",
-    deps = [
-        ":install_routing_hdrs",
-        ":install_routing_src",
+pkg_install(
+    name = "source_dir",
+    srcs = [":source_files"],
+    tags = ["manual"],
+)
+
+pkg_files(
+    name = "package_routing_src_data",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ) + [
+        "//modules/routing/common:exported_source_files",
+        "//modules/routing/core:exported_source_files",
+        "//modules/routing/graph:exported_source_files",
+        "//modules/routing/proto:exported_source_files",
+        "//modules/routing/strategy:exported_source_files",
+        "//modules/routing/tools:exported_source_files",
+        "//modules/routing/tools/routing_tester:exported_source_files",
+        "//modules/routing/topo_creator:exported_source_files",
     ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "routing/src",
+    strip_prefix = strip_prefix.from_root("modules/routing"),
 )
 
-install_src_files(
-    name = "install_routing_src",
-    dest = "routing/src",
-    filter = "*",
-    src_dir = ["."],
+pkg_filegroup(
+    name = "package_routing_src",
+    srcs = [":package_routing_src_data"],
 )
 
-install_src_files(
-    name = "install_routing_hdrs",
-    dest = "routing/include",
-    filter = "*.h",
-    src_dir = ["."],
+pkg_files(
+    name = "package_routing_hdrs_data",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ) + [
+        "//modules/routing/common:exported_source_headers",
+        "//modules/routing/core:exported_source_headers",
+        "//modules/routing/graph:exported_source_headers",
+        "//modules/routing/strategy:exported_source_headers",
+        "//modules/routing/topo_creator:exported_source_headers",
+    ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "routing/include",
+    strip_prefix = strip_prefix.from_root("modules/routing"),
 )
 
-cpplint()
+pkg_filegroup(
+    name = "package_routing_hdrs",
+    srcs = [":package_routing_hdrs_data"],
+)

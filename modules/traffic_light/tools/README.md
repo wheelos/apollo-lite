@@ -113,8 +113,8 @@ These figures describe that run only; rerun after tracker changes.
 The 49 switches are not hidden by the
 coverage comparison: production tracking quality is **not validated**.
 
-Run the module's C++ contracts, six hermetic exporter regressions, and cpplint
-targets in the managed container:
+Run the module's C++ contracts and six hermetic exporter regressions in the
+managed container; run C++ lint separately during review:
 
 ```bash
 bash docker/scripts/whl.sh exec dev -- bash -lc \

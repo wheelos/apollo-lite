@@ -226,3 +226,12 @@ py_proto_library(
     name = "pointcloud_get_objects_config_py_pb2",
     deps = [":pointcloud_get_objects_config_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

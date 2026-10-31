@@ -538,7 +538,7 @@ scheduler or a deadline guarantee.
 After supplying a sensor-matched deployment configuration, the opt-in DAG is
 `dag/lidar_fusion.dag`; it publishes the configured `FusionOutput` scene profile
 and optionally a separate complete diagnostic channel. The DAG uses source-tree build paths;
-adjust those paths for an installed package. The `:install` target packages the
+adjust those paths for an installed package. The official `:install_dir` target installs the
 plugin, configuration and DAG, not model files or a runnable vehicle setup.
 
 ## Recorded dual-model diagnostic

@@ -22,3 +22,12 @@ py_proto_library(
     name = "object_template_meta_schema_py_pb2",
     deps = [":object_template_meta_schema_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

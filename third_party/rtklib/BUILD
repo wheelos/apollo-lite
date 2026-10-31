@@ -1,6 +1,7 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools/install:install.bzl", "install", "install_src_files")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -25,30 +26,75 @@ cc_binary(
     deps = [":rtklib"],
 )
 
-install(
-    name = "install",
-    data = [
-        ":3rd-rtklib.BUILD",
-        ":cyberfile.xml",
+pkg_files(
+    name = "package_files_data",
+    srcs = [
+        ":BUILD",
     ],
-    data_dest = "3rd-rtklib",
-    library_dest = "3rd-rtklib/lib",
-    targets = ["librtklib.so"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "3rd-rtklib",
+    strip_prefix = strip_prefix.from_root("third_party/rtklib"),
 )
 
-install_src_files(
+pkg_files(
+    name = "package_files_libraries",
+    srcs = ["librtklib.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "3rd-rtklib/lib",
+    strip_prefix = strip_prefix.from_root("third_party/rtklib"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
+    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)
+
+pkg_files(
+    name = "headers_data",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "3rd-rtklib/include",
+    strip_prefix = strip_prefix.from_root("third_party/rtklib"),
+)
+
+pkg_filegroup(
     name = "headers",
-    dest = "3rd-rtklib/include",
-    filter = "*.h",
-    src_dir = ["."],
+    srcs = [":headers_data"],
 )
 
-install_src_files(
-    name = "install_src",
-    dest = "3rd-rtklib/src",
-    filter = "*",
-    src_dir = ["."],
-    deps = [
+pkg_files(
+    name = "source_files_data",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "3rd-rtklib/src",
+    strip_prefix = strip_prefix.from_root("third_party/rtklib"),
+)
+
+pkg_filegroup(
+    name = "source_files",
+    srcs = [
         ":headers",
+        ":source_files_data",
     ],
+)
+
+pkg_install(
+    name = "source_dir",
+    srcs = [":source_files"],
+    tags = ["manual"],
 )

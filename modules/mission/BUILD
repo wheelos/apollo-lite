@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -59,5 +58,3 @@ cc_test(
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_runtime_status_cc_proto",
     ],
 )
-
-cpplint()

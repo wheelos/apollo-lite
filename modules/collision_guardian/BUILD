@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -75,12 +75,32 @@ filegroup(
     ]),
 )
 
-install(
-    name = "install",
-    data = [":runtime_data"],
-    data_dest = "collision_guardian",
-    library_dest = "collision_guardian/lib",
-    targets = [":libcollision_guardian_component.so"],
+pkg_files(
+    name = "package_files_data",
+    srcs = [":runtime_data"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "collision_guardian",
+    strip_prefix = strip_prefix.from_root("modules/collision_guardian"),
 )
 
-cpplint()
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":libcollision_guardian_component.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "collision_guardian/lib",
+    strip_prefix = strip_prefix.from_root("modules/collision_guardian"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
+    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)

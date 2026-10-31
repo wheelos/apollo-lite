@@ -100,4 +100,3 @@ qt_cc_library(
 # TODO(all): Disable linter temporarily as the generated ui files should be
 # excluded from check. But we should also check the .h and .cc files, if they
 # are extracted to their own cc_libraries. See the TODO above.
-# cpplint()

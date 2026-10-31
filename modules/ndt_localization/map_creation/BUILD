@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -23,12 +23,22 @@ cc_binary(
     ],
 )
 
-install(
-    name = "install",
-    runtime_dest = "ndt_localization/bin",
-    targets = [
-        ":ndt_map_creator",
-    ],
+pkg_files(
+    name = "package_files_binaries",
+    srcs = [":ndt_map_creator"],
+    attributes = pkg_attributes(mode = "0755"),
+    include_runfiles = True,
+    prefix = "ndt_localization/bin",
+    strip_prefix = strip_prefix.from_root("modules/ndt_localization/map_creation"),
 )
 
-cpplint()
+pkg_filegroup(
+    name = "package_files",
+    srcs = [":package_files_binaries"],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)

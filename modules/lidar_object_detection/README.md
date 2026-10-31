@@ -56,8 +56,8 @@ so update both when using another sensor.
 No production perception flow is enabled automatically.
 
 Install both model runtimes and the shared component with
-`//modules/lidar_object_detection:install`; supply the desired install prefix
-as for other module install targets. Model files and TensorRT engines are
+`//modules/lidar_object_detection:install_dir`; supply `--destdir <prefix>`
+to the official rules_pkg installer. Model files and TensorRT engines are
 separate deployment artifacts and are not bundled.
 The imported Apache-2.0 sources and changes are recorded under
 `third_party/pointpillars/UPSTREAM.md`. Building does not establish dataset
@@ -277,21 +277,20 @@ No local source preparation or `SPCONV_SOURCE_ROOT` is needed:
 ```sh
 bazel run --config=dev --config=gpu --config=opt --lockfile_mode=off \
   --@rules_cuda//cuda:archs=sm_89 \
-  //modules/lidar_object_detection:install -- /apollo/modules
+  //modules/lidar_object_detection:install_dir -- --destdir /apollo/modules
 ```
 
-The install target stages the Cyber component and runtime DSO under
-`lidar_object_detection-dev/local/lib` for the dev package and installs the
-runtime's Bazel-managed shared dependencies under `/apollo/modules/lib`. Make
-those installed dependency directories available to the dynamic loader in the
-target environment. The installed DAG and component config use that package
-prefix. Copy the matching `centerpoint.scn.onnx` and
+The official mapping stages the Cyber component and runtime DSO under
+`lidar_object_detection/lib`. Dependency collection is owned by product runtime
+assembly, not inferred by the module installer. Make the required shared
+dependencies available to the target's dynamic loader and adjust DAG/config
+paths to the chosen prefix. Copy the matching `centerpoint.scn.onnx` and
 `rpn_centerhead_sim.plan` into
 `/apollo/modules/lidar_object_detection-dev/local/model`; these model artifacts
 are not checked into the repository or bundled by the Bazel install target.
 CUDA driver support must be available in the target NVIDIA software image.
-For backend-specific deployment, use `:install_centerpoint` or
-`:install_pointpillars` instead of the aggregate `:install` target.
+For backend-specific deployment, use `:centerpoint_dir` or
+`:pointpillars_dir` instead of the aggregate `:install_dir` target.
 Each stages the shared component and selected runtime; PointPillars-only
 installation does not build or install the CenterPoint/spconv runtime.
 The ONNX model and TensorRT engine are separate deployment artifacts; the

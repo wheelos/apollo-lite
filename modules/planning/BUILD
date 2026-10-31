@@ -1,17 +1,21 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install", "install_files", "install_src_files")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 load("//tools/platform:build_defs.bzl", "if_gpu")
 
 package(default_visibility = ["//visibility:public"])
 
-install(
+pkg_files(
+    name = "planning_testdata_install_data",
+    srcs = [":planning_testdata"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = if_gpu("planning-gpu/addition_data", "planning/addition_data"),
+    strip_prefix = strip_prefix.from_root("modules/planning"),
+)
+
+pkg_filegroup(
     name = "planning_testdata_install",
-    data = [":planning_testdata"],
-    data_dest = if_gpu(
-        "planning-gpu/addition_data",
-        "planning/addition_data",
-    ),
+    srcs = [":planning_testdata_install_data"],
 )
 
 cc_binary(
@@ -219,7 +223,6 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "planning_base",
     srcs = ["planning_base.cc"],
@@ -229,10 +232,7 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        "@wheelos_common//modules/common/status",
-        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
-        "@wheelos_map//modules/map/hdmap:hdmap",
-        "@wheelos_map//modules/map/hdmap:hdmap_util",
+        ":planning_runtime_context",
         "//modules/planning/common:dependency_injector",
         "//modules/planning/common:frame",
         "//modules/planning/common:local_view",
@@ -240,12 +240,15 @@ cc_library(
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common/trajectory:publishable_trajectory",
         "//modules/planning/environment:capability_extractor",
-        ":planning_runtime_context",
         "//modules/planning/planner",
         "//modules/planning/proto:planning_config_cc_proto",
         "//modules/planning/proto:traffic_rule_config_cc_proto",
         "//modules/planning/tasks:task_factory",
         "@core//cyber",
+        "@wheelos_common//modules/common/status",
+        "@wheelos_common//modules/common/vehicle_state:vehicle_state_provider",
+        "@wheelos_map//modules/map/hdmap",
+        "@wheelos_map//modules/map/hdmap:hdmap_util",
         "@wheelos_msgs//wheelos_msgs/basic_msgs:pnc_point_cc_proto",
         "@wheelos_msgs//wheelos_msgs/chassis_msgs:chassis_cc_proto",
         "@wheelos_msgs//wheelos_msgs/dreamview_msgs:chart_cc_proto",
@@ -330,11 +333,11 @@ cc_test(
     size = "small",
     srcs = ["shells/planning_shell_registry_test.cc"],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":planning_shell_registry",
         "@com_google_googletest//:gtest_main",
     ],
-    linkstatic = True,
 )
 
 cc_test(
@@ -342,6 +345,7 @@ cc_test(
     size = "small",
     srcs = ["open_space_planning_test.cc"],
     linkopts = ["-lgomp"],
+    linkstatic = True,
     deps = [
         ":open_space_planning",
         "@core//cyber/common:file",
@@ -350,7 +354,6 @@ cc_test(
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
     ],
-    linkstatic = True,
 )
 
 filegroup(
@@ -375,41 +378,42 @@ filegroup(
     ]) + [":planning_conf"],
 )
 
-install(
-    name = "install",
-    data = [
-        ":runtime_data",
-    ],
-    data_dest = if_gpu(
-        "planning-gpu",
-        "planning",
-    ),
-    library_dest = if_gpu(
-        "planning-gpu/lib",
-        "planning/lib",
-    ),
-    targets = [
-        ":libplanning_component.so",
-    ],
-    deps = [
+pkg_files(
+    name = "package_files_data",
+    srcs = [":runtime_data"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = if_gpu("planning-gpu", "planning"),
+    strip_prefix = strip_prefix.from_root("modules/planning"),
+)
+
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":libplanning_component.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = if_gpu("planning-gpu/lib", "planning/lib"),
+    strip_prefix = strip_prefix.from_root("modules/planning"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
         ":planning_testdata_install",
     ],
 )
 
-install_files(
-    name = "pb_planning",
-    dest = if_gpu(
-        "planning-gpu",
-        "planning",
-    ),
-    files = [
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)
+
+pkg_files(
+    name = "pb_planning_data",
+    srcs = [
         "//modules/planning/proto:ipopt_return_status_py_pb2",
         "//modules/planning/proto:lattice_structure_py_pb2",
-        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_py_pb2",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_py_pb2",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_command_py_pb2",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_py_pb2",
-        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_runtime_status_py_pb2",
         "//modules/planning/proto:planning_stats_py_pb2",
         "//modules/planning/proto:planning_status_py_pb2",
         "//modules/planning/proto:reference_line_smoother_config_py_pb2",
@@ -417,42 +421,217 @@ install_files(
         "//modules/planning/proto:traffic_rule_config_py_pb2",
         "//modules/planning/proto/math:cos_theta_smoother_config_py_pb2",
         "//modules/planning/proto/math:qp_problem_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/control_msgs:pad_msg_py_pb2",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:decision_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_command_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_internal_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_py_pb2",
+        "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_runtime_status_py_pb2",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:sl_boundary_py_pb2",
     ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = if_gpu("planning-gpu", "planning"),
+    strip_prefix = strip_prefix.from_pkg(),
 )
 
-install_src_files(
-    name = "install_src",
-    deps = [
-        ":install_planning_hdrs",
-        ":install_planning_src",
+pkg_filegroup(
+    name = "pb_planning",
+    srcs = [":pb_planning_data"],
+)
+
+pkg_filegroup(
+    name = "source_files",
+    srcs = [
+        ":package_planning_hdrs",
+        ":package_planning_src",
     ],
 )
 
-install_src_files(
-    name = "install_planning_src",
-    dest = if_gpu(
-        "planning-gpu/src",
-        "planning/src",
-    ),
-    filter = "*",
-    src_dir = ["."],
+pkg_install(
+    name = "source_dir",
+    srcs = [":source_files"],
+    tags = ["manual"],
 )
 
-install_src_files(
-    name = "install_planning_hdrs",
-    dest = if_gpu(
-        "planning-gpu/include",
-        "planning/include",
-    ),
-    filter = "*.h",
-    src_dir = ["."],
+pkg_files(
+    name = "package_planning_src_data",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ) + [
+        "//modules/planning/common:exported_source_files",
+        "//modules/planning/common/path:exported_source_files",
+        "//modules/planning/common/smoothers:exported_source_files",
+        "//modules/planning/common/speed:exported_source_files",
+        "//modules/planning/common/trajectory:exported_source_files",
+        "//modules/planning/common/trajectory1d:exported_source_files",
+        "//modules/planning/common/util:exported_source_files",
+        "//modules/planning/constraint_checker:exported_source_files",
+        "//modules/planning/environment:exported_source_files",
+        "//modules/planning/math:exported_source_files",
+        "//modules/planning/math/curve1d:exported_source_files",
+        "//modules/planning/math/discretized_points_smoothing:exported_source_files",
+        "//modules/planning/math/piecewise_jerk:exported_source_files",
+        "//modules/planning/math/smoothing_spline:exported_source_files",
+        "//modules/planning/mission_session:exported_source_files",
+        "//modules/planning/mode:exported_source_files",
+        "//modules/planning/open_space/coarse_trajectory_generator:exported_source_files",
+        "//modules/planning/open_space/parking:exported_source_files",
+        "//modules/planning/open_space/tools:exported_source_files",
+        "//modules/planning/open_space/trajectory_smoother:exported_source_files",
+        "//modules/planning/planner:exported_source_files",
+        "//modules/planning/planner/public_road:exported_source_files",
+        "//modules/planning/proto:exported_source_files",
+        "//modules/planning/proto/math:exported_source_files",
+        "//modules/planning/reference_line:exported_source_files",
+        "//modules/planning/scenarios:exported_source_files",
+        "//modules/planning/scenarios/common:exported_source_files",
+        "//modules/planning/scenarios/cruise/lane_follow:exported_source_files",
+        "//modules/planning/scenarios/cruise/lane_keeping:exported_source_files",
+        "//modules/planning/scenarios/deciders:exported_source_files",
+        "//modules/planning/scenarios/emergency/emergency_pull_over:exported_source_files",
+        "//modules/planning/scenarios/emergency/emergency_stop:exported_source_files",
+        "//modules/planning/scenarios/intersection/bare_intersection/unprotected:exported_source_files",
+        "//modules/planning/scenarios/intersection/stop_sign/unprotected:exported_source_files",
+        "//modules/planning/scenarios/intersection/traffic_light/protected:exported_source_files",
+        "//modules/planning/scenarios/intersection/traffic_light/unprotected_left_turn:exported_source_files",
+        "//modules/planning/scenarios/intersection/traffic_light/unprotected_right_turn:exported_source_files",
+        "//modules/planning/scenarios/intersection/yield_sign:exported_source_files",
+        "//modules/planning/scenarios/maneuver/deadend_turnaround:exported_source_files",
+        "//modules/planning/scenarios/maneuver/escape:exported_source_files",
+        "//modules/planning/scenarios/maneuver/narrow_street:exported_source_files",
+        "//modules/planning/scenarios/maneuver/narrow_street_u_turn:exported_source_files",
+        "//modules/planning/scenarios/park/mission_idle:exported_source_files",
+        "//modules/planning/scenarios/park/park_and_go:exported_source_files",
+        "//modules/planning/scenarios/park/pull_over:exported_source_files",
+        "//modules/planning/scenarios/park/valet_parking:exported_source_files",
+        "//modules/planning/scenarios/util:exported_source_files",
+        "//modules/planning/tasks:exported_source_files",
+        "//modules/planning/tasks/deciders:exported_source_files",
+        "//modules/planning/tasks/deciders/creep_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/lane_change_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/open_space_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/path_assessment_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/path_bounds_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/path_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/path_lane_borrow_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/path_reuse_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/rss_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/rule_based_stop_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/speed_bounds_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/speed_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/st_bounds_decider:exported_source_files",
+        "//modules/planning/tasks/deciders/utils:exported_source_files",
+        "//modules/planning/tasks/optimizers:exported_source_files",
+        "//modules/planning/tasks/optimizers/open_space_trajectory_generation:exported_source_files",
+        "//modules/planning/tasks/optimizers/open_space_trajectory_partition:exported_source_files",
+        "//modules/planning/tasks/optimizers/path_time_heuristic:exported_source_files",
+        "//modules/planning/tasks/optimizers/piecewise_jerk_path:exported_source_files",
+        "//modules/planning/tasks/optimizers/piecewise_jerk_speed:exported_source_files",
+        "//modules/planning/tasks/utils:exported_source_files",
+        "//modules/planning/tools:exported_source_files",
+        "//modules/planning/traffic_rules:exported_source_files",
+        "//modules/planning/validation:exported_source_files",
+    ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = if_gpu("planning-gpu/src", "planning/src"),
+    strip_prefix = strip_prefix.from_root("modules/planning"),
 )
 
-install(
-    name = "pb_hdrs",
-    data = [
+pkg_filegroup(
+    name = "package_planning_src",
+    srcs = [":package_planning_src_data"],
+)
+
+pkg_files(
+    name = "package_planning_hdrs_data",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ) + [
+        "//modules/planning/common:exported_source_headers",
+        "//modules/planning/common/path:exported_source_headers",
+        "//modules/planning/common/smoothers:exported_source_headers",
+        "//modules/planning/common/speed:exported_source_headers",
+        "//modules/planning/common/trajectory:exported_source_headers",
+        "//modules/planning/common/trajectory1d:exported_source_headers",
+        "//modules/planning/common/util:exported_source_headers",
+        "//modules/planning/constraint_checker:exported_source_headers",
+        "//modules/planning/environment:exported_source_headers",
+        "//modules/planning/math:exported_source_headers",
+        "//modules/planning/math/curve1d:exported_source_headers",
+        "//modules/planning/math/discretized_points_smoothing:exported_source_headers",
+        "//modules/planning/math/piecewise_jerk:exported_source_headers",
+        "//modules/planning/math/smoothing_spline:exported_source_headers",
+        "//modules/planning/mission_session:exported_source_headers",
+        "//modules/planning/mode:exported_source_headers",
+        "//modules/planning/open_space/coarse_trajectory_generator:exported_source_headers",
+        "//modules/planning/open_space/parking:exported_source_headers",
+        "//modules/planning/open_space/trajectory_smoother:exported_source_headers",
+        "//modules/planning/planner:exported_source_headers",
+        "//modules/planning/planner/public_road:exported_source_headers",
+        "//modules/planning/reference_line:exported_source_headers",
+        "//modules/planning/scenarios:exported_source_headers",
+        "//modules/planning/scenarios/common:exported_source_headers",
+        "//modules/planning/scenarios/cruise/lane_follow:exported_source_headers",
+        "//modules/planning/scenarios/cruise/lane_keeping:exported_source_headers",
+        "//modules/planning/scenarios/deciders:exported_source_headers",
+        "//modules/planning/scenarios/emergency/emergency_pull_over:exported_source_headers",
+        "//modules/planning/scenarios/emergency/emergency_stop:exported_source_headers",
+        "//modules/planning/scenarios/intersection/bare_intersection/unprotected:exported_source_headers",
+        "//modules/planning/scenarios/intersection/stop_sign/unprotected:exported_source_headers",
+        "//modules/planning/scenarios/intersection/traffic_light/protected:exported_source_headers",
+        "//modules/planning/scenarios/intersection/traffic_light/unprotected_left_turn:exported_source_headers",
+        "//modules/planning/scenarios/intersection/traffic_light/unprotected_right_turn:exported_source_headers",
+        "//modules/planning/scenarios/intersection/yield_sign:exported_source_headers",
+        "//modules/planning/scenarios/maneuver/deadend_turnaround:exported_source_headers",
+        "//modules/planning/scenarios/maneuver/escape:exported_source_headers",
+        "//modules/planning/scenarios/maneuver/narrow_street:exported_source_headers",
+        "//modules/planning/scenarios/maneuver/narrow_street_u_turn:exported_source_headers",
+        "//modules/planning/scenarios/park/mission_idle:exported_source_headers",
+        "//modules/planning/scenarios/park/park_and_go:exported_source_headers",
+        "//modules/planning/scenarios/park/pull_over:exported_source_headers",
+        "//modules/planning/scenarios/park/valet_parking:exported_source_headers",
+        "//modules/planning/scenarios/util:exported_source_headers",
+        "//modules/planning/tasks:exported_source_headers",
+        "//modules/planning/tasks/deciders:exported_source_headers",
+        "//modules/planning/tasks/deciders/creep_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/lane_change_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/open_space_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/path_assessment_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/path_bounds_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/path_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/path_lane_borrow_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/path_reuse_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/rss_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/rule_based_stop_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/speed_bounds_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/speed_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/st_bounds_decider:exported_source_headers",
+        "//modules/planning/tasks/deciders/utils:exported_source_headers",
+        "//modules/planning/tasks/optimizers:exported_source_headers",
+        "//modules/planning/tasks/optimizers/open_space_trajectory_generation:exported_source_headers",
+        "//modules/planning/tasks/optimizers/open_space_trajectory_partition:exported_source_headers",
+        "//modules/planning/tasks/optimizers/path_time_heuristic:exported_source_headers",
+        "//modules/planning/tasks/optimizers/piecewise_jerk_path:exported_source_headers",
+        "//modules/planning/tasks/optimizers/piecewise_jerk_speed:exported_source_headers",
+        "//modules/planning/tasks/utils:exported_source_headers",
+        "//modules/planning/traffic_rules:exported_source_headers",
+        "//modules/planning/validation:exported_source_headers",
+    ],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = if_gpu("planning-gpu/include", "planning/include"),
+    strip_prefix = strip_prefix.from_root("modules/planning"),
+)
+
+pkg_filegroup(
+    name = "package_planning_hdrs",
+    srcs = [":package_planning_hdrs_data"],
+)
+
+pkg_files(
+    name = "pb_hdrs_data",
+    srcs = [
         "//modules/planning/proto:ipopt_return_status_py_pb2",
         "//modules/planning/proto:lattice_structure_py_pb2",
         "//modules/planning/proto:open_space_task_config_py_pb2",
@@ -466,7 +645,12 @@ install(
         "//modules/planning/proto:traffic_rule_config_py_pb2",
         "//modules/planning/proto/math:fem_pos_deviation_smoother_config_py_pb2",
     ],
-    data_dest = "planning/include",
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "planning/include",
+    strip_prefix = strip_prefix.from_root("modules/planning"),
 )
 
-cpplint()
+pkg_filegroup(
+    name = "pb_hdrs",
+    srcs = [":pb_hdrs_data"],
+)

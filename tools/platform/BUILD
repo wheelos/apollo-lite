@@ -39,3 +39,12 @@ config_setting(
     name = "is_jetson_orin",
     constraint_values = [":jetson_orin"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

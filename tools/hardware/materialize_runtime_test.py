@@ -4,10 +4,44 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from materialize_runtime import materialize
+from materialize_runtime import materialize, split_package
 
 
 class RuntimeLayoutTest(unittest.TestCase):
+    def test_package_mapping_restores_executable_and_data_modes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            for name in (
+                "bin/mainboard",
+                "modules/camera.dag",
+                "hardware/manifest.json",
+                "lib/libcamera.so",
+            ):
+                source = runtime / name
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_bytes(b"fixture")
+                source.chmod(0o555)
+            output = root / "package"
+            split_package(runtime, output)
+            self.assertEqual((output / "bin/mainboard").stat().st_mode & 0o777, 0o755)
+            self.assertEqual(
+                (output / "modules/camera.dag").stat().st_mode & 0o777, 0o644
+            )
+            self.assertEqual((output / "lib/libcamera.so").read_bytes(), b"fixture")
+
+    def test_package_mapping_rejects_unmapped_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            (runtime / "unmapped.txt").write_text("must not be silently omitted")
+            with self.assertRaisesRegex(
+                ValueError, "Unknown runtime package directory"
+            ):
+                split_package(runtime, root / "package")
+
     def test_paths_and_launch_environment_are_relocatable(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

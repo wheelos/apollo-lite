@@ -1,7 +1,8 @@
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 load(":defs.bzl", "LIDARS", "VEHICLES", "hardware_manifest", "lidar_targets")
-load(":runtime.bzl", "runtime_layout")
+load(":runtime.bzl", "runtime_layout", "runtime_package")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -127,12 +128,23 @@ runtime_layout(
     runtime_data = RUNTIME_DATA,
 )
 
+runtime_package(
+    name = "package_files",
+    runtime = ":runtime",
+)
+
 pkg_tar(
-    name = "install",
+    name = "package",
     srcs = [
-        ":runtime",
+        ":package_files",
     ],
     extension = "tar.gz",
+    package_file_name = "install.tar.gz",
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
 )
 
 test_suite(
@@ -142,4 +154,13 @@ test_suite(
         "@hardware.gnss//parser:parser_factory_test",
         "@hardware.vehicle//brands:vehicle_selection_test",
     ],
+)
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
 )

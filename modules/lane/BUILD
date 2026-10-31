@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -135,11 +135,32 @@ filegroup(
     ]),
 )
 
-install(
-    name = "install",
-    data = [":runtime_config"],
-    data_dest = "lane",
-    targets = [":lane_component_plugin"],
+pkg_files(
+    name = "package_files_data",
+    srcs = [":runtime_config"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "lane",
+    strip_prefix = strip_prefix.from_root("modules/lane"),
 )
 
-cpplint()
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":lane_component_plugin"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "modules-lane/lib",
+    strip_prefix = strip_prefix.from_root("modules/lane"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
+    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)

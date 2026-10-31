@@ -22,3 +22,12 @@ py_proto_library(
     name = "roi_service_py_pb2",
     deps = [":roi_service_proto"],
 )
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

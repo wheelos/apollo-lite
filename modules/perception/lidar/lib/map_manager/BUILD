@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,8 +10,6 @@ cc_library(
     hdrs = ["map_manager.h"],
     copts = PERCEPTION_COPTS,
     deps = [
-        "@wheelos_common//modules/common/math",
-        "@wheelos_map//modules/map/hdmap:hdmap",
         "//modules/perception/base:base_type",
         "//modules/perception/lib/config_manager",
         "//modules/perception/lidar/common:lidar_frame",
@@ -21,6 +18,8 @@ cc_library(
         "//modules/perception/pipeline/proto/stage:map_manager_config_cc_proto",
         "@com_google_googletest//:gtest",
         "@core//cyber",
+        "@wheelos_common//modules/common/math",
+        "@wheelos_map//modules/map/hdmap",
     ],
 )
 
@@ -33,4 +32,20 @@ cc_library(
 #    ],
 #)
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

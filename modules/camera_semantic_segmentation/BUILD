@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -96,12 +96,32 @@ filegroup(
     ]),
 )
 
-install(
-    name = "install",
-    data = [":runtime_config"],
-    data_dest = "camera_semantic_segmentation",
-    library_dest = "camera_semantic_segmentation/lib",
-    targets = [":libcamera_semantic_segmentation_component_plugin.so"],
+pkg_files(
+    name = "package_files_data",
+    srcs = [":runtime_config"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "camera_semantic_segmentation",
+    strip_prefix = strip_prefix.from_root("modules/camera_semantic_segmentation"),
 )
 
-cpplint()
+pkg_files(
+    name = "package_files_libraries",
+    srcs = [":libcamera_semantic_segmentation_component_plugin.so"],
+    attributes = pkg_attributes(mode = "0755"),
+    prefix = "camera_semantic_segmentation/lib",
+    strip_prefix = strip_prefix.from_root("modules/camera_semantic_segmentation"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        ":package_files_data",
+        ":package_files_libraries",
+    ],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
+)

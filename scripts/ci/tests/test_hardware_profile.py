@@ -138,11 +138,11 @@ class HardwareProfileTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(message, result.stdout + result.stderr)
 
-    def test_legacy_install_rules_share_build_owned_provider(self):
+    def test_modules_use_official_package_providers(self):
         result = bazel(
             "cquery",
-            "set(@hardware.camera//:install "
-            "@wheelos_transform//modules/transform:install)",
+            "set(@hardware.camera//:package_files "
+            "@wheelos_transform//modules/transform:package_files)",
             "--output=starlark",
             "--starlark:expr=str(sorted(providers(target).keys()))",
         )
@@ -150,16 +150,16 @@ class HardwareProfileTest(unittest.TestCase):
         rows = result.stdout.splitlines()
         self.assertEqual(len(rows), 2, result.stdout)
         for row in rows:
-            self.assertIn("hardware.build", row)
-            self.assertIn("//tools/install:providers.bzl%InstallInfo", row)
-            self.assertNotIn("wheelos_transform", row)
+            self.assertIn("rules_pkg", row)
+            self.assertIn("%PackageFilegroupInfo", row)
+            self.assertNotIn("InstallInfo", row)
 
     def test_configured_closure_excludes_unselected_implementations(self):
         result = bazel("cquery", f"deps({ROOT})", "--output=label")
         self.assertEqual(result.returncode, 0, result.stderr)
         labels = result.stdout
         self.assertIn("//tools/hardware:runtime", labels)
-        self.assertNotIn("//tools/hardware:install", labels)
+        self.assertNotIn("//tools/hardware:package", labels)
         self.assertIn("@hardware.gnss//parser/huace:", labels)
         self.assertIn("@hardware.vehicle//brands/devkit:", labels)
         self.assertIn("@hardware.lidar//hesai:", labels)
@@ -252,7 +252,7 @@ class HardwareProfileTest(unittest.TestCase):
 
     def test_selected_package_is_consistent(self):
         archive = Path("bazel-bin/tools/hardware/install.tar.gz")
-        self.assertTrue(archive.is_file(), "build //tools/hardware:install first")
+        self.assertTrue(archive.is_file(), "build //tools/hardware:package first")
         with tarfile.open(archive) as package:
             members = {
                 member.name.removeprefix("./"): member
@@ -287,7 +287,7 @@ class HardwareProfileTest(unittest.TestCase):
     def test_switching_profile_does_not_package_stale_outputs(self):
         result = bazel(
             "build",
-            "//tools/hardware:install",
+            "//tools/hardware:package",
             "--@hardware.build//tools/hardware:camera=none",
             "--@hardware.build//tools/hardware:canbus=none",
             "--@hardware.build//tools/hardware:gnss=none",
@@ -307,7 +307,7 @@ class HardwareProfileTest(unittest.TestCase):
                     any(name.startswith(("modules/", "bazel-bin/")) for name in files)
                 )
         finally:
-            restored = bazel("build", "//tools/hardware:install", "--jobs=4")
+            restored = bazel("build", "//tools/hardware:package", "--jobs=4")
             self.assertEqual(restored.returncode, 0, restored.stderr)
 
 

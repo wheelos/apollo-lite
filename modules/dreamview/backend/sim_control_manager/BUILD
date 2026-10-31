@@ -1,13 +1,28 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//tools:cpplint.bzl", "cpplint")
-load("//tools/install:install.bzl", "install")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 
 package(default_visibility = ["//visibility:public"])
 
-install(
-    name = "install",
-    runtime_dest = "dreamview/bin",
-    targets = [":sim_control"],
+pkg_files(
+    name = "package_files_binaries",
+    srcs = [":sim_control"],
+    attributes = pkg_attributes(mode = "0755"),
+    include_runfiles = True,
+    prefix = "dreamview/bin",
+    strip_prefix = strip_prefix.from_root("modules/dreamview/backend/sim_control_manager"),
+)
+
+pkg_filegroup(
+    name = "package_files",
+    srcs = [":package_files_binaries"],
+    visibility = ["//visibility:public"],
+)
+
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
     visibility = ["//visibility:public"],
 )
 
@@ -52,4 +67,20 @@ cc_binary(
 #     ],
 # )
 
-cpplint()
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "exported_source_headers",
+    srcs = glob(
+        ["**/*.h"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)
