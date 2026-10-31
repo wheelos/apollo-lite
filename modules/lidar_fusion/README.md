@@ -44,15 +44,239 @@ not part of this source baseline. Their fingerprints and locations are retained
 in validation snapshots; reproducing them requires the stated external assets.
 Existing producers and production configuration are unchanged.
 
-Known review finding: with optional temporal feedback enabled, a confirmed
-track's prediction can recover a second object from unowned outer points even
-when a smaller current detection already represents that target. The two
-observations can create duplicate tracks. The current recovery gate checks
-point support, not whether that track already has a current observation.
-This is a source-review finding, not a runtime-reproduced regression.
-Temporal feedback remains disabled by default; this baseline does not accept
-that path for deployment. Matching current observations before recovering only
-unmatched tracks is required before accepting feedback behavior.
+## Current capabilities and delivery boundaries
+
+This README is the merged current module guide. Historical backup content was
+merged here; backups are not a second authoritative capability list. Source,
+configuration and executed evidence take precedence over documentation.
+
+| Capability | Current implementation | Availability / boundary |
+| --- | --- | --- |
+| Same-sweep alignment and calibration | C++ `core/alignment/`, `core/evidence/` | Validated frame/index/extrinsic/taxonomy joins; no asynchronous sweep compensation |
+| Detection and semantic fusion | C++ `core/association/`, `core/runtime/` | Association, current-point support, conflict ledger, semantic recall and independent unknowns; optional refinements require explicit configuration |
+| Occupancy and unknown risk | C++ `core/spatial/` | Independent measured, inferred-object and unknown source layers; filtered point views never clear occupancy |
+| Native ground and gated traversability | Existing C++ fusion/spatial path | Local-plane ground and visibility/vehicle-gated spatial reference; not general terrain or accepted real-record FREE |
+| Observed ground, slope, roughness, step and depression depth | Independent C++ `core/terrain/surface*` plus Python reference | Standalone numerical implementation checked against 56 real frames; relative measurements, not physical pit/bridge identification or deployed vehicle limits |
+| Risk-constrained terrain candidate detection | C++ `core/terrain/traversability.*` plus Python reference | Explicit limits, UNKNOWN handling and same-root components; standalone offline path, not production FREE or verified ego reachability |
+| Clearance and static trajectory footprint risk | Python `spatial_support/{clearance,trajectory,passage}.py` | Offline closed-cell distances, swept disk/rectangle probes and conservative turn envelopes; no real planner trajectory qualification |
+| Cost and narrow-passage layers | Python `spatial_support/{cost,passage}.py` | Independent terrain/source/availability layers; no planner decision or steering feasibility guarantee |
+| Tracking and short-term memory | C++ `core/tracking/` | Opt-in KF/Hungarian, confirmation, current-point-supported recovery and history; continuous production ODOM/MOT accuracy unqualified |
+| Visibility and occlusion | C++ `core/spatial/visibility.cc` | Opt-in ray reference; actual per-return origins and vehicle observation contracts required for FREE |
+| Degradation and consistency | C++ core/component | NORMAL / NO_SEG / NO_DET / GEO_ONLY, health, bounded buffering, reference/occupancy/FREE checks; no slowing/braking controller |
+| Publication | C++ component and `publication/pod.*` | Full/functional protobuf profiles and explicit CORE_POD transport; consumer and recorder migrations remain separate |
+| Debug visualization | Independent `terrain_debug.py` and diagnostic viewer | BEV, occupancy, terrain, risk, connectivity and coverage images under local `data/`; rendering never changes numerical outputs |
+
+The terrain v6 experiment executed 56 real-input frames and 44 post-fit
+SemanticKITTI label checks. Its frozen 34-case matrix contains 28
+mechanistic/counterexample passes, five diagnostic-only boundaries and one
+physical-evidence block. Only one of the 36 native-risk frames retained a
+risk-constrained root component (17 cells / 4.25 square metres). Therefore
+working candidate detection is **not** effective around-vehicle traversability
+acceptance. Sparse map omissions, multi-layer ambiguity and unknown risk remain
+explicit; semantic ground overlap cannot authorize deleting risk. These results
+are a development diagnostic, not independent holdout accuracy.
+
+## Spatial capability delivery priorities
+
+The complete P0-P3 design is in
+[`ad_agents/context`](../../ad_agents/context/modules/perception/knowledge/lidar-fusion-driving-capabilities-design.md).
+The priorities below distinguish source delivery from deployment acceptance.
+
+| Priority | Responsibility | Delivery boundary |
+| --- | --- | --- |
+| P0 | Preserve obstacles, independent occupancy, unknowns and source health | Existing native core evidence; never replace risk with filtered points |
+| P1 | Continuous observed ground and terrain measurements | Local observed root, raw layers, full-rank slope/roughness, step/depression diagnostics; vehicle-ground and physical accuracy unqualified |
+| P1 | Clearance and footprint risk queries | Offline static probes with explicit terrain, coverage, visibility and ROI unknowns |
+| P2 | Cost layers and narrow-passage diagnostics | Numerical layers and directional rectangle queries implemented; planner/vehicle integration unqualified |
+| P2 | Dynamic tracks and local-ODOM memory | Native opt-in tracking/history; continuous ODOM and tracking accuracy still required |
+| P3 | Verified visibility | Actual origin and height-column observations required before FREE |
+| P3 | Time-indexed occupancy and collision prediction | Not implemented by static probes; needs qualified tracking, timing, uncertainty and actual trajectories |
+| P3 | Slowing/braking/degradation policy | Fusion supplies evidence; planner/safety owners must implement and validate actions |
+
+### Directory ownership and data flow
+
+```text
+modules/lidar_fusion/
+  core/alignment/                     sweep identity, validation, buffering
+  core/evidence/                      transforms, ground fit, point evidence
+  core/association/                   detection/prior association, candidates
+  core/spatial/                       occupancy, connectivity, views, rays
+  core/terrain/                       observed layers, measurements, limits
+  core/tracking/                      tracker adapter, history, temporal state
+  core/runtime/                       single-frame orchestration
+  core/*.h                            legacy public include forwarding only
+  proto/lidar_fusion.proto              source/evidence contracts
+  component/                           scheduling and publication boundary
+  publication/pod.*                    explicit borrowed transport codec
+  publication/functional_scene.*       functional-scene projection
+  tools/                               inference/cached replay and probes
+  tools/terrain_diagnostics.cc          standalone numerical text replay
+modules/tools/perception_diagnostics/
+  ground_{experiment,continuity,patch}.py
+  terrain_surface.py                   raw observed layers and measurements
+  terrain_traversability.py            limits, risk and same-root components
+  terrain_traversability_experiment.py  frozen real-input validation
+  terrain_debug.py                     BEV/occupancy image export
+  terrain_native_validation.py         C++ original-XYZ/reference comparison
+  spatial_support/
+    adapter.py                         immutable full-protobuf adaptation
+    terrain.py                         native-grid height/terrain proxy
+    observed_terrain.py                 separate raw measurement diagnostics
+    clearance.py                       occupied-cell-square distances
+    trajectory.py                      swept-disk path samples
+    cost.py                            independent cost/availability layers
+    passage.py                         rectangle and corner envelopes
+```
+
+```text
+exact current-sweep XYZ / original IDs + immutable native risk + source hashes
+  -> full-evidence and identity audit (truth remains evaluation-only)
+  -> observed ground layers and local root
+  -> slope / roughness / boundary step / relative depression measurements
+  -> explicit diagnostic terrain limits
+  -> terrain candidates | independent risk and full-cell coverage vetoes
+  -> separate same-root four-connected regions, without gap filling
+  -> NPZ / JSON evidence -> BEV and occupancy debug images
+
+full native FusionOutput + config + frozen ground NPZ
+  -> one-way spatial_support adapter
+  -> observed terrain + unchanged inferred/unknown risk layers
+  -> closed-cell-square distances and explicit static footprint probes
+  -> cost / passage / sampled risk diagnostics (not planner commands)
+```
+
+These stages are stateless in their declared frame-local XY/Z coordinates,
+in metres. Already transformed native evidence must not be transformed twice.
+Temporal accumulation remains owned by `core/tracking/` and continuous local ODOM,
+not the frame-local numerical experiment. No absolute pose is substituted.
+
+The older `spatial_support.terrain` uses fitted-ground medians and maximum
+local plane residual as a proxy. The newer observed surface estimator fits
+selected raw cell elevations and reports sample residual standard deviation.
+These are different statistics, neither calibrated physical roughness.
+Missing/collinear support remains unavailable rather than a guessed slope.
+
+Clearance uses distances to **closed cell squares**, not centers or amodal
+object solids. Disk probes cover every heading conservatively; rectangle
+probes retain segment headings and inflate actual turns. Translation samples
+are no farther apart than half a cell and include half-gap inflation.
+`first_risk_arc_m` is the first flagged sample, not exact contact or braking
+distance. Path outputs retain `OBSTACLE_RISK`, `TERRAIN_LIMIT`, `UNKNOWN` and
+`SUPPORTED_ONLY` reasons. Even `SUPPORTED_ONLY` does not authorize driving;
+candidate ground cannot inherit baseline FREE. Grid/query budgets and shape
+errors fail visibly, not as empty-safe results.
+
+### Validation and promotion
+
+The initial spatial-support slice used 36 frozen ground-comparison frames with
+illustrative vehicle dimensions and paths. Its analytic checks cover slopes,
+steps, holes, sparse rank, layered distances, ROI boundaries and swept
+footprints. Later terrain work expanded to 56 original point-cloud inputs.
+The earlier radial comparator's six connectivity regressions and unsafe
+sparse-filter ablation remain historical evidence, not erased successes or
+proof of the newer algorithm's physical accuracy.
+
+Promotion still requires applicable terrain/vehicle limits, verified
+visibility, actual planner trajectories and downstream integration regression.
+Dynamic prediction and braking are separate missing capabilities, not implied
+by static cost/path diagnostics. Real-data consistency and post-fit semantic
+metrics cannot substitute for physical traversability truth.
+
+### Observed terrain numerical modules
+
+`core/terrain/surface.h` and its stage-owned translation units own raw
+original-ID height layers, local surface
+initialization/propagation and observed slope, roughness, boundary/span and
+relative depression measurements. `core/terrain/traversability.{h,cc}` consumes
+that result with caller-supplied limits and independent risk/coverage grids.
+Their typed result/status interfaces are independent of Cyber, CUDA and neural
+inference. `:terrain_surface`, `:terrain_traversability`, `:terrain_test` and
+`:terrain_diagnostics` are distinct Bazel targets. The new libraries are not
+implicitly called by `SingleFrameFusion`; existing ground/default outputs stay
+unchanged.
+
+The standalone CLI accepts `--input PATH --output PATH`; `--help` documents
+versioned `TERRAIN_V1` config/limits, original-ID XYZ rows and full risk grid.
+Output includes cell measurements/states/reasons, raw layer/source membership,
+original point rows, selected root and explicit missing metrics. It consumes
+raw XYZ, not Python-fitted terrain features.
+
+The managed-dev standalone binary was compared against all 56 frozen real
+inputs: point identities/classification, raw layers/source IDs, selected roots,
+cell states, risk and connectivity agree exactly; numeric measurements agree
+within relative `1e-8` / absolute `1e-9` tolerances. This is numerical-port
+evidence, not physical ground accuracy or effective risk-covered vehicle access.
+The normal Bazel graph remains blocked by missing hardware checkouts/registry
+modules; the direct managed C++ build is not a Bazel or component-build pass.
+Neither the lockfile nor dependency graph was rewritten to bypass that failure.
+The managed standalone validation also runs eight GoogleTests and 15 malformed
+protocol cases against the new C++ libraries/CLI; it does not cover an unbuilt
+component or bypass the existing production regression targets.
+
+### Refactored implementation boundaries
+
+The single root Bazel package retains all existing public target names.
+Seven legacy `core/*.h` entry points forward to canonical functional headers;
+new module callers use the canonical paths. Schemas, channels, configuration,
+class signatures and installation paths are unchanged.
+
+`core/runtime/single_frame_fusion.cc` only coordinates existing stages.
+Alignment, evidence, detection/prior association, candidate construction,
+occupancy and publication projection each have their own owner. Spatial ray
+tracing is separate from cell storage and output checks. Terrain layer selection,
+plane fitting and measurements are separate from risk classification. Tracking
+adapters and history remain separate from the temporal state owner.
+
+Core implementation files now top out at 392 lines, compared with the previous
+1,695-line fusion and 902-line terrain files. Tests follow feature ownership;
+the original 44 fusion cases remain under the same `:fusion_test` target.
+Coherent tools and fixtures are not split solely to meet an arbitrary line cap.
+
+Fresh managed direct builds pass 44 fusion, 18 candidate, 10 spatial, 13 temporal
+and four frame-buffer cases. Eight terrain cases, 15 CLI rejection cases and
+56 frozen real-frame comparisons also pass. Current implementation/test
+translation units and the compatibility headers were compiler-checked.
+These checks do not clear the official Bazel/component graph blocker above.
+Refactor evidence lives in
+`.cache/lidar-fusion-validation/refactor/implementation-report.json`;
+new parity outputs use its `terrain-parity/` directory, leaving historical
+debug manifests unchanged.
+
+```sh
+python3 modules/tools/perception_diagnostics/terrain_native_validation.py \
+  --binary /apollo/.cache/lidar-fusion-validation/terrain-cpp/terrain_diagnostics \
+  --output data/lidar_fusion_debug/cpp
+```
+
+`data/lidar_fusion_debug/index.html` links both Python-reference and actual C++
+BEV/occupancy outputs. Native text inputs/outputs, NPZs and
+`cpp/native-validation.json` retain source/binary hashes, field comparisons and
+descriptive 5/10/20-metre origin-centered coverage windows. These windows are
+diagnostic summaries, not vehicle qualification limits.
+
+Observed terrain and diagnostic traversability are separate numerical stages:
+raw point identities and height layers belong to the surface estimator;
+explicit terrain limits, independent risk and exact-root connectivity belong
+to the traversability classifier. The offline validation path must retain
+UNKNOWN and missing-evidence states and cannot inherit production FREE
+authorization. A selected surface is not verified vehicle ground, and a
+connected observed-root component is not ego access across the blind zone.
+
+Debug views from the frozen real-data comparison are generated by
+[`terrain_debug.py`](../tools/perception_diagnostics/terrain_debug.py).
+The local entry point is `data/lidar_fusion_debug/python/index.html`, with
+per-frame raw BEV, source occupancy, terrain, risk decisions, connectivity
+and coverage PNGs. These files are ignored generated data; their manifest
+records numerical archive and image hashes. Rendering never modifies fusion
+evidence, filters risk points or runs a planner.
+
+The optional temporal duplicate-recovery finding was reproduced and fixed:
+`AssociatePrior` now gives sufficiently supported current candidates precedence
+over recovery from their unowned outer returns. The regression
+`SmallerCurrentDetectionDoesNotRecoverDuplicateOuterSupport` retains one object
+track and independent outer evidence. This conservative gate can suppress
+ambiguous nearby recovery; it does not clear risk. Feedback remains disabled
+by default and still requires continuous ODOM and tracking-accuracy evidence.
 
 ## Implemented path
 
@@ -67,7 +291,8 @@ three Cyber readers -> bounded same-sweep buffer + steady-clock timeout
   -> independent conservative output checks -> FusionOutput
 ```
 
-`core/fusion.*` has no Cyber, CUDA or model-engine dependency. Output carries
+The `core/runtime/` fusion orchestrator has no Cyber, CUDA or model-engine
+dependency. Output carries
 original point IDs, raw labels/probabilities and detections, separate decisions
 with source/reason, raw detector scores, conflict flags and per-source health.
 Point-to-box competition resolves to one owner. Instance deduplication requires
@@ -425,7 +650,7 @@ measures core compute only, not queue wait or neural inference.
   become FREE. Optional reachability starts at an actually FREE configured
   seed, never an assumed clear ego hole. This gridded reference is not a
   continuous-volume safety certificate or a planner command.
-- `core/spatial.*` independently checks conflict flags, dangling references,
+- `core/spatial/` independently checks conflict flags, dangling references,
   object/unknown occupancy coverage and contradictory FREE. Conservative
   repairs preserve raw evidence and report reasons/counts. Any repair clears
   derived FREE/reachability rather than retaining stale clearance paths.

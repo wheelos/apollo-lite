@@ -195,6 +195,344 @@ View `.cache/lidar-fusion-validation/semantickitti-holdout-v1/viewer/index.html`
 or the explicitly labeled
 `.cache/lidar-fusion-validation/semantickitti-truth-v1-oracle-viewer/index.html`.
 
+## Ground optimization experiment (shadow only)
+
+`ground_experiment.py` provides a working, read-only path from full cached
+fusion evidence to original-point-ID ground estimates, labeled comparison,
+and hypothetical measured-occupancy changes. It never writes a `FusionOutput`,
+changes production defaults, or emits FREE. Inputs use the frozen sensor-to-base
+transform in metres; each frame starts afresh. Semantic/instance GT is loaded
+only after fitting and cannot initialize the estimator.
+
+The initial design compares the current Cartesian tile/global-height-band fit
+with anchored radial piecewise lines. Primary sources reviewed on 2026-10-30:
+
+| Reference / pinned revision | Verified mechanism and reuse decision |
+| --- | --- |
+| [linefit](https://github.com/lorenwel/linefit_ground_segmentation/blob/e6b9418cc5756e30e4ea87b11d8792f936a2002a/linefit_ground_segmentation/src/segment.cc), BSD-3-Clause | Per-sector minimum-height bins, bounded least-squares line fits and ground-height continuity. Use this mechanism as an independently implemented NumPy reference; do not copy source or add ROS/PCL/Boost. Upstream's example launch node is not evidence that our sensor contract is validated. |
+| [Patchwork++](https://github.com/url-kaist/patchwork-plusplus/blob/3e6903a1d5537a4cc2ace897b0bbb98a92d6014c/cpp/patchworkpp/src/patchworkpp.cpp), BSD-2-Clause | Concentric patches, low-point seeds, covariance plane fit, uprightness/elevation/flatness gates and adaptive state. A useful next comparator for full 2D terrain; not adopted here because state qualification and its additional integration are outside the first diagnostic path. The inspected Python smoke test includes nonempty partition checks, but no ground-accuracy assertions. |
+| [ETH traversability](https://github.com/leggedrobotics/traversability_estimation/tree/14d24c059e1c43466aadf328280adf6394d78039/traversability_estimation_filters), BSD-3-Clause license text | Separate slope, roughness and step layers over valid elevation cells. Reuse this separation of concerns, not its ROS/grid_map/pluginlib implementation. Ground classification alone must not authorize vehicle clearance or FREE. |
+
+This is conceptual reuse, not a vendored dependency or an upstream-equivalent
+implementation. No upstream code or dependencies are distributed. Direct
+integration would require a separate transitive-license/dependency review.
+The existing baseline remains the production choice pending evidence.
+
+The reference has fixed experimental defaults: 360 sectors, 0.5 m bins,
+1 m maximum support gap, 4 m maximum line span and at least three observed
+bins per line. A new component needs an observed anchor within 8 m and the
+existing configured expected-ground height band; only a nearby accepted line
+can continue beyond that band. Slope, maximum vertical fit residual and point
+distance gates reuse the frozen fusion configuration. These are experimental
+parameters, not validated vehicle thresholds. Unlike upstream, this reference
+does not search neighboring sectors, bridge long gaps or carry adaptive state.
+Unsupported estimates remain NaN. A radial slope is not a full terrain normal
+and cannot establish cross-slope traversability.
+
+Create a local JSON experiment with `runs` entries containing unique `name`,
+`inputs` (prepared `manifest.json`) and `results` (full current-source replay)
+paths, optional `options` matching `RadialOptions`, and optional `continuity`
+matching `ContinuityOptions`. Then run in the existing isolated test runtime:
+
+```sh
+python3 modules/tools/perception_diagnostics/ground_experiment.py \
+  --cases /path/to/experiment.json --schema /path/to/schema.pb \
+  --output /path/to/new-ground-comparison
+```
+
+The baseline measured occupancy must exactly reproduce the native output.
+The tool checks source/GT hashes, cloud/output identity, rigid transform,
+point ordering and input immutability; each `.ground.npz` preserves original
+point IDs, estimated ground heights and the experimental ground mask.
+`report.json` retains per-frame full-ROI/front-domain confusion, THING errors,
+new GT non-ground removals, and changed measured cells. Inferred/unknown layers
+stay fixed in the hypothetical occupancy union: this is not a recomputation of
+object association, unknowns or production fusion.
+
+The primary objective is **continuous observed ground around ego**, not perfect
+pointwise classification. `ground_continuity.py` constructs a 0.5 m observed
+grid, blocks measured obstacle cells, and connects four-neighbor ground cells
+only across height changes <=0.2 m. It selects the largest component touching
+an observed seed within 3 m of base XY origin. If this disk has no unblocked
+ground, an explicit bounded fallback uses the nearest observed ground ring
+(at most 8 m, with a half-cell margin). The effective radius and fallback
+status are reported. This never creates points in the ego blind spot or fills
+holes, nor joins diagonally separated regions. Set `max_seed_radius` equal to
+`seed_radius` to disable the fallback. Access across that blind zone is unproven.
+The SemanticKITTI frame is still a native LiDAR-frame diagnostic, not independently
+verified vehicle geometry. Cell counts/area describe observed support, not all
+terrain or a drivable polygon. Near-ego connectivity is reported at 5/10/20/30 m,
+alongside the semantic ground-cell proxy.
+
+An ablation downsamples obstacle support into 0.1 m voxels and filters isolated
+26-neighbor voxel components containing at most three **original** points.
+Raw counts are retained: many returns in one voxel must not turn a dense narrow
+obstacle into an isolated singleton. This filter never deletes source points,
+model evidence or native occupancy; removed points are explicit in the shadow
+mask. `max_isolated_points=0` disables filtering. Filtering can remove a real
+small obstacle and requires application-specific acceptance before deployment.
+These grid, step, seed and sparsity settings are frozen experimental defaults,
+not inferred vehicle capabilities.
+
+The revised comparison prioritizes increased near-ego connected area and reports
+point errors without an absolute zero-error gate. Instance retention includes
+all baseline instances, separately reports sparse instances with fewer than
+three baseline spatial voxels, and retains the historical supported-instance
+subset for comparison. Complete erasure or complete replacement of the original
+support prevents native-integration eligibility; partial point and voxel losses
+remain explicit. Counts are instance-frame observations, not unique tracks.
+The primary check uses the unfiltered candidate; filtering
+has its own supported-instance check and is not qualified for production.
+Frames lacking observed seeds cannot provide positive continuity evidence.
+Per-frame connected-area regressions must be reviewed before native integration;
+an average increase alone does not clear the experiment gate.
+Passing only permits a native integration experiment, not
+deployment or small-obstacle qualification. Baseline/candidate both have raw
+and filtered connectivity variants, so filtering is not silently attributed
+to better ground fitting. The NPZ also retains connected grid XY indices and
+the candidate filtered obstacle mask. No-GT runs provide structural checks only.
+Both domains still need full 2D slope/step/roughness, verified ray origins and the
+existing vehicle/footprint contracts before traversability.
+
+`ground_validation.py --previous PREVIOUS_REPORT --schema SCHEMA
+--inventory RAW_GT_INVENTORY --output NEW_OUTPUT` recomputes the frozen cached
+comparison, traces radial rejection and connectivity boundaries, and runs the
+paired raw/GT inventory under explicit sensor-frame height hypotheses. GT is
+loaded after estimation; height sensitivity is not calibration or holdout
+acceptance. `ground_validation_closure.py --root OUTPUT` adds closure evidence, including
+comparisons using the intersection of the original observed seed boundaries.
+No shared observed seed is a blocked comparison, not a reason to enlarge the
+seed radius. Independent-seed area regressions remain reported even when this
+controlled comparison identifies seed selection as a confounder.
+
+### Independent patch and observed-terrain comparison
+
+`ground_patch.py` adds a stateless NumPy comparator using observed low points
+in fixed XY patches and full-rank local planes. It is conceptual reuse of
+patch-based ground mechanisms, not an upstream-equivalent Patchwork++
+implementation. It does not change the native or radial estimators. Frozen
+height, slope, residual and patch-layout hypotheses remain experimental;
+unsupported patches do not provide ground or fill gaps.
+
+`spatial_support/observed_terrain.py` separately measures raw observed heights
+and plane-normal residuals. Its sampling and residual statistic are explicit;
+these quantities are not the existing fitted-height roughness proxy, an
+upstream-equivalent ETH filter, or calibrated physical terrain accuracy.
+The comparison keeps original point IDs, all-instance original-support losses,
+native/radial controls, and seed comparability separate from aggregate area.
+Semantic GT is evaluation-only. More connected cells do not establish that
+the same observed component was retained or that real obstacles survived.
+
+In the isolated test runtime, execute the frozen cached report and paired
+raw inventory without changing inference:
+
+```sh
+python3 modules/tools/perception_diagnostics/ground_patch_experiment.py \
+  --previous /path/to/frozen-ground/report.json --schema /path/to/schema.pb \
+  --inventory /path/to/raw-gt-inventory.json --output /path/to/new-patch-results
+```
+
+The exporter writes `report.json`, `ground-report.json`, `case-matrix.json`,
+cached `<case>/<file>.ground.npz` and raw `patch-raw-<sequence>-<ordinal>.npz`.
+Each raw archive retains all three fixed height hypotheses separately;
+they are sensor-frame sensitivity experiments, not calibration or holdout
+qualification. The new patch artifacts are comparison evidence, not an
+automatic replacement for the frozen radial inputs of the spatial exporter.
+
+### Observed terrain surface and depression metrics
+
+`terrain_surface.py` is a stateless, frame-local terrain estimator. It groups
+raw returns into observed height layers per XY cell, then follows a supported
+observed root through compatible four-neighbor layers. An optional expected
+height constrains initialization, not every distant cell. Explicit roots allow
+bridge decks to be selected without merging the lower surface. Automatic root
+selection is a diagnostic policy, not independently verified vehicle ground.
+Missing cells are not filled, and a nearest observed root does not prove access
+across the sensor blind zone.
+
+Slope uses supported local observed elevations. Step diagnostics distinguish
+adjacent-plane discontinuity from within-cell height span; a span alone cannot
+identify a physical step rather than overlapping surfaces. Depression depth
+requires observed floor returns and a surrounding supported rim. Widths describe
+observed floor-cell extents, not reconstructed unseen pit boundaries. Missing
+floor or incomplete rim remains unknown.
+Depth is a relative observed height measurement, not proof of a physical pit.
+When a selected upper surface also has lower returns in the same cell,
+`unknown_layer_ambiguity` distinguishes an unresolved lower level from
+`no_depression_observed`; depth remains NaN rather than assigning pit semantics.
+
+The independent risk mask does not influence raw surface selection, but its
+points are excluded from the final ground mask. Candidate surface membership
+and retained risk remain separately inspectable. Geometry alone cannot identify
+a semantic object whose returns coincide with the selected surface. These
+outputs measure terrain observations; they do not emit FREE, apply calibrated
+vehicle limits, or change production fusion.
+
+Run the independent mathematical cases in managed dev:
+
+```sh
+python3 modules/tools/perception_diagnostics/terrain_surface_experiment.py \
+  --analytic-only
+```
+
+The runner reads the frozen experiment manifests, configurations and inventory
+under `--root` (the repository by default). A real-input run strictly requires
+the original sources. If those sources are unavailable, explicit
+`--allow-archived-raw` recomputes from previously archived original XYZ and IDs;
+it does not reuse prior predictions. Archive hashes and cached coordinate
+alignment are checked, while unavailable original-binary identity and GT audits
+remain blocked. Outputs under `.cache/lidar-fusion-validation/terrain-v4/`
+include `case-matrix.json`, `real-data-report.json`,
+`persisted-output-check.json` and per-frame `.terrain.npz` archives.
+Surface-supported status is distinct from risk-filtered root connectivity
+and never constitutes a vehicle traversability result.
+
+### Observed traversability detection
+
+`terrain_traversability.py` applies explicit terrain limits to the observed
+surface without changing its fit, selected root, raw layers or source risks.
+Its two stages keep ground quality separate from obstacle qualification:
+
+| Output | Meaning |
+| --- | --- |
+| `terrain_state` | `UNKNOWN`, `GROUND_SUPPORTED`, `TERRAIN_PASSABLE` or `BLOCKED` under the supplied diagnostic terrain limits |
+| `decision_state` | `CANDIDATE` only with qualified terrain and observed, empty independent risk layers; `BLOCKED` for known violations or measured/object risk; otherwise `UNKNOWN` |
+| `terrain_candidate` | Observed surface satisfying slope, roughness, step and depression checks; not a vehicle safety decision |
+| `risk_constrained_candidate` | Terrain candidate after independent risk and risk-coverage checks |
+| `terrain_connected`, `risk_constrained_connected` | Separate four-connected components from the same exact observed root; no reseeding around a blocked root |
+| `reason_bits` | Overlapping terrain, missing-evidence, risk and connectivity reasons; not a single winning explanation |
+
+Missing measurements are not zeros. A within-cell height span or an unresolved
+lower layer is ambiguous, not proof of a physical step or pit. Known excessive
+boundary steps and measured depression depths can block unsupported cells.
+Cells without floor returns stay unknown; neither gap filling nor diagonal
+connections are allowed. The root is observed surface support, not verified
+vehicle ground or ego reachability across the sensor blind zone.
+An isolated cell is not automatically deleted: a coplanar singleton can still
+be supported by full-rank neighboring observations, so small support alone is
+not a noise classifier. A smooth bowl can remain in the connected selected
+surface without receiving a separate depression-depth measurement;
+`no_depression_observed` is not proof that no physical pit exists.
+
+Independent risk uses separate measured, object and unknown bits. Original
+point risks are retained even if the caller supplies an empty risk grid.
+Native occupied cell rectangles are conservatively projected into the terrain
+grid, including cells without point support. Semantic ground overlap can explain
+where coverage is lost, but cannot authorize clearing UNKNOWN. Inputs without
+independent risk coverage remain geometry-only and cannot emit `CANDIDATE`.
+Native cells omitted from the sparse space map remain unknown, even inside its
+bounding ROI. Risk coverage requires explicit current-cell evidence over the
+whole destination cell; it is not verified ray visibility.
+
+`terrain_traversability_experiment.py` exports the frozen real-input comparison.
+Provide an explicit limits JSON, for example:
+
+```json
+{
+  "diagnostic_only": true,
+  "max_slope_gradient": 0.30,
+  "max_roughness_m": 0.10,
+  "max_step_m": 0.20,
+  "max_depression_depth_m": 0.20
+}
+```
+
+These are illustrative experimental limits, not calibrated vehicle capabilities.
+Run in the managed test runtime with the original datasets visible:
+
+```sh
+python3 modules/tools/perception_diagnostics/terrain_traversability_experiment.py \
+  --root /apollo --limits /path/to/limits.json --output /path/to/new-results
+```
+
+Per-frame NPZ outputs retain identities, source fingerprints, states, reason
+memberships and both connected masks. Reports distinguish cached native-risk
+inputs from geometry-only inputs and semantic-ground proxy evaluation from
+physical traversability truth. This diagnostic path emits no FREE, performs no
+vehicle-footprint or verified ray-visibility qualification, and does not modify
+production fusion or planning.
+
+### BEV and occupancy debug images
+
+Export the audited terrain comparison to the ignored local `data/` directory:
+
+```sh
+python3 modules/tools/perception_diagnostics/terrain_debug.py \
+  --report .cache/lidar-fusion-validation/terrain-v6/report.json \
+  --output data/lidar_fusion_debug/python
+```
+
+Open `data/lidar_fusion_debug/python/index.html` locally. Each frame has six PNG
+views: raw maximum-height BEV, independent source occupancy, terrain state,
+risk-constrained decision, exact-root connectivity and explicit risk coverage.
+`manifest.json` retains archive/image hashes, coordinate bounds and the source
+bit palette. No model inference or terrain fit is rerun by this exporter.
+
+Images use **+x up and +y left**, in frame-local metres. White crosses mark
+observed roots; blue crosses mark the frame origin, not a calibrated vehicle
+footprint. Yellow, red and violet occupancy represent measured, object and
+UNKNOWN sources; distinct mixed colors retain overlapping source bits.
+Dark missing evidence is not empty or FREE. Root/origin crosses are display
+annotations, not modifications of the numerical archives. The raw height
+palette clips display colors to -3 through +5 metres; original heights remain
+unchanged.
+
+`terrain_native_validation.py --binary PATH --output data/lidar_fusion_debug/cpp`
+feeds original XYZ/IDs and explicit config/risk to the C++ terrain CLI, not
+Python-fitted features. It compares selected roots, raw layers/source IDs,
+point labels, cell measurements, states, reasons and connected masks against
+the frozen reference. Native `bev/index.html` contains actual C++ outputs;
+`native-validation.json` retains binary fingerprints, differences and
+descriptive origin-centered coverage windows. A successful replay process is
+not a parity pass when the comparison report contains differences.
+The merged module README describes the numerical libraries and separate
+official Bazel validation blocker.
+
+## Terrain, clearance and trajectory support (offline only)
+
+The priority table, directory structure, architecture and promotion boundaries
+are in [the fusion module README](../../lidar_fusion/README.md#spatial-capability-delivery-priorities).
+`spatial_support_experiment.py` extends the frozen ground comparison with
+observed local terrain, independent risk-layer distances and explicit
+diagnostic polyline footprint queries. Observed ego-connected ground masks are
+joined from the exact frozen ground artifacts; disconnected islands remain
+unknown, not usable terrain. It does not modify production fusion,
+enable FREE, run a planner or issue control commands.
+
+Provide a JSON with `diagnostic_only: true`, `ground_results` pointing to the
+ground experiment output, `schema`, `diagnostic_max_step_m`, explicit
+`vehicle: {length, width, margin}` in metres, and `paths` entries with `name`,
+`kind: "diagnostic_probe"` and `xy` base-frame metre waypoints. These are
+illustrative probes, not real vehicle trajectories. Run in the isolated test
+runtime:
+
+```sh
+python3 modules/tools/perception_diagnostics/spatial_support_experiment.py \
+  --cases /path/to/spatial-experiment.json --output /path/to/new-spatial-results
+```
+
+The exporter retains baseline/candidate `.spatial.npz` layers, source hashes,
+same-frame path sample distances and all unknown/risk reasons in `report.json`.
+Unsupported terrain and missing/approximate visibility cannot be reported
+as safe. Candidate measured occupancy is hypothetical; native inferred/unknown
+layers remain unchanged. Sparse obstacle filtering is deliberately excluded.
+
+P2 also exports `cost_*` arrays: independent obstacle sources, terrain ratios,
+unsupported/visibility masks and diagnostic admissibility (never a weighted
+planner decision). Cost ratios, terrain-limit masks and admissibility use the
+same explicit positive, finite thresholds without changing the scene's original
+terrain masks. Layer diagnostics report individual, sole and overlapping
+blockers; unverified visibility remains a blocker, not an accuracy shortcut.
+`directional_paths` contains rectangle-versus-cell queries
+with segment heading, translation sampling inflation and conservative corner
+rotation envelopes only at heading changes. Duplicate and same-direction
+collinear waypoints do not introduce artificial turns. A single-pose path
+requires explicit `yaw`; optional fixed
+`yaw` on a polyline is a diagnostic orientation, not a steering trajectory.
+Actual vehicle-center offsets, steering feasibility and planner adaptation
+still require qualification. The full design is canonical in
+[`ad_agents/context`](../../../ad_agents/context/modules/perception/knowledge/lidar-fusion-driving-capabilities-design.md).
+
 ## Other saved replays
 
 The quality-policy reports retain `full_fusion` for **all** published candidates
