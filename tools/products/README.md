@@ -86,6 +86,17 @@ Bazel target labels are unchanged.
 
 ## Full builds, tests and packaging
 
+For explicit runtime assemblies, use `bash apollo.sh run transform`,
+`bash apollo.sh install transform --destdir=/absolute/path`, or
+`bash apollo.sh package transform`. Currently only `transform` and `hardware`
+are registered runtime assemblies, not the `devkit-*` build inventories.
+Development `run` uses source overrides; delivery defaults to release sources
+and requires explicit `--source=dev` for local checkout validation.
+Hardware requires a reviewed `-- --dag ...` or `-- --launch ...` and never
+starts merely because it appears in a build inventory.
+See [transform runtime](../transform/README.md) for installed startup and
+systemd supervision. Pure libraries do not need a runtime entrypoint.
+
 Product testing and complete product packaging are **not implemented**. Use
 existing explicit module test commands and `test hardware` until product test
 inventories are defined. `hardware_package` still builds only a hardware overlay,

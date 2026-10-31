@@ -184,6 +184,15 @@ _inject_apollo_external_core_outputs() {
   done
 }
 
+# Selected product commands prepare runtime variables only in their child
+# process; do not inject unrelated Bazel outputs into the build shell.
+if [[ -n "${WHEELOS_RUNTIME_PRODUCT:-}${WHEELOS_RUNTIME_ROOT:-}" ]]; then
+  _pathprepend "${APOLLO_ROOT_DIR}/scripts/runtime"
+  export APOLLO_RUNTIME_ENV_SOURCE="selected-runtime-commands"
+  APOLLO_RUNTIME_ENV_LOADED=1
+  return 0
+fi
+
 _check_runtime_python_abi
 
 # Keep terminal capabilities available for interactive Cyber tools such as

@@ -2,9 +2,19 @@ load("@rules_pkg//pkg:install.bzl", "pkg_install")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 load(":defs.bzl", "LIDARS", "VEHICLES", "hardware_manifest", "lidar_targets")
-load(":runtime.bzl", "runtime_layout", "runtime_package")
+load(":runtime.bzl", "runtime_layout", "runtime_package", "runtime_run")
 
 package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "run_runtime.py",
+    "runtime_entry.py",
+])
+
+runtime_run(
+    name = "run",
+    runtime = ":runtime",
+)
 
 platform(
     name = "linux_x86_64",
@@ -114,6 +124,7 @@ py_test(
         "materialize_runtime.py",
         "materialize_runtime_test.py",
     ],
+    data = ["runtime_entry.py"],
     main = "materialize_runtime_test.py",
 )
 

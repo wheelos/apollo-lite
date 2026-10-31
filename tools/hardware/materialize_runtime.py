@@ -10,6 +10,24 @@ from pathlib import Path, PurePosixPath
 TEXT_SUFFIXES = {".dag", ".launch", ".txt", ".conf", ".yaml", ".yml"}
 
 
+def launcher_text(command, parents="..", change_directory=True):
+    return (
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        f'root="$(cd "$(dirname "${{BASH_SOURCE[0]}}")/{parents}" && pwd)"\n'
+        'export CYBER_PATH="${root}"\n'
+        'export APOLLO_ROOT_DIR="${root}"\n'
+        'export LD_LIBRARY_PATH="${root}/lib'
+        '${WHEELOS_RUNTIME_LIBRARY_PATH:+:${WHEELOS_RUNTIME_LIBRARY_PATH}}"\n'
+        'if [[ -z "${GLOG_log_dir:-}" && -z "${GLOG_logtostderr:-}" ]]; then\n'
+        "  export GLOG_logtostderr=1\n"
+        "fi\n"
+        'export TERM="${TERM:-xterm-256color}"\n'
+        + ('cd "${root}"\n' if change_directory else "")
+        + f'exec {command} "$@"\n'
+    )
+
+
 def materialize(spec, output):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
@@ -32,17 +50,38 @@ def materialize(spec, output):
             destination.chmod(0o755)
     launcher = output / "bin" / "mainboard-hardware"
     launcher.parent.mkdir(parents=True, exist_ok=True)
-    launcher.write_text(
-        "#!/usr/bin/env bash\n"
-        "set -euo pipefail\n"
-        'root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"\n'
-        'export CYBER_PATH="${root}"\n'
-        'export APOLLO_ROOT_DIR="${root}"\n'
-        'export LD_LIBRARY_PATH="${root}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"\n'
-        'cd "${root}"\n'
-        'exec "${root}/bin/mainboard" "$@"\n'
-    )
+    launcher.write_text(launcher_text('"${root}/bin/mainboard"'))
     launcher.chmod(0o755)
+    entry = output / "bin/run"
+    entry.write_text(launcher_text('python3 "${root}/bin/runtime_entry.py"'))
+    entry.chmod(0o755)
+    for name, command in {
+        "mainboard": '"${root}/bin/mainboard"',
+        "cyber_launch": 'python3 "${root}/bin/cyber_launch.py"',
+        "cyber_recorder": '"${root}/bin/cyber_recorder"',
+        "cyber_monitor": '"${root}/bin/cyber_monitor"',
+    }.items():
+        wrapper = output / "bin/commands" / name
+        wrapper.parent.mkdir(parents=True, exist_ok=True)
+        wrapper.write_text(
+            launcher_text(
+                command,
+                "../..",
+                change_directory=name not in ("cyber_recorder", "cyber_monitor"),
+            )
+        )
+        wrapper.chmod(0o755)
+    setup = output / "bin/setup.bash"
+    setup.write_text(
+        "#!/usr/bin/env bash\n"
+        'PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/commands:${PATH}"\n'
+        "export PATH\n"
+    )
+    setup.chmod(0o755)
+    config = output / "conf/runtime.json"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text(json.dumps({"default_dag": spec.get("default_dag", "")}) + "\n")
+    config.chmod(0o644)
     dag = output / "hardware" / "load-only.dag"
     dag.parent.mkdir(parents=True, exist_ok=True)
     dag.write_text(

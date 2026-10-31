@@ -368,6 +368,8 @@ RUNTIME_ENV_FILE=${runtime_env_name}
 SERVER_PORT=${dreamview_port}
 DREAMVIEW_PORT=${dreamview_port}
 USE_GPU_HOST=${use_gpu_host}
+WHEELOS_RUNTIME_PRODUCT=${WHEELOS_RUNTIME_PRODUCT:-}
+WHEELOS_RUNTIME_ROOT=${WHEELOS_RUNTIME_ROOT:-}
 ENV_EOF
 
   if [[ "${mode}" == "test" ]]; then

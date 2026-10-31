@@ -31,7 +31,7 @@ def verify(runtime, component_files=None):
         dag = runtime / "hardware" / "load-only.dag"
         with (Path(directory) / "mainboard.log").open("w+") as log:
             process = subprocess.Popen(
-                [str(runtime / "bin/mainboard-hardware"), "-d", str(dag)],
+                [str(runtime / "bin/run"), "--dag", str(dag)],
                 env=environment,
                 stdout=log,
                 stderr=subprocess.STDOUT,
@@ -64,6 +64,11 @@ def verify(runtime, component_files=None):
                     except subprocess.TimeoutExpired:
                         process.kill()
                         process.wait()
+                        raise RuntimeError("mainboard did not stop within 10 seconds")
+                    if process.returncode != 0:
+                        raise RuntimeError(
+                            f"mainboard shutdown failed: {process.returncode}"
+                        )
 
 
 def main():

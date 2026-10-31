@@ -3,6 +3,19 @@
 For the simpler customer-facing entrypoint, see [product builds](../products/README.md).
 The commands below expose advanced hardware selections and overlay packaging.
 
+For familiar `mainboard` and `cyber_launch` commands, configure
+`WHEELOS_RUNTIME_PRODUCT=hardware` once in `.env.global` before creating the
+container. Build the selected runtime explicitly; commands then prepare their
+own runtime environment without changing the build shell. Installed/extracted
+layouts provide `bin/setup.bash` for one-time command PATH activation.
+The matched runtime includes `mainboard`, `cyber_launch`, `cyber_recorder` and
+`cyber_monitor`. Recorder/monitor wrappers preserve the caller's working
+directory, so relative recording/configuration paths retain their original
+meaning; recordings must target a writable data directory. Monitor requires a
+TTY and installed target terminfo/ncurses; an unset `TERM` defaults to
+`xterm-256color`. Graceful recording shutdown uses SIGINT.
+See [runtime command contracts](../../ad_agents/context/framework/build/modular-runtime-command-contract.md).
+
 Run inside the managed development container as the mapped non-root user:
 
 ```bash
@@ -21,8 +34,9 @@ of one umbrella dependency. `pkgs/transform` is `wheelos_transform`.
 its full inventory. A camera-only consumer declares `hardware.camera` without
 resolving CAN, vehicle or LiDAR SDK modules. Shared settings live in
 `hardware.build`; vehicle and CAN-based radar depend on `hardware.canbus`.
-This Starlark-only support module also owns installation rules, templates and
-the shared provider. It does not depend on transform or functional drivers.
+This Starlark-only support module owns shared build settings. SDK installation
+uses official rules_pkg mappings, without a legacy installation interface.
+It does not depend on transform or functional drivers.
 GNSS depends on `hardware.hal`. Image decompression and GStreamer camera have
 their own module identities; neither is an implicit dependency of V4L2 camera.
 Code is directly in each module root (for example
@@ -68,11 +82,16 @@ It does not scan or install the contents of `bazel-bin`.
 Run a reviewed DAG with its matching mainboard and library environment:
 
 ```bash
-bazel-bin/tools/hardware/runtime/bin/mainboard-hardware \
-  -d modules/drivers/camera/dag/camera.dag
+bash apollo.sh run hardware --config=hw_x86_devkit \
+  -- --dag modules/drivers/camera/dag/camera.dag
 ```
 
 This example opens cameras; use it only on an appropriately configured device.
+There is no implicit hardware startup. Supply an explicit reviewed `--dag` or
+`--launch`; build inventories are not process launch plans. Installed/extracted
+layouts use `bin/run --dag ...` or `bin/run --launch ...` without Bazel.
+The runtime needs Bash/Python 3 and target SDK libraries; explicit extra library
+paths use `WHEELOS_RUNTIME_LIBRARY_PATH`, not ambient `LD_LIBRARY_PATH`.
 To check ELF loading without initializing any sensor or vehicle component:
 
 ```bash
@@ -87,6 +106,17 @@ The old Dreamview hardware mode paths likewise need a deployment-specific
 configuration; they are not validated by this loader-only check.
 
 ## Binary packaging: the same runtime layout
+
+The concise commands delegate to the same official targets:
+
+```bash
+bash apollo.sh install hardware --source=dev --config=hw_x86_devkit \
+  --destdir=/absolute/path/to/hardware-runtime
+bash apollo.sh package hardware --source=dev --config=hw_x86_devkit
+```
+
+Omitting `--source=dev` selects registry/release sources, currently blocked by
+unpublished modules. It does not silently use local checkouts.
 
 ```bash
 python3 scripts/bzlmod.py dev build --config=cpu --config=opt \
