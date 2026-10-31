@@ -23,3 +23,11 @@ repositories:
     type: git
     url: git@github.com:wheelos/hardware.git
     version: main
+  transform:
+    type: git
+    url: git@github.com:wheelos/transform.git
+    version: main
+  openloc:
+    type: git
+    url: git@github.com:wheelos/openloc.git
+    version: main
