@@ -1,5 +1,8 @@
 """Runtime layout contracts independent of the selected hardware profile."""
 
+import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -71,6 +74,64 @@ class RuntimeLayoutTest(unittest.TestCase):
             launcher = output / "bin/mainboard-hardware"
             self.assertIn('export CYBER_PATH="${root}"', launcher.read_text())
             self.assertTrue(launcher.stat().st_mode & 0o111)
+
+    def test_runtime_entry_preserves_exit_arguments_and_isolates_libraries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            mainboard = root / "mainboard"
+            mainboard.write_text(
+                "#!/usr/bin/env python3\n"
+                "import json, os, sys\n"
+                "print(json.dumps([sys.argv[1:], os.getcwd(), "
+                "os.environ['CYBER_PATH'], os.environ['LD_LIBRARY_PATH']]))\n"
+                "sys.exit(13)\n"
+            )
+            dag = root / "test.dag"
+            dag.write_text("")
+            output = root / "runtime"
+            materialize(
+                {
+                    "files": [
+                        [str(mainboard), "bin/mainboard"],
+                        [
+                            str(Path(__file__).with_name("runtime_entry.py")),
+                            "bin/runtime_entry.py",
+                        ],
+                        [str(dag), "modules/test.dag"],
+                    ],
+                    "libraries": [],
+                    "default_dag": "modules/test.dag",
+                },
+                output,
+            )
+            environment = dict(os.environ, LD_LIBRARY_PATH="/old/build-cache")
+            environment.pop("WHEELOS_RUNTIME_LIBRARY_PATH", None)
+            for extension in ("", "/explicit/sdk"):
+                environment["WHEELOS_RUNTIME_LIBRARY_PATH"] = extension
+                result = subprocess.run(
+                    [str(output / "bin/run"), "--", "-p", "process with spaces"],
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 13, result.stderr)
+                arguments, cwd, cyber_path, libraries = json.loads(result.stdout)
+                self.assertEqual(
+                    arguments,
+                    [
+                        "-d",
+                        str(output / "modules/test.dag"),
+                        "-p",
+                        "process with spaces",
+                    ],
+                )
+                self.assertEqual(cwd, str(output))
+                self.assertEqual(cyber_path, str(output))
+                self.assertEqual(
+                    libraries,
+                    str(output / "lib") + (":" + extension if extension else ""),
+                )
 
     def test_conflicting_libraries_fail_instead_of_overwriting(self):
         with tempfile.TemporaryDirectory() as directory:

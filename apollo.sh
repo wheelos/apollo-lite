@@ -14,7 +14,7 @@ APOLLO_ENV=""
 
 : ${STAGE:=dev}
 
-AVAILABLE_COMMANDS="profiles config build build_dbg build_opt build_cpu build_gpu build_opt_gpu test coverage lint \
+AVAILABLE_COMMANDS="profiles config run install package build build_dbg build_opt build_cpu build_gpu build_opt_gpu test coverage lint \
                     buildify check build_fe build_teleop build_prof doc clean format usage -h --help"
 
 function check_architecture_support() {
@@ -128,7 +128,10 @@ function _usage() {
     ${BLUE}build_teleop${NO_COLOR}: run build with teleop enabled.
     ${BLUE}build_prof [module]${NO_COLOR}: build with perf profiling support. Not implemented yet.
     ${BLUE}doc${NO_COLOR}: generate doxygen document
-    ${BLUE}release${NO_COLOR}: build Apollo binary releases
+    ${BLUE}run${NO_COLOR}: develop and start a registered runtime (e.g. run transform)
+    ${BLUE}install${NO_COLOR}: install a runtime (--destdir=/absolute/path; release sources by default)
+    ${BLUE}package${NO_COLOR}: archive a runtime (release sources by default)
+    ${BLUE}release${NO_COLOR}: legacy development-source binary delivery
     ${BLUE}clean${NO_COLOR}: cleanup bazel output and log/coredump files
     ${BLUE}format${NO_COLOR}: format C++/Python/Bazel/Shell files
     ${BLUE}usage${NO_COLOR}: show this message and exit
@@ -175,6 +178,10 @@ function main() {
             return
             ;;
         config) _config_bazel_local_override "$@"; return ;;
+        run|install|package)
+            python3 "${TOP_DIR}/scripts/ci/apollo_runtime.py" "${cmd}" "$@"
+            return
+            ;;
         build)
             local arg
             for arg in "$@"; do

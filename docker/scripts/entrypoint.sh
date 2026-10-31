@@ -86,6 +86,14 @@ if [[ -d "${RCFILES_DIR}" ]]; then
   done
 fi
 
+cat >> "${USER_HOME}/.bashrc" <<'EOF'
+
+# Interactive non-login shells also need the public runtime entrypoint.
+if [[ -f /apollo/setup.bash ]]; then
+  source /apollo/setup.bash
+fi
+EOF
+
 find "${USER_HOME}" -mindepth 1 -maxdepth 1 -name ".*" \
     ! -name "." ! -name ".." \
     -exec chown --no-dereference "${USER_ID}:${GROUP_ID}" {} +

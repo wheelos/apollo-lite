@@ -109,9 +109,16 @@ class OfficialInstallerTest(unittest.TestCase):
                     ],
                     check=True,
                 )
-                self.assertEqual(
-                    tree_contents(destination, include_modes=True),
-                    tree_contents(extracted, include_modes=True),
+                installed_files = tree_contents(destination, include_modes=True)
+                archived_files = tree_contents(extracted, include_modes=True)
+                self.assertEqual(installed_files.keys(), archived_files.keys())
+                self.assertFalse(
+                    [
+                        path
+                        for path in installed_files
+                        if installed_files[path] != archived_files[path]
+                    ],
+                    "Installed and archived files must match in content and mode",
                 )
 
 
@@ -140,7 +147,7 @@ class TransformProfileTest(unittest.TestCase):
         result = bazel(
             "aquery",
             'mnemonic("PackageTar|RuntimePackageMapping", '
-            "deps(//tools/transform:runtime))",
+            "deps(//tools/transform:run))",
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "")
