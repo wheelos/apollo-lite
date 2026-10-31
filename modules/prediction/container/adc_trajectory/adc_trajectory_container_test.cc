@@ -74,8 +74,8 @@ TEST_F(ADCTrajectoryTest, InsertionWithProtection) {
 
   LaneSequence overlap_lane_sequence;
   lane_segment.set_lane_id("l164");
-  non_overlap_lane_sequence.add_lane_segment()->CopyFrom(lane_segment);
-  EXPECT_TRUE(container_.HasOverlap(non_overlap_lane_sequence));
+  overlap_lane_sequence.add_lane_segment()->CopyFrom(lane_segment);
+  EXPECT_TRUE(container_.HasOverlap(overlap_lane_sequence));
 }
 
 TEST_F(ADCTrajectoryTest, InsertionWithoutProtection) {

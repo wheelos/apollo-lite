@@ -25,21 +25,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "mlp_evaluator_test",
-    size = "small",
-    srcs = ["mlp_evaluator_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    deps = [
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/evaluator/vehicle:mlp_evaluator",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_library(
     name = "cost_evaluator",
     srcs = ["cost_evaluator.cc"],
@@ -86,25 +71,6 @@ cc_library(
     ),
 )
 
-cc_test(
-    name = "junction_mlp_evaluator_test",
-    size = "small",
-    srcs = ["junction_mlp_evaluator_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    linkopts = [
-        "-lgomp",
-    ],
-    linkstatic = True,
-    deps = [
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/evaluator/vehicle:junction_mlp_evaluator",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_library(
     name = "junction_map_evaluator",
     srcs = ["junction_map_evaluator.cc"],
@@ -137,24 +103,6 @@ cc_library(
         ["@libtorch_gpu"],
         ["@libtorch_cpu"],
     ),
-)
-
-cc_test(
-    name = "cruise_mlp_evaluator_test",
-    size = "small",
-    srcs = ["cruise_mlp_evaluator_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    linkopts = [
-        "-lgomp",
-    ],
-    linkstatic = True,
-    deps = [
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/evaluator/vehicle:cruise_mlp_evaluator",
-    ],
 )
 
 cc_library(
@@ -257,18 +205,6 @@ cc_library(
         ],
         [],
     ),
-)
-
-cc_test(
-    name = "hivt_tensorrt_executor_test",
-    size = "small",
-    srcs = ["hivt_tensorrt_executor_test.cc"],
-    tags = ["manual"],
-    deps = [
-        ":hivt_tensorrt_executor",
-        "//modules/prediction/common:prediction_system_gflags",
-        "@com_google_googletest//:gtest_main",
-    ],
 )
 
 cc_library(

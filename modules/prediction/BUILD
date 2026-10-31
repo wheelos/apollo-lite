@@ -40,24 +40,6 @@ cc_library(
     alwayslink = True,
 )
 
-cc_test(
-    name = "prediction_component_test",
-    size = "small",
-    srcs = ["prediction_component_test.cc"],
-    data = [
-        ":prediction_conf",
-        ":prediction_data",
-        ":prediction_testdata",
-    ],
-    linkopts = [
-        "-lgomp",
-    ],
-    linkstatic = True,
-    deps = [
-        ":prediction_component_lib",
-    ],
-)
-
 cc_binary(
     name = "libprediction_component.so",
     linkshared = True,

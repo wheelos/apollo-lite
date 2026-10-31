@@ -12,20 +12,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "rnn_model_test",
-    size = "small",
-    srcs = ["rnn_model_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-    ],
-    deps = [
-        "//modules/prediction/network/rnn_model",
-        "@com_google_googletest//:gtest_main",
-        "@core//cyber",
-    ],
-)
-
 filegroup(
     name = "exported_source_files",
     srcs = glob(

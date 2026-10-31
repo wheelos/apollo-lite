@@ -60,6 +60,8 @@ TEST_F(FreeMovePredictorTest, Pedestrian) {
       ::apollo::perception::PerceptionObstacle::PEDESTRIAN);
   apollo::perception::PerceptionObstacle perception_obstacle =
       perception_obstacles_.perception_obstacle(0);
+  EXPECT_EQ(perception_obstacle.type(),
+            ::apollo::perception::PerceptionObstacle::PEDESTRIAN);
   ObstaclesContainer container;
   ADCTrajectoryContainer adc_trajectory_container;
   container.Insert(perception_obstacles_);

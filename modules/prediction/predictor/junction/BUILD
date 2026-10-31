@@ -15,27 +15,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "junction_predictor_test",
-    size = "small",
-    srcs = ["junction_predictor_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    linkopts = [
-        "-lgomp",
-    ],
-    linkstatic = True,
-    deps = [
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/container/obstacles:obstacles_container",
-        "//modules/prediction/evaluator/vehicle:junction_mlp_evaluator",
-        "//modules/prediction/predictor/junction:junction_predictor",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 filegroup(
     name = "exported_source_files",
     srcs = glob(

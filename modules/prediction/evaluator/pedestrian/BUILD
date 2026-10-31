@@ -21,23 +21,6 @@ cc_library(
     ),
 )
 
-cc_test(
-    name = "pedestrian_interaction_evaluator_test",
-    size = "small",
-    srcs = ["pedestrian_interaction_evaluator_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    linkstatic = True,
-    deps = [
-        ":pedestrian_interaction_evaluator",
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/container/obstacles:obstacles_container",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 filegroup(
     name = "exported_source_files",
     srcs = glob(

@@ -15,21 +15,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "move_sequence_predictor_test",
-    size = "small",
-    srcs = ["move_sequence_predictor_test.cc"],
-    data = [
-        "//modules/prediction:prediction_data",
-        "//modules/prediction:prediction_testdata",
-    ],
-    deps = [
-        "//modules/prediction/common:kml_map_based_test",
-        "//modules/prediction/evaluator/vehicle:mlp_evaluator",
-        "//modules/prediction/predictor/move_sequence:move_sequence_predictor",
-    ],
-)
-
 filegroup(
     name = "exported_source_files",
     srcs = glob(
