@@ -88,12 +88,12 @@ Bazel target labels are unchanged.
 
 For explicit runtime assemblies, use `bash apollo.sh run transform`,
 `bash apollo.sh install transform --destdir=/absolute/path`, or
-`bash apollo.sh package transform`. Currently only `transform` and `hardware`
-are registered runtime assemblies, not the `devkit-*` build inventories.
+`bash apollo.sh package transform`. Currently `transform`, `hardware` and
+`system` are registered runtime assemblies, not the `devkit-*` build inventories.
 Development `run` uses source overrides; delivery defaults to release sources
 and requires explicit `--source=dev` for local checkout validation.
-Hardware requires a reviewed `-- --dag ...` or `-- --launch ...` and never
-starts merely because it appears in a build inventory.
+Hardware and system require a reviewed `-- --dag ...` or `-- --launch ...`;
+neither starts merely because it appears in a build inventory.
 See [transform runtime](../transform/README.md) for installed startup and
 systemd supervision. Pure libraries do not need a runtime entrypoint.
 
@@ -103,3 +103,8 @@ inventories are defined. `hardware_package` still builds only a hardware overlay
 not a standalone runtime or an algorithm deployment archive.
 
 Product selection never modifies user rc files.
+
+For one shared core/tool/configuration installation with dynamically loaded
+vehicle, sensor and future algorithm modules, use the explicit
+[system assembly](../system/README.md). The default contains tools only;
+business configuration and hardware selections are explicit build inputs.

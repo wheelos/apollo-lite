@@ -31,9 +31,6 @@ install_bazelisk() {
   else
     cp -f "${pkg_name}" "${SYSROOT_BIN_DIR}/bazelisk"
     chmod +x "${SYSROOT_BIN_DIR}/bazelisk"
-    # TODO(All): use bazelisk to install bazel
-    # ln -snf "${SYSROOT_BIN_DIR}/bazelisk" "${SYSROOT_BIN_DIR}/bazel"
-
   fi
   rm -f "${pkg_name}"
 }
@@ -48,9 +45,7 @@ install_bazel() {
   if [[ "${pkg_name}" == *.deb ]]; then
     apt_get_update_and_install ./${pkg_name}
   else
-    # install directly to sysroot
-    # TODO(All): use bazelisk to install bazel
-    install -m755 "${pkg_name}" "${SYSROOT_BIN_DIR}/bazel"
+    install -m755 "${pkg_name}" "${SYSROOT_BIN_DIR}/bazel-${BAZEL_VERSION}"
 
     # for bazelisk
     mkdir -p ${HOME}/.cache/bazelisk/downloads/metadata/bazelbuild
@@ -89,6 +84,8 @@ case "$TARGET_ARCH" in
     exit 1
     ;;
 esac
+
+ln -sfn bazelisk "${SYSROOT_BIN_DIR}/bazel"
 
 mkdir -p /etc/bash_completion.d
 cp /opt/apollo/rcfiles/bazel_completion.bash /etc/bash_completion.d/bazel

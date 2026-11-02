@@ -6,9 +6,8 @@ package(default_visibility = ["//visibility:public"])
 
 runtime_layout(
     name = "runtime",
-    components = ["@wheelos_transform//modules/transform:libstatic_transform_component.so"],
-    default_dag = "modules/transform/dag/static_transform.dag",
-    runtime_data = ["@wheelos_transform//modules/transform:runtime_data"],
+    default_dag = "dag/transform/static_transform.dag",
+    modules = ["@wheelos_transform//modules/transform:module"],
 )
 
 runtime_run(

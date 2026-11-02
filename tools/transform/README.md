@@ -9,8 +9,10 @@ python3 scripts/bzlmod.py dev build --config=cpu //tools/transform:runtime
 ```
 
 The shared runtime layout collects mainboard, plugin runfiles and DAG/launch
-files. It preserves `modules/transform` deployment paths while resolving the
-component from the external module. `:runtime` does not archive or install;
+files. It consumes the transform module's explicit runtime contribution.
+Components install under `lib/components/transform/`, with DAG and launch
+resources under the common root `dag/transform/` and `launch/transform/`.
+`:runtime` does not archive or install;
 `//tools/transform:package` explicitly archives the same layout. The old
 `:install` label has been removed.
 
@@ -22,8 +24,8 @@ python3 scripts/bzlmod.py dev run --config=cpu //tools/transform:install_dir \
 ```
 
 This copies the same declared runtime using rules_pkg. The shared
-`:package_files` mapping supplies executable/data permission groups for both
-directory installation and archives. It does not run during
+`:package_files` mapping restores executable/data modes for both directory
+installation and archives. It does not run during
 source runtime builds. Legacy module installation scripts have been removed.
 
 ## One entrypoint for development and deployment
@@ -42,8 +44,8 @@ Existing containers need recreation to receive the new bootstrap/environment.
 Build `//tools/transform:runtime` explicitly, then use:
 
 ```bash
-mainboard -d modules/transform/dag/static_transform.dag
-cyber_launch start modules/transform/launch/static_transform.launch
+mainboard -d dag/transform/static_transform.dag
+cyber_launch start launch/transform/static_transform.launch
 ```
 
 The wrappers resolve the selected runtime on each invocation, prepare only
@@ -81,12 +83,12 @@ Start an installed or extracted runtime without Bazel:
 ```bash
 /absolute/path/to/runtime/bin/run
 # Override the default DAG, or start a reviewed multi-process launch:
-/absolute/path/to/runtime/bin/run --dag modules/transform/dag/static_transform.dag
-/absolute/path/to/runtime/bin/run --launch modules/transform/launch/static_transform.launch
+/absolute/path/to/runtime/bin/run --dag dag/transform/static_transform.dag
+/absolute/path/to/runtime/bin/run --launch launch/transform/static_transform.launch
 # Or activate familiar commands once per deployed shell:
 source /absolute/path/to/runtime/bin/setup.bash
-mainboard -d modules/transform/dag/static_transform.dag
-cyber_launch start modules/transform/launch/static_transform.launch
+mainboard -d dag/transform/static_transform.dag
+cyber_launch start launch/transform/static_transform.launch
 ```
 
 The same `bin/run` is used during development. Single-process mode executes
@@ -106,7 +108,7 @@ does not validate calibration or TF publication:
 
 ```bash
 python3 tools/hardware/runtime_smoke.py <runtime-directory> \
-  --plugin bazel-bin/modules/transform/libstatic_transform_component.so
+  --plugin lib/components/transform/libstatic_transform_component.so
 ```
 
 Run that check against the source runtime, the installed directory and an extracted

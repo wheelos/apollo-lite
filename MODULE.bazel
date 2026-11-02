@@ -13,6 +13,7 @@ bazel_dep(name = "rules_python", version = "0.34.0")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
 bazel_dep(name = "adolc", version = "2.7.2.bcr.2")
 bazel_dep(name = "ad_rss_lib", version = "1.1.0.bcr.1")
+bazel_dep(name = "spconv", version = "2.3.8.bcr.3")
 
 ipopt_ext = use_extension("//third_party/ipopt:extensions.bzl", "ipopt")
 use_repo(ipopt_ext, "ipopt")
@@ -32,21 +33,13 @@ use_repo(cudnn_ext, "local_config_cudnn")
 tensorrt_ext = use_extension("//third_party/tensorrt:extensions.bzl", "tensorrt_configure")
 use_repo(tensorrt_ext, "local_config_tensorrt")
 
-bazel_dep(name = "spconv", version = "2.3.8.bcr.3")
-
-ffmpeg_ext = use_extension("//third_party/ffmpeg:extensions.bzl", "ffmpeg")
+ffmpeg_ext = use_extension("@hardware.build//third_party/ffmpeg:extensions.bzl", "ffmpeg")
 
 qt_ext = use_extension("//third_party/qt5:extensions.bzl", "qt")
+use_repo(qt_ext, "qt")
 
 libtorch_ext = use_extension("//third_party/libtorch:extensions.bzl", "libtorch_ext")
 use_repo(libtorch_ext, "libtorch_cpu", "libtorch_gpu")
-
-gstreamer_ext = use_extension("//third_party/gstreamer:extensions.bzl", "gstreamer")
-use_repo(gstreamer_ext, "gstreamer")
-
-use_repo(ffmpeg_ext, "ffmpeg")
-
-use_repo(qt_ext, "qt")
 
 # TODO: Keep the version of Python toolchain consistent with Docker.
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
@@ -112,25 +105,28 @@ single_version_override(
 
 bazel_dep(name = "civetweb", version = "1.16.bcr.3")
 bazel_dep(name = "sqlite3", version = "3.50.0")
-bazel_dep(name = "wheelos_msgs", version = "0.1.6")
-bazel_dep(name = "wheelos_core", version = "1.0.6", repo_name = "core")
-bazel_dep(name = "wheelos_common", version = "0.1.3")
-bazel_dep(name = "wheelos_map", version = "0.1.1")
 bazel_dep(name = "yaml-cpp", version = "0.8.0", repo_name = "com_github_jbeder_yaml_cpp")
 bazel_dep(name = "portaudio", version = "19.7.0.bcr.3")
 bazel_dep(name = "pcl", version = "1.15.0.bcr.2", repo_name = "local_config_pcl")
 bazel_dep(name = "sse2neon", version = "1.8.0")
 bazel_dep(name = "behaviortree_cpp", version = "4.7.0.bcr.2")
-bazel_dep(name = "inno-lidar-sdk", version = "3.103.4")
-bazel_dep(name = "hesai-lidar-sdk", version = "2.0.11")
-bazel_dep(name = "vanjee-lidar-sdk", version = "2.2.9")
-bazel_dep(name = "robosense-lidar-sdk", version = "1.5.18")
 bazel_dep(name = "opencv", version = "4.13.0")
 bazel_dep(name = "proj", version = "9.8.0")
-bazel_dep(name = "livox-sdk", version = "2.3.0")
 bazel_dep(name = "osqp", version = "1.0.0.bcr.2")
 bazel_dep(name = "zstd", version = "1.5.7.bcr.1")
 bazel_dep(name = "mujoco", version = "3.10.0.bcr.1")
+
+# wheelos
+bazel_dep(name = "wheelos_msgs", version = "0.1.6")
+bazel_dep(name = "wheelos_core", version = "1.0.6", repo_name = "core")
+bazel_dep(name = "wheelos_common", version = "0.1.3")
+bazel_dep(name = "wheelos_map", version = "0.1.1")
+bazel_dep(name = "wheelos_transform", version = "0.1.0")
+bazel_dep(name = "openloc", version = "0.1.0")
+bazel_dep(name = "vehicle_infra", version = "0.1.0", dev_dependency = True)
+bazel_dep(name = "sensor_infra", version = "0.1.0", dev_dependency = True)
+
+# hardware
 bazel_dep(name = "hardware.camera", version = "0.1.0")
 bazel_dep(name = "hardware.canbus", version = "0.1.0")
 bazel_dep(name = "hardware.vehicle", version = "0.1.0")
@@ -140,10 +136,6 @@ bazel_dep(name = "hardware.gnss", version = "0.1.0")
 bazel_dep(name = "hardware.audio", version = "0.1.0")
 bazel_dep(name = "hardware.video", version = "0.1.0")
 bazel_dep(name = "hardware.build", version = "0.1.0")
-bazel_dep(name = "wheelos_transform", version = "0.1.0")
 bazel_dep(name = "hardware.camera_gst", version = "0.1.0")
 bazel_dep(name = "hardware.image_decompress", version = "0.1.0")
 bazel_dep(name = "hardware.hal", version = "0.1.0")
-bazel_dep(name = "openloc", version = "0.1.0")
-
-include("//modules/localization:openloc.MODULE.bazel")

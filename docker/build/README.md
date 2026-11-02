@@ -184,7 +184,7 @@ sudo bash docker/build/installers/install_buildifier.sh
 
 Run source builds and checks afterward as the mapped non-root user, not through
 sudo. The GStreamer app/video SDK smoke test is
-`bazel test --config=dev //third_party/gstreamer:local_sdk_test`.
+`bazel test --config=dev @hardware.camera_gst//third_party/gstreamer:local_sdk_test`.
 Source/header lists in first-party C++ targets are explicit; resource/test-data
 globs and SDK header globs remain intentional. Buildifier checks include
 `MODULE.bazel`, `BUILD.bazel`, and SDK BUILD templates, but exclude `.bazelrc`,

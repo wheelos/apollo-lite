@@ -12,11 +12,26 @@ from pathlib import Path
 
 ROOT = "//tools/hardware:hardware"
 OPTIONS = ["--config=cpu", "--config=opt", "--config=hw_x86_devkit"]
+FFMPEG_OPTIONS = [
+    "--repo_env=FFMPEG_MODE=development",
+    "--repo_env=FFMPEG_INCLUDE_DIR=/opt/apollo/sysroot/include",
+    "--repo_env=FFMPEG_LIBRARY_DIR=/opt/apollo/sysroot/lib",
+    "--repo_env=FFMPEG_RUNTIME_LIBRARY_DIR=/opt/apollo/sysroot/lib",
+    "--repo_env=FFMPEG_RUNTIME_LIBRARIES=libavcodec.so.61,libavformat.so.61,libavutil.so.59,libswscale.so.8,libswresample.so.5",
+]
 
 
 def bazel(*args, options=OPTIONS):
     result = subprocess.run(
-        [sys.executable, "scripts/bzlmod.py", "dev", args[0], *options, *args[1:]],
+        [
+            sys.executable,
+            "scripts/bzlmod.py",
+            "dev",
+            args[0],
+            *options,
+            *FFMPEG_OPTIONS,
+            *args[1:],
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -77,7 +92,12 @@ class HardwareProfileTest(unittest.TestCase):
             "--ignore_all_rc_files",
             "--host_jvm_args=-Xmx1g",
         ]
-        resolution = ["--lockfile_mode=off", *registries, *overrides]
+        resolution = [
+            "--lockfile_mode=off",
+            *registries,
+            *overrides,
+            *FFMPEG_OPTIONS,
+        ]
         with tempfile.TemporaryDirectory(prefix="camera-only-") as directory:
             fixture = Path(directory)
             (fixture / "MODULE.bazel").write_text(
@@ -132,6 +152,23 @@ class HardwareProfileTest(unittest.TestCase):
             "robosense-lidar-sdk",
         ):
             self.assertNotIn(excluded + "@", result.stdout)
+
+    def test_driver_sdk_dependencies_are_owned_by_hardware(self):
+        workspace = Path(__file__).resolve().parents[3]
+        root_module = (workspace / "MODULE.bazel").read_text()
+        lidar_module = (workspace / "pkgs/hardware/lidar/MODULE.bazel").read_text()
+        for sdk in (
+            "inno-lidar-sdk",
+            "hesai-lidar-sdk",
+            "vanjee-lidar-sdk",
+            "robosense-lidar-sdk",
+            "livox-sdk",
+        ):
+            with self.subTest(sdk=sdk):
+                self.assertNotIn(f'bazel_dep(name = "{sdk}"', root_module)
+                self.assertIn(f'bazel_dep(name = "{sdk}"', lidar_module)
+        self.assertIn('use_extension("@hardware.build//third_party/ffmpeg:extensions.bzl"', root_module)
+        self.assertNotIn('use_repo(ffmpeg_ext, "ffmpeg")', root_module)
 
     def assert_rejected(self, option, message):
         result = bazel("build", "--nobuild", ROOT, option)
@@ -259,7 +296,7 @@ class HardwareProfileTest(unittest.TestCase):
                 for member in package.getmembers()
                 if member.isfile()
             }
-            manifest = json.load(package.extractfile(members["hardware/manifest.json"]))
+            manifest = json.load(package.extractfile(members["share/hardware/manifest.json"]))
             self.assertEqual(manifest["choices"]["gnss"], "huace")
             self.assertEqual(manifest["choices"]["vehicle"], "devkit")
             for path in manifest["component_files"]:
@@ -268,17 +305,18 @@ class HardwareProfileTest(unittest.TestCase):
                 if path.endswith(".dag"):
                     text = package.extractfile(member).read().decode()
                     for reference in re.findall(
-                        r'(?:module_library|config_file_path)\s*:\s*"/apollo/([^"]+)"',
+                        r'(?:module_library|config_file_path)\s*:\s*"([^"]+)"',
                         text,
                     ):
+                        self.assertFalse(reference.startswith("/"), path)
                         self.assertIn(reference, members, path)
             gnss = package.extractfile(
-                members["modules/drivers/gnss/conf/gnss_conf.pb.txt"]
+                members["conf/hardware/gnss/gnss_conf.pb.txt"]
             ).read()
             self.assertIn(b"HUACE_TEXT", gnss)
             self.assertNotIn(b"NOVATEL_BINARY", gnss)
             vehicle = package.extractfile(
-                members["modules/canbus/conf/canbus_conf.pb.txt"]
+                members["conf/hardware/vehicle/canbus_conf.pb.txt"]
             ).read()
             self.assertIn(b"brand: DKIT", vehicle)
             self.assertIn(b"COMPLETE_MANUAL", vehicle)

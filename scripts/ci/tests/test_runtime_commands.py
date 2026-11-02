@@ -15,7 +15,7 @@ spec = importlib.util.spec_from_file_location(
 tool = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tool)
 spec = importlib.util.spec_from_file_location(
-    "materializer", ROOT / "tools/hardware/materialize_runtime.py"
+    "materializer", ROOT / "pkgs/core/runtime/materialize_runtime.py"
 )
 materializer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(materializer)

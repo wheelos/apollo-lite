@@ -7,7 +7,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-TARGETS = {"transform": "//tools/transform", "hardware": "//tools/hardware"}
+TARGETS = {
+    "transform": "//tools/transform",
+    "hardware": "//tools/hardware",
+    "system": "//tools/system",
+}
 
 
 def command(arguments):
@@ -51,10 +55,10 @@ def command(arguments):
         parser.error(
             "run builds local development sources; deployed startup uses bin/run"
         )
-    if selected == "hardware" and args.action == "run" and not runtime_args:
+    if selected in ("hardware", "system") and args.action == "run" and not runtime_args:
         parser.error(
-            "hardware requires -- --dag <dag> or --launch <launch>; "
-            "no hardware starts implicitly"
+            f"{selected} requires -- --dag <dag> or --launch <launch>; "
+            "no modules start implicitly"
         )
     options = [f"--config={args.compute}", f"--config={args.mode}"]
     options.extend(f"--config={config}" for config in args.config)

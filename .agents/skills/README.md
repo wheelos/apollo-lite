@@ -41,6 +41,7 @@ the impact.
 - [multi-repo-dev](multi-repo-dev/SKILL.md): multi-repository dependencies and publication.
 - [vendor](vendor/SKILL.md): offline source delivery.
 - [repository-agent-setup](repository-agent-setup/SKILL.md): agent layout and skill maintenance.
+- [unified-core-runtime](unified-core-runtime/SKILL.md): shared middleware/tool/configuration assembly and no-device integration.
 
 Read commands from the authoritative entry points below as needed, and verify
 them against the current source or tool help. If a referenced document is

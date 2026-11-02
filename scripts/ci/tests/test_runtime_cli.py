@@ -17,7 +17,7 @@ def load(path):
 
 
 cli = load(ROOT / "scripts/ci/apollo_runtime.py")
-entry = load(ROOT / "tools/hardware/runtime_entry.py")
+entry = load(ROOT / "pkgs/core/runtime/runtime_entry.py")
 
 
 class RuntimeCliTest(unittest.TestCase):
@@ -41,6 +41,7 @@ class RuntimeCliTest(unittest.TestCase):
     def test_invalid_selection_fails_before_building(self):
         for arguments in (
             ["run", "hardware"],
+            ["run", "system"],
             ["run", "--product=devkit-x86"],
             ["run", "transform", "--source=release"],
             ["install", "transform"],
@@ -54,6 +55,16 @@ class RuntimeCliTest(unittest.TestCase):
     def test_runtime_args_are_preserved_without_shell_interpretation(self):
         argv = cli.command(["run", "transform", "--", "--dag", "path with spaces.dag"])
         self.assertEqual(argv[-3:], ["--", "--dag", "path with spaces.dag"])
+
+    def test_system_uses_one_explicit_assembly_for_run_and_delivery(self):
+        argv = cli.command(["run", "system", "--", "--launch", "system.launch"])
+        self.assertIn("//tools/system:run", argv)
+        self.assertEqual(argv[-3:], ["--", "--launch", "system.launch"])
+        self.assertIn("//tools/system:package", cli.command(["package", "system"]))
+        self.assertIn(
+            "//tools/system:install_dir",
+            cli.command(["install", "system", "--destdir=/tmp/system"]),
+        )
 
     def test_entry_uses_exact_runtime_mainboard_and_launch(self):
         with tempfile.TemporaryDirectory() as directory:

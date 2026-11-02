@@ -1,15 +1,9 @@
 load("@rules_pkg//pkg:install.bzl", "pkg_install")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
-load("@rules_python//python:defs.bzl", "py_binary", "py_test")
-load(":defs.bzl", "LIDARS", "VEHICLES", "hardware_manifest", "lidar_targets")
-load(":runtime.bzl", "runtime_layout", "runtime_package", "runtime_run")
+load(":defs.bzl", "LIDARS", "VEHICLES", "hardware_manifest", "lidar_runtime_resources", "lidar_targets")
+load(":runtime.bzl", "runtime_layout", "runtime_module", "runtime_package", "runtime_resources", "runtime_run")
 
 package(default_visibility = ["//visibility:public"])
-
-exports_files([
-    "run_runtime.py",
-    "runtime_entry.py",
-])
 
 runtime_run(
     name = "run",
@@ -30,7 +24,7 @@ CAMERA_COMPONENTS = select({
     "//conditions:default": [],
 })
 
-CAN_COMPONENTS = select({
+CAN_EXECUTABLES = select({
     "@hardware.build//tools/hardware:canbus_none": [],
     "//conditions:default": ["@hardware.canbus//:tool"],
 })
@@ -49,23 +43,59 @@ VEHICLE_COMPONENTS = select(dict(
     ],
 ))
 
-COMPONENTS = CAMERA_COMPONENTS + CAN_COMPONENTS + GNSS_COMPONENTS + VEHICLE_COMPONENTS
+COMPONENTS = CAMERA_COMPONENTS + GNSS_COMPONENTS + VEHICLE_COMPONENTS
 
 LIDAR_COMPONENTS = lidar_targets()
 
-LIDAR_DATA = lidar_targets(runtime = True)
+[
+    runtime_resources(
+        name = "lidar_" + brand + "_runtime_resources",
+        files = ["@hardware.lidar//" + brand + ":runtime_data"],
+        module_name = "hardware",
+        namespace = "hardware/lidar",
+    )
+    for brand in LIDARS
+]
 
-RUNTIME_DATA = LIDAR_DATA + select({
-    "@hardware.build//tools/hardware:camera_camera": ["@hardware.camera//:runtime_data"],
-    "@hardware.build//tools/hardware:camera_camera_gst": ["@hardware.camera_gst//:runtime_data"],
+runtime_resources(
+    name = "camera_runtime_resources",
+    files = ["@hardware.camera//:runtime_data"],
+    module_name = "hardware",
+    namespace = "hardware/camera",
+)
+
+runtime_resources(
+    name = "camera_gst_runtime_resources",
+    files = ["@hardware.camera_gst//:runtime_data"],
+    module_name = "hardware",
+    namespace = "hardware/camera_gst",
+)
+
+runtime_resources(
+    name = "gnss_runtime_resources",
+    files = ["@hardware.gnss//:profile_runtime_data"],
+    module_name = "hardware",
+    namespace = "hardware/gnss",
+)
+
+runtime_resources(
+    name = "vehicle_runtime_resources",
+    files = ["@hardware.vehicle//:profile_runtime_data"],
+    module_name = "hardware",
+    namespace = "hardware/vehicle",
+)
+
+RUNTIME_RESOURCES = lidar_runtime_resources() + select({
+    "@hardware.build//tools/hardware:camera_camera": [":camera_runtime_resources"],
+    "@hardware.build//tools/hardware:camera_camera_gst": [":camera_gst_runtime_resources"],
     "//conditions:default": [],
 }) + select({
     "@hardware.build//tools/hardware:gnss_none": [],
-    "//conditions:default": ["@hardware.gnss//:profile_runtime_data"],
+    "//conditions:default": [":gnss_runtime_resources"],
 }) + select(dict(
     [(
         "@hardware.vehicle//brands:with_" + brand,
-        ["@hardware.vehicle//:profile_runtime_data"],
+        [":vehicle_runtime_resources"],
     ) for brand in VEHICLES] + [
         ("//conditions:default", []),
     ],
@@ -73,9 +103,9 @@ RUNTIME_DATA = LIDAR_DATA + select({
 
 hardware_manifest(
     name = "manifest",
-    components = COMPONENTS + LIDAR_COMPONENTS,
+    components = COMPONENTS + CAN_EXECUTABLES + LIDAR_COMPONENTS,
     profile = "@hardware.build//tools/hardware:profile",
-    runtime_data = RUNTIME_DATA,
+    runtime_data = RUNTIME_RESOURCES,
     settings = dict(
         [(
             "@hardware.build//tools/hardware:" + key,
@@ -113,30 +143,41 @@ filegroup(
     output_group = "vehicle_config",
 )
 
-py_binary(
+alias(
     name = "materialize_runtime",
-    srcs = ["materialize_runtime.py"],
+    actual = "@core//runtime:materialize_runtime",
 )
 
-py_test(
+test_suite(
     name = "materialize_runtime_test",
-    srcs = [
-        "materialize_runtime.py",
-        "materialize_runtime_test.py",
-    ],
-    data = ["runtime_entry.py"],
-    main = "materialize_runtime_test.py",
+    tests = ["@core//runtime:materialize_runtime_test"],
+)
+
+runtime_module(
+    name = "hardware_module",
+    components = COMPONENTS + LIDAR_COMPONENTS,
+    dependency_metadata = select({
+        "@hardware.build//tools/hardware:camera_camera": [
+            "@hardware.camera//:runtime_metadata",
+        ],
+        "//conditions:default": [],
+    }),
+    executables = CAN_EXECUTABLES,
+    files = {
+        ":gnss_config": "conf/hardware/gnss/",
+        ":manifest": "share/hardware/",
+        ":vehicle_config": "conf/hardware/vehicle/",
+    },
+    module_name = "hardware",
+    resources = RUNTIME_RESOURCES,
 )
 
 runtime_layout(
     name = "runtime",
-    components = COMPONENTS + LIDAR_COMPONENTS,
-    generated_configs = [
-        ":gnss_config",
-        ":vehicle_config",
-    ],
-    metadata = [":manifest"],
-    runtime_data = RUNTIME_DATA,
+    files = {
+        "//modules/global_config:global_flagfile": "conf/global_config/",
+    },
+    modules = [":hardware_module"],
 )
 
 runtime_package(

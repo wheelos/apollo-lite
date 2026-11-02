@@ -8,6 +8,13 @@ import unittest
 from pathlib import Path
 
 WORKSPACE = Path(__file__).resolve().parents[3]
+FFMPEG_OPTIONS = [
+    "--repo_env=FFMPEG_MODE=development",
+    "--repo_env=FFMPEG_INCLUDE_DIR=/opt/apollo/sysroot/include",
+    "--repo_env=FFMPEG_LIBRARY_DIR=/opt/apollo/sysroot/lib",
+    "--repo_env=FFMPEG_RUNTIME_LIBRARY_DIR=/opt/apollo/sysroot/lib",
+    "--repo_env=FFMPEG_RUNTIME_LIBRARIES=libavcodec.so.61,libavformat.so.61,libavutil.so.59,libswscale.so.8,libswresample.so.5",
+]
 
 
 def bazel(*args):
@@ -18,6 +25,7 @@ def bazel(*args):
             "dev",
             args[0],
             *([] if args[0] == "query" else ["--config=cpu", "--config=opt"]),
+            *FFMPEG_OPTIONS,
             *args[1:],
         ],
         cwd=WORKSPACE,
@@ -88,6 +96,10 @@ class OfficialInstallerTest(unittest.TestCase):
                 contents = tree_contents(source)
                 self.assertTrue(contents)
                 self.assertEqual(tree_contents(destination), contents)
+                if module == "transform":
+                    self.assertTrue((destination / "dag/transform/static_transform.dag").is_file())
+                    self.assertTrue((destination / "launch/transform/static_transform.launch").is_file())
+                    self.assertTrue((destination / "lib/components/transform/libstatic_transform_component.so").is_file())
                 self.assertEqual(
                     (destination / "bin/mainboard-hardware").stat().st_mode & 0o777,
                     0o755,

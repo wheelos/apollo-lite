@@ -14,7 +14,7 @@ from pathlib import Path
 def verify(runtime, component_files=None):
     runtime = runtime.resolve()
     if component_files is None:
-        manifest = json.loads((runtime / "hardware/manifest.json").read_text())
+        manifest = json.loads((runtime / "share/hardware/manifest.json").read_text())
         component_files = manifest["component_files"]
     plugins = [runtime / path for path in component_files if path.endswith(".so")]
     if not plugins:
@@ -28,7 +28,7 @@ def verify(runtime, component_files=None):
     environment.pop("RUNFILES_DIR", None)
     environment["GLOG_logtostderr"] = "1"
     with tempfile.TemporaryDirectory(prefix="hardware-loader-") as directory:
-        dag = runtime / "hardware" / "load-only.dag"
+        dag = runtime / "dag" / "load-only.dag"
         with (Path(directory) / "mainboard.log").open("w+") as log:
             process = subprocess.Popen(
                 [str(runtime / "bin/run"), "--dag", str(dag)],

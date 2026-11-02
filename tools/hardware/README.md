@@ -42,7 +42,9 @@ their own module identities; neither is an implicit dependency of V4L2 camera.
 Code is directly in each module root (for example
 `pkgs/hardware/audio/microphone_component.cc`); there is no physical
 `modules/drivers` nesting. Native Bazel header/Proto prefixes preserve logical
-include/import names, while `runtime_paths.bzl` preserves deployed DAG paths.
+include/import names. Runtime paths are explicitly contributed under the common
+`conf/`, `dag/`, `launch/`, and `share/` roots; source paths and Bzlmod
+repository names do not affect deployment paths.
 These new modules have not been published to a registry.
 Normal registry/release mode is not available until their source revisions
 and registry entries are published. Do not copy the checkout directories into
@@ -83,7 +85,7 @@ Run a reviewed DAG with its matching mainboard and library environment:
 
 ```bash
 bash apollo.sh run hardware --config=hw_x86_devkit \
-  -- --dag modules/drivers/camera/dag/camera.dag
+  -- --dag dag/hardware/camera/camera.dag
 ```
 
 This example opens cameras; use it only on an appropriately configured device.
@@ -99,8 +101,10 @@ python3 tools/hardware/runtime_smoke.py bazel-bin/tools/hardware/runtime
 ```
 
 The generated layout uses stable product paths, not external-repository names.
-DAG/config references under `/apollo/` are rebased relative to the runtime root.
-Other absolute paths (devices, recordings, calibration) remain explicit inputs.
+DAG and launch references must already use software-root-relative paths;
+checkout-specific `/apollo/modules/` and `/apollo/bazel-bin/` references fail
+materialization. Other absolute paths (devices, recordings, calibration)
+remain explicit inputs.
 Do not pass an unmodified source-tree DAG to mainboard after extraction.
 The old Dreamview hardware mode paths likewise need a deployment-specific
 configuration; they are not validated by this loader-only check.
@@ -139,10 +143,10 @@ python3 scripts/bzlmod.py dev run --config=cpu --config=opt \
 ```
 
 `pkg_install` consumes standard package providers from `:package_files`. A small
-shared mapping action separates executable directories and configuration into
-explicit directory outputs so that official install/archive rules apply `0755` and
-`0644` respectively; Bazel normalizes source directory output permissions.
-This action runs only for installation or packaging, not source runtime builds.
+shared mapping action splits the runtime into root-directory outputs and
+restores declared executable/data modes (`0755`/`0644`) before official
+install/archive rules consume them. This action runs only for installation or
+packaging, not source runtime builds.
 Building the installer only builds its executable; filesystem installation happens
 only when it is run. Module SDK consumers now use direct official
 `pkg_files`/`pkg_filegroup` mappings and `install_dir` targets. There is no
@@ -156,11 +160,11 @@ directory outputs are listed as directories, not recursively expanded files.
 
 - `bazel-bin/tools/hardware/manifest.json`: resolved choices and component list.
 - `bazel-bin/tools/hardware/runtime/`: mainboard, selected plugin binaries,
-  declared shared-library runfiles, rebased runtime examples, generated example
-  configs, and `hardware/` metadata.
+  declared shared-library runfiles, root-relative runtime resources, generated
+  example configs, and `share/hardware/manifest.json`.
 - `bazel-bin/tools/hardware/install.tar.gz`: selected component binaries under
-  `bazel-bin/modules/...`, runtime files under `modules/...`, and manifest/build
-  revision under `hardware/`, plus the matching mainboard and library runfiles.
+  `lib/components/hardware/`, resources under `conf/`, `dag/`, `launch/`, and
+  `share/`, plus the matching mainboard and library runfiles.
 - This is a matched **hardware runtime**, not a full autonomous-driving product.
   The target still needs compatible OS/SDK libraries and device/calibration
   resources. Undeclared system-library dependencies are not discovered by

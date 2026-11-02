@@ -2,7 +2,6 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@hardware.build//tools/hardware:defs.bzl", _VEHICLES = "VEHICLES")
-load(":runtime_paths.bzl", "deployment_path")
 
 HardwareSelectionInfo = provider(fields = ["choices"])
 VEHICLES = _VEHICLES
@@ -34,6 +33,15 @@ def lidar_targets(runtime = False):
         result += enabled(
             "with_lidar_" + brand,
             ["@hardware.lidar//" + brand + ":runtime_data"] if runtime else targets,
+        )
+    return result
+
+def lidar_runtime_resources():
+    result = []
+    for brand in LIDARS:
+        result += enabled(
+            "with_lidar_" + brand,
+            [":lidar_" + brand + "_runtime_resources"],
         )
     return result
 
@@ -98,7 +106,7 @@ enable_sender_log: false
         "choices": choices,
         "components": [str(target.label) for target in ctx.attr.components],
         "component_files": [
-            "bazel-bin/" + deployment_path(f)
+            ("lib/components/hardware/" if f.basename.endswith(".so") else "bin/modules/hardware/") + f.basename
             for f in ctx.files.components
         ],
         "runtime_files": sorted([f.short_path for f in ctx.files.runtime_data]),
@@ -109,7 +117,7 @@ enable_sender_log: false
     ctx.actions.write(output, json.encode_indent(result, indent = "  ") + "\n")
     return [
         HardwareSelectionInfo(choices = choices),
-        DefaultInfo(files = depset([output, ctx.info_file])),
+        DefaultInfo(files = depset([output])),
         OutputGroupInfo(
             gnss_config = depset(gnss_config),
             vehicle_config = depset(vehicle_config),
