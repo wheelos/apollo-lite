@@ -1,4 +1,4 @@
-engine_path: "/apollo/modules/camera_semantic_segmentation/data/segformer.b0.512x1024.city.160k.engine"
+engine_path: "models/camera_semantic_segmentation/segformer.b0.512x1024.city.160k.engine"
 gpu_device_id: 0
 camera_name: "front_6mm"
 source_topic: "/apollo/sensor/camera/front_6mm/image"

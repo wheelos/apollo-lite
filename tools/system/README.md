@@ -4,14 +4,43 @@ This is the final Bzlmod integration/installation root, not another middleware.
 It installs core tools and `conf/cyber.pb.conf` once. Vehicle and sensor modules
 contribute shared components, business configuration and DAG/launch files.
 More algorithm modules can use the same `runtime_module` rule and be added to
-the same `runtime_layout`; repository boundaries do not imply process boundaries. Runtime
-resources use root `conf/`, `dag/`, `launch/` and `share/` paths; component
-libraries live under `lib/components/<module>/`.
+the same `runtime_layout`; repository boundaries do not imply process boundaries.
+Runtime resources use root `conf/`, `dag/`, `launch/`, `models/` and `share/`
+paths; component libraries live under `lib/components/<module>/`.
 
 The native tools are in `bin`; use the environment-aware commands in
 `bin/commands`. Every command uses this root's core, library dependencies and
 configuration. Recorder and monitor preserve the caller's data directory.
 See the [runtime contract](../../ad_agents/context/framework/build/modular-runtime-command-contract.md).
+
+## Dependency ownership
+
+Bzlmod selects one source dependency graph per integration root. A module
+declares repositories it directly references, not every transitive dependency.
+Removing a duplicate root declaration does not remove a library from the
+resolved graph when another module still needs it.
+
+| Category | Owner and examples |
+| --- | --- |
+| Build rules/toolchains | `rules_cc`, `rules_python`, `rules_pkg`, `rules_cuda`, `bazel_skylib`, `platforms` |
+| Third-party libraries | BCR modules directly used by Apollo code, such as Boost, Protobuf, Eigen, gRPC and OpenCV |
+| WheelOS modules | Core, messages, common, map and transform; dependencies follow their public BUILD targets |
+| Hardware dependencies | Hardware modules own PortAudio, LiDAR SDKs, RTKLIB and GStreamer; Apollo declares only hardware modules it directly uses |
+| Apollo-local integrations | `third_party/` extensions for IPOPT, cuDNN, TensorRT, Qt and LibTorch; Dreamview assets are a separate product input |
+
+PortAudio belongs to `hardware.audio`, while ncurses/libuuid belong to Core.
+FFmpeg's extension is owned by `hardware.build`; an integration root may use
+that extension to select a checksummed release SDK for the whole graph. This
+does not make the SDK an Apollo-owned source dependency. Development SDK
+environment variables are opt-in validation inputs, not release defaults.
+Root-only overrides and SDK/toolchain selections are not inherited from a
+dependency's workspace configuration.
+
+Declared versions are minimum requirements; Bzlmod MVS can select newer
+transitive versions. A release must review the resolved graph and genuine
+lockfile, not infer compatibility from matching dependency declarations.
+Peer vehicle/sensor roots are development-only integration inputs. Neither
+product depends on an Apollo checkout or on the other product.
 
 ## Build and configure
 
@@ -46,7 +75,8 @@ are in addition to normal hardware backend/vehicle selections:
 Asset labels above are examples, not shipped hardware configuration. Missing
 required inputs fail at analysis. New business/resource files must be mapped
 under their `conf/<module_name>/`, `dag/<module_name>/`,
-`launch/<module_name>/` or `share/<module_name>/` namespace; modules cannot
+`launch/<module_name>/`, `models/<module_name>/` or `share/<module_name>/`
+namespace; modules cannot
 replace core configuration or tools. Conflicting file/library contents fail instead of overwriting each
 other. `share/system-manifest.json` lists modules and hashes installed contents;
 it is not a release lock or ABI compatibility claim.
@@ -85,6 +115,21 @@ delivery validation. Release sources/locks still require actual publication.
 Keep recordings/logs outside the install tree. One recorder can subscribe to
 all selected modules. `record` observes; `play` publishes and requires an
 isolated approved domain/topic set, especially when vehicle control exists.
+Model artifacts are never downloaded or included implicitly. Explicitly
+declared model files are packaged; large or hardware-specific weights should
+instead be provisioned under `models/<module_name>/` from a versioned artifact
+source, with a separate checksum and runtime-compatibility manifest. Config
+paths should be relative to the runtime root so the same runtime can be
+relocated.
+
+This layout is an assembly contract, not an automatic migration of every
+legacy Apollo application. Existing source launch/DAG/config files can still
+contain checkout paths and must be explicitly adapted before contributing
+them to a relocatable runtime. In particular, CenterPoint's offline input
+tool resolves relative model paths against its configuration directory,
+whereas its component reads them from process cwd; its existing sample is
+not yet a portable system contribution. Do not paper over that distinction
+with filesystem searches or implicit environment fallbacks.
 
 ## No-device validation
 

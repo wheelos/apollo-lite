@@ -31,15 +31,19 @@ python3 modules/camera_semantic_segmentation/tools/export_segformer_onnx.py \
   --source-dir /home/humble/01code/SegFormer \
   --config /home/humble/01code/SegFormer/local_configs/segformer/B0/segformer.b0.512x1024.city.160k.py \
   --checkpoint <path-to-models>/segformer.b0.512x1024.city.160k.pth \
-  --output modules/camera_semantic_segmentation/data/segformer.b0.512x1024.city.160k.onnx \
+  --output <path-to-models>/segformer.b0.512x1024.city.160k.onnx \
   --height 512 \
   --width 1024
 
 python3 modules/camera_semantic_segmentation/tools/build_segformer_engine.py \
-  --onnx=modules/camera_semantic_segmentation/data/segformer.b0.512x1024.city.160k.onnx \
-  --engine=/apollo/modules/camera_semantic_segmentation/data/segformer.b0.512x1024.city.160k.engine \
+  --onnx=<path-to-models>/segformer.b0.512x1024.city.160k.onnx \
+  --engine=<path-to-models>/segformer.b0.512x1024.city.160k.engine \
   --fp16
 ```
+
+Provision the resulting engine under
+`models/camera_semantic_segmentation/` relative to the runtime root. Engines
+are external deployment artifacts and are not downloaded or bundled implicitly.
 
 ## Build and test
 

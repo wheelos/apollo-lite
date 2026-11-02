@@ -1,4 +1,4 @@
-model_path: "/mnt/synology/models/cylinder3d/apollo-baseline-20261029/runtime/pvkd-half.ts"
+model_path: "models/lidar_semantic_segmentation/pvkd-half.ts"
 # CPU reference default. Measured GPU baseline: device_id: 0, use_spconv: true
 # with --config=gpu --define=CYLINDER3D_SPCONV=true.
 device_id: -1

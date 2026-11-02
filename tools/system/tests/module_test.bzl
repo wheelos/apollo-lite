@@ -1,7 +1,7 @@
 """Module contribution ownership is enforced during analysis."""
 
 load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts")
-load("//tools/hardware:runtime.bzl", "RuntimeModuleInfo", "runtime_module")
+load("//tools/hardware:runtime.bzl", "RuntimeModuleInfo", "runtime_module", "runtime_resources")
 
 def _module_impl(ctx):
     env = analysistest.begin(ctx)
@@ -24,7 +24,19 @@ def _contribution_impl(ctx):
     module = target[RuntimeModuleInfo]
     asserts.true(env, len(module.entries) > 0)
     for _, destination in module.entries:
-        asserts.true(env, destination.startswith("lib/components/" + module.name + "/") or destination.startswith("conf/" + module.name + "/") or destination.startswith("dag/" + module.name + "/") or destination.startswith("launch/" + module.name + "/") or destination.startswith("share/" + module.name + "/") or destination.startswith("bin/modules/" + module.name + "/"))
+        allowed_prefixes = [
+            "lib/components/" + module.name + "/",
+            "conf/" + module.name + "/",
+            "dag/" + module.name + "/",
+            "launch/" + module.name + "/",
+            "models/" + module.name + "/",
+            "share/" + module.name + "/",
+            "bin/modules/" + module.name + "/",
+        ]
+        asserts.true(env, any([
+            destination.startswith(prefix)
+            for prefix in allowed_prefixes
+        ]))
     for file in target[DefaultInfo].files.to_list():
         asserts.false(env, file.basename in ["mainboard", "cyber_recorder", "cyber_monitor", "cyber.pb.conf"])
     return analysistest.end(env)
@@ -41,6 +53,19 @@ def module_tests():
         files = {"example.conf": "conf/example/example.conf"},
     )
     module_test(name = "module_test", target_under_test = ":example_module")
+    runtime_resources(
+        name = "example_model_resources",
+        files = ["models/model_fixture.ts"],
+        module_name = "example",
+        namespace = "example",
+    )
+    runtime_module(
+        name = "model_example_module",
+        testonly = True,
+        module_name = "example",
+        resources = [":example_model_resources"],
+    )
+    contribution_test(name = "model_module_test", target_under_test = ":model_example_module")
     runtime_module(
         name = "invalid_module",
         testonly = True,

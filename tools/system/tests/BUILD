@@ -7,6 +7,8 @@ load(":module_test.bzl", "module_tests")
 
 package(default_visibility = ["//visibility:private"])
 
+exports_files(["models/model_fixture.ts"])
+
 module_tests()
 
 config_setting(
@@ -32,6 +34,7 @@ runtime_layout(
     name = "runtime",
     testonly = True,
     cyber_conf = "conf/cyber.pb.conf",
+    files = {"models/model_fixture.ts": "models/example/model.engine"},
     modules = [
         "@vehicle_infra//products/vehicle:module",
         "@sensor_infra//tests/sensors:module",

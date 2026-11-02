@@ -79,7 +79,9 @@ The list of available evaluators include:
   Prediction uses `FREE_MOVE_PREDICTOR` directly; if caution extrapolation
   fails after HiVT produced a trajectory, partial trajectories are cleared and
   it falls back to `FREE_MOVE_PREDICTOR`. The default engine path is
-  `/apollo/modules/prediction/data/hivt64.engine`.
+  `models/prediction/hivt64.engine`, relative to the runtime root. Provision
+  the compatible engine as an external, versioned deployment artifact; it is
+  not downloaded or bundled by default.
   TensorRT engines are tied to their build/runtime environment and should be
   rebuilt for the deployment TensorRT/GPU combination.
   `tools/validate_hivt_av1_sample.py` runs a limited Argoverse 1 forecasting

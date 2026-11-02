@@ -1,4 +1,4 @@
-engine_path: "/apollo/modules/lidar_semantic_segmentation/data/rangeret-kitti-657.engine"
+engine_path: "models/lidar_semantic_segmentation/rangeret-kitti-657.engine"
 gpu_device_id: 0
 sensor_name: "HDL64"
 source_topic: "/apollo/sensor/velodyne64/compensator/PointCloud2"

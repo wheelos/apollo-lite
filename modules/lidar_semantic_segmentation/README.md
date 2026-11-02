@@ -74,8 +74,12 @@ The evaluated baseline weights are preserved outside Git at
 `/mnt/synology/models/cylinder3d/apollo-baseline-20261029/`, including the
 original checkpoints, exact evaluated runtime archives, conversion configs,
 label mapping, SHA256 manifest and compact evaluation evidence.
-The sample config points to its `runtime/pvkd-half.ts`, retaining CPU as the
-safe default; opt into the measured GPU backend with `device_id: 0` and
+The sample config expects the exported model at
+`models/lidar_semantic_segmentation/pvkd-half.ts`, relative to the runtime
+root. Provision that file from the versioned artifact directory and retain
+its checksum/compatibility manifest outside the ordinary runtime package.
+The config retains CPU as the safe default; opt into the measured GPU backend
+with `device_id: 0` and
 `use_spconv: true` after the explicit spconv build below.
 Canonical provenance, exact reconversion commands and current design live in
 `ad_agents/context/modules/lidar_semantic_segmentation/`:
@@ -656,7 +660,9 @@ python3 ad_agents/context/framework/skills/rangeret-engine-conversion/build_rang
 
 TensorRT engines are GPU architecture and TensorRT-version specific. Generate
 the engine in the same container/runtime family that will execute the
-component. The default config points to the engine path above.
+component. Provision the resulting engine under
+`models/lidar_semantic_segmentation/` relative to the runtime root; the default
+config does not download or bundle it.
 
 ## Build and replay
 

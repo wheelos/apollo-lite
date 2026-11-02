@@ -101,6 +101,10 @@ class SystemIntegration(unittest.TestCase):
                         hashlib.sha256((root / relative).read_bytes()).hexdigest(),
                         digest,
                     )
+                model = root / "models/example/model.engine"
+                self.assertEqual(model.read_bytes(), b"model fixture\n")
+                if variant != "source":
+                    self.assertEqual(model.stat().st_mode & 0o777, 0o644)
                 for tool in ("mainboard", "cyber_recorder", "cyber_monitor"):
                     self.assertEqual(
                         len(list(root.rglob(tool))), 2

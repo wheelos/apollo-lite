@@ -63,8 +63,7 @@ DEFINE_int32(max_caution_thread_num, 2,
 DEFINE_bool(enable_async_draw_base_image, true,
             "If enable async to draw base image");
 DEFINE_bool(use_cuda, true, "If use cuda for torch.");
-DEFINE_string(hivt_tensorrt_engine,
-              "/apollo/modules/prediction/data/hivt64.engine",
+DEFINE_string(hivt_tensorrt_engine, "models/prediction/hivt64.engine",
               "HiVT scene-level TensorRT engine file");
 DEFINE_int32(hivt_tensorrt_device_id, 0,
              "CUDA device used by HiVT TensorRT inference");

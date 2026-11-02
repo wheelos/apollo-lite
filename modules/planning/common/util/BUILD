@@ -11,12 +11,13 @@ cc_library(
     copts = PLANNING_COPTS,
     deps = [
         ":print_debug_info",
-        "@wheelos_common//modules/common/util",
-        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "//modules/planning/common:planning_gflags",
         "//modules/planning/common:reference_line_info",
         "@boost.filesystem",
+        "@boost.range",
         "@core//cyber",
+        "@wheelos_common//modules/common/util",
+        "@wheelos_common//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
         "@wheelos_msgs//wheelos_msgs/planning_msgs:planning_cc_proto",
         "@wheelos_msgs//wheelos_msgs/routing_msgs:routing_cc_proto",
     ],
@@ -40,10 +41,10 @@ cc_library(
     hdrs = ["common.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@wheelos_common//modules/common/util",
         "//modules/planning/common:frame",
         "//modules/planning/common:reference_line_info",
         "@core//cyber",
+        "@wheelos_common//modules/common/util",
     ],
 )
 
@@ -53,8 +54,8 @@ cc_library(
     hdrs = ["math_util.h"],
     copts = PLANNING_COPTS,
     deps = [
-        "@wheelos_common//modules/common/math",
         "@core//cyber",
+        "@wheelos_common//modules/common/math",
     ],
 )
 
