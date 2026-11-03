@@ -3,7 +3,7 @@
 set -e
 
 # Define the root path for Apollo map data
-APOLLO_MAP_PATH="/apollo/modules/map/data"
+APOLLO_MAP_PATH="/apollo/pkgs/planning/modules/map/data"
 
 # Check if the map directory is provided as an argument
 if [ -z "$1" ]; then
@@ -33,7 +33,7 @@ fi
 cp -r "${YOUR_MAP_DIR}/." "${NEW_MAP_PATH}"
 
 # Define the executable file path for topo_creator
-TOPO_CREATOR="./bazel-bin/modules/routing/topo_creator/topo_creator"
+TOPO_CREATOR="./bazel-bin/external/wheelos_routing+/modules/routing/topo_creator/topo_creator"
 
 # Run the map generator
 echo "Generating map files to: ${NEW_MAP_PATH}"

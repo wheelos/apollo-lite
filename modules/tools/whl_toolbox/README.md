@@ -98,7 +98,7 @@ toolbox 不会自动编译目标。
 如果源码存在但二进制不存在，页面或任务会直接提示你先编译。当前至少需要这些目标中的相应子集：
 
 - `//modules/tools/whl_toolbox:record_tool`
-- `//modules/perception/lidar/tools:offline_lidar_obstacle_perception`
+- `@wheelos_perception//modules/perception/lidar/tools:offline_lidar_obstacle_perception`
 - `//modules/tools/whl_toolbox:live_pointcloud_viewer`
-- `//modules/perception/tool/benchmark/lidar:lidar_web_visualizer_exporter`
-- `//modules/perception/tool/benchmark/lidar:lidar_benchmark`
+- `@wheelos_perception//modules/perception/tool/benchmark/lidar:lidar_web_visualizer_exporter`
+- `@wheelos_perception//modules/perception/tool/benchmark/lidar:lidar_benchmark`

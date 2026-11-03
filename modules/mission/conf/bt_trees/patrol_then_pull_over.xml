@@ -1,5 +1,0 @@
-<root BTCPP_format="4">
-    <BehaviorTree ID="PullOverTask">
-        <Action ID="SendPad" action="PULL_OVER" />
-    </BehaviorTree>
-</root>

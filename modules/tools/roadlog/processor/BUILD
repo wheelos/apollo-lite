@@ -23,8 +23,8 @@ cc_test(
     srcs = ["roadlog_recording_service_test.cc"],
     deps = [
         ":roadlog_recording_service",
-        "//modules/planning/common:gtest_exit_main",
         "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
+        "@wheelos_planning//modules/planning/common:gtest_exit_main",
     ],
 )
 
@@ -95,7 +95,6 @@ cc_library(
         ":roadlog_recording_service",
         ":roadlog_segment_manager",
         ":roadlog_trigger_manager",
-        "//modules/monitor/common:monitor_manager",
         "//modules/tools/roadlog/common:roadlog_layout",
         "@com_google_absl//absl/strings",
         "@core//cyber",
@@ -103,5 +102,6 @@ cc_library(
         "@core//cyber/common:file",
         "@core//cyber/common:log",
         "@wheelos_msgs//wheelos_msgs/monitor_msgs:smart_recorder_status_cc_proto",
+        "@wheelos_safety//modules/monitor/common:monitor_manager",
     ],
 )

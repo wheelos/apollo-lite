@@ -265,7 +265,7 @@ class PerceptionLidarPlugin(ToolboxPlugin):
         ctx.log(json.dumps(extract_summary, ensure_ascii=False))
 
         offline_bin = ensure_container_binary(
-            "//modules/perception/lidar/tools:offline_lidar_obstacle_perception", ctx
+            "@wheelos_perception//modules/perception/lidar/tools:offline_lidar_obstacle_perception", ctx
         )
         supports_progress_file = container_binary_supports_flag(offline_bin, "--progress_file")
         detection_conf = params.get("detection_conf") or _first_existing(
@@ -276,7 +276,7 @@ class PerceptionLidarPlugin(ToolboxPlugin):
         )
         if not detection_conf or not tracking_conf:
             raise RuntimeError("missing detection_conf or tracking_conf")
-        flagfile = _first_existing(["modules/global_config/global_flagfile.txt"])
+        flagfile = _first_existing(["conf/global_flagfile.txt"])
         if not flagfile:
             raise RuntimeError("missing global flagfile")
 
@@ -311,7 +311,7 @@ class PerceptionLidarPlugin(ToolboxPlugin):
         ctx.add_artifact("result", "Result Directory", result_dir)
         max_points = int(params.get("max_points") or 30000)
         exporter_bin = ensure_container_binary(
-            "//modules/perception/tool/benchmark/lidar:lidar_web_visualizer_exporter",
+            "@wheelos_perception//modules/perception/tool/benchmark/lidar:lidar_web_visualizer_exporter",
             ctx,
         )
         gt_enabled = bool(params.get("use_gt"))
@@ -328,7 +328,7 @@ class PerceptionLidarPlugin(ToolboxPlugin):
                 copy_tree(baseline_src, baseline_dir)
             gt_dir = baseline_dir
             benchmark_bin = ensure_container_binary(
-                "//modules/perception/tool/benchmark/lidar:lidar_benchmark", ctx
+                "@wheelos_perception//modules/perception/tool/benchmark/lidar:lidar_benchmark", ctx
             )
             cloud_list, result_list, gt_list = self._prepare_lists(
                 extract_dir / "pcd", result_dir, gt_dir, lists_dir

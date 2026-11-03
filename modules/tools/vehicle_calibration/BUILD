@@ -8,9 +8,9 @@ cc_binary(
     name = "validate_calibration",
     srcs = ["validate_calibration.cc"],
     deps = [
-        "//modules/perception/common/sensor_manager",
-        "@wheelos_transform//modules/transform:static_transform_loader",
         "@wheelos_common//modules/common/vehicle_calibration:lidar_height",
+        "@wheelos_perception//modules/perception/common/sensor_manager",
+        "@wheelos_transform//modules/transform:static_transform_loader",
     ],
 )
 

@@ -85,6 +85,6 @@ cc_test(
     srcs = ["trigger_base_test.cc"],
     deps = [
         ":trigger_base",
-        "//modules/planning/common:gtest_exit_main",
+        "@wheelos_planning//modules/planning/common:gtest_exit_main",
     ],
 )
