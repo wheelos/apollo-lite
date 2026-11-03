@@ -23,6 +23,7 @@ source "${TOP_DIR}/scripts/apollo.bashrc"
 # Bazel tests use their own runfiles, not a previously built runtime's libraries.
 APOLLO_BUILD_PHASE=1 source "${TOP_DIR}/scripts/apollo_base.sh"
 source "${TOP_DIR}/scripts/cyber_targets.sh"
+source "${TOP_DIR}/scripts/module_targets.sh"
 
 ARCH="$(uname -m)"
 
@@ -39,24 +40,24 @@ function _determine_drivers_disabled() {
 function _determine_perception_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
     warning "Perception can't work without GPU, targets under 'modules/perception' skipped"
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/perception/..."
+    DISABLED_TARGETS="${DISABLED_TARGETS} except @wheelos_perception//modules/perception/..."
   fi
 }
 
 function _determine_planning_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/planning/open_space/trajectory_smoother:planning_block"
+    DISABLED_TARGETS="${DISABLED_TARGETS} except @wheelos_planning//modules/planning/open_space/trajectory_smoother:planning_block"
   fi
 }
 
 function _determine_map_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/map/pnc_map:cuda_pnc_util \
-                      except //modules/map/pnc_map:cuda_util_test"
+    DISABLED_TARGETS="${DISABLED_TARGETS} except @wheelos_planning//modules/map/pnc_map:cuda_pnc_util \
+                      except @wheelos_planning//modules/map/pnc_map:cuda_util_test"
   fi
 }
 
-# bazel run //modules/planning/tools:inference_demo crash
+# bazel run @wheelos_planning//modules/planning/tools:inference_demo crash
 function determine_disabled_targets() {
   if [[ "$#" -eq 0 ]]; then
     _determine_drivers_disabled
@@ -91,6 +92,8 @@ function determine_test_targets() {
   local targets_all
   if [ "$#" -eq 0 ]; then
     targets_all="//modules/... union $(cyber_core_target)"
+    targets_all+="$(capability_targets)"
+    targets_all+=" union //tools/control/tests:motion_chain_contract_test"
     echo "${targets_all}"
     return
   fi
@@ -105,6 +108,10 @@ function determine_test_targets() {
       test_targets="@hardware.vehicle//..."
     elif [ "${component}" = "transform" ]; then
       test_targets="@wheelos_transform//modules/transform/..."
+    elif [ "${component}" = "control" ]; then
+      test_targets="@wheelos_control//... union //tools/control/tests:motion_chain_contract_test"
+    elif test_targets="$(module_recursive_target "${component}")"; then
+      :
     elif [ "${component}" = "cyber" ]; then
       test_targets="$(cyber_core_target)"
     elif [ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]; then

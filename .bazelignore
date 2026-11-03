@@ -1,2 +1,4 @@
 .cache
 docker/build
+pkgs
+tools/system/tests

@@ -1,0 +1,14 @@
+--- a/pkg/private/pkg_files.bzl
++++ b/pkg/private/pkg_files.bzl
+@@ -665,7 +665,10 @@
+     entry_type = df.entry_type if hasattr(df, "entry_type") else ENTRY_IS_FILE
+     repository = None
+     if df.src:
+-        repository = (df.src.owner and df.src.owner.repo_name) or ctx.workspace_name
++        # short_path is execroot-relative, including externally owned solib files.
++        repository = ctx.workspace_name if use_short_path else (
++            (df.src.owner and df.src.owner.repo_name) or ctx.workspace_name
++        )
+         src = df.src.short_path if use_short_path else df.src.path
+         # entry_type is left as-is
+ 

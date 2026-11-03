@@ -25,6 +25,7 @@ set -e
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source "${TOP_DIR}/scripts/apollo.bashrc"
 source "${TOP_DIR}/scripts/apollo_base.sh"
+source "${TOP_DIR}/scripts/module_targets.sh"
 
 OUTPUT_DIR="${TOP_DIR}/.cache/perf"
 
@@ -77,9 +78,14 @@ function gen_perf_data() {
     shift
     local module=$1
     if [ ! -z "${module}" ]; then
+      local module_dir="/apollo/modules/${module}"
+      local package
+      if package="$(module_package "${module}")"; then
+        module_dir="/apollo/pkgs/${package}/modules/${module}"
+      fi
       ${PERF_CMD} record -e cpu-clock -o "${PERF_DATA_FULL_PATH}" -g mainboard -d \
-        /apollo/modules/${module}/dag/${module}.dag \
-        --flagfile=/apollo/modules/${module}/conf/${module}.conf \
+        "${module_dir}/dag/${module}.dag" \
+        "--flagfile=${module_dir}/conf/${module}.conf" \
         --log_dir=/apollo/data/log
     else
       error "Please specify which module to run."

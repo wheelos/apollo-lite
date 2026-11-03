@@ -25,6 +25,7 @@ set -e
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 source "${TOP_DIR}/scripts/apollo_base.sh"
 source "${TOP_DIR}/scripts/cyber_targets.sh"
+source "${TOP_DIR}/scripts/module_targets.sh"
 
 ARCH="$(uname -m)"
 
@@ -50,21 +51,21 @@ function _determine_drivers_disabled() {
 
 function _determine_perception_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/perception/..."
+    DISABLED_TARGETS="${DISABLED_TARGETS} except @wheelos_perception//modules/perception/..."
   fi
 }
 
 function _determine_planning_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
     DISABLED_TARGETS="${DISABLED_TARGETS} \
-        except //modules/planning/open_space/trajectory_smoother:planning_block"
+        except @wheelos_planning//modules/planning/open_space/trajectory_smoother:planning_block"
   fi
 }
 
 function _determine_map_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/map/pnc_map:cuda_pnc_util \
-                      except //modules/map/pnc_map:cuda_util_test"
+    DISABLED_TARGETS="${DISABLED_TARGETS} except @wheelos_planning//modules/map/pnc_map:cuda_pnc_util \
+                      except @wheelos_planning//modules/map/pnc_map:cuda_util_test"
   fi
 }
 
@@ -108,6 +109,8 @@ function determine_build_targets_and_defines() {
 
   if [[ "$#" -eq 0 ]]; then
     targets_all="//modules/... union $(cyber_runtime_targets)"
+    targets_all+="$(capability_targets)"
+    targets_all+=" union //tools/control/tests:motion_chain_contract_test"
   else
     for component in "$@"; do
       local selected_target=""
@@ -120,6 +123,8 @@ function determine_build_targets_and_defines() {
         transform) selected_target="@wheelos_transform//modules/transform/..." ;;
       esac
       if [[ -n "${selected_target}" ]]; then
+        targets_all+=" ${selected_target}"
+      elif selected_target="$(module_recursive_target "${component}")"; then
         targets_all+=" ${selected_target}"
       elif [[ "$component" == "cyber" ]]; then
         if [[ "${HOST_OS}" == "Linux" ]]; then

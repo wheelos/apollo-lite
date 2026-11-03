@@ -45,19 +45,19 @@ function _determine_drivers_disabled() {
 function _determine_perception_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
     warning "Perception can't work without GPU, targets under 'modules/perception' skipped"
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/perception/..."
+    DISABLED_TARGETS="${DISABLED_TARGETS} except @wheelos_perception//modules/perception/..."
   fi
 }
 
 function _determine_planning_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/planning/learning_based/..."
+    DISABLED_TARGETS="${DISABLED_TARGETS} except @wheelos_planning//modules/planning/learning_based/..."
   fi
 }
 
 function _determine_map_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/map/pnc_map:cuda_util_test"
+    DISABLED_TARGETS="${DISABLED_TARGETS} except @wheelos_planning//modules/map/pnc_map:cuda_util_test"
   fi
 }
 

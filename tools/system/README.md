@@ -36,20 +36,34 @@ environment variables are opt-in validation inputs, not release defaults.
 Root-only overrides and SDK/toolchain selections are not inherited from a
 dependency's workspace configuration.
 
+Rules used by exported build macros are regular dependencies, even when they
+run only during the build. Reserve `dev_dependency` for tools and tests that
+are not part of the module's public consumer contract. A public C++ header
+including GoogleTest headers still needs a regular GoogleTest dependency.
+Cross-product test fixtures consumed by this test root also retain their
+required dependencies.
+
 Declared versions are minimum requirements; Bzlmod MVS can select newer
 transitive versions. A release must review the resolved graph and genuine
 lockfile, not infer compatibility from matching dependency declarations.
-Peer vehicle/sensor roots are development-only integration inputs. Neither
-product depends on an Apollo checkout or on the other product.
+Apollo, vehicle and sensor are peer product roots, not dependencies of one
+another. Cross-product regressions have their own integration module in
+`tools/system/tests/`, excluded from Apollo's target traversal by `.bazelignore`.
+That test module consumes Core's public assembly rules and both external
+product contributions directly; it needs no Apollo product dependency.
+Neither independent product depends on an Apollo checkout or on the other
+product.
 
 ## Build and configure
 
 Use Bazel 8.8.1 inside the managed container as the mapped non-root user.
-The cross-repository regressions declare `vehicle_infra` and `sensor_infra`
-as development dependencies. Until they and the updated core API are published,
-local validation must pass explicit source overrides for both infra modules;
-these are not implicitly discovered or generated release entries.
-The default assembly has tools only and no implicit module startup:
+The cross-repository test module declares Core, `vehicle_infra` and
+`sensor_infra` as dependencies. Until the updated APIs are published, local
+validation passes explicit source overrides in that test root; these are not
+implicitly discovered or generated release entries. Apollo's normal dependency
+graph does not contain either peer product.
+From the Apollo root, the default assembly has tools only and no implicit
+module startup:
 
 ```bash
 bazel build --config=dev --config=cpu //tools/system:runtime
@@ -133,8 +147,14 @@ with filesystem searches or implicit environment fallbacks.
 
 ## No-device validation
 
+Pass overrides only for modules in this test root's dependency graph; do not
+copy Apollo's entire development override list into this independent root.
+
 ```bash
-bazel test --config=dev --config=cpu --noignore_dev_dependency \
+cd tools/system/tests
+# Supply explicit local overrides for every unpublished shared/hardware module
+# as well as both product roots. Dependency rc files are not inherited.
+bazel test <EXPLICIT_SHARED_MODULE_AND_SDK_OPTIONS> \
   --override_module=vehicle_infra=/absolute/vehicle-infra-source \
   --override_module=sensor_infra=/absolute/sensor-infra-source \
   --@hardware.build//tools/hardware:vehicle=devkit \
@@ -142,9 +162,9 @@ bazel test --config=dev --config=cpu --noignore_dev_dependency \
   --@vehicle_infra//products/vehicle:config=@vehicle_infra//tests/fixtures:vehicle-fake.pb.txt \
   --@vehicle_infra//products/vehicle:vehicle_parameters=@vehicle_infra//tests/fixtures:vehicle-parameters-fake.pb.txt \
   --flaky_test_attempts=1 --test_output=errors \
-  //tools/hardware:materialize_runtime_test \
-  //tools/system/tests:module_test //tools/system/tests:ownership_test \
-  //tools/system/tests:integration
+  @core//runtime:materialize_runtime_test \
+  //:module_test //:ownership_test //:model_module_test \
+  //:vehicle_contribution_test //:sensor_contribution_test //:integration
 ```
 
 The integration consumes vehicle-infra's real module contribution with FakeCAN

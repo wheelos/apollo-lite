@@ -144,7 +144,7 @@ class ProductBuildTest(unittest.TestCase):
                 for mode in suffix.split("_"):
                     self.assertIn(f"--config={mode}", calls[0])
                 self.assertIn("--jobs=2", calls[0])
-                self.assertIn("//modules/control/...", calls[0])
+                self.assertIn("@wheelos_control//...", calls[0])
                 self.assertNotIn("//tools/modules:algorithms", calls[0])
 
     def test_custom_build_normalizes_existing_flags(self):

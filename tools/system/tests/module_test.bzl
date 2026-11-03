@@ -1,7 +1,7 @@
 """Module contribution ownership is enforced during analysis."""
 
 load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts")
-load("//tools/hardware:runtime.bzl", "RuntimeModuleInfo", "runtime_module", "runtime_resources")
+load("@core//runtime:runtime.bzl", "RuntimeModuleInfo", "runtime_module", "runtime_resources")
 
 def _module_impl(ctx):
     env = analysistest.begin(ctx)

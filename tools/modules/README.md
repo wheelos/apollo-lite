@@ -30,6 +30,68 @@ exposes a planner library, not a Cyber component; its simulator is not selected.
 GPU modules retain their existing platform/toolchain requirements.
 Use explicit Bazel labels for targets outside this list.
 
+Business modules resolve to independent `wheelos_*` Bzlmod capability packages
+under `pkgs/`, like `transform`. Package boundaries do not merge component
+processes or change algorithms:
+
+| Package | Modules |
+| --- | --- |
+| `lidar_perception` | lidar_object_detection, lidar_semantic_segmentation, lidar_fusion; read-only perception_diagnostics |
+| `camera_perception` | camera_semantic_segmentation |
+| `multimodal_perception` | bevfusion |
+| `world_model` | lane, traffic_light, storytelling, temporal/local-map world_model |
+| `localization` | localization (OpenLoc host adapter), ndt_localization, rtk_localization |
+| `planning` | planning, local_planning, open_space_planning, map adapters/tools/fixtures |
+| `safety` | guardian, collision_guardian, monitor |
+| `hmi` | dreamview |
+| Independent | prediction, control, mission, routing, simulation |
+| `perception` | Legacy perception, retained until its consumers migrate |
+
+Mission owns task orchestration, Routing road-network routes, and Storytelling
+environment facts (not Planning's selected execution scenario). Safety uses
+Common's shared HMI configuration and mode loader, not the HMI implementation.
+Monitor still requires an HMIStatus publisher; extraction does not introduce a
+headless default or change safety gating.
+
+Component shorthands such as `lane`, `monitor`, and `rtk_localization` select only
+their module subtree. Capability names such as `world_model` select the
+whole package. Existing same-name module build/test shorthands remain recursive.
+Release shorthands select a module installer; capability-only names select its
+aggregate installer. Explicit `@wheelos_world_model//:install_dir`,
+`@wheelos_planning//:install_dir` and
+`@wheelos_localization//:install_dir` select entire grouped packages.
+The OpenLoc Cyber host sources belong to `pkgs/localization`; the estimator
+library remains in `pkgs/openloc`. Use `--config=dev` to select the local
+checkouts. Existing C++ includes and Proto imports retain their `modules/`
+paths. Source DAG/launch files are under each checkout's `modules/` directory
+and refer to the Apollo workspace's Bazel 8 component outputs.
+These checkouts are ignored by the product Git repository and declared in
+`wheelos.repos` as development sources tracking `main`. Tracking `main` is a
+development policy, not a reproducible release pin. Bzlmod registry
+publication is separate. Commit package source in each package repository;
+keep the product repository limited to integration and manifest changes.
+
+Planning/Control's joint contract regression stays in
+`//tools/control/tests:motion_chain_contract_test`; the Control package has no
+reverse Planning dependency. Common owns shared CUDA/TensorRT/LibTorch integration;
+Planning owns IPOPT. Lane
+retains GPU-only component selection; its CPU preprocessing/calibration tests
+do not validate inference or a runtime engine.
+
+LiDAR detection and Traffic Light still consume narrow legacy Perception
+utilities. Legacy Perception tracking and semantic-map libraries also consume
+Prediction, which consumes Planning's map adapter. Planning consumes World Model,
+so the capability-module graph is cyclic even when selected Bazel target
+closures remain acyclic. These transition dependencies must be removed before
+retiring legacy Perception, rather than copied or hidden.
+The shared `pnc_map` planning adapter keeps its `modules/map/pnc_map` include
+prefix under Planning; Prediction and HMI declare that narrow library dependency.
+HDMap remains in the independent Map package. The remaining Apollo `modules/map`
+directory now lives in Planning; it does not merge HDMap into Planning.
+Product-wide runtime defaults live in [`conf/`](../../conf/README.md), separate
+from module parameters and Common code. Build-time product selections stay in
+`tools/products/`; shared Common SDK packaging lives in `tools/common/`.
+
 Only the selected roots and their real dependency closure are built. Internal
 controllers, scenarios and estimators are not split or replaced. Required
 shared libraries can still come from an otherwise unselected module; selecting

@@ -31,3 +31,55 @@ repositories:
     type: git
     url: git@github.com:wheelos/openloc.git
     version: main
+  camera_perception:
+    type: git
+    url: git@github.com:wheelos-euc/camera_perception.git
+    version: main
+  control:
+    type: git
+    url: git@github.com:wheelos-pnc/control.git
+    version: main
+  lidar_perception:
+    type: git
+    url: git@github.com:wheelos-euc/lidar_perception.git
+    version: main
+  localization:
+    type: git
+    url: git@github.com:wheelos-euc/localization.git
+    version: main
+  mission:
+    type: git
+    url: git@github.com:wheelos-pnc/mission.git
+    version: main
+  multimodal_perception:
+    type: git
+    url: git@github.com:wheelos-euc/multimodal_perception.git
+    version: main
+  perception:
+    type: git
+    url: git@github.com:wheelos-euc/perception.git
+    version: main
+  planning:
+    type: git
+    url: git@github.com:wheelos-pnc/planning.git
+    version: main
+  prediction:
+    type: git
+    url: git@github.com:wheelos-euc/prediction.git
+    version: main
+  routing:
+    type: git
+    url: git@github.com:wheelos-pnc/routing.git
+    version: main
+  safety:
+    type: git
+    url: git@github.com:wheelos/safety.git
+    version: main
+  simulation:
+    type: git
+    url: git@github.com:wheelos/simulation.git
+    version: main
+  world_model:
+    type: git
+    url: git@github.com:wheelos-euc/world_model.git
+    version: main

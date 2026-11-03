@@ -13,7 +13,9 @@ FFMPEG_OPTIONS = [
     "--repo_env=FFMPEG_INCLUDE_DIR=/opt/apollo/sysroot/include",
     "--repo_env=FFMPEG_LIBRARY_DIR=/opt/apollo/sysroot/lib",
     "--repo_env=FFMPEG_RUNTIME_LIBRARY_DIR=/opt/apollo/sysroot/lib",
-    "--repo_env=FFMPEG_RUNTIME_LIBRARIES=libavcodec.so.61,libavformat.so.61,libavutil.so.59,libswscale.so.8,libswresample.so.5",
+    "--repo_env=FFMPEG_RUNTIME_LIBRARIES="
+    "libavcodec.so.61,libavformat.so.61,libavutil.so.59,"
+    "libswscale.so.8,libswresample.so.5",
 ]
 
 
@@ -47,11 +49,67 @@ def tree_contents(directory, include_modes=False):
 
 
 class OfficialInstallerTest(unittest.TestCase):
+    def test_product_configuration_installs_with_resolvable_vehicle_path(self):
+        with tempfile.TemporaryDirectory(prefix="product-config-") as directory:
+            result = bazel("run", "//conf:install_dir", "--", "--destdir", directory)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            installed = Path(directory)
+            flags = (installed / "conf/global_flagfile.txt").read_text()
+            vehicle = next(
+                line.split("=", 1)[1]
+                for line in flags.splitlines()
+                if line.startswith("--vehicle_config_path=")
+            )
+            self.assertFalse(Path(vehicle).is_absolute())
+            self.assertEqual(
+                (installed / vehicle).read_bytes(),
+                (WORKSPACE / "conf/vehicles/default/vehicle_param.pb.txt").read_bytes(),
+            )
+
+    def test_extracted_cpu_runtime_installation_preserves_resources(self):
+        for module, resource, library in (
+            ("control", "conf/control_conf.pb.txt", "libcontrol_component.so"),
+            ("mission", "conf/bt_trees/loop.xml", "libmission_component.so"),
+            ("routing", "conf/routing_config.pb.txt", None),
+            ("simulation", "model/ackermann_vehicle.xml", "libsimulation_component.so"),
+        ):
+            with (
+                self.subTest(module=module),
+                tempfile.TemporaryDirectory(
+                    prefix=f"{module}-runtime-install-"
+                ) as directory,
+            ):
+                result = bazel(
+                    "run",
+                    f"@wheelos_{module}//modules/{module}:install_dir",
+                    "--",
+                    "--destdir",
+                    directory,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                installed = Path(directory) / module / resource
+                source = WORKSPACE / "pkgs" / module / "modules" / module / resource
+                self.assertEqual(installed.read_bytes(), source.read_bytes())
+                self.assertEqual(installed.stat().st_mode & 0o777, 0o644)
+                if library:
+                    plugin = Path(directory) / module / "lib" / library
+                    self.assertEqual(plugin.stat().st_mode & 0o777, 0o755)
+
     def test_source_installation_includes_nested_bazel_packages(self):
         for module, source in (
             ("control", "safety/safety_manager.cc"),
             ("map", "pnc_map/path.cc"),
         ):
+            label = (
+                "@wheelos_control//modules/control"
+                if module == "control"
+                else f"@wheelos_planning//modules/{module}"
+            )
+            source_root = (
+                WORKSPACE / "pkgs/control/modules/control"
+                if module == "control"
+                else WORKSPACE / "pkgs/planning/modules/map"
+            )
             with (
                 self.subTest(module=module),
                 tempfile.TemporaryDirectory(
@@ -60,7 +118,7 @@ class OfficialInstallerTest(unittest.TestCase):
             ):
                 result = bazel(
                     "run",
-                    f"//modules/{module}:source_dir",
+                    f"{label}:source_dir",
                     "--",
                     "--destdir",
                     directory,
@@ -69,7 +127,7 @@ class OfficialInstallerTest(unittest.TestCase):
                 installed = Path(directory) / module / "src" / source
                 self.assertEqual(
                     installed.read_bytes(),
-                    (WORKSPACE / "modules" / module / source).read_bytes(),
+                    (source_root / source).read_bytes(),
                 )
                 self.assertEqual(installed.stat().st_mode & 0o777, 0o644)
 
@@ -96,10 +154,38 @@ class OfficialInstallerTest(unittest.TestCase):
                 contents = tree_contents(source)
                 self.assertTrue(contents)
                 self.assertEqual(tree_contents(destination), contents)
+                if module == "hardware":
+                    flags = (
+                        destination / "conf/global_config/global_flagfile.txt"
+                    ).read_text()
+                    vehicle = next(
+                        line.split("=", 1)[1]
+                        for line in flags.splitlines()
+                        if line.startswith("--vehicle_config_path=")
+                    )
+                    self.assertFalse(Path(vehicle).is_absolute())
+                    self.assertEqual(
+                        (destination / vehicle).read_bytes(),
+                        (
+                            WORKSPACE / "conf/vehicles/default/vehicle_param.pb.txt"
+                        ).read_bytes(),
+                    )
                 if module == "transform":
-                    self.assertTrue((destination / "dag/transform/static_transform.dag").is_file())
-                    self.assertTrue((destination / "launch/transform/static_transform.launch").is_file())
-                    self.assertTrue((destination / "lib/components/transform/libstatic_transform_component.so").is_file())
+                    self.assertTrue(
+                        (destination / "dag/transform/static_transform.dag").is_file()
+                    )
+                    self.assertTrue(
+                        (
+                            destination / "launch/transform/static_transform.launch"
+                        ).is_file()
+                    )
+                    self.assertTrue(
+                        (
+                            destination
+                            / "lib/components/transform"
+                            / "libstatic_transform_component.so"
+                        ).is_file()
+                    )
                 self.assertEqual(
                     (destination / "bin/mainboard-hardware").stat().st_mode & 0o777,
                     0o755,

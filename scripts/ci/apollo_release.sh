@@ -3,6 +3,7 @@ set -e
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 source "${TOP_DIR}/scripts/apollo.bashrc"
+source "${TOP_DIR}/scripts/module_targets.sh"
 
 export OPT_APOLLO="$(dirname "${APOLLO_SYSROOT_DIR}")"
 export PREFIX_DIR=/opt/apollo/neo/packages/
@@ -113,10 +114,15 @@ function determine_release_targets() {
 
     for component in $@; do
         local release_targets
-        if [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
-            release_targets="//modules/${component}:install_dir"
-        elif [[ "${component}" = "hardware" || "${component}" = "transform" ]]; then
+        local package
+        if [[ "${component}" = "hardware" || "${component}" = "transform" ]]; then
             release_targets="//tools/${component}:install_dir"
+        elif package="$(module_package "${component}")"; then
+            release_targets="@wheelos_${package}//modules/${component}:install_dir"
+        elif package="$(capability_package "${component}")"; then
+            release_targets="@wheelos_${package}//:install_dir"
+        elif [[ -d "${APOLLO_ROOT_DIR}/modules/${component}" ]]; then
+            release_targets="//modules/${component}:install_dir"
         elif [ "${component}" = "scripts" ]; then
             release_targets="//docker/scripts:install_dir //scripts:install_dir"
         else

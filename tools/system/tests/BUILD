@@ -1,8 +1,8 @@
+load("@core//runtime:runtime.bzl", "runtime_layout", "runtime_package")
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 load("@rules_pkg//pkg:install.bzl", "pkg_install")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_python//python:defs.bzl", "py_test")
-load("//tools/hardware:runtime.bzl", "runtime_layout", "runtime_package")
 load(":module_test.bzl", "module_tests")
 
 package(default_visibility = ["//visibility:private"])

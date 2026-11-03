@@ -175,7 +175,8 @@ runtime_module(
 runtime_layout(
     name = "runtime",
     files = {
-        "//modules/global_config:global_flagfile": "conf/global_config/",
+        "//conf:global_flagfile": "conf/global_config/",
+        "//conf:vehicle_config_data": "conf/vehicles/default/",
     },
     modules = [":hardware_module"],
 )

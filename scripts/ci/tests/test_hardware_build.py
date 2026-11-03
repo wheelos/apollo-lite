@@ -140,8 +140,45 @@ class ReleaseWrapperTest(unittest.TestCase):
         calls = self.run_release("control", "--list")
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0], "cquery")
-        self.assertIn("//modules/control:package_files", calls[0])
+        self.assertIn("@wheelos_control//modules/control:package_files", calls[0])
         self.assertNotIn("run", calls[0])
+
+    def test_extracted_packages_keep_release_shorthands(self):
+        modules = (
+            "control",
+            "lane",
+            "mission",
+            "routing",
+            "simulation",
+            "rtk_localization",
+            "open_space_planning",
+            "traffic_light",
+            "monitor",
+            "storytelling",
+            "map",
+        )
+        owners = {
+            "lane": "world_model",
+            "rtk_localization": "localization",
+            "open_space_planning": "planning",
+            "traffic_light": "world_model",
+            "monitor": "safety",
+            "storytelling": "world_model",
+            "map": "planning",
+        }
+        calls = self.run_release(*modules, "--list")
+        self.assertEqual(len(calls), len(modules))
+        for module, call in zip(modules, calls):
+            owner = owners.get(module, module)
+            self.assertIn(
+                f"@wheelos_{owner}//modules/{module}:package_files",
+                call,
+            )
+
+    def test_capability_release_selects_aggregate_provider(self):
+        calls = self.run_release("lidar_perception", "safety", "--list")
+        self.assertIn("@wheelos_lidar_perception//:package_files", calls[0])
+        self.assertIn("@wheelos_safety//:package_files", calls[1])
 
     def test_script_installers_are_run_separately(self):
         calls = self.run_release("scripts", "--list")
@@ -192,6 +229,81 @@ class BuildWrapperTest(unittest.TestCase):
                 return None
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             return json.loads(capture.read_text())
+
+    def test_recursive_defaults_keep_extracted_module_coverage(self):
+        for command in ("build", "test"):
+            with self.subTest(command=command):
+                args = self.run_wrapper(command=command)
+                targets = args[args.index("--") + 1 :]
+                self.assertIn("//modules/...", targets)
+                for module in (
+                    "control",
+                    "mission",
+                    "routing",
+                    "simulation",
+                    "localization",
+                    "lidar_perception",
+                    "camera_perception",
+                    "multimodal_perception",
+                    "world_model",
+                    "prediction",
+                    "planning",
+                    "safety",
+                    "hmi",
+                    "perception",
+                ):
+                    self.assertIn(f"@wheelos_{module}//...", targets)
+                self.assertEqual(len(targets), len(set(targets)))
+                self.assertFalse(
+                    any(
+                        "wheelos_traffic_perception" in target
+                        or "wheelos_storytelling" in target
+                        for target in targets
+                    )
+                )
+                self.assertIn(
+                    "//tools/control/tests:motion_chain_contract_test", targets
+                )
+
+    def test_grouped_module_shorthand_does_not_select_siblings(self):
+        for command in ("build", "test"):
+            for module, owner in (
+                ("rtk_localization", "localization"),
+                ("traffic_light", "world_model"),
+                ("storytelling", "world_model"),
+                ("map", "planning"),
+                ("local_planning", "planning"),
+                ("monitor", "safety"),
+            ):
+                with self.subTest(command=command, module=module):
+                    args = self.run_wrapper(module, command=command)
+                    expected = [f"@wheelos_{owner}//modules/{module}/..."]
+                    if module == "map":
+                        expected += [
+                            "-@wheelos_planning//modules/map/pnc_map:cuda_pnc_util",
+                            "-@wheelos_planning//modules/map/pnc_map:cuda_util_test",
+                        ]
+                    self.assertEqual(
+                        args[args.index("--") + 1 :],
+                        expected,
+                    )
+
+    def test_extracted_packages_keep_build_and_test_shorthands(self):
+        for command in ("build", "test"):
+            for module in ("control", "lane", "mission", "routing", "simulation"):
+                with self.subTest(command=command, module=module):
+                    args = self.run_wrapper(module, command=command)
+                    targets = args[args.index("--") + 1 :]
+                    expected = (
+                        "@wheelos_world_model//modules/lane/..."
+                        if module == "lane"
+                        else f"@wheelos_{module}//..."
+                    )
+                    self.assertIn(expected, targets)
+                    if module == "control" and command == "test":
+                        self.assertIn(
+                            "//tools/control/tests:motion_chain_contract_test", targets
+                        )
 
     def test_hardware_root_and_bazel_option_boundaries(self):
         args = self.run_wrapper(

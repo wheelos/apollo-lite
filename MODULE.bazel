@@ -8,6 +8,13 @@ module(
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "rules_cc", version = "0.0.9")
 bazel_dep(name = "rules_pkg", version = "0.10.1")
+single_version_override(
+    module_name = "rules_pkg",
+    patch_strip = 1,
+    patches = ["//third_party/rules_pkg:execroot_runfiles.patch"],
+    version = "1.3.0",
+)
+
 bazel_dep(name = "rules_python", version = "0.34.0")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
 bazel_dep(name = "platforms", version = "0.0.10")
@@ -22,30 +29,26 @@ use_repo(cuda, "cuda")
 
 # TODO: Keep the version of Python toolchain consistent with Docker.
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.defaults(python_version = "3.10")
 python.toolchain(
     is_default = True,
     python_version = "3.10",
 )
 
 # Apollo-local third-party integrations
-ipopt_ext = use_extension("//third_party/ipopt:extensions.bzl", "ipopt")
+ipopt_ext = use_extension("@wheelos_planning//third_party/ipopt:extensions.bzl", "ipopt")
 use_repo(ipopt_ext, "ipopt")
 
 cudnn_ext = use_extension("//third_party/cudnn:extensions.bzl", "cudnn")
 use_repo(cudnn_ext, "local_config_cudnn")
 
-tensorrt_ext = use_extension("//third_party/tensorrt:extensions.bzl", "tensorrt_configure")
+tensorrt_ext = use_extension("@wheelos_common//third_party/tensorrt:extensions.bzl", "tensorrt_configure")
 use_repo(tensorrt_ext, "local_config_tensorrt")
 
 qt_ext = use_extension("//third_party/qt5:extensions.bzl", "qt")
 use_repo(qt_ext, "qt")
 
-libtorch_ext = use_extension("//third_party/libtorch:extensions.bzl", "libtorch_ext")
+libtorch_ext = use_extension("@wheelos_common//third_party/libtorch:extensions.bzl", "libtorch_ext")
 use_repo(libtorch_ext, "libtorch_cpu", "libtorch_gpu")
-
-# Hardware-owned build integration
-ffmpeg_ext = use_extension("@hardware.build//third_party/ffmpeg:extensions.bzl", "ffmpeg")
 
 # Third-party libraries from BCR
 bazel_dep(name = "adolc", version = "2.7.2.bcr.2")
@@ -105,11 +108,29 @@ bazel_dep(name = "wheelos_core", version = "1.0.6", repo_name = "core")
 bazel_dep(name = "wheelos_common", version = "0.1.3")
 bazel_dep(name = "wheelos_map", version = "0.1.1")
 bazel_dep(name = "wheelos_transform", version = "0.1.0")
+bazel_dep(name = "wheelos_localization", version = "0.1.0")
+bazel_dep(name = "wheelos_control", version = "0.1.0")
+bazel_dep(name = "wheelos_world_model", version = "0.1.0")
+bazel_dep(name = "wheelos_lidar_perception", version = "0.1.0")
+bazel_dep(name = "wheelos_camera_perception", version = "0.1.0")
+bazel_dep(name = "wheelos_multimodal_perception", version = "0.1.0")
+bazel_dep(name = "wheelos_planning", version = "0.1.0")
+bazel_dep(name = "wheelos_prediction", version = "0.1.0")
+bazel_dep(name = "wheelos_safety", version = "0.1.0")
+bazel_dep(name = "wheelos_hmi", version = "0.1.0")
+bazel_dep(name = "wheelos_perception", version = "0.1.0")
+bazel_dep(name = "wheelos_mission", version = "0.1.0")
+bazel_dep(name = "wheelos_routing", version = "0.1.0")
+bazel_dep(name = "wheelos_simulation", version = "0.1.0")
 bazel_dep(name = "openloc", version = "0.1.0")
 
-# Peer integration roots (development only)
-bazel_dep(name = "vehicle_infra", version = "0.1.0", dev_dependency = True)
-bazel_dep(name = "sensor_infra", version = "0.1.0", dev_dependency = True)
+# Dependency overrides are root-only; reuse the localization host's build fix.
+single_version_override(
+    module_name = "gtsam",
+    patch_strip = 1,
+    patches = ["//third_party/gtsam:gtsam_sl4_cassert.patch"],
+    version = "4.3.0-alpha.1",
+)
 
 # Hardware modules; each owns its driver SDK dependencies
 bazel_dep(name = "hardware.camera", version = "0.1.0")
