@@ -23,6 +23,10 @@ repositories:
     type: git
     url: git@github.com:wheelos/hardware.git
     version: main
+  hmi:
+    type: git
+    url: git@github.com:wheelos/hmi.git
+    version: main
   transform:
     type: git
     url: git@github.com:wheelos/transform.git
@@ -82,4 +86,8 @@ repositories:
   world_model:
     type: git
     url: git@github.com:wheelos-euc/world_model.git
+    version: main
+  tool_kit:
+    type: git
+    url: git@github.com:wheelos/tool-kit.git
     version: main

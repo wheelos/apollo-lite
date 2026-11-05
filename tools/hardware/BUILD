@@ -1,13 +1,12 @@
-load("@rules_pkg//pkg:install.bzl", "pkg_install")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools/products:defs.bzl", "runtime_product")
 load(":defs.bzl", "LIDARS", "VEHICLES", "hardware_manifest", "lidar_runtime_resources", "lidar_targets")
-load(":runtime.bzl", "runtime_layout", "runtime_module", "runtime_package", "runtime_resources", "runtime_run")
+load(":runtime.bzl", "runtime_module", "runtime_resources")
 
 package(default_visibility = ["//visibility:public"])
 
-runtime_run(
+alias(
     name = "run",
-    runtime = ":runtime",
+    actual = ":runtime_run",
 )
 
 platform(
@@ -156,12 +155,6 @@ test_suite(
 runtime_module(
     name = "hardware_module",
     components = COMPONENTS + LIDAR_COMPONENTS,
-    dependency_metadata = select({
-        "@hardware.build//tools/hardware:camera_camera": [
-            "@hardware.camera//:runtime_metadata",
-        ],
-        "//conditions:default": [],
-    }),
     executables = CAN_EXECUTABLES,
     files = {
         ":gnss_config": "conf/hardware/gnss/",
@@ -172,32 +165,29 @@ runtime_module(
     resources = RUNTIME_RESOURCES,
 )
 
-runtime_layout(
+runtime_product(
     name = "runtime",
     files = {
-        "//conf:global_flagfile": "conf/global_config/",
-        "//conf:vehicle_config_data": "conf/vehicles/default/",
+        "//products/apollo_lite/conf:global_flagfile": "conf/global_config/",
+        "//products/apollo_lite/conf:vehicle_config_data": "conf/vehicles/default/",
     },
     modules = [":hardware_module"],
-)
-
-runtime_package(
-    name = "package_files",
-    runtime = ":runtime",
-)
-
-pkg_tar(
-    name = "package",
-    srcs = [
-        ":package_files",
-    ],
-    extension = "tar.gz",
     package_file_name = "install.tar.gz",
 )
 
-pkg_install(
+alias(
+    name = "package_files",
+    actual = ":runtime_files",
+)
+
+alias(
+    name = "package",
+    actual = ":runtime_package",
+)
+
+alias(
     name = "install_dir",
-    srcs = [":package_files"],
+    actual = ":runtime_install",
 )
 
 test_suite(

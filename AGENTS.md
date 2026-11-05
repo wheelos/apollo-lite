@@ -59,6 +59,7 @@ read its `SKILL.md`. Select by `name`/`description`; load only what is needed.
 - [Test impact analysis](.agents/skills/test-impact-analysis/SKILL.md)
 - [Interface migration](.agents/skills/interface-migration/SKILL.md)
 - [Model artifact integration](.agents/skills/model-artifact-integration/SKILL.md)
+- [Unified Core runtime](.agents/skills/unified-core-runtime/SKILL.md)
 - [Agent evaluation](.agents/skills/agent-evaluation/SKILL.md)
 
 Use the [skill index](.agents/skills/README.md) to route engineering tasks.
@@ -81,7 +82,7 @@ container lifecycle commands are in
 
 Use [agent tooling](scripts/agents/README.md) for read-only preflight,
 configuration checks, task checkpoints, and evaluation reports.
-External checkouts are declared in [ad_agents.repos](ad_agents.repos); tracking
+External checkouts are declared in [wheelos.repos](wheelos.repos); tracking
 `main` is a development policy, not a reproducible release revision.
 
 ## Validation and evidence
@@ -100,9 +101,8 @@ promote stable incident reproductions to regressions. Road/HIL execution
 requires explicit approval and established safety procedures.
 
 For multi-stage tasks, preserve task state and evidence outside durable
-knowledge. Follow the
-[checkpoint contract](ad_agents/context/framework/validation/agent-task-checkpoints.md);
-recheck evidence after code, configuration, dependency, or input changes.
+knowledge. Follow the [checkpoint procedure](scripts/agents/README.md#versioning-and-checkpoints)
+and recheck evidence after code, configuration, dependency, or input changes.
 
 ## Knowledge maintenance
 

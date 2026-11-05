@@ -5,7 +5,10 @@ import argparse
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
+
+import apollo_runtime
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -24,6 +27,18 @@ def profiles(path, prefix):
 
 
 def main():
+    # Label products use the same assembly for build, run and delivery.
+    if any(
+        argument.startswith("--product=//")
+        or (
+            argument == "--product"
+            and index + 1 < len(sys.argv)
+            and sys.argv[index + 1].startswith("//")
+        )
+        for index, argument in enumerate(sys.argv[1:], 1)
+    ):
+        argv = apollo_runtime.command(["build", *sys.argv[1:]])
+        return subprocess.run(argv, cwd=ROOT, check=False).returncode
     products = profiles(ROOT / "tools/products/profiles.bazelrc", "product_")
     hardware = profiles(ROOT / "tools/hardware/profiles.bazelrc", "")
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)

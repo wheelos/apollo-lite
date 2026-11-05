@@ -17,7 +17,11 @@ FFMPEG_OPTIONS = [
     "--repo_env=FFMPEG_INCLUDE_DIR=/opt/apollo/sysroot/include",
     "--repo_env=FFMPEG_LIBRARY_DIR=/opt/apollo/sysroot/lib",
     "--repo_env=FFMPEG_RUNTIME_LIBRARY_DIR=/opt/apollo/sysroot/lib",
-    "--repo_env=FFMPEG_RUNTIME_LIBRARIES=libavcodec.so.61,libavformat.so.61,libavutil.so.59,libswscale.so.8,libswresample.so.5",
+    (
+        "--repo_env=FFMPEG_RUNTIME_LIBRARIES="
+        "libavcodec.so.61,libavformat.so.61,"
+        "libavutil.so.59,libswscale.so.8,libswresample.so.5"
+    ),
 ]
 
 
@@ -167,8 +171,12 @@ class HardwareProfileTest(unittest.TestCase):
             with self.subTest(sdk=sdk):
                 self.assertNotIn(f'bazel_dep(name = "{sdk}"', root_module)
                 self.assertIn(f'bazel_dep(name = "{sdk}"', lidar_module)
-        self.assertIn('use_extension("@hardware.build//third_party/ffmpeg:extensions.bzl"', root_module)
-        self.assertNotIn('use_repo(ffmpeg_ext, "ffmpeg")', root_module)
+        camera_module = (workspace / "pkgs/hardware/camera/MODULE.bazel").read_text()
+        self.assertIn(
+            'use_extension("//third_party/ffmpeg:extensions.bzl"',
+            camera_module,
+        )
+        self.assertNotIn("ffmpeg", root_module)
 
     def assert_rejected(self, option, message):
         result = bazel("build", "--nobuild", ROOT, option)
@@ -296,7 +304,9 @@ class HardwareProfileTest(unittest.TestCase):
                 for member in package.getmembers()
                 if member.isfile()
             }
-            manifest = json.load(package.extractfile(members["share/hardware/manifest.json"]))
+            manifest = json.load(
+                package.extractfile(members["share/hardware/manifest.json"])
+            )
             self.assertEqual(manifest["choices"]["gnss"], "huace")
             self.assertEqual(manifest["choices"]["vehicle"], "devkit")
             for path in manifest["component_files"]:

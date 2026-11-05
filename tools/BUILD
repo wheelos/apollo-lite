@@ -40,8 +40,6 @@ alias(
     actual = "@core//tools:cyber_service",
 )
 
-exports_files(["CPPLINT.cfg"])
-
 pkg_files(
     name = "source_files_data",
     srcs = glob(
@@ -51,6 +49,7 @@ pkg_files(
         "//tools/hardware:exported_source_files",
         "//tools/modules:exported_source_files",
         "//tools/platform:exported_source_files",
+        "//tools/products:exported_source_files",
         "//tools/transform:exported_source_files",
     ],
     attributes = pkg_attributes(mode = "0644"),

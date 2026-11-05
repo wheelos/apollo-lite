@@ -104,8 +104,8 @@ deferred risks coherent across these handoffs.
 ## Acceptance
 
 For work that must survive interruption, use the
-[task checkpoint contract](../../../ad_agents/context/framework/validation/agent-task-checkpoints.md)
-and [checkpoint tools](../../../scripts/agents/README.md). Store task state in
+[checkpoint procedure](../../../scripts/agents/README.md#versioning-and-checkpoints).
+Store task state in
 the session workspace, not in durable context. Capture every relevant checkout,
 untracked input, configuration, and fixture in the explicit fingerprint scope.
 On resume, compare fingerprints, recheck current ownership and outstanding

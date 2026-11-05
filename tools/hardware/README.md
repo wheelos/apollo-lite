@@ -128,7 +128,7 @@ python3 scripts/bzlmod.py dev build --config=cpu --config=opt \
 ```
 
 Only this explicit package request runs `pkg_tar`. Extraction yields the same
-runtime directory contents and `bin/mainboard-hardware` entrypoint; it does not
+runtime directory contents and `bin/mainboard` entrypoint; it does not
 recompile a second variant or perform an implicit host installation.
 For a published product, repeat through the registry/release mode with immutable
 module versions and no source overrides.

@@ -7,8 +7,7 @@ description: Evaluate changes to agent instructions, skills, routing, and tools 
 
 ## Procedure
 
-1. Read the
-   [evaluation contract](../../../ad_agents/context/framework/validation/agent-evaluation.md)
+1. Read the [evaluation procedure](../../../scripts/agents/README.md#agent-evaluation)
    and select relevant cases from the
    [case set](../../../scripts/agents/evaluation-cases.json).
 2. Freeze task inputs, code, context, skill/tool versions, model configuration,

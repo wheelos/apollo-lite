@@ -28,6 +28,18 @@ class ProductBuildTest(unittest.TestCase):
             "    sys.exit(int(os.environ.get('PREVIEW_EXIT', '0')))\n"
         )
         bazel.chmod(0o755)
+        bazelisk = self.path / "bazelisk"
+        bazelisk.write_text(
+            "#!/usr/bin/env python3\n"
+            "import json, os, sys\n"
+            "from pathlib import Path\n"
+            "if sys.argv[1:] == ['--version']:\n"
+            "    print('bazel ' + Path('.bazelversion').read_text().strip())\n"
+            "else:\n"
+            "    with open(os.environ['BAZEL_ARGUMENTS'], 'a') as stream:\n"
+            "        stream.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+        )
+        bazelisk.chmod(0o755)
         for name in ["nvidia-smi", "lsmod", "ldconfig", "free"]:
             probe = self.path / name
             probe.write_text(
@@ -90,6 +102,28 @@ class ProductBuildTest(unittest.TestCase):
     def test_show_only_analyzes(self):
         _, calls = self.run_cli("build", "--product=devkit-x86", "--show")
         self.assertEqual([call[0] for call in calls], ["cquery"])
+
+    def test_runtime_label_routes_build_and_delivery_through_same_definition(self):
+        for action, suffix, options in (
+            ("build", "", []),
+            ("build", "", ["--show"]),
+            ("run", "_run", []),
+            ("package", "_package", ["--source=dev"]),
+            ("install", "_install", ["--source=dev", "--destdir=/tmp/product"]),
+        ):
+            with self.subTest(action=action, options=options):
+                self.capture.unlink(missing_ok=True)
+                _, calls = self.run_cli(
+                    action, "--product=//products/example:single", *options
+                )
+                self.assertEqual(len(calls), 1)
+                self.assertIn("//products/example:single" + suffix, calls[0])
+                self.assertIn("--nosystem_rc", calls[0])
+                self.assertIn("--nohome_rc", calls[0])
+                self.assertIn("--config=dev", calls[0])
+                if "--show" in options:
+                    self.assertIn("cquery", calls[0])
+                    self.assertNotIn("build", calls[0])
 
     def test_build_help_does_not_probe_environment(self):
         _, calls = self.run_cli("build", "--help")

@@ -30,10 +30,10 @@ description: Assemble source-built modules into one Cyber runtime with shared to
 
 ## Implementation procedure
 
-1. Read the canonical
-   [runtime contract](../../../ad_agents/context/framework/build/modular-runtime-command-contract.md),
-   public `pkgs/core/runtime` rules, hardware compatibility exports, module
-   targets and relevant configuration.
+1. Read the
+   [Core runtime contract](../../../pkgs/core/runtime/README.md), public
+   `pkgs/core/runtime` rules, hardware compatibility exports, module targets
+   and relevant configuration.
 2. Declare module contributions with core's `runtime_module`/`RuntimeModuleInfo`:
    components, explicit component/runtime resource paths, dependency metadata,
    business configuration, DAG/launch and resources. Infra repositories export

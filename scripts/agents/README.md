@@ -56,7 +56,7 @@ builds, fetch external repositories, or benchmark agent behavior.
 
 ## Versioning and checkpoints
 
-[ad_agents.repos](../../ad_agents.repos) declares development checkouts tracking
+[wheelos.repos](../../wheelos.repos) declares development checkouts tracking
 `main`. Review it before using the existing vcs workflow; importing/updating is
 not part of these tools. Record exact revisions and dirty content fingerprints
 for runs instead of pretending `main` is an immutable delivery.
@@ -71,7 +71,7 @@ untracked/ignored input needed by the task:
 python3 scripts/agents/runtime.py snapshot \
   --repo apollo=/apollo \
   --repo context=/apollo/ad_agents/context \
-  --input /apollo/ad_agents.repos
+  --input /apollo/wheelos.repos
 ```
 
 Tracked checkout contents are hashed, not printed. Explicit extra inputs must
@@ -110,8 +110,7 @@ python3 scripts/agents/runtime.py checkpoint /absolute/session/checkpoint.json
 
 The checker recomputes input and artifact hashes before accepting the record.
 It never resumes a workflow or executes the recorded command. A valid
-in-progress checkpoint is not a completed task. See the
-[checkpoint contract](../../ad_agents/context/framework/validation/agent-task-checkpoints.md).
+in-progress checkpoint is not a completed task.
 
 ## Agent evaluation
 
@@ -134,9 +133,7 @@ python3 scripts/agents/runtime.py evaluate /absolute/session/evaluation.json
 
 This aggregates reviewer-supplied judgments; it does not infer correctness from
 transcripts or certify the reviewer. Missing cases and any false gate fail suite
-acceptance, and hard-gate failures are separately reported. Follow the
-[evaluation contract](../../ad_agents/context/framework/validation/agent-evaluation.md)
-before making agent improvement claims.
+acceptance, and hard-gate failures are separately reported.
 
 Exit codes: `0` means the requested check/record passed its stated scope,
 `1` means blocked or failed acceptance, and `2` means invalid inputs or an

@@ -1,0 +1,11 @@
+module_config {
+  module_library: "lib/components/beta/libbeta.so"
+  components {
+    class_name: "ProductBeta"
+    config {
+      name: "product_beta"
+      config_file_path: "conf/beta/component.conf"
+      readers { channel: "/runtime_product/chassis" }
+    }
+  }
+}

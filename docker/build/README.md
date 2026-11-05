@@ -206,7 +206,7 @@ xauth, Mesa software rendering, and `glxinfo`. Run inside dev as the mapped user
 source /apollo/setup.bash
 xvfb-run -a -s '-screen 0 1280x800x24 +extension GLX -nolisten tcp' \
   env LIBGL_ALWAYS_SOFTWARE=1 __GLX_VENDOR_LIBRARY_NAME=mesa \
-  /apollo/bazel-bin/modules/tools/visualizer/cyber_visualizer
+  /apollo/bazel-bin/external/wheelos_tool_kit+/modules/tools/visualizer/cyber_visualizer
 ```
 
 This explicitly uses a private, authenticated virtual display and CPU rendering;

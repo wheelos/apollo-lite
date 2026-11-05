@@ -10,14 +10,18 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RECORD_TOOL_TARGET = "//modules/tools/whl_toolbox:record_tool"
-RECORD_TOOL_BINARY = REPO_ROOT / "bazel-bin/modules/tools/whl_toolbox/record_tool"
+RECORD_TOOL_BINARY_CANDIDATES = (
+    REPO_ROOT / "bazel-bin/modules/tools/whl_toolbox/record_tool",
+    REPO_ROOT / "bazel-bin/external/wheelos_tool_kit+/modules/tools/whl_toolbox/record_tool",
+)
 
 
 def _ensure_record_tool_binary() -> Path:
-    if RECORD_TOOL_BINARY.exists() and RECORD_TOOL_BINARY.is_file():
-        return RECORD_TOOL_BINARY
+    for candidate in RECORD_TOOL_BINARY_CANDIDATES:
+        if candidate.exists() and candidate.is_file():
+            return candidate
     raise RuntimeError(
-        f"missing binary for {RECORD_TOOL_TARGET}: {RECORD_TOOL_BINARY}. "
+        f"missing binary for {RECORD_TOOL_TARGET}: {RECORD_TOOL_BINARY_CANDIDATES[0]}. "
         "Please compile the required target inside the Apollo container before running whl-toolbox."
     )
 

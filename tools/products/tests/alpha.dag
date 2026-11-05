@@ -1,0 +1,11 @@
+module_config {
+  module_library: "lib/components/alpha/libalpha.so"
+  timer_components {
+    class_name: "ProductAlpha"
+    config {
+      name: "product_alpha"
+      config_file_path: "conf/alpha/component.conf"
+      interval: 100
+    }
+  }
+}

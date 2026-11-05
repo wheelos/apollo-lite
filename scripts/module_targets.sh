@@ -35,7 +35,9 @@ capability_package() {
 
 module_recursive_target() {
   local package
-  if package="$(module_package "$1")"; then
+  if [[ "$1" == "openloc" ]]; then
+    echo "@@openloc+//..."
+  elif package="$(module_package "$1")"; then
     if [[ "${package}" == "$1" ]]; then
       echo "@wheelos_${package}//..."
     else

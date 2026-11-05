@@ -1,35 +1,32 @@
-load("@rules_pkg//pkg:install.bzl", "pkg_install")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
-load("//tools/hardware:runtime.bzl", "runtime_layout", "runtime_package", "runtime_run")
+load("//tools/products:defs.bzl", "runtime_product")
 
 package(default_visibility = ["//visibility:public"])
 
-runtime_layout(
+runtime_product(
     name = "runtime",
     default_dag = "dag/transform/static_transform.dag",
     modules = ["@wheelos_transform//modules/transform:module"],
-)
-
-runtime_run(
-    name = "run",
-    runtime = ":runtime",
-)
-
-runtime_package(
-    name = "package_files",
-    runtime = ":runtime",
-)
-
-pkg_tar(
-    name = "package",
-    srcs = [":package_files"],
-    extension = "tar.gz",
     package_file_name = "install.tar.gz",
 )
 
-pkg_install(
+alias(
+    name = "run",
+    actual = ":runtime_run",
+)
+
+alias(
+    name = "package_files",
+    actual = ":runtime_files",
+)
+
+alias(
+    name = "package",
+    actual = ":runtime_package",
+)
+
+alias(
     name = "install_dir",
-    srcs = [":package_files"],
+    actual = ":runtime_install",
 )
 
 filegroup(

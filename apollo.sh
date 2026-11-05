@@ -94,7 +94,7 @@ function build_test_and_lint() {
         jetson_orin_args=("${jetson_orin_config}")
     fi
     env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${build_sh}" "${jetson_orin_args[@]}"
-    env ${APOLLO_ENV} bash "${test_sh}" --config=unit_test "${jetson_orin_args[@]}"
+    env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${test_sh}" --config=unit_test "${jetson_orin_args[@]}"
     env ${APOLLO_ENV} bash "${APOLLO_ROOT_DIR}/scripts/ci/apollo_lint.sh" --all
     success "Build and Test and Lint finished."
 }
@@ -110,6 +110,9 @@ function _usage() {
     Options: --mode=opt|dbg --jobs=N --cpus=N --rams=MB
     build --all: explicitly build all modules; legacy bare build also builds all.
     Product presets are build inventories, not deployment qualification.
+    Runtime products: build|run|install|package --product=//products/demo:runtime
+    One runtime_product definition assembles one or many components.
+    install requires --destdir=/absolute/path; delivery uses release sources by default.
     Migration guide: tools/products/README.md#legacy-command-migration
     Advanced/legacy commands follow."
     echo -e "\n${RED}Options${NO_COLOR}:
@@ -235,7 +238,7 @@ function main() {
             build_dreamview_frontend
             ;;
         test)
-            env ${APOLLO_ENV} bash "${test_sh}" --config=unit_test "${jetson_orin_args[@]}" "$@"
+            env APOLLO_BUILD_PHASE=1 ${APOLLO_ENV} bash "${test_sh}" --config=unit_test "${jetson_orin_args[@]}" "$@"
             ;;
         coverage)
             env ${APOLLO_ENV} bash "${coverage_sh}" "${jetson_orin_args[@]}" "$@"

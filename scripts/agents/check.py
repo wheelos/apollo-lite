@@ -113,8 +113,8 @@ def check(root, context_root=None):
                     errors.append(
                         f"{entrypoint}: skill not indexed: {skill.parent.name}"
                     )
-    if not (root / "ad_agents.repos").is_file():
-        errors.append("missing external checkout manifest: ad_agents.repos")
+    if not (root / "wheelos.repos").is_file():
+        errors.append("missing external checkout manifest: wheelos.repos")
     if context_root is not None:
         catalog = context_root / "context-catalog.json"
         if not catalog.is_file():

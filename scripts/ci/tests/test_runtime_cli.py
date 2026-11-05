@@ -21,6 +21,40 @@ entry = load(ROOT / "pkgs/core/runtime/runtime_entry.py")
 
 
 class RuntimeCliTest(unittest.TestCase):
+    def test_label_products_use_the_same_assembly_for_every_action(self):
+        for action, suffix in (
+            ("build", ""),
+            ("run", "_run"),
+            ("install", "_install"),
+            ("package", "_package"),
+        ):
+            arguments = [action, "--product=//products/demo:runtime"]
+            if action == "install":
+                arguments.append("--destdir=/tmp/product")
+            with self.subTest(action=action):
+                argv = cli.command(arguments)
+                self.assertIn("//products/demo:runtime" + suffix, argv)
+                self.assertIn("dev" if action in ("build", "run") else "release", argv)
+        argv = cli.command(
+            ["build", "--product=//products/demo:runtime", "--show", "--source=release"]
+        )
+        self.assertIn("cquery", argv)
+        self.assertIn("release", argv)
+        self.assertNotIn("build", argv)
+
+    def test_label_product_rejects_ambiguous_or_escaping_selections(self):
+        for selection in (
+            "//products/../demo:runtime",
+            "//products/./demo:runtime",
+            "//products/demo",
+            "//products/demo:runtime --config=other",
+            "@foreign//products/demo:runtime",
+        ):
+            with self.subTest(selection=selection), self.assertRaises(SystemExit):
+                cli.command(["run", "--product=" + selection])
+        with self.assertRaises(SystemExit):
+            cli.command(["run", "--product=//products/demo:runtime", "--show"])
+
     def test_development_run_does_not_install_or_package(self):
         argv = cli.command(["run", "transform"])
         self.assertIn("dev", argv)

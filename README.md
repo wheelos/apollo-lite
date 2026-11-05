@@ -129,6 +129,20 @@ yes | sudo bash docker/setup_host/setup_host.sh
 
 ### Bzlmod consumer modes
 
+Apollo-Lite is the product integration root. `wheelos.repos` fetches independent
+repositories into `pkgs/`; `MODULE.bazel` declares direct build dependencies;
+`tools/` selects product modules and delivery targets. Apollo depends on
+`hardware.*` modules, not the peer `vehicle_infra` or `sensor_infra` products.
+
+Algorithm implementation, SDK integrations and module assets belong to their
+own repositories. The root keeps Apollo-Lite product configuration and topology
+(`products/apollo_lite/conf/`, `products/apollo_lite/launch/`),
+build/runtime entrypoints (`apollo.sh`, `setup.bash`, `scripts/`), the managed
+environment (`docker/`) and cross-module tools/tests. The standalone
+visualizer and roadlog tools are owned by `wheelos/tool-kit`; Apollo-Lite keeps
+their product-facing aliases and launcher integration, while the tool-kit
+owns their Bazel and Qt dependencies.
+
 Run these commands in the managed container as the mapped non-root user:
 
 ```bash
@@ -192,6 +206,13 @@ bash apollo.sh profiles
 bash apollo.sh build --product=devkit-x86 --show
 bash apollo.sh build --product=devkit-x86
 ```
+
+For a runtime product declared with `runtime_product`, use the same label for
+`build`, `run`, `install` and `package`, for example
+`bash apollo.sh run --product=//products/example:runtime`. A single component is
+a one-module product; composite products use the same launcher and relocatable
+configuration/tool/asset layout. Example labels must be replaced with actual
+product definitions. See [runtime products](tools/products/README.md#runtime-products-one-component-or-many).
 
 `--show` displays the effective Bazel configuration and outputs without compiling.
 See [product builds](tools/products/README.md) for custom hardware/module selection

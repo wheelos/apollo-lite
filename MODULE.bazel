@@ -1,157 +1,65 @@
 module(
     name = "apollo",
     version = "8.0.0",
-    compatibility_level = 1,
 )
 
 # Bazel rules and toolchains
-bazel_dep(name = "bazel_skylib", version = "1.7.1")
-bazel_dep(name = "rules_cc", version = "0.0.9")
-bazel_dep(name = "rules_pkg", version = "0.10.1")
-single_version_override(
-    module_name = "rules_pkg",
-    patch_strip = 1,
-    patches = ["//third_party/rules_pkg:execroot_runfiles.patch"],
-    version = "1.3.0",
-)
-
-bazel_dep(name = "rules_python", version = "0.34.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.26")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
-bazel_dep(name = "platforms", version = "0.0.10")
+bazel_dep(name = "rules_pkg", version = "1.3.0")
+bazel_dep(name = "rules_python", version = "2.4.1")
 
-# Shared toolchains
 cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
 cuda.toolkit(
     name = "cuda",
     toolkit_path = "/usr/local/cuda",
 )
-use_repo(cuda, "cuda")
 
-# TODO: Keep the version of Python toolchain consistent with Docker.
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     is_default = True,
     python_version = "3.10",
 )
 
-# Apollo-local third-party integrations
-ipopt_ext = use_extension("@wheelos_planning//third_party/ipopt:extensions.bzl", "ipopt")
-use_repo(ipopt_ext, "ipopt")
+# WheelOS foundation and product capability modules
+bazel_dep(name = "wheelos_core", version = "1.0.6", repo_name = "core")
+bazel_dep(name = "wheelos_common", version = "0.1.3.bcr.1")
+bazel_dep(name = "wheelos_transform", version = "0.1.0")
+bazel_dep(name = "wheelos_localization", version = "0.1.0")
+bazel_dep(name = "wheelos_lidar_perception", version = "0.1.0")
+bazel_dep(name = "wheelos_camera_perception", version = "0.1.0")
+bazel_dep(name = "wheelos_multimodal_perception", version = "0.1.0")
+bazel_dep(name = "wheelos_prediction", version = "0.1.0")
+bazel_dep(name = "wheelos_routing", version = "0.1.0")
+bazel_dep(name = "wheelos_mission", version = "0.1.0")
+bazel_dep(name = "wheelos_planning", version = "0.1.0")
+bazel_dep(name = "wheelos_control", version = "0.1.0")
+bazel_dep(name = "wheelos_safety", version = "0.1.0")
+bazel_dep(name = "wheelos_hmi", version = "0.1.0")
+bazel_dep(name = "wheelos_perception", version = "0.1.0")
+bazel_dep(name = "wheelos_world_model", version = "0.1.0")
+bazel_dep(name = "wheelos_simulation", version = "0.1.0")
+bazel_dep(name = "wheelos_tool_kit", version = "0.1.0")
 
-cudnn_ext = use_extension("//third_party/cudnn:extensions.bzl", "cudnn")
-use_repo(cudnn_ext, "local_config_cudnn")
+# Hardware modules; each owns its driver SDK dependencies
+bazel_dep(name = "hardware.audio", version = "0.1.0")
+bazel_dep(name = "hardware.build", version = "0.1.0")
+bazel_dep(name = "hardware.camera", version = "0.1.0")
+bazel_dep(name = "hardware.camera_gst", version = "0.1.0")
+bazel_dep(name = "hardware.canbus", version = "0.1.0")
+bazel_dep(name = "hardware.gnss", version = "0.1.0")
+bazel_dep(name = "hardware.hal", version = "0.1.0")
+bazel_dep(name = "hardware.image_decompress", version = "0.1.0")
+bazel_dep(name = "hardware.lidar", version = "0.1.0")
+bazel_dep(name = "hardware.radar", version = "0.1.0")
+bazel_dep(name = "hardware.vehicle", version = "0.1.0")
+bazel_dep(name = "hardware.video", version = "0.1.0")
 
-tensorrt_ext = use_extension("@wheelos_common//third_party/tensorrt:extensions.bzl", "tensorrt_configure")
-use_repo(tensorrt_ext, "local_config_tensorrt")
-
-qt_ext = use_extension("//third_party/qt5:extensions.bzl", "qt")
-use_repo(qt_ext, "qt")
-
-libtorch_ext = use_extension("@wheelos_common//third_party/libtorch:extensions.bzl", "libtorch_ext")
-use_repo(libtorch_ext, "libtorch_cpu", "libtorch_gpu")
-
-# Third-party libraries from BCR
-bazel_dep(name = "adolc", version = "2.7.2.bcr.2")
-bazel_dep(name = "ad_rss_lib", version = "1.1.0.bcr.1")
-bazel_dep(name = "spconv", version = "2.3.8.bcr.3")
-
-# Boost libraries
-bazel_dep(name = "boost.bind", version = "1.87.0")
-bazel_dep(name = "boost.filesystem", version = "1.87.0")
-bazel_dep(name = "boost.range", version = "1.87.0")
-bazel_dep(name = "boost.algorithm", version = "1.87.0")
-bazel_dep(name = "boost.geometry", version = "1.87.0")
-bazel_dep(name = "boost.circular_buffer", version = "1.87.0")
-bazel_dep(name = "boost.thread", version = "1.87.0")
-bazel_dep(name = "boost.container", version = "1.87.0")
-bazel_dep(name = "boost.math", version = "1.87.0")
-bazel_dep(name = "boost.random", version = "1.87.0")
-bazel_dep(name = "boost.format", version = "1.87.0")
-bazel_dep(name = "boost.mpl", version = "1.87.0")
-bazel_dep(name = "boost.property_tree", version = "1.87.0")
-bazel_dep(name = "boost.program_options", version = "1.87.0")
-bazel_dep(name = "boost.lockfree", version = "1.87.0")
-
-# Other third-party libraries from BCR
-bazel_dep(name = "abseil-cpp", version = "20250127.1", repo_name = "com_google_absl")
-bazel_dep(name = "eigen", version = "4.0.0-20241125.bcr.2")
-bazel_dep(name = "nlohmann_json", version = "3.12.0", repo_name = "com_github_nlohmann_json")
-bazel_dep(name = "gflags", version = "2.2.2", repo_name = "com_github_gflags_gflags")
-bazel_dep(name = "glog", version = "0.7.1", repo_name = "com_github_google_glog")
-bazel_dep(name = "googletest", version = "1.17.0", repo_name = "com_google_googletest")
-bazel_dep(name = "grpc", version = "1.69.0", repo_name = "com_github_grpc_grpc")
-bazel_dep(name = "protobuf", version = "29.0.bcr.1", repo_name = "com_google_protobuf")
-bazel_dep(name = "zlib", version = "1.3.1.bcr.6")
-bazel_dep(name = "tinyxml2", version = "10.0.0")
-
+# Root-only overrides
 # Keep the graph on 10.0.0; without this override MVS selects 11.0.0.
 single_version_override(
     module_name = "tinyxml2",
     version = "10.0.0",
-)
-
-bazel_dep(name = "civetweb", version = "1.16.bcr.3")
-bazel_dep(name = "sqlite3", version = "3.50.0")
-bazel_dep(name = "yaml-cpp", version = "0.8.0", repo_name = "com_github_jbeder_yaml_cpp")
-bazel_dep(name = "pcl", version = "1.15.0.bcr.2", repo_name = "local_config_pcl")
-bazel_dep(name = "sse2neon", version = "1.8.0")
-bazel_dep(name = "behaviortree_cpp", version = "4.7.0.bcr.2")
-bazel_dep(name = "opencv", version = "4.13.0")
-bazel_dep(name = "proj", version = "9.8.0")
-bazel_dep(name = "osqp", version = "1.0.0.bcr.2")
-bazel_dep(name = "zstd", version = "1.5.7.bcr.1")
-bazel_dep(name = "mujoco", version = "3.10.0.bcr.1")
-
-# WheelOS modules
-bazel_dep(name = "wheelos_msgs", version = "0.1.6")
-bazel_dep(name = "wheelos_core", version = "1.0.6", repo_name = "core")
-bazel_dep(name = "wheelos_common", version = "0.1.3")
-bazel_dep(name = "wheelos_map", version = "0.1.1")
-bazel_dep(name = "wheelos_transform", version = "0.1.0")
-bazel_dep(name = "wheelos_localization", version = "0.1.0")
-bazel_dep(name = "wheelos_control", version = "0.1.0")
-bazel_dep(name = "wheelos_world_model", version = "0.1.0")
-bazel_dep(name = "wheelos_lidar_perception", version = "0.1.0")
-bazel_dep(name = "wheelos_camera_perception", version = "0.1.0")
-bazel_dep(name = "wheelos_multimodal_perception", version = "0.1.0")
-bazel_dep(name = "wheelos_planning", version = "0.1.0")
-bazel_dep(name = "wheelos_prediction", version = "0.1.0")
-bazel_dep(name = "wheelos_safety", version = "0.1.0")
-bazel_dep(name = "wheelos_hmi", version = "0.1.0")
-bazel_dep(name = "wheelos_perception", version = "0.1.0")
-bazel_dep(name = "wheelos_mission", version = "0.1.0")
-bazel_dep(name = "wheelos_routing", version = "0.1.0")
-bazel_dep(name = "wheelos_simulation", version = "0.1.0")
-bazel_dep(name = "openloc", version = "0.1.0")
-
-# Dependency overrides are root-only; reuse the localization host's build fix.
-single_version_override(
-    module_name = "gtsam",
-    patch_strip = 1,
-    patches = ["//third_party/gtsam:gtsam_sl4_cassert.patch"],
-    version = "4.3.0-alpha.1",
-)
-
-# Hardware modules; each owns its driver SDK dependencies
-bazel_dep(name = "hardware.camera", version = "0.1.0")
-bazel_dep(name = "hardware.canbus", version = "0.1.0")
-bazel_dep(name = "hardware.vehicle", version = "0.1.0")
-bazel_dep(name = "hardware.lidar", version = "0.1.0")
-bazel_dep(name = "hardware.radar", version = "0.1.0")
-bazel_dep(name = "hardware.gnss", version = "0.1.0")
-bazel_dep(name = "hardware.audio", version = "0.1.0")
-bazel_dep(name = "hardware.video", version = "0.1.0")
-bazel_dep(name = "hardware.build", version = "0.1.0")
-bazel_dep(name = "hardware.camera_gst", version = "0.1.0")
-bazel_dep(name = "hardware.image_decompress", version = "0.1.0")
-
-# Apollo-owned product assets
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "dreamview_frontend_assets",
-    sha256 = "351abac78142b228d310b2d22a776924792981385514f4f98b4f5fc4c939067f",
-    urls = [
-        "https://dl.wheelos.cn/release/dreamview/dreamview-frontend-6.0.5.tar.gz",
-    ],
 )

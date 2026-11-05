@@ -124,6 +124,8 @@ class RuntimeCommandsTest(unittest.TestCase):
         for environment in (
             {},
             {"WHEELOS_RUNTIME_PRODUCT": "../transform"},
+            {"WHEELOS_RUNTIME_PRODUCT": "//products/../other:runtime"},
+            {"WHEELOS_RUNTIME_PRODUCT": "//products/demo"},
             {"WHEELOS_RUNTIME_PRODUCT": "missing"},
             {"WHEELOS_RUNTIME_ROOT": "relative"},
             {
@@ -243,6 +245,19 @@ class RuntimeCommandsTest(unittest.TestCase):
                     Path(argv[0]).resolve(),
                     workspace / name / "tools/transform/runtime/bin/commands/mainboard",
                 )
+
+    def test_explicit_label_selects_the_same_product_as_build_and_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            root = workspace / "bazel-bin/products/demo/single"
+            materializer.materialize({"files": [], "libraries": []}, root)
+            argv = tool.command(
+                workspace,
+                {"WHEELOS_RUNTIME_PRODUCT": "//products/demo:single"},
+                "cyber_monitor",
+                ["-h"],
+            )
+            self.assertEqual(argv, [str(root / "bin/commands/cyber_monitor"), "-h"])
 
 
 if __name__ == "__main__":

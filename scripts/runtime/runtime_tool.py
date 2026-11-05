@@ -19,9 +19,19 @@ def command(workspace, environment, tool, arguments):
         if not root.is_absolute():
             raise ValueError("WHEELOS_RUNTIME_ROOT must be an absolute path")
     elif product:
-        if not re.fullmatch(r"[a-z][a-z0-9_-]*", product):
-            raise ValueError("WHEELOS_RUNTIME_PRODUCT must be a safe product name")
-        root = workspace / "bazel-bin/tools" / product / "runtime"
+        if product.startswith("//"):
+            if not re.fullmatch(r"//[A-Za-z0-9_./+-]*:[A-Za-z0-9_.+-]+", product):
+                raise ValueError("WHEELOS_RUNTIME_PRODUCT must be a product label")
+            package, name = product[2:].split(":", 1)
+            if name in (".", "..") or any(
+                part in (".", "..") for part in package.split("/")
+            ):
+                raise ValueError("WHEELOS_RUNTIME_PRODUCT must not escape its root")
+            root = workspace / "bazel-bin" / package / name
+        else:
+            if not re.fullmatch(r"[a-z][a-z0-9_-]*", product):
+                raise ValueError("WHEELOS_RUNTIME_PRODUCT must be a safe product name")
+            root = workspace / "bazel-bin/tools" / product / "runtime"
     else:
         raise ValueError(
             "Select WHEELOS_RUNTIME_PRODUCT for development or "

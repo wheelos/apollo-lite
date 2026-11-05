@@ -1,14 +1,8 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
-load("@rules_pkg//pkg:install.bzl", "pkg_install")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
-load("//tools/hardware:runtime.bzl", "required_runtime_input", "runtime_layout", "runtime_module", "runtime_package", "runtime_run")
+load("//tools/hardware:runtime.bzl", "required_runtime_input", "runtime_module")
+load("//tools/products:defs.bzl", "runtime_product")
 
 package(default_visibility = ["//visibility:public"])
-
-exports_files([
-    "vehicle.dag",
-    "vehicle.launch",
-])
 
 bool_flag(
     name = "vehicle",
@@ -85,8 +79,8 @@ runtime_module(
         ":vehicle_config": "conf/vehicle/canbus_conf.pb.txt",
         ":vehicle_parameters": "conf/vehicle/vehicle_param.pb.txt",
         ":vehicle_flags": "conf/vehicle/vehicle.conf",
-        "vehicle.dag": "dag/vehicle/vehicle.dag",
-        "vehicle.launch": "launch/vehicle/vehicle.launch",
+        "//products/apollo_lite/launch:vehicle.dag": "dag/vehicle/vehicle.dag",
+        "//products/apollo_lite/launch:vehicle.launch": "launch/vehicle/vehicle.launch",
     },
     module_name = "vehicle",
 )
@@ -105,27 +99,27 @@ runtime_module(
     files = select({
         ":camera": {
             ":camera_config": "conf/sensors/camera.pb.txt",
-            "camera.dag": "dag/sensors/camera.dag",
-            "camera.launch": "launch/sensors/camera.launch",
+            "//products/apollo_lite/launch:camera.dag": "dag/sensors/camera.dag",
+            "//products/apollo_lite/launch:camera.launch": "launch/sensors/camera.launch",
         },
         ":lidar": {
             ":lidar_config": "conf/sensors/lidar.pb.txt",
-            "lidar.dag": "dag/sensors/lidar.dag",
-            "lidar.launch": "launch/sensors/lidar.launch",
+            "//products/apollo_lite/launch:lidar.dag": "dag/sensors/lidar.dag",
+            "//products/apollo_lite/launch:lidar.launch": "launch/sensors/lidar.launch",
         },
         ":combined": {
             ":camera_config": "conf/sensors/camera.pb.txt",
             ":lidar_config": "conf/sensors/lidar.pb.txt",
-            "camera.dag": "dag/sensors/camera.dag",
-            "lidar.dag": "dag/sensors/lidar.dag",
-            "combined.launch": "launch/sensors/combined.launch",
+            "//products/apollo_lite/launch:camera.dag": "dag/sensors/camera.dag",
+            "//products/apollo_lite/launch:lidar.dag": "dag/sensors/lidar.dag",
+            "//products/apollo_lite/launch:combined.launch": "launch/apollo_lite/combined.launch",
         },
         "//conditions:default": {},
     }),
     module_name = "sensors",
 )
 
-runtime_layout(
+runtime_product(
     name = "runtime",
     cyber_conf = ":cyber_configuration",
     modules = select({
@@ -137,26 +131,25 @@ runtime_layout(
         ":combined": [":sensors_module"],
         "//conditions:default": [],
     }),
-)
-
-runtime_run(
-    name = "run",
-    runtime = ":runtime",
-)
-
-runtime_package(
-    name = "package_files",
-    runtime = ":runtime",
-)
-
-pkg_tar(
-    name = "package",
-    srcs = [":package_files"],
-    extension = "tar.gz",
     package_file_name = "install.tar.gz",
 )
 
-pkg_install(
+alias(
+    name = "run",
+    actual = ":runtime_run",
+)
+
+alias(
+    name = "package_files",
+    actual = ":runtime_files",
+)
+
+alias(
+    name = "package",
+    actual = ":runtime_package",
+)
+
+alias(
     name = "install_dir",
-    srcs = [":package_files"],
+    actual = ":runtime_install",
 )

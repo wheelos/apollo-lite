@@ -51,7 +51,13 @@ def tree_contents(directory, include_modes=False):
 class OfficialInstallerTest(unittest.TestCase):
     def test_product_configuration_installs_with_resolvable_vehicle_path(self):
         with tempfile.TemporaryDirectory(prefix="product-config-") as directory:
-            result = bazel("run", "//conf:install_dir", "--", "--destdir", directory)
+            result = bazel(
+                "run",
+                "//products/apollo_lite/conf:install_dir",
+                "--",
+                "--destdir",
+                directory,
+            )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             installed = Path(directory)
             flags = (installed / "conf/global_flagfile.txt").read_text()
@@ -63,7 +69,10 @@ class OfficialInstallerTest(unittest.TestCase):
             self.assertFalse(Path(vehicle).is_absolute())
             self.assertEqual(
                 (installed / vehicle).read_bytes(),
-                (WORKSPACE / "conf/vehicles/default/vehicle_param.pb.txt").read_bytes(),
+                (
+                    WORKSPACE
+                    / "products/apollo_lite/conf/vehicles/default/vehicle_param.pb.txt"
+                ).read_bytes(),
             )
 
     def test_extracted_cpu_runtime_installation_preserves_resources(self):
@@ -141,6 +150,16 @@ class OfficialInstallerTest(unittest.TestCase):
             ):
                 destination = Path(directory) / "runtime"
                 options = ["--config=hw_x86_devkit"] if module == "hardware" else []
+                runtime_build = bazel(
+                    "build",
+                    *options,
+                    f"//tools/{module}:runtime",
+                )
+                self.assertEqual(
+                    runtime_build.returncode,
+                    0,
+                    runtime_build.stdout + runtime_build.stderr,
+                )
                 result = bazel(
                     "run",
                     *options,
@@ -164,11 +183,14 @@ class OfficialInstallerTest(unittest.TestCase):
                         if line.startswith("--vehicle_config_path=")
                     )
                     self.assertFalse(Path(vehicle).is_absolute())
+                    default_vehicle_param = (
+                        WORKSPACE
+                        / "products/apollo_lite/conf/vehicles/default"
+                        / "vehicle_param.pb.txt"
+                    )
                     self.assertEqual(
                         (destination / vehicle).read_bytes(),
-                        (
-                            WORKSPACE / "conf/vehicles/default/vehicle_param.pb.txt"
-                        ).read_bytes(),
+                        default_vehicle_param.read_bytes(),
                     )
                 if module == "transform":
                     self.assertTrue(
@@ -187,7 +209,7 @@ class OfficialInstallerTest(unittest.TestCase):
                         ).is_file()
                     )
                 self.assertEqual(
-                    (destination / "bin/mainboard-hardware").stat().st_mode & 0o777,
+                    (destination / "bin/mainboard").stat().st_mode & 0o777,
                     0o755,
                 )
                 for path in destination.rglob("*.dag"):

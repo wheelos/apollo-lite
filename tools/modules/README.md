@@ -88,9 +88,11 @@ The shared `pnc_map` planning adapter keeps its `modules/map/pnc_map` include
 prefix under Planning; Prediction and HMI declare that narrow library dependency.
 HDMap remains in the independent Map package. The remaining Apollo `modules/map`
 directory now lives in Planning; it does not merge HDMap into Planning.
-Product-wide runtime defaults live in [`conf/`](../../conf/README.md), separate
-from module parameters and Common code. Build-time product selections stay in
-`tools/products/`; shared Common SDK packaging lives in `tools/common/`.
+Product-wide runtime defaults live in
+[`products/apollo_lite/conf/`](../../products/apollo_lite/conf/README.md),
+separate from module parameters and Common code. Build-time product selections
+stay in `tools/products/`; Common SDK packaging is owned by
+`@wheelos_common//tools:package_files`.
 
 Only the selected roots and their real dependency closure are built. Internal
 controllers, scenarios and estimators are not split or replaced. Required

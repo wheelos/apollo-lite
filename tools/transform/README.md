@@ -97,7 +97,7 @@ which selects that mainboard rather than a stale executable in `PATH`.
 Mainboard options follow `--`, for example `bin/run -- -p static_transform`.
 Reviewed DAG/launch/config files must reside inside the runtime root; external
 absolute config paths are not supported by Cyber's configuration resolver.
-The legacy `bin/mainboard-hardware` remains available for direct mainboard arguments.
+Core's `bin/mainboard` remains available for direct mainboard arguments.
 Bash, Python 3 and compatible system/SDK libraries are target prerequisites.
 Library lookup starts at this runtime's `lib`; additional SDK paths require
 explicit `WHEELOS_RUNTIME_LIBRARY_PATH`, not inherited `LD_LIBRARY_PATH`.

@@ -18,7 +18,8 @@
 """
 Start apollo smart recorder.
 
-It lists all available disks mounted under /media, and prioritize them in order:
+It lists all available disks mounted under /media, and prioritizes them in
+order:
    - Disk#1. Largest NVME disk
    - Disk#2. Smaller NVME disk
    - ...
@@ -35,22 +36,26 @@ import os
 import shlex
 import subprocess
 import sys
+from pathlib import Path
 
 import psutil
-
-from pathlib import Path
 
 
 def shell_cmd(cmd, alert_on_failure=True):
     """Execute shell command and return (ret-code, stdout, stderr)."""
-    print('SHELL > {}'.format(cmd))
-    proc = subprocess.Popen(cmd, shell=True, close_fds=True,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print("SHELL > {}".format(cmd))
+    proc = subprocess.Popen(
+        cmd,
+        shell=True,
+        close_fds=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
     ret = proc.wait()
-    stdout = proc.stdout.read().decode('utf-8') if proc.stdout else None
-    stderr = proc.stderr.read().decode('utf-8') if proc.stderr else None
+    stdout = proc.stdout.read().decode("utf-8") if proc.stdout else None
+    stderr = proc.stderr.read().decode("utf-8") if proc.stderr else None
     if alert_on_failure and stderr and ret != 0:
-        sys.stderr.write('{}\n'.format(stderr))
+        sys.stderr.write("{}\n".format(stderr))
     return (ret, stdout, stderr)
 
 
@@ -60,13 +65,19 @@ class ArgManager(object):
     def __init__(self):
         """Init."""
         self.parser = argparse.ArgumentParser(
-            description="Manage apollo data recording.")
-        self.parser.add_argument('--start', default=False, action="store_true",
-                                 help='Start recorder. It is the default '
-                                 'action if no other actions are triggered. In '
-                                 'that case, the False value is ignored.')
-        self.parser.add_argument('--stop', default=False, action="store_true",
-                                 help='Stop recorder.')
+            description="Manage apollo data recording."
+        )
+        self.parser.add_argument(
+            "--start",
+            default=False,
+            action="store_true",
+            help="Start recorder. It is the default "
+            "action if no other actions are triggered. In "
+            "that case, the False value is ignored.",
+        )
+        self.parser.add_argument(
+            "--stop", default=False, action="store_true", help="Stop recorder."
+        )
         self._args = None
 
     def args(self):
@@ -83,17 +94,24 @@ class DiskManager(object):
         """Manage disks."""
         disks = []
         for disk in psutil.disk_partitions():
-            if not disk.mountpoint.startswith('/media/'):
+            if not disk.mountpoint.startswith("/media/"):
                 continue
-            disks.append({
-                'mountpoint': disk.mountpoint,
-                'available_size': DiskManager.disk_avail_size(disk.mountpoint),
-                'is_nvme': disk.mountpoint.startswith('/media/apollo/internal_nvme'),
-            })
+            available_size = DiskManager.disk_avail_size(disk.mountpoint)
+            disks.append(
+                {
+                    "mountpoint": disk.mountpoint,
+                    "available_size": available_size,
+                    "is_nvme": disk.mountpoint.startswith(
+                        "/media/apollo/internal_nvme"
+                    ),
+                }
+            )
         # Prefer NVME disks and then larger disks.
         self.disks = sorted(
-            disks, reverse=True,
-            key=lambda disk: (disk['is_nvme'], disk['available_size']))
+            disks,
+            reverse=True,
+            key=lambda disk: (disk["is_nvme"], disk["available_size"]),
+        )
 
     @staticmethod
     def disk_avail_size(disk_path):
@@ -114,9 +132,9 @@ class Recorder(object):
         """Start recording."""
         if Recorder.is_running():
             Recorder.stop(self)
-            print('Another smart recorder is running, stop now.')
+            print("Another smart recorder is running, stop now.")
         disks = self.disk_manager.disks
-        disk_to_use = disks[0]['mountpoint'] if len(disks) > 0 else '/apollo'
+        disk_to_use = disks[0]["mountpoint"] if len(disks) > 0 else "/apollo"
         self.record_task(disk_to_use)
 
     def stop(self):
@@ -125,53 +143,95 @@ class Recorder(object):
 
     @staticmethod
     def find_recorder_executable():
-        """Return the first available smart_recorder binary and env requirement."""
+        """Return the first available recorder, env requirement, and config."""
+        repo_root = Path(__file__).resolve().parents[1]
+        config_filename = "smart_recorder_config.pb.txt"
+        source_conf = repo_root / "pkgs/tool_kit/modules/tools/roadlog/conf"
+        source_config = source_conf / config_filename
         candidates = [
-            ('/apollo/bazel-bin/modules/tools/roadlog/smart_recorder', True),
-            ('/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/roadlog/smart_recorder', False),
-            ('/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/smart_recorder/smart_recorder', False),
+            (
+                "/apollo/bazel-bin/external/wheelos_tool_kit+/modules/tools/"
+                "roadlog/smart_recorder",
+                True,
+            ),
+            (
+                "/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/"
+                "roadlog/smart_recorder",
+                False,
+            ),
+            (
+                "/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/"
+                "smart_recorder/smart_recorder",
+                False,
+            ),
         ]
         for recorder_exe, needs_runtime_env in candidates:
             if Path(recorder_exe).exists():
-                return recorder_exe, needs_runtime_env
-        return None, None
+                installed_conf = Path(recorder_exe).parent / "conf"
+                installed_config = installed_conf / config_filename
+                config = next(
+                    (
+                        path
+                        for path in (installed_config, source_config)
+                        if path.is_file()
+                    ),
+                    None,
+                )
+                if config is not None:
+                    return recorder_exe, needs_runtime_env, str(config)
+        return None, None, None
 
     def record_task(self, disk):
         """
         Save roadlog runtime artifacts under a task-scoped root directory.
         """
-        task_id = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-        task_dir = os.path.join(disk, 'data/roadlog', task_id)
-        print('Recording roadlog to {}'.format(task_dir))
-        log_dir = '/apollo/data/log'
+        task_id = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        task_dir = os.path.join(disk, "data/roadlog", task_id)
+        print("Recording roadlog to {}".format(task_dir))
+        log_dir = "/apollo/data/log"
         if not Path(log_dir).exists():
             os.makedirs(log_dir, exist_ok=True)
-        log_file = '/apollo/data/log/smart_recorder.out'
-        recorder_exe, needs_runtime_env = Recorder.find_recorder_executable()
+        log_file = "/apollo/data/log/smart_recorder.out"
+        recorder_exe, needs_runtime_env, config_path = (
+            Recorder.find_recorder_executable()
+        )
         if recorder_exe is None:
-            print("can't find smart_recorder! Have you installed apollo-data-dev package or built it?")
+            print(
+                "can't find smart_recorder and its config! "
+                "Have you built or installed the roadlog tool?"
+            )
             sys.exit(-1)
         recorder_exe = shlex.quote(recorder_exe)
+        config_path = shlex.quote(config_path)
         task_dir = shlex.quote(task_dir)
         log_file = shlex.quote(log_file)
         if needs_runtime_env:
-            cmd = '''
+            cmd = """
                 source /apollo/scripts/apollo_base.sh
                 source /apollo/scripts/runtime_env.sh
-                nohup {} --roadlog_root_dir={} > {} 2>&1 &
-            '''.format(recorder_exe, task_dir, log_file)
+                nohup {} --roadlog_root_dir={} \
+                    --smart_recorder_config_filename={} > {} 2>&1 &
+                """.format(
+                recorder_exe, task_dir, config_path, log_file
+            )
         else:
-            cmd = '''
-            nohup {} --roadlog_root_dir={} > {} 2>&1 &
-            '''.format(recorder_exe, task_dir, log_file)
+            cmd = """
+                nohup {} --roadlog_root_dir={} \
+                    --smart_recorder_config_filename={} > {} 2>&1 &
+                """.format(
+                recorder_exe, task_dir, config_path, log_file
+            )
         shell_cmd(cmd)
 
     @staticmethod
     def is_running():
         """Test if the given process running."""
-        _, stdout, _ = shell_cmd('pgrep -f "smart_recorder" | grep -cv \'^1$\'', False)
+        _, stdout, _ = shell_cmd(
+            "pgrep -f \"smart_recorder\" | grep -cv '^1$'",
+            False,
+        )
         # If stdout is the pgrep command itself, no such process is running.
-        return stdout.strip() != '1' if stdout else False
+        return stdout.strip() != "1" if stdout else False
 
 
 def main():
@@ -185,5 +245,5 @@ def main():
         recorder.start()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

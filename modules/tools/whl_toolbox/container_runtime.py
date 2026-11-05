@@ -46,7 +46,11 @@ def host_to_container(path: Path) -> str:
 def bazel_target_to_binary_path(target: str) -> str:
     label = target[2:] if target.startswith("//") else target
     package, binary = label.split(":")
-    return str(APOLLO_ROOT / "bazel-bin" / package / binary)
+    direct = APOLLO_ROOT / "bazel-bin" / package / binary
+    external = APOLLO_ROOT / "bazel-bin/external/wheelos_tool_kit+" / package / binary
+    if not direct.exists() and external.exists():
+        return str(external)
+    return str(direct)
 
 
 def container_command(script: str) -> list[str]:

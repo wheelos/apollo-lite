@@ -51,10 +51,6 @@ build --copt="-Werror=unused-but-set-variable"
 build --copt="-Werror=switch"
 build --cxxopt="-Werror=reorder"
 
-# Default paths for SYSTEM LIBRARIES
-build --define=PREFIX=/usr
-build --define=LIBDIR=$(PREFIX)/lib
-build --define=INCLUDEDIR=$(PREFIX)/include
 build --define=use_fast_cpp_protos=true
 
 # Build configurations
@@ -106,9 +102,7 @@ test --test_output=errors
 
 # Default prints output only from failed tests
 test:unit_test --test_verbose_timeout_warnings
-test:unit_test --test_tag_filters=-cpplint
 
-coverage --javabase="@bazel_tools//tools/jdk:remote_jdk11"
 coverage --instrument_test_targets
 coverage --combined_report=lcov
 coverage --nocache_test_results
@@ -116,19 +110,3 @@ coverage --cxxopt=--coverage
 coverage --cxxopt=-fprofile-arcs
 coverage --cxxopt=-ftest-coverage
 coverage --linkopt=-lgcov
-
-# +------------------------------------------------------------+
-# | CPP Lint Tests & Unit Tests                                |
-# +------------------------------------------------------------+
-test:cpplint --test_tag_filters=cpplint
-test:cpplint --build_tests_only
-test:cpplint --flaky_test_attempts=1
-
-# Coverage tests respecting test tagging
-coverage --test_tag_filters=-cpplint
-
-# +------------------------------------------------------------+
-# | Python Configurations                                      |
-# +------------------------------------------------------------+
-# Python support was configured by third_party/py.
-# Consider adding Python linting and testing configurations here.

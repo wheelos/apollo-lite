@@ -7,8 +7,8 @@ load(
     _runtime_layout = "runtime_layout",
     _runtime_module = "runtime_module",
     _runtime_package = "runtime_package",
-    _runtime_run = "runtime_run",
     _runtime_resources = "runtime_resources",
+    _runtime_run = "runtime_run",
 )
 
 RuntimeModuleInfo = _RuntimeModuleInfo

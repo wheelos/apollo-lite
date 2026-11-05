@@ -518,7 +518,13 @@ class LivePointCloudPlugin(ToolboxPlugin):
         self._logs: list[str] = []
 
     def probe(self) -> Dict[str, Any]:
-        backend_src = (REPO_ROOT / "modules/tools/whl_toolbox/live_pointcloud_viewer.cc").exists()
+        backend_src = (
+            (REPO_ROOT / "modules/tools/whl_toolbox/live_pointcloud_viewer.cc").exists()
+            or (
+                REPO_ROOT
+                / "pkgs/tool_kit/modules/tools/whl_toolbox/live_pointcloud_viewer.cc"
+            ).exists()
+        )
         return {
             "available": backend_src,
             "actions": {"launch_viewer": backend_src},

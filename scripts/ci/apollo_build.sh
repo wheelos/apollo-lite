@@ -109,6 +109,7 @@ function determine_build_targets_and_defines() {
 
   if [[ "$#" -eq 0 ]]; then
     targets_all="//modules/... union $(cyber_runtime_targets)"
+    targets_all+=" @wheelos_tool_kit//modules/tools/roadlog/... @wheelos_tool_kit//modules/tools/visualizer/..."
     targets_all+="$(capability_targets)"
     targets_all+=" union //tools/control/tests:motion_chain_contract_test"
   else
@@ -128,7 +129,7 @@ function determine_build_targets_and_defines() {
         targets_all+=" ${selected_target}"
       elif [[ "$component" == "cyber" ]]; then
         if [[ "${HOST_OS}" == "Linux" ]]; then
-          targets_all+=" $(cyber_runtime_targets) //modules/tools/visualizer/..."
+          targets_all+=" $(cyber_runtime_targets) @wheelos_tool_kit//modules/tools/visualizer/..."
         else
           targets_all+=" $(cyber_runtime_targets)"
         fi
@@ -237,6 +238,9 @@ function parse_cmdline_arguments() {
   remained_args="$(echo "${remained_args}" | sed -e 's/^[[:space:]]*//')"
 
   CMDLINE_OPTIONS=("${known_options[@]}")
+  if [[ -d "${TOP_DIR}/pkgs" && "${STAGE:-dev}" == "dev" && " ${CMDLINE_OPTIONS[*]} " != *" --config=dev "* ]]; then
+    CMDLINE_OPTIONS=(--config=dev "${CMDLINE_OPTIONS[@]}")
+  fi
   SHORTHAND_TARGETS="${remained_args}"
 }
 

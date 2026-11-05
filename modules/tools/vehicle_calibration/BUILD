@@ -1,47 +1,22 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
-load("@rules_pkg//pkg:install.bzl", "pkg_install")
-load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
-
 package(default_visibility = ["//visibility:public"])
 
-cc_binary(
+alias(
     name = "validate_calibration",
-    srcs = ["validate_calibration.cc"],
-    deps = [
-        "@wheelos_common//modules/common/vehicle_calibration:lidar_height",
-        "@wheelos_perception//modules/perception/common/sensor_manager",
-        "@wheelos_transform//modules/transform:static_transform_loader",
-    ],
+    actual = "@wheelos_tool_kit//modules/tools/vehicle_calibration:validate_calibration",
 )
 
-cc_test(
+alias(
     name = "validate_calibration_test",
-    size = "small",
-    srcs = ["validate_calibration_test.cc"],
-    data = [":validate_calibration"],
-    deps = [
-        "@bazel_tools//tools/cpp/runfiles",
-        "@com_google_googletest//:gtest_main",
-        "@wheelos_common//modules/common/vehicle_calibration:test_bundle",
-    ],
+    actual = "@wheelos_tool_kit//modules/tools/vehicle_calibration:validate_calibration_test",
 )
 
-pkg_files(
-    name = "package_files_binaries",
-    srcs = [":validate_calibration"],
-    attributes = pkg_attributes(mode = "0755"),
-    include_runfiles = True,
-    prefix = "tools/vehicle_calibration",
-    strip_prefix = strip_prefix.from_root("modules/tools/vehicle_calibration"),
-)
-
-pkg_filegroup(
+alias(
     name = "package_files",
-    srcs = [":package_files_binaries"],
+    actual = "@wheelos_tool_kit//modules/tools/vehicle_calibration:package_files",
 )
 
-pkg_install(
+alias(
     name = "install_dir",
-    srcs = [":package_files"],
+    actual = "@wheelos_tool_kit//modules/tools/vehicle_calibration:install_dir",
     tags = ["manual"],
 )

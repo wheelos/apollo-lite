@@ -77,7 +77,7 @@ class ConfigurationTest(unittest.TestCase):
         report = check(self.root)
         self.assertEqual("failed", report["status"])
         self.assertIn(
-            "missing external checkout manifest: ad_agents.repos", report["errors"]
+            "missing external checkout manifest: wheelos.repos", report["errors"]
         )
         (self.root / "AGENTS.md").write_text("# No index\n", encoding="utf-8")
         report = check(self.root)

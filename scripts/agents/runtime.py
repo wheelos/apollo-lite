@@ -287,7 +287,7 @@ def preflight(root, expected_uid, tools):
     record(
         "context_catalog",
         (root / "ad_agents/context/context-catalog.json").is_file(),
-        "Initialize the context checkout from ad_agents.repos after reviewing it.",
+        "Initialize declared checkouts from wheelos.repos after reviewing it.",
     )
     cache = root / ".cache/bazel"
     record(

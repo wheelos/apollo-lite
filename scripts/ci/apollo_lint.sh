@@ -38,6 +38,7 @@ readonly EXCLUDED_PATHS=(
   "bazel-testlogs"
   "data"
   "docs"
+  "pkgs"
 )
 readonly EXCLUDED_FILES=(
   "nohup.out"
@@ -114,7 +115,7 @@ function run_cpp_format() {
 
   local files_to_check=()
   if [[ "${DIFF_MODE}" -eq 1 ]]; then
-    mapfile -t files_to_check < <(get_changed_files_by_pattern '.*\.(c|cc|cpp|h|hpp)')
+    mapfile -t files_to_check < <(get_changed_files_by_pattern '.*\.(c|cc|cpp|h|hpp)$')
     if [[ ${#files_to_check[@]} -eq 0 ]]; then
       info "No C++ changes detected for format check."
       info "::endgroup::"
@@ -155,7 +156,7 @@ function run_py_checks() {
 
   local files_to_check=()
   if [[ "${DIFF_MODE}" -eq 1 ]]; then
-    mapfile -t files_to_check < <(get_changed_files_by_pattern '.*\.py')
+    mapfile -t files_to_check < <(get_changed_files_by_pattern '.*\.py$')
     if [[ ${#files_to_check[@]} -eq 0 ]]; then
       info "No Python changes detected for check."
       info "::endgroup::"
@@ -213,7 +214,7 @@ function run_sh_lint() {
 
   local files_to_check=()
   if [[ "${DIFF_MODE}" -eq 1 ]]; then
-    mapfile -t files_to_check < <(get_changed_files_by_pattern '.*\.(sh|bashrc)')
+    mapfile -t files_to_check < <(get_changed_files_by_pattern '.*\.(sh|bashrc)$')
     if [[ ${#files_to_check[@]} -eq 0 ]]; then
       info "No Shell changes detected for lint check."
       info "::endgroup::"
@@ -289,7 +290,7 @@ function run_cpp_lint() {
   local files_to_check=()
   if [[ "${DIFF_MODE}" -eq 1 ]]; then
     mapfile -t files_to_check < <(
-      get_changed_files_by_pattern '.*\.(c|cc|cpp|h|hpp)'
+      get_changed_files_by_pattern '.*\.(c|cc|cpp|h|hpp)$'
     )
   else
     local find_exclude_args=()

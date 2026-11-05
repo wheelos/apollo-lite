@@ -1,10 +1,13 @@
 # Shared Cyber system
 
-This is the final Bzlmod integration/installation root, not another middleware.
-It installs core tools and `conf/cyber.pb.conf` once. Vehicle and sensor modules
-contribute shared components, business configuration and DAG/launch files.
-More algorithm modules can use the same `runtime_module` rule and be added to
-the same `runtime_layout`; repository boundaries do not imply process boundaries.
+This is a reference Bzlmod integration/installation root, not another
+middleware or the complete autonomous-driving product. It installs Core tools
+and `conf/cyber.pb.conf` once. Vehicle and sensor modules contribute shared
+components; product-wide defaults and topology are source-owned under
+`products/apollo_lite/`, then mapped into stable runtime paths. Additional
+algorithm modules can use the same `runtime_module` contribution and be
+selected by a `runtime_product`; repository boundaries do not imply process
+boundaries.
 Runtime resources use root `conf/`, `dag/`, `launch/`, `models/` and `share/`
 paths; component libraries live under `lib/components/<module>/`.
 
@@ -23,10 +26,10 @@ resolved graph when another module still needs it.
 | Category | Owner and examples |
 | --- | --- |
 | Build rules/toolchains | `rules_cc`, `rules_python`, `rules_pkg`, `rules_cuda`, `bazel_skylib`, `platforms` |
-| Third-party libraries | BCR modules directly used by Apollo code, such as Boost, Protobuf, Eigen, gRPC and OpenCV |
+| Third-party libraries | BCR modules directly used by local tools, such as Boost, Protobuf, Eigen, gRPC and PCL |
 | WheelOS modules | Core, messages, common, map and transform; dependencies follow their public BUILD targets |
 | Hardware dependencies | Hardware modules own PortAudio, LiDAR SDKs, RTKLIB and GStreamer; Apollo declares only hardware modules it directly uses |
-| Apollo-local integrations | `third_party/` extensions for IPOPT, cuDNN, TensorRT, Qt and LibTorch; Dreamview assets are a separate product input |
+| Apollo-local integrations | Product assembly and shared toolchain selection; visualizer and roadlog are owned by `wheelos_tool_kit` |
 
 PortAudio belongs to `hardware.audio`, while ncurses/libuuid belong to Core.
 FFmpeg's extension is owned by `hardware.build`; an integration root may use
@@ -35,6 +38,12 @@ does not make the SDK an Apollo-owned source dependency. Development SDK
 environment variables are opt-in validation inputs, not release defaults.
 Root-only overrides and SDK/toolchain selections are not inherited from a
 dependency's workspace configuration.
+
+IPOPT belongs to Planning, cuDNN to Perception, TensorRT/LibTorch to Common,
+and Dreamview frontend assets to HMI. Their modules declare and import these
+dependencies; Apollo does not repeat those imports. The rules_pkg execution
+patch remains under Apollo's `third_party/`; the GTSAM compatibility patch is
+versioned with its module in the Bazel Central Registry.
 
 Rules used by exported build macros are regular dependencies, even when they
 run only during the build. Reserve `dev_dependency` for tools and tests that
@@ -108,7 +117,8 @@ After building a selected assembly and obtaining hardware startup approval:
 ```bash
 source /opt/wheelos/system/bin/setup.bash
 cyber_launch start launch/vehicle/vehicle.launch
-cyber_launch start launch/sensors/sensors.launch
+cyber_launch start launch/sensors/camera.launch
+cyber_launch start launch/apollo_lite/combined.launch
 mainboard -d dag/vehicle/vehicle.dag -p vehicle
 ```
 

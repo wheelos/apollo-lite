@@ -19,7 +19,6 @@
 set -e
 
 TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-source "${TOP_DIR}/scripts/apollo.bashrc"
 # Bazel tests use their own runfiles, not a previously built runtime's libraries.
 APOLLO_BUILD_PHASE=1 source "${TOP_DIR}/scripts/apollo_base.sh"
 source "${TOP_DIR}/scripts/cyber_targets.sh"
@@ -193,6 +192,9 @@ function parse_cmdline_arguments() {
   remained_args="$(echo "${remained_args}" | sed -e 's/^[[:space:]]*//')"
 
   CMDLINE_OPTIONS=("${known_options[@]}")
+  if [[ -d "${TOP_DIR}/pkgs" && "${STAGE:-dev}" == "dev" && " ${CMDLINE_OPTIONS[*]} " != *" --config=dev "* ]]; then
+    CMDLINE_OPTIONS=(--config=dev "${CMDLINE_OPTIONS[@]}")
+  fi
   SHORTHAND_TARGETS="${remained_args}"
 }
 
