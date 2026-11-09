@@ -28,6 +28,9 @@ class RuntimeCommandsTest(unittest.TestCase):
                 os.environ,
                 WHEELOS_RUNTIME_PRODUCT="transform",
                 WHEELOS_RUNTIME_ROOT="",
+                WHEELOS_CONFIG_ROOT="/apollo/data/confs/current",
+                WHEELOS_ASSET_ROOT="",
+                WHEELOS_VEHICLE_PROFILE_KEY="vehicles/devkit_x86/config/vehicle_profile.pb.txt",
                 BAZEL_CACHE_DIR=directory,
             )
             subprocess.run(
@@ -48,6 +51,13 @@ class RuntimeCommandsTest(unittest.TestCase):
             generated = (Path(directory) / ".env.dev.local").read_text()
             self.assertIn("WHEELOS_RUNTIME_PRODUCT=transform\n", generated)
             self.assertIn("WHEELOS_RUNTIME_ROOT=\n", generated)
+            self.assertIn("WHEELOS_CONFIG_ROOT=/apollo/data/confs/current\n", generated)
+            self.assertIn(
+                "WHEELOS_VEHICLE_PROFILE_KEY="
+                "vehicles/devkit_x86/config/vehicle_profile.pb.txt\n",
+                generated,
+            )
+            self.assertNotIn("WHEELOS_ASSET_ROOT=", generated)
 
     def test_selected_shell_does_not_inject_build_cache_libraries(self):
         environment = dict(
@@ -64,6 +74,8 @@ class RuntimeCommandsTest(unittest.TestCase):
                 'source "$1/setup.bash"; source "$1/setup.bash"; '
                 "command -v mainboard; command -v cyber_launch; "
                 "command -v cyber_recorder; command -v cyber_monitor; "
+                "command -v cyber_node; command -v cyber_channel; "
+                "command -v cyber_service; command -v dreamview; "
                 'printf "%s\\n" "$LD_LIBRARY_PATH" "$APOLLO_ROOT_DIR"',
                 "test",
                 str(ROOT),
@@ -80,6 +92,10 @@ class RuntimeCommandsTest(unittest.TestCase):
                 str(ROOT / "scripts/runtime/cyber_launch"),
                 str(ROOT / "scripts/runtime/cyber_recorder"),
                 str(ROOT / "scripts/runtime/cyber_monitor"),
+                str(ROOT / "scripts/runtime/cyber_node"),
+                str(ROOT / "scripts/runtime/cyber_channel"),
+                str(ROOT / "scripts/runtime/cyber_service"),
+                str(ROOT / "scripts/runtime/dreamview"),
                 "/existing/sdk",
                 str(ROOT),
             ],
@@ -156,6 +172,9 @@ class RuntimeCommandsTest(unittest.TestCase):
                         [str(fake), "bin/cyber_launch.py"],
                         [str(fake), "bin/cyber_recorder"],
                         [str(fake), "bin/cyber_monitor"],
+                        [str(fake), "bin/cyber_node.py"],
+                        [str(fake), "bin/cyber_channel.py"],
+                        [str(fake), "bin/cyber_service.py"],
                     ],
                     "libraries": [],
                 },
@@ -175,6 +194,9 @@ class RuntimeCommandsTest(unittest.TestCase):
                 ("cyber_launch", ["start", "launch with spaces.launch"]),
                 ("cyber_recorder", ["info", "record with spaces.record"]),
                 ("cyber_monitor", ["-h"]),
+                ("cyber_node", ["list"]),
+                ("cyber_channel", ["list"]),
+                ("cyber_service", ["list"]),
             ):
                 with self.subTest(name=name):
                     result = subprocess.run(
@@ -190,9 +212,9 @@ class RuntimeCommandsTest(unittest.TestCase):
                         [
                             arguments,
                             (
-                                str(Path.cwd())
-                                if name in ("cyber_recorder", "cyber_monitor")
-                                else str(runtime)
+                                str(runtime)
+                                if name in ("mainboard", "cyber_launch")
+                                else str(Path.cwd())
                             ),
                             str(runtime),
                             str(runtime / "lib") + ":/explicit/sdk",
@@ -249,8 +271,18 @@ class RuntimeCommandsTest(unittest.TestCase):
     def test_explicit_label_selects_the_same_product_as_build_and_run(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
+            fake = workspace / "fake_dv"
+            fake.write_text("#!/usr/bin/env bash\nexit 0\n")
+            fake.chmod(0o755)
             root = workspace / "bazel-bin/products/demo/single"
-            materializer.materialize({"files": [], "libraries": []}, root)
+            materializer.materialize(
+                {
+                    "files": [[str(fake), "bin/modules/dreamview/dreamview"]],
+                    "executables": ["bin/modules/dreamview/dreamview"],
+                    "libraries": [],
+                },
+                root,
+            )
             argv = tool.command(
                 workspace,
                 {"WHEELOS_RUNTIME_PRODUCT": "//products/demo:single"},
@@ -258,6 +290,19 @@ class RuntimeCommandsTest(unittest.TestCase):
                 ["-h"],
             )
             self.assertEqual(argv, [str(root / "bin/commands/cyber_monitor"), "-h"])
+            dv_argv = tool.command(
+                workspace,
+                {"WHEELOS_RUNTIME_PRODUCT": "//products/demo:single"},
+                "dreamview",
+                ["--flagfile=conf/dreamview/dreamview.conf"],
+            )
+            self.assertEqual(
+                dv_argv,
+                [
+                    str(root / "bin/modules/dreamview/dreamview"),
+                    "--flagfile=conf/dreamview/dreamview.conf",
+                ],
+            )
 
 
 if __name__ == "__main__":

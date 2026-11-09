@@ -43,6 +43,17 @@ class ProductProfileTest(unittest.TestCase):
         self.assertNotIn("librtk_localization_component.so", result.stdout)
         self.assertNotIn("libopen_space_planning_component.so", result.stdout)
 
+    def test_canonical_apollo_lite_runtime_product_targets_analyze_without_actions(self):
+        for label, config in [
+            ("//products/apollo_lite:devkit_x86", "product_devkit-x86"),
+            ("//products/apollo_lite:devkit_x86_ndt", "product_devkit-x86-ndt"),
+        ]:
+            with self.subTest(label=label):
+                result = self.preview(f"--product={label}", f"--config={config}")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(label, result.stdout)
+                self.assertNotIn("Done building", result.stdout + result.stderr)
+
     def test_custom_module_typo_fails_in_analysis(self):
         result = self.preview("--modules=rtk_localiztion", "--compute=cpu")
         self.assertNotEqual(result.returncode, 0)

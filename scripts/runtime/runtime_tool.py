@@ -44,7 +44,11 @@ def command(workspace, environment, tool, arguments):
         )
     entry = root / "bin/commands" / tool
     if not entry.is_file() or not os.access(entry, os.X_OK):
-        raise ValueError(f"Runtime command is missing or not executable: {entry}")
+        module_entry = root / "bin/modules" / tool / tool
+        if module_entry.is_file() and os.access(module_entry, os.X_OK):
+            entry = module_entry
+        else:
+            raise ValueError(f"Runtime command is missing or not executable: {entry}")
     return [str(entry), *arguments]
 
 

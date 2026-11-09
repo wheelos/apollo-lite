@@ -35,9 +35,42 @@ capability_package() {
 
 module_recursive_target() {
   local package
-  if [[ "$1" == "openloc" ]]; then
-    echo "@@openloc+//..."
-  elif package="$(module_package "$1")"; then
+  case "$1" in
+    openloc)
+      echo "@@openloc+//..."
+      return 0
+      ;;
+    core)
+      echo "@core//..."
+      return 0
+      ;;
+    wheelos_msgs|msgs)
+      echo "@@wheelos_msgs+//..."
+      return 0
+      ;;
+    wheelos_map)
+      echo "@@wheelos_map+//..."
+      return 0
+      ;;
+    common|tool_kit)
+      local pkg="${1#wheelos_}"
+      echo "@wheelos_${pkg}//..."
+      return 0
+      ;;
+    hardware.*)
+      echo "@$1//..."
+      return 0
+      ;;
+    camera|camera_gst|image_decompress|gnss|lidar|radar|vehicle|hal|audio|video)
+      echo "@hardware.$1//..."
+      return 0
+      ;;
+    hardware_build)
+      echo "@hardware.build//..."
+      return 0
+      ;;
+  esac
+  if package="$(module_package "$1")"; then
     if [[ "${package}" == "$1" ]]; then
       echo "@wheelos_${package}//..."
     else

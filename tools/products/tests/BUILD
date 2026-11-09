@@ -93,7 +93,10 @@ runtime_product(
     name = "combined",
     testonly = True,
     default_launch = "launch/autonomy/combined.launch",
-    files = {"combined.launch": "launch/autonomy/combined.launch"},
+    files = {
+        "beta_product.conf": "conf/beta/component.conf",
+        "combined.launch": "launch/autonomy/combined.launch",
+    },
     modules = [
         ":alpha",
         ":beta",

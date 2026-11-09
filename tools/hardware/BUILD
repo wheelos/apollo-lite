@@ -1,6 +1,6 @@
-load("//tools/products:defs.bzl", "runtime_product")
+load("@core//runtime:product.bzl", "runtime_product")
+load("@core//runtime:runtime.bzl", "runtime_module", "runtime_resources")
 load(":defs.bzl", "LIDARS", "VEHICLES", "hardware_manifest", "lidar_runtime_resources", "lidar_targets")
-load(":runtime.bzl", "runtime_module", "runtime_resources")
 
 package(default_visibility = ["//visibility:public"])
 

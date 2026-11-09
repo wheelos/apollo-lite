@@ -50,14 +50,18 @@ class names, channels and deployment destinations must not conflict.
 Repository boundaries do not dictate process boundaries: one DAG may load
 several components, or a launch file may select several mainboards.
 
-For either product, run inside the managed container as the mapped user:
+For either product, run inside the managed container as the mapped user (for
+example using the canonical `//products/apollo_lite:devkit_x86` or
+`//products/apollo_lite:devkit_x86_ndt` definitions in
+`products/apollo_lite/BUILD`):
 
 ```bash
-bash apollo.sh build --product=//products/example:localization --show
-bash apollo.sh build --product=//products/example:localization --mode=dbg
-bash apollo.sh run --product=//products/example:localization
-bash apollo.sh package --product=//products/example:localization
-bash apollo.sh install --product=//products/example:localization \
+bash apollo.sh build --product=//products/apollo_lite:devkit_x86 --show --config=product_devkit-x86
+bash apollo.sh build --product=//products/apollo_lite:devkit_x86 --mode=dbg --config=product_devkit-x86
+bash apollo.sh run --product=//products/apollo_lite:devkit_x86 --config=product_devkit-x86 \
+  -- --launch launch/apollo_lite/devkit_x86.launch
+bash apollo.sh package --product=//products/apollo_lite:devkit_x86 --source=dev --config=product_devkit-x86
+bash apollo.sh install --product=//products/apollo_lite:devkit_x86 --source=dev --config=product_devkit-x86 \
   --destdir=/absolute/install/path
 ```
 
@@ -101,12 +105,14 @@ relative to the runtime root. Configuration fields containing nested paths
 must be resolved explicitly by their owning loader; Core does not rewrite
 arbitrary strings inside protobuf or flag files.
 
-The launcher binds `APOLLO_ROOT_DIR` and `CYBER_PATH` to the same runtime.
-`WHEELOS_CONFIG_ROOT` is an optional whole-file overlay preserving keys such as
-`conf/control/component.pb.txt`. An absent optional override uses the packaged
-default; an invalid override fails. Declare `required_configs` on a product for
-instance inputs which must exist in the external configuration root and must
-never fall back to examples.
+The launcher binds `APOLLO_ROOT_DIR` and `CYBER_PATH` to the same runtime. At build time, a
+`runtime_product`'s `files` mapping may explicitly override a module's default
+`conf/<module>/...`, `dag/<module>/...`, or `launch/<module>/...` file with
+product-owned parameters. At startup, `WHEELOS_CONFIG_ROOT` is an optional
+whole-file overlay preserving keys such as `conf/control/component.pb.txt`. An
+absent optional override uses the packaged default; an invalid override fails.
+Declare `required_configs` on a product for instance inputs which must exist in
+the external configuration root and must never fall back to examples.
 
 Assets default to `<runtime>/assets`; an explicit `WHEELOS_ASSET_ROOT` replaces
 that asset root, not a search-path fallback. Load model keys through Core's

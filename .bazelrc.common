@@ -71,6 +71,7 @@ build:gpu --@rules_cuda//cuda:copts=-DUSE_GPU=1
 
 # Legacy aliases retained for compatibility
 build:using_cuda --define=using_cuda=true
+build:using_cuda --define=with_cuda=true
 build:using_cuda --@rules_cuda//cuda:enable=true
 build:cuda --config=using_cuda
 build:cuda --define=using_cuda_nvcc=true

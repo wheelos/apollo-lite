@@ -93,7 +93,7 @@ class ProductIntegrationTest(unittest.TestCase):
 
     def test_single_and_combined_products_run_through_identical_entry(self):
         self.exercise(self.single, ["PRODUCT_ALPHA alpha"])
-        self.exercise(self.combined, ["PRODUCT_ALPHA alpha", "PRODUCT_BETA beta"])
+        self.exercise(self.combined, ["PRODUCT_ALPHA alpha", "PRODUCT_BETA beta-product"])
 
     def test_archive_and_official_install_are_identical_and_relocatable(self):
         extracted = self.directory / "archive relocated"
@@ -119,7 +119,7 @@ class ProductIntegrationTest(unittest.TestCase):
         self.assertEqual(contents(extracted), contents(installed))
         for root in (extracted, installed):
             self.assertFalse(any(path.is_symlink() for path in root.rglob("*")))
-            self.exercise(root, ["PRODUCT_ALPHA alpha", "PRODUCT_BETA beta"])
+            self.exercise(root, ["PRODUCT_ALPHA alpha", "PRODUCT_BETA beta-product"])
 
         diagnostic = installed / "bin/modules/alpha/diagnose"
         result = subprocess.run(
@@ -140,7 +140,7 @@ class ProductIntegrationTest(unittest.TestCase):
         (configuration / "conf/alpha/component.conf").write_text("alpha-override\n")
         self.exercise(
             installed,
-            ["PRODUCT_ALPHA alpha-override", "PRODUCT_BETA beta"],
+            ["PRODUCT_ALPHA alpha-override", "PRODUCT_BETA beta-product"],
             {
                 "WHEELOS_ASSET_ROOT": str(external),
                 "WHEELOS_CONFIG_ROOT": str(configuration),
@@ -205,7 +205,7 @@ class ProductIntegrationTest(unittest.TestCase):
             try:
                 self.exercise(
                     self.combined,
-                    ["PRODUCT_ALPHA alpha", "PRODUCT_BETA beta"],
+                    ["PRODUCT_ALPHA alpha", "PRODUCT_BETA beta-product"],
                     settle=3,
                 )
                 self.assertIsNone(process.poll(), output.read_text())

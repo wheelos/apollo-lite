@@ -6,6 +6,7 @@
 #    are evaluated strictly in order.
 
 --vehicle_config_path=conf/vehicles/default/vehicle_param.pb.txt
+--vehicle_model_config_filename=conf/vehicles/default/vehicle_model_config.pb.txt
 
 --log_dir=/apollo/data/log
 
@@ -14,9 +15,3 @@
 --use_sim_time=false
 
 --use_cyber_time=true
-
-# Default port for the Dreamview server. The default is 8888, but this can be
-# modified for multi-host development scenarios if needed.
---server_ports=8888
-
---map_dir=/apollo/pkgs/planning/modules/map/data/borregas_ave

@@ -1,4 +1,4 @@
-load("//tools/products:defs.bzl", "runtime_product")
+load("@core//runtime:product.bzl", "runtime_product")
 
 package(default_visibility = ["//visibility:public"])
 

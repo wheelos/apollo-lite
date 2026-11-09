@@ -1,6 +1,6 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
-load("//tools/hardware:runtime.bzl", "required_runtime_input", "runtime_module")
-load("//tools/products:defs.bzl", "runtime_product")
+load("@core//runtime:product.bzl", "runtime_product")
+load("@core//runtime:runtime.bzl", "required_runtime_input", "runtime_module")
 
 package(default_visibility = ["//visibility:public"])
 

@@ -1,0 +1,22 @@
+<cyber>
+  <module>
+    <name>static_transform</name>
+    <dag_conf>dag/transform/static_transform.dag</dag_conf>
+    <process_name>static_transform</process_name>
+  </module>
+  <module>
+    <name>ndt_localization</name>
+    <dag_conf>dag/ndt_localization/ndt_localization.dag</dag_conf>
+    <process_name>ndt_localization</process_name>
+  </module>
+  <module>
+    <name>planning</name>
+    <dag_conf>dag/planning/planning.dag</dag_conf>
+    <process_name>planning</process_name>
+  </module>
+  <module>
+    <name>control</name>
+    <dag_conf>dag/control/control.dag</dag_conf>
+    <process_name>control</process_name>
+  </module>
+</cyber>

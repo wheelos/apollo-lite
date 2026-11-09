@@ -288,6 +288,33 @@ class BuildWrapperTest(unittest.TestCase):
                         expected,
                     )
 
+    def test_foundation_and_hardware_package_shorthands(self):
+        for command in ("build", "test"):
+            for shorthand, expected_target in (
+                ("core", "@core//..."),
+                ("wheelos_msgs", "@@wheelos_msgs+//..."),
+                ("common", "@wheelos_common//..."),
+                ("openloc", "@@openloc+//..."),
+                ("tool_kit", "@wheelos_tool_kit//..."),
+                ("wheelos_map", "@@wheelos_map+//..."),
+                ("gnss", "@hardware.gnss//..."),
+                ("lidar", "@hardware.lidar//..."),
+                ("radar", "@hardware.radar//..."),
+                ("camera", "@hardware.camera//..."),
+                ("vehicle", "@hardware.vehicle//..."),
+                ("hal", "@hardware.hal//..."),
+                ("audio", "@hardware.audio//..."),
+                ("video", "@hardware.video//..."),
+                ("hardware.canbus", "@hardware.canbus//..."),
+                ("hardware.build", "@hardware.build//..."),
+            ):
+                with self.subTest(command=command, shorthand=shorthand):
+                    args = self.run_wrapper(shorthand, command=command)
+                    self.assertEqual(
+                        args[args.index("--") + 1 :],
+                        [expected_target],
+                    )
+
     def test_extracted_packages_keep_build_and_test_shorthands(self):
         for command in ("build", "test"):
             for module in ("control", "lane", "mission", "routing", "simulation"):
