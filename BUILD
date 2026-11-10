@@ -5,7 +5,7 @@ pkg_filegroup(
     name = "package_files",
     srcs = [
         "//docker/scripts:package_files",
-        "//products/apollo_lite/conf:package_files",
+        "//products/low_speed/conf:package_files",
         "//scripts:package_files",
         "@hardware.audio//:package_files",
         "@hardware.camera//:package_files",

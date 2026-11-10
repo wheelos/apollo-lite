@@ -68,6 +68,44 @@ class ConfigurationTest(unittest.TestCase):
         self.assertFalse(errors)
         self.assertEqual({"contract.md"}, deferred)
 
+    def test_missing_cross_document_anchor_fails(self):
+        target = self.root / "docs/guide.md"
+        target.parent.mkdir(parents=True)
+        target.write_text("# Supported channels\n", encoding="utf-8")
+        path = self.root / "README.md"
+        path.write_text(
+            "[good](docs/guide.md#supported-channels)\n"
+            "[bad](docs/guide.md#unsupported-channels)\n",
+            encoding="utf-8",
+        )
+        errors, deferred = check_links(path, self.root)
+        self.assertEqual(
+            ["README.md: missing anchor #unsupported-channels in docs/guide.md"],
+            errors,
+        )
+        self.assertEqual(set(), deferred)
+
+    def test_missing_same_document_anchor_fails(self):
+        path = self.root / "README.md"
+        path.write_text(
+            "# Existing heading\n\n[good](#existing-heading)\n"
+            "[bad](#missing-heading)\n",
+            encoding="utf-8",
+        )
+        errors, deferred = check_links(path, self.root)
+        self.assertEqual(
+            ["README.md: missing anchor #missing-heading in README.md"],
+            errors,
+        )
+        self.assertEqual(set(), deferred)
+
+    def test_package_checkout_links_are_deferred_when_absent(self):
+        path = self.root / "README.md"
+        path.write_text("[core](pkgs/core/runtime/README.md)\n", encoding="utf-8")
+        errors, deferred = check_links(path, self.root)
+        self.assertFalse(errors)
+        self.assertEqual({"pkgs/core/runtime/README.md"}, deferred)
+
     def test_missing_skill_index_and_manifest_fail_configuration(self):
         skill = self.root / ".agents/skills/sample/SKILL.md"
         skill.parent.mkdir(parents=True)

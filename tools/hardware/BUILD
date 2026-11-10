@@ -168,8 +168,8 @@ runtime_module(
 runtime_product(
     name = "runtime",
     files = {
-        "//products/apollo_lite/conf:global_flagfile": "conf/global_config/",
-        "//products/apollo_lite/conf:vehicle_config_data": "conf/vehicles/default/",
+        "//products/low_speed/conf:global_flagfile": "conf/global_config/",
+        "//products/low_speed/conf:vehicle_config_data": "conf/vehicles/default/",
     },
     modules = [":hardware_module"],
     package_file_name = "install.tar.gz",

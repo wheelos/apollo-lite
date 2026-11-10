@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check agent entrypoints and required scalar skill metadata using the stdlib."""
+"""Check repository Markdown links, agent entrypoints, and skill metadata."""
 
 import argparse
 import json
@@ -11,6 +11,8 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[2]
 LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)\s]+)\)")
 CONTEXT = "ad_agents/context/"
+PKGS = "pkgs/"
+EXCLUDED_DOCUMENT_DIRS = {".git", ".cache", "ad_agents", "pkgs"}
 
 
 def skill_metadata(path):
@@ -55,20 +57,50 @@ def skill_metadata(path):
     return values
 
 
+def markdown_anchors(path):
+    """Return permissive anchor keys for Markdown headings in a file."""
+    anchors = set()
+    counts = {}
+    text = path.read_text(encoding="utf-8")
+    for match in re.finditer(r"^#{1,6}\s+(.*?)\s*#*\s*$", text, re.MULTILINE):
+        heading = match.group(1)
+        heading = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", heading)
+        heading = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", heading)
+        heading = re.sub(r"<[^>]+>", "", heading)
+        key = re.sub(r"[^0-9A-Za-z\u0080-\uffff]+", "", heading).casefold()
+        if not key:
+            continue
+        count = counts.get(key, 0)
+        anchors.add(key)
+        if count:
+            anchors.add(f"{key}{count}")
+        counts[key] = count + 1
+    return anchors
+
+
 def check_links(path, root, context_root=None):
     errors = []
     external = set()
+    root = Path(root).resolve()
+    path = Path(path).resolve()
     text = path.read_text(encoding="utf-8")
     targets = LINK.findall(text)
     targets += re.findall(r"`(ad_agents/context/[^`\s]+)`", text)
     for target in targets:
-        if urlsplit(target).scheme or target.startswith("#"):
+        if urlsplit(target).scheme:
             continue
-        target = unquote(target.split("#", 1)[0])
-        if not target or any(char in target for char in "<>*"):
+        target, _, fragment = target.partition("#")
+        target = unquote(target)
+        if not target and not fragment:
+            continue
+        if target and any(char in target for char in "<>*"):
             continue
         candidate = (
-            root / target if target.startswith(CONTEXT) else path.parent / target
+            root / target
+            if target.startswith(CONTEXT)
+            else path.parent / target
+            if target
+            else path
         ).resolve()
         mount = (root / CONTEXT).resolve()
         if candidate.is_relative_to(mount):
@@ -77,18 +109,55 @@ def check_links(path, root, context_root=None):
                 external.add(str(relative))
                 continue
             candidate = context_root / relative
+        packages = (root / PKGS).resolve()
+        if candidate.is_relative_to(packages) and not candidate.exists():
+            external.add(str(candidate.relative_to(root)))
+            continue
         if not candidate.exists():
             label = path.relative_to(root) if path.is_relative_to(root) else path
             errors.append(f"{label}: missing link {target}")
+            continue
+        if fragment and candidate.suffix.lower() == ".md":
+            anchor = re.sub(
+                r"[^0-9A-Za-z\u0080-\uffff]+", "", unquote(fragment)
+            ).casefold()
+            if anchor not in markdown_anchors(candidate):
+                label = path.relative_to(root) if path.is_relative_to(root) else path
+                if target:
+                    display_target = target
+                elif path.is_relative_to(root):
+                    display_target = path.relative_to(root).as_posix()
+                else:
+                    display_target = str(path)
+                errors.append(
+                    f"{label}: missing anchor #{fragment} in {display_target}"
+                )
     return errors, external
+
+
+def document_paths(root):
+    """Return repository Markdown pages while excluding external checkouts."""
+    paths = []
+    for path in root.rglob("*.md"):
+        relative = path.relative_to(root)
+        if any(
+            part in EXCLUDED_DOCUMENT_DIRS or part.startswith("bazel-")
+            for part in relative.parts
+        ):
+            continue
+        paths.append(path)
+    return paths
 
 
 def check(root, context_root=None):
     errors = []
     external = set()
-    paths = [root / "AGENTS.md", root / ".github/copilot-instructions.md"]
-    paths += sorted((root / ".agents").rglob("*.md"))
-    paths += [root / "scripts/agents/README.md"]
+    required_paths = [
+        root / "AGENTS.md",
+        root / ".github/copilot-instructions.md",
+        root / "scripts/agents/README.md",
+    ]
+    paths = sorted(set(required_paths + document_paths(root)))
     for path in paths:
         if not path.is_file():
             errors.append(f"missing entrypoint: {path}")

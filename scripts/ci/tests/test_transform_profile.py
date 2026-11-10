@@ -53,7 +53,7 @@ class OfficialInstallerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="product-config-") as directory:
             result = bazel(
                 "run",
-                "//products/apollo_lite/conf:install_dir",
+                "//products/low_speed/conf:install_dir",
                 "--",
                 "--destdir",
                 directory,
@@ -71,7 +71,7 @@ class OfficialInstallerTest(unittest.TestCase):
                 (installed / vehicle).read_bytes(),
                 (
                     WORKSPACE
-                    / "products/apollo_lite/conf/vehicles/default/vehicle_param.pb.txt"
+                    / "products/low_speed/conf/vehicles/default/vehicle_param.pb.txt"
                 ).read_bytes(),
             )
 
@@ -185,7 +185,7 @@ class OfficialInstallerTest(unittest.TestCase):
                     self.assertFalse(Path(vehicle).is_absolute())
                     default_vehicle_param = (
                         WORKSPACE
-                        / "products/apollo_lite/conf/vehicles/default"
+                        / "products/low_speed/conf/vehicles/default"
                         / "vehicle_param.pb.txt"
                     )
                     self.assertEqual(

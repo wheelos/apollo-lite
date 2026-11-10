@@ -67,10 +67,8 @@ function generate_docs() {
   info "Generating Apollo docs..."
   local doxygen_cmd="$(command -v doxygen)"
   if [ -z "${doxygen_cmd}" ]; then
-    error "Command 'doxygen' not found. Please install it manually."
-    error "On Ubuntu 18.04, this can be done by running: "
-    error "${TAB}sudo apt-get -y update"
-    error "${TAB}sudo apt-get -y install doxygen"
+    error "Command 'doxygen' not found."
+    error "Use a managed development image with documentation dependencies installed."
     exit 1
   fi
 

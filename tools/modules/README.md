@@ -93,7 +93,7 @@ prefix under Planning; Prediction and HMI declare that narrow library dependency
 HDMap remains in the independent Map package. The remaining Apollo `modules/map`
 directory now lives in Planning; it does not merge HDMap into Planning.
 Product-wide runtime defaults live in
-[`products/apollo_lite/conf/`](../../products/apollo_lite/conf/README.md),
+[`products/low_speed/conf/`](../../products/low_speed/conf/README.md),
 separate from module parameters and Common code. Build-time product selections
 stay in `tools/products/`; Common SDK packaging is owned by
 `@wheelos_common//tools:package_files`.

@@ -4,7 +4,7 @@ This is a reference Bzlmod integration/installation root, not another
 middleware or the complete autonomous-driving product. It installs Core tools
 and `conf/cyber.pb.conf` once. Vehicle and sensor modules contribute shared
 components; product-wide defaults and topology are source-owned under
-`products/apollo_lite/`, then mapped into stable runtime paths. Additional
+`products/low_speed/`, then mapped into stable runtime paths. Additional
 algorithm modules can use the same `runtime_module` contribution and be
 selected by a `runtime_product`; repository boundaries do not imply process
 boundaries.
@@ -28,7 +28,7 @@ resolved graph when another module still needs it.
 | Build rules/toolchains | `rules_cc`, `rules_python`, `rules_pkg`, `rules_cuda`, `bazel_skylib`, `platforms` |
 | Third-party libraries | BCR modules directly used by local tools, such as Boost, Protobuf, Eigen, gRPC and PCL |
 | WheelOS modules | Core, messages, common, map and transform; dependencies follow their public BUILD targets |
-| Hardware dependencies | Hardware modules own PortAudio, LiDAR SDKs, RTKLIB and GStreamer; Apollo declares only hardware modules it directly uses |
+| Hardware dependencies | Hardware modules own PortAudio, LiDAR SDKs, RTKLIB and GStreamer; this integration root declares only the hardware modules it directly uses |
 | Apollo-local integrations | Product assembly and shared toolchain selection; visualizer and roadlog are owned by `wheelos_tool_kit` |
 
 PortAudio belongs to `hardware.audio`, while ncurses/libuuid belong to Core.
@@ -41,9 +41,8 @@ dependency's workspace configuration.
 
 IPOPT belongs to Planning, cuDNN to Perception, TensorRT/LibTorch to Common,
 and Dreamview frontend assets to HMI. Their modules declare and import these
-dependencies; Apollo does not repeat those imports. The rules_pkg execution
-patch remains under Apollo's `third_party/`; the GTSAM compatibility patch is
-versioned with its module in the Bazel Central Registry.
+dependencies; this integration root does not repeat those imports. The GTSAM
+compatibility patch is versioned with its module in the Bazel Central Registry.
 
 Rules used by exported build macros are regular dependencies, even when they
 run only during the build. Reserve `dev_dependency` for tools and tests that
@@ -55,13 +54,14 @@ required dependencies.
 Declared versions are minimum requirements; Bzlmod MVS can select newer
 transitive versions. A release must review the resolved graph and genuine
 lockfile, not infer compatibility from matching dependency declarations.
-Apollo, vehicle and sensor are peer product roots, not dependencies of one
-another. Cross-product regressions have their own integration module in
-`tools/system/tests/`, excluded from Apollo's target traversal by `.bazelignore`.
+The low-speed product, vehicle and sensor are peer product roots, not
+dependencies of one another. Cross-product regressions have their own
+integration module in `tools/system/tests/`, excluded from this repository's
+target traversal by `.bazelignore`.
 That test module consumes Core's public assembly rules and both external
-product contributions directly; it needs no Apollo product dependency.
-Neither independent product depends on an Apollo checkout or on the other
-product.
+product contributions directly; it needs no low-speed product dependency.
+Neither independent product depends on this integration checkout or on the
+other product.
 
 ## Build and configure
 
@@ -69,10 +69,9 @@ Use Bazel 8.8.1 inside the managed container as the mapped non-root user.
 The cross-repository test module declares Core, `vehicle_infra` and
 `sensor_infra` as dependencies. Until the updated APIs are published, local
 validation passes explicit source overrides in that test root; these are not
-implicitly discovered or generated release entries. Apollo's normal dependency
-graph does not contain either peer product.
-From the Apollo root, the default assembly has tools only and no implicit
-module startup:
+implicitly discovered or generated release entries. This repository's normal
+dependency graph does not contain either peer product. From this integration
+root, the default assembly has tools only and no implicit module startup:
 
 ```bash
 bazel build --config=dev --config=cpu //tools/system:runtime
@@ -118,7 +117,7 @@ After building a selected assembly and obtaining hardware startup approval:
 source /opt/wheelos/system/bin/setup.bash
 cyber_launch start launch/vehicle/vehicle.launch
 cyber_launch start launch/sensors/camera.launch
-cyber_launch start launch/apollo_lite/combined.launch
+cyber_launch start launch/low_speed/combined.launch
 mainboard -d dag/vehicle/vehicle.dag -p vehicle
 ```
 

@@ -1,6 +1,6 @@
-# Apollo-Lite product configuration
+# Low-speed product configuration
 
-This directory owns Apollo-Lite product-wide runtime defaults, separate from
+This directory owns low-speed product-wide runtime defaults, separate from
 component packages and shared Common libraries. `global_flagfile.txt` selects
 the default vehicle template in `vehicles/default/vehicle_param.pb.txt`. The
 template retains
@@ -24,7 +24,7 @@ Build-time selection does not activate a runtime configuration. Deployment
 overrides must be explicit; do not silently select a vehicle or map on failure.
 Do not put model binaries or site map bundles in shared Common libraries.
 
-`//products/apollo_lite/conf:package_files` installs these defaults under `conf/`.
+`//products/low_speed/conf:package_files` installs these defaults under `conf/`.
 `@wheelos_common//tools:package_files` packages shared Common code separately.
 Existing `--flagfile=modules/global_config/global_flagfile.txt` invocations must
 use `--flagfile=conf/global_flagfile.txt`.

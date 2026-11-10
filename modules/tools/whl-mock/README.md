@@ -10,18 +10,19 @@ publishing it from the command line.
 
 ### 1. Build Dependencies
 
-Compile `cyber` and `common_msgs`:
+Run this command inside the managed development container to build the runtime
+tools and shared message bindings:
 
 ```shell
-./apollo.sh build_cpu cyber common_msgs
+./apollo.sh build cyber wheelos_msgs
 ```
 
 ### 2. Set Up Environment
 
-Source the environment variables:
+Load the workspace runtime environment:
 
 ```shell
-source scripts/runtime_env.sh
+source setup.bash
 ```
 
 ## Publishing Messages
