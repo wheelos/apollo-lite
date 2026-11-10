@@ -32,11 +32,12 @@ NETWORK_CONF_DEST_DIR="/etc/systemd/network"
 SYSTEMD_SRC_DIR="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system"
 SYSTEMD_DEST_DIR="/etc/systemd/system"
 
-# Source path of the service file within the project
-AUTOSERVICE_SRC_FILE="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/autostart.service"
-# Destination path for systemd services
-AUTOSERVICE_DEST_FILE="/etc/systemd/system/autostart.service"
-# User who will run the autonomous driving stack. SUDO_USER is the user who invoked sudo.
+# Source and destination for systemd units
+WHL_CONTAINER_SERVICE_SRC_FILE="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/whl-container.service"
+WHL_CONTAINER_SERVICE_DEST_FILE="/etc/systemd/system/whl-container.service"
+WHL_DREAMVIEW_SERVICE_SRC_FILE="${APOLLO_ROOT_DIR}/docker/setup_host/etc/systemd/system/whl-dreamview.service"
+WHL_DREAMVIEW_SERVICE_DEST_FILE="/etc/systemd/system/whl-dreamview.service"
+# User who will run the container lifecycle commands. SUDO_USER is the invoking user.
 WHL_HOST_USER="${SUDO_USER:-$(whoami)}"
 ## interactive-only script; no CLI skip/profile parsing in this file
 
@@ -175,11 +176,11 @@ check_host_setup_pre_conditions() {
     info "Udev rules source directory detected."
   fi
 
-  # 5. Check autostart service file (optional)
-  if [ ! -f "${AUTOSERVICE_SRC_FILE}" ]; then
-    warning "Autostart service file not found at '${AUTOSERVICE_SRC_FILE}'. The autostart step will be skipped unless you provide the service file."
+  # 5. Check the container service unit (optional)
+  if [ ! -f "${WHL_CONTAINER_SERVICE_SRC_FILE}" ]; then
+    warning "Container service file not found at '${WHL_CONTAINER_SERVICE_SRC_FILE}'. The setup step will be skipped unless you provide the service file."
   else
-    info "Autostart service source file detected."
+    info "Container service source file detected."
   fi
 
   success "All host setup pre-conditions met."
@@ -445,14 +446,14 @@ add_user_to_docker_group() {
   success "User '${user}' added to the Docker group. Please log out and back in for changes to take effect."
 }
 
-# Installs and enables the autostart systemd service.
-install_autostart_service() {
-  info "Installing and configuring the autostart systemd service..."
+# Installs and enables the whl container systemd service.
+install_whl_container_service() {
+  info "Installing and configuring whl-container.service..."
 
   # --- 1: Security & User Validation ---
   # Check for Root installation attempt (Blocked by default)
   if [[ "${WHL_HOST_USER}" == "root" ]]; then
-     error "Running the autonomous driving stack as 'root' is not allowed for security reasons."
+     error "Running the Apollo container service as 'root' is not allowed by default."
      error "To override, set ALLOW_ROOT_INSTALL=yes. (NOT RECOMMENDED)"
      if [[ "${ALLOW_ROOT_INSTALL:-no}" != "yes" ]]; then
          return 1
@@ -481,15 +482,16 @@ install_autostart_service() {
   info "Target Context -> User: ${WHL_HOST_USER}, Group: ${host_group}, Home: ${host_home}"
 
   # --- 3: File Preparation ---
-  if [[ ! -f "${AUTOSERVICE_SRC_FILE}" ]]; then
-      error "Source service file not found at: ${AUTOSERVICE_SRC_FILE}"
+  if [[ ! -f "${WHL_CONTAINER_SERVICE_SRC_FILE}" ]]; then
+      error "Source service file not found at: ${WHL_CONTAINER_SERVICE_SRC_FILE}"
       return 1
   fi
 
-  info "Copying template to '${AUTOSERVICE_DEST_FILE}'..."
+  info "Copying template to '${WHL_CONTAINER_SERVICE_DEST_FILE}'..."
   # We use a temporary file to do sed replacements to avoid permission issues before sudo mv
-  local tmp_service_file="/tmp/wheelos_autostart.service.tmp"
-  cp "${AUTOSERVICE_SRC_FILE}" "${tmp_service_file}"
+  local tmp_service_file
+  tmp_service_file="$(mktemp /tmp/whl-container.service.XXXXXX)"
+  cp "${WHL_CONTAINER_SERVICE_SRC_FILE}" "${tmp_service_file}"
 
   # --- 4: Template Replacement ---
   info "Configuring service parameters..."
@@ -503,9 +505,31 @@ install_autostart_service() {
   # --- 5: Installation & Activation ---
   # Move to system directory (requires sudo implicitly if running as setup script,
   # or ensure script is run with sufficient privs for this step)
-  if ! sudo mv "${tmp_service_file}" "${AUTOSERVICE_DEST_FILE}"; then
-      error "Failed to move service file to /etc/systemd/system/. Permission denied?"
+  if ! sudo install -m 0644 "${tmp_service_file}" "${WHL_CONTAINER_SERVICE_DEST_FILE}"; then
+      rm -f "${tmp_service_file}"
+      error "Failed to install service file in /etc/systemd/system/."
       return 1
+  fi
+  rm -f "${tmp_service_file}"
+
+  local previous_service="/etc/systemd/system/apollo.service"
+  if [[ -f "${previous_service}" ]] &&
+      grep -Fq "${APOLLO_ROOT_DIR}/docker/scripts/whl.sh" "${previous_service}"; then
+    info "Disabling apollo.service for this checkout..."
+    if ! sudo systemctl disable --now apollo.service; then
+      error "Failed to disable apollo.service."
+      return 1
+    fi
+  fi
+
+  local legacy_service="/etc/systemd/system/autostart.service"
+  if [[ -f "${legacy_service}" ]] &&
+      grep -Fq "${APOLLO_ROOT_DIR}/docker/scripts/whl.sh" "${legacy_service}"; then
+    info "Disabling legacy autostart.service for this Apollo checkout..."
+    if ! sudo systemctl disable --now autostart.service; then
+      error "Failed to disable the legacy autostart.service."
+      return 1
+    fi
   fi
 
     # Ensure the whl script is executable
@@ -523,14 +547,57 @@ install_autostart_service() {
   fi
 
   # Enable Service
-  info "Enabling 'autostart.service'..."
-  if ! sudo systemctl enable $(basename "${AUTOSERVICE_DEST_FILE}"); then
+  info "Enabling 'whl-container.service'..."
+  if ! sudo systemctl enable "$(basename "${WHL_CONTAINER_SERVICE_DEST_FILE}")"; then
     error "Failed to enable service."
     return 1
   fi
 
-  success "Autostart service installed. The system will start automatically on boot."
+  success "whl-container.service installed. The production container will start automatically on boot."
   return 0
+}
+
+# Installs and enables the separate Dreamview application service.
+install_whl_dreamview_service() {
+  info "Installing and configuring whl-dreamview.service..."
+
+  if [[ ! -f "${WHL_DREAMVIEW_SERVICE_SRC_FILE}" ]]; then
+    error "Source service file not found at: ${WHL_DREAMVIEW_SERVICE_SRC_FILE}"
+    return 1
+  fi
+
+  local host_group
+  local host_home
+  host_group="$(id -gn "${WHL_HOST_USER}")"
+  host_home="$(getent passwd "${WHL_HOST_USER}" | cut -d: -f6)"
+  if [[ -z "${host_home}" ]]; then
+    error "Could not resolve home directory for '${WHL_HOST_USER}'."
+    return 1
+  fi
+
+  local tmp_service_file
+  tmp_service_file="$(mktemp /tmp/whl-dreamview.service.XXXXXX)"
+  cp "${WHL_DREAMVIEW_SERVICE_SRC_FILE}" "${tmp_service_file}"
+  sed -i "s#__USER__#${WHL_HOST_USER}#g" "${tmp_service_file}"
+  sed -i "s#__GROUP__#${host_group}#g" "${tmp_service_file}"
+  sed -i "s#__APOLLO_ROOT_DIR__#${APOLLO_ROOT_DIR}#g" "${tmp_service_file}"
+  sed -i "s#__HOME_DIR__#${host_home}#g" "${tmp_service_file}"
+  if ! sudo install -m 0644 "${tmp_service_file}" "${WHL_DREAMVIEW_SERVICE_DEST_FILE}"; then
+    rm -f "${tmp_service_file}"
+    error "Failed to install whl-dreamview.service."
+    return 1
+  fi
+  rm -f "${tmp_service_file}"
+
+  if ! sudo systemctl daemon-reload; then
+    error "Failed to reload systemd."
+    return 1
+  fi
+  if ! sudo systemctl enable "$(basename "${WHL_DREAMVIEW_SERVICE_DEST_FILE}")"; then
+    error "Failed to enable whl-dreamview.service."
+    return 1
+  fi
+  success "whl-dreamview.service installed and enabled."
 }
 
 # Sets the system-wide limits for core dump file size by copying config.
@@ -752,14 +819,31 @@ setup_host_machine() {
     return 1
   fi
 
-  # 8. Install and enable the autostart service (optional)
-  if prompt_yes_no "Install autostart service?" N; then
-    if ! install_autostart_service; then
-      error "Failed to install the autostart service."
+  # 8. Install and enable the production container service (optional)
+  local whl_container_service_installed=false
+  if prompt_yes_no "Start the production container automatically at boot?" N; then
+    if ! install_whl_container_service; then
+      error "Failed to install whl-container.service."
+      return 1
+    fi
+    whl_container_service_installed=true
+  else
+    info "Skipping production container service installation."
+  fi
+
+  # 9. Dreamview is an application service, separate from container lifecycle.
+  if prompt_yes_no "Start Dreamview automatically at boot?" N; then
+    if [[ "${whl_container_service_installed}" != "true" ]] &&
+        ! install_whl_container_service; then
+      error "Dreamview requires whl-container.service."
+      return 1
+    fi
+    if ! install_whl_dreamview_service; then
+      error "Failed to install whl-dreamview.service."
       return 1
     fi
   else
-    info "Skipping autostart service installation."
+    info "Skipping Dreamview service installation."
   fi
 
   success "Host machine setup completed successfully!"

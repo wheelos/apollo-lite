@@ -1,0 +1,10 @@
+# Example build inventories, not hardware-qualified deployment configurations.
+build:product_devkit-x86 --config=hw_x86_devkit
+build:product_devkit-x86 --config=algo_rtk_open_space
+build:product_devkit-x86 --config=cpu
+build:product_devkit-x86 --config=opt
+
+build:product_devkit-x86-ndt --config=hw_x86_devkit
+build:product_devkit-x86-ndt --config=algo_ndt_planning
+build:product_devkit-x86-ndt --config=cpu
+build:product_devkit-x86-ndt --config=opt

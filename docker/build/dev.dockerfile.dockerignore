@@ -1,0 +1,11 @@
+**
+!.bazelversion
+!docker/
+!docker/build/
+!docker/build/installers/
+!docker/build/installers/**
+!docker/build/rcfiles/
+!docker/build/rcfiles/**
+docker/build/rcfiles/pip.conf.local
+docker/build/rcfiles/sources.list.local.*
+docker/build/rcfiles/wheelos.cn.public.gpg

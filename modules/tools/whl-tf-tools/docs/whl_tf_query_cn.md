@@ -2,6 +2,11 @@
 
 交互式 TF 查询工具 - 加载 TF 配置文件并查询任意两个坐标系之间的变换关系。
 
+本工具仅离线检查文件，不选择或验证车辆 bundle。请显式传入外参 YAML；
+`-c` 仅支持用户提供的历史 pb.txt 清单，不支持当前 manifest，Transform 也不再
+附带这些配置。完整 bundle 校验使用
+`//modules/tools/vehicle_calibration:validate_calibration`。
+
 ## 功能特性
 
 - 加载多个 TF YAML 文件
@@ -31,16 +36,16 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 ./modules/tools/whl-tf-tools/whl_tf_query.py load tf1.yaml tf2.yaml
 
 # 从 Apollo 静态变换配置加载
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c /path/to/offline/static_transform_conf.pb.txt
 
 # 同时加载两种来源
-./modules/tools/whl-tf-tools/whl_tf_query.py load custom.yaml -c modules/transform/conf/static_transform_conf.pb.txt
+./modules/tools/whl-tf-tools/whl_tf_query.py load custom.yaml -c /path/to/offline/static_transform_conf.pb.txt
 
 # 列出所有加载的坐标系和变换
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt --list
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c /path/to/offline/static_transform_conf.pb.txt --list
 
 # 保存加载的图供后续使用
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c /path/to/offline/static_transform_conf.pb.txt -o graph.pkl
 ```
 
 #### Load 选项
@@ -62,7 +67,7 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -t tf1.yaml -t tf2.yaml imu rslidar_main_front
 
 # 从配置文件查询变换
-./modules/tools/whl-tf-tools/whl_tf_query.py query -c modules/transform/conf/static_transform_conf.pb.txt rslidar_main_front rslidar_main_rear
+./modules/tools/whl-tf-tools/whl_tf_query.py query -c /path/to/offline/static_transform_conf.pb.txt rslidar_main_front rslidar_main_rear
 
 # 使用保存的图查询
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu localization
@@ -101,7 +106,7 @@ pip install -r modules/tools/whl-tf-tools/requirements.txt
 ./modules/tools/whl-tf-tools/whl_tf_query.py interactive -g graph.pkl
 
 # 使用 Apollo 配置启动
-./modules/tools/whl-tf-tools/whl_tf_query.py interactive -c modules/transform/conf/static_transform_conf.pb.txt
+./modules/tools/whl-tf-tools/whl_tf_query.py interactive -c /path/to/offline/static_transform_conf.pb.txt
 ```
 
 #### 交互式命令
@@ -168,7 +173,7 @@ child_frame_id: child_frame
 
 ```bash
 ./modules/tools/whl-tf-tools/whl_tf_query.py query \
-    -c modules/transform/conf/static_transform_conf.pb.txt \
+    -c /path/to/offline/static_transform_conf.pb.txt \
     rslidar_main_front imu
 ```
 
@@ -205,7 +210,7 @@ child_frame_id: imu
 ```bash
 # 首先加载并保存图
 ./modules/tools/whl-tf-tools/whl_tf_query.py load \
-    -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+    -c /path/to/offline/static_transform_conf.pb.txt -o graph.pkl
 
 # 之后使用保存的图进行查询
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu rslidar_main_rear

@@ -1,0 +1,12 @@
+module_config {
+  module_library: "lib/components/vehicle/libcanbus_component.so"
+  timer_components {
+    class_name: "CanbusComponent"
+    config {
+      name: "canbus"
+      config_file_path: "conf/vehicle/canbus_conf.pb.txt"
+      flag_file_path: "conf/vehicle/vehicle.conf"
+      interval: 10
+    }
+  }
+}

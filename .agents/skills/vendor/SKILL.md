@@ -10,7 +10,7 @@ description: "Apollo-Lite Bazel Bzlmod vendor workflow for preparing and validat
 Use this when preparing an Apollo-Lite source bundle that must build without
 network access.
 
-## Repository setup
+## Prerequisites
 
 - The root `.bazelrc` defines the opt-in `vendor` config:
 
@@ -24,8 +24,10 @@ network access.
   offline delivery bundle alongside `vendor/`; do not omit it from the bundle.
 - Keep dependency versions and module declarations in `MODULE.bazel`. Do not
   copy dependency sources there.
+- Resolve all delivered module versions through approved sources. Development
+  overrides are not proof that published versions can be vendored.
 
-## Generate the vendor directory
+## Steps
 
 Run Bazel in the managed dev container as the mapped non-root user:
 
@@ -43,13 +45,6 @@ For a deliberately scoped offline product, pass the complete set of target
 patterns that the delivery must support instead. The vendored set must cover
 all delivered build targets and their transitive dependencies.
 
-The command requires Bzlmod dependency resolution to succeed first. If module
-resolution reports a missing module or registry, stop at that first error;
-do not refresh or alter the lockfile, change module versions, or retry with
-different dependency flags without approval.
-
-## Offline delivery and validation
-
 Deliver the source tree, `vendor/`, and the matching ignored
 `MODULE.bazel.lock` together. Keep the lockfile untracked in Git; it is still
 part of the delivery inputs needed to reproduce the resolved graph.
@@ -61,6 +56,13 @@ access disabled, using the vendor config:
 bazel build --config=vendor <delivery-target-patterns>
 ```
 
+## Acceptance
+
+- The bundle contains the source tree, matching lockfile, and vendor snapshot.
+- All delivered targets build in the intended environment without network
+  access, using the delivered inputs rather than undeclared warm-cache sources.
+- Required non-Bazel dependencies are supplied for each delivery platform.
+
 A successful build using a warm repository cache is not proof of offline
 completeness. The validation environment must not be able to fetch missing
 repositories. Re-vendor and repeat this validation when the dependency graph,
@@ -71,13 +73,14 @@ compilers, CUDA/cuDNN/TensorRT, drivers, model assets, maps, and other
 non-Bazel inputs must be supplied and validated separately for each delivery
 platform.
 
-## Current repository blocker
+## Failure handling
 
-The latest generation attempt stopped during module resolution because
-`wheelos_map@0.1.0` was not found in either configured registry
-(`bcr.wheelos.cn` or `bcr.bazel.build`). No vendor snapshot was generated.
-Resolve the module's availability through the approved dependency source before
-running the vendoring command again.
+Stop at the first missing module, registry, or offline build error. Do not
+refresh the lockfile, change versions, add development overrides, or retry with
+different dependency flags to hide the failure without approval.
+
+Record failures in the task report with the date, exact command, active
+registry/config, and first error; do not keep undated task status in this skill.
 
 ## Sources
 

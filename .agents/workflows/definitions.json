@@ -1,0 +1,128 @@
+{
+  "algorithm-research": {
+    "description": "Source-backed algorithm route selection without code changes or experiments.",
+    "skills": ["engineering-solution-design"],
+    "stages": [
+      {"id": "research", "agents": ["algorithm-researcher", "algorithm-validator"], "instruction": "Independently investigate alternatives and source-backed feasibility. Do not execute experiments."},
+      {"id": "decision-review", "agents": ["algorithm-reviewer"], "instruction": "Check assumptions, evidence, compatibility, and route recommendations independently."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Consolidate alternatives and decision evidence without claiming runtime validation."}
+    ]
+  },
+  "algorithm-development": {
+    "description": "Approved algorithm implementation with one writer and independent validation.",
+    "skills": ["algorithm-development", "test-impact-analysis"],
+    "stages": [
+      {"id": "research", "agents": ["algorithm-researcher"], "instruction": "Trace working implementation and propose the smallest change and explicit mathematical/interface contracts."},
+      {"id": "design-review", "agents": ["algorithm-reviewer"], "approval": true, "instruction": "Review the proposed design, scope, compatibility, and mandatory evidence before implementation."},
+      {"id": "implementation", "agents": ["algorithm-implementer"], "writer": true, "instruction": "Implement only the approved design and source scope. Preserve unrelated work. Do not commit or publish."},
+      {"id": "validation", "agents": ["algorithm-validator"], "validation": true, "instruction": "Execute impact-selected checks against the actual diff; retain commands, assertions, outcomes, and hashed artifacts."},
+      {"id": "independent-review", "agents": ["algorithm-reviewer"], "instruction": "Review the actual diff and independently verify original validation evidence and numerical/boundary contracts."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Summarize actual changes, evidence, unresolved risks, and limitations."}
+    ]
+  },
+  "experiment-validation": {
+    "description": "Preflight, authorized experiment execution, and independent evidence verification.",
+    "skills": ["performance-optimization", "simulation-regression"],
+    "stages": [
+      {"id": "preflight", "agents": ["algorithm-researcher"], "approval": true, "instruction": "Inspect dataset, model, configuration, checkpoint, execution model, hardware readiness, baseline conditions, and declared criteria without starting experiments."},
+      {"id": "validation", "agents": ["algorithm-validator"], "validation": true, "instruction": "Execute only the approved experiment. Preserve frozen inputs, raw artifacts, accuracy/performance measurements, and termination evidence."},
+      {"id": "independent-review", "agents": ["algorithm-reviewer"], "instruction": "Independently verify original experiment artifacts, dataset splits, transforms, trigger assertions, thresholds, and comparability."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Report measured baseline comparisons and limitations; never infer absent measurements."}
+    ]
+  },
+  "change-review": {
+    "description": "Read-only diff review with independent, impact-selected evidence.",
+    "skills": ["change-review", "test-impact-analysis"],
+    "stages": [
+      {"id": "inspection", "agents": ["algorithm-reviewer", "algorithm-validator"], "validation": true, "instruction": "Independently inspect the supplied diff and required evidence. Run only explicitly requested checks; pure source review needs no build. Do not fix source."},
+      {"id": "independent-review", "agents": ["algorithm-reviewer"], "instruction": "Verify findings and original artifacts independently; resolve unsupported claims without dismissing missing proof."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Report source-backed findings, coverage boundaries, and unavailable checks; do not implement fixes."}
+    ]
+  },
+  "solution-prototyping": {
+    "description": "Compare alternatives, build a scoped risk prototype, and report a source-backed selection.",
+    "skills": ["engineering-solution-design", "long-horizon-development", "test-impact-analysis"],
+    "profiles": ["engineering"],
+    "stages": [
+      {"id": "research", "agents": ["algorithm-researcher"], "instruction": "Compare the existing baseline and alternatives, hard constraints, reuse costs, and the critical feasibility risk. Define a minimal vertical prototype."},
+      {"id": "design-review", "agents": ["algorithm-reviewer"], "approval": true, "instruction": "Review scoped prototype, risks, contracts, declared checks, and the boundary between feasibility and production readiness."},
+      {"id": "implementation", "agents": ["algorithm-implementer"], "writer": true, "instruction": "Build only the approved minimal end-to-end prototype and preserve unrelated work."},
+      {"id": "validation", "agents": ["algorithm-validator"], "validation": true, "instruction": "Execute declared prototype checks. Preserve feasibility, integration and resource evidence without claiming production readiness."},
+      {"id": "selection-review", "agents": ["algorithm-reviewer"], "instruction": "Independently verify original evidence and compare options. Recommend selection, revision, or rejection with source-backed reasons."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Report runnable prototype path, selected/rejected options, observed risk, and production gaps."}
+    ]
+  },
+  "engineering-development": {
+    "description": "Scoped engineering implementation, integration, and independent review.",
+    "skills": ["engineering-solution-design", "test-impact-analysis", "interface-migration"],
+    "profiles": ["engineering"],
+    "stages": [
+      {"id": "research", "agents": ["algorithm-researcher"], "instruction": "Inspect existing behavior, consumers and baseline. Define the smallest complete implementation and integration contracts."},
+      {"id": "design-review", "agents": ["algorithm-reviewer"], "approval": true, "instruction": "Review API/configuration compatibility, source scope, lifecycle, dependencies and mandatory checks."},
+      {"id": "implementation", "agents": ["algorithm-implementer"], "writer": true, "instruction": "Implement the approved design and dependent call sites within scope. Do not publish or alter dependency checkouts."},
+      {"id": "validation", "agents": ["algorithm-validator"], "validation": true, "instruction": "Execute declared local and integration checks using existing runners; record exact candidate and artifacts."},
+      {"id": "independent-review", "agents": ["algorithm-reviewer"], "instruction": "Verify actual changes, consumers and original evidence. Request bounded correction only with actionable causal findings."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Report completed engineering path, evidence, limitations and unresolved integration gaps."}
+    ]
+  },
+  "fault-localization": {
+    "description": "Reproducer and causal evidence before a scoped fix and regression.",
+    "skills": ["issue-localization", "test-impact-analysis"],
+    "profiles": ["engineering"],
+    "stages": [
+      {"id": "research", "agents": ["algorithm-researcher"], "instruction": "Trace one causal chain, existing working examples and the first wrong state; define the smallest reproducer."},
+      {"id": "reproduction", "agents": ["algorithm-validator"], "validation": true, "instruction": "Run the declared reproducer/discriminating checks. Preserve expected baseline failures as baseline evidence, not candidate regressions."},
+      {"id": "design-review", "agents": ["algorithm-reviewer"], "approval": true, "instruction": "Review causal evidence, root cause and minimal fix. If causality is insufficient, request further evidence instead of speculative edits."},
+      {"id": "implementation", "agents": ["algorithm-implementer"], "writer": true, "instruction": "Fix only the evidenced cause and add a focused regression within approved scope."},
+      {"id": "validation", "agents": ["algorithm-validator"], "validation": true, "instruction": "Demonstrate the original defect is detected and the changed candidate satisfies declared regression criteria."},
+      {"id": "independent-review", "agents": ["algorithm-reviewer"], "instruction": "Verify causal attribution and original regression artifacts independently; request bounded correction if justified."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Report first wrong state, cause, fix, regression proof and unavailable evidence."}
+    ]
+  },
+  "performance-optimization": {
+    "description": "Frozen baseline and profiling before a minimal optimization and comparable regression.",
+    "skills": ["performance-optimization", "issue-localization", "test-impact-analysis"],
+    "profiles": ["performance"],
+    "stages": [
+      {"id": "research", "agents": ["algorithm-researcher"], "resource_approval": true, "instruction": "Define workload, baseline identity, real metric boundaries, variability and correctness/resource budgets. GPU baseline collection needs resource approval before execution."},
+      {"id": "baseline-profile", "agents": ["algorithm-validator"], "validation": true, "instruction": "Collect declared baseline measurements and targeted profiles before edits. Preserve all samples and instrumentation conditions."},
+      {"id": "design-review", "agents": ["algorithm-reviewer"], "approval": true, "instruction": "Review dominant bottleneck, causal hypothesis and one minimal change. Do not approve random optimization without profile evidence."},
+      {"id": "implementation", "agents": ["algorithm-implementer"], "writer": true, "instruction": "Implement only the approved bottleneck hypothesis and preserve behavior and resource contracts."},
+      {"id": "validation", "agents": ["algorithm-validator"], "validation": true, "instruction": "Compare baseline/candidate under equivalent conditions; execute declared metrics, correctness, tail latency and cost-shifting checks."},
+      {"id": "independent-review", "agents": ["algorithm-reviewer"], "instruction": "Verify original samples, timing boundaries, units, noise, comparability and regressions; request revision only for evidenced defects."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Report baseline, attribution, observed change and uncertainty. No reliable gain is a valid outcome, not grounds to cherry-pick."}
+    ]
+  },
+  "stability-validation": {
+    "description": "Resource lifecycle, memory ownership, long-run and authorized recovery evidence without source edits.",
+    "skills": ["issue-localization", "performance-optimization", "test-impact-analysis"],
+    "profiles": ["memory-stability"],
+    "stages": [
+      {"id": "preflight", "agents": ["algorithm-researcher"], "approval": true, "instruction": "Define lifecycle/load, resource budgets, meaningful duration and isolated recovery checks. Distinguish live heap, retention, fragmentation and RSS; do not infer leaks from RSS alone."},
+      {"id": "validation", "agents": ["algorithm-validator"], "validation": true, "instruction": "Execute only approved resource/lifecycle/soak/stress checks using existing tools. Separate sanitizer and normal-runtime measurements. Preserve teardown and all-job termination evidence; no unsolicited fault injection."},
+      {"id": "independent-review", "agents": ["algorithm-reviewer"], "instruction": "Verify original growth trends, allocation/ownership stacks, queue/caches and teardown. Distinguish missing coverage from leaks and confirmed stability defects."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Report memory/resource classification, tested load/duration, recovery and limitations; propose separate scoped development for any fix."}
+    ]
+  },
+  "scenario-regression": {
+    "description": "Autonomous-driving scenario assertions and first-divergence evidence using the existing harness.",
+    "skills": ["simulation-regression", "test-impact-analysis"],
+    "profiles": ["scenario"],
+    "stages": [
+      {"id": "preflight", "agents": ["algorithm-researcher"], "approval": true, "instruction": "Bind behavioral requirement, ODD, scenario/fixture identities, recomputed modules, execution model, triggers and assertions. Preserve existing exact-plan approval; no road/HIL execution."},
+      {"id": "validation", "agents": ["algorithm-validator"], "validation": true, "instruction": "Use the existing approved harness and deterministic evaluator. Record trigger proof, assertions, original artifacts, seed/time basis and first failure; never treat a non-triggering scenario as passing."},
+      {"id": "independent-review", "agents": ["algorithm-reviewer"], "instruction": "Verify original scenario/trigger evidence, first divergence and coverage; distinguish open-loop, closed-loop and hardware evidence boundaries."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Report behavioral acceptance, first failure/divergence and uncovered ODD/scenario risks. Simulation is not road-safety certification."}
+    ]
+  },
+  "release-validation": {
+    "description": "Release-candidate acceptance without publishing, deploying, or changing source.",
+    "skills": ["test-impact-analysis", "change-review"],
+    "stages": [
+      {"id": "preflight", "agents": ["algorithm-researcher"], "approval": true, "instruction": "Inspect the pinned release candidate, compatibility consumers, artifact identities, and required acceptance matrix. Do not publish or deploy."},
+      {"id": "validation", "agents": ["algorithm-validator"], "validation": true, "instruction": "Execute only the approved release checks with reproducible inputs and original hashed artifacts."},
+      {"id": "independent-review", "agents": ["algorithm-reviewer"], "instruction": "Independently audit release evidence, direct consumers, regressions, and unresolved defects. Do not publish or deploy."},
+      {"id": "report", "agents": ["experiment-reporter"], "instruction": "Produce release acceptance evidence and blockers, not a publication action."}
+    ]
+  }
+}

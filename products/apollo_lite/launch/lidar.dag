@@ -1,0 +1,10 @@
+module_config {
+  module_library: "lib/components/sensors/libhesai_component.so"
+  components {
+    class_name: "HesaiComponent"
+    config {
+      name: "lidar"
+      config_file_path: "conf/sensors/lidar.pb.txt"
+    }
+  }
+}

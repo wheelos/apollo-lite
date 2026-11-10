@@ -37,21 +37,12 @@ nohup.out
 
 # Data
 /data
-/external/
-modules/lane/data/*.engine
+/pkgs/
+/ad_agents/
 modules/camera_semantic_segmentation/data/*
 modules/tools/ota/update.ini
 modules/tools/ota/vehicle_info.pb.txt
 docker/build/syspkgs.txt
-
-# Localization
-modules/localization/msf/local_map/test_data/ndt_map/map_data
-modules/localization/msf/local_map/test_data/ndt_map/pcds/
-modules/localization/msf/local_map/test_data/lossless_single_map/map/
-modules/localization/msf/local_map/test_data/lossy_single_map/map/
-modules/ndt_localization/test_data/ndt_map/map/
-modules/ndt_localization/test_data/pcds/
-third_party/localization_msf/*/lib/*.so*
 
 # Doxygen
 cyber/doxy-docs/build
@@ -62,9 +53,6 @@ modules/map/data/*
 
 # python proto
 *_pb2.py
-
-# calibration files
-modules/calibration/data
 
 # Data bag
 docs/demo_guide/*.bag

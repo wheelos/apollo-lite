@@ -1,0 +1,111 @@
+{
+  "type": "object",
+  "required": ["workflow", "task_id", "stage", "agent", "input_fingerprint", "status", "summary", "findings", "checks", "limitations", "jobs_stopped"],
+  "properties": {
+    "workflow": {"type": "string"},
+    "task_id": {"type": "string"},
+    "stage": {"type": "string"},
+    "agent": {"type": "string"},
+    "input_fingerprint": {"type": "string"},
+    "status": {"type": "string", "enum": ["COMPLETE", "FAIL", "INCONCLUSIVE"]},
+    "summary": {"type": "string"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "summary", "source", "unresolved"],
+        "properties": {
+          "id": {"type": "string"},
+          "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"]},
+          "summary": {"type": "string"},
+          "source": {"type": "string"},
+          "unresolved": {"type": "boolean"}
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "status", "command", "executed", "exit_code", "criteria_met", "metrics", "artifacts"],
+        "properties": {
+          "id": {"type": "string"},
+          "result_file": {"type": "string"},
+          "kind": {"type": "string", "enum": ["source", "test", "metric"]},
+          "status": {"type": "string", "enum": ["PASS", "FAIL", "INCONCLUSIVE"]},
+          "command": {"type": "string"},
+          "executed": {"type": "boolean"},
+          "exit_code": {"type": ["integer", "null"]},
+          "criteria_met": {"type": "boolean"},
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "value", "unit"],
+              "properties": {
+                "name": {"type": "string"},
+                "value": {"type": "number"},
+                "unit": {"type": "string"}
+              }
+            }
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["path", "sha256"],
+              "properties": {
+                "path": {"type": "string"},
+                "sha256": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "jobs_stopped": {"type": "boolean"},
+    "next_action": {"type": "string", "enum": ["continue", "revise", "stop"]},
+    "verifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "candidate_fingerprint", "status", "reason", "artifacts"],
+        "properties": {
+          "check_id": {"type": "string"},
+          "candidate_fingerprint": {"type": "string"},
+          "status": {"type": "string", "enum": ["VERIFIED", "REJECTED", "INCONCLUSIVE"]},
+          "reason": {"type": "string"},
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["path", "sha256"],
+              "properties": {"path": {"type": "string"}, "sha256": {"type": "string"}}
+            }
+          }
+        }
+      }
+    },
+    "resolutions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["finding_id", "candidate_fingerprint", "reason", "artifacts"],
+        "properties": {
+          "finding_id": {"type": "string"},
+          "candidate_fingerprint": {"type": "string"},
+          "reason": {"type": "string"},
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["path", "sha256"],
+              "properties": {"path": {"type": "string"}, "sha256": {"type": "string"}}
+            }
+          }
+        }
+      }
+    }
+  }
+}

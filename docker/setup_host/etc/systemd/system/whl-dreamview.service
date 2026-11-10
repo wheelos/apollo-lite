@@ -1,0 +1,21 @@
+[Unit]
+Description=WheelOS Dreamview
+Documentation=https://www.wheelos.cn/
+Requires=whl-container.service
+After=whl-container.service
+
+[Service]
+User=__USER__
+Group=__GROUP__
+WorkingDirectory=__APOLLO_ROOT_DIR__
+Environment="HOME=__HOME_DIR__"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=120s
+TimeoutStopSec=60s
+ExecStart=/bin/bash __APOLLO_ROOT_DIR__/docker/scripts/whl-dreamview.sh start
+ExecStop=/bin/bash __APOLLO_ROOT_DIR__/docker/scripts/whl-dreamview.sh stop
+
+[Install]
+WantedBy=multi-user.target

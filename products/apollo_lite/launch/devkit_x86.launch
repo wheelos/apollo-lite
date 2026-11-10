@@ -1,0 +1,22 @@
+<cyber>
+  <module>
+    <name>static_transform</name>
+    <dag_conf>dag/transform/static_transform.dag</dag_conf>
+    <process_name>static_transform</process_name>
+  </module>
+  <module>
+    <name>rtk_localization</name>
+    <dag_conf>dag/rtk_localization/rtk_localization.dag</dag_conf>
+    <process_name>rtk_localization</process_name>
+  </module>
+  <module>
+    <name>open_space_planning</name>
+    <dag_conf>dag/open_space_planning/open_space_planning.dag</dag_conf>
+    <process_name>open_space_planning</process_name>
+  </module>
+  <module>
+    <name>control</name>
+    <dag_conf>dag/control/control.dag</dag_conf>
+    <process_name>control</process_name>
+  </module>
+</cyber>

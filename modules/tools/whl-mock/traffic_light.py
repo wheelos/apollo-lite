@@ -25,7 +25,7 @@ try:
         from modules.common_msgs.perception_msgs import traffic_light_detection_pb2
         from modules.common_msgs.map_msgs.map_pb2 import Map
     except ImportError:
-        from modules.localization.proto import localization_pb2
+        import wheelos_msgs.localization_msgs.localization_pb2 as localization_pb2
         from modules.perception.proto import traffic_light_detection_pb2
         from modules.map.proto.map_pb2 import Map
 except ImportError:
@@ -288,7 +288,9 @@ def parse_args():
     Apollo Manual Traffic Light Mock
 
     Example usage:
-        python3 modules/tools/whl-mock/traffic_light.py --all_lights --map_file=modules/map/data/demo/base_map.bin
+        python3 modules/tools/whl-mock/traffic_light.py --all_lights
+
+    The default map is pkgs/planning/modules/map/data/borregas_ave/base_map.bin.
     """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -301,7 +303,7 @@ def parse_args():
     parser.add_argument(
         "--map_file",
         type=str,
-        default="/apollo/modules/map/data/borregas_ave/base_map.bin",
+        default="/apollo/pkgs/planning/modules/map/data/borregas_ave/base_map.bin",
         help="Path to the HDMap binary file",
     )
     parser.add_argument(

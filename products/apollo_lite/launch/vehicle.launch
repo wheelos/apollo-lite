@@ -1,0 +1,7 @@
+<cyber>
+  <module>
+    <name>vehicle</name>
+    <dag_conf>dag/vehicle/vehicle.dag</dag_conf>
+    <process_name>vehicle</process_name>
+  </module>
+</cyber>

@@ -1,2 +1,0 @@
-bt_tree_dir: "modules/mission/conf/bt_trees"
-tick_interval_ms: 100

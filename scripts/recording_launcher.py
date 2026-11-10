@@ -24,7 +24,7 @@ capture directory, and replaces itself with ``cyber_recorder record``.
 Run only inside an Apollo container:
 
     python3 /apollo/scripts/recording_launcher.py \
-        --config /apollo/modules/dreamview/conf/recording/runtime.yaml
+        --config /apollo/pkgs/hmi/modules/dreamview/conf/recording/runtime.yaml
 
 The configuration is passed unchanged to ``cyber_recorder`` and owns channel
 selection and policy, including regex exclusions. The launcher creates:

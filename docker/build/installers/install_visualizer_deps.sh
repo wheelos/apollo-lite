@@ -19,8 +19,6 @@
 # Fail on first error.
 set -e
 
-BUILD_TYPE="${1:-download}"
-
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 . ${CURR_DIR}/installer_base.sh
 
@@ -30,8 +28,12 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # libgles2-mesa-dev
 apt_get_update_and_install \
     mesa-common-dev \
+    libgl1-mesa-dri \
     libglvnd-dev \
-    libxcb1-dev
+    libxcb1-dev \
+    mesa-utils \
+    xauth \
+    xvfb
 
 # See Ref:
 # https://hub.docker.com/r/nvidia/cudagl
@@ -41,7 +43,7 @@ apt_get_update_and_install \
 # DON'T INSTALL THESE!!!
 # libnvidia-gl-440 # trouble-maker for `nvidia-smi`
 
-bash ${CURR_DIR}/install_qt.sh "${BUILD_TYPE}"
+bash ${CURR_DIR}/install_qt.sh
 
 
 # Clean up cache to reduce layer size.

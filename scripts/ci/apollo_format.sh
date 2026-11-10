@@ -90,7 +90,7 @@ function format_python() {
 function format_bazel() {
   require_command buildifier
   local files=()
-  mapfile -t files < <(collect_files '.*(BUILD|\.bzl|\.bazelrc)$' "${TARGET_PATHS[@]}")
+  mapfile -t files < <(collect_files '.*(BUILD|BUILD\.bazel|BUILD\.cudnn[89]|MODULE\.bazel|\.bzl|\.BUILD)$' "${TARGET_PATHS[@]}")
   if [[ "${#files[@]}" -gt 0 ]]; then
     printf '%s\0' "${files[@]}" | xargs -0 -r buildifier -mode=fix -lint=warn
   fi

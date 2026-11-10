@@ -1,0 +1,18 @@
+[Unit]
+Description=WheelOS static transform runtime
+
+[Service]
+Type=exec
+User=wheelos
+WorkingDirectory=/opt/wheelos/transform
+EnvironmentFile=/etc/wheelos/transform.env
+Environment=GLOG_logtostderr=1
+ExecStart=/opt/wheelos/transform/bin/run
+KillSignal=SIGINT
+KillMode=mixed
+TimeoutStopSec=15
+Restart=no
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

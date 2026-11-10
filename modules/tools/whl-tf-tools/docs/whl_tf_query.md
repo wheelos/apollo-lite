@@ -2,6 +2,12 @@
 
 Interactive TF query tool - load TF configuration files and query transforms between any two coordinate frames.
 
+This is an offline file inspector, not a vehicle-bundle selector or validator.
+Supply explicit extrinsic YAMLs. `-c` accepts only user-supplied historical
+pb.txt inventories, not current manifests; Transform no longer ships those
+configs. For bundle validation use
+`//modules/tools/vehicle_calibration:validate_calibration`.
+
 ## Features
 
 - Load multiple TF YAML files
@@ -31,16 +37,16 @@ Load and display TF configuration files:
 ./modules/tools/whl-tf-tools/whl_tf_query.py load tf1.yaml tf2.yaml
 
 # Load from Apollo static transform config
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c /path/to/offline/static_transform_conf.pb.txt
 
 # Combine both sources
-./modules/tools/whl-tf-tools/whl_tf_query.py load custom.yaml -c modules/transform/conf/static_transform_conf.pb.txt
+./modules/tools/whl-tf-tools/whl_tf_query.py load custom.yaml -c /path/to/offline/static_transform_conf.pb.txt
 
 # List all loaded frames and transforms
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt --list
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c /path/to/offline/static_transform_conf.pb.txt --list
 
 # Save loaded graph for later use
-./modules/tools/whl-tf-tools/whl_tf_query.py load -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+./modules/tools/whl-tf-tools/whl_tf_query.py load -c /path/to/offline/static_transform_conf.pb.txt -o graph.pkl
 ```
 
 #### Load Options
@@ -62,7 +68,7 @@ Query transform between two frames:
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -t tf1.yaml -t tf2.yaml imu rslidar_main_front
 
 # Query transform from config
-./modules/tools/whl-tf-tools/whl_tf_query.py query -c modules/transform/conf/static_transform_conf.pb.txt rslidar_main_front rslidar_main_rear
+./modules/tools/whl-tf-tools/whl_tf_query.py query -c /path/to/offline/static_transform_conf.pb.txt rslidar_main_front rslidar_main_rear
 
 # Query with saved graph
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu localization
@@ -101,7 +107,7 @@ Interactive mode for querying multiple transforms:
 ./modules/tools/whl-tf-tools/whl_tf_query.py interactive -g graph.pkl
 
 # Start with Apollo config
-./modules/tools/whl-tf-tools/whl_tf_query.py interactive -c modules/transform/conf/static_transform_conf.pb.txt
+./modules/tools/whl-tf-tools/whl_tf_query.py interactive -c /path/to/offline/static_transform_conf.pb.txt
 ```
 
 #### Interactive Commands
@@ -168,7 +174,7 @@ child_frame_id: child_frame
 
 ```bash
 ./modules/tools/whl-tf-tools/whl_tf_query.py query \
-    -c modules/transform/conf/static_transform_conf.pb.txt \
+    -c /path/to/offline/static_transform_conf.pb.txt \
     rslidar_main_front imu
 ```
 
@@ -205,7 +211,7 @@ child_frame_id: imu
 ```bash
 # First, load and save the graph
 ./modules/tools/whl-tf-tools/whl_tf_query.py load \
-    -c modules/transform/conf/static_transform_conf.pb.txt -o graph.pkl
+    -c /path/to/offline/static_transform_conf.pb.txt -o graph.pkl
 
 # Later, use the saved graph for queries
 ./modules/tools/whl-tf-tools/whl_tf_query.py query -g graph.pkl imu rslidar_main_rear

@@ -1,84 +1,62 @@
-load("//tools/install:install.bzl", "install", "install_src_files")
-load("//tools/platform:build_defs.bzl", "if_gpu")
+load("@core//runtime:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_filegroup")
 
-package(
-    default_visibility = ["//visibility:public"],
+pkg_filegroup(
+    name = "package_files",
+    srcs = [
+        "//docker/scripts:package_files",
+        "//products/apollo_lite/conf:package_files",
+        "//scripts:package_files",
+        "@hardware.audio//:package_files",
+        "@hardware.camera//:package_files",
+        "@hardware.canbus//:package_files",
+        "@hardware.gnss//:package_files",
+        "@hardware.image_decompress//:package_files",
+        "@hardware.lidar//:package_files",
+        "@hardware.radar//conti_radar:package_files",
+        "@hardware.vehicle//:package_files",
+        "@hardware.video//:package_files",
+        "@wheelos_common//tools:package_files",
+        "@wheelos_control//modules/control:package_files",
+        "@wheelos_hmi//modules/dreamview:package_files",
+        "@wheelos_lidar_perception//modules/lidar_fusion:package_files",
+        "@wheelos_localization//modules/localization:package_files",
+        "@wheelos_localization//modules/ndt_localization:package_files",
+        "@wheelos_localization//modules/rtk_localization:package_files",
+        "@wheelos_mission//modules/mission:package_files",
+        "@wheelos_planning//modules/local_planning:package_files",
+        "@wheelos_planning//modules/map:package_files",
+        "@wheelos_planning//modules/open_space_planning:package_files",
+        "@wheelos_planning//modules/planning:package_files",
+        "@wheelos_prediction//modules/prediction:package_files",
+        "@wheelos_routing//modules/routing:package_files",
+        "@wheelos_safety//modules/collision_guardian:package_files",
+        "@wheelos_safety//modules/guardian:package_files",
+        "@wheelos_safety//modules/monitor:package_files",
+        "@wheelos_simulation//modules/simulation:package_files",
+        "@wheelos_transform//modules/transform:package_files",
+        "@wheelos_world_model//modules/storytelling:package_files",
+        "@wheelos_world_model//modules/traffic_light:package_files",
+        "@wheelos_world_model//modules/world_model:package_files",
+    ] + select({
+        "//tools/platform:is_jetson_orin": ["@hardware.camera_gst//:package_files"],
+        "//conditions:default": [],
+    }) + select({
+        "@wheelos_common//tools/platform:use_gpu": [
+            "@wheelos_camera_perception//modules/camera_semantic_segmentation:package_files",
+            "@wheelos_lidar_perception//modules/lidar_object_detection:package_files",
+            "@wheelos_lidar_perception//modules/lidar_semantic_segmentation:package_files",
+            "@wheelos_multimodal_perception//modules/bevfusion:package_files",
+            "@wheelos_perception//modules/perception:package_files",
+            "@wheelos_world_model//modules/lane:package_files",
+        ],
+        "//conditions:default": [],
+    }),
+    tags = ["manual"],
 )
 
-exports_files([
-    "CPPLINT.cfg",
-    "tox.ini",
-])
-
-install(
-    name = "install",
-    deps = if_gpu(
-        [
-            "//modules/perception:install",
-            "//modules/planning:install",
-        ],
-        [
-            "//tools:install",
-            "//modules/calibration:install",
-            "//modules/canbus:install",
-            "//modules/global_config:install",
-            "//modules/control:install",
-            "//modules/planning:install",
-            "//modules/dreamview:install",
-            "//modules/drivers:install",
-            "//modules/guardian:install",
-            "//modules/localization:install",
-            "//modules/map:install",
-            "//modules/monitor:install",
-            "//modules/prediction:install",
-            "//modules/routing:install",
-            "//modules/storytelling:install",
-            "//modules/task_manager:install",
-            "//modules/transform:install",
-            "//scripts:install",
-            "//third_party/ad_rss_lib:install",
-            "//third_party/ipopt:install",
-            "//third_party/opengl:install",
-            "//third_party/adolc:install",
-            "//third_party/tf2:install",
-            "//third_party/localization_msf:install",
-            "//third_party/rtklib:install",
-        ],
-    ),
-)
-
-install_src_files(
-    name = "install_src",
-    deps = if_gpu(
-        [
-            "//modules/perception:install_src",
-            "//modules/planning:install_src",
-        ],
-        [
-            "//tools:install_src",
-            "//modules/control:install_src",
-            "//modules/dreamview:install_src",
-            "//modules/map:install_src",
-            "//modules/monitor:install_src",
-            "//modules/planning:install_src",
-            "//modules/routing:install_src",
-            # task_manager has no BUILD file in this checkout; restore this
-            # dependency when its source-install target is available again.
-            "//modules/transform:install_src",
-            "//modules/calibration:install_src",
-            # canbus has an install target but no source-install target.
-            "//modules/drivers:install_src",
-            "//modules/guardian:install_src",
-            "//modules/localization:install_src",
-            "//modules/prediction:install_src",
-            "//modules/storytelling:install_src",
-            "//third_party/ipopt:install_src",
-            "//third_party/opengl:install_src",
-            "//third_party/adolc:install_src",
-            "//third_party/tf2:install_src",
-            # The bundled MSF library was removed pending the localization
-            # refactor; keep it out of source-artifact installation meanwhile.
-            "//third_party/rtklib:install_src",
-        ],
-    ),
+pkg_install(
+    name = "install_dir",
+    srcs = [":package_files"],
+    tags = ["manual"],
 )

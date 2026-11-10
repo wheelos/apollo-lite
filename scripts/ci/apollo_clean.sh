@@ -40,6 +40,7 @@ function _clean_bazel_cache() {
   fi
 
   bazel clean ${opt}
+  rm -rf "${TOP_DIR}"/pkgs/*/bazel-*
 
   # Remove bazel cache in associated directories
   if [ -d /apollo-simulator ]; then

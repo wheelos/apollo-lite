@@ -1,0 +1,10 @@
+module_config {
+  module_library: "lib/components/sensors/libcamera_component.so"
+  components {
+    class_name: "CameraComponent"
+    config {
+      name: "camera"
+      config_file_path: "conf/sensors/camera.pb.txt"
+    }
+  }
+}

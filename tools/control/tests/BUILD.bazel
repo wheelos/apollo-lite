@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "motion_chain_contract_test",
+    size = "small",
+    srcs = ["motion_chain_contract_test.cc"],
+    linkopts = ["-fopenmp"],
+    deps = [
+        "@wheelos_control//modules/control/common:executor_arbiter",
+        "@wheelos_control//modules/control/common:motion_execution_manager",
+        "@wheelos_planning//modules/planning/common:gtest_exit_main",
+        "@wheelos_planning//modules/planning/common:motion_plan_builder",
+    ],
+)

@@ -1,0 +1,34 @@
+{
+  "engineering": {
+    "skills": ["engineering-solution-design", "test-impact-analysis", "interface-migration"],
+    "contracts": ["API/configuration semantics and consumers", "build and dependency identity", "startup/teardown and error behavior"]
+  },
+  "perception-model": {
+    "skills": ["algorithm-development", "model-artifact-integration"],
+    "contracts": ["tensor shape/layout and preprocessing/postprocessing", "transform direction and model identity", "dataset splits, quality, latency and precision"]
+  },
+  "state-estimation": {
+    "skills": ["algorithm-development"],
+    "contracts": ["units/frames and clocks", "covariance, continuity and reset semantics", "degradation and invalid/stale input behavior"]
+  },
+  "planning-control": {
+    "skills": ["algorithm-development", "simulation-regression"],
+    "contracts": ["validity, dynamic feasibility and freshness", "tracking/completion and feedback", "open-loop versus closed-loop evidence boundaries"]
+  },
+  "middleware": {
+    "skills": ["issue-localization", "interface-migration"],
+    "contracts": ["topics/Proto and direct consumers", "discovery/reconnect, queues/backpressure and locking", "threads/subscriptions/timers startup and teardown"]
+  },
+  "performance": {
+    "skills": ["performance-optimization"],
+    "contracts": ["frozen baseline/workload and timing completion boundary", "cold/warm, sample count, distribution and noise", "correctness, tail latency and cost-shifting regression"]
+  },
+  "memory-stability": {
+    "skills": ["issue-localization", "performance-optimization"],
+    "contracts": ["RSS versus live heap, retention, fragmentation and queue growth", "CPU/CUDA/FD/thread/SHM ownership and teardown", "lifecycle, soak/stress and explicitly approved isolated fault recovery", "separate sanitizer and normal-runtime measurements"]
+  },
+  "scenario": {
+    "skills": ["simulation-regression"],
+    "contracts": ["ODD/scenario/fixture/map/vehicle/model identity", "recomputed modules, seed and replay clock", "trigger proof, behavioral assertions and first divergence", "preserve existing sim-agent exact-plan approval and evaluator"]
+  }
+}

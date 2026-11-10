@@ -1,0 +1,8 @@
+<cyber>
+  <module>
+    <name>sensors</name>
+    <dag_conf>dag/sensors/camera.dag</dag_conf>
+    <dag_conf>dag/sensors/lidar.dag</dag_conf>
+    <process_name>sensors</process_name>
+  </module>
+</cyber>

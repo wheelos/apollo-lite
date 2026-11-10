@@ -1,0 +1,3 @@
+# Build inventories, not validated runtime/launch combinations.
+build:algo_rtk_open_space --//tools/modules:include=rtk_localization,open_space_planning,control
+build:algo_ndt_planning --//tools/modules:include=ndt_localization,planning,control

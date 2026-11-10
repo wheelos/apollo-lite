@@ -311,12 +311,12 @@ function setup_gpu_support() {
   fi
 }
 
-if ${APOLLO_IN_DOCKER} ; then
+if ${APOLLO_IN_DOCKER} && [[ "${APOLLO_BUILD_PHASE:-0}" != "1" ]]; then
     setup_gpu_support
 fi
 
 function setup_dreamview_server_port() {
-  local GLOBAL_FLAGFILE="${TOP_DIR}/modules/global_config/global_flagfile.txt"
+  local GLOBAL_FLAGFILE="${TOP_DIR}/conf/global_flagfile.txt"
 
   # 2. Set default value (must be exported)
   export SERVER_PORT="8888"

@@ -1,0 +1,61 @@
+{
+  "type": "object",
+  "required": ["task_id", "task_description", "scope"],
+  "properties": {
+    "task_id": {"type": "string"},
+    "task_description": {"type": "string"},
+    "baseline_revision": {"type": "string"},
+    "scope": {"type": "array", "items": {"type": "string"}},
+    "inputs": {"type": "array", "items": {"type": "string"}},
+    "artifact_dir": {"type": "string"},
+    "required_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "criteria"],
+        "properties": {
+          "id": {"type": "string"},
+          "kind": {"enum": ["source", "test", "metric"], "type": "string"},
+          "criteria": {"type": "string"},
+          "requirement_id": {"type": "string"},
+          "mandatory": {"type": "boolean"},
+          "stage": {"type": "string"},
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["metric", "unit", "operator", "limit"],
+              "properties": {
+                "metric": {"type": "string"},
+                "unit": {"type": "string"},
+                "operator": {"type": "string", "enum": ["lt", "le", "eq", "ge", "gt"]},
+                "limit": {"type": "number"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "gpu_lock": {"type": ["string", "null"]},
+    "approval_mode": {"type": "string", "enum": ["checkpoint", "invocation"]},
+    "max_revisions": {"type": "integer"},
+    "profiles": {"type": "array", "items": {"type": "string"}},
+    "uses_gpu": {"type": "boolean"},
+    "environment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "value"],
+        "properties": {"name": {"type": "string"}, "value": {"type": "string"}}
+      }
+    },
+    "repositories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "revision"],
+        "properties": {"path": {"type": "string"}, "revision": {"type": "string"}}
+      }
+    }
+  }
+}

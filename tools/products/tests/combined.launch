@@ -1,0 +1,8 @@
+<cyber>
+  <module>
+    <name>product_combined</name>
+    <dag_conf>dag/alpha/component.dag</dag_conf>
+    <dag_conf>dag/beta/component.dag</dag_conf>
+    <process_name>product_combined</process_name>
+  </module>
+</cyber>

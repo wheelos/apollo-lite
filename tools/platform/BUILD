@@ -16,13 +16,14 @@ config_setting(
     },
 )
 
-constraint_setting(
+alias(
     name = "camera_gst_platform",
+    actual = "@hardware.build//tools/platform:camera_gst_platform",
 )
 
-constraint_value(
+alias(
     name = "jetson_orin",
-    constraint_setting = ":camera_gst_platform",
+    actual = "@hardware.build//tools/platform:jetson_orin",
 )
 
 platform(
@@ -37,4 +38,13 @@ platform(
 config_setting(
     name = "is_jetson_orin",
     constraint_values = [":jetson_orin"],
+)
+
+filegroup(
+    name = "exported_source_files",
+    srcs = glob(
+        ["**/*"],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
 )

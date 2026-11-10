@@ -9,7 +9,7 @@
 # Local source-checkout overrides are allowed only when explicitly configured;
 # they are never implicit compatibility fallbacks.
 
-if [[ "${APOLLO_RUNTIME_ENV_LOADED:-0}" == "1" ]]; then
+if [[ "${APOLLO_RUNTIME_ENV_LOADED:-0}" == "1" ]] && command -v cyber_launch >/dev/null 2>&1; then
   return 0
 fi
 
@@ -106,7 +106,7 @@ _inject_apollo_external_core_outputs() {
   local lib_dir
   local solib_dir
   local cyber_conf
-  local repo_candidates=(wheelos_core~ core~ core+ core)
+  local repo_candidates=(wheelos_core+ wheelos_core~ core+ core~ core)
   local proj_repo_candidates=(proj~ proj+ proj)
   local output_roots=("${APOLLO_ROOT_DIR}/bazel-bin")
   local tool_dirs=(
@@ -184,6 +184,15 @@ _inject_apollo_external_core_outputs() {
   done
 }
 
+# Selected product commands prepare runtime variables only in their child
+# process; do not inject unrelated Bazel outputs into the build shell.
+if [[ -n "${WHEELOS_RUNTIME_PRODUCT:-}${WHEELOS_RUNTIME_ROOT:-}" ]]; then
+  _pathprepend "${APOLLO_ROOT_DIR}/scripts/runtime"
+  export APOLLO_RUNTIME_ENV_SOURCE="selected-runtime-commands"
+  APOLLO_RUNTIME_ENV_LOADED=1
+  return 0
+fi
+
 _check_runtime_python_abi
 
 # Keep terminal capabilities available for interactive Cyber tools such as
@@ -217,11 +226,13 @@ if command -v cyber_launch >/dev/null 2>&1 && command -v cyber_recorder >/dev/nu
   return 0
 fi
 
-echo "[WARNING] cyber runtime environment is not configured." >&2
-echo '[WARNING] Use Bazel module dependency @core / wheelos_core or set APOLLO_CORE_ROOT' >&2
-echo '[WARNING] explicitly for a temporary local source-checkout override.' >&2
+if [[ "${APOLLO_RUNTIME_ENV_WARNED:-0}" != "1" ]]; then
+  echo "[WARNING] cyber runtime environment is not configured." >&2
+  echo '[WARNING] Use Bazel module dependency @core / wheelos_core or set APOLLO_CORE_ROOT' >&2
+  echo '[WARNING] explicitly for a temporary local source-checkout override.' >&2
+  APOLLO_RUNTIME_ENV_WARNED=1
+fi
 if [[ "${APOLLO_RUNTIME_REQUIRED:-0}" == "1" ]]; then
   return 1
 fi
-APOLLO_RUNTIME_ENV_LOADED=1
 return 0
