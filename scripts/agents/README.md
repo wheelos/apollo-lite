@@ -20,9 +20,14 @@ bash docker/scripts/whl.sh exec dev -- python3 -m unittest discover \
 ```
 
 `check.py` checks discoverable skills, required scalar metadata, entrypoint/index
-coverage, local Markdown links and explicit backtick context paths. The current
-repository uses only scalar `name` and `description` frontmatter; this checker
-does not implement general YAML or the entire Agent Skills reference validator.
+coverage, local Markdown links and anchors across the repository, and explicit
+backtick context paths. The current repository uses only scalar `name` and
+`description` frontmatter; this checker does not implement general YAML or the
+entire Agent Skills reference validator.
+
+Links into `ad_agents/context/` and absent `pkgs/` checkouts are reported as
+deferred because both are independently provisioned. Pass `--context-root` to
+validate an available internal context checkout.
 Extend it deliberately if richer metadata is introduced. It does not interpret
 Markdown reference links, raw shell snippets, or template paths as executable
 commands, and cannot detect arbitrary semantic contradictions between policies.

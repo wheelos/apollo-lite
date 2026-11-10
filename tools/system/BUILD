@@ -79,8 +79,8 @@ runtime_module(
         ":vehicle_config": "conf/vehicle/canbus_conf.pb.txt",
         ":vehicle_parameters": "conf/vehicle/vehicle_param.pb.txt",
         ":vehicle_flags": "conf/vehicle/vehicle.conf",
-        "//products/apollo_lite/launch:vehicle.dag": "dag/vehicle/vehicle.dag",
-        "//products/apollo_lite/launch:vehicle.launch": "launch/vehicle/vehicle.launch",
+        "//products/low_speed/launch:vehicle.dag": "dag/vehicle/vehicle.dag",
+        "//products/low_speed/launch:vehicle.launch": "launch/vehicle/vehicle.launch",
     },
     module_name = "vehicle",
 )
@@ -99,20 +99,20 @@ runtime_module(
     files = select({
         ":camera": {
             ":camera_config": "conf/sensors/camera.pb.txt",
-            "//products/apollo_lite/launch:camera.dag": "dag/sensors/camera.dag",
-            "//products/apollo_lite/launch:camera.launch": "launch/sensors/camera.launch",
+            "//products/low_speed/launch:camera.dag": "dag/sensors/camera.dag",
+            "//products/low_speed/launch:camera.launch": "launch/sensors/camera.launch",
         },
         ":lidar": {
             ":lidar_config": "conf/sensors/lidar.pb.txt",
-            "//products/apollo_lite/launch:lidar.dag": "dag/sensors/lidar.dag",
-            "//products/apollo_lite/launch:lidar.launch": "launch/sensors/lidar.launch",
+            "//products/low_speed/launch:lidar.dag": "dag/sensors/lidar.dag",
+            "//products/low_speed/launch:lidar.launch": "launch/sensors/lidar.launch",
         },
         ":combined": {
             ":camera_config": "conf/sensors/camera.pb.txt",
             ":lidar_config": "conf/sensors/lidar.pb.txt",
-            "//products/apollo_lite/launch:camera.dag": "dag/sensors/camera.dag",
-            "//products/apollo_lite/launch:lidar.dag": "dag/sensors/lidar.dag",
-            "//products/apollo_lite/launch:combined.launch": "launch/apollo_lite/combined.launch",
+            "//products/low_speed/launch:camera.dag": "dag/sensors/camera.dag",
+            "//products/low_speed/launch:lidar.dag": "dag/sensors/lidar.dag",
+            "//products/low_speed/launch:combined.launch": "launch/low_speed/combined.launch",
         },
         "//conditions:default": {},
     }),

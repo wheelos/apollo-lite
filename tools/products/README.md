@@ -2,8 +2,9 @@
 
 ## Runtime products: one component or many
 
-Vehicle kit, sensors kit and Apollo-Lite are peer products. Apollo-Lite composes
-shared hardware and algorithm modules, not either kit's product installation.
+Vehicle kit, sensors kit and the low-speed product are peers. The low-speed
+product composes shared hardware and algorithm modules, not either kit's
+installation.
 Its intended baseline includes localization, LiDAR perception, planning,
 prediction, control, HMI and safety. A build inventory alone does not qualify
 this runtime combination.
@@ -51,17 +52,17 @@ Repository boundaries do not dictate process boundaries: one DAG may load
 several components, or a launch file may select several mainboards.
 
 For either product, run inside the managed container as the mapped user (for
-example using the canonical `//products/apollo_lite:devkit_x86` or
-`//products/apollo_lite:devkit_x86_ndt` definitions in
-`products/apollo_lite/BUILD`):
+example using the canonical `//products/low_speed:devkit_x86` or
+`//products/low_speed:devkit_x86_ndt` definitions in
+`products/low_speed/BUILD`):
 
 ```bash
-bash apollo.sh build --product=//products/apollo_lite:devkit_x86 --show --config=product_devkit-x86
-bash apollo.sh build --product=//products/apollo_lite:devkit_x86 --mode=dbg --config=product_devkit-x86
-bash apollo.sh run --product=//products/apollo_lite:devkit_x86 --config=product_devkit-x86 \
-  -- --launch launch/apollo_lite/devkit_x86.launch
-bash apollo.sh package --product=//products/apollo_lite:devkit_x86 --source=dev --config=product_devkit-x86
-bash apollo.sh install --product=//products/apollo_lite:devkit_x86 --source=dev --config=product_devkit-x86 \
+bash apollo.sh build --product=//products/low_speed:devkit_x86 --show --config=product_devkit-x86
+bash apollo.sh build --product=//products/low_speed:devkit_x86 --mode=dbg --config=product_devkit-x86
+bash apollo.sh run --product=//products/low_speed:devkit_x86 --config=product_devkit-x86 \
+  -- --launch launch/low_speed/devkit_x86.launch
+bash apollo.sh package --product=//products/low_speed:devkit_x86 --source=dev --config=product_devkit-x86
+bash apollo.sh install --product=//products/low_speed:devkit_x86 --source=dev --config=product_devkit-x86 \
   --destdir=/absolute/install/path
 ```
 
@@ -123,10 +124,10 @@ components start. Model provisioning is explicit and never a startup download.
 TensorRT engines additionally need reviewed GPU/runtime/precision compatibility;
 a digest does not establish inference correctness or hardware compatibility.
 
-Apollo-Lite's source-owned product defaults live in
-[`products/apollo_lite/conf/`](../../products/apollo_lite/conf/README.md);
+The low-speed product's source-owned defaults live in
+[`products/low_speed/conf/`](../../products/low_speed/conf/README.md);
 they are still installed under runtime `conf/`. Product launch topology is
-source-owned under `products/apollo_lite/launch/`, with component launch
+source-owned under `products/low_speed/launch/`, with component launch
 contributions installed under `launch/<module>/` and product launch files under
 `launch/<product>/`.
 

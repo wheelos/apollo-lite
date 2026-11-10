@@ -1,23 +1,31 @@
-name: Agent configuration
+name: Documentation and agent configuration
 
 on:
   pull_request:
     paths:
-      - AGENTS.md
+      - "**/*.md"
       - .agents/**
-      - .github/copilot-instructions.md
       - .github/workflows/agent-config.yml
-      - ad_agents.repos
+      - apollo.doxygen
+      - BUILD
+      - products/**
+      - tools/**/BUILD
+      - tools/**/*.bzl
       - scripts/agents/**
+      - scripts/ci/apollo_docs.sh
   push:
     branches: [main]
     paths:
-      - AGENTS.md
+      - "**/*.md"
       - .agents/**
-      - .github/copilot-instructions.md
       - .github/workflows/agent-config.yml
-      - ad_agents.repos
+      - apollo.doxygen
+      - BUILD
+      - products/**
+      - tools/**/BUILD
+      - tools/**/*.bzl
       - scripts/agents/**
+      - scripts/ci/apollo_docs.sh
 
 permissions:
   contents: read

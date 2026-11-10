@@ -304,14 +304,14 @@ To add support for a new channel:
 
 1. Import the message type:
 ```python
-from modules.common_msgs.xxx_msgs/xxx_pb2 import XxxMessage
+from wheelos_msgs.chassis_msgs.chassis_pb2 import Chassis
 ```
 
 2. Add to `CHANNEL_MESSAGE_TYPE_MAP`:
 ```python
 CHANNEL_MESSAGE_TYPE_MAP = {
     ...
-    "/apollo/new/channel": XxxMessage,
+    "/apollo/new/channel": Chassis,
 }
 ```
 

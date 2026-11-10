@@ -43,10 +43,10 @@ class ProductProfileTest(unittest.TestCase):
         self.assertNotIn("librtk_localization_component.so", result.stdout)
         self.assertNotIn("libopen_space_planning_component.so", result.stdout)
 
-    def test_canonical_apollo_lite_runtime_product_targets_analyze_without_actions(self):
+    def test_canonical_low_speed_runtime_product_targets_analyze_without_actions(self):
         for label, config in [
-            ("//products/apollo_lite:devkit_x86", "product_devkit-x86"),
-            ("//products/apollo_lite:devkit_x86_ndt", "product_devkit-x86-ndt"),
+            ("//products/low_speed:devkit_x86", "product_devkit-x86"),
+            ("//products/low_speed:devkit_x86_ndt", "product_devkit-x86-ndt"),
         ]:
             with self.subTest(label=label):
                 result = self.preview(f"--product={label}", f"--config={config}")

@@ -20,18 +20,15 @@ nanoradar messages from its channels. so you need to build the required proto fi
 #### build protobuf files
 
 ```bash
-bash apollo.sh build common_msgs/sensor_msgs
+bash apollo.sh build cyber wheelos_msgs radar
+source setup.bash
 ```
 
 #### build nanoradar and run it
 
-```bash
-bash apollo.sh build drivers/radar/nano_radar
-```
-
-```bash
-mainboard -d modules/drivers/radar/nano_radar/dag/nano_radar.dag
-```
+Start the NanoRadar driver DAG supplied by the `hardware.radar` source or
+installed runtime. Use the reviewed DAG and configuration shipped with that
+module; this repository does not define a NanoRadar driver launch file.
 
 ### run visualizer
 
