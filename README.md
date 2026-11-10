@@ -24,6 +24,7 @@ A high-performance autonomous driving system
 ## Table of Contents
 
 - [Introduction](#introduction)
+- [Repository Guide](#repository-guide)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Production Mode (Docker)](#production-mode-docker)
@@ -46,6 +47,51 @@ For a deeper understanding, refer to the following documents:
 - Issues / FAQ: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/IS9Vw11zcir6u5k8xFIc3BXJnEf?fromScene=spaceOverview) | [English]]
 - WEP Proposal: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/WSgLwkMOkir6aSkaJGWcYa5ZnJb?fromScene=spaceOverview) | [English]]
 - Company Introduction: [[中文](https://fcn5tm1hmy9p.feishu.cn/wiki/Fp3WwaoZ9iUuw8kD6sgcEsERnSe?fromScene=spaceOverview) | [English]]
+
+---
+
+## Repository Guide
+
+Apollo-Lite integrates independent repositories listed in [`wheelos.repos`](wheelos.repos).
+Use this guide to find the repository that owns a capability. Module names below
+describe content inside each repository; they are not necessarily separate
+repositories. The capability groupings are for discovery and do not imply that
+the repositories are merged or depend on one another.
+
+### Autonomous-driving capabilities
+
+| Capability | Repository | Example modules or contents |
+| --- | --- | --- |
+| LiDAR perception | [lidar_perception](https://github.com/wheelos-euc/lidar_perception) | `lidar_object_detection`, `lidar_semantic_segmentation`, `lidar_fusion` |
+| Camera perception | [camera_perception](https://github.com/wheelos-euc/camera_perception) | `camera_semantic_segmentation` |
+| Multimodal perception | [multimodal_perception](https://github.com/wheelos-euc/multimodal_perception) | `bevfusion` |
+| World model | [world_model](https://github.com/wheelos-euc/world_model) | `world_model` (including local map), `lane`, `traffic_light`, `storytelling` |
+| Localization | [localization](https://github.com/wheelos-euc/localization) | `localization`, `ndt_localization`, `rtk_localization` |
+| Planning | [planning](https://github.com/wheelos-pnc/planning) | `planning`, `local_planning`, `open_space_planning`, `map` |
+| Prediction | [prediction](https://github.com/wheelos-euc/prediction) | `prediction` |
+| Navigation | [mission](https://github.com/wheelos-pnc/mission), [routing](https://github.com/wheelos-pnc/routing) | Task orchestration and route services; these are separate repositories. |
+| Control | [control](https://github.com/wheelos-pnc/control) | Control and execution |
+| Safety | [safety](https://github.com/wheelos/safety) | `guardian`, `collision_guardian`, `monitor` |
+| Simulation | [simulation](https://github.com/wheelos/simulation) | Simulation |
+| Operations and observability | [hmi](https://github.com/wheelos/hmi), [safety](https://github.com/wheelos/safety) | Dreamview is in `hmi`; `monitor` is in `safety`. |
+| Existing Perception | [perception](https://github.com/wheelos-euc/perception) | Separate existing repository; see its README for its current scope and transition dependencies. |
+
+### Platform, integration, and tools
+
+| Area | Repository | Example contents |
+| --- | --- | --- |
+| Runtime | [core](https://github.com/wheelos/core) | Cyber runtime and tools |
+| Shared libraries | [common](https://github.com/wheelos/common) | Common utilities and shared components |
+| Vehicle and sensor integration | [hardware](https://github.com/wheelos/hardware) | Hardware-facing integrations |
+| Map | [map](https://github.com/wheelos/map) | Map repository |
+| Coordinate transforms | [transform](https://github.com/wheelos/transform) | Transform components |
+| Message contracts | [wheelos_msgs](https://github.com/wheelos/wheelos_msgs) | Shared message definitions |
+| Developer tools | [tool_kit](https://github.com/wheelos/tool-kit) | WheelOS tools and utilities |
+| Build registry | [bazel-central-registry](https://github.com/wheelos/bazel-central-registry) | Bazel module registry |
+
+The `map` repository is distinct from the `map` module inside the planning
+repository. For build and product integration, see the Bzlmod and selected
+product build guidance below.
 
 ---
 
