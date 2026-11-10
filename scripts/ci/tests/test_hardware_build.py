@@ -143,6 +143,11 @@ class ReleaseWrapperTest(unittest.TestCase):
         self.assertIn("@wheelos_control//modules/control:package_files", calls[0])
         self.assertNotIn("run", calls[0])
 
+    def test_openloc_release_uses_localization_package(self):
+        calls = self.run_release("openloc", "--list")
+        self.assertEqual(len(calls), 1)
+        self.assertIn("@wheelos_localization//:package_files", calls[0])
+
     def test_extracted_packages_keep_release_shorthands(self):
         modules = (
             "control",
@@ -294,7 +299,7 @@ class BuildWrapperTest(unittest.TestCase):
                 ("core", "@core//..."),
                 ("wheelos_msgs", "@@wheelos_msgs+//..."),
                 ("common", "@wheelos_common//..."),
-                ("openloc", "@@openloc+//..."),
+                ("openloc", "@wheelos_localization//modules/localization/openloc/..."),
                 ("tool_kit", "@wheelos_tool_kit//..."),
                 ("wheelos_map", "@@wheelos_map+//..."),
                 ("gnss", "@hardware.gnss//..."),

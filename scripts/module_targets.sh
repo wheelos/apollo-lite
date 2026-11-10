@@ -37,7 +37,7 @@ module_recursive_target() {
   local package
   case "$1" in
     openloc)
-      echo "@@openloc+//..."
+      echo "@wheelos_localization//modules/localization/openloc/..."
       return 0
       ;;
     core)

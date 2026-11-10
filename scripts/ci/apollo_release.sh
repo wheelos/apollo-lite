@@ -117,6 +117,8 @@ function determine_release_targets() {
         local package
         if [[ "${component}" = "hardware" || "${component}" = "transform" ]]; then
             release_targets="//tools/${component}:install_dir"
+        elif [[ "${component}" = "openloc" ]]; then
+            release_targets="@wheelos_localization//:install_dir"
         elif package="$(module_package "${component}")"; then
             release_targets="@wheelos_${package}//modules/${component}:install_dir"
         elif package="$(capability_package "${component}")"; then

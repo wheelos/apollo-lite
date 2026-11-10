@@ -60,11 +60,15 @@ Release shorthands select a module installer; capability-only names select its
 aggregate installer. Explicit `@wheelos_world_model//:install_dir`,
 `@wheelos_planning//:install_dir` and
 `@wheelos_localization//:install_dir` select entire grouped packages.
-The OpenLoc Cyber host sources belong to `pkgs/localization`; the estimator
-library remains in `pkgs/openloc`. Use `--config=dev` to select the local
-checkouts. Existing C++ includes and Proto imports retain their `modules/`
+The OpenLoc estimator and its Cyber host sources are both part of
+`pkgs/localization`; the middleware-independent estimator remains an internal
+C++ library, not a separate Bzlmod package. Use `--config=dev` to select the
+local checkouts. Existing C++ includes and Proto imports retain their `modules/`
 paths. Source DAG/launch files are under each checkout's `modules/` directory
 and refer to the Apollo workspace's Bazel 8 component outputs.
+The `openloc` build/test shorthand targets only the internal estimator source;
+release it through the `localization` package installer, not as a separate
+artifact.
 These checkouts are ignored by the product Git repository and declared in
 `wheelos.repos` as development sources tracking `main`. Tracking `main` is a
 development policy, not a reproducible release pin. Bzlmod registry

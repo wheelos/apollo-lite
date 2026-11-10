@@ -24,8 +24,8 @@ python.toolchain(
 )
 
 # WheelOS foundation and product capability modules
-bazel_dep(name = "wheelos_core", version = "1.0.6", repo_name = "core")
-bazel_dep(name = "wheelos_common", version = "0.1.3.bcr.1")
+bazel_dep(name = "wheelos_core", version = "1.1.0", repo_name = "core")
+bazel_dep(name = "wheelos_common", version = "0.2.0")
 bazel_dep(name = "wheelos_transform", version = "0.1.0")
 bazel_dep(name = "wheelos_localization", version = "0.1.0")
 bazel_dep(name = "wheelos_lidar_perception", version = "0.1.0")

@@ -31,10 +31,6 @@ repositories:
     type: git
     url: git@github.com:wheelos/transform.git
     version: main
-  openloc:
-    type: git
-    url: git@github.com:wheelos/openloc.git
-    version: main
   camera_perception:
     type: git
     url: git@github.com:wheelos-euc/camera_perception.git
