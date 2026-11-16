@@ -34,10 +34,18 @@ runtime_layout(
     name = "runtime",
     testonly = True,
     cyber_conf = "conf/cyber.pb.conf",
-    files = {"models/model_fixture.ts": "models/example/model.engine"},
+    files = {
+        "models/model_fixture.ts": "models/example/model.engine",
+        "@vehicle_infra//tests/fixtures:vehicle-fake.pb.txt": "conf/vehicle/canbus_conf.pb.txt",
+        "@vehicle_infra//tests/fixtures:vehicle-parameters-fake.pb.txt": "conf/vehicle/vehicle_param.pb.txt",
+    },
     modules = [
         "@vehicle_infra//products/vehicle:module",
         "@sensor_infra//tests/sensors:module",
+    ],
+    required_configs = [
+        "conf/vehicle/canbus_conf.pb.txt",
+        "conf/vehicle/vehicle_param.pb.txt",
     ],
 )
 

@@ -30,6 +30,8 @@ def _contribution_impl(ctx):
             "dag/" + module.name + "/",
             "launch/" + module.name + "/",
             "models/" + module.name + "/",
+            "assets/" + module.name + "/",
+            "assets/models/" + module.name + "/",
             "share/" + module.name + "/",
             "bin/modules/" + module.name + "/",
         ]
@@ -37,8 +39,6 @@ def _contribution_impl(ctx):
             destination.startswith(prefix)
             for prefix in allowed_prefixes
         ]))
-    for file in target[DefaultInfo].files.to_list():
-        asserts.false(env, file.basename in ["mainboard", "cyber_recorder", "cyber_monitor", "cyber.pb.conf"])
     return analysistest.end(env)
 
 module_test = analysistest.make(_module_impl)

@@ -8,3 +8,6 @@ build:product_devkit-x86-ndt --config=hw_x86_devkit
 build:product_devkit-x86-ndt --config=algo_ndt_planning
 build:product_devkit-x86-ndt --config=cpu
 build:product_devkit-x86-ndt --config=opt
+
+# Add the optional Roadlog executable without changing product startup.
+build:low_speed_roadlog --//products/low_speed:roadlog=true

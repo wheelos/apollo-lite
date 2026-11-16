@@ -243,7 +243,8 @@ function resolve_mode_image_override() {
 function resolve_mode_container_name() {
   local mode="$1"
   local project_hash="$2"
-  echo "apollo_${mode}_${USER}_${project_hash}"
+  local project_suffix="${WHL_PROJECT_SUFFIX:+_${WHL_PROJECT_SUFFIX}}"
+  echo "apollo_${mode}_${USER}_${project_hash}${project_suffix}"
 }
 
 function resolve_mode_server_port() {

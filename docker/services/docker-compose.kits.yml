@@ -1,0 +1,7 @@
+services:
+  core:
+    volumes:
+      - ${APOLLO_ROOT}/../sensor-kit:/workspaces/sensor-kit
+      - ${APOLLO_ROOT}/../vehicle-kit:/workspaces/vehicle-kit
+      - ${APOLLO_ROOT}/pkgs:/workspaces/sensor-kit/pkgs:ro
+      - ${APOLLO_ROOT}/pkgs:/workspaces/vehicle-kit/pkgs:ro

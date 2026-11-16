@@ -109,7 +109,7 @@ function determine_build_targets_and_defines() {
 
   if [[ "$#" -eq 0 ]]; then
     targets_all="//modules/... union $(cyber_runtime_targets)"
-    targets_all+=" @wheelos_tool_kit//modules/tools/roadlog/... @wheelos_tool_kit//modules/tools/visualizer/..."
+    targets_all+=" @wheelos_tool_kit//roadlog/... @wheelos_tool_kit//modules/tools/visualizer/..."
     targets_all+="$(capability_targets)"
     targets_all+=" union //tools/control/tests:motion_chain_contract_test"
   else

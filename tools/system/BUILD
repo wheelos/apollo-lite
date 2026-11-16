@@ -9,6 +9,11 @@ bool_flag(
     build_setting_default = False,
 )
 
+bool_flag(
+    name = "roadlog",
+    build_setting_default = False,
+)
+
 string_flag(
     name = "sensors",
     build_setting_default = "none",
@@ -72,6 +77,11 @@ config_setting(
     flag_values = {":vehicle": "true"},
 )
 
+config_setting(
+    name = "with_roadlog",
+    flag_values = {":roadlog": "true"},
+)
+
 runtime_module(
     name = "vehicle_module",
     components = ["@hardware.vehicle//:component"],
@@ -129,6 +139,9 @@ runtime_product(
         ":camera": [":sensors_module"],
         ":lidar": [":sensors_module"],
         ":combined": [":sensors_module"],
+        "//conditions:default": [],
+    }) + select({
+        ":with_roadlog": ["@wheelos_tool_kit//roadlog:module"],
         "//conditions:default": [],
     }),
     package_file_name = "install.tar.gz",

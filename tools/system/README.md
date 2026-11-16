@@ -86,6 +86,7 @@ are in addition to normal hardware backend/vehicle selections:
 | Flag | Meaning |
 | --- | --- |
 | `--//tools/system:vehicle=true` | Include the vehicle component; select its brand/CAN backend using hardware flags |
+| `--//tools/system:roadlog=true` | Include the `smart_recorder` Roadlog executable |
 | `--//tools/system:vehicle_config=//assets:canbus_config` | Required CAN/vehicle configuration |
 | `--//tools/system:vehicle_parameters=//assets:parameters` | Required reviewed geometry/calibration |
 | `--//tools/system:vehicle_flags=//assets:vehicle_flags` | Required reviewed business flags |
@@ -100,8 +101,8 @@ under their `conf/<module_name>/`, `dag/<module_name>/`,
 `launch/<module_name>/`, `models/<module_name>/` or `share/<module_name>/`
 namespace; modules cannot
 replace core configuration or tools. Conflicting file/library contents fail instead of overwriting each
-other. `share/system-manifest.json` lists modules and hashes installed contents;
-it is not a release lock or ABI compatibility claim.
+other. Core's `conf/runtime.json` records selected modules and required
+deployment inputs; it is not a release lock or ABI compatibility claim.
 
 For a custom core configuration filegroup, retain `conf/` root-relative paths.
 All participating shells/services must use the same explicitly coordinated
@@ -120,6 +121,24 @@ cyber_launch start launch/sensors/camera.launch
 cyber_launch start launch/low_speed/combined.launch
 mainboard -d dag/vehicle/vehicle.dag -p vehicle
 ```
+
+When Roadlog is selected, it is a standalone binary in the same runtime, not a
+Core tool or a `mainboard` component. Start it explicitly and provide an
+external writable output directory:
+
+```bash
+bazel build --config=dev --config=cpu //tools/system:runtime \
+  --//tools/system:roadlog=true
+source bazel-bin/tools/system/runtime/bin/setup.bash
+smart_recorder --roadlog_root_dir=/absolute/data/roadlog/task-id
+```
+
+By default it loads `conf/roadlog/smart_recorder_config.pb.txt` through Core's
+configuration resolver, so an explicit `WHEELOS_CONFIG_ROOT` can override that
+whole file. A custom config path can still be passed with
+`--smart_recorder_config_filename=/absolute/path/to/config.pb.txt`.
+Installation does not start Roadlog. The roadlog output directory must remain
+outside the immutable runtime.
 
 These are alternative process arrangements, not instructions to start the same
 vehicle twice. A system-owned launch can reference both modules' DAGs, or one
@@ -161,15 +180,25 @@ copy Apollo's entire development override list into this independent root.
 
 ```bash
 cd tools/system/tests
-# Supply explicit local overrides for every unpublished shared/hardware module
-# as well as both product roots. Dependency rc files are not inherited.
-bazel test <EXPLICIT_SHARED_MODULE_AND_SDK_OPTIONS> \
-  --override_module=vehicle_infra=/absolute/vehicle-infra-source \
-  --override_module=sensor_infra=/absolute/sensor-infra-source \
+# Run in the isolated managed Dev container with both Kit checkouts mounted.
+# Dependency rc files are not inherited by this test root.
+bazelisk test --jobs=4 \
+  --extra_toolchains=@@rules_foreign_cc+//toolchains:preinstalled_ninja_toolchain \
+  --override_module=wheelos_core=/apollo/pkgs/core \
+  --override_module=wheelos_common=/apollo/pkgs/common \
+  --override_module=wheelos_transform=/apollo/pkgs/transform \
+  --override_module=wheelos_msgs=/apollo/pkgs/wheelos_msgs \
+  --override_module=hardware.build=/apollo/pkgs/hardware/build \
+  --override_module=hardware.camera=/apollo/pkgs/hardware/camera \
+  --override_module=hardware.gnss=/apollo/pkgs/hardware/gnss \
+  --override_module=hardware.hal=/apollo/pkgs/hardware/hal \
+  --override_module=hardware.lidar=/apollo/pkgs/hardware/lidar \
+  --override_module=hardware.canbus=/apollo/pkgs/hardware/canbus \
+  --override_module=hardware.vehicle=/apollo/pkgs/hardware/vehicle \
+  --override_module=vehicle_infra=/workspaces/vehicle-kit \
+  --override_module=sensor_infra=/workspaces/sensor-kit \
   --@hardware.build//tools/hardware:vehicle=devkit \
   --@hardware.build//tools/hardware:canbus=fake \
-  --@vehicle_infra//products/vehicle:config=@vehicle_infra//tests/fixtures:vehicle-fake.pb.txt \
-  --@vehicle_infra//products/vehicle:vehicle_parameters=@vehicle_infra//tests/fixtures:vehicle-parameters-fake.pb.txt \
   --flaky_test_attempts=1 --test_output=errors \
   @core//runtime:materialize_runtime_test \
   //:module_test //:ownership_test //:model_module_test \

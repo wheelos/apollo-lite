@@ -54,6 +54,33 @@ class ProductProfileTest(unittest.TestCase):
                 self.assertIn(label, result.stdout)
                 self.assertNotIn("Done building", result.stdout + result.stderr)
 
+    def test_roadlog_is_an_opt_in_module_of_the_low_speed_runtime(self):
+        target = "deps(//products/low_speed:devkit_x86)"
+        common_options = [
+            "bazelisk",
+            "cquery",
+            "--config=dev",
+            "--config=cpu",
+            "--config=opt",
+            "--config=product_devkit-x86",
+            "--output=label",
+        ]
+        for config, expected in [
+            (None, False),
+            ("low_speed_roadlog", True),
+        ]:
+            options = list(common_options)
+            if config:
+                options.append(f"--config={config}")
+            result = subprocess.run(
+                [*options, target],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual("roadlog:module" in result.stdout, expected)
+
     def test_custom_module_typo_fails_in_analysis(self):
         result = self.preview("--modules=rtk_localiztion", "--compute=cpu")
         self.assertNotEqual(result.returncode, 0)

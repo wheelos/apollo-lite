@@ -39,7 +39,7 @@ function show_help() {
   echo "whl regenerates docker/.env.<mode>.local on every run for compose/runtime use."
   echo ""
   echo "Extra env overrides (useful for CI):"
-  echo "  WHL_PROJECT_SUFFIX  Append suffix to compose project name for multi-job isolation"
+  echo "  WHL_PROJECT_SUFFIX  Append suffix to compose project and container names for isolation"
   echo "  WHL_PORT_OFFSET     Numeric offset added to Dreamview dynamic port (helps avoid port collision)"
   echo ""
   echo "Commands:"
@@ -268,8 +268,13 @@ function get_cmd() {
     fi
   elif [[ "${mode}" == "prod" ]]; then
     mode_file="${DOCKER_SERVICE_DIR}/docker-compose.prod.yml"
-  elif [[ "${mode}" == "dev" && "${USE_GPU}" == "true" ]]; then
-    extra_files=" -f ${DOCKER_SERVICE_DIR}/docker-compose.dev.gpu.yml"
+  elif [[ "${mode}" == "dev" ]]; then
+    if [[ -d "${PROJECT_ROOT}/../sensor-kit" && -d "${PROJECT_ROOT}/../vehicle-kit" ]]; then
+      extra_files=" -f ${DOCKER_SERVICE_DIR}/docker-compose.kits.yml"
+    fi
+    if [[ "${USE_GPU}" == "true" ]]; then
+      extra_files+=" -f ${DOCKER_SERVICE_DIR}/docker-compose.dev.gpu.yml"
+    fi
   fi
 
   echo "$(get_compose_cmd) --env-file ${env_file} --project-name $(compose_project_name "${mode}") --project-directory ${DOCKER_DIR} -f ${base_file} -f ${mode_file}${extra_files}"

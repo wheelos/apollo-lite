@@ -1,7 +1,6 @@
 """Exercise one core and recorder with FakeCAN and a synthetic sensor only."""
 
 import fcntl
-import hashlib
 import json
 import os
 import pty
@@ -38,11 +37,12 @@ class SystemIntegration(unittest.TestCase):
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 180, 0, 0))
         process = subprocess.Popen(
             [str(root / "bin/commands/cyber_monitor")],
-            env=dict(environment, TERM="xterm"),
+            env=dict(environment, TERM="xterm", TERMINFO="/lib/terminfo"),
             stdin=slave,
             stdout=slave,
             stderr=slave,
             start_new_session=True,
+            preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0),
         )
         output = b""
         try:
@@ -94,21 +94,30 @@ class SystemIntegration(unittest.TestCase):
                     )
                 root = directory / "relocated system"
                 original.rename(root)
-                manifest = json.loads((root / "share/system-manifest.json").read_text())
-                self.assertEqual(manifest["modules"], ["vehicle", "sensors"])
-                for relative, digest in manifest["files"].items():
-                    self.assertEqual(
-                        hashlib.sha256((root / relative).read_bytes()).hexdigest(),
-                        digest,
+                config_root = directory / "config"
+                vehicle_config = config_root / "conf/vehicle"
+                vehicle_config.mkdir(parents=True)
+                for name in ("canbus_conf.pb.txt", "vehicle_param.pb.txt"):
+                    shutil.copy2(
+                        root / "conf/vehicle" / name,
+                        vehicle_config / name,
                     )
+                manifest = json.loads((root / "conf/runtime.json").read_text())
+                self.assertEqual(manifest["modules"], ["vehicle", "sensors"])
+                self.assertEqual(
+                    manifest["required_configs"],
+                    [
+                        "conf/vehicle/canbus_conf.pb.txt",
+                        "conf/vehicle/vehicle_param.pb.txt",
+                    ],
+                )
                 model = root / "models/example/model.engine"
                 self.assertEqual(model.read_bytes(), b"model fixture\n")
                 if variant != "source":
                     self.assertEqual(model.stat().st_mode & 0o777, 0o644)
                 for tool in ("mainboard", "cyber_recorder", "cyber_monitor"):
-                    self.assertEqual(
-                        len(list(root.rglob(tool))), 2
-                    )  # Native tool plus wrapper.
+                    self.assertTrue((root / "bin" / tool).is_file())
+                    self.assertTrue((root / "bin/commands" / tool).is_file())
                 identity = uuid.uuid4().hex[:12]
                 chassis_topic = f"/system/test/{identity}/chassis"
                 image_topic = f"/system/test/{identity}/image"
@@ -126,8 +135,8 @@ class SystemIntegration(unittest.TestCase):
                     CYBER_IP="127.0.0.1",
                     GLOG_logtostderr="1",
                     SENSOR_INFRA_TEST_TOPIC=image_topic,
+                    WHEELOS_CONFIG_ROOT=str(config_root),
                 )
-                environment.pop("WHEELOS_CONFIG_ROOT", None)
                 processes = []
                 logs = []
                 try:

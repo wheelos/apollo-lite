@@ -8,6 +8,8 @@ from pathlib import Path
 
 
 def command(workspace, environment, tool, arguments):
+    if not re.fullmatch(r"[A-Za-z0-9_.+-]+", tool):
+        raise ValueError("Runtime command name must be a single safe path segment")
     root_value = environment.get("WHEELOS_RUNTIME_ROOT", "")
     product = environment.get("WHEELOS_RUNTIME_PRODUCT", "")
     if root_value and product:
@@ -48,7 +50,26 @@ def command(workspace, environment, tool, arguments):
         if module_entry.is_file() and os.access(module_entry, os.X_OK):
             entry = module_entry
         else:
-            raise ValueError(f"Runtime command is missing or not executable: {entry}")
+            modules = root / "bin/modules"
+            candidates = (
+                sorted(
+                    path / tool
+                    for path in modules.iterdir()
+                    if path.is_dir()
+                    and (path / tool).is_file()
+                    and os.access(path / tool, os.X_OK)
+                )
+                if modules.is_dir()
+                else []
+            )
+            if len(candidates) == 1:
+                entry = candidates[0]
+            elif len(candidates) > 1:
+                raise ValueError(
+                    f"Runtime command is ambiguous across module executables: {tool}"
+                )
+            else:
+                raise ValueError(f"Runtime command is missing or not executable: {entry}")
     return [str(entry), *arguments]
 
 

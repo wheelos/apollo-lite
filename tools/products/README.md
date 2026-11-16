@@ -73,6 +73,27 @@ published release. `--config=<reviewed-config>` selects platform/business inputs
 `--mode=dbg|opt` selects compilation mode independently. `--show` performs
 analysis, not compilation or startup.
 
+The low-speed product keeps hardware and algorithm module lists separate in
+`products/low_speed/BUILD`. Core tools are included once by `runtime_product`;
+optional application tools are selected independently. For example, add
+Roadlog with `--config=low_speed_roadlog` to every action that needs the same
+runtime composition:
+
+```bash
+bash apollo.sh build --product=//products/low_speed:devkit_x86 \
+  --config=product_devkit-x86 --config=low_speed_roadlog
+bash apollo.sh package --product=//products/low_speed:devkit_x86 \
+  --source=dev --config=product_devkit-x86 --config=low_speed_roadlog
+```
+
+Roadlog is packaged as a standalone executable but is not started by the
+product launch. After sourcing the selected runtime's `bin/setup.bash`, start it
+explicitly with `smart_recorder --roadlog_root_dir=/absolute/writable/path`.
+This Roadlog selector currently validates against the local development source;
+Release use requires a published Tool Kit version exposing the same
+`@wheelos_tool_kit//roadlog:module` target. A local override is not Release
+acceptance.
+
 The product label is its runtime tree. The generated sibling labels append
 `_run`, `_package`, `_install` and `_files`. Installed or extracted products
 start through `<runtime>/bin/run`, exactly as development does; installation

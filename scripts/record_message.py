@@ -34,6 +34,7 @@ import argparse
 import datetime
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -143,29 +144,31 @@ class Recorder(object):
 
     @staticmethod
     def find_recorder_executable():
-        """Return the first available recorder, env requirement, and config."""
+        """Return the selected recorder and optional config override."""
         repo_root = Path(__file__).resolve().parents[1]
         config_filename = "smart_recorder_config.pb.txt"
-        source_conf = repo_root / "pkgs/tool_kit/modules/tools/roadlog/conf"
+        source_conf = repo_root / "pkgs/tool_kit/roadlog/conf"
         source_config = source_conf / config_filename
+        runtime_executable = shutil.which("smart_recorder")
+        runtime_path = Path(runtime_executable) if runtime_executable else None
+        if runtime_path and (
+            (
+                runtime_path.parent.name == "roadlog"
+                and runtime_path.parent.parent.name == "modules"
+            )
+            or (
+                runtime_path.parent.name == "runtime"
+                and runtime_path.parent.parent.name == "scripts"
+            )
+        ):
+            return runtime_executable, None
         candidates = [
-            (
-                "/apollo/bazel-bin/external/wheelos_tool_kit+/modules/tools/"
-                "roadlog/smart_recorder",
-                True,
-            ),
-            (
-                "/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/"
-                "roadlog/smart_recorder",
-                False,
-            ),
-            (
-                "/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/"
-                "smart_recorder/smart_recorder",
-                False,
-            ),
+            "/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/"
+            "roadlog/smart_recorder",
+            "/opt/apollo/neo/packages/apollo-data-dev/latest/bin/tools/"
+            "smart_recorder/smart_recorder",
         ]
-        for recorder_exe, needs_runtime_env in candidates:
+        for recorder_exe in candidates:
             if Path(recorder_exe).exists():
                 installed_conf = Path(recorder_exe).parent / "conf"
                 installed_config = installed_conf / config_filename
@@ -178,8 +181,8 @@ class Recorder(object):
                     None,
                 )
                 if config is not None:
-                    return recorder_exe, needs_runtime_env, str(config)
-        return None, None, None
+                    return recorder_exe, str(config)
+        return None, None
 
     def record_task(self, disk):
         """
@@ -192,36 +195,27 @@ class Recorder(object):
         if not Path(log_dir).exists():
             os.makedirs(log_dir, exist_ok=True)
         log_file = "/apollo/data/log/smart_recorder.out"
-        recorder_exe, needs_runtime_env, config_path = (
-            Recorder.find_recorder_executable()
-        )
+        recorder_exe, config_path = Recorder.find_recorder_executable()
         if recorder_exe is None:
             print(
-                "can't find smart_recorder and its config! "
-                "Have you built or installed the roadlog tool?"
+                "can't find smart_recorder! Select and build/install a runtime "
+                "that includes the roadlog module."
             )
             sys.exit(-1)
         recorder_exe = shlex.quote(recorder_exe)
-        config_path = shlex.quote(config_path)
         task_dir = shlex.quote(task_dir)
         log_file = shlex.quote(log_file)
-        if needs_runtime_env:
-            cmd = """
-                source /apollo/scripts/apollo_base.sh
-                source /apollo/scripts/runtime_env.sh
-                nohup {} --roadlog_root_dir={} \
-                    --smart_recorder_config_filename={} > {} 2>&1 &
-                """.format(
-                recorder_exe, task_dir, config_path, log_file
+        recorder_args = ["--roadlog_root_dir={}".format(task_dir)]
+        if config_path is not None:
+            recorder_args.append(
+                "--smart_recorder_config_filename={}".format(
+                    shlex.quote(config_path)
+                )
             )
-        else:
-            cmd = """
-                nohup {} --roadlog_root_dir={} \
-                    --smart_recorder_config_filename={} > {} 2>&1 &
-                """.format(
-                recorder_exe, task_dir, config_path, log_file
-            )
-        shell_cmd(cmd)
+        command = "nohup {} {} > {} 2>&1 &".format(
+            recorder_exe, " ".join(recorder_args), log_file
+        )
+        shell_cmd(command)
 
     @staticmethod
     def is_running():

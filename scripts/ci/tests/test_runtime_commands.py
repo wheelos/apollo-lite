@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[3]
 spec = importlib.util.spec_from_file_location(
@@ -14,6 +15,11 @@ spec = importlib.util.spec_from_file_location(
 )
 tool = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tool)
+spec = importlib.util.spec_from_file_location(
+    "record_message", ROOT / "scripts/record_message.py"
+)
+record_message = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(record_message)
 spec = importlib.util.spec_from_file_location(
     "materializer", ROOT / "pkgs/core/runtime/materialize_runtime.py"
 )
@@ -76,6 +82,7 @@ class RuntimeCommandsTest(unittest.TestCase):
                 "command -v cyber_recorder; command -v cyber_monitor; "
                 "command -v cyber_node; command -v cyber_channel; "
                 "command -v cyber_service; command -v dreamview; "
+                "command -v smart_recorder; "
                 'printf "%s\\n" "$LD_LIBRARY_PATH" "$APOLLO_ROOT_DIR"',
                 "test",
                 str(ROOT),
@@ -96,10 +103,43 @@ class RuntimeCommandsTest(unittest.TestCase):
                 str(ROOT / "scripts/runtime/cyber_channel"),
                 str(ROOT / "scripts/runtime/cyber_service"),
                 str(ROOT / "scripts/runtime/dreamview"),
+                str(ROOT / "scripts/runtime/smart_recorder"),
                 "/existing/sdk",
                 str(ROOT),
             ],
         )
+
+    def test_selected_runtime_dispatches_a_declared_module_executable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "conf").mkdir()
+            (root / "conf/runtime.json").write_text("{}\n")
+            executable = root / "bin/modules/roadlog/smart_recorder"
+            executable.parent.mkdir(parents=True)
+            executable.write_text("#!/bin/sh\nexit 0\n")
+            executable.chmod(0o755)
+            self.assertEqual(
+                tool.command(
+                    ROOT,
+                    {"WHEELOS_RUNTIME_ROOT": str(root)},
+                    "smart_recorder",
+                    ["--roadlog_root_dir=/tmp/roadlog"],
+                ),
+                [str(executable), "--roadlog_root_dir=/tmp/roadlog"],
+            )
+
+    def test_record_message_uses_selected_runtime_binary_defaults(self):
+        for executable in (
+            "/runtime/bin/modules/roadlog/smart_recorder",
+            "/apollo/scripts/runtime/smart_recorder",
+        ):
+            with self.subTest(executable=executable), mock.patch.object(
+                record_message.shutil, "which", return_value=executable
+            ):
+                self.assertEqual(
+                    record_message.Recorder.find_recorder_executable(),
+                    (executable, None),
+                )
 
     def test_container_nonlogin_shell_loads_selected_commands(self):
         bootstrap = (ROOT / "docker/scripts/entrypoint.sh").read_text()
