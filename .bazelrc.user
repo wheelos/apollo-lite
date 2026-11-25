@@ -1,2 +1,6 @@
-# Optional user-local Bazel overrides (managed by ./apollo.sh config).
+# Optional workspace overrides. This file is tracked and shared by users of
+# the checkout; ./apollo.sh config only prints guidance.
 
+build --remote_cache=http://127.0.0.1:19090
+build --remote_accept_cached=true
+build --remote_upload_local_results=true

@@ -255,7 +255,7 @@ start with `bash apollo.sh`.
 | `build_opt hardware --config=hw_x86_devkit --config=cpu` | `build --hardware=hw_x86_devkit --compute=cpu` |
 | `build_opt hardware algorithms --config=hw_x86_devkit --config=algo_rtk_open_space --config=cpu` | `build --product=devkit-x86` |
 | `build_opt_cpu` / `build_dbg_gpu` and other mode aliases | Choose an inventory, then use `--mode=opt\|dbg` and `--compute=cpu\|gpu` for a custom build; products own their compute choice |
-| `.custom.bazelrc` mentioned by old `config` help | Manually transfer needed settings to `.bazelrc.user`, which is actually imported; do not overwrite existing user settings |
+| `.custom.bazelrc` mentioned by old `config` help | Manually transfer needed settings to `.bazelrc.user`, which is imported and tracked for the entire checkout; do not overwrite existing settings |
 | `config --clean` | Edit `.bazelrc.user` manually; `config` is now read-only and rejects `--clean` |
 
 These are migration examples, not identical coverage promises: old module

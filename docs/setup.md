@@ -62,6 +62,31 @@ Development and test modes use separate Compose projects and generated
 environment files. User overrides belong in the project-root `.env.global` with
 mode-scoped keys such as `DEV_USE_GPU` and `DEV_BAZEL_CACHE_DIR`.
 
+## Optional host-local Bazel remote cache
+
+On the Docker host, start the shared cache separately from `whl`:
+
+```bash
+bash scripts/start_bazel_remote.sh
+docker logs --tail 20 bazel-remote
+```
+
+The script publishes HTTP only on `127.0.0.1:19090`, stores cache data under
+the invoking user's `~/.cache/bazel-remote`, and limits it to 5 GiB by default.
+Use a dedicated directory, not Bazel's existing repository or disk cache
+directory. Run `bash scripts/start_bazel_remote.sh --help` for overrides.
+Docker may pull the pinned image if it is not already available. An existing
+container with the same name is never replaced; use `docker start bazel-remote`
+to restart a stopped container after inspecting it.
+
+The loopback service has no authentication: all local users able to reach it
+can read and write cached artifacts. Use it only with mutually trusted users.
+Containers on the same Docker network may also reach its internal HTTP port.
+The dev container uses host networking; the test container does not, so its
+`127.0.0.1` does not reach this service. Repository and local disk caches
+remain separate. Configure clients separately and verify their effective
+settings with `--announce_rc`.
+
 ## System services
 
 `whl-container.service` manages only the production container.

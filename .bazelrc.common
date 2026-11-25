@@ -53,11 +53,12 @@ build --cxxopt="-Werror=reorder"
 
 build --define=use_fast_cpp_protos=true
 
-# Build configurations
+# Versioned hardware, algorithm inventory, and product build configurations.
 import %workspace%/tools/hardware/profiles.bazelrc
 import %workspace%/tools/modules/profiles.bazelrc
 import %workspace%/tools/products/profiles.bazelrc
 
+# Compilation mode; dev source overrides are separate in .bazelrc.dev.
 build:dbg -c dbg
 build:opt -c opt
 
@@ -87,7 +88,7 @@ build:prof --cxxopt="-DENABLE_PERF=1"
 # Build Jetson Orin-only targets such as camera_gst.
 build:jetson_orin --platforms=//tools/platform:jetson_orin_platform
 
-# Build WheelOS with C++ 17 features
+# Opt in to C++20 for target C++ compilation.
 build:c++20 --cxxopt=-std=c++20
 
 # Enable C++17 by default

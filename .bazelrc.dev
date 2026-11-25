@@ -1,4 +1,4 @@
-# Opt in with --config=dev for build, test, query, and mod commands.
+# Source-checkout selection, not debug compilation. Opt in with --config=dev.
 # Remote registries in .bazelrc retain priority; this is a fallback for
 # module versions that have not been published there yet.
 common:dev --registry=file://%workspace%/pkgs/bazel-central-registry
